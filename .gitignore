@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+dist/
+build/
+.vite/
+
+# Test and QA artifacts
+test-results/
+playwright-report/
+screenshots/
+**/test-results/
+**/playwright-report/
+**/screenshots/
+
+# Prototype/editor generated metadata
+.bolt/
+**/.bolt/
+
+# Environment & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Supabase local
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+
+# Logs & misc
+*.log
+npm-debug.log*
+.DS_Store
+.idea/
+*.local
+
+# Keep the original prototype archive out of the repo
+project-bolt-*.zip

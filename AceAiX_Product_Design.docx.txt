@@ -1,0 +1,1553 @@
+﻿AceAiX
+Professional Athlete Intelligence Platform
+User Roles  ·  Platform Sitemap  ·  User Flows & Feature Specifications
+Version 1.0   |   2026   |   Confidential
+An AryAiX Platform
+________________
+
+
+Table of Contents
+
+
+
+
+________________
+
+
+1. Document Purpose & Scope
+This document defines the complete user taxonomy, platform sitemap, and feature specifications for AceAiX — an AI-native athlete intelligence platform designed for the UAE and broader GCC sports market. It serves as the master reference for product architecture, UX design, and engineering specification, and is the product-design counterpart to the AceAiX investment proposal.
+The document covers:
+* All user roles and sub-roles within the AceAiX ecosystem
+* Guest (unauthenticated) features accessible without an account
+* Authenticated user dashboards and feature sets per role
+* Platform sitemap and navigation hierarchy
+* Core user flows for key journeys
+* AI agent capabilities embedded across the platform
+* Technical architecture, data model, integrations, and non-functional requirements
+* A phased delivery roadmap aligned to the lean MVP-first deployment plan
+AceAiX unifies three capabilities into a single ecosystem: verified medical intelligence (tamper-evident records sourced directly from licensed sports-medicine clinics), AI performance and match analytics, and a professional sports network with third-party endorsement. The product competes on intelligence rather than subjective observation — turning athletic performance and medical data into a structured, verifiable, and forecastable athlete portfolio.
+2. User Role Taxonomy
+AceAiX serves multiple distinct stakeholder types across the talent lifecycle. User roles are grouped into three tiers: Guest (unauthenticated), Platform Users (with registered accounts), and System Administrators.
+Federations and clubs are full platform users with role-specific dashboards. Subscription packages and licensing tiers are managed through the Admin Panel by AceAiX administrators and surfaced to athletes, scouts, and clubs at sign-up and upgrade.
+2.1 Tier 1 — Guest Users (No Account Required)
+Guest users access the platform without registration. Core discovery and AI features are available to lower the barrier to entry and drive conversion to registered accounts.
+Guest Capability
+	Description
+	Account Required to Proceed?
+	AI Talent Discovery
+	Conversational AI agent to find athletes by sport, position, attributes, location, and verified metrics.
+	No
+	Browse Athlete Profiles
+	View public athlete profiles, highlight reels, and verified performance badges.
+	No
+	Browse Clubs & Academies
+	Search and filter clubs, academies, and federations by sport, location, and level.
+	No
+	View Highlight Reels
+	Watch public video highlights and AI-tagged match clips.
+	No
+	Featured Talent & Leaderboards
+	Browse curated rising-talent lists and performance leaderboards by sport.
+	No
+	Success Stories & Resources
+	Access athlete success stories, career guides, and platform education content.
+	No
+	Contact an Athlete / Save Shortlist
+	Initiates outreach or watchlist — requires account creation at this step.
+	YES — triggers registration
+	2.2 Tier 2 — Authenticated Platform Users
+Registered users gain access to personalized dashboards, profiles, analytics, and advanced AI capabilities. The platform supports the following authenticated roles:
+2.2.1 Athlete
+The primary end-user of AceAiX. Athletes may be amateur, semi-professional, professional, or academy-based. The Athlete role includes a sub-role of Minor Athlete (under 18), whose account is linked to a Guardian / Agent account.
+Feature Area
+	Feature
+	Description
+	Dashboard
+	Performance Overview
+	Personalized summary: profile completeness, performance score, recent scout views, endorsements, and opportunities.
+	Dashboard
+	Visibility Score
+	AI-generated visibility/credibility score based on verified metrics, endorsements, and activity.
+	Profile
+	Athlete Portfolio
+	Bio, sport, position(s), physical attributes, career history, achievements, and club affiliations.
+	Profile
+	Verified Badges
+	Verified medical-clearance, performance, and identity badges surfaced on the profile.
+	Media
+	Video Highlights
+	Upload match footage and highlight clips; AI auto-tags actions and generates highlight reels.
+	Media
+	AI Clip Analysis
+	AI identifies key moments (goals, sprints, defensive actions) and tags them to the timeline.
+	Performance
+	Match & Stat Records
+	Structured performance metrics per match; manual entry in MVP, AI match analytics in later phases.
+	Performance
+	AI Performance Insights
+	AI summarizes trends — distance, fatigue patterns, decline indicators — into a living performance record.
+	Medical Intelligence
+	Verified Medical Records
+	Tamper-evident medical tests and assessments uploaded by licensed partner clinics.
+	Medical Intelligence
+	Injury History & Clearance
+	Longitudinal injury record and current medical-clearance status visible to authorized parties only.
+	Medical Intelligence
+	AI Risk Summary
+	Plain-language AI summary of injury-risk indicators derived from verified medical data (athlete-facing).
+	Network
+	Endorsements
+	Receive and display endorsements from coaches, teammates, and medical professionals.
+	Network
+	Connections
+	Connect with coaches, clubs, scouts, and other athletes within the professional network.
+	Career
+	Trajectory Forecast
+	AI projects an advancement timeline based on comparable-player data and progression curves.
+	Career
+	Comparable Players
+	AI surfaces similar athletes and benchmark percentiles for the athlete's level and position.
+	Discovery
+	Scout Interest & Opportunities
+	Track scout views, contact requests, trials, and posted opportunities.
+	AI Agent
+	Career & Profile Coach
+	Conversational AI for profile optimization, career guidance, and platform navigation.
+	Messaging
+	Secure Messaging
+	Encrypted messaging with scouts, clubs, and coaches (gated by consent and subscription tier).
+	Account
+	Subscription & Billing
+	Manage Free / Pro / Elite tier, payment methods, and invoices.
+	Profile & Settings
+	Privacy Controls
+	Granular control over who can view medical data, contact details, and performance records.
+	2.2.2 Guardian / Agent
+A Guardian account allows a registered adult to manage a Minor Athlete's profile and communications. The Agent variant allows a licensed representative to manage one or more athletes' commercial and discovery activity with the athlete's consent.
+Feature
+	Description
+	Linked Athlete Profiles
+	View and manage profiles of linked minor athletes or represented athletes (with consent or guardianship).
+	Media & Profile Management
+	Upload highlights, manage portfolio content, and maintain profile data on behalf of the athlete.
+	Communication Proxy
+	Receive and respond to scout/club outreach on behalf of a minor or represented athlete.
+	Consent Management
+	Define which parties may view medical data, contact the athlete, or access full records.
+	Opportunity Management
+	Review trials, offers, and contact requests; coordinate responses.
+	Privacy & Safeguarding
+	Enforce minor-safeguarding controls; restrict direct adult-to-minor contact through the platform.
+	2.2.3 Scout / Recruiter
+Scouts are individual talent evaluators operating independently or under a club/federation license. They discover, shortlist, and contact athletes.
+Feature Area
+	Feature
+	Description
+	Dashboard
+	Recruiter Overview
+	Saved searches, shortlists, recent athlete activity, and AI-recommended prospects.
+	Discovery
+	Advanced Talent Search
+	Filter by sport, position, age, attributes, level, location, language, and verified-metric thresholds.
+	Discovery
+	AI Talent Recommendations
+	AI surfaces athletes matching a defined profile, including under-the-radar prospects.
+	Athlete Evaluation
+	Full Profile Access
+	View complete athlete portfolios; medical-clearance status visible only with athlete consent.
+	Athlete Evaluation
+	Comparison Tool
+	Side-by-side comparison of shortlisted athletes across metrics and AI scores.
+	Shortlists
+	Watchlists & Tags
+	Organize prospects into watchlists with private notes and tags.
+	Outreach
+	Contact Athletes
+	Send contact requests / messages, subject to monthly limits by license tier.
+	Career Intelligence
+	Trajectory & Risk Signals
+	View AI trajectory forecasts and (consent-gated) medical-risk summaries for evaluation.
+	Messaging
+	Secure Messaging
+	Encrypted communication with athletes, guardians, and agents.
+	Profile
+	Recruiter Profile
+	Credentials, affiliation, verification status, and activity history.
+	2.2.4 Club / Team
+Clubs and teams operate under a multi-seat license. A Club Admin manages the organization; scouts, coaches, and medical staff operate as seats within the club. Clubs gain team-management and prospect-tracking capabilities on top of recruiter features.
+Feature
+	Description
+	Club Dashboard
+	Roster status, active recruitment targets, medical-tracking alerts, and seat activity.
+	Seat Management
+	Add and manage scout, coach, and medical-staff seats under the club license.
+	All Recruiter Capabilities
+	Unlimited search, shortlists, comparison, AI recommendations, and athlete outreach.
+	Roster & Prospect Tracking
+	Track signed players and prospects; maintain a recruitment pipeline by position and need.
+	Medical Tracking
+	Monitor verified medical-clearance and injury status for roster and consented prospects.
+	Team Analytics
+	Recruitment funnel metrics, squad gap analysis, and scouting activity reports.
+	Trials & Opportunities
+	Post trials and opportunities; manage applicant pipelines.
+	2.2.5 Coach
+Coaches validate athletes through endorsements and may operate as a seat within a club or independently. Their primary value to the network is trusted, attributable validation of skill and character.
+Feature
+	Description
+	Athlete Endorsement
+	Endorse skills, attributes, and character for athletes the coach has worked with; endorsements are attributable.
+	Squad / Group Management
+	Manage a coached group or academy cohort; track development (when affiliated).
+	Athlete View
+	View athlete portfolios and performance records relevant to coaching relationships.
+	Messaging
+	Secure communication with athletes, guardians, and club staff.
+	Profile
+	Coaching credentials, affiliations, and verification status.
+	2.2.6 Medical Partner (Sports-Medicine Clinic)
+Partner clinics are the source of verified medical intelligence. They receive verification requests, upload assessments and test results, and issue medical clearances directly into the athlete record. Records are tamper-evident and cryptographically anchored for provenance.
+Feature
+	Description
+	Verification Request Inbox
+	Receive athlete-initiated or club-initiated requests for assessment and verification.
+	Assessment & Test Upload
+	Upload physical assessments, imaging, and test results directly to the athlete's verified record.
+	Medical Clearance Issuance
+	Issue, update, or revoke medical-clearance status with effective dates.
+	Injury Record Management
+	Record and update injury history with structured fields and recovery status.
+	Provenance & Tamper-Evidence
+	Each record is hashed and anchored, producing a verifiable, immutable provenance trail.
+	Booking & Commission
+	Manage tests booked through the platform; track platform commission and payouts.
+	Verified-Partner Badge
+	Maintain verified-partner status and display the annual verification badge.
+	Analytics
+	Test volumes, athlete throughput, and revenue metrics.
+	2.2.7 Federation
+Federations operate national or sport-wide programs. They maintain a development database, track talent pipelines, and access aggregate analytics under a federation license.
+Feature
+	Description
+	National Athlete Database
+	Searchable database of registered athletes within the federation's sport/jurisdiction.
+	Development Tracking
+	Track athlete progression through development pathways and age groups.
+	Talent Pipeline Analytics
+	Aggregate analytics on talent distribution, gaps, and progression rates.
+	Program Management
+	Manage development programs, squads, and selection pools.
+	Reporting
+	Federation-level reporting for governance and funding stakeholders.
+	2.3 Tier 3 — System & Platform Administration
+2.3.1 AceAiX Super Admin
+The Super Admin has full platform access and manages all entities, configurations, and compliance requirements. This role is restricted to AryAiX internal staff.
+Feature
+	Description
+	User Management
+	Create, edit, suspend, and deactivate all user accounts across all roles.
+	Verification & Onboarding
+	Approve and onboard clubs, federations, and medical partners; manage identity verification.
+	Subscription & Licensing
+	Configure athlete tiers and club/scout/federation license packages surfaced on the platform.
+	AI Model Management
+	Monitor AI agent and analytics performance, update models, and review flagged outputs.
+	Content Management
+	Manage success stories, education content, leaderboards, and notification templates.
+	Platform Analytics
+	Comprehensive analytics across users, engagement, recruitment outcomes, and operational KPIs.
+	Billing & Revenue
+	Platform-level revenue tracking, commission reconciliation, and financial reporting.
+	Security & Audit Logs
+	Full audit trail of platform activity; security monitoring and incident response.
+	System Configuration
+	Feature flags, integration management, API configuration, and platform settings.
+	2.3.2 Club / Federation Admin
+Each licensed club or federation has a local admin who manages the organization's seats, configuration, and operational settings.
+Feature
+	Description
+	Seat / Staff Management
+	Create and manage scout, coach, and medical-staff seats within the organization.
+	License Configuration
+	Manage license tier, seat allocation, and renewal.
+	Organization Profile
+	Maintain club/federation profile, branding, affiliations, and verification documents.
+	Org Analytics
+	Recruitment, development, and seat-activity reporting for the organization.
+	Billing Configuration
+	Manage payment method, invoicing, and license billing.
+	3. Platform Sitemap
+The AceAiX platform is organized into five primary zones, each serving a distinct user group. Public-facing zones are accessible without authentication; authenticated zones are gated by role-based access control (RBAC).
+3.1 Public Zone (No Authentication Required)
+Section
+	Pages / Features
+	Home
+	Landing page, platform value proposition, featured athletes, rising-talent leaderboards, success stories.
+	AI Talent Discovery
+	Conversational AI search accessible without login; prompts account creation to contact or shortlist.
+	Find an Athlete
+	Search and browse athletes by sport, position, attributes, location, and verified metrics.
+	Find a Club / Academy
+	Search and browse clubs, academies, and federations with profiles and programs.
+	Highlights
+	Public highlight reels and AI-tagged match clips.
+	Subscription Plans
+	Browse athlete tiers and club/scout/federation license options (read-only; sign-up to purchase).
+	Resources
+	Success stories, career guides, and platform education content.
+	About AceAiX
+	Platform mission, team, partnerships, and verification credentials.
+	Login / Register
+	Account creation flows for athletes, recruiters, clubs, federations, and medical partners.
+	3.2 Athlete Zone (Authenticated)
+Section
+	Sub-sections
+	Dashboard
+	Performance overview, visibility score, scout interest, opportunities, notifications.
+	My Profile
+	Portfolio, physical attributes, career history, achievements, verified badges.
+	Media
+	Video highlights, AI-tagged clips, highlight-reel builder.
+	Performance
+	Match records, AI performance insights, comparables and benchmarks.
+	Medical Intelligence
+	Verified records, injury history, clearance status, AI risk summary.
+	Network
+	Endorsements, connections, coaches and clubs.
+	Career
+	Trajectory forecast, comparable players, opportunities and trials.
+	AI Agent
+	Career & profile coach conversation, profile-optimization suggestions.
+	Messages
+	Secure messaging with scouts, clubs, and coaches.
+	Subscription
+	Plan management, billing, invoices.
+	Profile & Settings
+	Privacy controls, notification preferences, language settings.
+	3.3 Recruiter Zone (Authenticated — Role-Specific Views)
+Role
+	Dashboard Sections
+	Scout
+	Recruiter overview, advanced search, AI recommendations, athlete profiles, comparison, watchlists, outreach, messages, profile.
+	Club / Team
+	Club dashboard, seat management, search & recommendations, roster & prospect tracking, medical tracking, team analytics, trials, messages.
+	Coach
+	Endorsements, squad/group management, athlete view, messages, profile.
+	Federation
+	National athlete database, development tracking, pipeline analytics, program management, reporting.
+	3.4 Medical Partner Zone (Authenticated)
+Section
+	Description
+	Partner Dashboard
+	Verification requests, throughput, revenue and commission summary, verification status.
+	Verification Inbox
+	Incoming assessment/verification requests from athletes and clubs.
+	Record Upload
+	Upload assessments, imaging, and test results to the verified athlete record.
+	Clearance Management
+	Issue, update, or revoke medical clearances.
+	Bookings & Commission
+	Manage platform-booked tests, payouts, and commission tracking.
+	Analytics
+	Test volumes, throughput, and revenue reporting.
+	Profile
+	Clinic profile, accreditation, verified-partner badge.
+	3.5 Super Admin Zone (AryAiX Internal)
+Section
+	Description
+	Platform Overview
+	Global KPIs, active users, engagement, recruitment outcomes, AI performance metrics.
+	User Management
+	All accounts, role management, suspensions, audit trails.
+	Verification & Onboarding
+	Onboarding pipeline for clubs, federations, and medical partners; verification workflow.
+	Subscription & Licensing
+	Tier and license configuration, pricing, availability.
+	AI Management
+	Model performance, flagged outputs, analytics validation, training feedback.
+	Content Management
+	Success stories, education content, leaderboards, multi-language content.
+	Finance & Billing
+	Platform revenue, subscriptions, commissions, financial reports.
+	Security & Compliance
+	Audit logs, security alerts, data-governance and compliance dashboard.
+	System Configuration
+	Feature flags, integrations, API management, environment settings.
+	4. Key User Flows
+4.1 Guest — Talent Discovery to Account Creation
+The primary conversion flow, moving a guest from public discovery to a registered account when contact or shortlisting is triggered.
+Step
+	Actor
+	Action
+	AI Involvement
+	1
+	Guest
+	Visits AceAiX or opens the app.
+	—
+	2
+	Guest
+	Opens AI Talent Discovery and describes the profile sought (sport, position, attributes).
+	AI conducts conversational search.
+	3
+	AI Agent
+	Returns matching athletes with verified badges and key metrics.
+	AI ranks by fit, verified metrics, and recency.
+	4
+	Guest
+	Opens an athlete profile and reviews highlights and public stats.
+	AI surfaces comparable athletes.
+	5
+	Guest
+	Taps 'Contact' or 'Save to Shortlist'.
+	AI confirms action and initiates registration.
+	6
+	Platform
+	Registration prompt: create a free account to contact or shortlist.
+	AI explains the benefits of an account.
+	7
+	Guest → User
+	Registers with mobile/email OTP or UAE Pass; selects role.
+	AI pre-fills available search context.
+	8
+	New User
+	Completes role-specific onboarding (recruiter profile or athlete portfolio).
+	AI suggests next steps to complete setup.
+	4.2 Athlete — Profile Build & Medical Verification
+End-to-end flow for an athlete building a credible, verified profile.
+Step
+	Actor
+	Action
+	AI Involvement
+	1
+	Athlete
+	Registers and completes the portfolio wizard (bio, sport, position, attributes).
+	AI suggests fields and benchmarks for the level/position.
+	2
+	Athlete
+	Uploads match footage and highlight clips.
+	AI auto-tags actions and drafts a highlight reel.
+	3
+	Athlete
+	Enters or imports match/stat records.
+	AI computes performance insights and percentiles.
+	4
+	Athlete
+	Requests verification from a partner sports-medicine clinic.
+	AI recommends nearby verified partners.
+	5
+	Medical Partner
+	Conducts assessment; uploads results and issues clearance.
+	Records are hashed and anchored for provenance.
+	6
+	Platform
+	Verified medical-clearance and performance badges appear on the profile.
+	AI updates the visibility score.
+	7
+	Athlete
+	Requests endorsements from coaches and teammates.
+	AI suggests relevant connections to request.
+	8
+	Athlete
+	Reviews AI trajectory forecast and profile-optimization tips.
+	AI projects advancement and flags profile gaps.
+	4.3 Scout — Talent Search to Contact
+Flow for a scout discovering, evaluating, and contacting an athlete.
+Step
+	Actor
+	Action
+	AI Involvement
+	1
+	Scout
+	Defines a target profile in advanced search or describes it to the AI agent.
+	AI translates criteria into a structured query.
+	2
+	AI Agent
+	Returns ranked candidates, including under-the-radar prospects.
+	AI ranks by fit, verified metrics, and trajectory.
+	3
+	Scout
+	Opens profiles; reviews highlights, stats, and (consented) medical clearance.
+	AI summarizes strengths, risks, and comparables.
+	4
+	Scout
+	Adds prospects to a watchlist with notes and tags.
+	—
+	5
+	Scout
+	Uses the comparison tool across shortlisted athletes.
+	AI normalizes metrics for like-for-like comparison.
+	6
+	Scout
+	Sends a contact request (within license limits).
+	AI drafts an outreach message if requested.
+	7
+	Athlete / Guardian
+	Receives and responds to the request; consent governs medical-data visibility.
+	AI notifies the athlete and frames the opportunity.
+	4.4 Medical Partner — Verified Record Upload
+Flow for a partner clinic adding a tamper-evident medical record to an athlete profile.
+Step
+	Actor
+	Action
+	AI / System Involvement
+	1
+	Athlete
+	Requests verification from a partner clinic (in-app or at the clinic).
+	System routes the request to the partner inbox.
+	2
+	Medical Partner
+	Verifies the athlete's identity (Emirates ID / UAE Pass).
+	System confirms identity matches the request.
+	3
+	Medical Partner
+	Conducts assessment and enters/uploads structured results.
+	System validates format and reference ranges.
+	4
+	Medical Partner
+	Issues medical clearance with an effective date.
+	System sets clearance status on the profile.
+	5
+	System
+	Hashes the record and anchors the hash to the provenance ledger.
+	Produces a verifiable, immutable provenance entry.
+	6
+	Athlete
+	Reviews the new verified record and clearance badge.
+	AI provides a plain-language summary.
+	7
+	System
+	Records the commission for any platform-booked test.
+	Creates the commission/payout entry.
+	4.5 Athlete — Highlight Upload & AI Analysis
+Step
+	Actor
+	Action
+	AI Involvement
+	1
+	Athlete
+	Uploads raw match footage or a clip.
+	AI begins ingestion and transcoding.
+	2
+	AI Agent
+	Detects and tags key actions and moments.
+	AI segments footage and labels events.
+	3
+	AI Agent
+	Suggests a highlight reel from the strongest moments.
+	AI ranks clips by quality and relevance.
+	4
+	Athlete
+	Edits the suggested reel and publishes to the profile.
+	AI offers caption and ordering suggestions.
+	5
+	Platform
+	Reel becomes discoverable to scouts and clubs.
+	AI links the reel to relevant search queries.
+	6
+	Scout
+	Discovers the athlete via the new reel.
+	AI surfaces the athlete to matching recruiters.
+	5. AceAiX AI Agent — Comprehensive Capability Matrix
+The AI agent is the intelligence layer embedded across all platform surfaces. It operates in guest mode (no authentication required) and in authenticated mode with role-aware access to the user's data and context.
+Capability
+	Available To
+	Requires Account
+	Description
+	Conversational Talent Discovery
+	Guest, Athlete, Scout, Club
+	No
+	Natural-language search for athletes by sport, position, attributes, location, and verified metrics.
+	Athlete Profile Intelligence
+	Athlete, Guardian/Agent
+	Yes
+	AI suggests profile fields, benchmarks, and optimization tips to improve credibility and visibility.
+	Video Highlight Analysis
+	Athlete, Guardian/Agent
+	Yes (upload)
+	AI auto-tags actions, segments footage, and drafts highlight reels from match video.
+	AI Performance Insights
+	Athlete, Scout, Club
+	Yes
+	AI summarizes performance trends and percentiles from match and stat records.
+	AI Match Analytics
+	Athlete, Club, Federation
+	Yes (Phase 3)
+	Computer-vision tracking of distance, fatigue, and decline indicators during matches (camera-equipped venues).
+	Injury-Risk Scoring
+	Athlete (summary), Scout/Club (consented)
+	Yes
+	AI derives injury-risk indicators from verified medical data; advisory, not diagnostic.
+	Career Trajectory Forecast
+	Athlete, Scout, Club
+	Yes
+	AI projects an advancement timeline from comparable-player data and progression curves.
+	Comparable-Player Matching
+	Athlete, Scout, Club
+	Yes
+	AI surfaces similar athletes and benchmark percentiles for evaluation and goal-setting.
+	Talent Recommendations
+	Scout, Club, Federation
+	Yes
+	AI proactively surfaces athletes matching a defined need, including hidden prospects.
+	Endorsement & Credibility Scoring
+	All
+	Yes
+	AI weights attributable endorsements and verified data into a credibility signal.
+	Medical Record Interpretation
+	Athlete, Guardian/Agent
+	Yes
+	AI explains verified medical records in plain language (athlete-appropriate).
+	Outreach Drafting
+	Scout, Club
+	Yes
+	AI drafts contact and trial-invitation messages for recruiter outreach.
+	Multilingual Support
+	All
+	No
+	AI communicates fluently in Arabic, English, and other supported languages; auto-detects preference.
+	6. Data Privacy, Consent & Compliance Framework
+AceAiX operates under a consent-first architecture. Because the platform handles medical data sourced from licensed clinics, it aligns with UAE Federal data-protection law and applicable health-data requirements, in addition to general platform privacy obligations and minor-safeguarding standards.
+6.1 Core Consent Principles
+* Athletes control who can view medical data, contact details, and full performance records through granular privacy settings.
+* Medical-clearance and injury data are visible to scouts and clubs only with the athlete's explicit, revocable consent.
+* Minor athletes are managed under a Guardian account; direct adult-to-minor contact is mediated and safeguarded.
+* Verified medical records are uploaded only by licensed partner clinics, never self-reported, and carry provenance metadata.
+* Guest discovery sessions are session-scoped; search context is retained only if the user creates an account.
+* Athletes can revoke any party's access at any time and can view a log of who has accessed their records.
+6.2 Data Residency & Security
+* Personal and medical data are stored in cloud infrastructure provisioned to meet UAE data-residency requirements for the categories that require it.
+* End-to-end encryption for data in transit and at rest.
+* Role-based access control (RBAC) enforced at the database level via row-level security.
+* Medical records are cryptographically hashed and anchored to a provenance ledger, making any tampering detectable.
+* Regular third-party security audits and periodic re-verification of partner clinics.
+6.3 AI Transparency
+* AI scores, forecasts, and risk summaries are labeled as AI-generated and are advisory — final recruitment and medical decisions rest with qualified humans.
+* Injury-risk outputs are decision-support signals, not clinical diagnoses, and are framed as such across the interface.
+* Athletes can view a log of AI interactions and scores involving their data, with a plain-language rationale.
+7. Glossary
+Term
+	Definition
+	AceAiX
+	The AI-native athlete intelligence platform developed by AryAiX.
+	Athlete Portfolio
+	A structured, verifiable record of an athlete's profile, performance, media, and medical intelligence.
+	Verified Medical Record
+	A medical assessment or test uploaded by a licensed partner clinic and anchored for tamper-evidence.
+	Medical Clearance
+	A partner-issued status indicating an athlete's current fitness/clearance, with an effective date.
+	Provenance Ledger
+	The cryptographic anchoring mechanism that makes verified records tamper-evident and auditable.
+	Visibility Score
+	An AI-generated signal of an athlete's credibility and discoverability based on verified data and activity.
+	Trajectory Forecast
+	An AI projection of an athlete's advancement timeline based on comparable players and progression curves.
+	Match Analytics
+	Computer-vision-derived performance data (distance, fatigue, decline) captured at camera-equipped venues.
+	Endorsement
+	An attributable validation of an athlete's skill or character by a coach, teammate, or professional.
+	RBAC
+	Role-Based Access Control — a security model restricting access based on user role.
+	UAE Pass
+	UAE national digital identity used for identity verification and secure onboarding.
+	Seat
+	A user account operating under a club or federation's multi-user license.
+	GCC
+	Gulf Cooperation Council — regional bloc including the UAE, Saudi Arabia, Kuwait, Qatar, Bahrain, and Oman.
+	ARR
+	Annual Recurring Revenue — the normalized annual value of recurring subscriptions and licenses.
+	8. Technical Architecture
+This section defines the system architecture, technology stack, deployment model, and key technical decisions underpinning the AceAiX platform. The stack mirrors the AryAiX platform standard for consistency across products.
+8.1 System Architecture Overview
+AceAiX follows a three-tier architecture with a dedicated media pipeline:
+* Presentation Tier — single-page web application plus mobile apps, served as static assets via CDN.
+* Application Tier — Supabase (managed Postgres, Auth, Edge Functions, Realtime, Storage) as the backend-as-a-service layer, supplemented by dedicated AI and media-processing services.
+* Data Tier — PostgreSQL for relational data; object storage for media; a vector store for AI embeddings; and a provenance anchoring layer for verified medical records.
+Layer
+	Component
+	Details / Technologies
+	Client Layer
+	Web SPA
+	React 18 + TypeScript + Tailwind CSS; responsive (desktop, tablet, mobile); PWA shell.
+	Client Layer
+	Mobile Apps
+	React Native / Capacitor shell sharing the core codebase (iOS & Android).
+	Supabase Platform
+	Core Services
+	Auth (GoTrue), PostgREST (REST API), Realtime (WebSocket), Storage (S3-compatible), Edge Functions.
+	Supabase Platform
+	Database
+	PostgreSQL primary database.
+	Media Pipeline
+	Video Processing
+	Managed transcoding/streaming service for highlight ingestion, encoding, and delivery.
+	AI Services
+	LLM & Vision
+	OpenAI / Azure AI for conversational, matching, and document tasks.
+	AI Services
+	Match Analytics (Phase 3)
+	Computer-vision pipeline for venue-based match tracking.
+	External Services
+	Identity
+	UAE Pass (national identity).
+	External Services
+	Payments
+	Payment gateway for subscriptions and commissions.
+	External Services
+	Provenance
+	Cryptographic anchoring layer for verified medical records.
+	External Services
+	Messaging
+	SMS/OTP, email, and push providers.
+	8.2 Technology Stack
+Layer
+	Technology
+	Rationale
+	Frontend Framework
+	React 18 + TypeScript
+	Component model, ecosystem maturity, hiring pool.
+	Build Tool
+	Vite 5
+	Fast HMR, native ESM, optimized production builds.
+	Styling
+	Tailwind CSS 3
+	Utility-first, design-system friendly, small bundle.
+	Mobile
+	React Native / Capacitor
+	Shared codebase for iOS and Android app-store distribution.
+	State Management
+	React Context + Supabase Realtime
+	Minimal overhead; server state via subscriptions.
+	Backend / BaaS
+	Supabase
+	Postgres, Auth, Storage, Edge Functions, Realtime in one platform.
+	Database
+	PostgreSQL 15+
+	ACID compliance, JSONB, RLS, full-text search.
+	Authentication
+	Supabase Auth (GoTrue)
+	Email/password, OTP (SMS), social login, UAE Pass (custom provider).
+	Media Storage & Streaming
+	Object storage + managed transcoding
+	Video highlights, imaging, profile media with adaptive delivery.
+	Serverless Functions
+	Supabase Edge Functions (Deno)
+	AI orchestration, webhooks, scheduled jobs, integrations.
+	AI / LLM
+	OpenAI GPT-class (primary)
+	Conversational search, matching, profile and outreach assistance.
+	AI — Vision / OCR
+	Vision model
+	Document/ID OCR; clip tagging assistance.
+	AI — Match Analytics
+	Computer-vision pipeline (Phase 3)
+	Venue-based player tracking and performance extraction.
+	AI — Embeddings
+	Embedding model
+	Semantic search over athletes, clips, and resources.
+	Payments
+	Stripe (UAE-supported)
+	Subscriptions, license billing, partner commissions.
+	SMS / OTP
+	Twilio
+	OTP verification, alerts.
+	Email
+	Resend
+	Transactional emails and reports.
+	Push
+	Firebase Cloud Messaging
+	Web (PWA) and mobile push.
+	Monitoring
+	Sentry + Supabase Dashboard
+	Error tracking, performance, database metrics.
+	CI/CD
+	GitHub Actions
+	Automated testing, linting, deployment.
+	Hosting
+	Edge-hosted SPA + managed Supabase
+	Edge delivery for the SPA; managed backend hosting.
+	8.3 Mobile Strategy
+AceAiX ships a responsive PWA plus native app-store builds, reflecting the proposal's web + mobile MVP scope.
+* Single shared codebase across desktop, tablet, mobile web, and native shells.
+* Camera access for media capture and ID/document upload.
+* Push notifications via service worker + FCM.
+* Native shells (React Native / Capacitor) for App Store and Play Store distribution.
+8.4 Multi-Tenancy Model
+AceAiX uses a shared-database, row-level-isolation model:
+* Clubs and federations share a single PostgreSQL database; each organization has a unique organization_id.
+* PostgreSQL Row-Level Security (RLS) enforces that organization seats see only their organization's recruitment data.
+* Athletes see and control only their own data; scouts see athlete data per consent and public-visibility settings.
+* Super Admins bypass organization scoping.
+8.5 Security Architecture
+* Authentication: Supabase Auth with email/password + SMS OTP; UAE Pass for national identity verification.
+* Authorization: PostgreSQL RLS enforces role- and consent-based access at the database level.
+* Encryption: TLS 1.3 in transit; AES-256 at rest.
+* Provenance: verified medical records are hashed and anchored; any modification is detectable on audit.
+* Audit trail: all data mutations logged to an immutable audit_logs table (user, action, table, old/new value, timestamp, IP).
+* File security: signed URLs for media and medical documents; no public bucket access for protected content.
+* AI data handling: data sent to AI APIs is ephemeral and not used for model training; enterprise agreements with data-processing addenda; identifiers pseudonymized where feasible.
+9. Data Model & Schema Design
+This section defines the canonical data model for AceAiX and establishes the single source of truth for database design.
+9.1 Design Principles
+1. Single users table (Supabase auth.users) as the identity anchor; role-specific data lives in extension tables joined via user_id.
+2. Role-based extension tables: athlete_profiles, scout_profiles, coach_profiles, medical_partner_profiles, federation_profiles, org_admin_profiles.
+3. Organization as a first-class entity: organizations represents clubs and federations; seats are linked via organization_staff.
+4. Immutable audit log: every mutation is logged. Medical and clearance data are never hard-deleted (soft-delete with is_deleted + deleted_at).
+5. Verified records carry provenance metadata (hash, anchor reference, issuing partner) and cannot be edited in place.
+6. UUID primary keys throughout; created_at / updated_at on every table (trigger-managed).
+9.2 Core Entity List
+Domain
+	Table Name
+	Description
+	Identity
+	(auth.users)
+	Supabase-managed identity: email, phone, password hash, metadata.
+	Identity
+	user_profiles
+	Shared profile: full_name, date_of_birth, gender, emirates_id, avatar_url, role (enum), phone, locale.
+	Athlete
+	athlete_profiles
+	sport, positions (JSONB), height, weight, dominant_side, level, nationality, current_club_id, bio.
+	Athlete
+	athlete_attributes
+	athlete_id, attribute_key, value, recorded_at, source (self/verified).
+	Athlete
+	guardian_links
+	athlete_id, guardian_user_id, relationship (enum), consent_status, is_guardian.
+	Scout
+	scout_profiles
+	organization_id (nullable), credentials, verification_status, contact_quota_used.
+	Coach
+	coach_profiles
+	credentials, affiliations (JSONB), verification_status.
+	Organization
+	organizations
+	name, type (club/federation/academy), country, license_tier, verification_status, branding (JSONB).
+	Organization
+	organization_staff
+	organization_id, user_id, seat_role (scout/coach/medical/admin), is_active, joined_at.
+	Media
+	athlete_media
+	athlete_id, type (video/image), storage_url, transcode_status, is_public, uploaded_at.
+	Media
+	media_clips
+	media_id, start_ms, end_ms, label, ai_tags (JSONB), is_highlight.
+	Performance
+	match_records
+	athlete_id, match_date, competition, opponent, minutes, stats (JSONB), source (manual/cv).
+	Performance
+	performance_metrics
+	athlete_id, metric_key, value, percentile, period, computed_at.
+	Medical
+	medical_partners
+	organization_id (nullable), license_number, accreditation_status, commission_rate.
+	Medical
+	medical_records
+	athlete_id, partner_id, record_type, summary, file_url, hash, anchor_ref, issued_at, is_deleted.
+	Medical
+	medical_clearances
+	athlete_id, partner_id, status (cleared/restricted/not_cleared), effective_from, effective_to.
+	Medical
+	injuries
+	athlete_id, injury_type, body_area, severity, occurred_at, recovery_status, partner_id.
+	Network
+	endorsements
+	athlete_id, endorser_user_id, endorser_role, skill_or_trait, note, created_at.
+	Network
+	connections
+	requester_id, addressee_id, status (pending/accepted/blocked), created_at.
+	Career
+	career_milestones
+	athlete_id, milestone_type, club_or_event, achieved_at, notes.
+	Career
+	trajectory_forecasts
+	athlete_id, projected_level, horizon_months, confidence_score, comparables (JSONB), generated_at.
+	Discovery
+	saved_searches
+	scout_id, query (JSONB), name, last_run_at.
+	Discovery
+	watchlists
+	scout_id, name, athlete_ids (JSONB), notes.
+	Discovery
+	contact_requests
+	scout_id, athlete_id, message, status (sent/accepted/declined), created_at.
+	Opportunities
+	opportunities
+	organization_id, title, sport, position, location, type (trial/offer), status, posted_at.
+	Opportunities
+	opportunity_applications
+	opportunity_id, athlete_id, status, applied_at.
+	Messaging
+	conversations
+	participant_ids (JSONB), subject, last_message_at.
+	Messaging
+	messages
+	conversation_id, sender_id, body, sent_at, read_at.
+	Notifications
+	notifications
+	user_id, type, title, body, is_read, action_url, created_at.
+	Billing
+	subscriptions
+	user_id or organization_id, plan, status, current_period_end, stripe_subscription_id.
+	Billing
+	payments
+	payer_id, amount, currency, status, payment_method, gateway_transaction_id, paid_at.
+	Billing
+	commissions
+	partner_id, source_test_id, amount, status (pending/paid), created_at.
+	Content
+	success_stories
+	title, slug, body, athlete_id (nullable), cover_image_url, is_published, published_at.
+	AI
+	ai_chat_sessions
+	user_id (nullable for guests), session_token, context (JSONB), started_at, ended_at.
+	AI
+	ai_chat_messages
+	session_id, role (user/assistant/system), content, attachments (JSONB), created_at.
+	AI
+	ai_outputs
+	subject_athlete_id, output_type (score/forecast/risk/match), content (JSONB), confidence_score, generated_at.
+	Admin
+	audit_logs
+	user_id, action, table_name, record_id, old_value (JSONB), new_value (JSONB), ip_address, created_at.
+	Admin
+	platform_settings
+	key, value (JSONB), updated_by, updated_at.
+	9.3 Entity Relationship Summary
+Key relationships (read as: Source --> Target [Cardinality]):
+* auth.users --> user_profiles [1:1]: every user has exactly one profile.
+* user_profiles --> athlete_profiles / scout_profiles / coach_profiles [1:0..1]: one role extension per user.
+* organizations --> organization_staff [1:many]; organization_staff --> user_profiles [many:1]: seats link users to an organization.
+* athlete_profiles --> athlete_media [1:many]; athlete_media --> media_clips [1:many]: media and AI-tagged clips.
+* athlete_profiles --> medical_records [1:many]; medical_records --> medical_partners [many:1]: verified records by issuing partner.
+* athlete_profiles --> medical_clearances [1:many]: clearance history with effective dates.
+* scout_profiles --> watchlists / saved_searches / contact_requests [1:many]: recruiter activity.
+* athlete_profiles <-- user_profiles [many:many] via guardian_links: guardian/agent links.
+* organizations --> opportunities [1:many]; opportunities --> opportunity_applications [1:many]: trials and offers.
+9.4 Key Schema Decisions
+Area
+	Decision
+	Rationale
+	User Identity
+	Single user_profiles table with role-specific extensions.
+	Preserves a universal core identity while housing distinct role attributes; simplifies cross-role queries (e.g., messaging).
+	Verified Records
+	Append-only medical_records with hash + anchor; never edited in place.
+	Tamper-evidence and auditability are core to the platform's value; edits create new versioned records.
+	Consent Model
+	Consent state on guardian_links and explicit visibility flags govern medical-data access.
+	Medical data is the most sensitive surface; access is consent-gated and revocable by default.
+	Data Structure
+	Hybrid: JSONB for variable data (stats, attributes, AI output); normalized tables for queryable entities.
+	Flexibility for evolving metrics; performance for search and ranking.
+	Data Deletion
+	Soft delete for athlete, medical, and clearance data; hard delete for transient items.
+	Recoverability and compliance for clinical/career data; cleanup for OTPs and temporary tokens.
+	Workflow Anchor
+	The athlete profile is the central entity; media, performance, medical, and discovery records link to it.
+	Creates a single coherent portfolio and a clear audit trail across the talent lifecycle.
+	10. Integration Specifications
+This section defines all external system integrations, their purpose, protocols, and implementation approach.
+10.1 UAE Pass (National Digital Identity)
+Purpose: securely verify the identity of UAE residents for registration, organization onboarding, and medical-verification identity checks.
+* Protocol: official UAE Pass API via OAuth 2.0 / OpenID Connect, integrated as a custom provider through Supabase Auth.
+* On success, the platform receives the verified Emirates ID number, full name, nationality, and date of birth.
+* Usage: optional fast-track athlete registration; mandatory verification for medical partners and organization admins; identity match at medical verification.
+* The verified Emirates ID is stored encrypted in user_profiles.emirates_id; no UAE Pass tokens are persisted beyond the session.
+* Fallback: manual Emirates ID upload with AI-assisted OCR verification when UAE Pass is unavailable.
+10.2 Medical Partner Integration & Provenance
+Goal: ingest verified medical assessments from licensed sports-medicine clinics and make them tamper-evident.
+* Partners submit structured assessments, imaging, and clearances through the partner portal or a partner API.
+* Each record is hashed (e.g., SHA-256) and the hash is anchored to a provenance ledger, producing a verifiable, immutable fingerprint.
+* Verification of any record re-computes the hash and checks it against the anchored value; mismatches flag tampering.
+* Clearance status, effective dates, and issuing partner are recorded and surfaced as badges subject to athlete consent.
+* Partner license/accreditation is verified at onboarding and re-verified on a scheduled basis.
+10.3 AI Services
+Purpose: power conversational discovery, matching, profile assistance, clip tagging, forecasting, and risk summaries.
+Service
+	Key Use Cases
+	Model Class
+	Conversational AI
+	Talent discovery, profile coaching, outreach drafting
+	LLM (GPT-class)
+	Matching & Ranking
+	Talent recommendations, comparable players, scout-athlete fit
+	LLM + embeddings
+	Vision / Tagging
+	Clip action-tagging, document/ID OCR
+	Vision model
+	Forecasting & Risk
+	Trajectory forecasts, injury-risk summaries from verified data
+	Statistical + LLM synthesis
+	Match Analytics (Phase 3)
+	Venue-based player tracking and performance extraction
+	Computer-vision pipeline
+	Semantic Search
+	Search across athletes, clips, and resources
+	Embedding model
+	System architecture:
+* Secure AI proxy: all AI requests route through Edge Functions; the frontend never calls AI APIs directly.
+* Context injection: Edge Functions inject role- and consent-checked context before forwarding requests.
+* Streaming: Server-Sent Events provide streaming responses for conversational features.
+* Transparency: AI outputs are labeled and stored with provenance metadata in ai_outputs.
+Data privacy & reliability:
+* Zero data retention under a Data Processing Agreement; identifiers pseudonymized where feasible before being sent to AI.
+* All AI interactions logged in ai_chat_messages and ai_outputs for audit.
+* Graceful degradation: if AI is unavailable, manual search and workflows continue with an 'AI temporarily unavailable' notice.
+10.4 Media Pipeline (Video Highlights)
+Objective: ingest, transcode, store, and stream athlete video efficiently across web and mobile.
+* Uploads are stored in object storage; a managed transcoding service produces adaptive-bitrate renditions.
+* AI clip-tagging runs post-transcode; tags and segments are stored in media_clips.
+* Signed URLs and CDN delivery protect and accelerate playback; public/private visibility is enforced per athlete settings.
+* Match-analytics camera capture (Phase 3) feeds the same pipeline for venue-based footage.
+10.5 Payments (Stripe)
+Objective: manage athlete subscriptions, organization license billing, and partner commissions.
+* Supported methods: credit/debit cards, Apple Pay, Google Pay.
+* Athlete tiers (Free / Pro / Elite) and organization licenses (Scout / Club / Federation) billed as recurring subscriptions.
+* Partner commissions tracked on platform-booked tests and reconciled to payouts.
+* Stripe Customer objects linked via user_profiles.stripe_customer_id; webhooks update the payments table; PCI handled by Stripe.
+10.6 SMS & OTP (Twilio)
+* OTP for registration and login (integrated with Supabase Auth).
+* Time-sensitive alerts: contact requests, trial invitations, and verification updates.
+* Auth OTP via Supabase's Twilio provider; other messages via Edge Functions calling the Twilio API.
+10.7 Email (Resend)
+* Account: registration confirmation, email verification, password reset.
+* Activity: contact requests, opportunity invitations, verification and clearance updates.
+* Reporting: periodic athlete visibility summaries and organization activity reports.
+* HTML templates with full English and Arabic (RTL) support, delivered via Edge Functions.
+10.8 Push Notifications (Firebase Cloud Messaging)
+* Engagement: scout views, new endorsements, messages, and opportunities.
+* Critical: contact requests and verification/clearance changes.
+* Device tokens stored in user_devices; preferences (push/SMS/email/in-app) in user_profiles.notification_preferences; sends via Edge Functions with a matching in-app notifications record.
+10.9 Sports Ecosystem Data (Partnerships)
+Future-facing integrations supporting development tracking and credibility, pursued through partnership agreements.
+* Federation and sports-council data feeds for development tracking and registration verification (subject to agreements).
+* Competition/league data sources to enrich match records where available.
+* Standardized export formats so partners can ingest AceAiX athlete and performance data.
+11. Non-Functional Requirements
+This section specifies the platform's quality attributes: performance, scalability, availability, accessibility, localization, and data retention.
+11.1 Performance
+Performance Metric
+	Target (Maximum)
+	Measurement
+	Initial Page Load (LCP)
+	< 2 seconds
+	Lighthouse CI
+	SPA Navigation
+	< 300 ms
+	React Profiler + Sentry
+	API Response (Supabase REST)
+	< 200 ms (95th percentile)
+	Supabase metrics
+	Search Results (athlete/club)
+	< 500 ms
+	PostgREST query timing
+	AI Chat First Token
+	< 1 second
+	Edge Function instrumentation
+	AI Chat Full Response
+	< 8 seconds (95th percentile)
+	Edge Function instrumentation
+	Video Highlight Start (playback)
+	< 3 seconds
+	Media pipeline metrics
+	Media Upload (< 200MB)
+	Progressive with resumable upload
+	Storage metrics
+	Optimization tactics:
+* Per-route code splitting via dynamic imports.
+* Adaptive-bitrate streaming and lazy media loading; WebP/AVIF images with responsive srcset.
+* Indexes on foreign keys and search/filter columns; materialized views for dashboard aggregates.
+* CDN caching for static assets; streamed AI responses for immediate partial results.
+11.2 Scalability
+Targets reflect a lean MVP launch scaling into GCC expansion.
+Dimension
+	Year 1 Target
+	Year 3 Target
+	Scaling Strategy
+	Registered Users
+	20,000
+	250,000
+	Supabase Pro/Enterprise; read replicas
+	Concurrent Users
+	1,000
+	10,000
+	Edge CDN + connection pooling (PgBouncer)
+	Stored Video (hours)
+	5,000
+	150,000
+	Object storage (S3-backed); tiered retention
+	AI Chat Sessions
+	150 concurrent
+	1,500 concurrent
+	Edge Function horizontal scaling
+	Match-Analytics Venues
+	— (Phase 3)
+	50+ venues
+	CV pipeline autoscaling + queueing
+	Database Size
+	30 GB
+	300 GB
+	Partitioning + archival strategy
+	Scaling principles:
+* Stateless SPA and Edge Functions scaled horizontally; CDN for global static delivery.
+* PgBouncer pooling, read replicas for analytics, and partitioning for high-volume tables (media events, audit_logs).
+* Per-user AI rate limiting and a queue-based system for intensive batch jobs (forecasting, clip tagging, match analytics).
+11.3 Availability & Reliability
+Target: 99.9% uptime (~8.7 hours of downtime annually).
+* Managed high-availability Postgres with automatic failover; edge-hosted SPA with global redundancy.
+* Recovery objectives: RTO < 4 hours; RPO < 1 hour.
+* Backups: point-in-time recovery retained 7 days; daily snapshots retained 30 days; quarterly restore tests.
+Service degradation hierarchy:
+7. AI failure: core platform operational; AI features show a temporary banner and manual workflows continue.
+8. Media pipeline failure: uploads queue and process on recovery; existing media remains playable.
+9. Payment gateway failure: subscriptions retry automatically on recovery; access continues during the retry window.
+10. SMS failure: email serves as the OTP and notification fallback.
+11.4 Accessibility
+* Full keyboard navigation with visible focus indicators.
+* Minimum color contrast 4.5:1 (normal text) and 3:1 (large text).
+* Meaningful alt text; decorative elements hidden from screen readers.
+* Programmatically associated form labels and error messages.
+* Semantic HTML, ARIA roles, and logical heading hierarchy.
+* Mobile touch targets of at least 44x44 px; respect prefers-reduced-motion.
+* Captioning for video where narration is present; automated axe-core checks in CI plus manual screen-reader testing.
+11.5 Localization & Internationalization
+* Launch languages: English (default) and Arabic (full RTL).
+* Planned: Urdu, Hindi, Tagalog, Malayalam (aligned to GCC/MENA demographics).
+Area
+	Detail
+	Framework
+	react-i18next with namespace-based translation files.
+	RTL Support
+	Tailwind logical properties (ms-, me-, ps-, pe-); dir="rtl" on <html> for Arabic.
+	Data Handling
+	Times stored as UTC; displayed per user locale.
+	Formatting
+	Locale-aware numbers, currency, and measurements (metric/imperial as appropriate).
+	AI Agent
+	Auto-detects language from the first message; user can set a preference.
+	Content
+	Success stories and notification templates maintained in all supported languages via the CMS.
+	11.6 Data Retention & Archival
+Data Category
+	Retention Period
+	Strategy
+	Athlete portfolio & career data
+	Indefinite (athlete-controlled)
+	Active database; archived after prolonged inactivity.
+	Verified medical records
+	Per regulatory requirement
+	Append-only; moved to cold storage after defined period; never hard-deleted.
+	Video media
+	Tier-dependent
+	Hot storage for active media; cold storage for archived/older media.
+	AI chat sessions (authenticated)
+	2 years
+	Archived to cold storage after 1 year.
+	AI chat sessions (guest)
+	30 days
+	Auto-deleted via scheduled job.
+	Audit logs
+	7 years
+	Partitioned monthly; archived to cold storage after 1 year.
+	Payment records
+	7 years
+	Retained for financial compliance.
+	Temporary uploads (guest)
+	Session-scoped
+	Deleted at session end or within 24 hours.
+	12. Additional User Flows
+The following flows supplement Section 4 and cover critical journeys not previously documented.
+12.1 Athlete — Standalone Registration (Direct Sign-Up)
+Step
+	Actor
+	Action
+	AI / System
+	1
+	Guest
+	Taps 'Register' / 'Create Account'.
+	—
+	2
+	Guest
+	Selects method: email + OTP, mobile + OTP, or UAE Pass.
+	—
+	3
+	Guest
+	Enters credential and verifies OTP.
+	—
+	4
+	New User
+	Selects role (defaults to Athlete; can choose Recruiter / Club / Medical Partner).
+	—
+	5
+	New Athlete
+	Enters core profile: name, DOB, sport, position(s), attributes.
+	AI suggests benchmarks and missing fields.
+	6
+	New Athlete
+	(Optional) Uploads Emirates ID for identity verification.
+	OCR extracts and verifies identity.
+	7
+	New Athlete
+	(Optional) Uploads first highlight clip.
+	AI begins tagging and reel suggestion.
+	8
+	New Athlete
+	Reviews and confirms profile; lands on dashboard.
+	AI presents profile-completion guidance.
+	12.2 Medical Partner — Onboarding Flow
+Step
+	Actor
+	Action
+	System / AI
+	1
+	Clinic
+	Applies via 'Join as Medical Partner'.
+	—
+	2
+	Clinic
+	Registers via email/mobile + OTP; provides clinic details.
+	—
+	3
+	Clinic
+	Uploads license and accreditation documents.
+	AI OCR extracts license details for verification.
+	4
+	Platform
+	Verifies license/accreditation.
+	Result recorded on the medical_partners record.
+	5
+	Clinic
+	Configures test catalog, pricing, and commission terms.
+	—
+	6
+	Super Admin
+	Reviews and approves or requests more info.
+	Automated notification of the decision.
+	7
+	Clinic
+	Becomes an active, badged verified partner.
+	Verified-partner badge enabled.
+	12.3 Scout — Recruiter Onboarding & Verification
+Step
+	Actor
+	Action
+	System / AI
+	1
+	Scout
+	Selects 'Join as Recruiter / Club'.
+	—
+	2
+	Scout
+	Registers and provides credentials and affiliation.
+	—
+	3
+	Scout
+	(Club) Requests seats under an organization license.
+	Seat allocation created on approval.
+	4
+	Platform
+	Verifies identity and affiliation.
+	Verification status recorded.
+	5
+	Super Admin
+	Approves recruiter/organization or requests more info.
+	Automated notification of the decision.
+	6
+	Scout
+	Gains search, shortlist, and consented-outreach access per tier.
+	Tier limits enforced (e.g., monthly contacts).
+	12.4 Super Admin — Verification & Onboarding Approval
+Step
+	Responsible
+	Description
+	System Impact
+	1
+	System
+	A new club/federation/partner application enters the queue.
+	Dashboard surfaces pending applications.
+	2
+	Super Admin
+	Reviews profile, documents, and verification outcomes.
+	Verification results displayed inline.
+	3
+	Super Admin
+	Confirms identity and (for partners) license/accreditation.
+	—
+	4
+	Super Admin
+	Decides: Approve, Request More Info, or Reject.
+	—
+	5a
+	Super Admin
+	If Approved: account activated and (partners) badged.
+	Status set to active; notification sent.
+	5b
+	Super Admin
+	If More Info: selects missing items.
+	Applicant notified with required items.
+	5c
+	Super Admin
+	If Rejected: selects reason.
+	Applicant notified with reason.
+	6
+	System
+	Logs the decision (admin, timestamp, action, application).
+	Immutable audit entry created.
+	13. Phased Delivery Roadmap
+This roadmap maps the full platform scope to a phased rollout aligned with the lean MVP-first deployment plan in the AceAiX proposal. Expensive AI camera/match-analytics systems are deliberately deferred to a later phase.
+13.1 Phase 1 — MVP (Core Platform)
+Core goal: launch a functioning athlete-discovery platform demonstrating the core value proposition — verified athlete profiles, video highlights, discovery, and manual medical verification.
+Target Timeline: approximately 6 months from the start of development.
+Enabled Roles: Guest, Athlete, Scout, Medical Partner (manual), and a minimal Super Admin.
+Feature Breakdown
+* Public zone: landing page, AI talent discovery (guest), athlete and club browsing, public highlights, success stories.
+* Auth & security: athlete and recruiter onboarding via email/mobile OTP; JWT sessions; password reset.
+* Athlete portal: profile/portfolio, video highlight upload with AI tagging, manual match/stat entry, endorsements, visibility score, messaging.
+* Scout portal: advanced search, AI recommendations, profile access, watchlists, comparison, consented outreach (tiered limits).
+* Medical verification (manual): partner uploads verified records and clearances; provenance anchoring; consent-gated visibility.
+* Admin (minimal): account CRUD, partner/recruiter onboarding, subscription/license configuration.
+* Technical foundation: canonical schema (core tables) with RLS; Supabase Auth and Storage; Edge Functions for AI chat, tagging, and search; CI/CD pipeline.
+Excluded from MVP
+* AI live match analytics with cameras (computer-vision venue tracking).
+* Advanced prediction models (require more data first).
+* Extended roles: Coach seats, Federation, Club multi-seat at scale.
+* Full payments automation, full Arabic/RTL, native app-store builds, and push notifications (basic only in MVP).
+13.2 Phase 2 — Growth, Payments & Localization
+Goal: grow the user base, enable club licenses, integrate payments, and add Arabic/RTL — the foundation for a strong Series A.
+New Roles: Coach, Club (multi-seat).
+Feature Category
+	Key Additions
+	Discovery & Network
+	Coach endorsements, connections graph, comparison enhancements, opportunity/trial postings.
+	Clubs
+	Multi-seat club licenses, seat management, roster & prospect tracking, medical tracking for consented prospects.
+	Payments
+	Stripe subscriptions (athlete tiers, club/scout licenses), receipts, and policy-based handling.
+	Notifications
+	Push (FCM) for scout views, endorsements, messages, and opportunities; in-app notification center; preferences.
+	Localization
+	Arabic with full RTL; react-i18next; Arabic AI agent.
+	Media
+	Highlight-reel builder enhancements and adaptive streaming improvements.
+	Admin
+	Onboarding workflow, content management for success stories and leaderboards.
+	13.3 Phase 3 — AI Match Analytics, Federations & GCC Expansion
+Goal: introduce computer-vision match analytics, federation workflows, automated/anchored medical verification at scale, and GCC market entry.
+New Roles: Federation, Guardian/Agent (full), Club/Federation Admin (full).
+Feature Category
+	Key Additions
+	AI Match Analytics
+	Venue-based computer-vision tracking; automated performance extraction into match_records; venue installation workflow.
+	Advanced AI
+	Trajectory forecasting and injury-risk scoring at scale; comparable-player intelligence.
+	Medical Automation
+	Partner API integration, automated provenance anchoring, scheduled re-verification.
+	Federation
+	National athlete database, development tracking, pipeline analytics, program management.
+	Guardian / Agent
+	Full minor-safeguarding workflows and agent representation.
+	UAE Pass
+	UAE Pass authentication and Emirates ID verification across registration and medical checks.
+	GCC Expansion
+	Multi-country support, localization expansion, and regional partnership integrations.
+	13.4 Phase 4 — Intelligence, Marketplace & Scale
+Goal: evolve into advanced analytics, ecosystem, and multi-sport scale.
+* Predictive analytics: breakout-talent detection, retention/transfer-likelihood modeling, and outcome tracking.
+* Population/sport analytics dashboards for federations using anonymized, aggregated data.
+* Additional sports beyond the launch sport (e.g., basketball, volleyball).
+* Marketplace for third-party services (assessments, training, content) and white-label for large clubs/federations.
+* Native mobile feature depth and wellness-platform integrations (HealthKit / Google Fit).
+* Language support expansion (Urdu, Hindi, Tagalog, Malayalam).
+13.5 Phase Summary Matrix
+Phase
+	Duration
+	New Roles Added
+	Key Features
+	1 (MVP)
+	~6 months
+	Guest, Athlete, Scout, Medical Partner, Admin
+	Profiles, highlights + AI tagging, discovery, manual verified medical records, endorsements.
+	2
+	~6 months
+	Coach, Club
+	Club licenses, payments, push notifications, Arabic/RTL, opportunities.
+	3
+	~6–12 months
+	Federation, Guardian/Agent, Org Admin
+	AI match analytics, advanced forecasting, medical automation, UAE Pass, GCC expansion.
+	4
+	Ongoing
+	None (all prior roles)
+	Predictive analytics, marketplace, white-label, multi-sport, native depth.
+	14. Platform Sitemap Addendum
+The following pages and the consolidated route map supplement Section 3.
+14.1 Authentication Zone (Public)
+Screen / Flow
+	Summary of Functionality
+	Login
+	Email/password, mobile OTP, and (Phase 3) UAE Pass. Links to Register and Forgot Password.
+	Register
+	Multi-step: method → OTP → role → core profile → optional uploads → dashboard.
+	Forgot Password
+	Email-based reset link to a new-password form.
+	OTP Verification
+	Standardized OTP entry across login, registration, and reset.
+	Onboarding Wizard (Athlete)
+	Portfolio setup: attributes, first highlight, identity and (optional) verification request.
+	Onboarding Wizard (Recruiter/Partner)
+	Credentials, affiliation/seats, and (partners) license upload; requires review.
+	14.2 Shared Authenticated Pages
+Feature
+	Key Components
+	Notification Center
+	Chronological feed of scout views, endorsements, messages, opportunities, and system alerts; filter and mark-as-read.
+	Media Player
+	Adaptive-bitrate playback with AI-tagged timeline markers; share and visibility controls.
+	14.3 Error & System Pages
+Page
+	Description
+	404 Not Found
+	Friendly error with search and links to common pages, on-brand.
+	500 Server Error
+	Apologetic page with retry and a link to system status.
+	Access Denied
+	Shown when content is outside the user's role permissions; explains and links back to the dashboard.
+	Maintenance
+	Scheduled-downtime notice with expected return time and auto-refresh.
+	14.4 Consolidated Route Map
+I. Public
+Path
+	View / Description
+	/
+	Home (Landing Page)
+	/discover
+	AI Talent Discovery (Guest Mode)
+	/athletes
+	Find an Athlete (Search & Browse)
+	/clubs
+	Find a Club / Academy
+	/highlights
+	Highlights
+	/plans
+	Subscription & License Plans
+	/resources
+	Resources & Success Stories
+	/about
+	About AceAiX
+	II. Authentication & Onboarding
+Path
+	View / Description
+	/auth/login
+	User Login
+	/auth/register
+	Register (Multi-Step)
+	/auth/forgot-password
+	Forgot Password
+	/auth/verify-otp
+	OTP Verification
+	/auth/onboarding
+	Onboarding Wizard (Role-Adaptive)
+	III. Athlete Portal
+Path
+	View / Description
+	/athlete/dashboard
+	Main Dashboard
+	/athlete/profile
+	Profile / Portfolio
+	/athlete/media
+	Media & Highlights
+	/athlete/performance
+	Performance & Insights
+	/athlete/medical
+	Medical Intelligence (verified records, clearance)
+	/athlete/network
+	Endorsements & Connections
+	/athlete/career
+	Trajectory, Comparables & Opportunities
+	/athlete/ai
+	AI Career & Profile Coach
+	/athlete/messages
+	Messages
+	/athlete/subscription
+	Subscription & Billing
+	/athlete/settings
+	Privacy & Settings
+	IV. Recruiter / Club Portal
+Path
+	View / Description
+	/recruiter/dashboard
+	Recruiter / Club Dashboard
+	/recruiter/search
+	Advanced Talent Search
+	/recruiter/recommendations
+	AI Recommendations
+	/recruiter/athletes/:id
+	Athlete Profile (evaluation view)
+	/recruiter/watchlists
+	Watchlists & Comparison
+	/recruiter/outreach
+	Outreach & Contact Requests
+	/recruiter/roster
+	Roster & Prospect Tracking (Club)
+	/recruiter/seats
+	Seat Management (Club)
+	/recruiter/opportunities
+	Trials & Opportunities
+	/recruiter/analytics
+	Recruitment Analytics
+	/recruiter/messages
+	Messages
+	V. Medical Partner & Federation
+Path
+	View / Description
+	/partner/dashboard
+	Medical Partner Dashboard
+	/partner/requests
+	Verification Inbox
+	/partner/records/new
+	Record Upload & Clearance
+	/partner/commissions
+	Bookings & Commission
+	/federation/dashboard
+	Federation Dashboard
+	/federation/database
+	National Athlete Database
+	/federation/development
+	Development Tracking
+	/federation/analytics
+	Pipeline Analytics
+	VI. Administration
+Path
+	View / Description
+	/admin/dashboard
+	Platform Overview
+	/admin/users
+	User Management
+	/admin/verification
+	Verification & Onboarding
+	/admin/plans
+	Subscription & Licensing
+	/admin/ai
+	AI Management
+	/admin/content
+	Content Management
+	/admin/finance
+	Finance & Billing
+	/admin/security
+	Security & Audit Logs
+	/admin/settings
+	System Configuration
+	VII. System & Error Pages
+Path
+	View / Description
+	/404
+	Not Found
+	/500
+	Server Error
+	/maintenance
+	Maintenance Notice
+	/access-denied
+	Access Denied
+	
+
+AceAiX — Product Design Document  |  Confidential — 2026Page
