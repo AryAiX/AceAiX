@@ -18,6 +18,9 @@ import HighlightsPage from './pages/HighlightsPage';
 import PlansPage from './pages/PlansPage';
 import ResourcesPage from './pages/ResourcesPage';
 import AboutPage from './pages/AboutPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
+import SupportPage from './pages/SupportPage';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -102,6 +105,9 @@ export default function Router() {
         <Route path="/plans" element={<PlansPage />} />
         <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/support" element={<SupportPage />} />
 
         {/* Auth */}
         <Route path="/auth/login" element={<LoginPage />} />

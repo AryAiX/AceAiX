@@ -543,7 +543,7 @@ function Footer() {
             { heading: 'Platform', links: [['Feed', '/feed'], ['Discover', '/discover'], ['Athletes', '/athletes'], ['Plans', '/plans']] },
             { heading: 'For Athletes', links: [['Your Profile', '/athlete/profile'], ['Analytics', '/athlete/analytics'], ['Medical Records', '/athlete/medical'], ['Network', '/athlete/network']] },
             { heading: 'For Scouts', links: [['Scout Portal', '/recruiter/dashboard'], ['Search Talent', '/recruiter/search'], ['Insights', '/recruiter/analytics']] },
-            { heading: 'Company', links: [['About', '/about'], ['Privacy', '/'], ['Terms', '/']] },
+            { heading: 'Company', links: [['About', '/about'], ['Support', '/support'], ['Privacy', '/privacy'], ['Terms', '/terms']] },
           ].map(col => (
             <div key={col.heading}>
               <h3 className="font-bold mb-4 text-sm text-white" style={{ fontFamily: "'Clash Display', sans-serif" }}>{col.heading}</h3>
