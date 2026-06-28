@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAnonKey } from '@/lib/supabase';
 
 export type UserRole = 'athlete' | 'scout' | 'club' | 'coach' | 'medical_partner' | 'admin' | null;
 
@@ -225,7 +225,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const normalizedEmail = data.email.trim().toLowerCase();
+    if (!supabaseAnonKey) {
+      return { error: 'Signup is not configured for this build. Please install the latest app version.' };
+    }
+
     const { error: signupError } = await supabase.functions.invoke('signup-user', {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
       body: {
         email: normalizedEmail,
         password: data.password,

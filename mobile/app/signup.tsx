@@ -336,17 +336,22 @@ function FieldLabel({ label, optional }: { label: string; optional?: boolean }) 
 }
 
 function SelectButton({
-  value, placeholder, onPress, error,
+  value, placeholder, onPress, error, style, textStyle,
 }: {
-  value: string; placeholder: string; onPress: () => void; error?: string;
+  value: string;
+  placeholder: string;
+  onPress: () => void;
+  error?: string;
+  style?: any;
+  textStyle?: any;
 }) {
   return (
     <TouchableOpacity
-      style={[s.selectBtn, error ? s.inputError : null]}
+      style={[s.selectBtn, style, error ? s.inputError : null]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Text style={[s.selectText, !value && s.placeholderText]} numberOfLines={1}>
+      <Text style={[s.selectText, textStyle, !value && s.placeholderText]} numberOfLines={1}>
         {value || placeholder}
       </Text>
       <ChevronDown color={Colors.textMuted} size={16} />
@@ -718,18 +723,24 @@ export default function SignUpScreen() {
                     placeholder="Day"
                     onPress={() => setPickerTarget('day')}
                     error={errors.birthdate}
+                    style={s.dateSelectDay}
+                    textStyle={s.dateSelectText}
                   />
                   <SelectButton
                     value={birthMonth}
                     placeholder="Month"
                     onPress={() => setPickerTarget('month')}
                     error={errors.birthdate}
+                    style={s.dateSelectMonth}
+                    textStyle={s.dateSelectText}
                   />
                   <SelectButton
                     value={birthYear}
                     placeholder="Year"
                     onPress={() => setPickerTarget('year')}
                     error={errors.birthdate}
+                    style={s.dateSelectYear}
+                    textStyle={s.dateSelectText}
                   />
                 </View>
                 {age !== null && (
@@ -999,7 +1010,11 @@ const s = StyleSheet.create({
   },
   placeholderText: { color: Colors.textDisabled },
 
-  dateRow: { flexDirection: 'row', gap: Spacing.sm },
+  dateRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'stretch' },
+  dateSelectDay: { flex: 0.95, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  dateSelectMonth: { flex: 1.35, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  dateSelectYear: { flex: 1.05, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  dateSelectText: { fontSize: Typography.size.sm },
 
   ageChip: {
     alignSelf: 'flex-start',
