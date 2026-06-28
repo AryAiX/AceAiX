@@ -112,7 +112,9 @@ const MONTHS = [
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
+const MIN_SIGNUP_AGE = 6;
+const MAX_SIGNUP_AGE = 100;
+const YEARS = Array.from({ length: MAX_SIGNUP_AGE - MIN_SIGNUP_AGE + 1 }, (_, i) => String(currentYear - MIN_SIGNUP_AGE - i));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -470,6 +472,7 @@ export default function SignUpScreen() {
     const e: Record<string, string> = {};
     if (!sport) e.sport = 'Please select your sport';
     if (!birthDay || !birthMonth || !birthYear) e.birthdate = 'Please complete your birthday';
+    else if (age !== null && age < MIN_SIGNUP_AGE) e.birthdate = 'Athletes must be at least 6 years old';
     if (!hometown.trim()) e.hometown = 'Hometown is required';
     if (!currentLocation.trim()) e.currentLocation = 'Current location is required';
     if (!nationality) e.nationality = 'Please select your nationality';
