@@ -41,3 +41,4 @@ npm-debug.log*
 
 # Keep the original prototype archive out of the repo
 project-bolt-*.zip
+.vercel
