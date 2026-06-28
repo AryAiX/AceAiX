@@ -1,0 +1,22 @@
+import React, { createContext, useContext, useState } from 'react';
+
+interface DrawerCtx {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+}
+
+const DrawerContext = createContext<DrawerCtx>({ isOpen: false, open: () => {}, close: () => {} });
+
+export function DrawerProvider({ children }: { children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <DrawerContext.Provider
+      value={{ isOpen, open: () => setIsOpen(true), close: () => setIsOpen(false) }}
+    >
+      {children}
+    </DrawerContext.Provider>
+  );
+}
+
+export const useDrawer = () => useContext(DrawerContext);
