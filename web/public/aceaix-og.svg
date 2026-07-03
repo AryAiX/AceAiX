@@ -1,0 +1,37 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#060E1E"/>
+  <circle cx="130" cy="90" r="260" fill="#2F80ED" fill-opacity="0.24"/>
+  <circle cx="1060" cy="100" r="230" fill="#B8F135" fill-opacity="0.16"/>
+  <circle cx="970" cy="560" r="280" fill="#1FB57A" fill-opacity="0.13"/>
+  <path d="M0 510C160 430 290 442 434 492C592 547 754 550 930 470C1046 417 1136 407 1200 418V630H0V510Z" fill="#0C1A2B" fill-opacity="0.88"/>
+  <g opacity="0.25">
+    <path d="M0 84H1200" stroke="white"/>
+    <path d="M0 168H1200" stroke="white"/>
+    <path d="M0 252H1200" stroke="white"/>
+    <path d="M0 336H1200" stroke="white"/>
+    <path d="M0 420H1200" stroke="white"/>
+    <path d="M0 504H1200" stroke="white"/>
+    <path d="M120 0V630" stroke="white"/>
+    <path d="M240 0V630" stroke="white"/>
+    <path d="M360 0V630" stroke="white"/>
+    <path d="M480 0V630" stroke="white"/>
+    <path d="M600 0V630" stroke="white"/>
+    <path d="M720 0V630" stroke="white"/>
+    <path d="M840 0V630" stroke="white"/>
+    <path d="M960 0V630" stroke="white"/>
+    <path d="M1080 0V630" stroke="white"/>
+  </g>
+  <rect x="80" y="86" width="1040" height="458" rx="42" fill="#0C1A2B" fill-opacity="0.86" stroke="white" stroke-opacity="0.12"/>
+  <rect x="118" y="124" width="92" height="92" rx="24" fill="#16273B" stroke="white" stroke-opacity="0.12"/>
+  <path d="M163.7 142L197 198H181.3L175.7 187.8H152.3L146.7 198H131L163.7 142Z" fill="#B8F135"/>
+  <path d="M164 160.2L157.4 176.6H170.9L164 160.2Z" fill="#0C1A2B"/>
+  <path d="M176.4 145.9L188.7 166.4L201.4 145.9H211.8L194.4 173.1L212.5 198H198.7L187.9 181.6L177.4 198H166.7L183.6 173.5L166 145.9H176.4Z" fill="#2F80ED"/>
+  <text x="236" y="159" fill="#B8F135" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="700" letter-spacing="4">ATHLETE INTELLIGENCE PLATFORM</text>
+  <text x="118" y="300" fill="#F4F8FC" font-family="Inter, Arial, sans-serif" font-size="76" font-weight="800" letter-spacing="-3">AceAiX</text>
+  <text x="118" y="374" fill="#F4F8FC" fill-opacity="0.82" font-family="Inter, Arial, sans-serif" font-size="36" font-weight="500">AI-powered talent discovery for athletes, clubs, and scouts.</text>
+  <text x="118" y="436" fill="#9DB0C6" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="500">Verified profiles. Performance analytics. GCC sports intelligence.</text>
+  <rect x="118" y="482" width="206" height="44" rx="22" fill="#2F80ED"/>
+  <text x="148" y="512" fill="white" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">aceaix.com</text>
+  <rect x="344" y="482" width="234" height="44" rx="22" fill="#B8F135"/>
+  <text x="374" y="512" fill="#0C1A2B" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800">Demo access: 6969</text>
+</svg>

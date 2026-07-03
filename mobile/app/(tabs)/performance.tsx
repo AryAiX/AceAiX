@@ -49,7 +49,7 @@ function ArchetypeRenderer({
       return <HandicapNicheRenderer {...props} />;
     default:
       return <Text style={{ color: Colors.textMuted, fontFamily: Typography.family.regular }}>
-        Renderer for '{config.archetype}' coming soon.
+        Renderer for &apos;{config.archetype}&apos; coming soon.
       </Text>;
   }
 }

@@ -646,15 +646,16 @@ export default function Dashboard() {
             <View style={{ flex: 1 }}>
               <Text style={s.aiName}>AI Career Coach</Text>
               <View style={s.aiOnlineRow}>
-                <View style={s.aiDot} />
-                <Text style={s.aiOnline}>Online · Ready</Text>
+                <View style={[s.aiDot, { backgroundColor: Colors.textMuted }]} />
+                <Text style={s.aiOnline}>Not connected in this build</Text>
               </View>
             </View>
           </View>
           <View style={s.aiBubble}>
             <Text style={s.aiBubbleTxt}>
               Your dashboard is connected to live AceAiX data. Complete profile, media, performance,
-              and medical records to improve the guidance shown here.
+              and medical records to improve internal insights. Personal data is not sent to a third-party
+              AI provider in this build.
             </Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
@@ -665,7 +666,7 @@ export default function Dashboard() {
             ))}
           </ScrollView>
           <TouchableOpacity style={s.aiInput} onPress={() => router.push('/(tabs)/ai-coach' as any)}>
-            <Text style={s.aiPlaceholder}>Ask your AI coach…</Text>
+            <Text style={s.aiPlaceholder}>View AI data-use notice</Text>
             <MessageCircle color={Colors.primary} size={18} />
           </TouchableOpacity>
         </RevealCard>

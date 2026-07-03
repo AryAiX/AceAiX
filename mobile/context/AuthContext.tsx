@@ -58,6 +58,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (data: SignUpData) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -70,6 +71,7 @@ const AuthContext = createContext<AuthState>({
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
   signOut: async () => {},
+  deleteAccount: async () => ({ error: null }),
   refreshProfile: async () => {},
 });
 
@@ -268,9 +270,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRole(null);
   }
 
+  async function deleteAccount() {
+    if (!session?.access_token) return { error: 'You must be signed in to delete your account.' };
+
+    const { error } = await supabase.rpc('delete_own_account');
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    profileRequest.current += 1;
+    await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setRole(null);
+    return { error: null };
+  }
+
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut, refreshProfile }}
+      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

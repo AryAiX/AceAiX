@@ -30,6 +30,7 @@ const sections = [
       'Profile information and user content may be visible to other AceAiX users according to your settings and the feature you use.',
       'Medical and sensitive athlete information is intended to be shared only with authorized parties, such as selected clubs, scouts, coaches, or medical partners, when permitted by your account settings, consent, or organizational relationship.',
       'We use service providers such as hosting, database, authentication, analytics, crash reporting, and email providers to operate AceAiX. These providers process information for AceAiX and not for their own advertising purposes.',
+      'The current App Store build does not send personal profile, health, medical, or performance data to a third-party AI service. If AceAiX enables an external AI provider in a future release, the app will explain what data is sent, identify the provider, and ask for permission before sharing personal data.',
       'We may disclose information when required by law, to protect rights and safety, or during a business transaction such as a merger, acquisition, or financing.',
       'We do not sell personal information and we do not use collected data to track users across third-party apps or websites for advertising.',
     ],
@@ -47,7 +48,7 @@ const sections = [
     body: [
       'You can update many profile, notification, and privacy settings directly in the app.',
       'You may request access, correction, deletion, restriction, or export of your personal information by contacting support.',
-      'You may request account deletion from the app where available or by emailing us with the account email address and your request.',
+      'You can initiate permanent account deletion directly in the app from Settings > Account Deletion. This removes sign-in access and associated profile, settings, posts, notifications, applications, imported results, and related athlete data, subject to limited retention needed for legal, security, or dispute-resolution purposes.',
       'We retain information for as long as needed to provide the service, comply with legal obligations, resolve disputes, protect safety, and enforce agreements.',
     ],
   },

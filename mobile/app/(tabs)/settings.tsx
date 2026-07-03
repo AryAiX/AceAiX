@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -43,7 +43,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
 ];
 
 export default function Settings() {
-  const { profile, signOut, user, refreshProfile } = useAuth();
+  const { profile, signOut, deleteAccount, user, refreshProfile } = useAuth();
   const router = useRouter();
   const [publicProfile, setPublicProfile] = useState(true);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
@@ -70,6 +70,7 @@ export default function Settings() {
   const [sportifyLinking, setSportifyLinking] = useState(false);
   const [sportifyMsg, setSportifyMsg] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -156,6 +157,33 @@ export default function Settings() {
 
   async function handleSignOut() {
     await signOut();
+    router.replace('/login');
+  }
+
+  function confirmDeleteAccount() {
+    if (deletingAccount) return;
+    Alert.alert(
+      'Delete AceAiX account?',
+      'This permanently deletes your AceAiX account, profile, posts, messages, imported performance data, and sign-in access. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: handleDeleteAccount,
+        },
+      ],
+    );
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    const { error } = await deleteAccount();
+    setDeletingAccount(false);
+    if (error) {
+      Alert.alert('Account deletion failed', error);
+      return;
+    }
     router.replace('/login');
   }
 
@@ -522,6 +550,48 @@ export default function Settings() {
           </View>
         </View>
 
+        {/* AI data use */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>AI & Data Use</Text>
+          <View style={s.group}>
+            <View style={s.infoBlock}>
+              <View style={s.rowLeft}>
+                <Shield color={Colors.primary} size={18} />
+                <Text style={s.rowLabel}>Third-party AI sharing</Text>
+              </View>
+              <Text style={s.infoText}>
+                This App Store build does not send your personal profile, health, medical, or performance data to a third-party AI service. If AceAiX enables an external AI provider in a future release, the app will explain what data is sent, identify the provider, and ask for your permission before sharing it.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Account deletion */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Account Deletion</Text>
+          <View style={s.group}>
+            <View style={s.infoBlock}>
+              <View style={s.rowLeft}>
+                <Trash2 color={Colors.error} size={18} />
+                <Text style={[s.rowLabel, { color: Colors.error }]}>Permanently Delete Account</Text>
+              </View>
+              <Text style={s.infoText}>
+                Delete your account directly from AceAiX. This removes your sign-in access and associated profile, settings, posts, notifications, applications, imported results, and related athlete data.
+              </Text>
+              <TouchableOpacity
+                style={[s.deleteAccountBtn, deletingAccount && { opacity: 0.6 }]}
+                onPress={confirmDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={s.deleteAccountTxt}>Delete My Account</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         <TouchableOpacity style={s.logoutBtn} onPress={handleSignOut}>
           <LogOut color={Colors.error} size={18} />
           <Text style={s.logoutTxt}>Log Out</Text>
@@ -580,6 +650,10 @@ const s = StyleSheet.create({
   connSyncTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.primary },
   statusMsg: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
+  infoBlock: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md },
+  infoText: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, lineHeight: 20 },
+  deleteAccountBtn: { backgroundColor: Colors.error, borderRadius: Radii.md, paddingVertical: Spacing.md, alignItems: 'center', justifyContent: 'center' },
+  deleteAccountTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.white },
   sportifyLinkBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, alignSelf: 'flex-start', backgroundColor: Colors.primary, borderRadius: Radii.lg, paddingVertical: Spacing.sm + 2, paddingHorizontal: Spacing.lg },
   sportifyLinkTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.white },
 });

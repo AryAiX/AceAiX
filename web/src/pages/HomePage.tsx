@@ -24,6 +24,9 @@ const PILLAR_PALETTE = [
   { color: '#2F80ED', bg: 'rgba(47,128,237,0.08)' },
 ];
 
+const DEMO_PIN = '6969';
+const DEMO_UNLOCK_KEY = 'aceaix-demo-homepage-unlocked';
+
 function useInView(options?: IntersectionObserverInit) {
   const [inView, setInView] = useState(false);
   const obsRef = useRef<IntersectionObserver | null>(null);
@@ -42,6 +45,77 @@ function useInView(options?: IntersectionObserverInit) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return { ref, inView };
+}
+
+function DemoCover({ onUnlock }: { onUnlock: () => void }) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (pin.trim() !== DEMO_PIN) {
+      setError('Incorrect PIN. Please try again.');
+      return;
+    }
+    sessionStorage.setItem(DEMO_UNLOCK_KEY, 'true');
+    onUnlock();
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex min-h-screen items-center justify-center overflow-hidden bg-page px-4">
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 20% 20%, rgba(47,128,237,0.28), transparent 32%), radial-gradient(circle at 80% 10%, rgba(184,241,53,0.18), transparent 28%), linear-gradient(135deg, #060E1E 0%, #0C1A2B 55%, #16273B 100%)',
+        }}
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:44px_44px]" />
+      <form
+        onSubmit={handleSubmit}
+        className="card-glass relative w-full max-w-md p-7 text-center shadow-glass"
+        aria-label="Demo access PIN"
+      >
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-azure/15 text-azure">
+          <ShieldCheck size={24} />
+        </div>
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.24em] text-volt">Demo Mode</p>
+        <h1 className="mb-3 text-3xl font-bold text-white">AceAiX Preview</h1>
+        <p className="mb-6 text-sm leading-6 text-white/65">
+          The public homepage is temporarily covered while the platform is in demo mode. Enter the access PIN to continue.
+        </p>
+        <label htmlFor="demo-pin" className="sr-only">
+          Demo access PIN
+        </label>
+        <input
+          id="demo-pin"
+          type="password"
+          inputMode="numeric"
+          autoComplete="off"
+          value={pin}
+          onChange={event => {
+            setPin(event.target.value);
+            if (error) setError('');
+          }}
+          className="input-field mb-3 text-center text-lg font-semibold tracking-[0.35em]"
+          placeholder="PIN"
+          autoFocus
+        />
+        {error && <p className="mb-3 text-sm text-coral">{error}</p>}
+        <button type="submit" className="btn-volt w-full justify-center">
+          Enter Demo
+        </button>
+      </form>
+    </div>
+  );
 }
 
 /* ─── Hero Section ───────────────────────────────────────────────────────── */
@@ -570,6 +644,12 @@ function Footer() {
 }
 
 export default function HomePage() {
+  const [demoUnlocked, setDemoUnlocked] = useState(() => sessionStorage.getItem(DEMO_UNLOCK_KEY) === 'true');
+
+  if (!demoUnlocked) {
+    return <DemoCover onUnlock={() => setDemoUnlocked(true)} />;
+  }
+
   return (
     <div className="min-h-screen">
       <HeroSection />
