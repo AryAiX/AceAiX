@@ -25,7 +25,8 @@ export default function AICoach() {
         </View>
         <Text style={s.emptyTitle}>AI coach not connected</Text>
         <Text style={s.emptyText}>
-          Personalized coaching will appear here after the AI coach endpoint is configured.
+          This build does not send your personal, medical, or performance data to a third-party AI service.
+          Personalized coaching will require your permission before any external provider receives data.
         </Text>
       </ScrollView>
 
@@ -34,7 +35,7 @@ export default function AICoach() {
           style={s.input}
           value=""
           editable={false}
-          placeholder="AI coach is not configured"
+          placeholder="AI coach is not configured for this build"
           placeholderTextColor={Colors.textDisabled}
           multiline
         />

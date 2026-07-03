@@ -165,7 +165,7 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
 
             <View style={s.infoBox}>
               <Text style={s.infoTxt}>
-                The academy will review your request and confirm a slot. You'll receive a notification once confirmed. You can reschedule or cancel at any time from My Appointments.
+                The academy will review your request and confirm a slot. You&apos;ll receive a notification once confirmed. You can reschedule or cancel at any time from My Appointments.
               </Text>
             </View>
 

@@ -27,8 +27,8 @@ const supportCards: SupportCard[] = [
     kind: 'external',
     title: 'Account Deletion',
     icon: <Trash2 size={18} />,
-    body: 'To request deletion, email us from the address on your AceAiX account and include "Account Deletion Request" in the subject.',
-    action: 'Request deletion',
+    body: 'You can delete your account directly in the AceAiX app from Settings > Account Deletion. Email support only if you need help accessing the app.',
+    action: 'Get deletion help',
     href: 'mailto:customer-devops@apsy.io?subject=AceAiX%20Account%20Deletion%20Request',
   },
 ];
