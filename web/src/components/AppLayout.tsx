@@ -5,7 +5,7 @@ import {
   TrendingUp, Bot, MessageSquare, Settings, Bell, Search, Menu, X,
   LogOut, ChevronDown, ChevronLeft, ChevronRight,
   Users, ShieldCheck, BarChart3, FileText,
-  Briefcase, Sun, Moon, ExternalLink,
+  Briefcase, Sun, Moon, ExternalLink, Trophy, Layers, Flag, CreditCard, DollarSign, Lock, Sliders,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
@@ -58,12 +58,21 @@ function getNav(role: string | null, basePath: string): NavItem[] {
     { label: 'Requests',  path: `${basePath}/requests`,  icon: <FileText size={18} /> },
     { label: 'Settings',  path: `${basePath}/settings`,  icon: <Settings size={18} /> },
   ];
-  if (role === 'admin') return [
+  if (role === 'admin' || role === 'super_admin') return [
     { label: 'Overview',     path: `${basePath}/dashboard`,    icon: <LayoutDashboard size={18} /> },
     { label: 'Users',        path: `${basePath}/users`,        icon: <Users size={18} /> },
     { label: 'Verification', path: `${basePath}/verification`, icon: <ShieldCheck size={18} /> },
+    { label: 'Sports',       path: `${basePath}/sports`,       icon: <Activity size={18} /> },
+    { label: 'Leagues',      path: `${basePath}/leagues`,      icon: <Trophy size={18} /> },
+    { label: 'Competitions', path: `${basePath}/competitions`, icon: <Layers size={18} /> },
+    { label: 'Content',      path: `${basePath}/content`,      icon: <FileText size={18} /> },
+    { label: 'AI',           path: `${basePath}/ai`,           icon: <Bot size={18} /> },
+    { label: 'Moderation',   path: `${basePath}/moderation`,   icon: <Flag size={18} /> },
+    { label: 'Subscriptions', path: `${basePath}/subscriptions`, icon: <CreditCard size={18} /> },
+    { label: 'Finance',      path: `${basePath}/finance`,      icon: <DollarSign size={18} /> },
+    { label: 'Security',     path: `${basePath}/security`,     icon: <Lock size={18} /> },
+    { label: 'System',       path: `${basePath}/system`,       icon: <Sliders size={18} /> },
     { label: 'Analytics',    path: `${basePath}/analytics`,    icon: <BarChart3 size={18} /> },
-    { label: 'Settings',     path: `${basePath}/settings`,     icon: <Settings size={18} /> },
   ];
   return [];
 }
@@ -72,7 +81,7 @@ function getBasePath(role: string | null) {
   if (role === 'athlete') return '/athlete';
   if (role === 'scout' || role === 'club') return '/recruiter';
   if (role === 'medical_partner') return '/partner';
-  if (role === 'admin') return '/admin';
+  if (role === 'admin' || role === 'super_admin') return '/admin';
   return '/athlete';
 }
 

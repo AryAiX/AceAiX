@@ -57,13 +57,23 @@ import AdminDashboard from './pages/admin/DashboardPage';
 import AdminUsers from './pages/admin/UsersPage';
 import AdminVerification from './pages/admin/VerificationPage';
 import AdminAnalytics from './pages/admin/AnalyticsPage';
+import AdminSports from './pages/admin/SportsPage';
+import AdminLeagues from './pages/admin/LeaguesPage';
+import AdminCompetitions from './pages/admin/CompetitionsPage';
+import AdminContent from './pages/admin/ContentPage';
+import AdminAi from './pages/admin/AiManagementPage';
+import AdminModeration from './pages/admin/ModerationPage';
+import AdminSubscriptions from './pages/admin/SubscriptionsPage';
+import AdminFinance from './pages/admin/FinancePage';
+import AdminSecurity from './pages/admin/SecurityPage';
+import AdminSystem from './pages/admin/SystemConfigPage';
 
 function RoleRedirect() {
   const { role } = useAuth();
   if (role === 'athlete') return <Navigate to="/athlete/dashboard" replace />;
   if (role === 'scout' || role === 'club') return <Navigate to="/recruiter/dashboard" replace />;
   if (role === 'medical_partner') return <Navigate to="/partner/dashboard" replace />;
-  if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
+  if (role === 'admin' || role === 'super_admin') return <Navigate to="/admin/dashboard" replace />;
   return <Navigate to="/" replace />;
 }
 
@@ -116,6 +126,8 @@ export default function Router() {
 
         {/* Role-based redirect */}
         <Route path="/dashboard" element={<RequireAuth><RoleRedirect /></RequireAuth>} />
+        <Route path="/admim" element={<Navigate to="/admin" replace />} />
+        <Route path="/admim/*" element={<Navigate to="/admin" replace />} />
 
         {/* Athlete routes */}
         <Route path="/athlete" element={<RequireAuth allowedRoles={['athlete']}><AppLayout /></RequireAuth>}>
@@ -154,13 +166,23 @@ export default function Router() {
         </Route>
 
         {/* Admin routes */}
-        <Route path="/admin" element={<RequireAuth allowedRoles={['admin']}><AppLayout /></RequireAuth>}>
+        <Route path="/admin" element={<RequireAuth allowedRoles={['admin', 'super_admin']}><AppLayout /></RequireAuth>}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="verification" element={<AdminVerification />} />
+          <Route path="sports" element={<AdminSports />} />
+          <Route path="leagues" element={<AdminLeagues />} />
+          <Route path="competitions" element={<AdminCompetitions />} />
+          <Route path="content" element={<AdminContent />} />
+          <Route path="ai" element={<AdminAi />} />
+          <Route path="moderation" element={<AdminModeration />} />
+          <Route path="subscriptions" element={<AdminSubscriptions />} />
+          <Route path="finance" element={<AdminFinance />} />
+          <Route path="security" element={<AdminSecurity />} />
+          <Route path="system" element={<AdminSystem />} />
           <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="settings" element={<AthleteSettings />} />
+          <Route path="settings" element={<AdminSystem />} />
         </Route>
 
         {/* Fallback */}

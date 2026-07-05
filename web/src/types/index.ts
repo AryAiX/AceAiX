@@ -1,6 +1,6 @@
 export type UserRole =
   | 'athlete' | 'scout' | 'club' | 'coach' | 'medical_partner'
-  | 'federation' | 'guardian' | 'org_admin' | 'admin' | 'guest';
+  | 'federation' | 'guardian' | 'org_admin' | 'admin' | 'super_admin' | 'guest';
 export type SubscriptionTier = 'free' | 'pro' | 'elite' | 'enterprise';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'expired' | 'more_info';
 export type ClearanceStatus = 'cleared' | 'restricted' | 'not_cleared' | 'pending';

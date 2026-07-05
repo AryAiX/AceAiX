@@ -80,12 +80,23 @@ test('capture recruiter app', async ({ page }) => {
 });
 
 test('capture admin app', async ({ page }) => {
+  test.setTimeout(180_000);
   await login(page, 'admin');
   const routes: [string, string][] = [
     ['/admin/dashboard', '01-dashboard'],
     ['/admin/users', '02-users'],
     ['/admin/verification', '03-verification'],
-    ['/admin/analytics', '04-analytics'],
+    ['/admin/sports', '04-sports'],
+    ['/admin/leagues', '05-leagues'],
+    ['/admin/competitions', '06-competitions'],
+    ['/admin/content', '07-content'],
+    ['/admin/ai', '08-ai'],
+    ['/admin/moderation', '09-moderation'],
+    ['/admin/subscriptions', '10-subscriptions'],
+    ['/admin/finance', '11-finance'],
+    ['/admin/security', '12-security'],
+    ['/admin/system', '13-system'],
+    ['/admin/analytics', '14-analytics'],
   ];
   for (const [path, name] of routes) await shoot(page, path, `admin-${name}`);
 });

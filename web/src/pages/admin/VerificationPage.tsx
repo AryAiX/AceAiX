@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, AlertCircle, CheckCircle, X, FileText, Clock } from 'lucide-react';
+import { ShieldCheck, AlertCircle, CheckCircle, X, FileText, Clock, ExternalLink } from 'lucide-react';
 import { listVerificationRequests, decideVerification } from '../../api/admin';
 import type { VerificationRequest } from '../../types';
+import { AdminPage, StatusBadge } from '../../components/admin/AdminPrimitives';
 
 function docLabel(doc: Record<string, unknown>): string {
   return String(doc.name ?? doc.title ?? doc.label ?? doc.type ?? 'Document');
+}
+
+function docUrl(doc: Record<string, unknown>): string | null {
+  const raw = doc.url ?? doc.href ?? doc.storage_url ?? doc.publicUrl;
+  return typeof raw === 'string' && raw !== '#' && raw.startsWith('http') ? raw : null;
 }
 
 function formatDate(iso: string): string {
@@ -38,12 +44,7 @@ export default function AdminVerificationPage() {
   const isPending = (item: VerificationRequest) => item.status === 'pending';
 
   return (
-    <div className="max-w-6xl space-y-6">
-      <div>
-        <h1 className="section-title">Verification Queue</h1>
-        <p className="section-subtitle">Review and approve organizations and medical partners</p>
-      </div>
-
+    <AdminPage title="Verification Queue" subtitle="Review submitted documents and write decisions back to Supabase">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Queue */}
         <div className="space-y-3">
@@ -62,7 +63,7 @@ export default function AdminVerificationPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold text-white capitalize">{item.type.replace('_', ' ')}</p>
-                    <span className={`badge text-xs flex-shrink-0 ${!isPending(item) ? 'badge-blue' : 'badge-amber'}`}>{item.status.replace('_', ' ')}</span>
+                    <StatusBadge tone={item.status === 'approved' ? 'green' : item.status === 'rejected' ? 'red' : 'amber'}>{item.status.replace('_', ' ')}</StatusBadge>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">{item.documents.length} documents · {formatDate(item.created_at)}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{item.organization_id ? 'Organization' : 'Individual'} verification</p>
@@ -92,7 +93,13 @@ export default function AdminVerificationPage() {
                   <div key={i} className="flex items-center gap-3 p-3 bg-navy-800 rounded-lg">
                     <FileText size={14} className="text-slate-400 flex-shrink-0" />
                     <p className="text-sm text-slate-300 flex-1">{docLabel(doc)}</p>
-                    <button className="text-blue-400 text-xs hover:underline">View</button>
+                    {docUrl(doc) ? (
+                      <a href={docUrl(doc) ?? undefined} target="_blank" rel="noreferrer" className="text-blue-400 text-xs hover:underline inline-flex items-center gap-1">
+                        View <ExternalLink size={11} />
+                      </a>
+                    ) : (
+                      <span className="text-xs text-slate-500">No file URL</span>
+                    )}
                   </div>
                 ))}
                 {!selected.documents.length && <p className="text-sm text-slate-500">No documents submitted.</p>}
@@ -130,6 +137,6 @@ export default function AdminVerificationPage() {
           </div>
         )}
       </div>
-    </div>
+    </AdminPage>
   );
 }
