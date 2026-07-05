@@ -47,7 +47,7 @@ function getNavItems(role: string | null): NavItem[] {
     { label: 'Home',     Icon: Home,     path: '/feed'             },
     { label: 'Requests', Icon: FileText, path: '/partner/requests' },
   ];
-  if (role === 'admin') return [
+  if (role === 'admin' || role === 'super_admin') return [
     { label: 'Home',      Icon: Home,      path: '/feed'            },
     { label: 'Users',     Icon: Users,     path: '/admin/users'     },
     { label: 'Analytics', Icon: BarChart3, path: '/admin/analytics' },
@@ -59,7 +59,7 @@ function dashPath(role: string | null) {
   if (role === 'athlete')                  return '/athlete/dashboard';
   if (role === 'scout' || role === 'club') return '/recruiter/dashboard';
   if (role === 'medical_partner')          return '/partner/dashboard';
-  if (role === 'admin')                    return '/admin/dashboard';
+  if (role === 'admin' || role === 'super_admin') return '/admin/dashboard';
   return '/auth/login';
 }
 
@@ -67,7 +67,7 @@ function settingsPath(role: string | null) {
   if (role === 'athlete')                  return '/athlete/settings';
   if (role === 'scout' || role === 'club') return '/recruiter/settings';
   if (role === 'medical_partner')          return '/partner/settings';
-  if (role === 'admin')                    return '/admin/settings';
+  if (role === 'admin' || role === 'super_admin') return '/admin/settings';
   return '/auth/login';
 }
 

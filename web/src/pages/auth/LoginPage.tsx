@@ -37,9 +37,9 @@ const LOGIN_GROUPS = [
     subLabels: null as null | string[],
   },
   {
-    id: 'admin' as const,
-    label: 'Admin',
-    desc: 'Platform administration',
+    id: 'super_admin' as const,
+    label: 'Super Admin',
+    desc: 'Restricted platform ownership access',
     color: '#EF5350',
     textDark: false,
     icon: ShieldCheck,
@@ -96,7 +96,7 @@ export default function LoginPage() {
     if (role === 'athlete') navigate('/athlete/dashboard');
     else if (role === 'scout' || role === 'club') navigate('/recruiter/dashboard');
     else if (role === 'medical_partner') navigate('/partner/dashboard');
-    else if (role === 'admin') navigate('/admin/dashboard');
+    else if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
     else navigate('/athlete/dashboard');
   }, [redirecting, user, profile, navigate]);
 

@@ -27,7 +27,7 @@ function getNavItems(role: string | null): NavItem[] {
     { label: 'Home',     Icon: Home,     path: '/feed'             },
     { label: 'Requests', Icon: FileText, path: '/partner/requests' },
   ];
-  if (role === 'admin') return [
+  if (role === 'admin' || role === 'super_admin') return [
     { label: 'Home',      Icon: Home,      path: '/feed'            },
     { label: 'Users',     Icon: Users,     path: '/admin/users'     },
     { label: 'Analytics', Icon: BarChart3, path: '/admin/analytics' },

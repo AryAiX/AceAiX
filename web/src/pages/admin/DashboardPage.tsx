@@ -1,13 +1,8 @@
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Users, ShieldCheck, AlertCircle, Activity } from 'lucide-react';
-import { platformStats, listVerificationRequests, listUsers } from '../../api/admin';
-
-const STAT_META = [
-  { label: 'Total Users',        color: '#2F80ED', sub: 'all roles'      },
-  { label: 'Active Athletes',    color: '#1FB57A', sub: 'profiles'       },
-  { label: 'Organizations',      color: '#2F80ED', sub: 'clubs & orgs'   },
-  { label: 'Open Opportunities', color: '#F5A623', sub: 'active listings' },
-];
+import { Activity, AlertCircle, Bot, DollarSign, ShieldCheck, Users } from 'lucide-react';
+import { aiAdminStats, financeSummary, listAuditLogs, listUsers, listVerificationRequests, platformStats } from '../../api/admin';
+import { AdminCard, AdminPage, DataList, formatMoney, formatNumber, StatCard, StatusBadge } from '../../components/admin/AdminPrimitives';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -19,6 +14,9 @@ function timeAgo(iso: string): string {
 
 export default function AdminDashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey: ['platform-stats'], queryFn: platformStats });
+  const { data: aiStats } = useQuery({ queryKey: ['admin-ai-stats'], queryFn: aiAdminStats });
+  const { data: finance } = useQuery({ queryKey: ['admin-finance-summary'], queryFn: financeSummary });
+  const { data: audit = [] } = useQuery({ queryKey: ['admin-audit', 5], queryFn: () => listAuditLogs(5) });
   const { data: pending = [], isLoading: pendingLoading } = useQuery({
     queryKey: ['verification-requests', 'pending'],
     queryFn: () => listVerificationRequests('pending'),
@@ -28,45 +26,47 @@ export default function AdminDashboard() {
     queryFn: () => listUsers({ limit: 6 }),
   });
 
-  const statValues = [stats?.users, stats?.athletes, stats?.organizations, stats?.opportunities];
+  const statTiles = [
+    { label: 'Total Users', value: stats?.users, sub: 'all platform roles', color: '#2F80ED', icon: <Users size={17} /> },
+    { label: 'Active Athletes', value: stats?.athletes, sub: 'athlete profiles', color: '#1FB57A', icon: <Activity size={17} /> },
+    { label: 'Pending Reviews', value: stats?.pendingVerifications, sub: 'verification queue', color: '#F5A623', icon: <ShieldCheck size={17} /> },
+    { label: 'Billing Volume', value: finance?.billingVolumeCents ?? stats?.billingVolumeCents, sub: 'ledger events', color: '#B8F135', icon: <DollarSign size={17} />, money: true },
+  ];
 
   return (
-    <div className="max-w-6xl space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-ink font-display">Platform Overview</h1>
-          <p className="text-sm text-slate mt-0.5">AceAiX Super Admin · AryAiX Internal</p>
-        </div>
-        <div className="flex items-center gap-2 bg-emerald/8 border border-emerald/20 rounded-full px-3 py-1.5">
-          <div className="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse" />
-          <span className="text-xs text-emerald font-medium">All Systems Operational</span>
-        </div>
-      </div>
-
-      {/* Platform Stats */}
+    <AdminPage
+      title="Platform Overview"
+      subtitle="Live admin view backed by Supabase tables, queues, and audit events"
+      action={<StatusBadge tone={(stats?.moderationOpen ?? 0) > 0 ? 'amber' : 'green'}>{(stats?.moderationOpen ?? 0) > 0 ? `${stats?.moderationOpen} moderation items` : 'No open moderation'}</StatusBadge>}
+    >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAT_META.map((s, i) => (
-          <div key={s.label} className="card p-5">
-            <p className="text-2xl font-bold text-ink tabular font-display">
-              {statsLoading ? '—' : (statValues[i] ?? 0).toLocaleString()}
-            </p>
-            <p className="text-sm text-slate mt-0.5">{s.label}</p>
-            <p className="text-xs mt-2 font-medium" style={{ color: s.color }}>{s.sub}</p>
-          </div>
+        {statTiles.map((tile) => (
+          <StatCard
+            key={tile.label}
+            label={tile.label}
+            value={statsLoading ? '—' : tile.money ? formatMoney(tile.value) : formatNumber(tile.value)}
+            sub={tile.sub}
+            color={tile.color}
+            icon={tile.icon}
+          />
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Verifications */}
-        <div className="card p-5">
+        <AdminCard>
           <div className="flex items-center gap-2 mb-5">
             <ShieldCheck size={18} className="text-amber" />
             <h2 className="text-base font-semibold text-ink">Pending Verifications</h2>
             <span className="badge-amber">{pending.length}</span>
           </div>
-          <div className="space-y-3">
-            {pendingLoading && <p className="text-xs text-slate py-4 text-center">Loading…</p>}
-            {!pendingLoading && pending.map(item => (
+          {pendingLoading ? (
+            <p className="text-xs text-slate py-4 text-center">Loading…</p>
+          ) : (
+            <DataList
+              rows={pending}
+              emptyTitle="No pending verifications"
+              emptyBody="Verification requests will appear here when users or organizations submit documents."
+              render={(item) => (
               <div key={item.id} className="flex items-center gap-4 p-3 bg-page rounded-xl border border-rim">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-amber/8">
                   <AlertCircle size={18} className="text-amber" />
@@ -75,17 +75,14 @@ export default function AdminDashboard() {
                   <p className="text-sm font-semibold text-ink capitalize">{item.type.replace('_', ' ')}</p>
                   <p className="text-xs text-slate">{item.documents.length} documents · {timeAgo(item.created_at)}</p>
                 </div>
-                <button className="btn-primary text-xs py-1.5 px-3 flex-shrink-0">Review</button>
+                <Link to="/admin/verification" className="btn-primary text-xs py-1.5 px-3 flex-shrink-0">Review</Link>
               </div>
-            ))}
-            {!pendingLoading && !pending.length && (
-              <p className="text-xs text-slate py-4 text-center">No pending verifications.</p>
-            )}
-          </div>
-        </div>
+              )}
+            />
+          )}
+        </AdminCard>
 
-        {/* Recent Signups */}
-        <div className="card p-5">
+        <AdminCard>
           <div className="flex items-center gap-2 mb-5">
             <Users size={18} className="text-azure" />
             <h2 className="text-base font-semibold text-ink">Recent Signups</h2>
@@ -110,33 +107,52 @@ export default function AdminDashboard() {
               <p className="text-xs text-slate py-4 text-center">No signups yet.</p>
             )}
           </div>
-        </div>
+        </AdminCard>
       </div>
 
-      {/* AI Performance */}
-      <div className="card p-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <AdminCard>
         <div className="flex items-center gap-2 mb-5">
-          <Activity size={18} className="text-azure" />
+          <Bot size={18} className="text-azure" />
           <h2 className="text-base font-semibold text-ink">AI System Performance</h2>
-          <span className="badge-emerald ml-auto">Healthy</span>
+          <StatusBadge tone={(aiStats?.sessionsToday ?? 0) > 0 ? 'green' : 'slate'}>{(aiStats?.sessionsToday ?? 0) > 0 ? 'Active today' : 'No sessions today'}</StatusBadge>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'AI Chat Sessions Today', value: '1,204' },
-            { label: 'Avg Response Time',       value: '0.8s'  },
-            { label: 'Clip Tags Generated',     value: '342'   },
-            { label: 'Profile Analyses',        value: '89'    },
+            { label: 'Sessions Today', value: aiStats?.sessionsToday ?? 0 },
+            { label: 'Messages Today', value: aiStats?.messagesToday ?? 0 },
+            { label: 'Assistant Replies', value: aiStats?.assistantMessagesToday ?? 0 },
+            { label: 'Tagged Media', value: aiStats?.taggedMedia ?? 0 },
           ].map(metric => (
             <div key={metric.label} className="p-4 bg-page border border-rim rounded-xl text-center">
-              <p className="text-xl font-bold text-ink tabular font-display">{metric.value}</p>
+              <p className="text-xl font-bold text-ink tabular font-display">{formatNumber(metric.value)}</p>
               <p className="text-xs text-slate mt-1">{metric.label}</p>
-              <div className="mt-2 flex justify-center">
-                <div className="w-2 h-2 bg-emerald rounded-full" />
-              </div>
             </div>
           ))}
         </div>
+      </AdminCard>
+
+      <AdminCard>
+        <div className="flex items-center gap-2 mb-5">
+          <Activity size={18} className="text-emerald" />
+          <h2 className="text-base font-semibold text-ink">Recent Audit Activity</h2>
+        </div>
+        <DataList
+          rows={audit}
+          emptyTitle="No audit events yet"
+          emptyBody="Admin mutations will write append-only audit rows once actions are performed."
+          render={(row) => (
+            <div key={row.id} className="flex items-center justify-between gap-3 border-b border-rim last:border-0 py-2.5">
+              <div>
+                <p className="text-sm text-white font-medium">{row.action}</p>
+                <p className="text-xs text-slate">{row.table_name ?? 'system'} · {timeAgo(row.created_at)}</p>
+              </div>
+              <StatusBadge tone="blue">{row.record_id ? 'record' : 'event'}</StatusBadge>
+            </div>
+          )}
+        />
+      </AdminCard>
       </div>
-    </div>
+    </AdminPage>
   );
 }
