@@ -18,6 +18,13 @@
         "NSPhotoLibraryAddUsageDescription": "AceAiX may save generated or edited athlete media to your photo library when you choose to export it."
       }
     },
+    "android": {
+      "package": "com.aryaix.aceaix.athlete",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0C1A2B"
+      }
+    },
     "web": {
       "bundler": "metro",
       "output": "single",
