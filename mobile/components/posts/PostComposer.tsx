@@ -110,6 +110,24 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     } catch (_) {}
   }, []);
 
+  const openCamera = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      setStep('camera');
+      return;
+    }
+    if (permission?.granted) {
+      setStep('camera');
+      return;
+    }
+
+    const nextPermission = await requestPermission();
+    if (nextPermission.granted) {
+      setStep('camera');
+    } else {
+      Alert.alert('Camera access is off', 'Enable camera access in Settings to attach media.');
+    }
+  }, [permission?.granted, requestPermission]);
+
   const removeMedia = useCallback((idx: number) => {
     setMedia((prev) => prev.filter((_, i) => i !== idx));
   }, []);
@@ -179,24 +197,22 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
         {/* ── CAMERA VIEW ──────────────────────────────────────────────────── */}
         {step === 'camera' && (
           <View style={s.fill}>
-            {!permission?.granted ? (
-              <View style={s.permWrap}>
-                <Camera color={Colors.textMuted} size={44} strokeWidth={1.5} />
-                <Text style={s.permTitle}>Camera Access</Text>
-                <TouchableOpacity style={s.permBtn} onPress={requestPermission}>
-                  <Text style={s.permBtnTxt}>Allow Camera</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setStep('compose')}>
-                  <Text style={s.permSkipTxt}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            ) : Platform.OS === 'web' ? (
+            {Platform.OS === 'web' ? (
               <View style={s.permWrap}>
                 <Camera color={Colors.textMuted} size={44} strokeWidth={1.5} />
                 <Text style={s.permTitle}>Camera not available on web</Text>
                 <Text style={s.permBody}>Use a real device or simulator camera/photo picker to attach media.</Text>
                 <TouchableOpacity onPress={() => setStep('compose')}>
                   <Text style={s.permSkipTxt}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : !permission?.granted ? (
+              <View style={s.permWrap}>
+                <Camera color={Colors.textMuted} size={44} strokeWidth={1.5} />
+                <Text style={s.permTitle}>Camera access is off</Text>
+                <Text style={s.permBody}>Enable camera access in Settings to attach media.</Text>
+                <TouchableOpacity onPress={() => setStep('compose')}>
+                  <Text style={s.permSkipTxt}>Back to post</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -275,7 +291,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             )}
 
             {/* Add media button */}
-            <TouchableOpacity style={s.addMediaBtn} onPress={() => setStep('camera')}>
+            <TouchableOpacity style={s.addMediaBtn} onPress={openCamera}>
               <Camera color={Colors.primary} size={20} />
               <Text style={s.addMediaTxt}>{media.length > 0 ? 'Add more' : 'Add photo'}</Text>
             </TouchableOpacity>

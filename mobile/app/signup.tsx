@@ -460,8 +460,7 @@ export default function SignUpScreen() {
     else if (!validateEmail(email.trim())) e.email = 'Enter a valid email address';
     if (!password) e.password = 'Password is required';
     else if (password.length < 8) e.password = 'Must be at least 8 characters';
-    if (!phone.trim()) e.phone = 'Phone number is required';
-    else if (phone.replace(/\D/g, '').length < 6) e.phone = 'Enter a valid phone number';
+    if (phone.trim() && phone.replace(/\D/g, '').length < 6) e.phone = 'Enter a valid phone number';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -509,7 +508,7 @@ export default function SignUpScreen() {
       email: email.trim(),
       password,
       full_name: fullName.trim(),
-      phone: `${phoneCode.dial}${phone.trim()}`,
+      phone: phone.trim() ? `${phoneCode.dial}${phone.trim()}` : null,
       sport_category: sport,
       birthdate: buildBirthdate(birthDay, birthMonth, birthYear),
       hometown: hometown.trim(),
@@ -650,7 +649,7 @@ export default function SignUpScreen() {
 
               {/* Phone */}
               <View style={s.field}>
-                <FieldLabel label="Phone Number" />
+                <FieldLabel label="Phone Number" optional />
                 <View style={s.phoneRow}>
                   <TouchableOpacity
                     style={[s.codeBtn, errors.phone ? s.inputError : null]}

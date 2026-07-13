@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -87,6 +87,24 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const cameraRef = useRef<CameraView>(null);
+  const requestedCameraPermission = useRef(false);
+
+  useEffect(() => {
+    if (!visible) {
+      requestedCameraPermission.current = false;
+      return;
+    }
+    if (
+      Platform.OS === 'web' ||
+      permission?.granted ||
+      permission?.canAskAgain === false ||
+      requestedCameraPermission.current
+    ) {
+      return;
+    }
+    requestedCameraPermission.current = true;
+    requestPermission();
+  }, [visible, permission?.granted, permission?.canAskAgain, requestPermission]);
 
   const reset = useCallback(() => {
     setStep('camera');
@@ -179,25 +197,27 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
         {/* ── STEP: CAMERA ───────────────────────────────────────────────────── */}
         {step === 'camera' && (
           <View style={s.fill}>
-            {!permission?.granted ? (
-              <View style={s.permWrap}>
-                <Camera color={Colors.textMuted} size={48} strokeWidth={1.5} />
-                <Text style={s.permTitle}>Camera Access</Text>
-                <Text style={s.permBody}>Allow camera access to capture your story moment.</Text>
-                <TouchableOpacity style={s.permBtn} onPress={requestPermission}>
-                  <Text style={s.permBtnTxt}>Allow Camera</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.permSkip} onPress={handleClose}>
-                  <Text style={s.permSkipTxt}>Cancel</Text>
-                </TouchableOpacity>
-              </View>
-            ) : Platform.OS === 'web' ? (
+            {Platform.OS === 'web' ? (
               <View style={s.permWrap}>
                 <Camera color={Colors.textMuted} size={48} strokeWidth={1.5} />
                 <Text style={s.permTitle}>Camera not available</Text>
                 <Text style={s.permBody}>Live camera is not supported in the web preview. Use a real device or simulator camera/photo picker to create a story.</Text>
                 <TouchableOpacity style={s.permSkip} onPress={handleClose}>
                   <Text style={s.permSkipTxt}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : !permission ? (
+              <View style={s.permWrap}>
+                <ActivityIndicator size="large" color={Colors.primary} />
+                <Text style={s.permTitle}>Preparing camera</Text>
+              </View>
+            ) : !permission.granted ? (
+              <View style={s.permWrap}>
+                <Camera color={Colors.textMuted} size={48} strokeWidth={1.5} />
+                <Text style={s.permTitle}>Camera access is off</Text>
+                <Text style={s.permBody}>Enable camera access in Settings to capture stories.</Text>
+                <TouchableOpacity style={s.permSkip} onPress={handleClose}>
+                  <Text style={s.permSkipTxt}>Close</Text>
                 </TouchableOpacity>
               </View>
             ) : (

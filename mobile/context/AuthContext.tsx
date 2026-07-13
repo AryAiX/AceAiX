@@ -40,7 +40,7 @@ export interface SignUpData {
   email: string;
   password: string;
   full_name: string;
-  phone: string;
+  phone?: string | null;
   sport_category: string;
   birthdate: string;
   hometown: string;

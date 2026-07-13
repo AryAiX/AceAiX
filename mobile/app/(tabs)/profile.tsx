@@ -6,7 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import {
-  BadgeCheck, Edit3, MapPin, Globe, Share2, Camera,
+  BadgeCheck, Edit3, MapPin, Globe, Share2,
   Zap, Shield, Activity, ChevronRight, Plus, UserCheck,
   Play, Eye, ThumbsUp, TrendingUp, Award, Star, Flame,
   Users, Radio, Target,
@@ -1082,11 +1082,6 @@ export default function Profile() {
                   )}
                 </View>
               </LinearGradient>
-              {isOwn && (
-                <TouchableOpacity style={s.cameraOverlay}>
-                  <Camera color={Colors.white} size={12} />
-                </TouchableOpacity>
-              )}
             </View>
             <View style={{ flex: 1 }}>
               <View style={s.availPill}>
@@ -1159,7 +1154,7 @@ export default function Profile() {
                 <TouchableOpacity style={s.dashBtn} onPress={() => router.push('/(tabs)/' as any)}>
                   <Text style={s.dashBtnTxt}>Dashboard</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.editBtn}>
+                <TouchableOpacity style={s.editBtn} onPress={() => router.push('/(tabs)/settings' as any)}>
                   <Edit3 color={Colors.primary} size={12} />
                   <Text style={s.editBtnTxt}>Edit Profile</Text>
                 </TouchableOpacity>
@@ -1267,7 +1262,6 @@ const s = StyleSheet.create({
   athletePhoto:   { width: 82, height: 82, borderRadius: 41, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImg:      { width: 82, height: 82 },
   athletePhotoTxt:{ fontFamily: Typography.family.display, fontSize: 28, color: Colors.white },
-  cameraOverlay:  { position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRadius: 13, backgroundColor: Colors.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: Colors.bg },
   availPill:      { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: `${Colors.success}15`, borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: `${Colors.success}35`, alignSelf: 'flex-start' },
   availDot:       { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.success },
   availTxt:       { fontFamily: Typography.family.bold, fontSize: 11, color: Colors.success },
