@@ -40,7 +40,7 @@ function getNav(role: string | null, basePath: string): NavItem[] {
     { label: 'Network',       path: `${basePath}/network`,       icon: <Network size={18} /> },
     { label: 'Career',        path: `${basePath}/career`,        icon: <TrendingUp size={18} /> },
     { label: 'Opportunities', path: `${basePath}/opportunities`, icon: <Briefcase size={18} /> },
-    { label: 'AI Coach',      path: `${basePath}/ai`,            icon: <Bot size={18} /> },
+    { label: 'AI Recommendations', path: `${basePath}/ai`,       icon: <Bot size={18} /> },
     { label: 'Analytics',     path: `${basePath}/analytics`,     icon: <BarChart3 size={18} /> },
     { label: 'Messages',      path: `${basePath}/messages`,      icon: <MessageSquare size={18} /> },
     { label: 'Settings',      path: `${basePath}/settings`,      icon: <Settings size={18} /> },

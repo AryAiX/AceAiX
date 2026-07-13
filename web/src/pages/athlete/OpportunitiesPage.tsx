@@ -8,6 +8,7 @@ import {
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listOpportunities } from '../../api/opportunities';
 import type { AthleteProfile, Opportunity } from '../../types';
+import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
 
 interface OppView {
   id: string;
@@ -21,7 +22,7 @@ interface OppView {
   deadline: string;
   salary: string;
   verified: boolean;
-  aiMatch: number;
+  matchScore: number;
   featured: boolean;
   description: string;
   tags: string[];
@@ -34,6 +35,10 @@ const TYPE_META: Record<string, { label: string; color: string; bg: string }> = 
   contract:    { label: 'Contract',    color: '#1FB17A', bg: 'rgba(31,177,122,0.12)'  },
   scholarship: { label: 'Scholarship', color: '#2F80ED', bg: 'rgba(47,128,237,0.12)'  },
 };
+const SORT_OPTIONS: Array<{ id: 'match' | 'deadline'; label: string }> = [
+  { id: 'match', label: 'Best Profile Match' },
+  { id: 'deadline', label: 'Earliest Deadline' },
+];
 
 function metaFor(type: string) {
   return TYPE_META[type] ?? { label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Opportunity', color: '#7C8DA6', bg: 'rgba(124,141,166,0.12)' };
@@ -43,16 +48,6 @@ function fmtSalary(o: Opportunity): string {
   if (o.salary_min && o.salary_max) return `${o.currency} ${o.salary_min / 1000}k–${o.salary_max / 1000}k`;
   if (o.salary_min) return `${o.currency} ${o.salary_min / 1000}k+`;
   return 'TBD';
-}
-
-function computeMatch(athlete: AthleteProfile | null | undefined, o: Opportunity): number {
-  let score = 50;
-  const aSport = athlete?.sport?.toLowerCase();
-  const aPos = (athlete?.position ?? athlete?.position_primary ?? '').toLowerCase();
-  if (aSport && o.sport && aSport === o.sport.toLowerCase()) score += 25;
-  if (aPos && o.position && o.position.toLowerCase().includes(aPos)) score += 15;
-  score += Math.round((athlete?.visibility_score ?? 0) / 10);
-  return Math.max(40, Math.min(99, score));
 }
 
 function toOppView(o: Opportunity, athlete: AthleteProfile | null | undefined): OppView {
@@ -68,7 +63,7 @@ function toOppView(o: Opportunity, athlete: AthleteProfile | null | undefined): 
     deadline: o.application_deadline ?? 'Open',
     salary: fmtSalary(o),
     verified: o.organization?.is_verified ?? false,
-    aiMatch: computeMatch(athlete, o),
+    matchScore: computeOpportunityMatch(athlete, o).score,
     featured: false,
     description: o.description ?? '',
     tags: [o.type, o.sport].filter((t): t is string => !!t),
@@ -106,13 +101,13 @@ export default function OpportunitiesPage() {
   });
 
   const opportunities: OppView[] = rawOpps.map(o => toOppView(o, athlete));
-  // mark the single best AI match as featured
-  const topId = opportunities.reduce<OppView | null>((best, o) => (!best || o.aiMatch > best.aiMatch ? o : best), null)?.id;
+  // Mark the strongest explainable profile match as featured.
+  const topId = opportunities.reduce<OppView | null>((best, o) => (!best || o.matchScore > best.matchScore ? o : best), null)?.id;
   opportunities.forEach(o => { o.featured = o.id === topId; });
 
   const filtered = opportunities
     .filter(o => filter === 'all' || o.type === filter)
-    .sort((a, b) => sort === 'match' ? b.aiMatch - a.aiMatch : a.deadline.localeCompare(b.deadline));
+    .sort((a, b) => sort === 'match' ? b.matchScore - a.matchScore : a.deadline.localeCompare(b.deadline));
 
   const featured = filtered.find(o => o.featured);
   const rest = filtered.filter(o => !o.featured);
@@ -131,11 +126,11 @@ export default function OpportunitiesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="section-title">Opportunities</h1>
-          <p className="section-subtitle">Trials, contracts & scholarships matched by AI to your profile</p>
+          <p className="section-subtitle">Trials, contracts & scholarships compared with your live athlete profile</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted px-3 py-1.5 rounded-xl bg-volt/10 border border-volt/20 text-volt font-semibold">
-            <Zap size={11} /> {filtered.length} AI-matched
+            <Zap size={11} /> {filtered.length} profile-matched
           </div>
         </div>
       </div>
@@ -145,7 +140,7 @@ export default function OpportunitiesPage() {
         {[
           { label: 'Applied', value: applied.size, icon: <CheckCircle size={14} />, color: 'text-emerald', bg: 'bg-emerald/10' },
           { label: 'Saved',   value: saved.size,   icon: <Bookmark size={14} />,    color: 'text-azure',   bg: 'bg-azure/10'   },
-          { label: 'Views',   value: 12,            icon: <TrendingUp size={14} />,  color: 'text-amber',   bg: 'bg-amber/10'   },
+          { label: 'Available', value: filtered.length, icon: <TrendingUp size={14} />, color: 'text-amber', bg: 'bg-amber/10' },
         ].map(s => (
           <div key={s.label} className="card-dark p-3.5 flex items-center gap-3">
             <div className={`w-8 h-8 rounded-xl ${s.bg} ${s.color} flex items-center justify-center flex-shrink-0`}>{s.icon}</div>
@@ -178,8 +173,8 @@ export default function OpportunitiesPage() {
           </button>
           {sortOpen && (
             <div className="absolute right-0 top-10 w-44 card-dark border border-white/10 rounded-xl overflow-hidden z-20" style={{ animation: 'fadeIn 0.15s ease' }}>
-              {[{ id: 'match', label: 'Best AI Match' }, { id: 'deadline', label: 'Earliest Deadline' }].map(o => (
-                <button key={o.id} onClick={() => { setSort(o.id as any); setSortOpen(false); }}
+              {SORT_OPTIONS.map(o => (
+                <button key={o.id} onClick={() => { setSort(o.id); setSortOpen(false); }}
                   className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${sort === o.id ? 'text-azure bg-azure/5' : 'text-muted hover:text-white hover:bg-white/5'}`}>
                   {o.label}
                 </button>
@@ -212,7 +207,7 @@ export default function OpportunitiesPage() {
                     </div>
                     <p className="text-sm text-muted">{featured.club}</p>
                   </div>
-                  <MatchRing pct={featured.aiMatch} />
+                  <MatchRing pct={featured.matchScore} />
                 </div>
                 <p className="text-sm text-slate-300/80 mt-2 leading-relaxed">{featured.description}</p>
                 <div className="flex flex-wrap items-center gap-3 mt-3 text-xs text-muted">
@@ -231,7 +226,12 @@ export default function OpportunitiesPage() {
                     }`}>
                     {applied.has(featured.id) ? <><CheckCircle size={14} /> Applied</> : <>Apply Now <ArrowRight size={14} /></>}
                   </button>
-                  <button onClick={() => setSaved(s => { const n = new Set(s); saved.has(featured.id) ? n.delete(featured.id) : n.add(featured.id); return n; })}
+                  <button onClick={() => setSaved(s => {
+                    const next = new Set(s);
+                    if (next.has(featured.id)) next.delete(featured.id);
+                    else next.add(featured.id);
+                    return next;
+                  })}
                     className={`p-2.5 rounded-xl border transition-all ${saved.has(featured.id) ? 'border-azure/30 text-azure bg-azure/10' : 'border-white/10 text-muted hover:border-white/25 hover:text-white'}`}>
                     {saved.has(featured.id) ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                   </button>
@@ -269,7 +269,7 @@ export default function OpportunitiesPage() {
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ color: meta.color, background: meta.bg }}>
                         {meta.label}
                       </span>
-                      <MatchRing pct={opp.aiMatch} />
+                      <MatchRing pct={opp.matchScore} />
                     </div>
                   </div>
 
@@ -300,7 +300,12 @@ export default function OpportunitiesPage() {
                   }`}>
                   {applied.has(opp.id) ? <><CheckCircle size={13} /> Applied</> : <>Apply Now <ArrowRight size={13} /></>}
                 </button>
-                <button onClick={() => setSaved(s => { const n = new Set(s); saved.has(opp.id) ? n.delete(opp.id) : n.add(opp.id); return n; })}
+                <button onClick={() => setSaved(s => {
+                  const next = new Set(s);
+                  if (next.has(opp.id)) next.delete(opp.id);
+                  else next.add(opp.id);
+                  return next;
+                })}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
                     saved.has(opp.id) ? 'border-azure/30 text-azure bg-azure/5' : 'border-white/10 text-muted hover:text-white hover:border-white/20'
                   }`}>
