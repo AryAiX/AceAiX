@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
@@ -18,6 +18,7 @@ interface ConnectionRow {
 
 const COLORS: Record<string, string> = {
   scout: Colors.primary,
+  club: Colors.primary,
   coach: Colors.success,
   agent: Colors.warning,
   athlete: Colors.accent,
@@ -29,8 +30,14 @@ export default function Network() {
   const [filter, setFilter] = useState('All');
   const [people, setPeople] = useState<ConnectionRow[]>([]);
   const [conns, setConns] = useState(new Set<string>());
-  const filters = ['All', 'Scouts', 'Coaches', 'Agents', 'Athletes'];
-  const typeMap: Record<string, string> = { Scouts: 'scout', Coaches: 'coach', Agents: 'agent', Athletes: 'athlete' };
+  const filters = ['All', 'Scouts', 'Clubs', 'Coaches', 'Agents', 'Athletes'];
+  const typeMap: Record<string, string> = {
+    Scouts: 'scout',
+    Clubs: 'club',
+    Coaches: 'coach',
+    Agents: 'agent',
+    Athletes: 'athlete',
+  };
   const filtered = people.filter(c => filter === 'All' || c.type === typeMap[filter]);
 
   useEffect(() => {
@@ -39,16 +46,20 @@ export default function Network() {
     Promise.all([
       supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
-    ]).then(([profilesResult, followsResult]) => {
+      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+    ]).then(([profilesResult, followsResult, blocksResult]) => {
       if (!mounted) return;
-      setPeople((profilesResult.data ?? []).map((row: any) => ({
+      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+      setPeople((profilesResult.data ?? [])
+        .filter((row: any) => !blockedIds.has(row.id))
+        .map((row: any) => ({
         id: row.id,
         name: row.full_name ?? 'AceAiX member',
         role: String(row.role ?? 'athlete').replace('_', ' '),
         org: [row.city, row.country].filter(Boolean).join(', ') || 'AceAiX',
-        type: row.role === 'club' ? 'coach' : row.role ?? 'athlete',
+        type: row.role === 'org_admin' ? 'agent' : row.role ?? 'athlete',
         verified: row.is_verified ?? false,
-      })));
+        })));
       setConns(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     });
     return () => { mounted = false; };
@@ -56,10 +67,15 @@ export default function Network() {
 
   async function toggleConnection(id: string, connected: boolean) {
     if (!user) return;
+    let error: { message: string } | null = null;
     if (connected) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id);
+      ({ error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id));
     } else {
-      await supabase.from('follows').upsert({ follower_id: user.id, following_id: id });
+      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: id }));
+    }
+    if (error) {
+      Alert.alert('Connection not updated', error.message);
+      return;
     }
     setConns(prev => {
       const next = new Set(prev);
@@ -73,7 +89,7 @@ export default function Network() {
       <AppHeader title="Network" />
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.statsRow}>
-          {[{ label: 'Connections', value: String(conns.size) }, { label: 'Scouts', value: String(people.filter(p => p.type === 'scout').length) }, { label: 'Clubs', value: String(people.filter(p => p.type === 'coach').length) }].map((st, i) => (
+          {[{ label: 'Connections', value: String(conns.size) }, { label: 'Scouts', value: String(people.filter(p => p.type === 'scout').length) }, { label: 'Clubs', value: String(people.filter(p => p.type === 'club').length) }].map((st, i) => (
             <View key={st.label} style={[s.stat, i < 2 && s.statBorder]}>
               <Text style={s.statVal}>{st.value}</Text>
               <Text style={s.statLbl}>{st.label}</Text>
@@ -111,8 +127,13 @@ export default function Network() {
                 </View>
                 <View style={s.actions}>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Message ${c.name}`}
                     style={s.msgBtn}
-                    onPress={() => router.push('/(tabs)/messages' as any)}
+                    onPress={() => router.push({
+                      pathname: '/(tabs)/messages',
+                      params: { memberId: c.id },
+                    } as any)}
                   >
                     <MessageSquare color={Colors.primary} size={16} />
                   </TouchableOpacity>

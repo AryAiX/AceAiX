@@ -64,11 +64,57 @@ export function extractVariants(stats: ChessStats): ChessVariant[] {
 export async function fetchChessStats(athlete_id: string): Promise<ChessStats | null> {
   const { data, error } = await supabase
     .from('chess_stats')
-    .select('*')
+    .select('athlete_id,stats,source,last_synced_at')
     .eq('athlete_id', athlete_id)
     .maybeSingle();
   if (error || !data) return null;
-  return data as ChessStats;
+
+  const stats = (data.stats ?? {}) as Record<string, unknown>;
+  const numberValue = (key: string): number => {
+    const value = stats[key];
+    return typeof value === 'number' ? value : Number(value ?? 0) || 0;
+  };
+  const nullableNumber = (key: string): number | null => {
+    const value = stats[key];
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  return {
+    id: data.athlete_id,
+    athlete_id: data.athlete_id,
+    rapid_current: nullableNumber('rapid_current'),
+    rapid_peak: nullableNumber('rapid_peak'),
+    rapid_wins: numberValue('rapid_wins'),
+    rapid_losses: numberValue('rapid_losses'),
+    rapid_draws: numberValue('rapid_draws'),
+    blitz_current: nullableNumber('blitz_current'),
+    blitz_peak: nullableNumber('blitz_peak'),
+    blitz_wins: numberValue('blitz_wins'),
+    blitz_losses: numberValue('blitz_losses'),
+    blitz_draws: numberValue('blitz_draws'),
+    bullet_current: nullableNumber('bullet_current'),
+    bullet_peak: nullableNumber('bullet_peak'),
+    bullet_wins: numberValue('bullet_wins'),
+    bullet_losses: numberValue('bullet_losses'),
+    bullet_draws: numberValue('bullet_draws'),
+    classical_current: nullableNumber('classical_current'),
+    classical_peak: nullableNumber('classical_peak'),
+    classical_wins: numberValue('classical_wins'),
+    classical_losses: numberValue('classical_losses'),
+    classical_draws: numberValue('classical_draws'),
+    fide_rating: nullableNumber('fide_rating'),
+    title: typeof stats.title === 'string' ? stats.title : null,
+    rating_history: typeof stats.rating_history === 'object' && stats.rating_history !== null
+      ? stats.rating_history as ChessStats['rating_history']
+      : {},
+    recent_games: Array.isArray(stats.recent_games)
+      ? stats.recent_games as RecentGame[]
+      : [],
+    source: data.source,
+    last_synced_at: data.last_synced_at,
+  };
 }
 
 export async function triggerChessSyncFull(

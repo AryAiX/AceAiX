@@ -96,6 +96,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             <View style={s.field}>
               <Text style={s.label}>Title *</Text>
               <TextInput
+                accessibilityLabel="Event title"
                 style={s.input}
                 value={title}
                 onChangeText={setTitle}
@@ -131,6 +132,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
                 <View style={s.iconInput}>
                   <Calendar color={Colors.textMuted} size={14} />
                   <TextInput
+                    accessibilityLabel="Event date"
                     style={s.iconInputText}
                     value={date}
                     onChangeText={setDate}
@@ -144,6 +146,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
                 <View style={s.iconInput}>
                   <Clock color={Colors.textMuted} size={14} />
                   <TextInput
+                    accessibilityLabel="Event time"
                     style={s.iconInputText}
                     value={time}
                     onChangeText={setTime}
@@ -159,6 +162,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
               <View style={s.iconInput}>
                 <MapPin color={Colors.textMuted} size={14} />
                 <TextInput
+                  accessibilityLabel="Event location"
                   style={s.iconInputText}
                   value={location}
                   onChangeText={setLocation}
@@ -171,6 +175,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             <View style={s.field}>
               <Text style={s.label}>Description</Text>
               <TextInput
+                accessibilityLabel="Event description"
                 style={[s.input, s.multiline]}
                 value={description}
                 onChangeText={setDescription}
@@ -203,6 +208,8 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
               <Text style={s.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Create event"
               style={[s.createBtn, loading && { opacity: 0.7 }]}
               onPress={handleCreate}
               activeOpacity={0.8}

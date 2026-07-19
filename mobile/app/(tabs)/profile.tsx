@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
+  Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
   Animated, AccessibilityInfo, Image, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,18 +21,33 @@ import { triggerFootballSync } from '@/lib/footballService';
 import { ChessPerformanceCard } from '@/components/performance/ChessPerformanceCard';
 import { FootballStatsCard } from '@/components/performance/FootballStatsCard';
 import { useRouter } from 'expo-router';
+import { fetchMyPosts } from '@/lib/postsService';
+import { supabase } from '@/lib/supabase';
 
 const { width: SW } = Dimensions.get('window');
 
-const VERIFICATION_TILES: Array<{ icon: any; label: string; source: string; status: string; color: string }> = [];
-const ATTRIBUTES: Array<{ label: string; value: number; endorsements: number }> = [];
-const STAT_TILES: Array<{ label: string; value: string; unit: string }> = [];
-const LANGUAGES: Array<{ lang: string; proficiency: string; pct: number }> = [];
-const HIGHLIGHTS: Array<{ id: string; title: string; duration: string; tags: string[]; views: string; featured: boolean }> = [];
 const SIMILAR_ATHLETES: Array<{ name: string; pos: string; club: string; score: number }> = [];
-const CAREER_TIMELINE: Array<{ club: string; role: string; period: string; caps: number; goals: number; current: boolean }> = [];
 const NETWORK_LIST: Array<{ name: string; role: string; org: string; type: string; connected: boolean }> = [];
 const SEASON_STATS: Array<{ label: string; value: string; sub: string }> = [];
+
+interface ProfileHighlight {
+  id: string;
+  title: string;
+  duration: string;
+  tags: string[];
+  views: string;
+  featured: boolean;
+  imageUrl?: string;
+}
+
+interface CareerEntry {
+  club: string;
+  role: string;
+  period: string;
+  caps: number;
+  goals: number;
+  current: boolean;
+}
 
 const TABS = ['Overview', 'Performance', 'Career', 'Network'];
 
@@ -153,7 +168,7 @@ function AnimRadar({ data, labels, size = 180, reduced }: { data: number[]; labe
         const ly = cy + (maxR + 14) * Math.sin(angles[i]);
         return (
           <View key={lbl} style={{ position: 'absolute', left: lx - 24, top: ly - 9, width: 48, alignItems: 'center' }}>
-            <Text style={{ fontFamily: Typography.family.mono, fontSize: 9, color: attrColor(ATTRIBUTES[i]?.value ?? 50), letterSpacing: 0.3 }}>
+            <Text style={{ fontFamily: Typography.family.mono, fontSize: 9, color: attrColor(data[i] ?? 50), letterSpacing: 0.3 }}>
               {lbl}
             </Text>
           </View>
@@ -259,7 +274,7 @@ function LangBar({ lang, proficiency, pct, reduced, delay }: {
 
 // ── Timeline entry (animated stagger) ─────────────────────────────────────────
 function TimelineEntry({ club, isLast, delay, reduced }: {
-  club: typeof CAREER_TIMELINE[0]; isLast: boolean; delay: number; reduced: boolean;
+  club: CareerEntry; isLast: boolean; delay: number; reduced: boolean;
 }) {
   const entryAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim  = useRef(new Animated.Value(20)).current;
@@ -338,15 +353,22 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 // ── Video clip card ────────────────────────────────────────────────────────────
-function ClipCard({ clip, wide }: { clip: typeof HIGHLIGHTS[0]; wide?: boolean }) {
+function ClipCard({ clip, wide }: { clip: ProfileHighlight; wide?: boolean }) {
   return (
     <View style={[s.clipCard, wide && { width: SW - 32 }]}>
       <View style={s.clipThumb}>
-        <Image
-          source={{ uri: 'https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=400' }}
-          style={StyleSheet.absoluteFillObject}
-          resizeMode="cover"
-        />
+        {clip.imageUrl ? (
+          <Image
+            source={{ uri: clip.imageUrl }}
+            style={StyleSheet.absoluteFillObject}
+            resizeMode="cover"
+          />
+        ) : (
+          <LinearGradient
+            colors={[Colors.elevated, `${Colors.primary}50`]}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
         <LinearGradient colors={['transparent', 'rgba(0,0,0,0.75)']} style={StyleSheet.absoluteFillObject} />
         {clip.featured && (
           <View style={s.featuredBadge}>
@@ -448,12 +470,79 @@ function StatTile({ label, value, unit, delay, reduced }: {
 function OverviewTab({ profile, reduced, isOwn, router }: any) {
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
+  const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
+  const [matchCount, setMatchCount] = useState(0);
   const scoutPulse = useRef(new Animated.Value(1)).current;
   const scoutGlow  = useRef(new Animated.Value(0.5)).current;
   const bio = profile?.bio || 'No athlete bio has been added yet.';
   const performanceScore = Math.round(profile?.performance_score ?? 0);
   const visibilityScore = Math.round(profile?.visibility_score ?? 0);
   const fitnessScore = Math.round(profile?.fitness_score ?? 0);
+  const verificationTiles = profile?.is_verified ? [{
+    icon: Shield,
+    label: 'Identity and athlete profile',
+    source: 'Verified by AceAiX',
+    color: Colors.success,
+  }] : [];
+  const attributes = Object.entries(profile?.attributes ?? {})
+    .filter(([, value]) => typeof value === 'number')
+    .slice(0, 6)
+    .map(([label, value]) => ({
+      label: label.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      value: Math.max(0, Math.min(100, Number(value))),
+      endorsements: 0,
+    }));
+  const statTiles = Object.entries(profile?.highlighted_stats ?? {})
+    .filter(([, value]) => typeof value === 'number')
+    .slice(0, 6)
+    .map(([label, value]) => ({
+      label: label.replace(/_/g, ' ').toUpperCase(),
+      value: String(value),
+      unit: '',
+    }));
+  const languageLevels: Record<string, number> = {
+    native: 1,
+    fluent: 0.9,
+    professional: 0.8,
+    conversational: 0.65,
+    basic: 0.4,
+  };
+  const languages: { lang: string; proficiency: string; pct: number }[] = (profile?.languages ?? []).map((language: { language: string; proficiency: string }) => ({
+    lang: language.language,
+    proficiency: language.proficiency,
+    pct: languageLevels[language.proficiency.toLowerCase()] ?? 0.6,
+  }));
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let mounted = true;
+    Promise.all([
+      fetchMyPosts(profile.id),
+      supabase
+        .from('opportunity_matches')
+        .select('opportunity_id', { count: 'exact', head: true })
+        .eq('athlete_id', profile.id),
+    ]).then(([posts, matches]) => {
+      if (!mounted) return;
+      setHighlights(posts
+        .filter((post) => post.media.length > 0)
+        .slice(0, 5)
+        .map((post) => ({
+          id: post.id,
+          title: post.caption ?? 'Athlete highlight',
+          duration: post.media[0]?.type === 'video' ? 'VIDEO' : 'PHOTO',
+          tags: post.tags
+            .map((tag) => typeof tag === 'string' ? tag : tag.value)
+            .filter(Boolean)
+            .slice(0, 3),
+          views: String(post.view_count),
+          featured: post.is_featured,
+          imageUrl: post.media[0]?.signed_url,
+        })));
+      setMatchCount(matches.count ?? 0);
+    });
+    return () => { mounted = false; };
+  }, [profile?.id]);
 
   useEffect(() => {
     if (reduced) return;
@@ -473,7 +562,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
 
   return (
     <>
-      {/* AI Scout Live Pulse */}
+      {/* Opportunity match pulse */}
       <View style={s.scoutCard}>
         <LinearGradient
           colors={[`${Colors.accent}18`, `${Colors.accent}06`]}
@@ -490,15 +579,17 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
           </View>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-              <Text style={s.scoutTitle}>AI Scout Match</Text>
+              <Text style={s.scoutTitle}>Opportunity Match</Text>
               <View style={s.livePill}>
                 <View style={s.liveDot} />
                 <Text style={s.liveTxt}>LIVE</Text>
               </View>
             </View>
             <Text style={s.scoutBody}>
-              <Text style={{ color: Colors.accent, fontFamily: Typography.family.bold }}>0 scouts</Text>
-              {' '}are currently watching a player matching this profile.
+              <Text style={{ color: Colors.accent, fontFamily: Typography.family.bold }}>
+                {matchCount} opportunity {matchCount === 1 ? 'match' : 'matches'}
+              </Text>
+              {' '}currently fit this profile.
             </Text>
           </View>
         </View>
@@ -518,9 +609,12 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       <View style={s.card}>
         <SH title="AceAiX Verified Athlete" color={Colors.success} />
         <View style={{ gap: Spacing.sm }}>
-          {VERIFICATION_TILES.map(({ icon: Icon, label, source, color }, i) => (
+          {verificationTiles.map(({ icon: Icon, label, source, color }, i) => (
             <VerifyRow key={label} icon={Icon} label={label} source={source} color={color} delay={i * 100} reduced={reduced} />
           ))}
+          {verificationTiles.length === 0 && (
+            <Text style={s.emptyText}>Identity verification has not been completed yet.</Text>
+          )}
         </View>
       </View>
 
@@ -547,7 +641,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
           </View>
         </HudFrame>
         <View style={s.statTilesGrid}>
-          {STAT_TILES.map(({ label, value, unit }, i) => (
+          {statTiles.map(({ label, value, unit }, i) => (
             <StatTile key={label} label={label} value={value} unit={unit} delay={200 + i * 80} reduced={reduced} />
           ))}
         </View>
@@ -583,12 +677,12 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
           )}
         </View>
         {highlightTab === 'Highlights' ? (
-          HIGHLIGHTS.length > 0 ? (
+          highlights.length > 0 ? (
             <>
-              <ClipCard clip={HIGHLIGHTS[0]} wide />
+              <ClipCard clip={highlights[0]} wide />
               <Text style={s.allClipsTxt}>ALL CLIPS</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -Spacing.lg, paddingHorizontal: Spacing.lg }}>
-                {HIGHLIGHTS.slice(1).map(clip => <ClipCard key={clip.id} clip={clip} />)}
+                {highlights.slice(1).map(clip => <ClipCard key={clip.id} clip={clip} />)}
               </ScrollView>
             </>
           ) : (
@@ -598,24 +692,41 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
             </View>
           )
         ) : (
-          <View style={s.activityEmpty}>
-            <Activity color={Colors.textDisabled} size={24} />
-            <Text style={s.activityEmptyTxt}>No recent activity to show.</Text>
-          </View>
+          highlights.length > 0 ? (
+            <View style={{ gap: Spacing.sm }}>
+              {highlights.slice(0, 3).map((highlight) => (
+                <View key={highlight.id} style={s.activityRow}>
+                  <Activity color={Colors.primary} size={16} />
+                  <Text style={[s.activityEmptyTxt, { flex: 1 }]} numberOfLines={2}>
+                    {highlight.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={s.activityEmpty}>
+              <Activity color={Colors.textDisabled} size={24} />
+              <Text style={s.activityEmptyTxt}>No recent activity to show.</Text>
+            </View>
+          )
         )}
       </View>
 
       {/* Attributes */}
       <View style={s.card}>
         <SH title="Attributes & Skills" color={Colors.accent} />
-        <Text style={s.aiTagTxt}>AI-calculated · {profile?.sport ?? 'Sport'} · Current season</Text>
+        <Text style={s.aiTagTxt}>Profile attributes · {profile?.sport ?? 'Sport'} · Current season</Text>
         <View style={{ alignItems: 'center', marginBottom: Spacing.md }}>
           <HudFrame color={Colors.accent}>
-            <AnimRadar data={ATTRIBUTES.map(a => a.value)} labels={ATTRIBUTES.map(a => a.label)} size={180} reduced={reduced} />
+            {attributes.length > 0 ? (
+              <AnimRadar data={attributes.map(a => a.value)} labels={attributes.map(a => a.label)} size={180} reduced={reduced} />
+            ) : (
+              <Text style={s.emptyText}>Add performance attributes to display the skills chart.</Text>
+            )}
           </HudFrame>
         </View>
         <View style={{ gap: 12 }}>
-          {ATTRIBUTES.map((attr, i) => (
+          {attributes.map((attr, i) => (
             <AttrBar key={attr.label} label={attr.label} value={attr.value} endorsements={attr.endorsements} isOwn={isOwn} reduced={reduced} delay={i * 90} />
           ))}
         </View>
@@ -625,17 +736,19 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       <View style={s.card}>
         <SH title="Languages" color={Colors.warning} />
         <View style={{ gap: 14 }}>
-          {LANGUAGES.map(({ lang, proficiency, pct }, i) => (
+          {languages.map(({ lang, proficiency, pct }, i) => (
             <LangBar key={lang} lang={lang} proficiency={proficiency} pct={pct} reduced={reduced} delay={i * 120} />
           ))}
+          {languages.length === 0 && <Text style={s.emptyText}>No languages have been added yet.</Text>}
         </View>
       </View>
 
       {/* People Also Viewed */}
-      <View style={s.card}>
-        <SH title="People Also Viewed" color={Colors.primary} />
-        <View style={{ gap: Spacing.sm }}>
-          {SIMILAR_ATHLETES.map((a, i) => (
+      {SIMILAR_ATHLETES.length > 0 && (
+        <View style={s.card}>
+          <SH title="People Also Viewed" color={Colors.primary} />
+          <View style={{ gap: Spacing.sm }}>
+            {SIMILAR_ATHLETES.map((a, i) => (
             <View key={a.name} style={[s.similarRow, i < SIMILAR_ATHLETES.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryGlow]}
@@ -656,9 +769,10 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
                 <Plus color={Colors.primary} size={14} />
               </TouchableOpacity>
             </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      )}
     </>
   );
 }
@@ -817,18 +931,26 @@ function AnalyticsCard({ router }: { router: any }) {
 }
 
 // ── Career Tab ─────────────────────────────────────────────────────────────────
-function CareerTab({ router, reduced }: { router: any; reduced: boolean }) {
+function CareerTab({ router, reduced, profile }: { router: any; reduced: boolean; profile: any }) {
   const MILESTONES: Array<{ label: string; date: string; icon: any; color: string }> = [];
+  const careerTimeline: CareerEntry[] = profile?.current_club ? [{
+    club: profile.current_club,
+    role: profile.position ?? 'Athlete',
+    period: 'Current',
+    caps: Number(profile.highlighted_stats?.appearances ?? 0),
+    goals: Number(profile.highlighted_stats?.goals ?? 0),
+    current: true,
+  }] : [];
 
   return (
     <>
       <View style={s.card}>
         <SH title="Club History" color={Colors.warning} action="Full Career" onAction={() => router.push('/(tabs)/career' as any)} />
         <View>
-          {CAREER_TIMELINE.map((club, i) => (
-            <TimelineEntry key={club.club} club={club} isLast={i === CAREER_TIMELINE.length - 1} delay={i * 120} reduced={reduced} />
+          {careerTimeline.map((club, i) => (
+            <TimelineEntry key={club.club} club={club} isLast={i === careerTimeline.length - 1} delay={i * 120} reduced={reduced} />
           ))}
-          {CAREER_TIMELINE.length === 0 && <Text style={s.emptyText}>No club history has been added yet.</Text>}
+          {careerTimeline.length === 0 && <Text style={s.emptyText}>No club history has been added yet.</Text>}
         </View>
       </View>
       <View style={s.card}>
@@ -858,10 +980,20 @@ function CareerTab({ router, reduced }: { router: any; reduced: boolean }) {
 }
 
 // ── Network Tab ────────────────────────────────────────────────────────────────
-function NetworkTab({ router, reduced }: { router: any; reduced: boolean }) {
-  const followers   = useCountUp(0, 1000, 100);
-  const connections = useCountUp(0, 900, 200);
-  const scoutViews  = useCountUp(0, 1100, 300);
+function NetworkTab({ router, reduced, profile }: { router: any; reduced: boolean; profile: any }) {
+  const [scoutViewTarget, setScoutViewTarget] = useState(0);
+  const followers   = useCountUp(profile?.followers_count ?? 0, 1000, 100);
+  const connections = useCountUp(profile?.connections_count ?? 0, 900, 200);
+  const scoutViews  = useCountUp(scoutViewTarget, 1100, 300);
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id) return;
+    supabase
+      .from('profile_views')
+      .select('id', { count: 'exact', head: true })
+      .eq('athlete_id', profile.athlete_profile_id)
+      .then(({ count }) => setScoutViewTarget(count ?? 0));
+  }, [profile?.athlete_profile_id]);
 
   return (
     <>
@@ -896,7 +1028,7 @@ function NetworkTab({ router, reduced }: { router: any; reduced: boolean }) {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text style={s.networkName}>{person.name}</Text>
-                  {person.connected && <BadgeCheck color={col} size={12} />}
+                  {person.connected && <UserCheck color={col} size={12} />}
                 </View>
                 <Text style={s.networkRole}>{person.role} · {person.org}</Text>
               </View>
@@ -918,11 +1050,12 @@ export default function Profile() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Overview');
   const [reduced, setReduced] = useState(false);
+  const [medicallyCleared, setMedicallyCleared] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const tabOffsetY = useRef(0);
   const [sticky, setSticky] = useState(false);
   const isOwn = true;
-  const aiScore = Math.round(profile?.performance_score ?? 0);
+  const performanceScore = Math.round(profile?.performance_score ?? 0);
 
   // Hero animations
   const scanLine   = useRef(new Animated.Value(0)).current;
@@ -935,12 +1068,32 @@ export default function Profile() {
   const indicatorX = useRef(new Animated.Value(0)).current;
 
   // Followers / connections counters
-  const followers   = useCountUp(0, 1100, 600);
-  const connections = useCountUp(0, 1000, 700);
+  const followers   = useCountUp(profile?.followers_count ?? 0, 1100, 600);
+  const connections = useCountUp(profile?.connections_count ?? 0, 1000, 700);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
   }, []);
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id) {
+      setMedicallyCleared(false);
+      return;
+    }
+    supabase
+      .from('medical_clearances')
+      .select('status,effective_to')
+      .eq('athlete_id', profile.athlete_profile_id)
+      .eq('status', 'cleared')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        const valid = !data?.effective_to
+          || new Date(data.effective_to).getTime() >= new Date().setHours(0, 0, 0, 0);
+        setMedicallyCleared(Boolean(data && valid));
+      });
+  }, [profile?.athlete_profile_id]);
 
   useEffect(() => {
     if (reduced) { heroFade.setValue(1); scoreScale.setValue(1); scoreRing.setValue(1); return; }
@@ -1013,20 +1166,17 @@ export default function Profile() {
       >
         {/* ── Hero Cover ── */}
         <View style={s.coverWrap}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/1884574/pexels-photo-1884574.jpeg?auto=compress&cs=tinysrgb&w=800' }}
-            style={s.coverImg}
-            resizeMode="cover"
-          />
           <LinearGradient
-            colors={['rgba(10,14,20,0)', 'rgba(10,14,20,0.3)', 'rgba(10,14,20,0.92)']}
+            colors={[`${Colors.primary}A0`, `${Colors.accent}30`, Colors.bg]}
             style={StyleSheet.absoluteFillObject}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           />
           {/* Scan line */}
           {!reduced && (
             <Animated.View style={[s.scanLine, { transform: [{ translateY: scanTranslate }] }]} />
           )}
-          {/* AI Score badge */}
+          {/* Performance score badge */}
           <Animated.View style={[s.aiScoreBadge, { opacity: heroFade, transform: [{ scale: scoreScale }] }]}>
             <Animated.View style={[s.scoreRingOuter, { transform: [{ rotate: ringRotate }] }]}>
               {[0, 60, 120, 180, 240, 300].map(deg => (
@@ -1034,12 +1184,12 @@ export default function Profile() {
               ))}
             </Animated.View>
             <View style={s.aiScoreInner}>
-              <Text style={s.aiScoreNum}>{aiScore}</Text>
-              <Text style={s.aiScoreLbl}>AI SCORE</Text>
-              {aiScore > 0 && (
+              <Text style={s.aiScoreNum}>{performanceScore}</Text>
+              <Text style={s.aiScoreLbl}>PERFORMANCE</Text>
+              {performanceScore > 0 && (
                 <View style={s.elitePill}>
                   <Zap color={Colors.bg} size={8} fill={Colors.bg} />
-                  <Text style={s.eliteTxt}>{aiScore >= 85 ? 'ELITE' : 'LIVE'}</Text>
+                  <Text style={s.eliteTxt}>{performanceScore >= 85 ? 'HIGH' : 'ACTIVE'}</Text>
                 </View>
               )}
             </View>
@@ -1084,20 +1234,22 @@ export default function Profile() {
               </LinearGradient>
             </View>
             <View style={{ flex: 1 }}>
-              <View style={s.availPill}>
-                <View style={s.availDot} />
-                <Text style={s.availTxt}>Open to Trials</Text>
-              </View>
+              {profile.is_open_to_offers && (
+                <View style={s.availPill}>
+                  <View style={s.availDot} />
+                  <Text style={s.availTxt}>Open to Opportunities</Text>
+                </View>
+              )}
             </View>
           </View>
 
           {/* Name + badge */}
           <View style={s.nameRow}>
             <Text style={s.heroName} numberOfLines={1}>{profile?.full_name ?? 'Athlete Name'}</Text>
-            <BadgeCheck color={Colors.primary} size={20} />
+            {profile.is_verified && <BadgeCheck color={Colors.primary} size={20} />}
           </View>
           <Text style={s.heroPos}>
-            {[profile?.position, profile?.sport].filter(Boolean).join(' · ') || 'Striker · Football'}
+            {[profile?.position, profile?.sport].filter(Boolean).join(' · ') || 'Sport profile not completed'}
           </Text>
 
           {/* Meta row */}
@@ -1120,10 +1272,12 @@ export default function Profile() {
                 <Text style={s.metaTxt}>{profile.nationality}</Text>
               </View>
             )}
-            <View style={s.clearedPill}>
-              <BadgeCheck color={Colors.success} size={10} />
-              <Text style={s.clearedTxt}>Cleared</Text>
-            </View>
+            {medicallyCleared && (
+              <View style={s.clearedPill}>
+                <BadgeCheck color={Colors.success} size={10} />
+                <Text style={s.clearedTxt}>Medically Cleared</Text>
+              </View>
+            )}
           </View>
 
           {/* Counts */}
@@ -1154,7 +1308,7 @@ export default function Profile() {
                 <TouchableOpacity style={s.dashBtn} onPress={() => router.push('/(tabs)/' as any)}>
                   <Text style={s.dashBtnTxt}>Dashboard</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.editBtn} onPress={() => router.push('/(tabs)/settings' as any)}>
+                <TouchableOpacity style={s.editBtn} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
                   <Edit3 color={Colors.primary} size={12} />
                   <Text style={s.editBtnTxt}>Edit Profile</Text>
                 </TouchableOpacity>
@@ -1164,7 +1318,15 @@ export default function Profile() {
 
           {/* Actions */}
           <View style={s.actionsRow}>
-            <TouchableOpacity style={s.endorseAction}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="About profile endorsements"
+              style={s.endorseAction}
+              onPress={() => Alert.alert(
+                'Your public profile',
+                'Other AceAiX members can endorse your skills when they view this profile.',
+              )}
+            >
               <LinearGradient
                 colors={[Colors.accent, '#A8D430']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -1210,8 +1372,8 @@ export default function Profile() {
         <View style={s.tabContent}>
           {activeTab === 'Overview'    && <OverviewTab profile={profile} reduced={reduced} isOwn={isOwn} router={router} />}
           {activeTab === 'Performance' && <PerformanceTab router={router} sport={profile?.sport ?? null} userId={profile?.id} profile={profile} />}
-          {activeTab === 'Career'      && <CareerTab router={router} reduced={reduced} />}
-          {activeTab === 'Network'     && <NetworkTab router={router} reduced={reduced} />}
+          {activeTab === 'Career'      && <CareerTab router={router} reduced={reduced} profile={profile} />}
+          {activeTab === 'Network'     && <NetworkTab router={router} reduced={reduced} profile={profile} />}
         </View>
 
         <View style={{ height: 40 }} />
@@ -1236,10 +1398,9 @@ const s = StyleSheet.create({
 
   // Cover
   coverWrap: { height: 240, position: 'relative', overflow: 'hidden' },
-  coverImg:  { width: '100%', height: '100%' },
   scanLine:  { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: `${Colors.primary}30` },
 
-  // AI Score badge
+  // Performance score badge
   aiScoreBadge:   { position: 'absolute', top: 18, right: 16, alignItems: 'center', justifyContent: 'center', width: 90, height: 90 },
   scoreRingOuter: { position: 'absolute', width: 90, height: 90, alignItems: 'center', justifyContent: 'center' },
   scoreRingDash:  { position: 'absolute', width: 3, height: 3, borderRadius: 1.5, backgroundColor: Colors.accent, opacity: 0.7 },
@@ -1365,6 +1526,7 @@ const s = StyleSheet.create({
   allClipsTxt:    { fontFamily: Typography.family.mono, fontSize: 10, color: Colors.textDisabled, letterSpacing: 1.2, marginVertical: Spacing.sm },
   activityEmpty:  { alignItems: 'center', paddingVertical: Spacing.xxxl, gap: Spacing.md },
   activityEmptyTxt: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textDisabled },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderRadius: Radii.md, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border, padding: Spacing.md },
 
   // Clip card
   clipCard:     { width: 162, marginRight: Spacing.md, backgroundColor: Colors.elevated, borderRadius: Radii.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },

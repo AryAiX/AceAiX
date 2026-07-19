@@ -33,6 +33,7 @@ export interface FeedPost {
   // joined
   author_name: string | null;
   author_avatar: string | null;
+  author_verified: boolean;
   author_sport: string | null;
   author_position: string | null;
   // current user state
@@ -60,6 +61,7 @@ async function signMediaUrls(media: PostMedia[]): Promise<PostMedia[]> {
   return Promise.all(
     media.map(async (m) => {
       if (m.signed_url) return m;
+      if (/^https?:\/\//i.test(m.url)) return { ...m, signed_url: m.url };
       try {
         const { data } = await supabase.storage.from('posts').createSignedUrl(m.url, 3600);
         return { ...m, signed_url: data?.signedUrl };
@@ -94,6 +96,7 @@ function mapRow(row: any, likedIds: Set<string>, savedIds: Set<string>): FeedPos
     created_at: row.created_at,
     author_name: author?.full_name ?? null,
     author_avatar: author?.avatar_url ?? null,
+    author_verified: author?.is_verified ?? false,
     author_sport: athlete?.sport ?? null,
     author_position: athlete?.position_primary ?? athlete?.position ?? null,
     liked: likedIds.has(row.id),
@@ -106,21 +109,38 @@ function mapRow(row: any, likedIds: Set<string>, savedIds: Set<string>): FeedPos
 export async function fetchFeedPosts(
   currentUserId: string,
   cursor?: string,
-  limit = 20
+  limit = 20,
+  followingOnly = false,
 ): Promise<FeedPost[]> {
+  let authorIds: string[] | null = null;
+  if (followingOnly) {
+    const { data: follows, error: followsError } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', currentUserId);
+    if (followsError) return [];
+    authorIds = [currentUserId, ...(follows ?? []).map((follow) => follow.following_id)];
+  }
+
   let query = supabase
     .from('posts')
-    .select('*, author:user_profiles(full_name, avatar_url), athlete:athlete_profiles(sport, position, position_primary)')
+    .select('*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), athlete:athlete_profiles(sport, position, position_primary)')
     .in('type', ['post', 'standard'])
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (cursor) query = query.lt('created_at', cursor);
+  if (authorIds) query = query.in('author_id', authorIds);
 
-  const { data, error } = await query;
+  const [{ data, error }, { data: blocks }] = await Promise.all([
+    query,
+    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+  ]);
   if (error || !data) return [];
 
-  const ids = data.map((r: any) => r.id);
+  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
+  const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
     ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
@@ -129,7 +149,7 @@ export async function fetchFeedPosts(
   const likedIds = new Set((likes ?? []).map((l: any) => l.post_id));
   const savedIds = new Set((saves ?? []).map((s: any) => s.post_id));
 
-  const posts = data.map((r: any) => mapRow(r, likedIds, savedIds));
+  const posts = visibleData.map((r: any) => mapRow(r, likedIds, savedIds));
 
   // Sign media URLs
   return Promise.all(
@@ -144,17 +164,22 @@ export async function fetchReels(
 ): Promise<FeedPost[]> {
   let query = supabase
     .from('posts')
-    .select('*, author:user_profiles(full_name, avatar_url), athlete:athlete_profiles(sport, position, position_primary)')
+    .select('*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), athlete:athlete_profiles(sport, position, position_primary)')
     .eq('type', 'reel')
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (cursor) query = query.lt('created_at', cursor);
 
-  const { data, error } = await query;
+  const [{ data, error }, { data: blocks }] = await Promise.all([
+    query,
+    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+  ]);
   if (error || !data) return [];
 
-  const ids = data.map((r: any) => r.id);
+  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
+  const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
     ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
@@ -163,7 +188,7 @@ export async function fetchReels(
   const likedIds = new Set((likes ?? []).map((l: any) => l.post_id));
   const savedIds = new Set((saves ?? []).map((s: any) => s.post_id));
 
-  const posts = data.map((r: any) => mapRow(r, likedIds, savedIds));
+  const posts = visibleData.map((r: any) => mapRow(r, likedIds, savedIds));
   return Promise.all(
     posts.map(async (p) => ({ ...p, media: await signMediaUrls(p.media) }))
   );
@@ -175,7 +200,7 @@ export async function fetchMyPosts(
 ): Promise<FeedPost[]> {
   let query = supabase
     .from('posts')
-    .select('*, author:user_profiles(full_name, avatar_url), athlete:athlete_profiles(sport, position, position_primary)')
+    .select('*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), athlete:athlete_profiles(sport, position, position_primary)')
     .eq('author_id', authorId)
     .order('created_at', { ascending: false });
 
@@ -247,8 +272,41 @@ export async function createPost(params: {
   return { id: data.id, error: null };
 }
 
-export async function deletePost(postId: string): Promise<void> {
-  await supabase.from('posts').delete().eq('id', postId);
+export async function deletePost(postId: string): Promise<{ error: string | null }> {
+  const { data: post, error: fetchError } = await supabase
+    .from('posts')
+    .select('media')
+    .eq('id', postId)
+    .single();
+  if (fetchError) return { error: fetchError.message };
+
+  const mediaPaths = ((post?.media ?? []) as Array<{ path?: string; url?: string }>)
+    .map((item) => item.path ?? item.url)
+    .filter((path): path is string => Boolean(path && !path.startsWith('http')));
+  if (mediaPaths.length > 0) {
+    const { error: mediaError } = await supabase.storage.from('posts').remove(mediaPaths);
+    if (mediaError) return { error: mediaError.message };
+  }
+
+  const { error } = await supabase.from('posts').delete().eq('id', postId);
+  return { error: error?.message ?? null };
+}
+
+export async function updatePostCaption(
+  postId: string,
+  authorId: string,
+  caption: string,
+): Promise<{ error: string | null }> {
+  const normalized = caption.trim();
+  const { error } = await supabase
+    .from('posts')
+    .update({
+      caption: normalized || null,
+      text: normalized || null,
+    })
+    .eq('id', postId)
+    .eq('author_id', authorId);
+  return { error: error?.message ?? null };
 }
 
 export async function toggleLike(
@@ -296,7 +354,7 @@ export async function toggleFeatureReel(postId: string, featured: boolean): Prom
 export async function fetchComments(postId: string, currentUserId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from('post_comments')
-    .select('*, author:user_profiles(full_name, avatar_url)')
+    .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
     .eq('post_id', postId)
     .is('parent_id', null)
     .order('created_at', { ascending: true });
@@ -307,7 +365,7 @@ export async function fetchComments(postId: string, currentUserId: string): Prom
   const { data: replies } = commentIds.length
     ? await supabase
         .from('post_comments')
-        .select('*, author:user_profiles(full_name, avatar_url)')
+        .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
         .in('parent_id', commentIds)
         .order('created_at', { ascending: true })
     : { data: [] };
@@ -350,7 +408,7 @@ export async function addComment(
   const { data, error } = await supabase
     .from('post_comments')
     .insert({ post_id: postId, author_id: authorId, body, parent_id: parentId ?? null })
-    .select('*, author:user_profiles(full_name, avatar_url)')
+    .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
     .single();
 
   if (error || !data) return null;

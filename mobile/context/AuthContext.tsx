@@ -34,6 +34,12 @@ export interface Profile {
   fitness_score: number;
   current_club: string | null;
   is_open_to_offers: boolean;
+  is_verified: boolean;
+  followers_count: number;
+  connections_count: number;
+  highlighted_stats: Record<string, number>;
+  attributes: Record<string, number>;
+  languages: { language: string; proficiency: string }[];
 }
 
 export interface SignUpData {
@@ -97,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
       supabase
         .from('athlete_profiles')
-        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
+        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, followers_count, connections_count, highlighted_stats, attributes, languages, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -134,6 +140,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fitness_score: athleteProfile?.fitness_score ?? 0,
       current_club: athleteProfile?.current_club ?? null,
       is_open_to_offers: athleteProfile?.is_open_to_offers ?? true,
+      is_verified: publicProfile.is_verified ?? false,
+      followers_count: athleteProfile?.followers_count ?? 0,
+      connections_count: athleteProfile?.connections_count ?? 0,
+      highlighted_stats: (athleteProfile?.highlighted_stats as Record<string, number>) ?? {},
+      attributes: (athleteProfile?.attributes as Record<string, number>) ?? {},
+      languages: Array.isArray(athleteProfile?.languages)
+        ? athleteProfile.languages as { language: string; proficiency: string }[]
+        : [],
     };
   }
 
@@ -271,7 +285,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function deleteAccount() {
-    if (!session?.access_token) return { error: 'You must be signed in to delete your account.' };
+    if (!session?.access_token || !user) {
+      return { error: 'You must be signed in to delete your account.' };
+    }
+
+    for (const bucket of ['posts', 'stories', 'avatars']) {
+      const paths: string[] = [];
+      let offset = 0;
+      while (true) {
+        const { data, error: listError } = await supabase.storage
+          .from(bucket)
+          .list(user.id, { limit: 100, offset });
+        if (listError) {
+          if (listError.message.toLowerCase().includes('bucket not found')) break;
+          return { error: `Your ${bucket} media could not be deleted: ${listError.message}` };
+        }
+        const files = (data ?? []).filter((item) => item.id).map((item) => `${user.id}/${item.name}`);
+        paths.push(...files);
+        if ((data ?? []).length < 100) break;
+        offset += 100;
+      }
+      for (let index = 0; index < paths.length; index += 100) {
+        const { error: removeError } = await supabase.storage
+          .from(bucket)
+          .remove(paths.slice(index, index + 100));
+        if (removeError) {
+          return { error: `Your ${bucket} media could not be deleted: ${removeError.message}` };
+        }
+      }
+    }
 
     const { error } = await supabase.rpc('delete_own_account');
 

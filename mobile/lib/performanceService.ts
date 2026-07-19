@@ -18,7 +18,7 @@ export async function fetchLatestRecord(
     .from('performance_records')
     .select('*')
     .eq('athlete_id', athlete_id)
-    .eq('sport', sport)
+    .ilike('sport', sport)
     .order('last_synced_at', { ascending: false })
     .limit(1)
     .maybeSingle();

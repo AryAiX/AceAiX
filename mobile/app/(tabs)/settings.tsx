@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -16,8 +16,6 @@ import {
 } from '@/lib/notificationService';
 import {
   fetchConsent,
-  revokeConsent,
-  deleteImportedData,
   SportifyConsent,
 } from '@/lib/sportifyService';
 import { SportifyConsentModal } from '@/components/sportify/SportifyConsentModal';
@@ -45,7 +43,8 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
 export default function Settings() {
   const { profile, signOut, deleteAccount, user, refreshProfile } = useAuth();
   const router = useRouter();
-  const [publicProfile, setPublicProfile] = useState(true);
+  const [publicProfile, setPublicProfile] = useState(profile?.is_open_to_offers ?? true);
+  const [savingVisibility, setSavingVisibility] = useState(false);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
   const [lichess, setLichess] = useState(profile?.lichess_username ?? '');
   const [footballPlayerId, setFootballPlayerId] = useState(profile?.football_api_player_id ?? '');
@@ -80,6 +79,28 @@ export default function Settings() {
     fetchConsent(user.id).then(setSportifyConsent);
   }, [user]);
 
+  useEffect(() => {
+    setPublicProfile(profile?.is_open_to_offers ?? true);
+  }, [profile?.is_open_to_offers]);
+
+  async function handleVisibilityChange(value: boolean) {
+    if (!user || savingVisibility) return;
+    const previous = publicProfile;
+    setPublicProfile(value);
+    setSavingVisibility(true);
+    const { error } = await supabase
+      .from('athlete_profiles')
+      .update({ is_open_to_offers: value })
+      .eq('user_id', user.id);
+    setSavingVisibility(false);
+    if (error) {
+      setPublicProfile(previous);
+      Alert.alert('Visibility not updated', error.message);
+      return;
+    }
+    await refreshProfile();
+  }
+
   function setPref<K extends keyof NotificationPrefs>(key: K, val: NotificationPrefs[K]) {
     setPrefs((prev) => ({ ...prev, [key]: val }));
   }
@@ -87,8 +108,12 @@ export default function Settings() {
   async function handleSavePrefs() {
     if (!user) return;
     setSavingPrefs(true);
-    await saveNotifPrefs(user.id, prefs);
+    const { error } = await saveNotifPrefs(user.id, prefs);
     setSavingPrefs(false);
+    if (error) {
+      Alert.alert('Preferences not saved', error);
+      return;
+    }
     setPrefsSaved(true);
     setTimeout(() => setPrefsSaved(false), 2000);
   }
@@ -129,9 +154,22 @@ export default function Settings() {
     if (!user || !sportifyId.trim()) return;
     setSportifyLinking(true);
     setSportifyMsg(null);
+    const partnerId = sportifyId.trim();
+    const { data: verifiedResult, error: lookupError } = await supabase
+      .from('sportify_results')
+      .select('id')
+      .eq('athlete_id', user.id)
+      .eq('verification_ref', partnerId)
+      .limit(1)
+      .maybeSingle();
+    if (lookupError || !verifiedResult) {
+      setSportifyLinking(false);
+      setSportifyMsg(lookupError?.message ?? 'No partner-issued result matches this ID.');
+      return;
+    }
     const { error } = await supabase
       .from('athlete_profiles')
-      .update({ sportify_linked: true, sportify_athlete_id: sportifyId.trim() })
+      .update({ sportify_linked: true, sportify_athlete_id: partnerId })
       .eq('user_id', user.id);
     if (error) {
       setSportifyMsg(error.message);
@@ -146,7 +184,12 @@ export default function Settings() {
   async function handleSportifyDisconnect() {
     if (!user) return;
     setDisconnecting(true);
-    await deleteImportedData(user.id);
+    const { error } = await supabase.rpc('disconnect_sportify');
+    if (error) {
+      setDisconnecting(false);
+      setSportifyMsg(error.message);
+      return;
+    }
     await refreshProfile();
     setSportifyConsent(null);
     setSportifyId('');
@@ -196,13 +239,13 @@ export default function Settings() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* Profile summary */}
-        <TouchableOpacity style={s.profileCard} onPress={() => router.push('/(tabs)/profile' as any)}>
+        <TouchableOpacity style={s.profileCard} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
           <View style={s.profileAv}>
             <Text style={s.profileAvTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.profileName}>{profile?.full_name ?? 'Athlete'}</Text>
-            <Text style={s.profileSub}>View and edit your profile</Text>
+            <Text style={s.profileSub}>Edit your personal and athlete information</Text>
           </View>
           <ChevronRight color={Colors.textMuted} size={18} />
         </TouchableOpacity>
@@ -212,9 +255,14 @@ export default function Settings() {
           <Text style={s.sectionTitle}>Account</Text>
           <View style={s.group}>
             {[
-              { label: 'Personal Information', Icon: User, onPress: () => router.push('/(tabs)/profile' as any) },
-              { label: 'Privacy & Security', Icon: Shield, onPress: () => {} },
-              { label: 'Language', Icon: Globe, value: 'English', onPress: () => {} },
+              { label: 'Personal Information', Icon: User, onPress: () => router.push('/(tabs)/edit-profile' as any) },
+              { label: 'Privacy & Security', Icon: Shield, onPress: () => void Linking.openURL('https://aceaix.com/privacy') },
+              {
+                label: 'Language',
+                Icon: Globe,
+                value: 'English',
+                onPress: () => Alert.alert('Language', 'English is the supported language in this release.'),
+              },
             ].map((item, i) => (
               <TouchableOpacity key={item.label} style={[s.row, i > 0 && s.rowBorder]} onPress={item.onPress}>
                 <View style={s.rowLeft}>
@@ -330,8 +378,10 @@ export default function Settings() {
                 <Text style={s.rowLabel}>Profile Visible to Scouts</Text>
               </View>
               <Switch
+                accessibilityLabel="Profile visible to scouts"
                 value={publicProfile}
-                onValueChange={setPublicProfile}
+                onValueChange={(value) => void handleVisibilityChange(value)}
+                disabled={savingVisibility}
                 trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
                 thumbColor={publicProfile ? Colors.primary : Colors.textDisabled}
               />
@@ -467,8 +517,8 @@ export default function Settings() {
                 <View style={s.rowLeft}>
                   <Link color={Colors.textMuted} size={18} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.rowLabel}>Sportify Athlete ID</Text>
-                    <Text style={s.rowSub}>Enter your ID from the Sportify Academy app</Text>
+                    <Text style={s.rowLabel}>Sportify Verification Reference</Text>
+                    <Text style={s.rowSub}>Enter the reference issued with your imported partner result</Text>
                   </View>
                 </View>
                 <TextInput
@@ -536,10 +586,36 @@ export default function Settings() {
           <Text style={s.sectionTitle}>Support</Text>
           <View style={s.group}>
             {[
-              { label: 'Help Center', Icon: HelpCircle },
-              { label: 'About AceAiX', Icon: Info },
+              {
+                label: 'Help Center',
+                Icon: HelpCircle,
+                onPress: () => void Linking.openURL('https://aceaix.com/support'),
+              },
+              {
+                label: 'About AceAiX',
+                Icon: Info,
+                onPress: () => Alert.alert(
+                  'About AceAiX',
+                  'AceAiX helps athletes build verified profiles, track performance, connect with sports professionals, and discover opportunities.\n\nVersion 1.0.0',
+                ),
+              },
+              {
+                label: 'Privacy Policy',
+                Icon: Shield,
+                onPress: () => void Linking.openURL('https://aceaix.com/privacy'),
+              },
+              {
+                label: 'Terms of Service',
+                Icon: Globe,
+                onPress: () => void Linking.openURL('https://aceaix.com/terms'),
+              },
             ].map((item, i) => (
-              <TouchableOpacity key={item.label} style={[s.row, i > 0 && s.rowBorder]}>
+              <TouchableOpacity
+                key={item.label}
+                accessibilityRole="button"
+                style={[s.row, i > 0 && s.rowBorder]}
+                onPress={item.onPress}
+              >
                 <View style={s.rowLeft}>
                   <item.Icon color={Colors.textMuted} size={18} />
                   <Text style={s.rowLabel}>{item.label}</Text>

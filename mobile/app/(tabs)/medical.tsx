@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Shield, Activity, AlertCircle, CheckCircle2, Clock, FileText, BadgeCheck } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
@@ -15,7 +15,7 @@ export default function Medical() {
     if (!profile?.athlete_profile_id) return;
     Promise.all([
       supabase.from('medical_clearances').select('status,effective_to,created_at').eq('athlete_id', profile.athlete_profile_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('medical_records').select('record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).order('issued_at', { ascending: false }),
+      supabase.from('medical_records').select('record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
     ]).then(([clearanceResult, recordsResult]) => {
       setClearance(clearanceResult.data as any ?? null);
       setRecords((recordsResult.data ?? []).map((row: any) => ({
@@ -53,9 +53,9 @@ export default function Medical() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.cardTitle}>AI Risk Summary</Text>
+          <Text style={s.cardTitle}>Readiness Summary</Text>
           <Text style={s.aiSummary}>
-            Medical intelligence uses partner-issued records. Add verified medical data to unlock risk and readiness analysis.
+            Readiness status is based on partner-issued medical clearance records.
           </Text>
           <View style={s.riskGrid}>
             <View style={s.riskItem}>
@@ -85,10 +85,13 @@ export default function Medical() {
           {records.length === 0 && <Text style={s.aiSummary}>No medical records have been issued yet.</Text>}
         </View>
 
-        <TouchableOpacity style={[s.uploadBtn, { opacity: 0.65 }]} disabled>
+        <View style={s.uploadBtn}>
           <FileText color={Colors.primary} size={18} />
-          <Text style={s.uploadTxt}>Partner-issued records only</Text>
-        </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={s.uploadTxt}>Partner-issued records</Text>
+            <Text style={s.recordDate}>Verified medical partners add and manage records securely.</Text>
+          </View>
+        </View>
 
         <View style={{ height: 24 }} />
       </ScrollView>

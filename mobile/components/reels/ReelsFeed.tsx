@@ -1,16 +1,19 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Image,
   Dimensions,
   Animated,
+  Alert,
+  Platform,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   Heart,
   MessageCircle,
@@ -21,6 +24,7 @@ import {
   Volume2,
   VolumeX,
   Star,
+  Trash2,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import {
@@ -30,6 +34,7 @@ import {
   toggleLike,
   toggleSave,
   toggleFeatureReel,
+  deletePost,
 } from '@/lib/postsService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -39,11 +44,12 @@ interface Props {
   reels: FeedPost[];
   loading: boolean;
   onUpdate: (id: string, partial: Partial<FeedPost>) => void;
+  onRemove: (id: string) => void;
   onComments: (post: FeedPost) => void;
   onLoadMore: () => void;
 }
 
-export function ReelsFeed({ reels, loading, onUpdate, onComments, onLoadMore }: Props) {
+export function ReelsFeed({ reels, loading, onUpdate, onRemove, onComments, onLoadMore }: Props) {
   const insets = useSafeAreaInsets();
   const [muted, setMuted] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -79,6 +85,7 @@ export function ReelsFeed({ reels, loading, onUpdate, onComments, onLoadMore }: 
               muted={muted}
               onToggleMute={() => setMuted((m) => !m)}
               onUpdate={onUpdate}
+              onRemove={onRemove}
               onComments={onComments}
               insets={insets}
             />
@@ -97,11 +104,50 @@ interface ReelCardProps {
   muted: boolean;
   onToggleMute: () => void;
   onUpdate: (id: string, partial: Partial<FeedPost>) => void;
+  onRemove: (id: string) => void;
   onComments: (post: FeedPost) => void;
   insets: { top: number; bottom: number };
 }
 
-function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onComments, insets }: ReelCardProps) {
+function ReelVideo({
+  uri,
+  active,
+  paused,
+  muted,
+}: {
+  uri: string;
+  active: boolean;
+  paused: boolean;
+  muted: boolean;
+}) {
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = true;
+    instance.muted = muted;
+  });
+
+  useEffect(() => {
+    player.muted = muted;
+  }, [muted, player]);
+
+  useEffect(() => {
+    if (active && !paused) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  }, [active, paused, player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+    />
+  );
+}
+
+function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onComments, insets }: ReelCardProps) {
   const { user } = useAuth();
   const heartAnim = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
@@ -152,6 +198,32 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onComments, ins
     await toggleFeatureReel(reel.id, newFeatured);
   }, [reel, onUpdate]);
 
+  const handleShare = useCallback(async () => {
+    await Share.share({
+      message: `${reel.author_name ?? 'An athlete'} on AceAiX: ${reel.caption ?? 'Watch this reel.'}`,
+    });
+  }, [reel.author_name, reel.caption]);
+
+  const performDelete = useCallback(async () => {
+    const { error } = await deletePost(reel.id);
+    if (error) {
+      Alert.alert('Reel not deleted', error);
+      return;
+    }
+    onRemove(reel.id);
+  }, [onRemove, reel.id]);
+
+  const confirmDelete = useCallback(() => {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm('Delete this reel? This cannot be undone.')) void performDelete();
+      return;
+    }
+    Alert.alert('Delete reel?', 'This removes the reel and cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void performDelete() },
+    ]);
+  }, [performDelete]);
+
   const isOwn = user?.id === reel.author_id;
 
   return (
@@ -162,11 +234,12 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onComments, ins
     >
       {/* Media */}
       <View style={StyleSheet.absoluteFill}>
-        {media?.signed_url ? (
-          <Image
-            source={{ uri: media.signed_url }}
-            style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
+        {media?.signed_url && media.type === 'video' ? (
+          <ReelVideo
+            uri={media.signed_url}
+            active={active}
+            paused={paused}
+            muted={muted}
           />
         ) : (
           <LinearGradient
@@ -248,19 +321,39 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onComments, ins
         </TouchableOpacity>
 
         {/* Share */}
-        <TouchableOpacity style={s.railAction}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Share reel"
+          style={s.railAction}
+          onPress={() => void handleShare()}
+        >
           <Share2 color={Colors.white} size={28} />
         </TouchableOpacity>
 
         {/* Feature (own only) */}
         {isOwn && (
-          <TouchableOpacity style={s.railAction} onPress={handleFeature}>
-            <Star
-              color={reel.is_featured ? Colors.accent : Colors.white}
-              fill={reel.is_featured ? Colors.accent : 'transparent'}
-              size={24}
-            />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Feature reel on profile"
+              style={s.railAction}
+              onPress={handleFeature}
+            >
+              <Star
+                color={reel.is_featured ? Colors.accent : Colors.white}
+                fill={reel.is_featured ? Colors.accent : 'transparent'}
+                size={24}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Delete reel"
+              style={s.railAction}
+              onPress={confirmDelete}
+            >
+              <Trash2 color={Colors.white} size={24} />
+            </TouchableOpacity>
+          </>
         )}
       </View>
 
@@ -268,7 +361,7 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onComments, ins
       <View style={[s.bottomInfo, { bottom: insets.bottom + Spacing.xl }]}>
         <View style={s.authorRow}>
           <Text style={s.authorName}>{reel.author_name ?? 'Athlete'}</Text>
-          <BadgeCheck color={Colors.primary} size={14} />
+          {reel.author_verified && <BadgeCheck color={Colors.primary} size={14} />}
           <Text style={s.authorMeta}>
             {[reel.author_position, reel.author_sport].filter(Boolean).join(' · ')}
           </Text>

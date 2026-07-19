@@ -151,6 +151,7 @@ export default function TabsLayout() {
           <Tabs.Screen name="messages"         options={{ href: null }} />
           <Tabs.Screen name="performance"      options={{ href: null }} />
           <Tabs.Screen name="settings"         options={{ href: null }} />
+          <Tabs.Screen name="edit-profile"     options={{ href: null }} />
           <Tabs.Screen name="notifications"    options={{ href: null }} />
           <Tabs.Screen name="media"            options={{ href: null }} />
           <Tabs.Screen name="medical"          options={{ href: null }} />

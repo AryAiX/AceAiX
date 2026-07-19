@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { MapPin, BadgeCheck, Star, UserPlus } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
@@ -24,10 +25,23 @@ interface AthleteRow {
 
 export default function Discover() {
   const { user } = useAuth();
+  const params = useLocalSearchParams<{ query?: string }>();
   const [activeFilter, setActiveFilter] = useState('All');
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [connected, setConnected] = useState<Set<string>>(new Set());
-  const filteredAthletes = athletes.filter((a) => activeFilter === 'All' || a.sport === activeFilter);
+  const searchQuery = typeof params.query === 'string' ? params.query.trim().toLowerCase() : '';
+  const filteredAthletes = athletes.filter((athlete) => {
+    const matchesSport = activeFilter === 'All'
+      || athlete.sport.toLowerCase() === activeFilter.toLowerCase();
+    const matchesSearch = !searchQuery || [
+      athlete.name,
+      athlete.pos,
+      athlete.sport,
+      athlete.club,
+      athlete.loc,
+    ].some((value) => value.toLowerCase().includes(searchQuery));
+    return matchesSport && matchesSearch;
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -35,13 +49,17 @@ export default function Discover() {
     Promise.all([
       supabase
         .from('athlete_profiles')
-        .select('id,user_id,sport,position,position_primary,current_club,performance_score,user:user_profiles(full_name,city,country,is_verified)')
+        .select('id,user_id,sport,position,position_primary,current_club,performance_score,user:user_profiles!athlete_profiles_user_id_fkey(full_name,city,country,is_verified)')
         .neq('user_id', user.id)
         .limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
-    ]).then(([athletesResult, followsResult]) => {
+      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+    ]).then(([athletesResult, followsResult, blocksResult]) => {
       if (!mounted) return;
-      setAthletes((athletesResult.data ?? []).map((row: any) => ({
+      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+      setAthletes((athletesResult.data ?? [])
+        .filter((row: any) => !blockedIds.has(row.user_id))
+        .map((row: any) => ({
         id: row.id,
         user_id: row.user_id,
         name: row.user?.full_name ?? 'AceAiX athlete',
@@ -52,7 +70,7 @@ export default function Discover() {
         rating: row.performance_score ? (row.performance_score / 10).toFixed(1) : '—',
         verified: row.user?.is_verified ?? false,
         tags: [],
-      })));
+        })));
       setConnected(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     });
     return () => { mounted = false; };
@@ -60,10 +78,15 @@ export default function Discover() {
 
   async function toggleConnection(athleteUserId: string, isConnected: boolean) {
     if (!user) return;
+    let error: { message: string } | null = null;
     if (isConnected) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', athleteUserId);
+      ({ error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', athleteUserId));
     } else {
-      await supabase.from('follows').upsert({ follower_id: user.id, following_id: athleteUserId });
+      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: athleteUserId }));
+    }
+    if (error) {
+      Alert.alert('Connection not updated', error.message);
+      return;
     }
     setConnected((prev) => {
       const next = new Set(prev);
@@ -90,8 +113,10 @@ export default function Discover() {
             <Text style={s.statLbl}>Athletes</Text>
           </View>
           <View style={s.statBox}>
-            <Text style={[s.statNum, { color: Colors.accent }]}>0</Text>
-            <Text style={s.statLbl}>Near You</Text>
+            <Text style={[s.statNum, { color: Colors.accent }]}>
+              {athletes.filter((athlete) => athlete.verified).length}
+            </Text>
+            <Text style={s.statLbl}>Verified</Text>
           </View>
           <View style={s.statBox}>
             <Text style={[s.statNum, { color: Colors.success }]}>{connected.size}</Text>
@@ -147,7 +172,11 @@ export default function Discover() {
           {filteredAthletes.length === 0 && (
             <View style={s.emptyState}>
               <Text style={s.emptyTitle}>No athletes found</Text>
-              <Text style={s.emptyText}>Live athlete profiles will appear here as users complete their profiles.</Text>
+              <Text style={s.emptyText}>
+                {searchQuery
+                  ? `No athlete profiles match "${params.query}".`
+                  : 'Live athlete profiles will appear here as users complete their profiles.'}
+              </Text>
             </View>
           )}
         </View>

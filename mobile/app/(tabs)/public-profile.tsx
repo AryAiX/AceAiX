@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
+  Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
 } from 'react-native';
-import { Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   BadgeCheck, MapPin, Globe, Share2, ThumbsUp, UserCheck, Zap,
@@ -11,13 +10,30 @@ import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useRouter } from 'expo-router';
+import { usePerformanceData } from '@/hooks/usePerformanceData';
 
 export default function PublicProfile() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const router = useRouter();
+  const { record } = usePerformanceData(user?.id, profile?.sport);
+  const performanceScore = Math.round(profile?.performance_score ?? 0);
+  const stats = record?.stats ?? {};
+  const seasonHighlights = [
+    { label: 'Appearances', value: stats.appearances ?? stats.apps },
+    { label: 'Goals', value: stats.goals },
+    { label: 'Assists', value: stats.assists },
+    { label: 'Avg Rating', value: stats.average_rating ?? stats.rating },
+  ].filter((item) => item.value !== null && item.value !== undefined);
 
   const handleShare = async () => {
     await Share.share({ message: `Check out ${profile?.full_name ?? 'this athlete'}'s profile on AceAiX!` });
+  };
+
+  const explainPreviewAction = (action: string) => {
+    Alert.alert(
+      'Public profile preview',
+      `${action} is available to other AceAiX members when they view your public profile.`,
+    );
   };
 
   return (
@@ -26,22 +42,21 @@ export default function PublicProfile() {
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Cover */}
         <View style={s.coverWrap}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/1884574/pexels-photo-1884574.jpeg?auto=compress&cs=tinysrgb&w=800' }}
-            style={s.coverImg}
-            resizeMode="cover"
-          />
           <LinearGradient
-            colors={['rgba(10,14,20,0)', 'rgba(10,14,20,0.85)']}
+            colors={[`${Colors.primary}90`, Colors.bg]}
             style={StyleSheet.absoluteFillObject}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
           />
           <View style={s.aiScoreBadge}>
-            <Text style={s.aiScoreNum}>92</Text>
-            <Text style={s.aiScoreLbl}>AI Score</Text>
-            <View style={s.elitePill}>
-              <Zap color={Colors.bg} size={9} fill={Colors.bg} />
-              <Text style={s.eliteTxt}>Elite</Text>
-            </View>
+            <Text style={s.aiScoreNum}>{performanceScore}</Text>
+            <Text style={s.aiScoreLbl}>Performance</Text>
+            {performanceScore > 0 && (
+              <View style={s.elitePill}>
+                <Zap color={Colors.bg} size={9} fill={Colors.bg} />
+                <Text style={s.eliteTxt}>{performanceScore >= 85 ? 'High' : 'Active'}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -54,10 +69,10 @@ export default function PublicProfile() {
 
           <View style={s.nameRow}>
             <Text style={s.name} numberOfLines={1}>{profile?.full_name ?? 'Athlete'}</Text>
-            <BadgeCheck color={Colors.primary} size={20} />
+            {profile?.is_verified && <BadgeCheck color={Colors.primary} size={20} />}
           </View>
           <Text style={s.pos}>
-            {[profile?.position, profile?.sport].filter(Boolean).join(' · ') || 'Striker · Football'}
+            {[profile?.position, profile?.sport].filter(Boolean).join(' · ') || 'Sport profile not completed'}
           </Text>
 
           <View style={s.metaRow}>
@@ -77,9 +92,9 @@ export default function PublicProfile() {
 
           <View style={s.statsRow}>
             {[
-              { label: 'Scout Views', value: '2.8K', color: Colors.primary },
-              { label: 'AI Score', value: '8.7', color: Colors.accent },
-              { label: 'Endorsements', value: '24', color: Colors.success },
+              { label: 'Visibility', value: String(Math.round(profile?.visibility_score ?? 0)), color: Colors.primary },
+              { label: 'Performance', value: String(performanceScore), color: Colors.accent },
+              { label: 'Complete', value: `${Math.round(profile?.profile_completeness ?? 0)}%`, color: Colors.success },
             ].map((st, i) => (
               <View key={st.label} style={[s.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: Colors.border }]}>
                 <Text style={[s.statVal, { color: st.color }]}>{st.value}</Text>
@@ -89,7 +104,11 @@ export default function PublicProfile() {
           </View>
 
           <View style={s.actionsRow}>
-            <TouchableOpacity style={s.endorseBtn}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={s.endorseBtn}
+              onPress={() => explainPreviewAction('Endorsement')}
+            >
               <LinearGradient
                 colors={[Colors.accent, `${Colors.accent}CC`]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -99,7 +118,11 @@ export default function PublicProfile() {
                 <Text style={s.endorseBtnTxt}>Endorse</Text>
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity style={s.connectBtn}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={s.connectBtn}
+              onPress={() => explainPreviewAction('Connection')}
+            >
               <UserCheck color={Colors.primary} size={15} />
               <Text style={s.connectBtnTxt}>Connect</Text>
             </TouchableOpacity>
@@ -113,23 +136,22 @@ export default function PublicProfile() {
         <View style={s.section}>
           <View style={s.card}>
             <Text style={s.cardTitle}>About</Text>
-            <Text style={s.cardBody}>{profile?.bio || 'Professional athlete with years of competitive experience. Dedicated to continuous improvement and performance excellence.'}</Text>
+            <Text style={s.cardBody}>{profile?.bio || 'No public bio has been added yet.'}</Text>
           </View>
           <View style={s.card}>
             <Text style={s.cardTitle}>Season Highlights</Text>
-            <View style={s.grid}>
-              {[
-                { label: 'Goals', value: '14' },
-                { label: 'Assists', value: '9' },
-                { label: 'Avg Rating', value: '7.8' },
-                { label: 'Appearances', value: '28' },
-              ].map(h => (
-                <View key={h.label} style={s.gridItem}>
-                  <Text style={s.gridVal}>{h.value}</Text>
-                  <Text style={s.gridLbl}>{h.label}</Text>
-                </View>
-              ))}
-            </View>
+            {seasonHighlights.length > 0 ? (
+              <View style={s.grid}>
+                {seasonHighlights.map(h => (
+                  <View key={h.label} style={s.gridItem}>
+                    <Text style={s.gridVal}>{String(h.value)}</Text>
+                    <Text style={s.gridLbl}>{h.label}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={s.cardBody}>Add performance data to display season highlights.</Text>
+            )}
           </View>
           <TouchableOpacity style={s.fullProfileBtn} onPress={() => router.push('/(tabs)/profile' as any)}>
             <Text style={s.fullProfileTxt}>View Full Profile</Text>
@@ -146,7 +168,6 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flex: 1 },
   coverWrap: { height: 200, position: 'relative' },
-  coverImg: { width: '100%', height: '100%' },
   aiScoreBadge: { position: 'absolute', top: 16, right: 16, alignItems: 'center', backgroundColor: 'rgba(10,14,20,0.75)', borderRadius: Radii.md, padding: Spacing.md, borderWidth: 1, borderColor: `${Colors.accent}50` },
   aiScoreNum: { fontFamily: Typography.family.display, fontSize: 30, color: Colors.accent, lineHeight: 34 },
   aiScoreLbl: { fontFamily: Typography.family.mono, fontSize: 9, color: Colors.textMuted, letterSpacing: 1 },

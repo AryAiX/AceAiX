@@ -60,17 +60,17 @@ export default function FeedScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
-    const data   = await fetchFeedPosts(user.id, cursor);
+    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter === 'following');
     if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
     hasMoreRef.current = data.length === 20;
     setPosts(prev => reset ? data : [...prev, ...data]);
-  }, [user]);
+  }, [activeFilter, user]);
 
   useEffect(() => {
     if (!user) return;
     setLoading(true);
     loadPosts(true).finally(() => setLoading(false));
-  }, [user]);
+  }, [loadPosts, user]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -132,6 +132,8 @@ export default function FeedScreen() {
             const active = activeFilter === key;
             return (
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${label} posts`}
                 key={key}
                 style={s.filterTab}
                 onPress={() => handleFilterChange(key, i)}

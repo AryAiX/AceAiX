@@ -51,10 +51,12 @@ function getMeta(type: string) {
 function resolveDeepLink(notif: AppNotification): string | null {
   const d = notif.data as Record<string, string>;
   if (d?.route) return d.route;
+  if (notif.action_url?.startsWith('/')) return notif.action_url;
   switch (notif.type) {
     case 'message': return '/(tabs)/messages';
+    case 'opportunity': return '/(tabs)/opportunities';
+    case 'connection': return '/(tabs)/network';
     case 'scout_interest':
-    case 'opportunity':
     case 'endorsement': return '/(tabs)/profile';
     case 'performance':
     case 'milestone': return '/(tabs)/performance';

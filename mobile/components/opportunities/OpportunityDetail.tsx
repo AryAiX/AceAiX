@@ -167,7 +167,13 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
 
         {/* Top bar */}
         <View style={s.topBar}>
-          <TouchableOpacity onPress={onClose} style={s.backBtn} hitSlop={8}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Close opportunity details"
+            onPress={onClose}
+            style={s.backBtn}
+            hitSlop={8}
+          >
             <X color={Colors.textMuted} size={22} />
           </TouchableOpacity>
           <Text style={s.topTitle} numberOfLines={1}>{opportunity.position}</Text>
@@ -266,7 +272,7 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
               <View style={s.matchRow}>
                 <View style={s.matchLeft}>
                   <MatchArc score={opportunity.match_score!} />
-                  <Text style={[s.matchLabel, { color: scoreColor }]}>AI Match</Text>
+                  <Text style={[s.matchLabel, { color: scoreColor }]}>Profile Match</Text>
                 </View>
                 <View style={s.reasonsCol}>
                   {(reasons.length ? reasons : ['Position fit', 'Level match', 'Sport match']).map((r, i) => {

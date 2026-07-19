@@ -15,6 +15,7 @@ import {
   Dimensions,
   Keyboard,
   Image,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -803,6 +804,18 @@ export default function SignUpScreen() {
                 />
               </View>
 
+              <Text style={s.legalText}>
+                By creating an account, you agree to the{' '}
+                <Text style={s.legalLink} onPress={() => void Linking.openURL('https://aceaix.com/terms')}>
+                  Terms of Service
+                </Text>
+                {' '}and acknowledge the{' '}
+                <Text style={s.legalLink} onPress={() => void Linking.openURL('https://aceaix.com/privacy')}>
+                  Privacy Policy
+                </Text>
+                .
+              </Text>
+
               <TouchableOpacity
                 style={[s.primaryBtn, loading && s.btnDisabled]}
                 onPress={handleSubmit}
@@ -911,6 +924,8 @@ const s = StyleSheet.create({
   },
 
   field: { marginBottom: Spacing.lg },
+  legalText: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted, lineHeight: 18, textAlign: 'center', marginBottom: Spacing.md },
+  legalLink: { color: Colors.primary, fontFamily: Typography.family.bold },
   label: {
     fontFamily: Typography.family.medium,
     fontSize: Typography.size.sm,

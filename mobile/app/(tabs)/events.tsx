@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import {
   Calendar, MapPin, Clock, ChevronRight, Plus, Trash2,
@@ -32,9 +32,34 @@ export default function Events() {
 
   async function handleDelete(id: string) {
     setDeletingId(id);
-    await deleteEvent(id);
-    setMyEvents(prev => prev.filter(e => e.id !== id));
+    const { error } = await deleteEvent(id);
+    if (error) {
+      Alert.alert('Event not deleted', error);
+    } else {
+      setMyEvents(prev => prev.filter(e => e.id !== id));
+    }
     setDeletingId(null);
+  }
+
+  function confirmDelete(event: AthleteEvent) {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Delete "${event.title}"?`)) {
+        void handleDelete(event.id);
+      }
+      return;
+    }
+    Alert.alert(
+      'Delete event?',
+      `"${event.title}" will be permanently removed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => void handleDelete(event.id),
+        },
+      ],
+    );
   }
 
   const totalUpcoming = PLATFORM_EVENTS.length + myEvents.length;
@@ -95,8 +120,10 @@ export default function Events() {
                         </View>
                       )}
                       <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete event ${ev.title}`}
                         style={s.deleteBtn}
-                        onPress={() => handleDelete(ev.id)}
+                        onPress={() => confirmDelete(ev)}
                         disabled={isDeleting}
                         hitSlop={8}
                       >

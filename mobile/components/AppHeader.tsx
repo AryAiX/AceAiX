@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Animated,
+  View, Text, TouchableOpacity, StyleSheet, TextInput, Image, Animated, Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +23,8 @@ export function AppHeader({ title }: AppHeaderProps) {
   const router = useRouter();
 
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInput = useRef<TextInput>(null);
 
   // Menu burger bar animations
   const bar1Rot  = useRef(new Animated.Value(0)).current;
@@ -118,6 +120,22 @@ export function AppHeader({ title }: AppHeaderProps) {
     outputRange: [Colors.border, Colors.primary],
   });
 
+  function submitSearch() {
+    const query = searchQuery.trim();
+    if (!query) return;
+    Keyboard.dismiss();
+    router.push({
+      pathname: '/(tabs)/discover',
+      params: { query },
+    } as any);
+  }
+
+  function clearSearch() {
+    setSearchQuery('');
+    searchInput.current?.blur();
+    setSearchFocused(false);
+  }
+
   return (
     <Animated.View
       style={[h.wrap, { paddingTop: insets.top + 6, opacity: headerOpacity, transform: [{ translateY: headerSlide }] }]}
@@ -132,7 +150,7 @@ export function AppHeader({ title }: AppHeaderProps) {
       {/* ── Top row ── */}
       <View style={h.row}>
         {/* Animated burger / X */}
-        <TouchableOpacity onPress={open} hitSlop={10} style={h.burgerBtn} activeOpacity={0.7}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open navigation menu" onPress={open} hitSlop={10} style={h.burgerBtn} activeOpacity={0.7}>
           <View style={h.burgerWrap}>
             <Animated.View style={[h.bar, { transform: [{ rotate: bar1Rotate }, { translateY: bar1TransY }] }]} />
             <Animated.View style={[h.bar, h.barMid, { opacity: bar2Opacity }]} />
@@ -147,6 +165,8 @@ export function AppHeader({ title }: AppHeaderProps) {
         <View style={h.right}>
           {/* Messages */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Open messages"
             style={h.iconBtn}
             hitSlop={8}
             onPress={() => router.push('/(tabs)/messages' as any)}
@@ -157,6 +177,8 @@ export function AppHeader({ title }: AppHeaderProps) {
 
           {/* Bell */}
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Open notifications"
             style={h.iconBtn}
             hitSlop={8}
             onPress={() => router.push('/(tabs)/notifications' as any)}
@@ -180,7 +202,7 @@ export function AppHeader({ title }: AppHeaderProps) {
           </TouchableOpacity>
 
           {/* Avatar */}
-          <TouchableOpacity onPress={open} activeOpacity={0.8} style={h.avatarBtn}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open profile menu" onPress={open} activeOpacity={0.8} style={h.avatarBtn}>
             <LinearGradient
               colors={[Colors.accent, Colors.primary]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -208,14 +230,20 @@ export function AppHeader({ title }: AppHeaderProps) {
         }
         <Search color={searchFocused ? Colors.primary : Colors.textDisabled} size={14} />
         <TextInput
+          ref={searchInput}
+          accessibilityLabel="Global search"
           style={h.searchInput}
-          placeholder="Search athletes, clubs, opportunities…"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search athlete profiles…"
           placeholderTextColor={Colors.textDisabled}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
+          returnKeyType="search"
+          onSubmitEditing={submitSearch}
         />
-        {searchFocused && (
-          <TouchableOpacity onPress={() => setSearchFocused(false)} hitSlop={8}>
+        {(searchFocused || searchQuery.length > 0) && (
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear search" onPress={clearSearch} hitSlop={8}>
             <X color={Colors.textDisabled} size={14} />
           </TouchableOpacity>
         )}

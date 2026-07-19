@@ -70,6 +70,7 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
           <View style={s.body}>
             <Text style={s.label}>Message to the club (optional)</Text>
             <TextInput
+              accessibilityLabel="Application message"
               style={s.input}
               value={message}
               onChangeText={setMessage}
@@ -90,6 +91,8 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
               <Text style={s.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Submit application"
               style={[s.submitBtn, submitting && { opacity: 0.6 }]}
               onPress={handleSubmit}
               disabled={submitting}

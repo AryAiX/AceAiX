@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
-import { BarChart2, TrendingUp, Eye, Star, Target, Users } from 'lucide-react-native';
-import Svg, { Rect, Line, Path, Circle } from 'react-native-svg';
+import { Eye, Star, Target, Users } from 'lucide-react-native';
+import Svg, { Rect, Line } from 'react-native-svg';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const { width: SW } = Dimensions.get('window');
 
-const MONTHLY_VIEWS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
 function BarChartComponent({ data, months, w, h }: { data: number[]; months: string[]; w: number; h: number }) {
@@ -32,25 +33,85 @@ function BarChartComponent({ data, months, w, h }: { data: number[]; months: str
   );
 }
 
-const INSIGHTS = [
-  { label: 'Scout Views', value: '0', delta: 'Live', up: true, Icon: Eye },
-  { label: 'Profile Score', value: '—', delta: 'Live', up: true, Icon: Star },
-  { label: 'Match Rate', value: '—', delta: 'Live', up: true, Icon: Target },
-  { label: 'Network Size', value: '0', delta: 'Live', up: true, Icon: Users },
-];
-
 export default function Analytics() {
+  const { user, profile } = useAuth();
+  const [monthlyViews, setMonthlyViews] = useState<number[]>(() => Array(12).fill(0));
+  const [profileViews, setProfileViews] = useState(0);
+  const [networkSize, setNetworkSize] = useState(0);
+  const [savedCount, setSavedCount] = useState(0);
+  const [applications, setApplications] = useState<{ status: string }[]>([]);
+  const [regions, setRegions] = useState<{ region: string; views: number }[]>([]);
+
+  useEffect(() => {
+    if (!user || !profile?.athlete_profile_id) return;
+    let mounted = true;
+    Promise.all([
+      supabase
+        .from('profile_views')
+        .select('created_at,viewer_org')
+        .eq('athlete_id', profile.athlete_profile_id),
+      supabase.from('follows').select('following_id').eq('follower_id', user.id),
+      supabase.from('opportunity_saves').select('opportunity_id').eq('athlete_id', user.id),
+      supabase.from('applications').select('status').eq('athlete_id', user.id),
+    ]).then(([viewsResult, followsResult, savesResult, applicationsResult]) => {
+      if (!mounted) return;
+      const views = viewsResult.data ?? [];
+      const currentYear = new Date().getFullYear();
+      const months = Array(12).fill(0) as number[];
+      const regionCounts = new Map<string, number>();
+
+      for (const view of views) {
+        const date = new Date(view.created_at);
+        if (date.getFullYear() === currentYear) months[date.getMonth()] += 1;
+        const region = view.viewer_org?.trim();
+        if (region) regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+      }
+
+      setMonthlyViews(months);
+      setProfileViews(views.length);
+      setNetworkSize(followsResult.data?.length ?? 0);
+      setSavedCount(savesResult.data?.length ?? 0);
+      setApplications((applicationsResult.data ?? []) as { status: string }[]);
+      setRegions([...regionCounts.entries()]
+        .map(([region, viewCount]) => ({ region, views: viewCount }))
+        .sort((a, b) => b.views - a.views)
+        .slice(0, 5));
+    });
+    return () => { mounted = false; };
+  }, [profile?.athlete_profile_id, user]);
+
+  const progressedApplications = applications.filter((application) => (
+    ['shortlisted', 'trial_offered', 'accepted'].includes(application.status)
+  )).length;
+  const matchRate = applications.length
+    ? Math.round((progressedApplications / applications.length) * 100)
+    : 0;
+  const insights = useMemo(() => [
+    { label: 'Profile Views', value: String(profileViews), delta: 'Live', Icon: Eye },
+    { label: 'Profile Score', value: String(Math.round(profile?.visibility_score ?? 0)), delta: 'Live', Icon: Star },
+    { label: 'Progress Rate', value: applications.length ? `${matchRate}%` : '—', delta: 'Live', Icon: Target },
+    { label: 'Network Size', value: String(networkSize), delta: 'Live', Icon: Users },
+  ], [applications.length, matchRate, networkSize, profile?.visibility_score, profileViews]);
+  const engagement = [
+    { label: 'Profile Views', value: profileViews },
+    { label: 'Saved Opportunities', value: savedCount },
+    { label: 'Applications', value: applications.length },
+    { label: 'Shortlists & Trials', value: progressedApplications },
+  ];
+  const maxEngagement = Math.max(...engagement.map((item) => item.value), 1);
+  const maxRegionViews = Math.max(...regions.map((region) => region.views), 1);
+
   return (
     <View style={s.root}>
       <AppHeader title="Analytics" />
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         <View style={s.insightsGrid}>
-          {INSIGHTS.map(({ label, value, delta, up, Icon }) => (
+          {insights.map(({ label, value, delta, Icon }) => (
             <View key={label} style={s.insightCard}>
               <View style={s.insightTop}>
                 <Icon color={Colors.primary} size={16} />
-                <Text style={[s.insightDelta, { color: up ? Colors.success : Colors.error }]}>{delta}</Text>
+                <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
               </View>
               <Text style={s.insightVal}>{value}</Text>
               <Text style={s.insightLabel}>{label}</Text>
@@ -59,8 +120,8 @@ export default function Analytics() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.cardTitle}>Profile Views — 2025</Text>
-          <BarChartComponent data={MONTHLY_VIEWS} months={MONTHS} w={SW - 64} h={120} />
+          <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
+          <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
           <View style={s.monthRow}>
             {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
           </View>
@@ -68,17 +129,12 @@ export default function Analytics() {
 
         <View style={s.card}>
           <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
-          {[
-            { label: 'Profile Views', value: 0, pct: 0 },
-            { label: 'Full Profile Reads', value: 0, pct: 0 },
-            { label: 'Contact Initiated', value: 0, pct: 0 },
-            { label: 'Trial Requests', value: 0, pct: 0 },
-          ].map(row => (
+          {engagement.map(row => (
             <View key={row.label} style={s.engRow}>
               <View style={s.engLeft}>
                 <Text style={s.engLabel}>{row.label}</Text>
                 <View style={s.engBar}>
-                  <View style={[s.engFill, { width: `${row.pct}%` }]} />
+                  <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
                 </View>
               </View>
               <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
@@ -87,18 +143,19 @@ export default function Analytics() {
         </View>
 
         <View style={s.card}>
-          <Text style={s.cardTitle}>Geographic Reach</Text>
-          {([] as Array<{ region: string; views: number; flag: string }>).map(r => (
+          <Text style={s.cardTitle}>Viewer Organizations</Text>
+          {regions.map(r => (
             <View key={r.region} style={s.geoRow}>
-              <Text style={s.geoFlag}>{r.flag}</Text>
               <Text style={s.geoRegion}>{r.region}</Text>
               <View style={s.geoBarWrap}>
-                <View style={[s.geoBar, { width: `${(r.views / 1240) * 100}%` }]} />
+                <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
               </View>
               <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
             </View>
           ))}
-          <Text style={s.emptyText}>No geographic analytics have been recorded yet.</Text>
+          {regions.length === 0 && (
+            <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
+          )}
         </View>
 
         <View style={{ height: 24 }} />

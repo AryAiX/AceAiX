@@ -18,6 +18,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +29,7 @@ import {
   Eye,
   Trash2,
   Flag,
+  Ban,
   Send,
   ChevronDown,
 } from 'lucide-react-native';
@@ -36,10 +39,12 @@ import {
   StoryAuthorGroup,
   deleteStory,
   fetchMyStoryViewers,
+  sendStoryReply,
   storyTimeAgo,
 } from '@/lib/storiesService';
 import { useStoriesContext } from '@/context/StoriesContext';
 import { useAuth } from '@/context/AuthContext';
+import { blockUser, reportContent } from '@/lib/contentSafetyService';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const STORY_DURATION = 5000; // ms for photos
@@ -74,6 +79,8 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   const [showViewers, setShowViewers] = useState(false);
   const [viewers, setViewers] = useState<Array<{ viewer_id: string; viewer_name: string | null; viewer_avatar: string | null; viewed_at: string }>>([]);
   const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+  const [replyStatus, setReplyStatus] = useState<string | null>(null);
 
   const progressAnims = useRef<Animated.Value[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,7 +159,11 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   const handleDelete = useCallback(async () => {
     if (!currentStory) return;
     setMenuOpen(false);
-    await deleteStory(currentStory.id, currentStory.media_url);
+    const { error } = await deleteStory(currentStory.id, currentStory.media_url);
+    if (error) {
+      Alert.alert('Story not deleted', error);
+      return;
+    }
     await refresh();
     onClose();
   }, [currentStory, refresh, onClose]);
@@ -164,6 +175,69 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     setViewers(data);
     setShowViewers(true);
   }, [currentStory]);
+
+  const handleReply = useCallback(async () => {
+    if (!currentStory || !user || !replyText.trim() || sendingReply) return;
+    setSendingReply(true);
+    setReplyStatus(null);
+    const { error } = await sendStoryReply(currentStory, user.id, replyText);
+    setSendingReply(false);
+    if (error) {
+      Alert.alert('Reply not sent', error);
+      return;
+    }
+    setReplyText('');
+    setReplyStatus('Reply sent to Messages');
+  }, [currentStory, replyText, sendingReply, user]);
+
+  const handleReport = useCallback(() => {
+    if (!currentStory || !user) return;
+    setMenuOpen(false);
+    Alert.alert(
+      'Report this story?',
+      'AceAiX administrators will review it for safety and policy violations.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await reportContent(user.id, 'story', currentStory.id);
+            Alert.alert(
+              error ? 'Report not sent' : 'Report received',
+              error ?? 'Thank you. Our safety team will review this story.',
+            );
+          },
+        },
+      ],
+    );
+  }, [currentStory, user]);
+
+  const handleBlock = useCallback(() => {
+    if (!currentStory || !currentGroup || !user || currentStory.author_id === user.id) return;
+    setMenuOpen(false);
+    Alert.alert(
+      `Block ${currentGroup.author_name ?? 'this member'}?`,
+      'Their stories and posts will no longer appear in your feed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await blockUser(user.id, currentStory.author_id);
+            if (error) {
+              Alert.alert('Member not blocked', error);
+              return;
+            }
+            await refresh();
+            onClose();
+            Alert.alert('Member blocked', 'Their content has been hidden.');
+          },
+        },
+      ],
+    );
+  }, [currentGroup, currentStory, onClose, refresh, user]);
 
   // Swipe down to close + horizontal to change group
   const panResponder = useRef(
@@ -338,14 +412,25 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
                 placeholder="Reply..."
                 placeholderTextColor="rgba(255,255,255,0.5)"
                 returnKeyType="send"
-                onSubmitEditing={() => setReplyText('')}
+                editable={!sendingReply}
+                onSubmitEditing={() => void handleReply()}
               />
               {replyText.trim().length > 0 && (
-                <TouchableOpacity onPress={() => setReplyText('')} style={s.sendBtn}>
-                  <Send color={Colors.accent} size={18} />
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Send story reply"
+                  onPress={() => void handleReply()}
+                  style={s.sendBtn}
+                  disabled={sendingReply}
+                >
+                  {sendingReply
+                    ? <ActivityIndicator color={Colors.accent} size="small" />
+                    : <Send color={Colors.accent} size={18} />
+                  }
                 </TouchableOpacity>
               )}
             </View>
+            {replyStatus && <Text style={s.replyStatus}>{replyStatus}</Text>}
           </KeyboardAvoidingView>
         )}
 
@@ -376,10 +461,17 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
                 </TouchableOpacity>
               </>
             ) : (
-              <TouchableOpacity style={s.menuItem} onPress={() => setMenuOpen(false)}>
-                <Flag color={Colors.warning} size={18} />
-                <Text style={[s.menuTxt, { color: Colors.warning }]}>Report</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={s.menuItem} onPress={handleReport}>
+                  <Flag color={Colors.warning} size={18} />
+                  <Text style={[s.menuTxt, { color: Colors.warning }]}>Report</Text>
+                </TouchableOpacity>
+                <View style={s.menuDivider} />
+                <TouchableOpacity style={s.menuItem} onPress={handleBlock}>
+                  <Ban color={Colors.error} size={18} />
+                  <Text style={[s.menuTxt, { color: Colors.error }]}>Block member</Text>
+                </TouchableOpacity>
+              </>
             )}
             <View style={s.menuDivider} />
             <TouchableOpacity style={s.menuItem} onPress={() => setMenuOpen(false)}>
@@ -511,6 +603,7 @@ const s = StyleSheet.create({
     color: Colors.white, paddingVertical: Spacing.md,
   },
   sendBtn: { padding: Spacing.sm },
+  replyStatus: { marginTop: 5, textAlign: 'center', fontFamily: Typography.family.medium, fontSize: 10, color: Colors.success },
 
   // Own story viewers button
   viewersBtn: {

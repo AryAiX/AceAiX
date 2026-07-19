@@ -8,6 +8,11 @@ import {
   Image,
   Animated,
   Dimensions,
+  Share,
+  Alert,
+  ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import {
   Heart,
@@ -20,10 +25,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Flag,
+  Ban,
   Trash2,
   Edit3,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Colors, Spacing, Radii, Typography, Shadows } from '@/constants/theme';
 import {
   FeedPost,
@@ -33,8 +40,10 @@ import {
   toggleLike,
   toggleSave,
   deletePost,
+  updatePostCaption,
 } from '@/lib/postsService';
 import { useAuth } from '@/context/AuthContext';
+import { blockUser, reportContent } from '@/lib/contentSafetyService';
 
 const { width: SW } = Dimensions.get('window');
 const CARD_W = SW - Spacing.lg * 2;
@@ -52,6 +61,9 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mediaIdx, setMediaIdx] = useState(0);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(post.caption ?? '');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Entry animation
   const entryOpacity = useRef(new Animated.Value(0)).current;
@@ -104,11 +116,104 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
     await toggleSave(post.id, user.id, post.saved);
   }, [post, user, saveScale, onUpdate]);
 
-  const handleDelete = useCallback(async () => {
-    setMenuOpen(false);
-    await deletePost(post.id);
+  const performDelete = useCallback(async () => {
+    const { error } = await deletePost(post.id);
+    if (error) {
+      Alert.alert('Post not deleted', error);
+      return;
+    }
     onRemove(post.id);
-  }, [post.id, onRemove]);
+  }, [onRemove, post.id]);
+
+  const handleDelete = useCallback(() => {
+    setMenuOpen(false);
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm('Delete this post? This cannot be undone.')) {
+        void performDelete();
+      }
+      return;
+    }
+    Alert.alert(
+      'Delete post?',
+      'This removes the post and cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => void performDelete(),
+        },
+      ],
+    );
+  }, [performDelete]);
+
+  const handleShare = useCallback(async () => {
+    await Share.share({
+      message: `${post.author_name ?? 'An athlete'} on AceAiX: ${post.caption ?? 'View this post on AceAiX.'}`,
+    });
+  }, [post.author_name, post.caption]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!user) return;
+    setSavingEdit(true);
+    const { error } = await updatePostCaption(post.id, user.id, editText);
+    setSavingEdit(false);
+    if (error) {
+      Alert.alert('Post not updated', error);
+      return;
+    }
+    const normalized = editText.trim();
+    onUpdate(post.id, { caption: normalized || null });
+    setEditing(false);
+  }, [editText, onUpdate, post.id, user]);
+
+  const handleReport = useCallback(() => {
+    if (!user) return;
+    setMenuOpen(false);
+    Alert.alert(
+      'Report this post?',
+      'AceAiX administrators will review it for safety and policy violations.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await reportContent(user.id, 'post', post.id);
+            Alert.alert(
+              error ? 'Report not sent' : 'Report received',
+              error ?? 'Thank you. Our safety team will review this post.',
+            );
+          },
+        },
+      ],
+    );
+  }, [post.id, user]);
+
+  const handleBlock = useCallback(() => {
+    if (!user || post.author_id === user.id) return;
+    setMenuOpen(false);
+    Alert.alert(
+      `Block ${post.author_name ?? 'this member'}?`,
+      'Their content will be hidden from your current feed. You can manage blocked members through support.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await blockUser(user.id, post.author_id);
+            if (error) {
+              Alert.alert('Member not blocked', error);
+              return;
+            }
+            onRemove(post.id);
+            Alert.alert('Member blocked', 'Their content has been removed from your feed.');
+          },
+        },
+      ],
+    );
+  }, [onRemove, post.author_id, post.author_name, post.id, user]);
 
   const isOwn = user?.id === post.author_id;
   const hasMedia = post.media.length > 0;
@@ -147,7 +252,7 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
                   <Text style={s.authorNameOverlay} numberOfLines={1}>
                     {post.author_name ?? 'Athlete'}
                   </Text>
-                  <BadgeCheck color={Colors.primary} size={12} />
+                  {post.author_verified && <BadgeCheck color={Colors.primary} size={12} />}
                 </View>
                 <Text style={s.authorMetaOverlay} numberOfLines={1}>
                   {[post.author_position, post.author_sport].filter(Boolean).join(' · ')}
@@ -156,6 +261,8 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
               <View style={s.timeMenuRow}>
                 <Text style={s.timeOverlay}>{postTimeAgo(post.created_at)}</Text>
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Open post menu"
                   onPress={() => setMenuOpen(p => !p)}
                   hitSlop={10}
                   style={s.menuOverlayBtn}
@@ -197,7 +304,7 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
                 <Text style={s.authorName} numberOfLines={1}>
                   {post.author_name ?? 'Athlete'}
                 </Text>
-                <BadgeCheck color={Colors.primary} size={14} />
+                {post.author_verified && <BadgeCheck color={Colors.primary} size={14} />}
               </View>
               <Text style={s.authorMeta} numberOfLines={1}>
                 {[post.author_position, post.author_sport].filter(Boolean).join(' · ')}
@@ -205,6 +312,8 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
               <Text style={s.timeAgo}>{postTimeAgo(post.created_at)}</Text>
             </View>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Open post menu"
               onPress={() => setMenuOpen(p => !p)}
               hitSlop={8}
               style={s.menuBtn}
@@ -220,21 +329,37 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         <View style={s.menu}>
           {isOwn ? (
             <>
-              <TouchableOpacity style={s.menuItem} onPress={() => setMenuOpen(false)}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Edit post"
+                style={s.menuItem}
+                onPress={() => {
+                  setEditText(post.caption ?? '');
+                  setEditing(true);
+                  setMenuOpen(false);
+                }}
+              >
                 <Edit3 color={Colors.textPrimary} size={15} />
                 <Text style={s.menuTxt}>Edit post</Text>
               </TouchableOpacity>
               <View style={s.menuDiv} />
-              <TouchableOpacity style={s.menuItem} onPress={handleDelete}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Delete post" style={s.menuItem} onPress={handleDelete}>
                 <Trash2 color={Colors.error} size={15} />
                 <Text style={[s.menuTxt, { color: Colors.error }]}>Delete</Text>
               </TouchableOpacity>
             </>
           ) : (
-            <TouchableOpacity style={s.menuItem} onPress={() => setMenuOpen(false)}>
-              <Flag color={Colors.warning} size={15} />
-              <Text style={[s.menuTxt, { color: Colors.warning }]}>Report</Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report post" style={s.menuItem} onPress={handleReport}>
+                <Flag color={Colors.warning} size={15} />
+                <Text style={[s.menuTxt, { color: Colors.warning }]}>Report</Text>
+              </TouchableOpacity>
+              <View style={s.menuDiv} />
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Block member" style={s.menuItem} onPress={handleBlock}>
+                <Ban color={Colors.error} size={15} />
+                <Text style={[s.menuTxt, { color: Colors.error }]}>Block member</Text>
+              </TouchableOpacity>
+            </>
           )}
           <View style={s.menuDiv} />
           <TouchableOpacity style={s.menuItem} onPress={() => { handleSave(); setMenuOpen(false); }}>
@@ -250,7 +375,42 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
       )}
 
       {/* ── Caption ─────────────────────────────────────────────────────── */}
-      {post.caption && (
+      {editing ? (
+        <View style={s.editWrap}>
+          <TextInput
+            accessibilityLabel="Edit post caption"
+            style={s.editInput}
+            value={editText}
+            onChangeText={setEditText}
+            placeholder="Write a caption…"
+            placeholderTextColor={Colors.textDisabled}
+            multiline
+            maxLength={2200}
+            autoFocus
+          />
+          <View style={s.editActions}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={s.editCancel}
+              onPress={() => setEditing(false)}
+              disabled={savingEdit}
+            >
+              <Text style={s.editCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={s.editSave}
+              onPress={() => void handleSaveEdit()}
+              disabled={savingEdit}
+            >
+              {savingEdit
+                ? <ActivityIndicator color={Colors.bg} size="small" />
+                : <Text style={s.editSaveText}>Save</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : post.caption ? (
         <View style={s.captionWrap}>
           <Text style={s.caption} numberOfLines={captionExpanded ? undefined : 3}>
             <Text style={s.authorNameInline}>{post.author_name ?? 'Athlete'} </Text>
@@ -262,7 +422,7 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
             </TouchableOpacity>
           )}
         </View>
-      )}
+      ) : null}
 
       {/* ── Tags ────────────────────────────────────────────────────────── */}
       {post.tags.length > 0 && (
@@ -306,7 +466,13 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
           </TouchableOpacity>
 
           {/* Share */}
-          <TouchableOpacity style={s.actionBtn} activeOpacity={0.75}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Share post"
+            style={s.actionBtn}
+            activeOpacity={0.75}
+            onPress={() => void handleShare()}
+          >
             <Share2 color={Colors.textMuted} size={22} />
           </TouchableOpacity>
         </View>
@@ -378,15 +544,37 @@ function MediaCarousel({
 }
 
 function VideoPoster({ uri }: { uri: string }) {
+  const [playing, setPlaying] = useState(false);
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = true;
+  });
+
+  function togglePlayback() {
+    if (playing) {
+      player.pause();
+    } else {
+      player.play();
+    }
+    setPlaying((value) => !value);
+  }
+
   return (
-    <View style={mc.wrap}>
-      <Image source={{ uri }} style={mc.img} resizeMode="cover" />
-      <View style={mc.videoOverlay}>
-        <View style={mc.playBtn}>
-          <Play color={Colors.white} size={28} fill={Colors.white} />
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={playing ? 'Pause post video' : 'Play post video'}
+      activeOpacity={1}
+      style={mc.wrap}
+      onPress={togglePlayback}
+    >
+      <VideoView player={player} style={mc.img} contentFit="cover" nativeControls={false} />
+      {!playing && (
+        <View style={mc.videoOverlay}>
+          <View style={mc.playBtn}>
+            <Play color={Colors.white} size={28} fill={Colors.white} />
+          </View>
         </View>
-      </View>
-    </View>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -565,6 +753,13 @@ const s = StyleSheet.create({
   caption:         { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textPrimary, lineHeight: 21 },
   authorNameInline:{ fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   moreTxt:         { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.primary, marginTop: 3 },
+  editWrap: { marginHorizontal: Spacing.lg, marginTop: Spacing.md, padding: Spacing.md, borderRadius: Radii.md, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border, gap: Spacing.sm },
+  editInput: { minHeight: 80, fontFamily: Typography.family.regular, fontSize: Typography.size.sm, lineHeight: 20, color: Colors.textPrimary, textAlignVertical: 'top' },
+  editActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.sm },
+  editCancel: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  editCancelText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.textMuted },
+  editSave: { minWidth: 64, alignItems: 'center', borderRadius: Radii.md, backgroundColor: Colors.accent, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm },
+  editSaveText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.bg },
 
   // ── Tags
   tagRow: { paddingHorizontal: Spacing.lg, paddingBottom: Spacing.sm, gap: Spacing.sm },

@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
   Animated, AccessibilityInfo,
@@ -12,6 +12,7 @@ import {
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 
@@ -23,14 +24,6 @@ const ATTRIBUTES: Array<{ label: string; v: number; color: string }> = [];
 const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
 const SCOUTS: Array<{ name: string; role: string; verified: boolean; time: string; views: number; color: string }> = [];
 const OPPS: Array<{ title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number }> = [];
-
-const CHECKLIST = [
-  { label: 'Complete profile info', key: 'full_name' },
-  { label: 'Upload profile photo',  key: 'avatar_url' },
-  { label: 'Medical verification',  key: null },
-  { label: 'Get endorsements',      key: null },
-  { label: 'Add match records',     key: null },
-];
 
 // ── Animation hooks ───────────────────────────────────────────────────────────
 function useCountUp(to: number, duration = 1200, delay = 400): number {
@@ -290,24 +283,36 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const router = useRouter();
   const [reduced, setReduced] = useState(false);
+  const [scoutViews, setScoutViews] = useState(0);
+  const [opportunityMatches, setOpportunityMatches] = useState(0);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
   }, []);
 
-  const completedKeys = useMemo(() => {
-    if (!profile) return new Set<string>();
-    return new Set(Object.entries(profile).filter(([, v]) => !!v).map(([k]) => k));
-  }, [profile]);
+  useEffect(() => {
+    if (!user) return;
+    Promise.all([
+      profile?.athlete_profile_id
+        ? supabase
+          .from('profile_views')
+          .select('id', { count: 'exact', head: true })
+          .eq('athlete_id', profile.athlete_profile_id)
+        : Promise.resolve({ count: 0 }),
+      supabase
+        .from('opportunity_matches')
+        .select('opportunity_id', { count: 'exact', head: true })
+        .eq('athlete_id', user.id),
+    ]).then(([views, matches]) => {
+      setScoutViews(views.count ?? 0);
+      setOpportunityMatches(matches.count ?? 0);
+    });
+  }, [profile?.athlete_profile_id, user]);
 
-  const completeness = useMemo(() => {
-    const keys = CHECKLIST.map(c => c.key).filter(Boolean) as string[];
-    const done = keys.filter(k => completedKeys.has(k)).length;
-    return Math.round((done / keys.length) * 100);
-  }, [completedKeys]);
+  const completeness = Math.round(profile?.profile_completeness ?? 0);
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -317,10 +322,10 @@ export default function Dashboard() {
   const score10 = (performanceScore / 10).toFixed(1);
   const visibility10 = (visibilityScore / 10).toFixed(1);
   const statCards = [
-    { label: 'Scout Views', value: visibilityScore, display: String(visibilityScore), delta: 'Live', sub: 'visibility', Icon: Eye, grad: ['#0D2447', '#1C4D90'] as const, accent: Colors.primary },
+    { label: 'Scout Views', value: scoutViews, display: String(scoutViews), delta: 'Live', sub: 'recorded', Icon: Eye, grad: ['#0D2447', '#1C4D90'] as const, accent: Colors.primary },
     { label: 'Profile', value: completeness, display: `${completeness}%`, delta: 'Live', sub: 'complete', Icon: Star, grad: ['#0A2D1A', '#145C2C'] as const, accent: Colors.success },
-    { label: 'Open Opps', value: 0, display: '0', delta: 'Live', sub: 'matched', Icon: Target, grad: ['#2D1F0A', '#5C3A10'] as const, accent: Colors.warning },
-    { label: 'AI Score', value: performanceScore, display: String(performanceScore), delta: 'Live', sub: 'profile', Icon: TrendingUp, grad: ['#2A1010', '#5C1A1A'] as const, accent: Colors.error },
+    { label: 'Open Opps', value: opportunityMatches, display: String(opportunityMatches), delta: 'Live', sub: 'matched', Icon: Target, grad: ['#2D1F0A', '#5C3A10'] as const, accent: Colors.warning },
+    { label: 'Performance', value: performanceScore, display: String(performanceScore), delta: 'Live', sub: 'score', Icon: TrendingUp, grad: ['#2A1010', '#5C1A1A'] as const, accent: Colors.error },
   ];
 
   return (
@@ -348,10 +353,12 @@ export default function Dashboard() {
                 <LiveDot reduced={reduced} />
                 <Text style={s.liveTxt}>LIVE</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <BadgeCheck color={Colors.primary} size={14} />
-                <Text style={s.verifiedTxt}>AceAiX Verified</Text>
-              </View>
+              {profile?.is_verified && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <BadgeCheck color={Colors.primary} size={14} />
+                  <Text style={s.verifiedTxt}>AceAiX Verified</Text>
+                </View>
+              )}
             </View>
 
             {/* name block */}
@@ -459,7 +466,7 @@ export default function Dashboard() {
         {/* ── ATTRIBUTE BREAKDOWN ──────────────────────────────────────── */}
         <RevealCard index={2} reduced={reduced}>
           <SH title="Attribute Breakdown" color={Colors.primary} />
-          <Text style={s.attrSubtitle}>AI-calculated · {profile?.sport ?? 'Sport'} · Current season</Text>
+          <Text style={s.attrSubtitle}>Profile attributes · {profile?.sport ?? 'Sport'} · Current season</Text>
           {ATTRIBUTES.length ? (
             <View style={s.attrRow}>
               <AnimatedRadar data={ATTRIBUTES.map(a => a.v)} size={166} />
@@ -644,7 +651,7 @@ export default function Dashboard() {
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.aiName}>AI Career Coach</Text>
+              <Text style={s.aiName}>Guided Career Planner</Text>
               <View style={s.aiOnlineRow}>
                 <View style={[s.aiDot, { backgroundColor: Colors.textMuted }]} />
                 <Text style={s.aiOnline}>Not connected in this build</Text>

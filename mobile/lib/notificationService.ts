@@ -19,6 +19,7 @@ export interface AppNotification {
   title: string;
   body: string;
   data: Record<string, unknown>;
+  action_url: string | null;
   read: boolean;
   created_at: string;
 }
@@ -40,6 +41,7 @@ export async function fetchNotifications(userId: string): Promise<AppNotificatio
     ...row,
     body: row.body ?? '',
     data: row.data ?? {},
+    action_url: row.action_url ?? null,
     read: row.read ?? row.is_read ?? false,
   })) as AppNotification[];
 }
@@ -93,10 +95,11 @@ export function timeAgo(isoString: string): string {
 }
 
 export async function upsertPushToken(userId: string, token: string, platform: string): Promise<void> {
-  await supabase.from('push_tokens').upsert(
+  const { error } = await supabase.from('push_tokens').upsert(
     { user_id: userId, token, platform, updated_at: new Date().toISOString() },
     { onConflict: 'user_id,token' }
   );
+  if (error) throw new Error(error.message);
 }
 
 export interface NotificationPrefs {

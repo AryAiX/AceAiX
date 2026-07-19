@@ -233,7 +233,12 @@ function OpportunityCard({
                 <Text style={[c.scorePct, { color: scoreColor }]}>%</Text>
               </View>
             )}
-            <TouchableOpacity onPress={handleSave} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`${opp.saved ? 'Unsave' : 'Save'} opportunity ${opp.club}`}
+              onPress={handleSave}
+              hitSlop={8}
+            >
               <Animated.View style={{ transform: [{ scale: saveScale }] }}>
                 <Bookmark
                   color={opp.saved ? Colors.accent : Colors.textFaint}
@@ -279,7 +284,13 @@ function OpportunityCard({
               </Text>
             </View>
           ) : (
-            <TouchableOpacity style={c.applyBtn} onPress={onApply} activeOpacity={0.85}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Apply to ${opp.club}`}
+              style={c.applyBtn}
+              onPress={onApply}
+              activeOpacity={0.85}
+            >
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryGlow]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -289,7 +300,12 @@ function OpportunityCard({
               <Text style={c.applyTxt}>Apply Now</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={c.detailBtn} onPress={onPress}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`View ${opp.club} opportunity details`}
+            style={c.detailBtn}
+            onPress={onPress}
+          >
             <Text style={c.detailTxt}>Details</Text>
             <ChevronRight color={Colors.textMuted} size={13} />
           </TouchableOpacity>
@@ -375,7 +391,7 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
   const r2o = ring2.interpolate({ inputRange: [1, 2.4], outputRange: [0.35, 0] });
 
   const messages: Record<Tab, { title: string; body: string; cta?: boolean }> = {
-    'For You': { title: 'No matches yet',          body: 'Complete your profile to improve AI matching.', cta: true },
+    'For You': { title: 'No matches yet',          body: 'Complete your profile to improve opportunity matching.', cta: true },
     All:       { title: 'No opportunities',         body: 'Check back soon — new opportunities are added daily.' },
     Saved:     { title: 'No saved opportunities',   body: 'Bookmark opportunities to find them here quickly.' },
     Applied:   { title: 'No applications yet',      body: 'Browse opportunities and express your interest.' },

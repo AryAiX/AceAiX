@@ -9,14 +9,16 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, Play, Film } from 'lucide-react-native';
+import { Plus, Play, Film, X } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { ReelsFeed } from '@/components/reels/ReelsFeed';
 import { PostComposer } from '@/components/posts/PostComposer';
 import { CommentsSheet } from '@/components/posts/CommentsSheet';
+import { PostCard } from '@/components/posts/PostCard';
 import { FeedPost, fetchFeedPosts, fetchReels } from '@/lib/postsService';
 import { useAuth } from '@/context/AuthContext';
 
@@ -49,6 +51,7 @@ export default function MediaScreen() {
   const [composerVisible, setComposerVisible] = useState(false);
   const [composerType, setComposerType] = useState<'post' | 'reel'>('post');
   const [commentPost, setCommentPost] = useState<FeedPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
 
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
@@ -94,6 +97,14 @@ export default function MediaScreen() {
 
   const handlePostUpdate = useCallback((id: string, partial: Partial<FeedPost>) => {
     setPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...partial } : p)));
+    setSelectedPost((current) => (
+      current?.id === id ? { ...current, ...partial } : current
+    ));
+  }, []);
+
+  const handlePostRemove = useCallback((id: string) => {
+    setPosts((prev) => prev.filter((post) => post.id !== id));
+    setSelectedPost((current) => current?.id === id ? null : current);
   }, []);
 
   const handleReelUpdate = useCallback((id: string, partial: Partial<FeedPost>) => {
@@ -137,6 +148,8 @@ export default function MediaScreen() {
           </TouchableOpacity>
         ))}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={tab === 'Reels' ? 'Create new reel' : 'Create new post'}
           style={s.newBtn}
           onPress={() => openComposer(tab === 'Reels' ? 'reel' : 'post')}
         >
@@ -155,7 +168,7 @@ export default function MediaScreen() {
             keyExtractor={(p) => p.id}
             numColumns={3}
             columnWrapperStyle={s.row}
-            renderItem={({ item }) => <GridCell post={item} />}
+            renderItem={({ item }) => <GridCell post={item} onPress={() => setSelectedPost(item)} />}
             ListEmptyComponent={<EmptyGrid label="No posts yet" sub="Create your first post to share your journey." />}
             contentContainerStyle={s.gridContent}
             showsVerticalScrollIndicator={false}
@@ -180,6 +193,7 @@ export default function MediaScreen() {
             reels={reels}
             loading={reelsLoading}
             onUpdate={handleReelUpdate}
+            onRemove={(id) => setReels((current) => current.filter((reel) => reel.id !== id))}
             onComments={setCommentPost}
             onLoadMore={() => {
               if (!reelsHasMoreRef.current) return;
@@ -203,14 +217,54 @@ export default function MediaScreen() {
         onClose={() => setCommentPost(null)}
         onCommentAdded={handleCommentAdded}
       />
+
+      <Modal
+        visible={selectedPost !== null}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setSelectedPost(null)}
+      >
+        <View style={[s.detailRoot, { paddingTop: insets.top }]}>
+          <View style={s.detailHeader}>
+            <Text style={s.detailTitle}>Post</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close post details"
+              style={s.detailClose}
+              onPress={() => setSelectedPost(null)}
+            >
+              <X color={Colors.textPrimary} size={21} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={selectedPost ? [selectedPost] : []}
+            keyExtractor={(post) => post.id}
+            contentContainerStyle={s.detailContent}
+            renderItem={({ item }) => (
+              <PostCard
+                post={item}
+                onUpdate={handlePostUpdate}
+                onRemove={handlePostRemove}
+                onComments={setCommentPost}
+              />
+            )}
+          />
+        </View>
+      </Modal>
     </View>
   );
 }
 
-function GridCell({ post }: { post: FeedPost }) {
+function GridCell({ post, onPress }: { post: FeedPost; onPress: () => void }) {
   const media = post.media[0];
   return (
-    <TouchableOpacity activeOpacity={0.8} style={s.cell}>
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={`Open post by ${post.author_name ?? 'athlete'}`}
+      activeOpacity={0.8}
+      style={s.cell}
+      onPress={onPress}
+    >
       {media?.signed_url ? (
         <Image source={{ uri: media.signed_url }} style={s.cellThumb} resizeMode="cover" />
       ) : (
@@ -257,4 +311,9 @@ const s = StyleSheet.create({
   emptyWrap: { alignItems: 'center', paddingTop: Spacing.xxxl * 2, paddingHorizontal: Spacing.xxxl, gap: Spacing.md },
   emptyTitle: { fontFamily: Typography.family.bold, fontSize: Typography.size.xl, color: Colors.textMuted },
   emptySub: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textDisabled, textAlign: 'center', lineHeight: 20 },
+  detailRoot: { flex: 1, backgroundColor: Colors.bg },
+  detailHeader: { minHeight: 56, paddingHorizontal: Spacing.lg, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  detailTitle: { fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary },
+  detailClose: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  detailContent: { padding: Spacing.lg, paddingBottom: Spacing.giant },
 });

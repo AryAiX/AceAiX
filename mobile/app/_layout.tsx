@@ -15,22 +15,24 @@ import {
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
+import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
 import { upsertPushToken } from '@/lib/notificationService';
 
 SplashScreen.preventAutoHideAsync();
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 async function registerPushToken(userId: string) {
   if (Platform.OS === 'web') return;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Notifications = require('expo-notifications') as any;
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
     if (existing !== 'granted') {
@@ -38,10 +40,11 @@ async function registerPushToken(userId: string) {
       finalStatus = status;
     }
     if (finalStatus !== 'granted') return;
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     await upsertPushToken(userId, tokenData.data, Platform.OS);
-  } catch (_) {
-    // Non-fatal — push not available in this build
+  } catch (error) {
+    console.warn('Push notification registration failed', error);
   }
 }
 

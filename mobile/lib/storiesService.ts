@@ -43,19 +43,24 @@ export interface StoryAuthorGroup {
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 export async function fetchActiveStories(currentUserId: string): Promise<StoryAuthorGroup[]> {
-  const { data, error } = await supabase
-    .from('stories')
-    .select(`
-      id, author_id, media_url, media_type, caption, overlays, audience, created_at, expires_at,
-      author:user_profiles(full_name, avatar_url)
-    `)
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: true });
+  const [{ data, error }, { data: blocks }] = await Promise.all([
+    supabase
+      .from('stories')
+      .select(`
+        id, author_id, media_url, media_type, caption, overlays, audience, created_at, expires_at,
+        author:user_profiles!stories_author_id_fkey(full_name, avatar_url)
+      `)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: true }),
+    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+  ]);
 
   if (error || !data) return [];
+  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const visibleRows = (data as any[]).filter((story) => !blockedIds.has(story.author_id));
 
   // Fetch seen state for current user
-  const storyIds = (data as any[]).map((s) => s.id);
+  const storyIds = visibleRows.map((s) => s.id);
   let seenSet = new Set<string>();
   if (storyIds.length > 0) {
     const { data: views } = await supabase
@@ -68,9 +73,11 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
 
   // Build stories with signed URLs
   const stories: Story[] = await Promise.all(
-    (data as any[]).map(async (row) => {
+    visibleRows.map(async (row) => {
       let signed_url: string | undefined;
-      try {
+      if (/^https?:\/\//i.test(row.media_url)) {
+        signed_url = row.media_url;
+      } else try {
         const { data: urlData } = await supabase.storage
           .from('stories')
           .createSignedUrl(row.media_url, 3600);
@@ -129,7 +136,7 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
 export async function fetchMyStoryViewers(storyId: string): Promise<Array<{ viewer_id: string; viewer_name: string | null; viewer_avatar: string | null; viewed_at: string }>> {
   const { data, error } = await supabase
     .from('story_views')
-    .select('viewer_id, viewed_at, viewer:user_profiles(full_name, avatar_url)')
+    .select('viewer_id, viewed_at, viewer:user_profiles!story_views_viewer_id_fkey(full_name, avatar_url)')
     .eq('story_id', storyId)
     .order('viewed_at', { ascending: false });
   if (error || !data) return [];
@@ -191,16 +198,82 @@ export async function createStory(params: {
   return { id: data.id, error: null };
 }
 
-export async function deleteStory(storyId: string, mediaPath: string): Promise<void> {
-  await supabase.from('stories').delete().eq('id', storyId);
-  await supabase.storage.from('stories').remove([mediaPath]);
+export async function deleteStory(
+  storyId: string,
+  mediaPath: string,
+): Promise<{ error: string | null }> {
+  if (mediaPath && !mediaPath.startsWith('http')) {
+    const { error: mediaError } = await supabase.storage.from('stories').remove([mediaPath]);
+    if (mediaError) return { error: mediaError.message };
+  }
+  const { error } = await supabase.from('stories').delete().eq('id', storyId);
+  return { error: error?.message ?? null };
 }
 
 export async function markStorySeen(storyId: string, viewerId: string): Promise<void> {
-  await supabase.from('story_views').upsert(
+  const { error } = await supabase.from('story_views').upsert(
     { story_id: storyId, viewer_id: viewerId, viewed_at: new Date().toISOString() },
     { onConflict: 'story_id,viewer_id' }
   );
+  if (error) throw new Error(error.message);
+}
+
+export async function sendStoryReply(
+  story: Pick<Story, 'id' | 'author_id'>,
+  senderId: string,
+  content: string,
+): Promise<{ error: string | null }> {
+  const normalized = content.trim();
+  if (!normalized) return { error: 'Reply cannot be empty.' };
+  if (story.author_id === senderId) return { error: 'You cannot reply to your own story.' };
+
+  const pairFilter = [
+    `and(participant_1_id.eq.${senderId},participant_2_id.eq.${story.author_id})`,
+    `and(participant_1_id.eq.${story.author_id},participant_2_id.eq.${senderId})`,
+  ].join(',');
+  const { data: existing, error: findError } = await supabase
+    .from('conversations')
+    .select('id')
+    .or(pairFilter)
+    .limit(1)
+    .maybeSingle();
+
+  if (findError) return { error: findError.message };
+
+  let conversationId = existing?.id;
+  if (!conversationId) {
+    const { data: created, error: createError } = await supabase
+      .from('conversations')
+      .insert({
+        participant_1_id: senderId,
+        participant_2_id: story.author_id,
+        subject: 'Story reply',
+      })
+      .select('id')
+      .single();
+    if (createError || !created) return { error: createError?.message ?? 'Unable to start conversation.' };
+    conversationId = created.id;
+  }
+
+  const message = `Reply to your story: ${normalized}`;
+  const createdAt = new Date().toISOString();
+  const { error: messageError } = await supabase.from('messages').insert({
+    conversation_id: conversationId,
+    sender_id: senderId,
+    content: message,
+    is_read: false,
+  });
+  if (messageError) return { error: messageError.message };
+
+  await supabase
+    .from('conversations')
+    .update({
+      last_message_at: createdAt,
+      last_message_preview: message.slice(0, 255),
+    })
+    .eq('id', conversationId);
+
+  return { error: null };
 }
 
 export async function getSignedUrl(path: string): Promise<string | null> {

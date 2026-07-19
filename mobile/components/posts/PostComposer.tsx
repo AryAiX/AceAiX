@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   X,
@@ -27,6 +28,8 @@ import {
   Zap,
   FlipHorizontal,
   Trash2,
+  Images,
+  Play,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -128,6 +131,24 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     }
   }, [permission?.granted, requestPermission]);
 
+  const chooseMedia = useCallback(async () => {
+    const isReel = postType === 'reel';
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: isReel ? ['videos'] : ['images', 'videos'],
+      allowsMultipleSelection: !isReel,
+      selectionLimit: isReel ? 1 : 6,
+      quality: 0.85,
+      videoMaxDuration: 90,
+    });
+    if (result.canceled) return;
+
+    const selected = result.assets.map((asset): CapturedMedia => ({
+      uri: asset.uri,
+      type: asset.type === 'video' ? 'video' : 'photo',
+    }));
+    setMedia((previous) => isReel ? selected.slice(0, 1) : [...previous, ...selected].slice(0, 6));
+  }, [postType]);
+
   const removeMedia = useCallback((idx: number) => {
     setMedia((prev) => prev.filter((_, i) => i !== idx));
   }, []);
@@ -142,7 +163,11 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
   const handlePost = useCallback(async () => {
     if (!user) return;
     if (!caption.trim() && media.length === 0) {
-      Alert.alert('Add something', 'Write a caption or add a photo.');
+      Alert.alert('Add something', 'Write a caption or add media.');
+      return;
+    }
+    if (postType === 'reel' && !media.some((item) => item.type === 'video')) {
+      Alert.alert('Choose a video', 'Reels require a video from your photo library.');
       return;
     }
     setPosting(true);
@@ -239,11 +264,18 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
 
             {/* Top bar */}
             <View style={s.topBar}>
-              <TouchableOpacity onPress={handleClose} hitSlop={8}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close post composer"
+                onPress={handleClose}
+                hitSlop={8}
+              >
                 <X color={Colors.textPrimary} size={24} />
               </TouchableOpacity>
               <Text style={s.topTitle}>{isReel ? 'New Reel' : 'New Post'}</Text>
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={isReel ? 'Share reel' : 'Publish post'}
                 style={[s.postBtn, posting && { opacity: 0.6 }]}
                 onPress={handlePost}
                 disabled={posting}
@@ -266,6 +298,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             {/* Caption */}
             <View style={s.captionArea}>
               <TextInput
+                accessibilityLabel="Post caption"
                 style={s.captionInput}
                 value={caption}
                 onChangeText={setCaption}
@@ -281,7 +314,14 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.mediaRow}>
                 {media.map((m, i) => (
                   <View key={i} style={s.mediaThumb}>
-                    <Image source={{ uri: m.uri }} style={s.mediaThumbImg} />
+                    {m.type === 'video' ? (
+                      <View style={[s.mediaThumbImg, s.videoThumb]}>
+                        <Play color={Colors.white} size={24} fill={Colors.white} />
+                        <Text style={s.videoThumbText}>Video</Text>
+                      </View>
+                    ) : (
+                      <Image source={{ uri: m.uri }} style={s.mediaThumbImg} />
+                    )}
                     <TouchableOpacity style={s.mediaRemove} onPress={() => removeMedia(i)}>
                       <Trash2 color={Colors.white} size={14} />
                     </TouchableOpacity>
@@ -290,11 +330,31 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
               </ScrollView>
             )}
 
-            {/* Add media button */}
-            <TouchableOpacity style={s.addMediaBtn} onPress={openCamera}>
-              <Camera color={Colors.primary} size={20} />
-              <Text style={s.addMediaTxt}>{media.length > 0 ? 'Add more' : 'Add photo'}</Text>
-            </TouchableOpacity>
+            {/* Add media buttons */}
+            <View style={s.mediaButtons}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={isReel ? 'Choose reel video' : 'Choose post media'}
+                style={s.addMediaBtn}
+                onPress={() => void chooseMedia()}
+              >
+                <Images color={Colors.primary} size={20} />
+                <Text style={s.addMediaTxt}>
+                  {isReel ? 'Choose video' : media.length > 0 ? 'Add more' : 'Photo or video'}
+                </Text>
+              </TouchableOpacity>
+              {!isReel && (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Take post photo"
+                  style={s.addMediaBtn}
+                  onPress={openCamera}
+                >
+                  <Camera color={Colors.primary} size={20} />
+                  <Text style={s.addMediaTxt}>Take photo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Tags section */}
             <View style={s.section}>
@@ -393,9 +453,12 @@ const s = StyleSheet.create({
   mediaRow: { paddingHorizontal: Spacing.lg, gap: Spacing.md },
   mediaThumb: { width: 100, height: 100, borderRadius: Radii.md, overflow: 'hidden', position: 'relative' },
   mediaThumbImg: { width: '100%', height: '100%' },
+  videoThumb: { backgroundColor: Colors.elevated, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  videoThumbText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.white },
   mediaRemove: { position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center' },
 
-  addMediaBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginHorizontal: Spacing.lg, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, borderStyle: 'dashed', paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
+  mediaButtons: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.lg },
+  addMediaBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.sm, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, borderStyle: 'dashed', paddingVertical: Spacing.md, paddingHorizontal: Spacing.md },
   addMediaTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.primary },
 
   section: { paddingHorizontal: Spacing.lg, gap: Spacing.sm },

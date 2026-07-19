@@ -15,6 +15,7 @@ import {
   Settings, Globe, Compass, LogOut, X, Settings2,
   BadgeCheck, Brain, Zap, ChevronRight,
 } from 'lucide-react-native';
+import { supabase } from '@/lib/supabase';
 
 const LOGO = require('@/assets/images/AceAiX_logo_transparent_(1) copy.png');
 
@@ -60,9 +61,9 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
   {
     title: 'AI & Insights',
     items: [
-      { label: 'AI Coach',  route: '/(tabs)/ai-coach',   Icon: Bot,          hot: true },
+      { label: 'Career Planner', route: '/(tabs)/ai-coach', Icon: Bot, hot: true },
       { label: 'Analytics', route: '/(tabs)/analytics',  Icon: BarChart2             },
-      { label: 'Messages',  route: '/(tabs)/messages',   Icon: MessageSquare, badge: 3 },
+      { label: 'Messages',  route: '/(tabs)/messages',   Icon: MessageSquare },
     ],
   },
   {
@@ -198,11 +199,12 @@ function SectionHeader({ title, color, delay }: { title: string; color: string; 
 // ── AppDrawer ──────────────────────────────────────────────────────────────────
 export function AppDrawer() {
   const { isOpen, close } = useDrawer();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, user } = useAuth();
   const router   = useRouter();
   const pathname = usePathname();
   const insets   = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   const translateX     = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const backdropOpacity= useRef(new Animated.Value(0)).current;
@@ -226,6 +228,16 @@ export function AppDrawer() {
       ]).start(() => setVisible(false));
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !user) return;
+    supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_read', false)
+      .neq('sender_id', user.id)
+      .then(({ count }) => setUnreadMessages(count ?? 0));
+  }, [isOpen, user]);
 
   function navigate(route: string) {
     close();
@@ -322,10 +334,10 @@ export function AppDrawer() {
                 <Text style={d.athleteRole} numberOfLines={1}>
                   {profile?.position ?? ''}{profile?.position && profile?.sport ? ' · ' : ''}{profile?.sport ?? 'Athlete'}
                 </Text>
-                {/* AI Score chip */}
+                {/* Performance score chip */}
                 <View style={d.aiChip}>
                   <Zap color={Colors.bg} size={9} fill={Colors.bg} />
-                  <Text style={d.aiChipTxt}>AI Score 92</Text>
+                  <Text style={d.aiChipTxt}>Performance {Math.round(profile?.performance_score ?? 0)}</Text>
                 </View>
               </View>
 
@@ -348,7 +360,12 @@ export function AppDrawer() {
                     return (
                       <NavItem
                         key={item.route}
-                        item={item}
+                        item={{
+                          ...item,
+                          badge: item.label === 'Messages' && unreadMessages > 0
+                            ? unreadMessages
+                            : undefined,
+                        }}
                         active={active}
                         color={color}
                         onPress={() => navigate(item.route)}
