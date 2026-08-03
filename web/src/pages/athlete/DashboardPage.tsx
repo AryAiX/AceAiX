@@ -25,8 +25,9 @@ const FALLBACK_ATTRS: AttributeData[] = [
 
 function resultLetter(result: string | null): 'W' | 'D' | 'L' {
   if (!result) return 'D';
-  if (result.includes('W')) return 'W';
-  if (result.includes('L')) return 'L';
+  const normalized = result.toUpperCase();
+  if (normalized.includes('W')) return 'W';
+  if (normalized.includes('L')) return 'L';
   return 'D';
 }
 function matchRating(m: MatchRecord): number {
