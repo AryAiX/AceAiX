@@ -381,7 +381,7 @@ export default function AthleteDashboard() {
             <VerifiedBadge size="sm" />
           </div>
           <div className="flex items-center gap-3">
-            <StatusChip status={(clearance?.status as 'cleared') ?? 'pending'} />
+            <StatusChip status={clearance?.status ?? 'pending'} />
             <span className="text-xs text-slate">{clearance?.status === 'cleared' ? 'Full clearance active' : 'Clearance pending'}</span>
           </div>
           <div className="p-3 bg-emerald/6 border border-emerald/15 rounded-xl">
