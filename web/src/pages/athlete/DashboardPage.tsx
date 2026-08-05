@@ -24,12 +24,15 @@ const FALLBACK_ATTRS: AttributeData[] = [
   { label: 'Pace', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
 ];
 
-function resultLetter(result: string | null): 'W' | 'D' | 'L' {
-  if (!result) return 'D';
-  const normalized = result.toUpperCase();
-  if (normalized.includes('W')) return 'W';
-  if (normalized.includes('L')) return 'L';
-  return 'D';
+function resultLetter(result: string | null): 'W' | 'D' | 'L' | null {
+  if (!result) return null;
+  const normalized = result.trim().toUpperCase();
+  const trailing = normalized.match(/\s([WDL])$/);
+  if (trailing) return trailing[1] as 'W' | 'D' | 'L';
+  if (normalized === 'W' || normalized === 'WIN') return 'W';
+  if (normalized === 'D' || normalized === 'DRAW') return 'D';
+  if (normalized === 'L' || normalized === 'LOSS' || normalized === 'LOST') return 'L';
+  return null;
 }
 function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
@@ -120,13 +123,15 @@ function LineChart({ trajectory }: { trajectory: TrajectoryPoint[] }) {
   );
 }
 
-function FormDot({ result }: { result: string }) {
+function FormDot({ result }: { result: 'W' | 'D' | 'L' | null }) {
   const cls = result === 'W'
     ? 'bg-emerald/15 text-emerald border-emerald/30'
     : result === 'L'
     ? 'bg-coral/15 text-coral border-coral/30'
-    : 'bg-amber/15 text-amber border-amber/30';
-  return <span className={`w-7 h-7 rounded-full border text-[10px] font-bold flex items-center justify-center ${cls}`}>{result}</span>;
+    : result === 'D'
+    ? 'bg-amber/15 text-amber border-amber/30'
+    : 'bg-slate/15 text-slate border-slate/30';
+  return <span className={`w-7 h-7 rounded-full border text-[10px] font-bold flex items-center justify-center ${cls}`}>{result ?? '?'}</span>;
 }
 
 function getGreeting() {
