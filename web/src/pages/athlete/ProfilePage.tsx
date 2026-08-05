@@ -171,6 +171,7 @@ export default function AthleteProfilePage() {
           weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
           nationality: form.nationality, current_club: form.current_club,
           level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
+          profile_completeness: completeness,
         });
         queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
       }
