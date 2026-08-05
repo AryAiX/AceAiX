@@ -278,9 +278,15 @@ export default function AthleteDashboard() {
               <span className="w-1.5 h-1.5 bg-emerald rounded-full animate-pulse" />
               <span className="text-xs font-semibold text-emerald">Profile Live</span>
             </div>
-            <Link to={`/athletes/${athleteId ?? ''}`} className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5">
-              View Public Profile <ArrowRight size={12} />
-            </Link>
+            {athleteId ? (
+              <Link to={`/athletes/${athleteId}`} className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5">
+                View Public Profile <ArrowRight size={12} />
+              </Link>
+            ) : (
+              <span className="btn-primary text-xs px-4 py-2 inline-flex items-center gap-1.5 opacity-50 cursor-not-allowed pointer-events-none">
+                View Public Profile <ArrowRight size={12} />
+              </span>
+            )}
           </div>
         </div>
         <div className="relative border-t border-white/[0.06] px-6 sm:px-8 py-3 flex items-center gap-4 flex-wrap">
