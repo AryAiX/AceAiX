@@ -18,6 +18,7 @@ import { listOpportunities } from '../../api/opportunities';
 import { latestClearance, listMedicalRecords } from '../../api/medical';
 import { listEndorsements } from '../../api/network';
 import type { AttributeData, TrajectoryPoint, MatchRecord } from '../../types';
+import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
 
 const FALLBACK_ATTRS: AttributeData[] = [
   { label: 'Pace', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
@@ -156,7 +157,7 @@ export default function AthleteDashboard() {
   const matchesQuery = useQuery({ queryKey: ['matches', athleteId], queryFn: () => listMatches(athleteId!, 5), enabled: !!athleteId });
   const viewsQuery = useQuery({ queryKey: ['views', athleteId], queryFn: () => listProfileViews(athleteId!, 4), enabled: !!athleteId });
   const viewTotalQuery = useQuery({ queryKey: ['view-count', athleteId], queryFn: () => profileViewCount(athleteId!), enabled: !!athleteId });
-  const opportunitiesQuery = useQuery({ queryKey: ['opps-dash'], queryFn: () => listOpportunities({ limit: 3 }) });
+  const opportunitiesQuery = useQuery({ queryKey: ['opps-dash'], queryFn: () => listOpportunities({ limit: 40 }) });
   const clearanceQuery = useQuery({ queryKey: ['clearance', athleteId], queryFn: () => latestClearance(athleteId!), enabled: !!athleteId });
   const medRecordsQuery = useQuery({ queryKey: ['med-records', athleteId], queryFn: () => listMedicalRecords(athleteId!), enabled: !!athleteId });
   const endorsementsQuery = useQuery({ queryKey: ['endorsements', athleteId], queryFn: () => listEndorsements(athleteId!), enabled: !!athleteId });
@@ -165,7 +166,15 @@ export default function AthleteDashboard() {
   const matches = matchesQuery.data ?? [];
   const views = viewsQuery.data ?? [];
   const viewTotal = viewTotalQuery.data ?? 0;
-  const opportunities = opportunitiesQuery.data ?? [];
+  const activeOpportunities = opportunitiesQuery.data ?? [];
+  const opportunities = athlete
+    ? activeOpportunities
+        .map((opp) => ({ opp, match: computeOpportunityMatch(athlete, opp) }))
+        .filter(({ match }) => match.evidence.some((e) => e.id.endsWith('sport_match') && e.value === true))
+        .sort((a, b) => b.match.score - a.match.score)
+        .slice(0, 3)
+        .map(({ opp }) => opp)
+    : [];
   const clearance = clearanceQuery.data;
   const medRecords = medRecordsQuery.data ?? [];
   const endorsements = endorsementsQuery.data ?? [];
@@ -462,7 +471,11 @@ export default function AthleteDashboard() {
                 </div>
               </Link>
             ))}
-            {!opportunities.length && <p className="text-xs text-slate py-4 text-center">No opportunities yet.</p>}
+            {!opportunities.length && (
+              <p className="text-xs text-slate py-4 text-center">
+                {activeOpportunities.length ? 'No strong matches right now — check back soon.' : 'No opportunities yet.'}
+              </p>
+            )}
           </div>
         </div>
 
