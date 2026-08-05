@@ -107,6 +107,7 @@ export default function AthleteProfilePage() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
 
@@ -157,24 +158,30 @@ export default function AthleteProfilePage() {
   async function handleSave() {
     if (!profile) return;
     setSaving(true);
-    await updateUserProfile(profile.id, {
-      full_name: form.full_name, bio: form.bio, city: form.city, country: form.country,
-    });
-    if (athlete) {
-      await updateAthlete(athlete.id, {
-        sport: form.sport, position_primary: form.position_primary,
-        position_secondary: form.position_secondary,
-        height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
-        weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
-        nationality: form.nationality, current_club: form.current_club,
-        level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
+    setSaveError(false);
+    try {
+      await updateUserProfile(profile.id, {
+        full_name: form.full_name, bio: form.bio, city: form.city, country: form.country,
       });
-      queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
+      if (athlete) {
+        await updateAthlete(athlete.id, {
+          sport: form.sport, position_primary: form.position_primary,
+          position_secondary: form.position_secondary,
+          height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
+          weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
+          nationality: form.nationality, current_club: form.current_club,
+          level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
+        });
+        queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
+      }
+      await refreshProfile();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
     }
-    await refreshProfile();
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   }
 
   function set(key: string, val: string) {
@@ -293,6 +300,12 @@ export default function AthleteProfilePage() {
             {saving ? 'Saving…' : saved ? 'Saved!' : 'Save'}
           </button>
         </div>
+
+        {saveError && (
+          <div className="px-6 sm:px-8 pb-4 -mt-2">
+            <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>
+          </div>
+        )}
 
         {/* energy line */}
         <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent 0%, rgba(47,128,237,0.4) 30%, rgba(184,241,53,0.5) 60%, transparent 100%)' }} />
