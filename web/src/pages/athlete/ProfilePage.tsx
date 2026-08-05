@@ -102,8 +102,8 @@ const CHECKLIST_FIELDS: { label: string; key: string }[] = [
 ];
 
 export default function AthleteProfilePage() {
-  const { profile, refreshProfile } = useAuth();
-  const { data: athlete, isLoading: loading } = useMyAthlete();
+  const { profile, refreshProfile, loading: authLoading } = useAuth();
+  const { data: athlete, isLoading: athleteLoading } = useMyAthlete();
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -189,7 +189,7 @@ export default function AthleteProfilePage() {
     setForm(f => ({ ...f, [key]: val }));
   }
 
-  if (loading) {
+  if (authLoading || athleteLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
