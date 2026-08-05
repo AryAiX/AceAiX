@@ -41,9 +41,16 @@ const PCT_COLORS = ['#B8F135', '#2F80ED', '#1FB57A', '#F5A623', '#A78BFA'];
 
 function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
   if (!r) return 'draw';
-  const s = r.trim().toLowerCase();
-  if (s === 'win' || s.startsWith('w')) return 'win';
-  if (s === 'loss' || s === 'lose' || s.startsWith('l')) return 'loss';
+  const normalized = r.trim().toUpperCase();
+  const trailing = normalized.match(/\s([WDL])$/);
+  const code = trailing
+    ? trailing[1]
+    : normalized === 'W' || normalized === 'WIN' ? 'W'
+    : normalized === 'D' || normalized === 'DRAW' ? 'D'
+    : normalized === 'L' || normalized === 'LOSS' || normalized === 'LOST' ? 'L'
+    : null;
+  if (code === 'W') return 'win';
+  if (code === 'L') return 'loss';
   return 'draw';
 }
 
