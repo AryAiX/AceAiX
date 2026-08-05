@@ -427,15 +427,6 @@ export default function AthleteProfilePage() {
                 className="input-field pl-9" placeholder="e.g. Football" />
             </Field>
 
-            <Field label="Career Level" delay={40}>
-              <select value={form.level} onChange={e => set('level', e.target.value)} className="input-field">
-                <option value="amateur">Amateur</option>
-                <option value="semi-pro">Semi-Pro</option>
-                <option value="professional">Professional</option>
-                <option value="elite">Elite</option>
-              </select>
-            </Field>
-
             <Field label="Primary Position" icon={Shirt} delay={80}>
               <input value={form.position_primary} onChange={e => set('position_primary', e.target.value)}
                 className="input-field pl-9" placeholder="e.g. Striker" />
