@@ -22,6 +22,11 @@ import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
 
 const FALLBACK_ATTRS: AttributeData[] = [
   { label: 'Pace', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
+  { label: 'Shooting', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
+  { label: 'Passing', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
+  { label: 'Dribbling', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
+  { label: 'Defending', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
+  { label: 'Physical', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
 ];
 
 function resultLetter(result: string | null): 'W' | 'D' | 'L' | null {
@@ -371,7 +376,7 @@ export default function AthleteDashboard() {
           <p className="text-xs text-slate mb-3">AI-calculated · {sport}</p>
           <div style={{ height: 200 }}><RadarChart attrs={attrs} /></div>
           <div className="grid grid-cols-3 gap-2 mt-2">
-            {attrs.slice(0, 3).map(a => (
+            {(attrs.length ? attrs : FALLBACK_ATTRS).slice(0, 3).map(a => (
               <div key={a.label} className="text-center">
                 <p className="text-[11px] text-slate">{a.label}</p>
                 <p className="text-sm font-bold tabular" style={{ color: a.value >= 80 ? '#2F80ED' : '#5B6B82' }}>{a.value}</p>
