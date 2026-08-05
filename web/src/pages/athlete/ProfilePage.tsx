@@ -108,6 +108,7 @@ export default function AthleteProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
 
@@ -132,6 +133,7 @@ export default function AthleteProfilePage() {
   useEffect(() => {
     if (!profile) return;
     setForm(f => ({ ...f, full_name: profile.full_name || '', city: profile.city || '', country: profile.country || '' }));
+    setDirty(false);
   }, [profile]);
 
   useEffect(() => {
@@ -149,7 +151,17 @@ export default function AthleteProfilePage() {
       level: athlete.level || 'amateur',
       dominant_foot: athlete.dominant_foot || '',
     }));
+    setDirty(false);
   }, [athlete]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault();
+    }
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [dirty]);
 
   const completeness = Math.round(
     (CHECKLIST_FIELDS.filter(f => !!(form as Record<string, string>)[f.key]).length / CHECKLIST_FIELDS.length) * 100
@@ -176,6 +188,7 @@ export default function AthleteProfilePage() {
         queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
       }
       await refreshProfile();
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
@@ -187,6 +200,7 @@ export default function AthleteProfilePage() {
 
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
+    setDirty(true);
   }
 
   if (authLoading || athleteLoading) {
