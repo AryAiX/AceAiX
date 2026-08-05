@@ -31,9 +31,9 @@ function resultLetter(result: string | null): 'W' | 'D' | 'L' {
   if (normalized.includes('L')) return 'L';
   return 'D';
 }
-function matchRating(m: MatchRecord): number {
+function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
-  return typeof r === 'number' ? r : 7;
+  return typeof r === 'number' ? r : null;
 }
 
 function RadarChart({ attrs }: { attrs: AttributeData[] }) {
@@ -221,8 +221,18 @@ export default function AthleteDashboard() {
   const visibility = (athlete?.visibility_score ?? 0) / 10;
   const performance = (athlete?.performance_score ?? 0) / 10;
 
-  const form = matches.map(m => ({ match: `vs. ${m.opponent ?? 'TBD'}`, result: resultLetter(m.result), score: matchRating(m).toFixed(1), goals: m.goals, assists: m.assists }));
-  const avgRating = matches.length ? (matches.reduce((s, m) => s + matchRating(m), 0) / matches.length).toFixed(1) : '—';
+  const form = matches.map(m => {
+    const rating = matchRating(m);
+    return {
+      match: `vs. ${m.opponent ?? 'TBD'}`,
+      result: resultLetter(m.result),
+      score: rating !== null ? rating.toFixed(1) : null,
+      goals: m.goals,
+      assists: m.assists,
+    };
+  });
+  const ratedMatches = matches.map(matchRating).filter((r): r is number => r !== null);
+  const avgRating = ratedMatches.length ? (ratedMatches.reduce((s, r) => s + r, 0) / ratedMatches.length).toFixed(1) : '—';
 
   const checklist = [
     { label: 'Complete profile info', done: completePct >= 60 },
@@ -537,7 +547,13 @@ export default function AthleteDashboard() {
                 <tr key={i} className="hover:bg-page transition-colors">
                   <td className="py-2.5 text-ink">{f.match}</td>
                   <td className="py-2.5 text-center"><FormDot result={f.result} /></td>
-                  <td className="py-2.5 text-center"><span className="font-bold tabular" style={{ color: Number(f.score) >= 8.5 ? '#1FB57A' : Number(f.score) >= 7 ? '#2F80ED' : '#5B6B82' }}>{f.score}</span></td>
+                  <td className="py-2.5 text-center">
+                    {f.score !== null ? (
+                      <span className="font-bold tabular" style={{ color: Number(f.score) >= 8.5 ? '#1FB57A' : Number(f.score) >= 7 ? '#2F80ED' : '#5B6B82' }}>{f.score}</span>
+                    ) : (
+                      <span className="text-slate">—</span>
+                    )}
+                  </td>
                   <td className="py-2.5 text-center text-ink font-semibold tabular">{f.goals}</td>
                   <td className="py-2.5 text-center text-ink font-semibold tabular">{f.assists}</td>
                 </tr>
