@@ -31,6 +31,20 @@ export async function deleteMedia(id: string): Promise<void> {
   unwrap(await supabase.from('athlete_media').delete().eq('id', id).select('id'));
 }
 
+export async function toggleMediaLike(mediaId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('toggle_media_like', { p_media_id: mediaId });
+  if (error) throw new Error(error.message);
+  return data as boolean;
+}
+
+export async function listMyMediaLikes(mediaIds: string[], userId: string): Promise<string[]> {
+  if (!mediaIds.length) return [];
+  const rows = unwrap(
+    await supabase.from('media_likes').select('media_id').eq('user_id', userId).in('media_id', mediaIds),
+  ) as { media_id: string }[];
+  return rows.map(r => r.media_id);
+}
+
 // ---- Matches ----
 export async function listMatches(athleteId: string, limit?: number): Promise<MatchRecord[]> {
   let q = supabase.from('match_records').select('*').eq('athlete_id', athleteId).order('match_date', { ascending: false });

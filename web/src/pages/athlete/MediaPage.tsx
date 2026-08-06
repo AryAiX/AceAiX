@@ -6,7 +6,8 @@ import {
   CheckCircle2, Loader2, X, Sparkles, BarChart2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { listMedia, createMedia, deleteMedia } from '../../api/portfolio';
+import { useAuth } from '../../context/AuthContext';
+import { listMedia, createMedia, deleteMedia, toggleMediaLike, listMyMediaLikes } from '../../api/portfolio';
 import type { AthleteMedia } from '../../types';
 
 /* ── display shape ─────────────────────────────────────────── */
@@ -21,6 +22,7 @@ interface MediaView {
   featured: boolean;
   status: 'published' | 'processing';
   likes: number;
+  isLiked: boolean;
 }
 
 const FALLBACK_THUMB = 'https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=600';
@@ -46,7 +48,7 @@ function toMediaView(m: AthleteMedia): MediaView {
     tags: m.ai_tags ?? [],
     featured: m.is_featured,
     status: m.transcode_status === 'processing' ? 'processing' : 'published',
-    likes: 0,
+    likes: m.likes_count,
   };
 }
 
@@ -112,7 +114,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ── video card ─────────────────────────────────────────────── */
-function VideoCard({ media, delay, onDelete, isDeleting }: { media: MediaView; delay: number; onDelete: (id: string) => void; isDeleting: boolean }) {
+function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike }: { media: MediaView; delay: number; onDelete: (id: string) => void; isDeleting: boolean; onToggleLike: (id: string) => void }) {
   const [vis, setVis] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -227,9 +229,10 @@ function VideoCard({ media, delay, onDelete, isDeleting }: { media: MediaView; d
           <span className="flex items-center gap-1 text-[11px] text-white/35">
             <Eye size={10} />{media.views.toLocaleString()}
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-white/35">
-            <Star size={10} />{media.likes}
-          </span>
+          <button onClick={() => onToggleLike(media.id)} className="flex items-center gap-1 text-[11px] transition-colors"
+            style={{ color: media.isLiked ? '#B8F135' : 'rgba(255,255,255,0.35)' }}>
+            <Star size={10} fill={media.isLiked ? '#B8F135' : 'none'} />{media.likes}
+          </button>
           <span className="text-[11px] text-white/25 ml-auto">{media.date}</span>
         </div>
       </div>
@@ -321,6 +324,7 @@ function UploadMediaModal({ athleteId, onClose, onUploaded }: {
 /* ── main page ──────────────────────────────────────────────── */
 export default function MediaPage() {
   const { data: athlete } = useMyAthlete();
+  const { user } = useAuth();
   const athleteId = athlete?.id;
   const queryClient = useQueryClient();
   const [dragOver, setDragOver] = useState(false);
@@ -340,10 +344,26 @@ export default function MediaPage() {
     enabled: !!athleteId,
   });
 
-  const media: MediaView[] = rawMedia.map(toMediaView);
+  const { data: likedIds = [] } = useQuery({
+    queryKey: ['media-likes', user?.id, athleteId],
+    queryFn: () => listMyMediaLikes(rawMedia.map(m => m.id), user!.id),
+    enabled: !!user?.id && rawMedia.length > 0,
+  });
+
+  const media: MediaView[] = rawMedia.map(m => ({ ...toMediaView(m), isLiked: likedIds.includes(m.id) }));
 
   function invalidateMedia() {
     queryClient.invalidateQueries({ queryKey: ['media', athleteId] });
+  }
+
+  async function handleToggleLike(id: string) {
+    try {
+      await toggleMediaLike(id);
+      queryClient.invalidateQueries({ queryKey: ['media', athleteId] });
+      queryClient.invalidateQueries({ queryKey: ['media-likes', user?.id, athleteId] });
+    } catch {
+      // low-stakes action, safe to silently ignore — user can just try again
+    }
   }
 
   async function handleDelete(id: string) {
@@ -555,7 +575,7 @@ export default function MediaPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((m, i) => (
-              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} isDeleting={deletingId === m.id} />
+              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} isDeleting={deletingId === m.id} onToggleLike={handleToggleLike} />
             ))}
           </div>
         )}

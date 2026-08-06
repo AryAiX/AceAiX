@@ -112,6 +112,7 @@ export interface AthleteMedia {
   views_count: number;
   ai_tags: string[];
   created_at: string;
+  likes_count: number;
 }
 
 export interface MatchRecord {
