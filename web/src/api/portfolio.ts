@@ -31,6 +31,10 @@ export async function deleteMedia(id: string): Promise<void> {
   unwrap(await supabase.from('athlete_media').delete().eq('id', id).select('id'));
 }
 
+export async function updateMedia(id: string, patch: Partial<AthleteMedia>): Promise<AthleteMedia> {
+  return unwrap(await supabase.from('athlete_media').update(patch).eq('id', id).select('*').single()) as AthleteMedia;
+}
+
 export async function toggleMediaLike(mediaId: string): Promise<boolean> {
   const { data, error } = await supabase.rpc('toggle_media_like', { p_media_id: mediaId });
   if (error) throw new Error(error.message);

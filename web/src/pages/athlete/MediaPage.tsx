@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { useAuth } from '../../context/AuthContext';
-import { listMedia, createMedia, deleteMedia, toggleMediaLike, listMyMediaLikes } from '../../api/portfolio';
+import { listMedia, createMedia, updateMedia, deleteMedia, toggleMediaLike, listMyMediaLikes } from '../../api/portfolio';
 import type { AthleteMedia } from '../../types';
 
 /* ── display shape ─────────────────────────────────────────── */
@@ -114,7 +114,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ── video card ─────────────────────────────────────────────── */
-function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike }: { media: MediaView; delay: number; onDelete: (id: string) => void; isDeleting: boolean; onToggleLike: (id: string) => void }) {
+function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike, onEdit }: { media: MediaView; delay: number; onDelete: (id: string) => void; isDeleting: boolean; onToggleLike: (id: string) => void; onEdit: (id: string) => void }) {
   const [vis, setVis] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -197,7 +197,7 @@ function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike }: { media
               <div className="absolute right-0 top-8 w-36 rounded-xl overflow-hidden z-20 py-1"
                 style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)', animation: 'slideUp 0.2s ease both' }}>
                 {[
-                  { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => setMenuOpen(false), disabled: false },
+                  { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => { setMenuOpen(false); onEdit(media.id); }, disabled: false },
                   { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false), disabled: false },
                   { label: isDeleting ? 'Deleting…' : 'Delete', icon: Trash2, color: '#EF5350', action: () => {
                       setMenuOpen(false);
@@ -241,13 +241,18 @@ function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike }: { media
 }
 
 /* ── upload modal ──────────────────────────────────────────── */
-function UploadMediaModal({ athleteId, onClose, onUploaded }: {
-  athleteId: string; onClose: () => void; onUploaded: () => void;
+function UploadMediaModal({ athleteId, editingMedia, onClose, onUploaded }: {
+  athleteId: string; editingMedia?: AthleteMedia | null; onClose: () => void; onUploaded: () => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ title: '', storage_url: '', thumbnail_url: '', tags: '' });
+  const [form, setForm] = useState({
+    title: editingMedia?.title ?? '',
+    storage_url: editingMedia?.storage_url ?? '',
+    thumbnail_url: editingMedia?.thumbnail_url ?? '',
+    tags: editingMedia?.ai_tags?.join(', ') ?? '',
+  });
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -256,22 +261,24 @@ function UploadMediaModal({ athleteId, onClose, onUploaded }: {
     setSaving(true);
     setError('');
     try {
-      await createMedia({
-        athlete_id: athleteId,
+      const payload = {
         title: form.title.trim(),
         storage_url: form.storage_url.trim(),
         thumbnail_url: form.thumbnail_url.trim() || null,
-        media_type: 'video',
-        is_public: true,
         ai_tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
-      });
+      };
+      if (editingMedia) {
+        await updateMedia(editingMedia.id, payload);
+      } else {
+        await createMedia({ ...payload, athlete_id: athleteId, media_type: 'video', is_public: true });
+      }
       setSaving(false);
       setDone(true);
       onUploaded();
       setTimeout(onClose, 800);
     } catch (e) {
       setSaving(false);
-      setError(e instanceof Error ? e.message : 'Failed to upload.');
+      setError(e instanceof Error ? e.message : 'Failed to save.');
     }
   }
 
@@ -285,7 +292,7 @@ function UploadMediaModal({ athleteId, onClose, onUploaded }: {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(239,83,80,0.14)', border: '1px solid rgba(239,83,80,0.25)' }}>
               <Upload size={14} style={{ color: '#EF5350' }} />
             </div>
-            <h3 className="text-sm font-bold text-white">Upload Media</h3>
+            <h3 className="text-sm font-bold text-white">{editingMedia ? 'Edit Media' : 'Upload Media'}</h3>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors"><X size={13} /></button>
         </div>
@@ -313,7 +320,7 @@ function UploadMediaModal({ athleteId, onClose, onUploaded }: {
             className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             style={{ background: done ? '#1FB57A' : '#EF5350', color: '#fff', boxShadow: done ? '0 4px 20px rgba(31,181,122,0.4)' : '0 4px 20px rgba(239,83,80,0.35)' }}>
             {saving ? <Loader2 size={14} className="animate-spin" /> : done ? <CheckCircle2 size={14} /> : <Upload size={14} />}
-            {saving ? 'Uploading…' : done ? 'Uploaded!' : 'Upload Media'}
+            {saving ? 'Saving…' : done ? 'Saved!' : editingMedia ? 'Save Changes' : 'Upload Media'}
           </button>
         </div>
       </div>
@@ -332,6 +339,7 @@ export default function MediaPage() {
   const [mounted, setMounted] = useState(false);
   const [aiDismissed, setAiDismissed] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [editingMedia, setEditingMedia] = useState<AthleteMedia | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -354,6 +362,11 @@ export default function MediaPage() {
 
   function invalidateMedia() {
     queryClient.invalidateQueries({ queryKey: ['media', athleteId] });
+  }
+
+  function handleEditClick(id: string) {
+    const found = rawMedia.find(m => m.id === id);
+    if (found) setEditingMedia(found);
   }
 
   async function handleToggleLike(id: string) {
@@ -393,6 +406,10 @@ export default function MediaPage() {
 
       {showUpload && athleteId && (
         <UploadMediaModal athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={invalidateMedia} />
+      )}
+
+      {editingMedia && athleteId && (
+        <UploadMediaModal athleteId={athleteId} editingMedia={editingMedia} onClose={() => setEditingMedia(null)} onUploaded={invalidateMedia} />
       )}
 
       {/* ── PAGE HEADER ─────────────────────────────────────── */}
@@ -575,7 +592,7 @@ export default function MediaPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((m, i) => (
-              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} isDeleting={deletingId === m.id} onToggleLike={handleToggleLike} />
+              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} isDeleting={deletingId === m.id} onToggleLike={handleToggleLike} onEdit={handleEditClick} />
             ))}
           </div>
         )}
