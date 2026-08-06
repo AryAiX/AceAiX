@@ -5,6 +5,11 @@ export async function getUserProfile(id: string): Promise<UserProfile | null> {
   return unwrap(await supabase.from('user_profiles').select(USER_FIELDS).eq('id', id).maybeSingle()) as UserProfile | null;
 }
 
+export async function getUserProfilesByIds(ids: string[]): Promise<UserProfile[]> {
+  if (!ids.length) return [];
+  return unwrap(await supabase.from('user_profiles').select(USER_FIELDS).in('id', ids)) as UserProfile[];
+}
+
 export async function updateUserProfile(id: string, patch: Partial<UserProfile>): Promise<UserProfile> {
   const allowed: Partial<UserProfile> = {
     full_name: patch.full_name,

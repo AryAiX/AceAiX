@@ -1,5 +1,5 @@
 import { supabase, unwrap, USER_FIELDS } from './_helpers';
-import type { MedicalRecord, MedicalClearance, Injury, MedicalPartner, AthleteProfile, UserProfile } from '../types';
+import type { MedicalRecord, MedicalClearance, Injury, MedicalPartner, AthleteProfile, UserProfile, MedicalConsent } from '../types';
 
 export type PartnerClearance = MedicalClearance & {
   athlete?: AthleteProfile & { user?: UserProfile };
@@ -44,4 +44,27 @@ export async function listPartnerClearances(partnerId: string): Promise<PartnerC
       .eq('partner_id', partnerId)
       .order('created_at', { ascending: false }),
   ) as PartnerClearance[];
+}
+
+export async function listConsents(athleteId: string): Promise<MedicalConsent[]> {
+  return unwrap(
+    await supabase.from('medical_consents').select('*').eq('athlete_id', athleteId).order('granted_at', { ascending: false }),
+  ) as MedicalConsent[];
+}
+
+export async function grantConsent(athleteId: string, granteeUserId: string): Promise<MedicalConsent> {
+  return unwrap(
+    await supabase.from('medical_consents').insert({
+      athlete_id: athleteId,
+      grantee_user_id: granteeUserId,
+      scope: 'medical_records',
+      status: 'granted',
+    }).select('*').single(),
+  ) as MedicalConsent;
+}
+
+export async function revokeConsent(consentId: string): Promise<MedicalConsent> {
+  return unwrap(
+    await supabase.from('medical_consents').update({ status: 'revoked', revoked_at: new Date().toISOString() }).eq('id', consentId).select('*').single(),
+  ) as MedicalConsent;
 }

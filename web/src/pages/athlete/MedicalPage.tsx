@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck, AlertCircle, Clock, FileText, Plus, Lock,
   CheckCircle2, Heart, X, Loader2, Check, Activity,
-  ChevronRight, Upload, Eye, EyeOff, Sparkles,
+  ChevronRight, Upload, UserPlus, Sparkles,
   Stethoscope, Syringe, FlaskConical,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { listClearances, listMedicalRecords, listInjuries } from '../../api/medical';
+import { useAuth } from '../../context/AuthContext';
+import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent } from '../../api/medical';
+import { getUserProfilesByIds } from '../../api/profiles';
+import GrantConsentModal from '../../components/athlete/GrantConsentModal';
 import type { MedicalClearance, MedicalRecord, Injury } from '../../types';
 
 /* ── display shapes ────────────────────────────────────────── */
@@ -238,10 +241,13 @@ function RiskRing({ color, score }: { color: string; score: string }) {
 /* ── main ───────────────────────────────────────────────────── */
 export default function MedicalPage() {
   const { data: athlete } = useMyAthlete();
+  const { user } = useAuth();
   const athleteId = athlete?.id;
+  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [privacy, setPrivacy] = useState(true);
+  const [showGrant, setShowGrant] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const [hoveredRec, setHoveredRec] = useState<string | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -261,6 +267,32 @@ export default function MedicalPage() {
     queryFn: () => listInjuries(athleteId!),
     enabled: !!athleteId,
   });
+  const { data: rawConsents = [] } = useQuery({
+    queryKey: ['med-consents', athleteId],
+    queryFn: () => listConsents(athleteId!),
+    enabled: !!athleteId,
+  });
+  const activeConsents = rawConsents.filter(c => c.status === 'granted');
+  const granteeIds = [...new Set(activeConsents.map(c => c.grantee_user_id).filter((id): id is string => !!id))];
+  const { data: granteeProfiles = [] } = useQuery({
+    queryKey: ['med-consent-grantees', granteeIds.join(',')],
+    queryFn: () => getUserProfilesByIds(granteeIds),
+    enabled: granteeIds.length > 0,
+  });
+  const consentsWithNames = activeConsents.map(c => ({
+    ...c,
+    granteeName: granteeProfiles.find(p => p.id === c.grantee_user_id)?.full_name ?? 'Unknown',
+  }));
+
+  async function handleRevoke(consentId: string) {
+    setRevokingId(consentId);
+    try {
+      await revokeConsent(consentId);
+      queryClient.invalidateQueries({ queryKey: ['med-consents', athleteId] });
+    } finally {
+      setRevokingId(null);
+    }
+  }
 
   const clearances = clearanceRows.map(toClearanceView);
   const records = recordRows.map(toRecordView);
@@ -344,27 +376,46 @@ export default function MedicalPage() {
           </div>
         </div>
 
-        {/* ── PRIVACY NOTICE ──────────────────────────────── */}
-        <div className="flex items-center gap-4 px-5 py-3.5 rounded-2xl"
-          style={{
-            background: 'rgba(47,128,237,0.07)',
-            border: '1px solid rgba(47,128,237,0.18)',
-            animation: 'slideUp 0.4s ease 0.1s both',
-          }}>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(47,128,237,0.14)', border: '1px solid rgba(47,128,237,0.22)' }}>
-            <Lock size={13} className="text-azure" />
+        {/* ── PRIVACY / CONSENT ──────────────────────────────── */}
+        {showGrant && athleteId && user && (
+          <GrantConsentModal
+            athleteId={athleteId}
+            currentUserId={user.id}
+            onClose={() => setShowGrant(false)}
+            onGranted={() => queryClient.invalidateQueries({ queryKey: ['med-consents', athleteId] })}
+          />
+        )}
+        <div className="rounded-2xl p-5"
+          style={{ background: 'rgba(47,128,237,0.07)', border: '1px solid rgba(47,128,237,0.18)', animation: 'slideUp 0.4s ease 0.1s both' }}>
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(47,128,237,0.14)', border: '1px solid rgba(47,128,237,0.22)' }}>
+              <Lock size={13} className="text-azure" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-azure">Consent-First Privacy</p>
+              <p className="text-[11px] text-white/35 mt-0.5">Medical data is only shared with people you explicitly grant access to below. Revoke anytime.</p>
+            </div>
+            <button onClick={() => setShowGrant(true)}
+              className="flex-shrink-0 inline-flex items-center gap-1.5 text-[11px] font-bold text-azure hover:text-azure/70 transition-colors">
+              <UserPlus size={12} /> Grant Access
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-azure">Consent-First Privacy</p>
-            <p className="text-[11px] text-white/35 mt-0.5">Medical data is only shared with scouts/clubs you explicitly authorize. Revoke anytime in Privacy Settings.</p>
-          </div>
-          <button onClick={() => setPrivacy(v => !v)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0 transition-colors"
-            style={{ color: privacy ? '#1FB57A' : '#7C8DA6' }}>
-            {privacy ? <Eye size={12} /> : <EyeOff size={12} />}
-            {privacy ? 'Visible' : 'Hidden'}
-          </button>
+          {consentsWithNames.length === 0 ? (
+            <p className="text-[11px] text-white/25 pl-12">No one currently has access to your medical data.</p>
+          ) : (
+            <div className="space-y-1.5 pl-12">
+              {consentsWithNames.map(c => (
+                <div key={c.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <span className="text-[11px] text-white/60">{c.granteeName}</span>
+                  <button onClick={() => handleRevoke(c.id)} disabled={revokingId === c.id}
+                    className="text-[10px] font-semibold text-coral hover:text-coral/70 transition-colors disabled:opacity-50">
+                    {revokingId === c.id ? 'Revoking…' : 'Revoke'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── MAIN 2-COL ──────────────────────────────────── */}
