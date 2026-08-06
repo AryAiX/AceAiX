@@ -18,7 +18,7 @@ interface MatchView {
   minutes: number;
   goals: number;
   assists: number;
-  rating: number;
+  rating: number | null;
 }
 
 interface SeasonStat {
@@ -54,9 +54,9 @@ function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
   return 'draw';
 }
 
-function matchRating(m: MatchRecord): number {
+function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
-  return typeof r === 'number' ? r : 7;
+  return typeof r === 'number' ? r : null;
 }
 
 function toMatchView(m: MatchRecord): MatchView {
@@ -79,7 +79,8 @@ const RESULT_STYLE: Record<string, [string, string, string]> = {
   loss: ['#EF5350', 'rgba(239,83,80,0.12)',   'rgba(239,83,80,0.30)'],
 };
 
-function ratingColor(r: number) {
+function ratingColor(r: number | null) {
+  if (r === null) return 'rgba(255,255,255,0.35)';
   return r >= 8.5 ? '#B8F135' : r >= 7.5 ? '#1FB57A' : r >= 6.5 ? '#2F80ED' : '#EF5350';
 }
 
@@ -243,11 +244,11 @@ function FormBars({ matches: source }: { matches: MatchView[] }) {
     <div className="flex items-end gap-2 h-28">
       {matches.map((m, i) => {
         const [color] = RESULT_STYLE[m.result];
-        const frac = m.rating / 10;
+        const frac = m.rating !== null ? m.rating / 10 : 0;
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
             <span className="text-[9px] font-bold tabular opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ color }}>{m.rating}</span>
+              style={{ color }}>{m.rating !== null ? m.rating : '–'}</span>
             <div className="w-full rounded-t-lg relative overflow-hidden"
               style={{
                 height: vis ? `${frac * 100}%` : '0%',
@@ -328,7 +329,8 @@ export default function PerformancePage() {
 
   const matches: MatchView[] = rawMatches.map(toMatchView);
 
-  const avgRating = matches.length ? (matches.reduce((s, m) => s + m.rating, 0) / matches.length).toFixed(1) : '—';
+  const ratedMatches = matches.filter((m): m is MatchView & { rating: number } => m.rating !== null);
+  const avgRating = ratedMatches.length ? (ratedMatches.reduce((s, m) => s + m.rating, 0) / ratedMatches.length).toFixed(1) : '—';
   const totalGoals = matches.reduce((s, m) => s + m.goals, 0);
   const totalAssists = matches.reduce((s, m) => s + m.assists, 0);
   const totalMinutes = matches.reduce((s, m) => s + m.minutes, 0);
@@ -590,7 +592,7 @@ export default function PerformancePage() {
                       <td className="py-3 text-right text-white/40 tabular pr-3">{match.minutes}'</td>
                       <td className="py-3 text-right">
                         <span className="font-bold tabular text-sm" style={{ color: ratingColor(match.rating) }}>
-                          {match.rating}
+                          {match.rating !== null ? match.rating : '–'}
                         </span>
                       </td>
                     </tr>
