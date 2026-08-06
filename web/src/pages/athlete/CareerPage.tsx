@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp, Users, Trophy, ArrowUpRight, Zap,
@@ -400,9 +401,9 @@ export default function CareerPage() {
               style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)', color: '#F5A623' }}>
               {opportunities.length} open
             </span>
-            <button className="text-[11px] text-white/30 flex items-center gap-0.5 hover:text-white/60 transition-colors">
+            <Link to="/athlete/opportunities" className="text-[11px] text-white/30 flex items-center gap-0.5 hover:text-white/60 transition-colors">
               View all <ChevronRight size={11} />
-            </button>
+            </Link>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
