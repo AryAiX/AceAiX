@@ -61,6 +61,15 @@ function matchRating(m: MatchRecord): number | null {
   return typeof r === 'number' ? r : null;
 }
 
+function seasonLabel(dateStr?: string): string {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const month = d.getMonth();
+  const year = d.getFullYear();
+  const startYear = month >= 7 ? year : year - 1;
+  const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
+  return `${startYear}/${endYearShort}`;
+}
+
 function toMatchView(m: MatchRecord): MatchView {
   return {
     date: new Date(m.match_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -347,6 +356,8 @@ export default function PerformancePage() {
     enabled: !!athleteId,
   });
 
+  const currentSeason = seasonLabel(rawMatches[0]?.match_date);
+
   const matches: MatchView[] = rawMatches.map(toMatchView);
 
   const ratedMatches = matches.filter((m): m is MatchView & { rating: number } => m.rating !== null);
@@ -416,7 +427,7 @@ export default function PerformancePage() {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">Performance</h1>
-                <p className="text-white/40 text-sm mt-0.5">Match records &amp; AI insights · Season 2025/26</p>
+                <p className="text-white/40 text-sm mt-0.5">Match records &amp; AI insights · Season {currentSeason}</p>
               </div>
             </div>
             {/* quick KPIs */}
@@ -559,7 +570,7 @@ export default function PerformancePage() {
               <h2 className="text-sm font-bold text-white">Match Log</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-white/25">Season 2025/26</span>
+              <span className="text-[11px] text-white/25">Season {currentSeason}</span>
               <Link to="/athlete/performance/history" className="text-[11px] text-azure flex items-center gap-0.5 hover:text-azure/80 transition-colors">
                 Full history <ChevronRight size={11} />
               </Link>
