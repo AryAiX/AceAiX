@@ -238,6 +238,63 @@ function RiskRing({ color, score }: { color: string; score: string }) {
   );
 }
 
+function RecordDetailModal({ record, onClose }: { record: MedicalRecord; onClose: () => void }) {
+  const color = TYPE_COLORS[record.record_type] ?? '#7C8DA6';
+  const Icon = RECORD_ICONS[record.record_type] ?? FileText;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}
+      onClick={onClose}>
+      <div className="w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)', animation: 'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+              <Icon size={14} style={{ color }} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">{record.title ?? record.record_type}</h3>
+              <p className="text-[10px] uppercase tracking-wider" style={{ color }}>{record.record_type}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors"><X size={13} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            {record.is_verified ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(31,181,122,0.12)', border: '1px solid rgba(31,181,122,0.25)', color: '#1FB57A' }}>
+                <ShieldCheck size={9} /> Verified
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(245,166,35,0.10)', border: '1px solid rgba(245,166,35,0.22)', color: '#F5A623' }}>
+                <Clock size={9} /> Pending
+              </span>
+            )}
+            <span className="text-[11px] text-white/40">{record.partner_id ? 'Verified Partner' : 'Personal Upload'}</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Issued</p>
+            <p className="text-xs text-white/70">{fmtDate(record.issued_at)}</p>
+          </div>
+          {record.summary && (
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Summary</p>
+              <p className="text-xs text-white/70 leading-relaxed">{record.summary}</p>
+            </div>
+          )}
+          {record.file_url && (
+            <a href={record.file_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
+              <FileText size={12} /> View Document
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── main ───────────────────────────────────────────────────── */
 export default function MedicalPage() {
   const { data: athlete } = useMyAthlete();
@@ -249,6 +306,7 @@ export default function MedicalPage() {
   const [showGrant, setShowGrant] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [hoveredRec, setHoveredRec] = useState<string | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
@@ -304,6 +362,7 @@ export default function MedicalPage() {
   return (
     <>
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {selectedRecord && <RecordDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />}
 
       <div className="max-w-4xl space-y-5 pb-10">
 
@@ -536,6 +595,7 @@ export default function MedicalPage() {
                     <div key={rec.id}
                       onMouseEnter={() => setHoveredRec(rec.id)}
                       onMouseLeave={() => setHoveredRec(null)}
+                      onClick={() => setSelectedRecord(recordRows.find(r => r.id === rec.id) ?? null)}
                       className="flex items-center gap-4 p-4 rounded-2xl cursor-pointer transition-all duration-200"
                       style={{
                         background: isHov ? `${color}08` : 'rgba(255,255,255,0.03)',
