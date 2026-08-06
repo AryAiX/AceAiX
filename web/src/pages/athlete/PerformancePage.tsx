@@ -106,20 +106,24 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ opponent: '', competition: '', result: 'win', goals: '', assists: '', minutes: '90', rating: '' });
+  const [form, setForm] = useState({ opponent: '', competition: '', result: 'win', teamScore: '', opponentScore: '', goals: '', assists: '', minutes: '90', rating: '' });
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
   async function handleSave() {
     setSaving(true);
     setError('');
+    const RESULT_LETTER: Record<string, string> = { win: 'W', draw: 'D', loss: 'L' };
+    const resultText = form.teamScore !== '' && form.opponentScore !== ''
+      ? `${form.teamScore}-${form.opponentScore} ${RESULT_LETTER[form.result]}`
+      : form.result;
     try {
       await createMatch({
         athlete_id: athleteId,
         match_date: new Date().toISOString().slice(0, 10),
         opponent: form.opponent.trim() || null,
         competition: form.competition.trim() || null,
-        result: form.result,
+        result: resultText,
         minutes_played: form.minutes ? parseInt(form.minutes, 10) : null,
         goals: form.goals ? parseInt(form.goals, 10) : 0,
         assists: form.assists ? parseInt(form.assists, 10) : 0,
@@ -193,6 +197,19 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
                     }}>{r}</button>
                 );
               })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Your Team Score</label>
+              <input type="number" value={form.teamScore} onChange={e => set('teamScore', e.target.value)}
+                className="input-field text-center" placeholder="e.g. 2" />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Opponent Score</label>
+              <input type="number" value={form.opponentScore} onChange={e => set('opponentScore', e.target.value)}
+                className="input-field text-center" placeholder="e.g. 1" />
             </div>
           </div>
 
