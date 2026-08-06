@@ -112,7 +112,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 /* ── video card ─────────────────────────────────────────────── */
-function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number; onDelete: (id: string) => void }) {
+function VideoCard({ media, delay, onDelete, isDeleting }: { media: MediaView; delay: number; onDelete: (id: string) => void; isDeleting: boolean }) {
   const [vis, setVis] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -195,13 +195,14 @@ function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number
               <div className="absolute right-0 top-8 w-36 rounded-xl overflow-hidden z-20 py-1"
                 style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)', animation: 'slideUp 0.2s ease both' }}>
                 {[
-                  { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => setMenuOpen(false) },
-                  { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false) },
-                  { label: 'Delete',   icon: Trash2,  color: '#EF5350', action: () => { setMenuOpen(false); onDelete(media.id); } },
+                  { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => setMenuOpen(false), disabled: false },
+                  { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false), disabled: false },
+                  { label: isDeleting ? 'Deleting…' : 'Delete', icon: Trash2, color: '#EF5350', action: () => { setMenuOpen(false); onDelete(media.id); }, disabled: isDeleting },
                 ].map(item => (
                   <button key={item.label}
                     onClick={item.action}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/05"
+                    disabled={item.disabled}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium transition-colors hover:bg-white/05 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{ color: item.color }}>
                     <item.icon size={12} />{item.label}
                   </button>
@@ -322,6 +323,8 @@ export default function MediaPage() {
   const [mounted, setMounted] = useState(false);
   const [aiDismissed, setAiDismissed] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -339,8 +342,16 @@ export default function MediaPage() {
   }
 
   async function handleDelete(id: string) {
-    await deleteMedia(id);
-    invalidateMedia();
+    setDeletingId(id);
+    setDeleteError('');
+    try {
+      await deleteMedia(id);
+      invalidateMedia();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'Failed to delete video.');
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   const filtered = media.filter(m =>
@@ -406,6 +417,10 @@ export default function MediaPage() {
           <StatBar value={String(media.filter(m => m.featured).length)} label="Featured"  color="#EF5350" icon={TrendingUp} delay={260} />
         </div>
       </div>
+
+      {deleteError && (
+        <p className="text-xs text-coral px-1">{deleteError}</p>
+      )}
 
       {/* ── AI BANNER ───────────────────────────────────────── */}
       {!aiDismissed && (
@@ -535,7 +550,7 @@ export default function MediaPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map((m, i) => (
-              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} />
+              <VideoCard key={m.id} media={m} delay={i * 60} onDelete={handleDelete} isDeleting={deletingId === m.id} />
             ))}
           </div>
         )}
