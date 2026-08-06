@@ -197,7 +197,12 @@ function VideoCard({ media, delay, onDelete, isDeleting }: { media: MediaView; d
                 {[
                   { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => setMenuOpen(false), disabled: false },
                   { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false), disabled: false },
-                  { label: isDeleting ? 'Deleting…' : 'Delete', icon: Trash2, color: '#EF5350', action: () => { setMenuOpen(false); onDelete(media.id); }, disabled: isDeleting },
+                  { label: isDeleting ? 'Deleting…' : 'Delete', icon: Trash2, color: '#EF5350', action: () => {
+                      setMenuOpen(false);
+                      if (window.confirm(`Delete "${media.title}"? This can't be undone.`)) {
+                        onDelete(media.id);
+                      }
+                    }, disabled: isDeleting },
                 ].map(item => (
                   <button key={item.label}
                     onClick={item.action}
