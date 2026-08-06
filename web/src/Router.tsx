@@ -32,6 +32,7 @@ import AthleteDashboard from './pages/athlete/DashboardPage';
 import AthleteProfile from './pages/athlete/ProfilePage';
 import AthleteMedia from './pages/athlete/MediaPage';
 import AthletePerformance from './pages/athlete/PerformancePage';
+import AthletePerformanceHistory from './pages/athlete/PerformanceHistoryPage';
 import AthleteMedical from './pages/athlete/MedicalPage';
 import AthleteAi from './pages/athlete/AiPage';
 import AthleteCareer from './pages/athlete/CareerPage';
@@ -136,6 +137,7 @@ export default function Router() {
           <Route path="profile" element={<AthleteProfile />} />
           <Route path="media" element={<AthleteMedia />} />
           <Route path="performance" element={<AthletePerformance />} />
+          <Route path="performance/history" element={<AthletePerformanceHistory />} />
           <Route path="medical" element={<AthleteMedical />} />
           <Route path="ai" element={<AthleteAi />} />
           <Route path="career" element={<AthleteCareer />} />

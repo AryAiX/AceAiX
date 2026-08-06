@@ -8,6 +8,8 @@ import {
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches, createMatch } from '../../api/portfolio';
 import type { MatchRecord, AttributeData } from '../../types';
+import { Link } from 'react-router-dom';
+import MatchDetailModal from '../../components/athlete/MatchDetailModal';
 
 /* ── display shapes & derivations ──────────────────────────── */
 interface MatchView {
@@ -335,6 +337,7 @@ export default function PerformancePage() {
   const [showAdd, setShowAdd] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
@@ -383,6 +386,10 @@ export default function PerformancePage() {
           onClose={() => setShowAdd(false)}
           onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })}
         />
+      )}
+
+      {selectedMatch && (
+        <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)} />
       )}
 
       <div className="max-w-6xl space-y-6 pb-10">
@@ -553,9 +560,9 @@ export default function PerformancePage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] text-white/25">Season 2025/26</span>
-              <button className="text-[11px] text-azure flex items-center gap-0.5 hover:text-azure/80 transition-colors">
+              <Link to="/athlete/performance/history" className="text-[11px] text-azure flex items-center gap-0.5 hover:text-azure/80 transition-colors">
                 Full history <ChevronRight size={11} />
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -582,6 +589,7 @@ export default function PerformancePage() {
                     <tr key={i}
                       onMouseEnter={() => setHoveredRow(i)}
                       onMouseLeave={() => setHoveredRow(null)}
+                      onClick={() => setSelectedMatch(rawMatches[i])}
                       className="cursor-pointer"
                       style={{
                         borderBottom: '1px solid rgba(255,255,255,0.05)',
