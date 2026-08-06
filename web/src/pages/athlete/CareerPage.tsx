@@ -31,6 +31,14 @@ function buildTrajectory(points: TrajectoryPoint[]): TrajView[] {
   }));
 }
 
+function trajectoryTrend(data: TrajView[]): { first: TrajView; last: TrajView; diff: number; seasons: number } | null {
+  const actual = data.filter(t => !t.projected);
+  if (actual.length < 2) return null;
+  const first = actual[0];
+  const last = actual[actual.length - 1];
+  return { first, last, diff: last.score - first.score, seasons: actual.length - 1 };
+}
+
 function comparableSimilarity(self: AthleteProfile | null | undefined, other: AthleteWithUser): number {
   let s = 70;
   if (self?.sport && other.sport && self.sport.toLowerCase() === other.sport.toLowerCase()) s += 10;
@@ -203,6 +211,7 @@ export default function CareerPage() {
   });
 
   const trajectory = buildTrajectory((athlete?.trajectory ?? []) as TrajectoryPoint[]);
+  const trend = trajectoryTrend(trajectory);
 
   const comparables: ComparableView[] = comparableAthletes
     .filter(a => a.id !== athlete?.id)
@@ -259,11 +268,22 @@ export default function CareerPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
-            style={{ background: 'rgba(184,241,53,0.08)', border: '1px solid rgba(184,241,53,0.22)' }}>
-            <Flame size={13} style={{ color: '#B8F135' }} />
-            <span className="text-xs font-bold text-volt">On track — Professional move in 12-18 mo</span>
-          </div>
+          {trend && (
+            <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
+              style={{
+                background: trend.diff >= 0 ? 'rgba(184,241,53,0.08)' : 'rgba(245,166,35,0.08)',
+                border: `1px solid ${trend.diff >= 0 ? 'rgba(184,241,53,0.22)' : 'rgba(245,166,35,0.22)'}`,
+              }}>
+              <Flame size={13} style={{ color: trend.diff >= 0 ? '#B8F135' : '#F5A623' }} />
+              <span className="text-xs font-bold" style={{ color: trend.diff >= 0 ? '#B8F135' : '#F5A623' }}>
+                {trend.diff > 0
+                  ? `Score up ${trend.diff} pts since ${trend.first.year}`
+                  : trend.diff < 0
+                  ? `Score down ${Math.abs(trend.diff)} pts since ${trend.first.year}`
+                  : `Steady at ${trend.last.score} since ${trend.first.year}`}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* energy line */}
@@ -325,15 +345,23 @@ export default function CareerPage() {
             ))}
           </div>
 
-          {/* AI note */}
-          <div className="mt-4 p-4 rounded-xl"
-            style={{ background: 'rgba(47,128,237,0.07)', border: '1px solid rgba(47,128,237,0.18)' }}>
-            <div className="flex items-center gap-2 mb-1">
-              <Sparkles size={11} className="text-azure" />
-              <p className="text-[11px] font-bold text-azure">AI Forecast · 74% Confidence</p>
+          {/* score history note */}
+          {trend && (
+            <div className="mt-4 p-4 rounded-xl"
+              style={{ background: 'rgba(47,128,237,0.07)', border: '1px solid rgba(47,128,237,0.18)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles size={11} className="text-azure" />
+                <p className="text-[11px] font-bold text-azure">Score History</p>
+              </div>
+              <p className="text-[11px] text-white/40 leading-relaxed">
+                {trend.diff > 0
+                  ? `Your score has risen from ${trend.first.score} to ${trend.last.score} over the last ${trend.seasons} season${trend.seasons > 1 ? 's' : ''}.`
+                  : trend.diff < 0
+                  ? `Your score has moved from ${trend.first.score} to ${trend.last.score} over the last ${trend.seasons} season${trend.seasons > 1 ? 's' : ''}.`
+                  : `Your score has held steady at ${trend.last.score} over the last ${trend.seasons} season${trend.seasons > 1 ? 's' : ''}.`}
+              </p>
             </div>
-            <p className="text-[11px] text-white/40 leading-relaxed">Based on comparable player progressions and your current trajectory, you're on track for a professional-level move within 12–18 months.</p>
-          </div>
+          )}
         </div>
 
         {/* comparable players */}
