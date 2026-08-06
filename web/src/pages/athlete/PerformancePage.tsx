@@ -339,7 +339,7 @@ export default function PerformancePage() {
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
   const { data: rawMatches = [] } = useQuery({
-    queryKey: ['matches', athleteId],
+    queryKey: ['matches', athleteId, 'all'],
     queryFn: () => listMatches(athleteId!),
     enabled: !!athleteId,
   });

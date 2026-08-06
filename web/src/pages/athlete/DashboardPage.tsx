@@ -164,7 +164,7 @@ export default function AthleteDashboard() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Athlete';
 
-  const matchesQuery = useQuery({ queryKey: ['matches', athleteId], queryFn: () => listMatches(athleteId!, 5), enabled: !!athleteId });
+  const matchesQuery = useQuery({ queryKey: ['matches', athleteId, 5], queryFn: () => listMatches(athleteId!, 5), enabled: !!athleteId });
   const viewsQuery = useQuery({ queryKey: ['views', athleteId], queryFn: () => listProfileViews(athleteId!, 4), enabled: !!athleteId });
   const viewTotalQuery = useQuery({ queryKey: ['view-count', athleteId], queryFn: () => profileViewCount(athleteId!), enabled: !!athleteId });
   const opportunitiesQuery = useQuery({ queryKey: ['opps-dash'], queryFn: () => listOpportunities({ limit: 40 }) });
