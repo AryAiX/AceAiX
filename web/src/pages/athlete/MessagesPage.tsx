@@ -10,6 +10,7 @@ import {
   sendMessage as sendMessageApi, markMessagesRead,
 } from '../../api/messaging';
 import { searchUsers } from '../../api/network';
+import { getUserProfile } from '../../api/profiles';
 import type { Conversation, Message, UserProfile } from '../../types';
 
 /* ─── Helpers ──────────────────────────────────────────────── */
@@ -136,8 +137,8 @@ export default function MessagesPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConvId}` },
         async (payload) => {
           const newMsg = payload.new as Message;
-          const { data: sender } = await supabase.from('user_profiles').select('*').eq('id', newMsg.sender_id).maybeSingle();
-          setMessages(prev => [...prev, { ...newMsg, sender: sender as UserProfile }]);
+          const sender = await getUserProfile(newMsg.sender_id);
+          setMessages(prev => [...prev, { ...newMsg, sender: sender ?? undefined }]);
           loadConversations();
         }).subscribe();
     return () => { supabase.removeChannel(sub); };
