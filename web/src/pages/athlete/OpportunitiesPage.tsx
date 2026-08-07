@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase, MapPin, Clock, ShieldCheck,
@@ -94,6 +94,17 @@ export default function OpportunitiesPage() {
   const [sort, setSort]       = useState<'match' | 'deadline'>('match');
   const [applied, setApplied] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!sortOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [sortOpen]);
 
   const { data: rawOpps = [], isLoading } = useQuery({
     queryKey: ['opportunities'],
@@ -188,7 +199,7 @@ export default function OpportunitiesPage() {
             </button>
           ))}
         </div>
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0" ref={sortRef}>
           <button onClick={() => setSortOpen(o => !o)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm text-muted border border-white/10 hover:text-white hover:border-white/20 transition-all bg-white/[0.02]">
             <Filter size={13} /> Sort <ChevronDown size={12} style={{ transform: sortOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
