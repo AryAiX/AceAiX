@@ -22,3 +22,20 @@ export async function listOpportunities(filters: OpportunityFilters = {}): Promi
 export async function getOpportunity(id: string): Promise<Opportunity | null> {
   return unwrap(await supabase.from('opportunities').select(SELECT).eq('id', id).maybeSingle()) as Opportunity | null;
 }
+
+export async function listSavedOpportunityIds(athleteId: string): Promise<string[]> {
+  const rows = unwrap(
+    await supabase.from('saved_opportunities').select('opportunity_id').eq('athlete_id', athleteId),
+  ) as { opportunity_id: string }[];
+  return rows.map(r => r.opportunity_id);
+}
+
+export async function saveOpportunity(athleteId: string, opportunityId: string): Promise<void> {
+  unwrap(await supabase.from('saved_opportunities').insert({ athlete_id: athleteId, opportunity_id: opportunityId }).select('id'));
+}
+
+export async function unsaveOpportunity(athleteId: string, opportunityId: string): Promise<void> {
+  unwrap(
+    await supabase.from('saved_opportunities').delete().eq('athlete_id', athleteId).eq('opportunity_id', opportunityId).select('id'),
+  );
+}
