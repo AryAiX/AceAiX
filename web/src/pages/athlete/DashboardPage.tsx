@@ -19,6 +19,9 @@ import { latestClearance, listMedicalRecords } from '../../api/medical';
 import { listEndorsements } from '../../api/network';
 import type { AttributeData, TrajectoryPoint, MatchRecord } from '../../types';
 import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
+import PageLoadingState from '../../components/ui/PageLoadingState';
+import PageErrorState from '../../components/ui/PageErrorState';
+import { useQueriesStatus } from '../../hooks/useQueriesStatus';
 
 const FALLBACK_ATTRS: AttributeData[] = [
   { label: 'Pace', value: 0, endorsements: 0, topEndorser: '', topEndorserVerified: false },
@@ -173,6 +176,9 @@ export default function AthleteDashboard() {
   const endorsementsQuery = useQuery({ queryKey: ['endorsements', athleteId], queryFn: () => listEndorsements(athleteId!), enabled: !!athleteId });
   const mediaQuery = useQuery({ queryKey: ['media', athleteId], queryFn: () => listMedia(athleteId!), enabled: !!athleteId });
 
+  const dashboardQueries = [matchesQuery, viewsQuery, viewTotalQuery, opportunitiesQuery, clearanceQuery, medRecordsQuery, endorsementsQuery, mediaQuery];
+  const { isLoading: dashboardLoading, isError: dashboardError } = useQueriesStatus(dashboardQueries);
+
   const matches = matchesQuery.data ?? [];
   const views = viewsQuery.data ?? [];
   const viewTotal = viewTotalQuery.data ?? 0;
@@ -212,6 +218,9 @@ export default function AthleteDashboard() {
       : `Welcome back, ${firstName}. I can help you interpret your verified performance, media, medical, and network data.`;
     setMessages([{ role: 'assistant', text }]);
   }, [athlete, athleteDataReady, clearance, endorsements.length, firstName, matches.length, media.length, messages.length, profile]);
+
+  if (dashboardLoading) return <PageLoadingState label="Loading your dashboard..." />;
+  if (dashboardError) return <PageErrorState onRetry={() => dashboardQueries.forEach((q) => q.refetch())} />;
 
   function handleSendMessage() {
     const text = aiInput.trim();
