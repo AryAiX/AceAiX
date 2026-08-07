@@ -619,12 +619,7 @@ export default function NetworkPage() {
                       ? <EmptyState icon={Quote} title="No recommendations yet" sub="Ask teammates, coaches, or clubs to recommend you" />
                       : <div className="p-4 space-y-3">
                           {recommendations.map(rec => (
-                            <RecommendationCard key={rec.id} rec={rec}
-                              isOwn={rec.recipient_id === user?.id}
-                              onDelete={async (id) => {
-                                await supabase.from('recommendations').delete().eq('id', id);
-                                setRecommendations(r => r.filter(x => x.id !== id));
-                              }} />
+                            <RecommendationCard key={rec.id} rec={rec} />
                           ))}
                         </div>
                   )}
