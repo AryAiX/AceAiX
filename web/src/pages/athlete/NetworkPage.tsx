@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users, UserPlus, UserCheck, UserMinus, ShieldCheck,
@@ -609,10 +610,10 @@ export default function NetworkPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-4 w-full py-2 rounded-xl text-[11px] font-bold text-amber flex items-center justify-center gap-1.5 transition-colors hover:bg-amber/08"
+              <Link to="/athlete/analytics" className="mt-4 w-full py-2 rounded-xl text-[11px] font-bold text-amber flex items-center justify-center gap-1.5 transition-colors hover:bg-amber/08"
                 style={{ border: '1px solid rgba(245,166,35,0.18)' }}>
                 <Eye size={11} /> See full report
-              </button>
+              </Link>
             </div>
           </div>
 
