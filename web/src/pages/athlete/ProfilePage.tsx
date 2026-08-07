@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { updateAthlete } from '../../api/athletes';
-import { updateUserProfile } from '../../api/profiles';
+import { updateUserProfile, uploadAvatar } from '../../api/profiles';
 
 /* ── tiny animated completeness ring ───────────────────────── */
 function CompletenessRing({ pct }: { pct: number }) {
@@ -111,6 +111,9 @@ export default function AthleteProfilePage() {
   const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -198,6 +201,33 @@ export default function AthleteProfilePage() {
     }
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !profile) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Please choose a JPG, PNG, or WEBP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setAvatarError('Image must be under 10MB.');
+      return;
+    }
+
+    setAvatarError('');
+    setAvatarUploading(true);
+    try {
+      await uploadAvatar(profile.id, file);
+      await refreshProfile();
+    } catch {
+      setAvatarError("Couldn't upload your photo — please try again.");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
     setDirty(true);
@@ -246,11 +276,22 @@ export default function AthleteProfilePage() {
                 ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                 : <User size={36} className="text-azure/60" />}
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
             <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarUploading}
               className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
               style={{ background: '#2F80ED', boxShadow: '0 4px 12px rgba(47,128,237,0.5)' }}
             >
-              <Camera size={13} className="text-white" />
+              {avatarUploading
+                ? <Loader2 size={13} className="text-white animate-spin" />
+                : <Camera size={13} className="text-white" />}
             </button>
           </div>
 
@@ -316,9 +357,10 @@ export default function AthleteProfilePage() {
           </button>
         </div>
 
-        {saveError && (
+        {(saveError || avatarError) && (
           <div className="px-6 sm:px-8 pb-4 -mt-2">
-            <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>
+            {saveError && <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>}
+            {avatarError && <p className="text-[11px] text-coral">{avatarError}</p>}
           </div>
         )}
 
