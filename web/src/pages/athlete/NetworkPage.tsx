@@ -8,10 +8,9 @@ import {
   Network, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listAthletes } from '../../api/athletes';
-import { searchUsers } from '../../api/network';
+import { searchUsers, listFollowers, listFollowing, follow, unfollow, listRecommendations, upsertRecommendation } from '../../api/network';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
 import RecommendationCard from '../../components/ui/RecommendationCard';
 import type { Recommendation, UserProfile, RecommendationRelationship } from '../../types';
@@ -63,14 +62,18 @@ function WriteRecommendationModal({ recipientId, recipientName, onClose, onSaved
   async function handleSubmit() {
     if (!body.trim() || !user) return;
     setSaving(true);
-    const { error: err } = await supabase.from('recommendations').upsert({
-      author_id: user.id, recipient_id: recipientId,
-      relationship_type: relationship, body: body.trim(), is_public: true,
-    }, { onConflict: 'author_id,recipient_id' });
-    setSaving(false);
-    if (err) { setError(err.message); return; }
-    setSaved(true);
-    setTimeout(() => { onSaved(); onClose(); }, 900);
+    try {
+      await upsertRecommendation({
+        author_id: user.id, recipient_id: recipientId,
+        relationship_type: relationship, body: body.trim(), is_public: true,
+      });
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => { onSaved(); onClose(); }, 900);
+    } catch (e) {
+      setSaving(false);
+      setError(e instanceof Error ? e.message : 'Failed to post recommendation.');
+    }
   }
 
   return (
