@@ -31,6 +31,16 @@ export async function uploadAvatar(userId: string, file: File): Promise<UserProf
   return updateUserProfile(userId, { avatar_url: `${publicUrl}?t=${Date.now()}` });
 }
 
+export async function removeAvatar(userId: string): Promise<UserProfile> {
+  const updated = await updateUserProfile(userId, { avatar_url: null });
+  try {
+    await supabase.storage.from('avatars').remove([`${userId}/avatar`]);
+  } catch {
+    // best-effort cleanup — the profile is already correctly updated either way
+  }
+  return updated;
+}
+
 export async function getUserPrivate(userId: string): Promise<UserPrivate | null> {
   return unwrap(
     await supabase.from('user_private').select('*').eq('user_id', userId).maybeSingle(),
