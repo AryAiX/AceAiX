@@ -524,16 +524,16 @@ export default function AthleteProfilePage() {
                 options={countryNames} placeholder="Select nationality" />
             </Field>
 
-            <Field label="City" icon={MapPin} delay={80}>
+            <Field label="Country" icon={Globe} delay={80}>
+              <SearchableSelect value={form.country} onChange={v => set('country', v)}
+                options={countryNames} placeholder="Select country" />
+            </Field>
+
+            <Field label="City" icon={MapPin} delay={120}>
               <SearchableSelect value={form.city} onChange={v => set('city', v)}
                 options={cityOptions} allowFreeText
                 placeholder={form.country ? 'Select or type a city' : 'Select a country first'}
                 disabled={!form.country} />
-            </Field>
-
-            <Field label="Country" icon={Globe} delay={120}>
-              <SearchableSelect value={form.country} onChange={v => set('country', v)}
-                options={countryNames} placeholder="Select country" />
             </Field>
 
             <Field label="Date of Birth" icon={Calendar} delay={160}>
