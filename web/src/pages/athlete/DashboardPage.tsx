@@ -466,7 +466,7 @@ export default function AthleteDashboard() {
           </div>
           <div className="space-y-1">
             {views.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-page transition-colors cursor-pointer">
+              <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
                 <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 border bg-azure/10 border-azure/25 text-azure">
                   {(s.viewer_org ?? '?').split(' ').map(w => w[0]).join('').slice(0, 2)}
                 </div>
