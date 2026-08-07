@@ -10,6 +10,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { updateAthlete } from '../../api/athletes';
 import { updateUserProfile, uploadAvatar, removeAvatar } from '../../api/profiles';
+import { COUNTRIES, CITIES_BY_COUNTRY } from '../../data/countries';
+import SearchableSelect from '../../components/ui/SearchableSelect';
 
 /* ── tiny animated completeness ring ───────────────────────── */
 function CompletenessRing({ pct }: { pct: number }) {
@@ -170,6 +172,9 @@ export default function AthleteProfilePage() {
   const completeness = Math.round(
     (CHECKLIST_FIELDS.filter(f => !!(form as Record<string, string>)[f.key]).length / CHECKLIST_FIELDS.length) * 100
   );
+
+  const countryNames = COUNTRIES.map(c => c.name);
+  const cityOptions = CITIES_BY_COUNTRY[COUNTRIES.find(c => c.name === form.country)?.code ?? ''] || [];
 
   async function handleSave() {
     if (!profile) return;
@@ -468,18 +473,20 @@ export default function AthleteProfilePage() {
             </Field>
 
             <Field label="Nationality" icon={Flag} delay={40}>
-              <input value={form.nationality} onChange={e => set('nationality', e.target.value)}
-                className="input-field pl-9" placeholder="e.g. UAE" />
+              <SearchableSelect value={form.nationality} onChange={v => set('nationality', v)}
+                options={countryNames} placeholder="Select nationality" />
             </Field>
 
             <Field label="City" icon={MapPin} delay={80}>
-              <input value={form.city} onChange={e => set('city', e.target.value)}
-                className="input-field pl-9" placeholder="City" />
+              <SearchableSelect value={form.city} onChange={v => set('city', v)}
+                options={cityOptions} allowFreeText
+                placeholder={form.country ? 'Select or type a city' : 'Select a country first'}
+                disabled={!form.country} />
             </Field>
 
             <Field label="Country" icon={Globe} delay={120}>
-              <input value={form.country} onChange={e => set('country', e.target.value)}
-                className="input-field pl-9" placeholder="Country" />
+              <SearchableSelect value={form.country} onChange={v => set('country', v)}
+                options={countryNames} placeholder="Select country" />
             </Field>
           </div>
 
