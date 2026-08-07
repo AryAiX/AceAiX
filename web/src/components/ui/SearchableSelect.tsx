@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 interface SearchableSelectProps {
   value: string;
@@ -14,13 +15,38 @@ export default function SearchableSelect({
 }: SearchableSelectProps) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
 
+  const updateRect = useCallback(() => {
+    if (!rootRef.current) return;
+    const r = rootRef.current.getBoundingClientRect();
+    setRect({ top: r.bottom + 4, left: r.left, width: r.width });
+  }, []);
+
+  // Recompute position while open — the dropdown is portaled to <body> with
+  // fixed positioning so it always paints above sibling fields, regardless
+  // of any ancestor stacking context (e.g. transformed animated wrappers).
+  useEffect(() => {
+    if (!open) return;
+    updateRect();
+    window.addEventListener('scroll', updateRect, true);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      window.removeEventListener('scroll', updateRect, true);
+      window.removeEventListener('resize', updateRect);
+    };
+  }, [open, updateRect]);
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      const insideRoot = rootRef.current && rootRef.current.contains(target);
+      const insideList = listRef.current && listRef.current.contains(target);
+      if (!insideRoot && !insideList) {
         setOpen(false);
         if (!allowFreeText) setQuery(value);
       }
@@ -54,12 +80,21 @@ export default function SearchableSelect({
         onFocus={() => setOpen(true)}
         disabled={disabled}
         placeholder={placeholder}
+        autoComplete="off"
         className="input-field pl-9 disabled:opacity-40 disabled:cursor-not-allowed"
       />
-      {open && !disabled && (
+      {open && !disabled && rect && createPortal(
         <div
-          className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-xl"
-          style={{ background: '#0F1E30', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 12px 32px rgba(0,0,0,0.4)' }}
+          ref={listRef}
+          className="fixed z-50 max-h-56 overflow-y-auto rounded-xl"
+          style={{
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            background: '#0F1E30',
+            border: '1px solid rgba(255,255,255,0.10)',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+          }}
         >
           {filtered.length === 0 ? (
             <div className="px-3 py-2.5 text-xs text-white/30">
@@ -77,7 +112,8 @@ export default function SearchableSelect({
               </button>
             ))
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
