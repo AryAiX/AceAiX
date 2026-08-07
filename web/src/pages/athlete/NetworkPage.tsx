@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users, UserPlus, UserCheck, UserMinus, ShieldCheck,
@@ -357,6 +357,7 @@ function PickRecipientModal({ currentUserId, onClose, onPick }: {
 export default function NetworkPage() {
   const { user } = useAuth();
   const { data: athlete } = useMyAthlete();
+  const navigate = useNavigate();
   const [tab, setTab]                       = useState<Tab>('followers');
   const [search, setSearch]                 = useState('');
   const [followers, setFollowers]           = useState<UserProfile[]>([]);
@@ -679,18 +680,18 @@ export default function NetworkPage() {
                   {tab === 'followers' && (
                     filterBySearch(followers).length === 0
                       ? <EmptyState icon={Users} title="No followers yet" sub="Share your profile to attract followers and scouts" />
-                      : filterBySearch(followers).map((u, i) => (
+                      :                   filterBySearch(followers).map((u, i) => (
                           <UserRow key={u.id} user={u} isFollowing={myFollowingIds.has(u.id)}
-                            onToggle={() => toggleFollow(u.id)} onMessage={() => {}} delay={i * 40} />
+                            onToggle={() => toggleFollow(u.id)} onMessage={() => navigate('/athlete/messages')} delay={i * 40} />
                         ))
                   )}
 
                   {tab === 'following' && (
                     filterBySearch(following).length === 0
                       ? <EmptyState icon={UserPlus} title="Not following anyone yet" sub="Discover athletes, scouts and coaches to follow" />
-                      : filterBySearch(following).map((u, i) => (
+                      :                   filterBySearch(following).map((u, i) => (
                           <UserRow key={u.id} user={u} isFollowing={true}
-                            onToggle={() => toggleFollow(u.id)} onMessage={() => {}} delay={i * 40} />
+                            onToggle={() => toggleFollow(u.id)} onMessage={() => navigate('/athlete/messages')} delay={i * 40} />
                         ))
                   )}
 
