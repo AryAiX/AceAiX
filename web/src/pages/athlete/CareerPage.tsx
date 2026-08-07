@@ -381,7 +381,7 @@ export default function CareerPage() {
             )}
             {comparables.map((c, i) => <ComparableCard key={c.name} c={c} delay={300 + i * 80} />)}
           </div>
-          <p className="text-[10px] text-white/20 mt-4">AI-matched on sport, position, age, metrics &amp; progression curves.</p>
+          <p className="text-[10px] text-white/20 mt-4">AI-matched on sport, position &amp; visibility score.</p>
         </div>
       </div>
 
