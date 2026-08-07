@@ -371,11 +371,11 @@ export default function NetworkPage() {
   });
   const { data: profileViews = [] } = useQuery({
     queryKey: ['network-profile-views', athlete?.id],
-    queryFn: () => listProfileViews(athlete!.id, 6),
+    queryFn: () => listProfileViews(athlete!.id, 50),
     enabled: !!athlete?.id,
   });
-  const scoutsActiveToday = profileViews.filter(
-    v => v.viewer_role === 'scout' && Date.now() - new Date(v.created_at).getTime() < 24 * 60 * 60 * 1000
+  const scoutsActiveThisWeek = profileViews.filter(
+    v => v.viewer_role === 'scout' && Date.now() - new Date(v.created_at).getTime() < 7 * 24 * 60 * 60 * 1000
   ).length;
   const { data: viewCount = 0 } = useQuery({
     queryKey: ['network-view-count', athlete?.id],
@@ -388,7 +388,7 @@ export default function NetworkPage() {
     .filter((u): u is UserProfile => !!u && u.id !== user?.id && !myFollowingIds.has(u.id))
     .slice(0, 6);
 
-  const scoutActivity = profileViews.map((v, i) => ({
+  const scoutActivity = profileViews.slice(0, 6).map((v, i) => ({
     name: v.viewer_org || v.viewer_name || 'Scout',
     action: 'Viewed your profile',
     time: timeAgo(v.created_at),
@@ -444,12 +444,12 @@ export default function NetworkPage() {
             </div>
 
             {/* live scout pulse */}
-            {scoutsActiveToday > 0 && (
+            {scoutsActiveThisWeek > 0 && (
               <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
                 style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.22)' }}>
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#F5A623', boxShadow: '0 0 6px rgba(245,166,35,0.7)' }} />
                 <span className="text-xs font-bold text-amber">
-                  {scoutsActiveToday} scout{scoutsActiveToday === 1 ? '' : 's'} active today
+                  {scoutsActiveThisWeek} scout{scoutsActiveThisWeek === 1 ? '' : 's'} active this week
                 </span>
               </div>
             )}
