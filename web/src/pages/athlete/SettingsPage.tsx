@@ -22,13 +22,17 @@ const PRIVACY_TOGGLES = [
 ];
 
 export default function SettingsPage() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, changePassword } = useAuth();
   const [tab, setTab] = useState<'profile' | 'notifications' | 'privacy' | 'security'>('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [notifError, setNotifError] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSaved, setPwSaved] = useState(false);
 
   const { data: priv } = useQuery({
     queryKey: ['user-private', user?.id],
@@ -87,6 +91,19 @@ export default function SettingsPage() {
       setNotifError(true);
       setTimeout(() => setNotifError(false), 3000);
     }
+  }
+
+  async function handlePasswordUpdate() {
+    setPwError('');
+    if (pwForm.next.length < 8) { setPwError('New password must be at least 8 characters.'); return; }
+    if (pwForm.next !== pwForm.confirm) { setPwError("New passwords don't match."); return; }
+    setPwSaving(true);
+    const { error } = await changePassword(pwForm.current, pwForm.next);
+    setPwSaving(false);
+    if (error) { setPwError(error.message); return; }
+    setPwForm({ current: '', next: '', confirm: '' });
+    setPwSaved(true);
+    setTimeout(() => setPwSaved(false), 2500);
   }
 
   const TABS = [
@@ -183,7 +200,9 @@ export default function SettingsPage() {
           <div>
             <label className="label">Current Password</label>
             <div className="relative">
-              <input type={showPassword ? 'text' : 'password'} placeholder="Enter current password" className="input-field pr-10" />
+              <input type={showPassword ? 'text' : 'password'} value={pwForm.current}
+                onChange={e => setPwForm(f => ({ ...f, current: e.target.value }))}
+                placeholder="Enter current password" className="input-field pr-10" />
               <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
                 {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
@@ -191,21 +210,24 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="label">New Password</label>
-            <input type="password" placeholder="Minimum 8 characters" className="input-field" />
+            <input type="password" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))}
+              placeholder="Minimum 8 characters" className="input-field" />
           </div>
           <div>
             <label className="label">Confirm New Password</label>
-            <input type="password" placeholder="Confirm new password" className="input-field" />
+            <input type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))}
+              placeholder="Confirm new password" className="input-field" />
           </div>
+          {pwError && <p className="text-xs text-rose-400">{pwError}</p>}
           <div className="flex justify-end pt-2">
             <button
               type="button"
-              disabled
-              title="Password updates need the Supabase password-reset/change flow."
-              className="btn-primary opacity-50 cursor-not-allowed"
+              onClick={handlePasswordUpdate}
+              disabled={pwSaving || !pwForm.current || !pwForm.next || !pwForm.confirm}
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Shield size={15} />
-              Update Password
+              {pwSaving ? <Loader2 size={15} className="animate-spin" /> : <Shield size={15} />}
+              {pwSaving ? 'Updating…' : pwSaved ? 'Updated!' : 'Update Password'}
             </button>
           </div>
           <div className="border-t border-slate-700/50 pt-5">
