@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listAthletes } from '../../api/athletes';
+import { searchUsers } from '../../api/network';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
 import RecommendationCard from '../../components/ui/RecommendationCard';
 import type { Recommendation, UserProfile, RecommendationRelationship } from '../../types';
@@ -289,6 +290,68 @@ function StatCard({ label, value, icon: Icon, color, delay }: {
   );
 }
 
+function PickRecipientModal({ currentUserId, onClose, onPick }: {
+  currentUserId: string; onClose: () => void; onPick: (id: string, name: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<UserProfile[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  async function runSearch(q: string) {
+    setQuery(q);
+    if (q.trim().length < 2) { setResults([]); return; }
+    setSearching(true);
+    try {
+      setResults(await searchUsers(q.trim(), currentUserId, 8));
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      style={{ background: 'rgba(12,26,43,0.88)', backdropFilter: 'blur(10px)', animation: 'fadeIn 0.2s ease both' }}>
+      <div className="w-full max-w-md rounded-3xl overflow-hidden"
+        style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)', animation: 'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+        <div className="flex items-center justify-between px-6 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <h3 className="text-sm font-bold text-white">Who are you recommending?</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors"><X size={13} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
+            <input value={query} onChange={e => runSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm placeholder-white/25 text-white focus:outline-none"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              placeholder="Search by name…" autoFocus />
+          </div>
+          {searching && <div className="flex justify-center py-3"><Loader2 size={16} className="animate-spin text-azure" /></div>}
+          {!searching && query.trim().length >= 2 && results.length === 0 && (
+            <p className="text-xs text-white/30 text-center py-3">No matches found.</p>
+          )}
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {results.map(u => (
+              <button key={u.id} onClick={() => onPick(u.id, u.full_name ?? 'Unknown')}
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors hover:bg-white/05">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white/60 flex-shrink-0 overflow-hidden">
+                  {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" alt="" /> : (u.full_name?.[0] ?? '?')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">{u.full_name ?? 'Unknown'}</p>
+                  <p className="text-[10px] text-white/35 capitalize">{u.role}</p>
+                </div>
+                <UserPlus size={14} className="text-azure/60" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── main page ──────────────────────────────────────────────── */
 export default function NetworkPage() {
   const { user } = useAuth();
@@ -302,6 +365,7 @@ export default function NetworkPage() {
   const [loading, setLoading]               = useState(false);
   const [suggFollowingIds, setSuggFollowingIds] = useState<Set<string>>(new Set());
   const [writeRecModal, setWriteRecModal]   = useState<{ id: string; name: string } | null>(null);
+  const [pickerOpen, setPickerOpen]         = useState(false);
   const [mounted, setMounted]               = useState(false);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -415,6 +479,14 @@ export default function NetworkPage() {
         />
       )}
 
+      {pickerOpen && user && (
+        <PickRecipientModal
+          currentUserId={user.id}
+          onClose={() => setPickerOpen(false)}
+          onPick={(id, name) => { setPickerOpen(false); setWriteRecModal({ id, name }); }}
+        />
+      )}
+
       <div className="max-w-6xl space-y-5 pb-10">
 
         {/* ── HERO HEADER ─────────────────────────────────── */}
@@ -454,7 +526,7 @@ export default function NetworkPage() {
               </div>
             )}
 
-            <button onClick={() => setWriteRecModal({ id: user?.id ?? '', name: 'someone' })}
+            <button onClick={() => setPickerOpen(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
               style={{ background: '#2F80ED', color: '#fff', boxShadow: '0 4px 20px rgba(47,128,237,0.40)' }}>
               <Quote size={15} /> Recommend
@@ -574,7 +646,7 @@ export default function NetworkPage() {
                 </button>
               ))}
               {tab === 'recommendations' && (
-                <button onClick={() => setWriteRecModal({ id: user?.id ?? '', name: 'someone' })}
+                <button onClick={() => setPickerOpen(true)}
                   className="ml-auto mr-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                   style={{ background: 'rgba(184,241,53,0.12)', border: '1px solid rgba(184,241,53,0.25)', color: '#B8F135' }}>
                   <Quote size={11} /> Write
