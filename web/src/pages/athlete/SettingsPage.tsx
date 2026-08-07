@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const { data: priv } = useQuery({
     queryKey: ['user-private', user?.id],
@@ -59,12 +60,18 @@ export default function SettingsPage() {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
-    await updateUserProfile(user.id, { full_name: form.full_name, bio: form.bio, city: form.city });
-    await updateUserPrivate(user.id, { email: form.email, phone: form.phone });
-    await refreshProfile();
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError(false);
+    try {
+      await updateUserProfile(user.id, { full_name: form.full_name, bio: form.bio, city: form.city });
+      await updateUserPrivate(user.id, { email: form.email, phone: form.phone });
+      await refreshProfile();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleNotif(key: string) {
@@ -127,6 +134,7 @@ export default function SettingsPage() {
             <textarea value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} className="input-field resize-none" placeholder="Tell scouts about yourself..." />
           </div>
           <div className="flex justify-end">
+            {saveError && <p className="text-xs text-rose-400 mr-auto self-center">Couldn't save — please try again.</p>}
             <button onClick={handleSave} disabled={saving} className="btn-primary">
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
               {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}
