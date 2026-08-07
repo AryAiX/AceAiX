@@ -93,7 +93,7 @@ const TABS = [
 
 /* ── checklist ───────────────────────────────────────────── */
 const CHECKLIST_FIELDS: { label: string; key: string }[] = [
-  { label: 'Full name',       key: 'full_name'        },
+  { label: 'Full name',       key: 'first_name'       },
   { label: 'Bio',             key: 'bio'              },
   { label: 'Nationality',     key: 'nationality'      },
   { label: 'Sport',           key: 'sport'            },
@@ -119,7 +119,9 @@ export default function AthleteProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    full_name: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
     bio: '',
     sport: '',
     position_primary: '',
@@ -138,7 +140,14 @@ export default function AthleteProfilePage() {
 
   useEffect(() => {
     if (!profile) return;
-    setForm(f => ({ ...f, full_name: profile.full_name || '', city: profile.city || '', country: profile.country || '' }));
+    setForm(f => ({
+      ...f,
+      first_name: profile.first_name || '',
+      middle_name: profile.middle_name || '',
+      last_name: profile.last_name || '',
+      city: profile.city || '',
+      country: profile.country || '',
+    }));
     setDirty(false);
   }, [profile]);
 
@@ -175,6 +184,7 @@ export default function AthleteProfilePage() {
 
   const countryNames = COUNTRIES.map(c => c.name);
   const cityOptions = CITIES_BY_COUNTRY[COUNTRIES.find(c => c.name === form.country)?.code ?? ''] || [];
+  const avatarInitials = `${form.first_name?.[0] ?? ''}${form.last_name?.[0] ?? ''}`.toUpperCase();
 
   async function handleSave() {
     if (!profile) return;
@@ -182,7 +192,8 @@ export default function AthleteProfilePage() {
     setSaveError(false);
     try {
       await updateUserProfile(profile.id, {
-        full_name: form.full_name, bio: form.bio, city: form.city, country: form.country,
+        first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
+        bio: form.bio, city: form.city, country: form.country,
       });
       if (athlete) {
         await updateAthlete(athlete.id, {
@@ -296,7 +307,9 @@ export default function AthleteProfilePage() {
             >
               {profile?.avatar_url
                 ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                : <User size={36} className="text-azure/60" />}
+                : avatarInitials
+                  ? <span className="text-2xl font-display font-bold text-azure/80">{avatarInitials}</span>
+                  : <User size={36} className="text-azure/60" />}
             </div>
             <input
               ref={fileInputRef}
@@ -466,12 +479,24 @@ export default function AthleteProfilePage() {
         >
           <SectionHeader icon={User} label="Personal Information" color="#2F80ED" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <Field label="Full Name" icon={User} delay={0}>
-              <input value={form.full_name} onChange={e => set('full_name', e.target.value)}
-                className="input-field pl-9" placeholder="Your full name" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <Field label="First Name" icon={User} delay={0}>
+              <input value={form.first_name} onChange={e => set('first_name', e.target.value)}
+                className="input-field pl-9" placeholder="First name" />
             </Field>
 
+            <Field label="Middle Name" icon={User} delay={40}>
+              <input value={form.middle_name} onChange={e => set('middle_name', e.target.value)}
+                className="input-field pl-9" placeholder="Optional" />
+            </Field>
+
+            <Field label="Last Name" icon={User} delay={80}>
+              <input value={form.last_name} onChange={e => set('last_name', e.target.value)}
+                className="input-field pl-9" placeholder="Last name" />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field label="Nationality" icon={Flag} delay={40}>
               <SearchableSelect value={form.nationality} onChange={v => set('nationality', v)}
                 options={countryNames} placeholder="Select nationality" />
