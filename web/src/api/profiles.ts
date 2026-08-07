@@ -22,6 +22,15 @@ export async function updateUserProfile(id: string, patch: Partial<UserProfile>)
   return unwrap(await supabase.from('user_profiles').update(allowed).eq('id', id).select(USER_FIELDS).single()) as UserProfile;
 }
 
+export async function uploadAvatar(userId: string, file: File): Promise<UserProfile> {
+  const path = `${userId}/avatar`;
+  unwrap(
+    await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type }),
+  );
+  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+  return updateUserProfile(userId, { avatar_url: `${publicUrl}?t=${Date.now()}` });
+}
+
 export async function getUserPrivate(userId: string): Promise<UserPrivate | null> {
   return unwrap(
     await supabase.from('user_private').select('*').eq('user_id', userId).maybeSingle(),
