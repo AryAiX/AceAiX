@@ -116,6 +116,8 @@ export default function AthleteProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarRemoving, setAvatarRemoving] = useState(false);
   const [avatarError, setAvatarError] = useState('');
+  const [firstNameError, setFirstNameError] = useState(false);
+  const [lastNameError, setLastNameError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
@@ -188,6 +190,14 @@ export default function AthleteProfilePage() {
 
   async function handleSave() {
     if (!profile) return;
+    const missingFirst = !form.first_name.trim();
+    const missingLast = !form.last_name.trim();
+    setFirstNameError(missingFirst);
+    setLastNameError(missingLast);
+    if (missingFirst || missingLast) {
+      setActiveTab('identity');
+      return;
+    }
     setSaving(true);
     setSaveError(false);
     try {
@@ -264,6 +274,8 @@ export default function AthleteProfilePage() {
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
     setDirty(true);
+    if (key === 'first_name' && val.trim()) setFirstNameError(false);
+    if (key === 'last_name' && val.trim()) setLastNameError(false);
   }
 
   if (authLoading || athleteLoading) {
@@ -404,10 +416,11 @@ export default function AthleteProfilePage() {
           </button>
         </div>
 
-        {(saveError || avatarError) && (
+        {(saveError || avatarError || firstNameError || lastNameError) && (
           <div className="px-6 sm:px-8 pb-4 -mt-2">
             {saveError && <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>}
             {avatarError && <p className="text-[11px] text-coral">{avatarError}</p>}
+            {(firstNameError || lastNameError) && <p className="text-[11px] text-coral">Please fill in your first and last name.</p>}
           </div>
         )}
 
@@ -482,7 +495,9 @@ export default function AthleteProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <Field label="First Name" icon={User} delay={0}>
               <input value={form.first_name} onChange={e => set('first_name', e.target.value)}
-                className="input-field pl-9" placeholder="First name" />
+                className="input-field pl-9" placeholder="First name"
+                style={firstNameError ? { borderColor: '#EF5350' } : undefined} />
+              {firstNameError && <p className="text-[11px] text-coral mt-1">First name is required.</p>}
             </Field>
 
             <Field label="Middle Name" icon={User} delay={40}>
@@ -492,7 +507,9 @@ export default function AthleteProfilePage() {
 
             <Field label="Last Name" icon={User} delay={80}>
               <input value={form.last_name} onChange={e => set('last_name', e.target.value)}
-                className="input-field pl-9" placeholder="Last name" />
+                className="input-field pl-9" placeholder="Last name"
+                style={lastNameError ? { borderColor: '#EF5350' } : undefined} />
+              {lastNameError && <p className="text-[11px] text-coral mt-1">Last name is required.</p>}
             </Field>
           </div>
 
