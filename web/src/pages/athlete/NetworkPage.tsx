@@ -374,6 +374,9 @@ export default function NetworkPage() {
     queryFn: () => listProfileViews(athlete!.id, 6),
     enabled: !!athlete?.id,
   });
+  const scoutsActiveToday = profileViews.filter(
+    v => v.viewer_role === 'scout' && Date.now() - new Date(v.created_at).getTime() < 24 * 60 * 60 * 1000
+  ).length;
   const { data: viewCount = 0 } = useQuery({
     queryKey: ['network-view-count', athlete?.id],
     queryFn: () => profileViewCount(athlete!.id),
@@ -441,11 +444,15 @@ export default function NetworkPage() {
             </div>
 
             {/* live scout pulse */}
-            <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
-              style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.22)' }}>
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#F5A623', boxShadow: '0 0 6px rgba(245,166,35,0.7)' }} />
-              <span className="text-xs font-bold text-amber">4 scouts active today</span>
-            </div>
+            {scoutsActiveToday > 0 && (
+              <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
+                style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.22)' }}>
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#F5A623', boxShadow: '0 0 6px rgba(245,166,35,0.7)' }} />
+                <span className="text-xs font-bold text-amber">
+                  {scoutsActiveToday} scout{scoutsActiveToday === 1 ? '' : 's'} active today
+                </span>
+              </div>
+            )}
 
             <button onClick={() => setWriteRecModal({ id: user?.id ?? '', name: 'someone' })}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
