@@ -3,13 +3,13 @@ import {
   Save, User, Camera, MapPin, Flag, Ruler, Weight, Zap,
   ChevronRight, ShieldCheck, Check, Loader2,
   Globe, Trophy, Footprints, Activity, Shirt, Info,
-  ArrowUpRight, Sparkles,
+  ArrowUpRight, Sparkles, X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { updateAthlete } from '../../api/athletes';
-import { updateUserProfile, uploadAvatar } from '../../api/profiles';
+import { updateUserProfile, uploadAvatar, removeAvatar } from '../../api/profiles';
 
 /* ── tiny animated completeness ring ───────────────────────── */
 function CompletenessRing({ pct }: { pct: number }) {
@@ -112,6 +112,7 @@ export default function AthleteProfilePage() {
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarRemoving, setAvatarRemoving] = useState(false);
   const [avatarError, setAvatarError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -228,6 +229,22 @@ export default function AthleteProfilePage() {
     }
   }
 
+  async function handleAvatarRemove() {
+    if (!profile) return;
+    const confirmed = window.confirm('Remove your profile photo?');
+    if (!confirmed) return;
+    setAvatarError('');
+    setAvatarRemoving(true);
+    try {
+      await removeAvatar(profile.id);
+      await refreshProfile();
+    } catch {
+      setAvatarError("Couldn't remove your photo — please try again.");
+    } finally {
+      setAvatarRemoving(false);
+    }
+  }
+
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
     setDirty(true);
@@ -285,7 +302,7 @@ export default function AthleteProfilePage() {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={avatarUploading}
+              disabled={avatarUploading || avatarRemoving}
               className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
               style={{ background: '#2F80ED', boxShadow: '0 4px 12px rgba(47,128,237,0.5)' }}
             >
@@ -293,6 +310,18 @@ export default function AthleteProfilePage() {
                 ? <Loader2 size={13} className="text-white animate-spin" />
                 : <Camera size={13} className="text-white" />}
             </button>
+            {profile?.avatar_url && (
+              <button
+                onClick={handleAvatarRemove}
+                disabled={avatarUploading || avatarRemoving}
+                className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                style={{ background: 'rgba(239,83,80,0.9)', boxShadow: '0 4px 12px rgba(239,83,80,0.4)' }}
+              >
+                {avatarRemoving
+                  ? <Loader2 size={11} className="text-white animate-spin" />
+                  : <X size={11} className="text-white" />}
+              </button>
+            )}
           </div>
 
           {/* name + meta */}
