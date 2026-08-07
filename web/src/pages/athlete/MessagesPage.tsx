@@ -105,6 +105,7 @@ export default function MessagesPage() {
   const [loading, setLoading]             = useState(true);
   const [msgLoading, setMsgLoading]       = useState(false);
   const [sending, setSending]             = useState(false);
+  const [sendError, setSendError]         = useState(false);
   const [showNew, setShowNew]             = useState(false);
   const [mobileView, setMobileView]       = useState<'list' | 'chat'>('list');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -160,12 +161,18 @@ export default function MessagesPage() {
   async function sendMessage() {
     if (!input.trim() || !activeConvId || !user || sending) return;
     const text = input.trim();
-    setInput('');
     setSending(true);
-    await sendMessageApi(activeConvId, user.id, text);
-    setSending(false);
-    loadConversations();
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setSendError(false);
+    try {
+      await sendMessageApi(activeConvId, user.id, text);
+      setInput('');
+      loadConversations();
+    } catch {
+      setSendError(true);
+    } finally {
+      setSending(false);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
   }
 
   const filtered = conversations.filter(c => !search || c.other_user?.full_name?.toLowerCase().includes(search.toLowerCase()));
@@ -336,6 +343,7 @@ export default function MessagesPage() {
 
               {/* Input */}
               <div className="px-4 py-3 border-t border-white/[0.06] flex-shrink-0">
+                {sendError && <p className="text-xs text-coral mb-2">Message didn't send — try again.</p>}
                 <div className="flex items-center gap-2">
                   <input
                     ref={inputRef}

@@ -40,10 +40,11 @@ export async function sendMessage(conversationId: string, senderId: string, cont
   const msg = unwrap(
     await supabase.from('messages').insert({ conversation_id: conversationId, sender_id: senderId, content }).select('*').single(),
   ) as Message;
-  await supabase
+  const { error: previewError } = await supabase
     .from('conversations')
     .update({ last_message_at: new Date().toISOString(), last_message_preview: content.slice(0, 120) })
     .eq('id', conversationId);
+  if (previewError) console.error('Failed to update conversation preview:', previewError.message);
   return msg;
 }
 
