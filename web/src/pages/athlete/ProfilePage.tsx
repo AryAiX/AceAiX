@@ -3,7 +3,7 @@ import {
   Save, User, Camera, MapPin, Flag, Ruler, Weight, Zap,
   ChevronRight, ShieldCheck, Check, Loader2,
   Globe, Trophy, Footprints, Activity, Shirt, Info,
-  ArrowUpRight, Sparkles, X,
+  ArrowUpRight, Sparkles, X, Calendar,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -96,6 +96,7 @@ const CHECKLIST_FIELDS: { label: string; key: string }[] = [
   { label: 'Full name',       key: 'first_name'       },
   { label: 'Bio',             key: 'bio'              },
   { label: 'Nationality',     key: 'nationality'      },
+  { label: 'Date of birth',   key: 'birth_date'       },
   { label: 'Sport',           key: 'sport'            },
   { label: 'Primary position',key: 'position_primary' },
   { label: 'Current club',    key: 'current_club'     },
@@ -131,6 +132,7 @@ export default function AthleteProfilePage() {
     height_cm: '',
     weight_kg: '',
     nationality: '',
+    birth_date: '',
     current_club: '',
     level: 'amateur',
     dominant_foot: '',
@@ -164,6 +166,7 @@ export default function AthleteProfilePage() {
       height_cm: athlete.height_cm ? String(athlete.height_cm) : '',
       weight_kg: athlete.weight_kg ? String(athlete.weight_kg) : '',
       nationality: athlete.nationality || '',
+      birth_date: athlete.birth_date || '',
       current_club: athlete.current_club || '',
       level: athlete.level || 'amateur',
       dominant_foot: athlete.dominant_foot || '',
@@ -187,6 +190,8 @@ export default function AthleteProfilePage() {
   const countryNames = COUNTRIES.map(c => c.name);
   const cityOptions = CITIES_BY_COUNTRY[COUNTRIES.find(c => c.name === form.country)?.code ?? ''] || [];
   const avatarInitials = `${form.first_name?.[0] ?? ''}${form.last_name?.[0] ?? ''}`.toUpperCase();
+  const todayDate = new Date().toISOString().split('T')[0];
+  const minBirthDate = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0];
 
   async function handleSave() {
     if (!profile) return;
@@ -211,7 +216,7 @@ export default function AthleteProfilePage() {
           position_secondary: form.position_secondary,
           height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
           weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
-          nationality: form.nationality, current_club: form.current_club,
+          nationality: form.nationality, birth_date: form.birth_date || null, current_club: form.current_club,
           level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
           profile_completeness: completeness,
         });
@@ -529,6 +534,12 @@ export default function AthleteProfilePage() {
             <Field label="Country" icon={Globe} delay={120}>
               <SearchableSelect value={form.country} onChange={v => set('country', v)}
                 options={countryNames} placeholder="Select country" />
+            </Field>
+
+            <Field label="Date of Birth" icon={Calendar} delay={160}>
+              <input type="date" value={form.birth_date} onChange={e => set('birth_date', e.target.value)}
+                min={minBirthDate} max={todayDate}
+                className="input-field pl-9" />
             </Field>
           </div>
 
