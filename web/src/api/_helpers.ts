@@ -9,4 +9,4 @@ export function unwrap<T>(res: { data: T | null; error: { message: string } | nu
 }
 
 export const USER_FIELDS =
-  'id, role, full_name, avatar_url, bio, city, country, is_verified, subscription_tier, created_at, updated_at';
+  'id, role, full_name, first_name, middle_name, last_name, avatar_url, bio, city, country, is_verified, subscription_tier, created_at, updated_at';
