@@ -96,7 +96,7 @@ function NewConversationModal({ onClose, onSelect }: {
 
 /* ─── Page ───────────────────────────────────────────────────── */
 export default function MessagesPage() {
-  const { user } = useAuth();
+  const { user, onlineUserIds } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId]   = useState<string | null>(null);
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -112,6 +112,7 @@ export default function MessagesPage() {
   const inputRef  = useRef<HTMLInputElement>(null);
 
   const activeConv = conversations.find(c => c.id === activeConvId) ?? null;
+  const isOtherOnline = onlineUserIds.has(activeConv?.other_user?.id ?? '');
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
@@ -231,7 +232,7 @@ export default function MessagesPage() {
                   className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] last:border-0 transition-all text-left ${isActive ? 'bg-azure/8' : 'hover:bg-white/[0.03]'}`}
                   style={{ background: isActive ? 'rgba(47,128,237,0.08)' : undefined }}
                 >
-                  <Avatar user={other} size={10} online={Math.random() > 0.5} />
+                  <Avatar user={other} size={10} online={onlineUserIds.has(other?.id ?? '')} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <span className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>
@@ -277,12 +278,12 @@ export default function MessagesPage() {
                   className="lg:hidden p-1.5 rounded-lg hover:bg-white/5 text-muted hover:text-white transition-colors mr-1">
                   <ArrowLeft size={16} />
                 </button>
-                <Avatar user={activeConv?.other_user} size={9} online />
+                <Avatar user={activeConv?.other_user} size={9} online={isOtherOnline} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white truncate">{activeConv?.other_user?.full_name}</p>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
-                    <p className="text-[10px] text-emerald">Online</p>
+                    <div className={`w-1.5 h-1.5 rounded-full ${isOtherOnline ? 'bg-emerald' : 'bg-white/20'}`} />
+                    <p className={`text-[10px] ${isOtherOnline ? 'text-emerald' : 'text-white/30'}`}>{isOtherOnline ? 'Online' : 'Offline'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">

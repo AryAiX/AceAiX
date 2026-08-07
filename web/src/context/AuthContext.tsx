@@ -9,6 +9,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   role: UserRole | null;
   loading: boolean;
+  onlineUserIds: Set<string>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, role: UserRole, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const profileRequest = useRef(0);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   async function fetchProfile(userId: string) {
     const requestId = ++profileRequest.current;
@@ -67,6 +69,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!user) {
+      setOnlineUserIds(new Set());
+      return;
+    }
+    const channel = supabase.channel('online-users', {
+      config: { presence: { key: user.id } },
+    });
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        setOnlineUserIds(new Set(Object.keys(channel.presenceState())));
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({ online_at: new Date().toISOString() });
+        }
+      });
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
@@ -107,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const role = profile?.role ?? null;
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, role, loading, onlineUserIds, signIn, signUp, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
