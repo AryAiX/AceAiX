@@ -385,40 +385,31 @@ export default function NetworkPage() {
 
   async function loadFollowers() {
     if (!user) return;
-    const { data } = await supabase.from('follows')
-      .select('follower_id, follower:user_profiles!follows_follower_id_fkey(*)')
-      .eq('following_id', user.id);
-    if (data) setFollowers(data.map((r: any) => r.follower as UserProfile).filter(Boolean));
+    const data = await listFollowers(user.id);
+    setFollowers(data.map(r => r.follower).filter((u): u is UserProfile => !!u));
   }
 
   async function loadFollowing() {
     if (!user) return;
-    const { data } = await supabase.from('follows')
-      .select('following_id, following:user_profiles!follows_following_id_fkey(*)')
-      .eq('follower_id', user.id);
-    if (data) {
-      const users = data.map((r: any) => r.following as UserProfile).filter(Boolean);
-      setFollowing(users);
-      setMyFollowingIds(new Set(users.map((u: UserProfile) => u.id)));
-    }
+    const data = await listFollowing(user.id);
+    const users = data.map(r => r.following).filter((u): u is UserProfile => !!u);
+    setFollowing(users);
+    setMyFollowingIds(new Set(users.map(u => u.id)));
   }
 
   async function loadRecommendations() {
     if (!user) return;
-    const { data } = await supabase.from('recommendations')
-      .select('*, author:user_profiles!recommendations_author_id_fkey(*)')
-      .eq('recipient_id', user.id).order('created_at', { ascending: false });
-    if (data) setRecommendations(data as Recommendation[]);
+    setRecommendations(await listRecommendations(user.id));
   }
 
   async function toggleFollow(targetId: string) {
     if (!user) return;
     if (myFollowingIds.has(targetId)) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
+      await unfollow(user.id, targetId);
       setMyFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
       setFollowing(f => f.filter(u => u.id !== targetId));
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+      await follow(user.id, targetId);
       setMyFollowingIds(s => new Set([...s, targetId]));
     }
   }
@@ -426,10 +417,10 @@ export default function NetworkPage() {
   async function toggleSuggFollow(targetId: string) {
     if (!user) return;
     if (suggFollowingIds.has(targetId)) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
+      await unfollow(user.id, targetId);
       setSuggFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+      await follow(user.id, targetId);
       setSuggFollowingIds(s => new Set([...s, targetId]));
     }
   }
