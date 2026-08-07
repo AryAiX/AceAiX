@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp, Users, Trophy, ArrowUpRight, Zap,
@@ -14,7 +14,7 @@ import type { AthleteWithUser } from '../../api/athletes';
 
 /* ── display shapes & derivations ──────────────────────────── */
 interface TrajView { year: string; score: number; projected: boolean; current: boolean }
-interface ComparableView { name: string; club: string; similarity: number; score: number; avatar: string }
+interface ComparableView { id: string; name: string; club: string; similarity: number; score: number; avatar: string }
 interface OppCareerView { title: string; type: string; deadline: string; location: string; color: string }
 interface MilestoneView { label: string; pct: number; color: string; icon: React.ElementType }
 
@@ -154,6 +154,7 @@ function ComparableCard({ c, delay }: { c: ComparableView; delay: number }) {
   const [vis, setVis] = useState(false);
   const [barW, setBarW] = useState(0);
   const [hov, setHov] = useState(false);
+  const navigate = useNavigate();
   useEffect(() => {
     const t = setTimeout(() => { setVis(true); setTimeout(() => setBarW(c.similarity), 200); }, delay);
     return () => clearTimeout(t);
@@ -163,6 +164,7 @@ function ComparableCard({ c, delay }: { c: ComparableView; delay: number }) {
     <div
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
+      onClick={() => navigate(`/athletes/${c.id}`)}
       className="flex items-center gap-4 px-4 py-3.5 rounded-2xl cursor-pointer transition-all"
       style={{
         background: hov ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.025)',
@@ -218,6 +220,7 @@ export default function CareerPage() {
     .filter(a => a.id !== athlete?.id)
     .slice(0, 3)
     .map(a => ({
+      id: a.id,
       name: a.user?.full_name ?? 'Athlete',
       club: a.current_club ?? '—',
       similarity: comparableSimilarity(athlete, a),
