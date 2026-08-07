@@ -30,7 +30,7 @@ export default function AthleteAnalyticsPage() {
   });
   const { data: recentViews = [] } = useQuery({
     queryKey: ['analytics-recent-views', athleteId],
-    queryFn: () => listProfileViews(athleteId!, 6),
+    queryFn: () => listProfileViews(athleteId!, 100),
     enabled: !!athleteId,
   });
 
@@ -48,8 +48,8 @@ export default function AthleteAnalyticsPage() {
   const stats = [
     { label: 'Profile Views (total)', value: viewCount.toLocaleString(), change: 'all time', positive: true },
     { label: 'Views This Week', value: String(weekTotal), change: 'last 7 days', positive: true },
-    { label: 'Verified Viewers', value: String(verifiedViewers), change: 'recent', positive: true },
-    { label: 'Unique Viewers', value: String(uniqueViewers), change: 'recent', positive: true },
+    { label: 'Verified Viewers', value: String(verifiedViewers), change: 'last 100 views', positive: true },
+    { label: 'Unique Viewers', value: String(uniqueViewers), change: 'last 100 views', positive: true },
   ];
 
   return (
@@ -134,7 +134,7 @@ export default function AthleteAnalyticsPage() {
           <p className="text-sm text-slate-500">No profile views yet.</p>
         ) : (
           <div className="space-y-3">
-            {recentViews.map((view) => (
+            {recentViews.slice(0, 6).map((view) => (
               <div key={view.id} className="flex items-center gap-3 py-2 border-b border-slate-700/30 last:border-0">
                 <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
                   <Eye size={13} className="text-slate-400" />
