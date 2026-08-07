@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [notifError, setNotifError] = useState(false);
 
   const { data: priv } = useQuery({
     queryKey: ['user-private', user?.id],
@@ -76,9 +77,16 @@ export default function SettingsPage() {
 
   async function toggleNotif(key: string) {
     if (!user) return;
+    const previous = notifPrefs;
     const next = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(next);
-    await updateUserPrivate(user.id, { notification_preferences: next });
+    try {
+      await updateUserPrivate(user.id, { notification_preferences: next });
+    } catch {
+      setNotifPrefs(previous);
+      setNotifError(true);
+      setTimeout(() => setNotifError(false), 3000);
+    }
   }
 
   const TABS = [
@@ -146,6 +154,7 @@ export default function SettingsPage() {
       {tab === 'notifications' && (
         <div className="card space-y-4">
           <h2 className="text-base font-semibold text-white">Notification Preferences</h2>
+          {notifError && <p className="text-xs text-rose-400">Couldn't save that change — reverted.</p>}
           {NOTIF_PREFS.map((item) => (
             <ToggleRow
               key={item.key}
