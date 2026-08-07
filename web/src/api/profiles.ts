@@ -13,6 +13,9 @@ export async function getUserProfilesByIds(ids: string[]): Promise<UserProfile[]
 export async function updateUserProfile(id: string, patch: Partial<UserProfile>): Promise<UserProfile> {
   const allowed: Partial<UserProfile> = {
     full_name: patch.full_name,
+    first_name: patch.first_name,
+    middle_name: patch.middle_name,
+    last_name: patch.last_name,
     avatar_url: patch.avatar_url,
     bio: patch.bio,
     city: patch.city,
