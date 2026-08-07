@@ -11,6 +11,9 @@ export interface UserProfile {
   id: string;
   role: UserRole;
   full_name: string | null;
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
