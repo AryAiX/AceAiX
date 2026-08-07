@@ -36,7 +36,11 @@ export default function AthleteAnalyticsPage() {
 
   const weekTotal = weekly.reduce((s, d) => s + d.count, 0);
   const verifiedViewers = recentViews.filter(v => v.viewer_verified).length;
-  const uniqueViewers = new Set(recentViews.map(v => v.viewer_name ?? v.viewer_org ?? v.id)).size;
+  const uniqueViewers = new Set(
+    recentViews
+      .map(v => v.viewer_user_id ?? (v.viewer_name && v.viewer_org ? `${v.viewer_name}|${v.viewer_org}` : null))
+      .filter((k): k is string => k !== null)
+  ).size;
   const maxViews = Math.max(...weekly.map(d => d.count), 1);
 
   const topLocations = ((athlete?.analytics as { topLocations?: TopLocation[] } | undefined)?.topLocations ?? []);
