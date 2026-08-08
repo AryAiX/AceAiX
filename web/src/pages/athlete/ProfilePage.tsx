@@ -5,12 +5,14 @@ import {
   Globe, Trophy, Footprints, Activity, Shirt, Info,
   ArrowUpRight, Sparkles, X, Calendar,
 } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { updateAthlete } from '../../api/athletes';
 import { updateUserProfile, uploadAvatar, removeAvatar } from '../../api/profiles';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '../../data/countries';
+import { POSITIONS } from '../../data/positions';
+import { listOrganizations } from '../../api/organizations';
 import SearchableSelect from '../../components/ui/SearchableSelect';
 
 /* ── tiny animated completeness ring ───────────────────────── */
@@ -107,6 +109,10 @@ const CHECKLIST_FIELDS: { label: string; key: string }[] = [
 export default function AthleteProfilePage() {
   const { profile, refreshProfile, loading: authLoading } = useAuth();
   const { data: athlete, isLoading: athleteLoading } = useMyAthlete();
+  const { data: clubs = [] } = useQuery({
+    queryKey: ['organizations', { type: 'club' }],
+    queryFn: () => listOrganizations({ type: 'club' }),
+  });
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -192,6 +198,8 @@ export default function AthleteProfilePage() {
   const avatarInitials = `${form.first_name?.[0] ?? ''}${form.last_name?.[0] ?? ''}`.toUpperCase();
   const todayDate = new Date().toISOString().split('T')[0];
   const minBirthDate = new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0];
+  const clubNames = clubs.map(c => c.name);
+  const matchedClubId = clubs.find(c => c.name === form.current_club)?.id ?? null;
 
   async function handleSave() {
     if (!profile) return;
@@ -217,6 +225,7 @@ export default function AthleteProfilePage() {
           height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
           weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
           nationality: form.nationality, birth_date: form.birth_date || null, current_club: form.current_club,
+          current_club_id: matchedClubId,
           level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
           profile_completeness: completeness,
         });
@@ -573,22 +582,22 @@ export default function AthleteProfilePage() {
             </Field>
 
             <Field label="Primary Position" icon={Shirt} delay={80}>
-              <input value={form.position_primary} onChange={e => set('position_primary', e.target.value)}
-                className="input-field pl-9" placeholder="e.g. Striker" />
+              <SearchableSelect value={form.position_primary} onChange={v => set('position_primary', v)}
+                options={POSITIONS} placeholder="Select position" />
             </Field>
 
             <Field label="Secondary Position" icon={Shirt} delay={120}>
-              <input value={form.position_secondary} onChange={e => set('position_secondary', e.target.value)}
-                className="input-field pl-9" placeholder="Optional" />
+              <SearchableSelect value={form.position_secondary} onChange={v => set('position_secondary', v)}
+                options={POSITIONS} placeholder="Optional" />
             </Field>
 
             <Field label="Current Club" icon={Zap} delay={160}>
-              <input value={form.current_club} onChange={e => set('current_club', e.target.value)}
-                className="input-field pl-9" placeholder="Club name" />
+              <SearchableSelect value={form.current_club} onChange={v => set('current_club', v)}
+                options={clubNames} allowFreeText placeholder="Select or type your club" />
             </Field>
 
             <Field label="Dominant Foot" icon={Footprints} delay={200}>
-              <select value={form.dominant_foot} onChange={e => set('dominant_foot', e.target.value)} className="input-field">
+              <select value={form.dominant_foot} onChange={e => set('dominant_foot', e.target.value)} className="input-field pl-9">
                 <option value="">Select</option>
                 <option value="right">Right</option>
                 <option value="left">Left</option>
