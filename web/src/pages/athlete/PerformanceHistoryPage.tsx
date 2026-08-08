@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Swords, Target, Zap, Star, Calendar, Clock, Award } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches } from '../../api/portfolio';
@@ -39,6 +39,7 @@ export default function PerformanceHistoryPage() {
   const { data: athlete } = useMyAthlete();
   const athleteId = athlete?.id;
   const [selected, setSelected] = useState<MatchRecord | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: matches = [] } = useQuery({
     queryKey: ['matches', athleteId, 'all'],
@@ -127,7 +128,13 @@ export default function PerformanceHistoryPage() {
       </div>
       </div>
 
-      {selected && <MatchDetailModal match={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <MatchDetailModal
+          match={selected}
+          onClose={() => setSelected(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })}
+        />
+      )}
     </div>
   );
 }
