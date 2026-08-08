@@ -141,6 +141,7 @@ export default function AthleteProfilePage() {
     birth_date: '',
     current_club: '',
     level: 'amateur',
+    is_open_to_offers: false,
     dominant_foot: '',
     city: '',
     country: '',
@@ -175,6 +176,7 @@ export default function AthleteProfilePage() {
       birth_date: athlete.birth_date || '',
       current_club: athlete.current_club || '',
       level: athlete.level || 'amateur',
+      is_open_to_offers: athlete.is_open_to_offers ?? false,
       dominant_foot: athlete.dominant_foot || '',
     }));
     setDirty(false);
@@ -190,7 +192,7 @@ export default function AthleteProfilePage() {
   }, [dirty]);
 
   const completeness = Math.round(
-    (CHECKLIST_FIELDS.filter(f => !!(form as Record<string, string>)[f.key]).length / CHECKLIST_FIELDS.length) * 100
+    (CHECKLIST_FIELDS.filter(f => !!(form as unknown as Record<string, string>)[f.key]).length / CHECKLIST_FIELDS.length) * 100
   );
 
   const countryNames = COUNTRIES.map(c => c.name);
@@ -227,6 +229,7 @@ export default function AthleteProfilePage() {
           nationality: form.nationality, birth_date: form.birth_date || null, current_club: form.current_club,
           current_club_id: matchedClubId,
           level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
+          is_open_to_offers: form.is_open_to_offers,
           profile_completeness: completeness,
         });
         queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
@@ -285,11 +288,11 @@ export default function AthleteProfilePage() {
     }
   }
 
-  function set(key: string, val: string) {
+  function set(key: string, val: string | boolean) {
     setForm(f => ({ ...f, [key]: val }));
     setDirty(true);
-    if (key === 'first_name' && val.trim()) setFirstNameError(false);
-    if (key === 'last_name' && val.trim()) setLastNameError(false);
+    if (key === 'first_name' && typeof val === 'string' && val.trim()) setFirstNameError(false);
+    if (key === 'last_name' && typeof val === 'string' && val.trim()) setLastNameError(false);
   }
 
   if (authLoading || athleteLoading) {
@@ -627,6 +630,25 @@ export default function AthleteProfilePage() {
               })}
             </div>
           </div>
+
+          {/* open to offers toggle */}
+          <div className="flex items-center justify-between rounded-2xl p-4"
+            style={{ background: 'rgba(31,181,122,0.06)', border: '1px solid rgba(31,181,122,0.15)' }}>
+            <div>
+              <p className="text-sm font-semibold text-white">Open to Offers</p>
+              <p className="text-[11px] text-white/35 mt-0.5">Let recruiters know you're available for new opportunities</p>
+            </div>
+            <button
+              onClick={() => set('is_open_to_offers', !form.is_open_to_offers)}
+              className="relative flex-shrink-0 w-12 h-7 rounded-full transition-colors duration-200"
+              style={{ background: form.is_open_to_offers ? '#1FB57A' : 'rgba(255,255,255,0.10)' }}
+            >
+              <span
+                className="absolute top-1 left-1 w-5 h-5 rounded-full bg-white transition-transform duration-200"
+                style={{ transform: form.is_open_to_offers ? 'translateX(20px)' : 'translateX(0px)' }}
+              />
+            </button>
+          </div>
         </div>
       )}
 
@@ -717,12 +739,12 @@ export default function AthleteProfilePage() {
             <span className="text-xs font-bold uppercase tracking-widest text-white/50">Profile Checklist</span>
           </div>
           <span className="text-xs font-bold tabular" style={{ color: completeness >= 80 ? '#B8F135' : '#2F80ED' }}>
-            {CHECKLIST_FIELDS.filter(f => !!(form as Record<string, string>)[f.key]).length}/{CHECKLIST_FIELDS.length} done
+            {CHECKLIST_FIELDS.filter(f => !!(form as unknown as Record<string, string>)[f.key]).length}/{CHECKLIST_FIELDS.length} done
           </span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {CHECKLIST_FIELDS.map((item, i) => {
-            const done = !!(form as Record<string, string>)[item.key];
+            const done = !!(form as unknown as Record<string, string>)[item.key];
             return (
               <div key={item.key}
                 className="flex items-center gap-2.5 text-xs"
