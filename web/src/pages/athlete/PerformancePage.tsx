@@ -583,7 +583,7 @@ export default function PerformancePage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   {['Date', 'Opponent', 'Competition', 'Result', 'G', 'A', 'Min', 'Rating'].map((h, i) => (
-                    <th key={h} className={`pb-2.5 font-semibold text-white/30 uppercase tracking-wider text-[10px] ${i >= 4 ? 'text-right' : 'text-left'} ${h === 'Competition' ? 'hidden sm:table-cell' : ''}`}>
+                    <th key={h} className={`pb-2.5 font-semibold text-white/30 uppercase tracking-wider text-[10px] ${i >= 4 ? 'text-right' : 'text-left'} ${h === 'Competition' ? 'hidden sm:table-cell' : ''} ${(h === 'G' || h === 'A' || h === 'Min') ? 'pr-3' : ''}`}>
                       {h}
                     </th>
                   ))}
