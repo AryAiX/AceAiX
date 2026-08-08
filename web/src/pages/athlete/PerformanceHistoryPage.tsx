@@ -6,6 +6,7 @@ import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches } from '../../api/portfolio';
 import MatchDetailModal from '../../components/athlete/MatchDetailModal';
 import StatTileCard, { SeasonStat } from '../../components/athlete/StatTileCard';
+import VerifiedBadge from '../../components/ui/VerifiedBadge';
 import type { MatchRecord } from '../../types';
 
 const RESULT_STYLE: Record<string, [string, string, string]> = {
@@ -104,7 +105,12 @@ export default function PerformanceHistoryPage() {
                 <tr key={m.id} onClick={() => setSelected(m)} className="cursor-pointer hover:bg-white/04 transition-colors"
                   style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <td className="py-3 text-white/60">{new Date(m.match_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
-                  <td className="py-3 text-white font-semibold">{m.opponent ?? 'TBD'}</td>
+                  <td className="py-3 text-white font-semibold">
+                    <span className="inline-flex items-center gap-1.5">
+                      {m.opponent ?? 'TBD'}
+                      {m.source === 'verified' && <VerifiedBadge size="sm" animated={false} />}
+                    </span>
+                  </td>
                   <td className="py-3 text-white/40 hidden sm:table-cell">{m.competition ?? '—'}</td>
                   <td className="py-3">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold capitalize" style={{ background: bg, border: `1px solid ${border}`, color }}>{kind}</span>
