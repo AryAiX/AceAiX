@@ -359,6 +359,7 @@ export default function PerformancePage() {
   const currentSeason = seasonLabel(rawMatches[0]?.match_date);
 
   const matches: MatchView[] = rawMatches.map(toMatchView);
+  const recentMatches = matches.slice(0, 5);
 
   const ratedMatches = matches.filter((m): m is MatchView & { rating: number } => m.rating !== null);
   const avgRating = ratedMatches.length ? (ratedMatches.reduce((s, m) => s + m.rating, 0) / ratedMatches.length).toFixed(1) : '—';
@@ -590,10 +591,10 @@ export default function PerformancePage() {
                 </tr>
               </thead>
               <tbody>
-                {!matches.length && (
+                {!recentMatches.length && (
                   <tr><td colSpan={8} className="py-8 text-center text-white/30">No match records yet. Log your first match.</td></tr>
                 )}
-                {matches.map((match, i) => {
+                {recentMatches.map((match, i) => {
                   const [color, bg, border] = RESULT_STYLE[match.result];
                   const isHov = hoveredRow === i;
                   return (
