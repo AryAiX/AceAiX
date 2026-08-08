@@ -597,12 +597,11 @@ export default function AthleteProfilePage() {
             </Field>
 
             <Field label="Dominant Foot" icon={Footprints} delay={200}>
-              <select value={form.dominant_foot} onChange={e => set('dominant_foot', e.target.value)} className="input-field pl-9">
-                <option value="">Select</option>
-                <option value="right">Right</option>
-                <option value="left">Left</option>
-                <option value="both">Both</option>
-              </select>
+              <SearchableSelect
+                value={form.dominant_foot ? form.dominant_foot.charAt(0).toUpperCase() + form.dominant_foot.slice(1) : ''}
+                onChange={v => set('dominant_foot', v.toLowerCase())}
+                options={['Right', 'Left', 'Both']}
+                placeholder="Select" />
             </Field>
           </div>
 
