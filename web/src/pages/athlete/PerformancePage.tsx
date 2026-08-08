@@ -351,11 +351,8 @@ export default function PerformancePage() {
       )}
 
       {selectedMatch && (
-        <MatchDetailModal
-          match={selectedMatch}
-          onClose={() => setSelectedMatch(null)}
-          onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })}
-        />
+        <MatchDetailModal match={selectedMatch} onClose={() => setSelectedMatch(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })} />
       )}
 
       <div className="max-w-6xl space-y-6 pb-10">
