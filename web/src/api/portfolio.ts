@@ -60,6 +60,10 @@ export async function createMatch(input: Partial<MatchRecord> & { athlete_id: st
   return unwrap(await supabase.from('match_records').insert(input).select('*').single()) as MatchRecord;
 }
 
+export async function updateMatch(id: string, patch: Partial<MatchRecord>): Promise<MatchRecord> {
+  return unwrap(await supabase.from('match_records').update(patch).eq('id', id).select('*').single()) as MatchRecord;
+}
+
 // ---- Attributes (normalized) ----
 export async function listAttributes(athleteId: string): Promise<AthleteAttribute[]> {
   return unwrap(
