@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, Swords } from 'lucide-react';
+import { ChevronLeft, Swords, Target, Zap, Star, Calendar, Clock, Award } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches } from '../../api/portfolio';
 import MatchDetailModal from '../../components/athlete/MatchDetailModal';
+import StatTileCard, { SeasonStat } from '../../components/athlete/StatTileCard';
 import type { MatchRecord } from '../../types';
 
 const RESULT_STYLE: Record<string, [string, string, string]> = {
@@ -44,8 +45,26 @@ export default function PerformanceHistoryPage() {
     enabled: !!athleteId,
   });
 
+  const ratedMatches = matches.filter(m => matchRating(m) !== null);
+  const avgRating = ratedMatches.length
+    ? (ratedMatches.reduce((s, m) => s + (matchRating(m) as number), 0) / ratedMatches.length).toFixed(1)
+    : '—';
+  const totalGoals = matches.reduce((s, m) => s + m.goals, 0);
+  const totalAssists = matches.reduce((s, m) => s + m.assists, 0);
+  const totalMinutes = matches.reduce((s, m) => s + (m.minutes_played ?? 0), 0);
+  const wins = matches.filter(m => resultKind(m.result) === 'win').length;
+
+  const seasonStats: SeasonStat[] = [
+    { label: 'Goals',   value: String(totalGoals),   icon: Target,   color: '#B8F135', max: Math.max(30, totalGoals),     raw: totalGoals },
+    { label: 'Assists', value: String(totalAssists), icon: Zap,      color: '#2F80ED', max: Math.max(20, totalAssists),   raw: totalAssists },
+    { label: 'Rating',  value: avgRating,            icon: Star,     color: '#F5A623', max: 10,                            raw: avgRating === '—' ? 0 : Number(avgRating) },
+    { label: 'Matches', value: String(matches.length), icon: Calendar, color: '#1FB57A', max: Math.max(34, matches.length), raw: matches.length },
+    { label: 'Minutes', value: totalMinutes.toLocaleString(), icon: Clock, color: '#A78BFA', max: Math.max(2700, totalMinutes), raw: totalMinutes },
+    { label: 'Wins',    value: String(wins),         icon: Award,    color: '#EF5350', max: Math.max(24, matches.length),  raw: wins },
+  ];
+
   return (
-    <div className="p-6 sm:p-8 space-y-5 max-w-4xl mx-auto">
+    <div className="p-6 sm:p-8 space-y-5 max-w-6xl">
       <Link to="/athlete/performance" className="inline-flex items-center gap-1 text-[11px] text-azure/70 hover:text-azure transition-colors">
         <ChevronLeft size={12} /> Back to Performance
       </Link>
@@ -57,6 +76,11 @@ export default function PerformanceHistoryPage() {
         <h1 className="text-lg font-bold text-white">Full Match History</h1>
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {seasonStats.map((stat, i) => <StatTileCard key={stat.label} stat={stat} delay={i * 60} />)}
+      </div>
+
+      <div className="card p-5">
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
@@ -94,6 +118,7 @@ export default function PerformanceHistoryPage() {
             })}
           </tbody>
         </table>
+      </div>
       </div>
 
       {selected && <MatchDetailModal match={selected} onClose={() => setSelected(null)} />}
