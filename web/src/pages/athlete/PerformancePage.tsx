@@ -11,6 +11,7 @@ import type { MatchRecord, AttributeData } from '../../types';
 import { Link } from 'react-router-dom';
 import MatchDetailModal from '../../components/athlete/MatchDetailModal';
 import StatTileCard, { SeasonStat } from '../../components/athlete/StatTileCard';
+import VerifiedBadge from '../../components/ui/VerifiedBadge';
 
 /* ── display shapes & derivations ──────────────────────────── */
 interface MatchView {
@@ -561,7 +562,12 @@ export default function PerformancePage() {
                         // stagger on mount
                       }}>
                       <td className="py-3 text-white/30 font-medium pr-4 whitespace-nowrap">{match.date}</td>
-                      <td className="py-3 font-semibold text-white pr-4 whitespace-nowrap">{match.opponent}</td>
+                      <td className="py-3 font-semibold text-white pr-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5">
+                          {match.opponent}
+                          {rawMatches[i]?.source === 'verified' && <VerifiedBadge size="sm" animated={false} />}
+                        </span>
+                      </td>
                       <td className="py-3 text-white/40 hidden sm:table-cell pr-4">{match.competition}</td>
                       <td className="py-3 pr-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize"
