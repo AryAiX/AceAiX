@@ -129,11 +129,8 @@ export default function PerformanceHistoryPage() {
       </div>
 
       {selected && (
-        <MatchDetailModal
-          match={selected}
-          onClose={() => setSelected(null)}
-          onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })}
-        />
+        <MatchDetailModal match={selected} onClose={() => setSelected(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: ['matches', athleteId] })} />
       )}
     </div>
   );
