@@ -57,9 +57,10 @@ export async function deleteRecommendation(id: string): Promise<void> {
   unwrap(await supabase.from('recommendations').delete().eq('id', id).select('id'));
 }
 
-export async function searchUsers(q: string, excludeId?: string, limit = 8): Promise<UserProfile[]> {
+export async function searchUsers(q: string, excludeId?: string, limit = 8, roles?: string[]): Promise<UserProfile[]> {
   let query = supabase.from('user_profiles').select(USER_FIELDS).ilike('full_name', `%${q}%`).limit(limit);
   if (excludeId) query = query.neq('id', excludeId);
+  if (roles && roles.length) query = query.in('role', roles);
   return unwrap(await query) as UserProfile[];
 }
 
