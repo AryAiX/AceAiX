@@ -18,7 +18,7 @@ export default function GrantConsentModal({ athleteId, currentUserId, onClose, o
     if (q.trim().length < 2) { setResults([]); return; }
     setSearching(true);
     try {
-      setResults(await searchUsers(q.trim(), currentUserId, 8));
+      setResults(await searchUsers(q.trim(), currentUserId, 8, ['medical_partner', 'coach', 'club', 'guardian']));
     } catch {
       setResults([]);
     } finally {
