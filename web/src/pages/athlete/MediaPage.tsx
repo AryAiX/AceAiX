@@ -9,6 +9,7 @@ import { useMyAthlete } from '../../hooks/useAthlete';
 import { useAuth } from '../../context/AuthContext';
 import { listMedia, createMedia, updateMedia, deleteMedia, toggleMediaLike, listMyMediaLikes } from '../../api/portfolio';
 import type { AthleteMedia } from '../../types';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 /* ── display shape ─────────────────────────────────────────── */
 interface MediaView {
@@ -118,6 +119,7 @@ function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike, onEdit }:
   const [vis, setVis] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
 
   return (
@@ -201,9 +203,7 @@ function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike, onEdit }:
                   { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false), disabled: false },
                   { label: isDeleting ? 'Deleting…' : 'Delete', icon: Trash2, color: '#EF5350', action: () => {
                       setMenuOpen(false);
-                      if (window.confirm(`Delete "${media.title}"? This can't be undone.`)) {
-                        onDelete(media.id);
-                      }
+                      setConfirmingDelete(true);
                     }, disabled: isDeleting },
                 ].map(item => (
                   <button key={item.label}
@@ -217,6 +217,17 @@ function VideoCard({ media, delay, onDelete, isDeleting, onToggleLike, onEdit }:
               </div>
             )}
           </div>
+
+          {confirmingDelete && (
+            <ConfirmDialog
+              title="Delete video?"
+              message={`Delete "${media.title}"? This can't be undone.`}
+              confirmLabel="Delete"
+              danger
+              onCancel={() => setConfirmingDelete(false)}
+              onConfirm={() => { setConfirmingDelete(false); onDelete(media.id); }}
+            />
+          )}
         </div>
 
         {/* tags */}
