@@ -44,7 +44,7 @@ export default function Network() {
     if (!user) return;
     let mounted = true;
     Promise.all([
-      supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).limit(50),
+      supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
       supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
     ]).then(([profilesResult, followsResult, blocksResult]) => {
@@ -57,7 +57,7 @@ export default function Network() {
         name: row.full_name ?? 'AceAiX member',
         role: String(row.role ?? 'athlete').replace('_', ' '),
         org: [row.city, row.country].filter(Boolean).join(', ') || 'AceAiX',
-        type: row.role === 'org_admin' ? 'agent' : row.role ?? 'athlete',
+        type: row.role === 'org_admin' ? 'agent' : row.role === 'federation' ? 'club' : row.role ?? 'athlete',
         verified: row.is_verified ?? false,
         })));
       setConns(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
