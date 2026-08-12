@@ -67,8 +67,8 @@ export default function Analytics() {
       for (const view of views) {
         const date = new Date(view.created_at);
         if (date.getFullYear() === currentYear) months[date.getMonth()] += 1;
-        const region = view.viewer_org?.trim();
-        if (region) regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+        const region = view.viewer_org?.trim() || 'Unspecified';
+        regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
       }
 
       setMonthlyViews(months);
