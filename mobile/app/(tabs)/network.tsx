@@ -71,7 +71,7 @@ export default function Network() {
     if (connected) {
       ({ error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id));
     } else {
-      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: id }));
+      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: id }, { onConflict: 'follower_id,following_id' }));
     }
     if (error) {
       Alert.alert('Connection not updated', error.message);
