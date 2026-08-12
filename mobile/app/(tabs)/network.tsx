@@ -89,7 +89,7 @@ export default function Network() {
       <AppHeader title="Network" />
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         <View style={s.statsRow}>
-          {[{ label: 'Connections', value: String(conns.size) }, { label: 'Scouts', value: String(people.filter(p => p.type === 'scout').length) }, { label: 'Clubs', value: String(people.filter(p => p.type === 'club').length) }].map((st, i) => (
+          {[{ label: 'Connections', value: String(conns.size) }, { label: 'Scouts', value: String(people.filter(p => p.type === 'scout' && conns.has(p.id)).length) }, { label: 'Clubs', value: String(people.filter(p => p.type === 'club' && conns.has(p.id)).length) }].map((st, i) => (
             <View key={st.label} style={[s.stat, i < 2 && s.statBorder]}>
               <Text style={s.statVal}>{st.value}</Text>
               <Text style={s.statLbl}>{st.label}</Text>
