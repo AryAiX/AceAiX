@@ -8,17 +8,18 @@ import { supabase } from '@/lib/supabase';
 
 export default function Medical() {
   const { profile } = useAuth();
-  const [records, setRecords] = useState<Array<{ date: string; type: string; status: string; notes: string }>>([]);
+  const [records, setRecords] = useState<Array<{ id: string; date: string; type: string; status: string; notes: string }>>([]);
   const [clearance, setClearance] = useState<{ status: string; effective_to: string | null; created_at: string } | null>(null);
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
     Promise.all([
       supabase.from('medical_clearances').select('status,effective_to,created_at').eq('athlete_id', profile.athlete_profile_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('medical_records').select('record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
+      supabase.from('medical_records').select('id,record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
     ]).then(([clearanceResult, recordsResult]) => {
       setClearance(clearanceResult.data as any ?? null);
       setRecords((recordsResult.data ?? []).map((row: any) => ({
+        id: row.id,
         date: row.issued_at ? new Date(row.issued_at).toLocaleDateString() : '',
         type: row.title ?? row.record_type,
         status: row.is_verified ? 'Verified' : 'Pending',
@@ -77,7 +78,7 @@ export default function Medical() {
           {records.map((rec, i) => {
             const recColor = rec.status === 'Verified' ? Colors.success : Colors.warning;
             return (
-              <View key={rec.date} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
+              <View key={rec.id} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
                 <View style={s.recordLeft}>
                   {rec.status === 'Verified' ? (
                     <CheckCircle2 color={recColor} size={16} />
