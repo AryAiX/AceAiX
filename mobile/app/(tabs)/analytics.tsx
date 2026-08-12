@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Eye, Star, Target, Users } from 'lucide-react-native';
-import Svg, { Rect, Line } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ const { width: SW } = Dimensions.get('window');
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-function BarChartComponent({ data, months, w, h }: { data: number[]; months: string[]; w: number; h: number }) {
+function BarChartComponent({ data, w, h }: { data: number[]; w: number; h: number }) {
   const max = Math.max(...data, 1);
   const barW = (w - 20) / data.length - 4;
   return (
@@ -21,12 +21,7 @@ function BarChartComponent({ data, months, w, h }: { data: number[]; months: str
         const x = 10 + i * ((w - 20) / data.length);
         const y = h - 20 - barH;
         return (
-          <React.Fragment key={i}>
-            <Rect x={x} y={y} width={barW} height={barH} rx={3} fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`} />
-            <Svg x={x} y={h - 18} width={barW} height={16}>
-              <Line x1={barW / 2} y1={0} x2={barW / 2} y2={16} stroke="transparent" />
-            </Svg>
-          </React.Fragment>
+          <Rect key={i} x={x} y={y} width={barW} height={barH} rx={3} fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`} />
         );
       })}
     </Svg>
@@ -134,7 +129,7 @@ export default function Analytics() {
               <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
               {monthlyViews.some((v) => v > 0) ? (
                 <>
-                  <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
+                  <BarChartComponent data={monthlyViews} w={SW - 64} h={120} />
                   <View style={s.monthRow}>
                     {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
                   </View>
@@ -204,7 +199,6 @@ const s = StyleSheet.create({
   engFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 3 },
   engVal: { fontFamily: Typography.family.mono, fontSize: Typography.size.sm, color: Colors.textMuted, width: 50, textAlign: 'right' },
   geoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  geoFlag: { fontSize: 18, width: 26 },
   geoRegion: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textPrimary, width: 80 },
   geoBarWrap: { flex: 1, height: 6, backgroundColor: Colors.elevated, borderRadius: 3, overflow: 'hidden' },
   geoBar: { height: '100%', backgroundColor: `${Colors.primary}70`, borderRadius: 3 },
