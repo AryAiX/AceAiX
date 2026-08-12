@@ -19,7 +19,7 @@ import { useRouter } from 'expo-router';
 const { width: SW } = Dimensions.get('window');
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const FORM: Array<{ r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number }> = [];
+type MatchCard = { r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number };
 const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
 type AttributeCard = { label: string; v: number; color: string };
 type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
@@ -281,6 +281,17 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
   );
 }
 
+function normalizeResult(raw: string): 'W' | 'D' | 'L' | null {
+  const tokens = raw.trim().split(/\s+/);
+  const lastToken = tokens[tokens.length - 1]?.toUpperCase();
+  if (lastToken === 'W' || lastToken === 'D' || lastToken === 'L') return lastToken;
+  const lower = raw.trim().toLowerCase();
+  if (lower === 'win') return 'W';
+  if (lower === 'draw') return 'D';
+  if (lower === 'loss' || lower === 'lose') return 'L';
+  return null;
+}
+
 function formatSalaryRange(min: number | null, max: number | null, currency: string | null): string {
   const symbol = !currency || currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : `${currency} `;
   const fmt = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}K` : `${v}`);
@@ -311,6 +322,7 @@ export default function Dashboard() {
   const [scouts, setScouts] = useState<ScoutCard[]>([]);
   const [opps, setOpps] = useState<OppCard[]>([]);
   const [attributes, setAttributes] = useState<AttributeCard[]>([]);
+  const [form, setForm] = useState<MatchCard[]>([]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -347,7 +359,15 @@ export default function Dashboard() {
           .select('attribute_key, value')
           .eq('athlete_id', profile.athlete_profile_id)
         : Promise.resolve({ data: [] }),
-    ]).then(([views, matches, scoutRows, oppRows, attributeRows]) => {
+      profile?.athlete_profile_id
+        ? supabase
+          .from('match_records')
+          .select('opponent, result, goals, assists, stats, match_date')
+          .eq('athlete_id', profile.athlete_profile_id)
+          .order('match_date', { ascending: false })
+          .limit(5)
+        : Promise.resolve({ data: [] }),
+    ]).then(([views, matches, scoutRows, oppRows, attributeRows, matchRows]) => {
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
 
@@ -419,6 +439,25 @@ export default function Dashboard() {
         color: attrPalette[i % attrPalette.length],
       }));
       setAttributes(mappedAttributes);
+
+      const mappedForm: MatchCard[] = ((matchRows.data ?? []) as Array<{
+        opponent: string; result: string; goals: number; assists: number;
+        stats: { rating?: number } | null; match_date: string;
+      }>)
+        .map(row => {
+          const r = normalizeResult(row.result);
+          if (!r) return null;
+          const card: MatchCard = {
+            r,
+            opp: row.opponent,
+            rating: Number(row.stats?.rating ?? 0),
+            g: row.goals,
+            a: row.assists,
+          };
+          return card;
+        })
+        .filter((c): c is MatchCard => c !== null);
+      setForm(mappedForm);
     });
   }, [profile?.athlete_profile_id, user]);
 
@@ -498,7 +537,7 @@ export default function Dashboard() {
               <View>
                 <Text style={s.formLabel}>RECENT FORM</Text>
                 <View style={{ flexDirection: 'row', gap: 5 }}>
-                  {FORM.map((m, i) => (
+                  {form.map((m, i) => (
                     <View key={i} style={[s.fc,
                       m.r === 'W' && s.fw, m.r === 'D' && s.fd, m.r === 'L' && s.fl]}>
                       <Text style={s.fcTxt}>{m.r}</Text>
@@ -706,10 +745,10 @@ export default function Dashboard() {
         {/* ── LAST 5 PERFORMANCES ──────────────────────────────────────── */}
         <RevealCard index={6} reduced={reduced}>
           <SH title="Last 5 Performances" color={Colors.primary} onMore={() => router.push('/(tabs)/performance' as any)} />
-          {FORM.map((m, i) => {
+          {form.map((m, i) => {
             const resultColor = m.r === 'W' ? Colors.success : m.r === 'D' ? Colors.warning : Colors.error;
             return (
-              <View key={i} style={[s.matchRow, i < FORM.length - 1 && s.matchBorder]}>
+              <View key={i} style={[s.matchRow, i < form.length - 1 && s.matchBorder]}>
                 <View style={[s.mrBadge, { backgroundColor: `${resultColor}22`, borderColor: resultColor }]}>
                   <Text style={[s.mrTxt, { color: resultColor }]}>{m.r}</Text>
                 </View>
@@ -721,7 +760,7 @@ export default function Dashboard() {
               </View>
             );
           })}
-          {FORM.length === 0 && <Text style={s.emptySectionText}>No recent match records yet.</Text>}
+          {form.length === 0 && <Text style={s.emptySectionText}>No recent match records yet.</Text>}
         </RevealCard>
 
         {/* ── MEDICAL INTEL ────────────────────────────────────────────── */}
