@@ -20,8 +20,8 @@ const { width: SW } = Dimensions.get('window');
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const FORM: Array<{ r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number }> = [];
-const ATTRIBUTES: Array<{ label: string; v: number; color: string }> = [];
 const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
+type AttributeCard = { label: string; v: number; color: string };
 type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
 type OppCard = { title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number };
 
@@ -310,6 +310,7 @@ export default function Dashboard() {
   const [opportunityMatches, setOpportunityMatches] = useState(0);
   const [scouts, setScouts] = useState<ScoutCard[]>([]);
   const [opps, setOpps] = useState<OppCard[]>([]);
+  const [attributes, setAttributes] = useState<AttributeCard[]>([]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -340,7 +341,13 @@ export default function Dashboard() {
         .select('match_score, created_at, opportunities(title, location, salary_min, salary_max, currency, type, is_active, organizations(name, short_name))')
         .eq('athlete_id', user.id)
         .order('match_score', { ascending: false }),
-    ]).then(([views, matches, scoutRows, oppRows]) => {
+      profile?.athlete_profile_id
+        ? supabase
+          .from('athlete_attributes')
+          .select('attribute_key, value')
+          .eq('athlete_id', profile.athlete_profile_id)
+        : Promise.resolve({ data: [] }),
+    ]).then(([views, matches, scoutRows, oppRows, attributeRows]) => {
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
 
@@ -402,6 +409,16 @@ export default function Dashboard() {
         })
         .filter((c): c is OppCard => c !== null);
       setOpps(mappedOpps);
+
+      const attrPalette = [Colors.primary, Colors.accent, Colors.success];
+      const mappedAttributes: AttributeCard[] = ((attributeRows.data ?? []) as Array<{
+        attribute_key: string; value: number | null;
+      }>).map((row, i) => ({
+        label: row.attribute_key,
+        v: row.value ?? 0,
+        color: attrPalette[i % attrPalette.length],
+      }));
+      setAttributes(mappedAttributes);
     });
   }, [profile?.athlete_profile_id, user]);
 
@@ -560,11 +577,11 @@ export default function Dashboard() {
         <RevealCard index={2} reduced={reduced}>
           <SH title="Attribute Breakdown" color={Colors.primary} />
           <Text style={s.attrSubtitle}>Profile attributes · {profile?.sport ?? 'Sport'} · Current season</Text>
-          {ATTRIBUTES.length ? (
+          {attributes.length ? (
             <View style={s.attrRow}>
-              <AnimatedRadar data={ATTRIBUTES.map(a => a.v)} size={166} />
+              <AnimatedRadar data={attributes.map(a => a.v)} size={166} />
               <View style={s.attrList}>
-                {ATTRIBUTES.map((a, i) => (
+                {attributes.map((a, i) => (
                   <View key={a.label} style={s.attrItem}>
                     <View style={s.attrLabelRow}>
                       <Text style={s.attrLabel}>{a.label}</Text>
