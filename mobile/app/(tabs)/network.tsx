@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star } from 'lucide-react-native';
+import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useRouter } from 'expo-router';
@@ -84,6 +84,35 @@ export default function Network() {
     });
   }
 
+  async function blockUser(id: string, name: string) {
+    if (!user) return;
+    Alert.alert(
+      'Block this person?',
+      `${name} won't be able to see your profile or message you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('user_blocks').upsert({ blocker_id: user.id, blocked_id: id }, { onConflict: 'blocker_id,blocked_id' });
+            if (error) {
+              Alert.alert('Could not block', error.message);
+              return;
+            }
+            await supabase.from('follows').delete().or(`and(follower_id.eq.${user.id},following_id.eq.${id}),and(follower_id.eq.${id},following_id.eq.${user.id})`);
+            setConns(prev => {
+              const next = new Set(prev);
+              next.delete(id);
+              return next;
+            });
+            setPeople(prev => prev.filter(p => p.id !== id));
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <View style={s.root}>
       <AppHeader title="Network" />
@@ -145,6 +174,14 @@ export default function Network() {
                       {isConn ? 'Connected' : 'Connect'}
                     </Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Block ${c.name}`}
+                    style={s.blockBtn}
+                    onPress={() => blockUser(c.id, c.name)}
+                  >
+                    <UserX color={Colors.textMuted} size={16} />
+                  </TouchableOpacity>
                 </View>
               </View>
             );
@@ -185,6 +222,7 @@ const s = StyleSheet.create({
   cOrg: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textDisabled },
   actions: { gap: 8, alignItems: 'flex-end' },
   msgBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${Colors.primary}15`, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${Colors.primary}30` },
+  blockBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   connBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radii.md, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
   connBtnActive: { backgroundColor: `${Colors.primary}15`, borderColor: `${Colors.primary}40` },
   connTxt: { fontFamily: Typography.family.medium, fontSize: 11, color: Colors.textPrimary },
