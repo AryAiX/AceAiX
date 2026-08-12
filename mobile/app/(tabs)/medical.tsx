@@ -10,9 +10,13 @@ export default function Medical() {
   const { profile } = useAuth();
   const [records, setRecords] = useState<Array<{ id: string; date: string; type: string; status: string; notes: string }>>([]);
   const [clearance, setClearance] = useState<{ status: string; effective_to: string | null; created_at: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       supabase.from('medical_clearances').select('status,effective_to,created_at').eq('athlete_id', profile.athlete_profile_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('medical_records').select('id,record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
@@ -25,7 +29,8 @@ export default function Medical() {
         status: row.is_verified ? 'Verified' : 'Pending',
         notes: row.summary ?? 'No summary provided.',
       })));
-    });
+    }).catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }, [profile?.athlete_profile_id]);
 
   const CLEARANCE_META: Record<string, { label: string; color: string; subtitle: string }> = {
@@ -45,10 +50,18 @@ export default function Medical() {
           <View style={s.clearanceRow}>
             <Shield color={clearanceMeta.color} size={32} />
             <View>
-              <Text style={[s.clearanceStatus, { color: clearanceMeta.color }]}>
-                {clearanceMeta.label}
-              </Text>
-              <Text style={s.clearanceSub}>{clearanceMeta.subtitle}</Text>
+              {loading ? (
+                <Text style={s.clearanceSub}>Loading medical data...</Text>
+              ) : loadError ? (
+                <Text style={s.clearanceSub}>Couldn't load medical data — pull to refresh or try again.</Text>
+              ) : (
+                <>
+                  <Text style={[s.clearanceStatus, { color: clearanceMeta.color }]}>
+                    {clearanceMeta.label}
+                  </Text>
+                  <Text style={s.clearanceSub}>{clearanceMeta.subtitle}</Text>
+                </>
+              )}
             </View>
             <BadgeCheck color={clearanceMeta.color} size={22} />
           </View>
@@ -97,7 +110,13 @@ export default function Medical() {
               </View>
             );
           })}
-          {records.length === 0 && <Text style={s.aiSummary}>No medical records have been issued yet.</Text>}
+          {loading ? (
+            <Text style={s.aiSummary}>Loading medical records...</Text>
+          ) : loadError ? (
+            <Text style={s.aiSummary}>Couldn't load medical records — pull to refresh or try again.</Text>
+          ) : records.length === 0 ? (
+            <Text style={s.aiSummary}>No medical records have been issued yet.</Text>
+          ) : null}
         </View>
 
         <View style={s.uploadBtn}>
