@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
   Animated, AccessibilityInfo,
@@ -20,7 +20,6 @@ const { width: SW } = Dimensions.get('window');
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 type MatchCard = { r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number };
-const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
 type AttributeCard = { label: string; v: number; color: string };
 type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
 type OppCard = { title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number };
@@ -196,16 +195,32 @@ function AnimatedRadar({ data, size = 166 }: { data: number[]; size?: number }) 
   );
 }
 
-function LineAreaChart({ actual, forecast, w, h }: { actual: number[]; forecast: number[]; w: number; h: number }) {
+function LineAreaChart({ actual, forecast, w, h }: { actual: (number | null)[]; forecast: (number | null)[]; w: number; h: number }) {
   const pad = { t: 8, r: 8, b: 8, l: 8 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
-  const all = [...actual, ...forecast];
+  const all = [...actual, ...forecast].filter((v): v is number => v !== null);
   const minV = Math.min(...all) - 0.3, maxV = Math.max(...all) + 0.3;
   const xS = (i: number) => pad.l + (i / (actual.length - 1)) * cw;
   const yS = (v: number) => pad.t + ch - ((v - minV) / (maxV - minV)) * ch;
-  const aPath = actual.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ');
-  const fPath = forecast.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ');
-  const areaPath = `${aPath} L${xS(actual.length - 1)},${pad.t + ch} L${xS(0)},${pad.t + ch} Z`;
+  const buildPath = (values: (number | null)[]) => {
+    let path = '';
+    let started = false;
+    values.forEach((v, i) => {
+      if (v === null) { started = false; return; }
+      path += `${started ? 'L' : 'M'}${xS(i)},${yS(v)} `;
+      started = true;
+    });
+    return path.trim();
+  };
+  const aPath = buildPath(actual);
+  const fPath = buildPath(forecast);
+  let lastActualIndex = -1;
+  for (let i = actual.length - 1; i >= 0; i--) {
+    if (actual[i] !== null) { lastActualIndex = i; break; }
+  }
+  const areaPath = lastActualIndex >= 0
+    ? `${aPath} L${xS(lastActualIndex)},${pad.t + ch} L${xS(0)},${pad.t + ch} Z`
+    : '';
   return (
     <Svg width={w} height={h}>
       <Defs>
@@ -461,6 +476,21 @@ export default function Dashboard() {
     });
   }, [profile?.athlete_profile_id, user]);
 
+  const career = useMemo(() => {
+    const trajectory = (profile?.trajectory ?? []) as Array<{ season: string; score?: number; forecast?: number }>;
+    const years = trajectory.map(t => t.season);
+    const actual: (number | null)[] = trajectory.map(t => (typeof t.score === 'number' ? t.score : null));
+    const forecast: (number | null)[] = trajectory.map(t => (typeof t.forecast === 'number' ? t.forecast : null));
+    let lastActualIndex = -1;
+    for (let i = actual.length - 1; i >= 0; i--) {
+      if (actual[i] !== null) { lastActualIndex = i; break; }
+    }
+    if (lastActualIndex !== -1 && forecast[lastActualIndex] === null) {
+      forecast[lastActualIndex] = actual[lastActualIndex];
+    }
+    return { years, actual, forecast };
+  }, [profile?.trajectory]);
+
   const completeness = Math.round(profile?.profile_completeness ?? 0);
 
   const hour = new Date().getHours();
@@ -645,11 +675,11 @@ export default function Dashboard() {
               <Text style={s.top15Txt}>Live</Text>
             </View>
           </View>
-          {CAREER.actual.length ? (
+          {career.actual.some(v => v !== null) ? (
             <>
-              <LineAreaChart actual={CAREER.actual} forecast={CAREER.forecast} w={SW - 64} h={110} />
+              <LineAreaChart actual={career.actual} forecast={career.forecast} w={SW - 64} h={110} />
               <View style={s.yearRow}>
-                {CAREER.years.map(y => <Text key={y} style={s.yearLabel}>{y}</Text>)}
+                {career.years.map(y => <Text key={y} style={s.yearLabel}>{y}</Text>)}
               </View>
               <View style={s.legendRow}>
                 {[

@@ -40,6 +40,7 @@ export interface Profile {
   highlighted_stats: Record<string, number>;
   attributes: Record<string, number>;
   languages: { language: string; proficiency: string }[];
+  trajectory: { season: string; score?: number; forecast?: number }[];
 }
 
 export interface SignUpData {
@@ -103,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
       supabase
         .from('athlete_profiles')
-        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, followers_count, connections_count, highlighted_stats, attributes, languages, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
+        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -147,6 +148,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       attributes: (athleteProfile?.attributes as Record<string, number>) ?? {},
       languages: Array.isArray(athleteProfile?.languages)
         ? athleteProfile.languages as { language: string; proficiency: string }[]
+        : [],
+      trajectory: Array.isArray(athleteProfile?.trajectory)
+        ? athleteProfile.trajectory as { season: string; score?: number; forecast?: number }[]
         : [],
     };
   }
