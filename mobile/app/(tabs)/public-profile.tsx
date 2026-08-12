@@ -15,7 +15,7 @@ import { usePerformanceData } from '@/hooks/usePerformanceData';
 export default function PublicProfile() {
   const { profile, user } = useAuth();
   const router = useRouter();
-  const { record } = usePerformanceData(user?.id, profile?.sport);
+  const { record, loading: performanceLoading, error: performanceError } = usePerformanceData(user?.id, profile?.sport);
   const performanceScore = Math.round(profile?.performance_score ?? 0);
   const stats = record?.stats ?? {};
   const seasonHighlights = [
@@ -140,7 +140,11 @@ export default function PublicProfile() {
           </View>
           <View style={s.card}>
             <Text style={s.cardTitle}>Season Highlights</Text>
-            {seasonHighlights.length > 0 ? (
+            {performanceLoading ? (
+              <Text style={s.cardBody}>Loading performance data...</Text>
+            ) : performanceError ? (
+              <Text style={s.cardBody}>Couldn't load performance data — pull to refresh or try again later.</Text>
+            ) : seasonHighlights.length > 0 ? (
               <View style={s.grid}>
                 {seasonHighlights.map(h => (
                   <View key={h.label} style={s.gridItem}>
