@@ -132,10 +132,16 @@ export default function Analytics() {
 
             <View style={s.card}>
               <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
-              <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
-              <View style={s.monthRow}>
-                {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
-              </View>
+              {monthlyViews.some((v) => v > 0) ? (
+                <>
+                  <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
+                  <View style={s.monthRow}>
+                    {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
+                  </View>
+                </>
+              ) : (
+                <Text style={s.emptyText}>No profile views recorded yet this year.</Text>
+              )}
             </View>
 
             <View style={s.card}>
