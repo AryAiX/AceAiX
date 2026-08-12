@@ -23,7 +23,7 @@ const FORM: Array<{ r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; 
 const ATTRIBUTES: Array<{ label: string; v: number; color: string }> = [];
 const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
 type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
-const OPPS: Array<{ title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number }> = [];
+type OppCard = { title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number };
 
 // ── Animation hooks ───────────────────────────────────────────────────────────
 function useCountUp(to: number, duration = 1200, delay = 400): number {
@@ -281,6 +281,15 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
   );
 }
 
+function formatSalaryRange(min: number | null, max: number | null, currency: string | null): string {
+  const symbol = !currency || currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : `${currency} `;
+  const fmt = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}K` : `${v}`);
+  if (min != null && max != null) return `${symbol}${fmt(min)} - ${symbol}${fmt(max)}`;
+  if (min != null) return `${symbol}${fmt(min)}+`;
+  if (max != null) return `Up to ${symbol}${fmt(max)}`;
+  return 'Salary undisclosed';
+}
+
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -300,6 +309,7 @@ export default function Dashboard() {
   const [scoutViews, setScoutViews] = useState(0);
   const [opportunityMatches, setOpportunityMatches] = useState(0);
   const [scouts, setScouts] = useState<ScoutCard[]>([]);
+  const [opps, setOpps] = useState<OppCard[]>([]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -325,7 +335,12 @@ export default function Dashboard() {
           .eq('athlete_id', profile.athlete_profile_id)
           .order('created_at', { ascending: false })
         : Promise.resolve({ data: [] }),
-    ]).then(([views, matches, scoutRows]) => {
+      supabase
+        .from('opportunity_matches')
+        .select('match_score, created_at, opportunities(title, location, salary_min, salary_max, currency, type, is_active, organizations(name, short_name))')
+        .eq('athlete_id', user.id)
+        .order('match_score', { ascending: false }),
+    ]).then(([views, matches, scoutRows, oppRows]) => {
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
 
@@ -353,6 +368,40 @@ export default function Dashboard() {
         color: palette[i % palette.length],
       }));
       setScouts(grouped);
+
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      const mappedOpps: OppCard[] = ((oppRows.data ?? []) as Array<{
+        match_score: number; created_at: string;
+        opportunities: {
+          title: string; location: string; salary_min: number | null; salary_max: number | null;
+          currency: string | null; type: string | null; is_active: boolean;
+          organizations: { name: string; short_name: string | null } | { name: string; short_name: string | null }[] | null;
+        } | Array<{
+          title: string; location: string; salary_min: number | null; salary_max: number | null;
+          currency: string | null; type: string | null; is_active: boolean;
+          organizations: { name: string; short_name: string | null } | { name: string; short_name: string | null }[] | null;
+        }> | null;
+      }>)
+        .map(row => {
+          const opp = Array.isArray(row.opportunities) ? row.opportunities[0] : row.opportunities;
+          if (!opp || opp.is_active === false) return null;
+          const org = Array.isArray(opp.organizations) ? opp.organizations[0] : opp.organizations;
+          const club = org?.short_name || org?.name || 'Unknown Club';
+          const isNew = Date.now() - new Date(row.created_at).getTime() < sevenDaysMs;
+          const tag = row.match_score >= 90 ? 'Hot Match' : (opp.type || 'Open Opportunity');
+          const card: OppCard = {
+            title: opp.title,
+            club,
+            loc: opp.location,
+            salary: formatSalaryRange(opp.salary_min, opp.salary_max, opp.currency),
+            tag,
+            isNew,
+            match: row.match_score,
+          };
+          return card;
+        })
+        .filter((c): c is OppCard => c !== null);
+      setOpps(mappedOpps);
     });
   }, [profile?.athlete_profile_id, user]);
 
@@ -600,7 +649,7 @@ export default function Dashboard() {
             style={[StyleSheet.absoluteFill, { borderRadius: Radii.lg }]}
           />
           <SH title="Matched Opportunities" color={Colors.warning} onMore={() => router.push('/(tabs)/opportunities' as any)} />
-          {OPPS.map(opp => (
+          {opps.map(opp => (
             <View key={opp.title} style={s.oppCard}>
               <View style={s.oppRow}>
                 <View style={s.oppMatchWrap}>
@@ -634,7 +683,7 @@ export default function Dashboard() {
               </View>
             </View>
           ))}
-          {OPPS.length === 0 && <Text style={s.emptySectionText}>No matched opportunities yet. Complete your sport and position to improve matching.</Text>}
+          {opps.length === 0 && <Text style={s.emptySectionText}>No matched opportunities yet. Complete your sport and position to improve matching.</Text>}
         </RevealCard>
 
         {/* ── LAST 5 PERFORMANCES ──────────────────────────────────────── */}
