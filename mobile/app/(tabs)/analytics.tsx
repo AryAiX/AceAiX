@@ -41,10 +41,14 @@ export default function Analytics() {
   const [savedCount, setSavedCount] = useState(0);
   const [applications, setApplications] = useState<{ status: string }[]>([]);
   const [regions, setRegions] = useState<{ region: string; views: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!user || !profile?.athlete_profile_id) return;
     let mounted = true;
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       supabase
         .from('profile_views')
@@ -76,7 +80,8 @@ export default function Analytics() {
         .map(([region, viewCount]) => ({ region, views: viewCount }))
         .sort((a, b) => b.views - a.views)
         .slice(0, 5));
-    });
+    }).catch(() => { if (mounted) setLoadError(true); })
+      .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, [profile?.athlete_profile_id, user]);
 
@@ -106,57 +111,65 @@ export default function Analytics() {
       <AppHeader title="Analytics" />
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-        <View style={s.insightsGrid}>
-          {insights.map(({ label, value, delta, Icon }) => (
-            <View key={label} style={s.insightCard}>
-              <View style={s.insightTop}>
-                <Icon color={Colors.primary} size={16} />
-                <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
-              </View>
-              <Text style={s.insightVal}>{value}</Text>
-              <Text style={s.insightLabel}>{label}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
-          <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
-          <View style={s.monthRow}>
-            {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
-          </View>
-        </View>
-
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
-          {engagement.map(row => (
-            <View key={row.label} style={s.engRow}>
-              <View style={s.engLeft}>
-                <Text style={s.engLabel}>{row.label}</Text>
-                <View style={s.engBar}>
-                  <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
+        {loading ? (
+          <Text style={s.emptyText}>Loading analytics...</Text>
+        ) : loadError ? (
+          <Text style={s.emptyText}>Couldn't load analytics data — pull to refresh or try again.</Text>
+        ) : (
+          <>
+            <View style={s.insightsGrid}>
+              {insights.map(({ label, value, delta, Icon }) => (
+                <View key={label} style={s.insightCard}>
+                  <View style={s.insightTop}>
+                    <Icon color={Colors.primary} size={16} />
+                    <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
+                  </View>
+                  <Text style={s.insightVal}>{value}</Text>
+                  <Text style={s.insightLabel}>{label}</Text>
                 </View>
-              </View>
-              <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Viewer Organizations</Text>
-          {regions.map(r => (
-            <View key={r.region} style={s.geoRow}>
-              <Text style={s.geoRegion}>{r.region}</Text>
-              <View style={s.geoBarWrap}>
-                <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
+              <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
+              <View style={s.monthRow}>
+                {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
               </View>
-              <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
             </View>
-          ))}
-          {regions.length === 0 && (
-            <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
-          )}
-        </View>
+
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
+              {engagement.map(row => (
+                <View key={row.label} style={s.engRow}>
+                  <View style={s.engLeft}>
+                    <Text style={s.engLabel}>{row.label}</Text>
+                    <View style={s.engBar}>
+                      <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
+                    </View>
+                  </View>
+                  <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Viewer Organizations</Text>
+              {regions.map(r => (
+                <View key={r.region} style={s.geoRow}>
+                  <Text style={s.geoRegion}>{r.region}</Text>
+                  <View style={s.geoBarWrap}>
+                    <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
+                  </View>
+                  <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
+                </View>
+              ))}
+              {regions.length === 0 && (
+                <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
+              )}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 24 }} />
       </ScrollView>
