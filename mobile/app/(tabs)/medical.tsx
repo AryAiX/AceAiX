@@ -27,7 +27,14 @@ export default function Medical() {
     });
   }, [profile?.athlete_profile_id]);
 
-  const isCleared = clearance?.status === 'cleared';
+  const CLEARANCE_META: Record<string, { label: string; color: string; subtitle: string }> = {
+    cleared: { label: 'Cleared', color: Colors.success, subtitle: 'Medically verified athlete' },
+    restricted: { label: 'Restricted', color: Colors.warning, subtitle: 'Cleared with restrictions — see notes' },
+    not_cleared: { label: 'Not Cleared', color: Colors.error, subtitle: 'Not currently cleared to participate' },
+    pending: { label: 'Pending', color: Colors.warning, subtitle: 'Awaiting partner-issued clearance' },
+  };
+  const NO_CLEARANCE_META = { label: 'No active clearance', color: Colors.warning, subtitle: 'No active clearance' };
+  const clearanceMeta = clearance ? (CLEARANCE_META[clearance.status] ?? NO_CLEARANCE_META) : NO_CLEARANCE_META;
 
   return (
     <View style={s.root}>
@@ -35,14 +42,14 @@ export default function Medical() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.card, s.clearanceCard]}>
           <View style={s.clearanceRow}>
-            <Shield color={isCleared ? Colors.success : Colors.warning} size={32} />
+            <Shield color={clearanceMeta.color} size={32} />
             <View>
-              <Text style={[s.clearanceStatus, { color: isCleared ? Colors.success : Colors.warning }]}>
-                {clearance ? clearance.status.replace('_', ' ') : 'No active clearance'}
+              <Text style={[s.clearanceStatus, { color: clearanceMeta.color }]}>
+                {clearanceMeta.label}
               </Text>
-              <Text style={s.clearanceSub}>{isCleared ? 'Medically verified athlete' : 'Awaiting partner-issued clearance'}</Text>
+              <Text style={s.clearanceSub}>{clearanceMeta.subtitle}</Text>
             </View>
-            <BadgeCheck color={isCleared ? Colors.success : Colors.warning} size={22} />
+            <BadgeCheck color={clearanceMeta.color} size={22} />
           </View>
           <View style={s.clearanceMeta}>
             <Clock color={Colors.textDisabled} size={12} />
@@ -59,7 +66,7 @@ export default function Medical() {
           </Text>
           <View style={s.riskGrid}>
             <View style={s.riskItem}>
-              <Text style={[s.riskLevel, { color: isCleared ? Colors.success : Colors.warning }]}>{clearance?.status ?? 'Pending'}</Text>
+              <Text style={[s.riskLevel, { color: clearanceMeta.color }]}>{clearanceMeta.label}</Text>
               <Text style={s.riskLabel}>Clearance Status</Text>
             </View>
           </View>
