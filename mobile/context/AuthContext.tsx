@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const profileRequest = useRef(0);
 
   async function fetchProfile(userId: string): Promise<Profile | null> {
-    const [{ data: publicProfile, error: publicError }, { data: privateProfile }, { data: athleteProfile }] = await Promise.all([
+    const [{ data: publicProfile, error: publicError }, { data: privateProfile, error: privateError }, { data: athleteProfile, error: athleteError }] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('id, role, full_name, avatar_url, bio, city, country, locale, is_verified, subscription_tier')
@@ -110,6 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     if (publicError || !publicProfile) return null;
+
+    if (privateError) {
+      console.warn(`[AuthContext] user_private fetch failed for ${userId}: ${privateError.message}`);
+    }
+    if (athleteError) {
+      console.warn(`[AuthContext] athlete_profiles fetch failed for ${userId}: ${athleteError.message}`);
+    }
 
     return {
       id: publicProfile.id,
