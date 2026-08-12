@@ -74,21 +74,28 @@ export default function Medical() {
 
         <View style={s.card}>
           <Text style={s.cardTitle}>Medical Records</Text>
-          {records.map((rec, i) => (
-            <View key={rec.date} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-              <View style={s.recordLeft}>
-                <CheckCircle2 color={Colors.success} size={16} />
-                <View>
-                  <Text style={s.recordType}>{rec.type}</Text>
-                  <Text style={s.recordDate}>{rec.date}</Text>
-                  <Text style={s.recordNotes}>{rec.notes}</Text>
+          {records.map((rec, i) => {
+            const recColor = rec.status === 'Verified' ? Colors.success : Colors.warning;
+            return (
+              <View key={rec.date} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
+                <View style={s.recordLeft}>
+                  {rec.status === 'Verified' ? (
+                    <CheckCircle2 color={recColor} size={16} />
+                  ) : (
+                    <Clock color={recColor} size={16} />
+                  )}
+                  <View>
+                    <Text style={s.recordType}>{rec.type}</Text>
+                    <Text style={s.recordDate}>{rec.date}</Text>
+                    <Text style={s.recordNotes}>{rec.notes}</Text>
+                  </View>
+                </View>
+                <View style={[s.recordStatus, { backgroundColor: `${recColor}20`, borderColor: `${recColor}35` }]}>
+                  <Text style={[s.recordStatusTxt, { color: recColor }]}>{rec.status}</Text>
                 </View>
               </View>
-              <View style={s.recordStatus}>
-                <Text style={s.recordStatusTxt}>{rec.status}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
           {records.length === 0 && <Text style={s.aiSummary}>No medical records have been issued yet.</Text>}
         </View>
 
@@ -128,8 +135,8 @@ const s = StyleSheet.create({
   recordType: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   recordDate: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted, marginTop: 2 },
   recordNotes: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textDisabled, marginTop: 3, maxWidth: 220 },
-  recordStatus: { backgroundColor: `${Colors.success}20`, borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: `${Colors.success}35` },
-  recordStatusTxt: { fontFamily: Typography.family.bold, fontSize: 10, color: Colors.success },
+  recordStatus: { borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
+  recordStatusTxt: { fontFamily: Typography.family.bold, fontSize: 10 },
   uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.md, borderRadius: Radii.lg, paddingVertical: Spacing.md + 2, borderWidth: 2, borderColor: `${Colors.primary}40`, borderStyle: 'dashed' as any },
   uploadTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.primary },
 });
