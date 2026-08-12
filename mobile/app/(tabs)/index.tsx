@@ -22,7 +22,7 @@ const { width: SW } = Dimensions.get('window');
 const FORM: Array<{ r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number }> = [];
 const ATTRIBUTES: Array<{ label: string; v: number; color: string }> = [];
 const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
-const SCOUTS: Array<{ name: string; role: string; verified: boolean; time: string; views: number; color: string }> = [];
+type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
 const OPPS: Array<{ title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number }> = [];
 
 // ── Animation hooks ───────────────────────────────────────────────────────────
@@ -281,6 +281,17 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
   );
 }
 
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { profile, user } = useAuth();
@@ -288,6 +299,7 @@ export default function Dashboard() {
   const [reduced, setReduced] = useState(false);
   const [scoutViews, setScoutViews] = useState(0);
   const [opportunityMatches, setOpportunityMatches] = useState(0);
+  const [scouts, setScouts] = useState<ScoutCard[]>([]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -306,9 +318,41 @@ export default function Dashboard() {
         .from('opportunity_matches')
         .select('opportunity_id', { count: 'exact', head: true })
         .eq('athlete_id', user.id),
-    ]).then(([views, matches]) => {
+      profile?.athlete_profile_id
+        ? supabase
+          .from('profile_views')
+          .select('viewer_user_id, viewer_name, viewer_role, viewer_verified, created_at')
+          .eq('athlete_id', profile.athlete_profile_id)
+          .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+    ]).then(([views, matches, scoutRows]) => {
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
+
+      const palette = [Colors.primary, Colors.accent, Colors.success];
+      const byViewer = new Map<string, { name: string; role: string; verified: boolean; time: string; views: number }>();
+      for (const row of (scoutRows.data ?? []) as Array<{
+        viewer_user_id: string; viewer_name: string; viewer_role: string;
+        viewer_verified: boolean; created_at: string;
+      }>) {
+        const existing = byViewer.get(row.viewer_user_id);
+        if (existing) {
+          existing.views += 1;
+        } else {
+          byViewer.set(row.viewer_user_id, {
+            name: row.viewer_name,
+            role: row.viewer_role,
+            verified: row.viewer_verified,
+            time: formatRelativeTime(row.created_at),
+            views: 1,
+          });
+        }
+      }
+      const grouped: ScoutCard[] = Array.from(byViewer.values()).map((sc, i) => ({
+        ...sc,
+        color: palette[i % palette.length],
+      }));
+      setScouts(grouped);
     });
   }, [profile?.athlete_profile_id, user]);
 
@@ -527,8 +571,8 @@ export default function Dashboard() {
             style={[StyleSheet.absoluteFill, { borderRadius: Radii.lg }]}
           />
           <SH title="Scout Interest" color={Colors.success} onMore={() => router.push('/(tabs)/network' as any)} />
-          {SCOUTS.map((sc, i) => (
-            <View key={sc.name} style={[s.scoutRow, i < SCOUTS.length - 1 && s.scoutBorder]}>
+          {scouts.map((sc, i) => (
+            <View key={sc.name} style={[s.scoutRow, i < scouts.length - 1 && s.scoutBorder]}>
               <View style={[s.scoutAv, { backgroundColor: `${sc.color}22`, borderColor: sc.color }]}>
                 <Text style={[s.scoutAvTxt, { color: sc.color }]}>{sc.name[0]}</Text>
               </View>
@@ -545,7 +589,7 @@ export default function Dashboard() {
               </View>
             </View>
           ))}
-          {SCOUTS.length === 0 && <Text style={s.emptySectionText}>No scout profile views yet.</Text>}
+          {scouts.length === 0 && <Text style={s.emptySectionText}>No scout profile views yet.</Text>}
         </RevealCard>
 
         {/* ── MATCHED OPPORTUNITIES ────────────────────────────────────── */}
