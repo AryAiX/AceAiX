@@ -32,6 +32,7 @@ export default function Career() {
   const { profile } = useAuth();
   const [entries, setEntries] = useState<CareerMilestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [type, setType] = useState('');
@@ -46,6 +47,7 @@ export default function Career() {
       return;
     }
     setLoading(true);
+    setLoadError(false);
     const { data, error } = await supabase
       .from('career_milestones')
       .select('id,milestone_type,club_or_event,achieved_at,notes')
@@ -53,6 +55,7 @@ export default function Career() {
       .order('achieved_at', { ascending: false });
     setLoading(false);
     if (error) {
+      setLoadError(true);
       Alert.alert('Career history unavailable', error.message);
       return;
     }
@@ -202,7 +205,10 @@ export default function Career() {
             </View>
           ))}
           {loading && <ActivityIndicator color={Colors.primary} />}
-          {!loading && milestones.length === 0 && (
+          {!loading && loadError && (
+            <Text style={s.emptyText}>Couldn't load your career history. Pull to refresh or try again.</Text>
+          )}
+          {!loading && !loadError && milestones.length === 0 && (
             <Text style={s.emptyText}>No career entries yet. Add a verified milestone to start building your timeline.</Text>
           )}
         </View>
