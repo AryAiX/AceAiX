@@ -25,6 +25,9 @@ interface CareerMilestone {
   notes: string | null;
 }
 
+const MILESTONE_TYPES = ['Signed', 'Debut', 'Trophy', 'Championship', 'Award', 'Milestone', 'Other'];
+const ACHIEVEMENT_TYPES = new Set(['trophy', 'championship', 'award']);
+
 export default function Career() {
   const { profile } = useAuth();
   const [entries, setEntries] = useState<CareerMilestone[]>([]);
@@ -133,7 +136,7 @@ export default function Career() {
     })),
   ];
   const achievements = entries.filter((entry) =>
-    /achievement|award|champion|trophy/i.test(entry.milestone_type ?? ''),
+    ACHIEVEMENT_TYPES.has((entry.milestone_type ?? '').toLowerCase()),
   );
 
   return (
@@ -245,14 +248,19 @@ export default function Career() {
                 <X color={Colors.textMuted} size={22} />
               </TouchableOpacity>
             </View>
-            <TextInput
-              accessibilityLabel="Career milestone type"
-              style={s.input}
-              value={type}
-              onChangeText={setType}
-              placeholder="Type, e.g. Signed, Award, Championship"
-              placeholderTextColor={Colors.textDisabled}
-            />
+            <View style={s.typeGrid}>
+              {MILESTONE_TYPES.map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select milestone type ${t}`}
+                  style={[s.typeChip, type === t && s.typeChipActive]}
+                  onPress={() => setType(t)}
+                >
+                  <Text style={[s.typeChipTxt, type === t && s.typeChipTxtActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <TextInput
               accessibilityLabel="Career club or event"
               style={s.input}
@@ -335,6 +343,11 @@ const s = StyleSheet.create({
   editorHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   editorTitle: { fontFamily: Typography.family.display, fontSize: Typography.size.xl, color: Colors.textPrimary },
   input: { backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textPrimary },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.full, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
+  typeChipActive: { backgroundColor: `${Colors.primary}20`, borderColor: `${Colors.primary}50` },
+  typeChipTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted },
+  typeChipTxtActive: { color: Colors.primary },
   notesInput: { minHeight: 88, textAlignVertical: 'top' },
   saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: Radii.md, minHeight: 48 },
   saveBtnText: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.white },
