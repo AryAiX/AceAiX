@@ -54,6 +54,8 @@ export default function AthletesOnlyScreen() {
             style={styles.primaryBtn}
             onPress={openWebPlatform}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Open web platform"
           >
             <LinearGradient
               colors={[Colors.primary, '#1A6AD4']}
@@ -67,7 +69,12 @@ export default function AthletesOnlyScreen() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={handleSignOut}>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={handleSignOut}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+        >
           <LogOut color={Colors.textMuted} size={16} />
           <Text style={styles.secondaryBtnText}>Sign Out</Text>
         </TouchableOpacity>
