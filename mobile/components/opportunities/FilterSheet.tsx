@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Search, ChevronDown } from 'lucide-react-native';
+import { X, ChevronDown } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { OpportunityFilters, OPP_SPORTS, OPP_TYPES, OpportunityType } from '@/lib/opportunitiesService';
 
@@ -60,20 +60,6 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
-            {/* Search */}
-            <Section label="Search">
-              <View style={s.searchRow}>
-                <Search color={Colors.textDisabled} size={16} />
-                <TextInput
-                  style={s.searchInput}
-                  value={local.search ?? ''}
-                  onChangeText={(v) => set('search', v || undefined)}
-                  placeholder="Club, position, keyword…"
-                  placeholderTextColor={Colors.textDisabled}
-                />
-              </View>
-            </Section>
-
             {/* Sport */}
             <Section label="Sport">
               <View style={s.chips}>
