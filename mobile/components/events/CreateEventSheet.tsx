@@ -50,6 +50,15 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
   async function handleCreate() {
     if (!title.trim()) { setError('Title is required.'); return; }
     if (!date.trim()) { setError('Date is required (YYYY-MM-DD).'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+      setError('Enter the date as YYYY-MM-DD.');
+      return;
+    }
+    const parsedDate = new Date(date.trim() + 'T00:00:00');
+    if (Number.isNaN(parsedDate.getTime())) {
+      setError('Enter a valid calendar date.');
+      return;
+    }
     if (!location.trim()) { setError('Location is required.'); return; }
 
     setLoading(true);
