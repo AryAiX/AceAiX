@@ -67,6 +67,10 @@ const TYPE_COLORS: Record<string, string> = {
   Tryout:   Colors.error,
 };
 
+function normalizeType(type: string): string {
+  return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+}
+
 // ── Animation hooks ───────────────────────────────────────────────────────────
 function useCountUp(to: number, delay = 300): number {
   const [val, setVal] = useState(0);
@@ -161,7 +165,7 @@ function OpportunityCard({
   const score    = opp.match_score;
   const isHot    = score != null && score >= 85;
   const isNew    = Date.now() - new Date(opp.created_at).getTime() < 48 * 3600000;
-  const typeColor  = TYPE_COLORS[opp.type] ?? Colors.primary;
+  const typeColor  = TYPE_COLORS[normalizeType(opp.type)] ?? Colors.primary;
   const scoreColor = score == null ? Colors.primary : score >= 85 ? Colors.error : score >= 70 ? Colors.warning : Colors.primary;
 
   // Entry animation
@@ -319,7 +323,7 @@ function OpportunityCard({
 function TypeChipSmall({ type, color }: { type: string; color: string }) {
   return (
     <View style={[tc.wrap, { borderColor: `${color}60`, backgroundColor: `${color}12` }]}>
-      <Text style={[tc.txt, { color }]}>{type}</Text>
+      <Text style={[tc.txt, { color }]}>{normalizeType(type)}</Text>
     </View>
   );
 }
@@ -340,7 +344,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
     ).start();
   }, [app.status]);
 
-  const typeColor = opp?.type ? (TYPE_COLORS[opp.type] ?? Colors.primary) : Colors.primary;
+  const typeColor = opp?.type ? (TYPE_COLORS[normalizeType(opp.type)] ?? Colors.primary) : Colors.primary;
 
   return (
     <TouchableOpacity style={ar.card} onPress={onPress} activeOpacity={0.85}>
