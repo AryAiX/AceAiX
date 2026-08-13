@@ -7,12 +7,15 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+import { useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
-import { ShieldOff, Globe, LogOut } from 'lucide-react-native';
+import { ShieldOff, Globe, LogOut, AlertCircle } from 'lucide-react-native';
 
 export default function AthletesOnlyScreen() {
   const { signOut } = useAuth();
+  const { reason } = useLocalSearchParams<{ reason?: string }>();
+  const isMissingProfile = reason === 'no-profile';
 
   async function openWebPlatform() {
     await WebBrowser.openBrowserAsync('https://app.aceaix.com');
@@ -32,29 +35,37 @@ export default function AthletesOnlyScreen() {
 
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          <ShieldOff color={Colors.warning} size={44} strokeWidth={1.5} />
+          {isMissingProfile ? (
+            <AlertCircle color={Colors.warning} size={44} strokeWidth={1.5} />
+          ) : (
+            <ShieldOff color={Colors.warning} size={44} strokeWidth={1.5} />
+          )}
         </View>
 
-        <Text style={styles.title}>Athletes Only</Text>
+        <Text style={styles.title}>{isMissingProfile ? 'Profile Not Found' : 'Athletes Only'}</Text>
         <Text style={styles.body}>
-          The AceAiX mobile app is built for athletes. Please continue on our web platform.
+          {isMissingProfile
+            ? "We couldn't find a profile for your account. Please contact support or try signing in again."
+            : 'The AceAiX mobile app is built for athletes. Please continue on our web platform.'}
         </Text>
 
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          onPress={openWebPlatform}
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={[Colors.primary, '#1A6AD4']}
-            style={styles.btnGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
+        {!isMissingProfile && (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={openWebPlatform}
+            activeOpacity={0.85}
           >
-            <Globe color={Colors.white} size={18} />
-            <Text style={styles.btnText}>Open Web Platform</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={[Colors.primary, '#1A6AD4']}
+              style={styles.btnGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Globe color={Colors.white} size={18} />
+              <Text style={styles.btnText}>Open Web Platform</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity style={styles.secondaryBtn} onPress={handleSignOut}>
           <LogOut color={Colors.textMuted} size={16} />
