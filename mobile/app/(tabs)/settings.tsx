@@ -45,6 +45,8 @@ export default function Settings() {
   const router = useRouter();
   const [publicProfile, setPublicProfile] = useState(profile?.is_open_to_offers ?? true);
   const [savingVisibility, setSavingVisibility] = useState(false);
+  const [showcaseOptIn, setShowcaseOptIn] = useState(profile?.showcase_opt_in ?? false);
+  const [savingShowcase, setSavingShowcase] = useState(false);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
   const [lichess, setLichess] = useState(profile?.lichess_username ?? '');
   const [footballPlayerId, setFootballPlayerId] = useState(profile?.football_api_player_id ?? '');
@@ -83,6 +85,10 @@ export default function Settings() {
     setPublicProfile(profile?.is_open_to_offers ?? true);
   }, [profile?.is_open_to_offers]);
 
+  useEffect(() => {
+    setShowcaseOptIn(profile?.showcase_opt_in ?? false);
+  }, [profile?.showcase_opt_in]);
+
   async function handleVisibilityChange(value: boolean) {
     if (!user || savingVisibility) return;
     const previous = publicProfile;
@@ -96,6 +102,24 @@ export default function Settings() {
     if (error) {
       setPublicProfile(previous);
       Alert.alert('Visibility not updated', error.message);
+      return;
+    }
+    await refreshProfile();
+  }
+
+  async function handleShowcaseChange(value: boolean) {
+    if (!user || savingShowcase) return;
+    const previous = showcaseOptIn;
+    setShowcaseOptIn(value);
+    setSavingShowcase(true);
+    const { error } = await supabase
+      .from('athlete_profiles')
+      .update({ showcase_opt_in: value })
+      .eq('user_id', user.id);
+    setSavingShowcase(false);
+    if (error) {
+      setShowcaseOptIn(previous);
+      Alert.alert('Setting not updated', error.message);
       return;
     }
     await refreshProfile();
@@ -384,6 +408,23 @@ export default function Settings() {
                 disabled={savingVisibility}
                 trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
                 thumbColor={publicProfile ? Colors.primary : Colors.textDisabled}
+              />
+            </View>
+            <View style={[s.row, s.rowBorder]}>
+              <View style={s.rowLeft}>
+                <Eye color={Colors.textMuted} size={18} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.rowLabel}>Show My Stats in Performance Gallery</Text>
+                  <Text style={s.rowSub}>Let other athletes see your performance stats as a public example</Text>
+                </View>
+              </View>
+              <Switch
+                accessibilityLabel="Show my stats in performance gallery"
+                value={showcaseOptIn}
+                onValueChange={(value) => void handleShowcaseChange(value)}
+                disabled={savingShowcase}
+                trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
+                thumbColor={showcaseOptIn ? Colors.primary : Colors.textDisabled}
               />
             </View>
           </View>
