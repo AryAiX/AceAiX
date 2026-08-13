@@ -75,6 +75,11 @@ export default function Career() {
       Alert.alert('Check the date', 'Use YYYY-MM-DD format.');
       return;
     }
+    const parsed = new Date(date);
+    if (date && Number.isNaN(parsed.getTime()) || (date && parsed.toISOString().slice(0, 10) !== date)) {
+      Alert.alert('Check the date', 'Enter a valid calendar date.');
+      return;
+    }
     setSaving(true);
     const { error } = await supabase.from('career_milestones').insert({
       athlete_id: profile.athlete_profile_id,
