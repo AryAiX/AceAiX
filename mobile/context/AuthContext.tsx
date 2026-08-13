@@ -34,6 +34,7 @@ export interface Profile {
   fitness_score: number;
   current_club: string | null;
   is_open_to_offers: boolean;
+  showcase_opt_in: boolean;
   is_verified: boolean;
   followers_count: number;
   connections_count: number;
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
       supabase
         .from('athlete_profiles')
-        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
+        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, showcase_opt_in, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -148,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fitness_score: athleteProfile?.fitness_score ?? 0,
       current_club: athleteProfile?.current_club ?? null,
       is_open_to_offers: athleteProfile?.is_open_to_offers ?? true,
+      showcase_opt_in: athleteProfile?.showcase_opt_in ?? false,
       is_verified: publicProfile.is_verified ?? false,
       followers_count: athleteProfile?.followers_count ?? 0,
       connections_count: athleteProfile?.connections_count ?? 0,
