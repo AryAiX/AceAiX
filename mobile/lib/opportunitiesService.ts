@@ -149,6 +149,14 @@ async function fetchSupportData(
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
+async function searchMatchingOrgIds(search: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('organizations')
+    .select('id')
+    .ilike('name', `%${search}%`);
+  return (data ?? []).map((o: any) => o.id);
+}
+
 export async function fetchForYouOpportunities(
   athleteId: string,
   filters?: OpportunityFilters
@@ -159,7 +167,11 @@ export async function fetchForYouOpportunities(
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  q = applyFilters(q, filters);
+  let matchingOrgIds: string[] | undefined;
+  if (filters?.search) {
+    matchingOrgIds = await searchMatchingOrgIds(filters.search);
+  }
+  q = applyFilters(q, filters, matchingOrgIds);
 
   const { data, error } = await q;
   if (error || !data) return [];
@@ -192,7 +204,11 @@ export async function fetchAllOpportunities(
     .limit(limit);
 
   if (cursor) q = q.lt('created_at', cursor);
-  q = applyFilters(q, filters);
+  let matchingOrgIds: string[] | undefined;
+  if (filters?.search) {
+    matchingOrgIds = await searchMatchingOrgIds(filters.search);
+  }
+  q = applyFilters(q, filters, matchingOrgIds);
 
   const { data, error } = await q;
   if (error || !data) return [];
@@ -356,17 +372,23 @@ export const OPP_SPORTS = [
 export const OPP_TYPES: OpportunityType[] = ['Trial', 'Contract', 'Academy', 'Loan', 'Tryout'];
 
 // internal helper — applyFilters is not exported; used above
-function applyFilters(q: any, filters?: OpportunityFilters): any {
+function applyFilters(q: any, filters?: OpportunityFilters, matchingOrgIds?: string[]): any {
   if (!filters) return q;
   if (filters.sport) q = q.eq('sport', filters.sport);
-  if (filters.type) q = q.eq('type', filters.type);
+  if (filters.type) q = q.ilike('type', filters.type);
   if (filters.location) q = q.ilike('location', `%${filters.location}%`);
   if (filters.salary_min) q = q.gte('salary_max', filters.salary_min);
   if (filters.salary_max) q = q.lte('salary_min', filters.salary_max);
   if (filters.search) {
-    q = q.or(
-      `title.ilike.%${filters.search}%,position.ilike.%${filters.search}%,location.ilike.%${filters.search}%`
-    );
+    const conditions = [
+      `title.ilike.%${filters.search}%`,
+      `position.ilike.%${filters.search}%`,
+      `location.ilike.%${filters.search}%`,
+    ];
+    if (matchingOrgIds && matchingOrgIds.length > 0) {
+      conditions.push(`organization_id.in.(${matchingOrgIds.join(',')})`);
+    }
+    q = q.or(conditions.join(','));
   }
   return q;
 }
