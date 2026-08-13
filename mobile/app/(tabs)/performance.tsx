@@ -79,8 +79,12 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
   if (!config) {
     return (
       <View style={s.emptyState}>
-        <Text style={s.emptyTitle}>No sport configured</Text>
-        <Text style={s.emptyBody}>Update your profile to set your sport and unlock the performance engine.</Text>
+        <Text style={s.emptyTitle}>{sport ? 'Performance tracking not available yet' : 'No sport configured'}</Text>
+        <Text style={s.emptyBody}>
+          {sport
+            ? `We don't have a performance engine for ${sport} yet. Support for more sports is coming soon.`
+            : 'Update your profile to set your sport and unlock the performance engine.'}
+        </Text>
       </View>
     );
   }
