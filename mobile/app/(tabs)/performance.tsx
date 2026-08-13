@@ -9,6 +9,7 @@ import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { getSportConfig, ARCHETYPE_LABELS, SportConfig } from '@/constants/sportsConfig';
 import { usePerformanceData } from '@/hooks/usePerformanceData';
 import { triggerChessSync } from '@/lib/performanceService';
+import { triggerFootballSync } from '@/lib/footballService';
 import { TeamMatchRenderer } from '@/components/performance/TeamMatchRenderer';
 import { RatedLadderRenderer } from '@/components/performance/RatedLadderRenderer';
 import { TimedMeasuredRenderer } from '@/components/performance/TimedMeasuredRenderer';
@@ -63,16 +64,23 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
   const [syncError, setSyncError] = useState<string | null>(null);
   const { profile } = useAuth();
 
-  async function handleChessSync() {
+  async function handleSync() {
     setSyncing(true);
     setSyncError(null);
-    const { ok, error } = await triggerChessSync(
-      userId,
-      profile?.chesscom_username,
-      profile?.lichess_username
-    );
-    if (!ok) setSyncError(error);
-    else await refresh();
+    if (config?.sport === 'football') {
+      if (!profile?.football_api_player_id) {
+        setSyncError('Link your football player ID in Settings to enable auto-sync.');
+        setSyncing(false);
+        return;
+      }
+      const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
+      if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
+      else await refresh();
+    } else {
+      const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
+      if (!ok) setSyncError(error);
+      else await refresh();
+    }
     setSyncing(false);
   }
 
@@ -111,7 +119,11 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           />
           <View style={s.actionRow}>
             {config.supportsAutoSync && (
-              <TouchableOpacity style={s.syncBtn} onPress={handleChessSync} disabled={syncing}>
+              <TouchableOpacity
+                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                onPress={handleSync}
+                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+              >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
                   : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>Sync Now</Text></>
@@ -122,6 +134,9 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
               <Text style={s.editBtnTxt}>Edit Stats</Text>
             </TouchableOpacity>
           </View>
+          {config.supportsAutoSync && config.sport === 'football' && !profile?.football_api_player_id && (
+            <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
+          )}
         </>
       )}
 
@@ -131,12 +146,19 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           {config.supportsAutoSync ? (
             <>
               <Text style={s.noDataBody}>{config.syncNote}</Text>
-              <TouchableOpacity style={s.syncBtn} onPress={handleChessSync} disabled={syncing}>
+              <TouchableOpacity
+                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                onPress={handleSync}
+                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+              >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
                   : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>Auto-Sync from Chess.com / Lichess</Text></>
                 }
               </TouchableOpacity>
+              {config.sport === 'football' && !profile?.football_api_player_id && (
+                <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
+              )}
               <Text style={s.dividerTxt}>— or enter manually —</Text>
             </>
           ) : (
@@ -266,6 +288,7 @@ const s = StyleSheet.create({
 
   actionRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   syncBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: `${Colors.primary}15`, borderRadius: Radii.md, paddingVertical: 10, borderWidth: 1, borderColor: `${Colors.primary}30` },
+  syncBtnDisabled: { opacity: 0.5 },
   syncBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.primary },
   editBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.elevated, borderRadius: Radii.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.border },
   editBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textMuted },

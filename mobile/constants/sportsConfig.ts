@@ -115,7 +115,8 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     sport: 'football',
     displayName: 'Football',
     archetype: 'team_match',
-    supportsAutoSync: false,
+    supportsAutoSync: true,
+    syncNote: 'Auto-syncs from your linked football player ID. Link it in Settings.',
     metrics: [
       { key: 'goals', label: 'Goals', unit: '', type: 'number', higherIsBetter: true },
       { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true },
