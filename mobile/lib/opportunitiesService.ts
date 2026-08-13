@@ -271,17 +271,19 @@ export async function toggleOpportunitySave(
   opportunityId: string,
   athleteId: string,
   currentlySaved: boolean
-): Promise<void> {
+): Promise<{ error: string | null }> {
   if (currentlySaved) {
-    await supabase
+    const { error } = await supabase
       .from('opportunity_saves')
       .delete()
       .eq('opportunity_id', opportunityId)
       .eq('athlete_id', athleteId);
+    return { error: error?.message ?? null };
   } else {
-    await supabase
+    const { error } = await supabase
       .from('opportunity_saves')
       .upsert({ opportunity_id: opportunityId, athlete_id: athleteId });
+    return { error: error?.message ?? null };
   }
 }
 

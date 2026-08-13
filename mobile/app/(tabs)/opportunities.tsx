@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -551,12 +552,21 @@ export default function OpportunitiesScreen() {
   // ── Mutations ──────────────────────────────────────────────────────────────
   const handleSaveToggle = useCallback(async (oppId: string, nowSaved: boolean) => {
     if (!user) return;
+    const previous = !nowSaved;
     const update = (opp: Opportunity) => opp.id === oppId ? { ...opp, saved: nowSaved } : opp;
     setForYou(p => p.map(update));
     setAll(p => p.map(update));
     setSaved(p => nowSaved ? p : p.filter(o => o.id !== oppId));
     if (detailOpp?.id === oppId) setDetailOpp(prev => prev ? { ...prev, saved: nowSaved } : prev);
-    await toggleOpportunitySave(oppId, user.id, !nowSaved);
+    const { error } = await toggleOpportunitySave(oppId, user.id, !nowSaved);
+    if (error) {
+      const revert = (opp: Opportunity) => opp.id === oppId ? { ...opp, saved: previous } : opp;
+      setForYou(p => p.map(revert));
+      setAll(p => p.map(revert));
+      setSaved(p => previous ? p : p.filter(o => o.id !== oppId));
+      if (detailOpp?.id === oppId) setDetailOpp(prev => prev ? { ...prev, saved: previous } : prev);
+      Alert.alert('Could not update saved opportunities', error);
+    }
   }, [user, detailOpp]);
 
   const handleApplied = useCallback((oppId: string, appId: string) => {
