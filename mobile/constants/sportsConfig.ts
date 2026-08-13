@@ -25,6 +25,11 @@ export interface SportConfig {
   syncNote?: string;
 }
 
+const SPORT_ALIASES: Record<string, string> = {
+  'football (soccer)': 'football',
+  'soccer': 'football',
+};
+
 const SPORTS_CONFIG: Record<string, SportConfig> = {
   volleyball: {
     sport: 'volleyball',
@@ -126,7 +131,9 @@ export default SPORTS_CONFIG;
 
 export function getSportConfig(sport: string | null | undefined): SportConfig | null {
   if (!sport) return null;
-  return SPORTS_CONFIG[sport.toLowerCase()] ?? null;
+  const normalized = sport.trim().toLowerCase();
+  const key = SPORT_ALIASES[normalized] ?? normalized;
+  return SPORTS_CONFIG[key] ?? null;
 }
 
 export const ARCHETYPE_LABELS: Record<Archetype, string> = {
