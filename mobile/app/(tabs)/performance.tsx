@@ -58,7 +58,7 @@ function ArchetypeRenderer({
 // ── My Performance panel ──────────────────────────────────────────────────────
 function MyPerformance({ userId, sport }: { userId: string; sport: string | null }) {
   const config = getSportConfig(sport);
-  const { record, loading, refresh } = usePerformanceData(userId, sport);
+  const { record, loading, error, refresh } = usePerformanceData(userId, sport);
   const [showForm, setShowForm] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -108,7 +108,14 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
 
       {loading && <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.xl }} />}
 
-      {!loading && record && !showForm && (
+      {!loading && error && (
+        <View style={s.emptyState}>
+          <Text style={s.emptyTitle}>Couldn't load performance data</Text>
+          <Text style={s.emptyBody}>Pull to refresh or try again later.</Text>
+        </View>
+      )}
+
+      {!loading && !error && record && !showForm && (
         <>
           <ArchetypeRenderer
             config={config}
@@ -140,7 +147,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
         </>
       )}
 
-      {!loading && !record && !showForm && (
+      {!loading && !error && !record && !showForm && (
         <View style={s.noDataState}>
           <Text style={s.noDataTitle}>No performance data yet</Text>
           {config.supportsAutoSync ? (
