@@ -67,8 +67,8 @@ function RootNavigator() {
   }, [session, role, loading, pathname]);
 
   useEffect(() => {
-    if (user) registerPushToken(user.id);
-  }, [user]);
+    if (user && role === 'athlete') registerPushToken(user.id);
+  }, [user, role]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
