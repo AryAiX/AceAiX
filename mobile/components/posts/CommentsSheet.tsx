@@ -113,6 +113,38 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
     }
   }, [user]);
 
+  const handleLikeReply = useCallback(async (parentId: string, reply: PostComment) => {
+    if (!user) return;
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === parentId
+          ? {
+              ...c,
+              replies: (c.replies ?? []).map((r) =>
+                r.id === reply.id ? { ...r, liked: !r.liked, like_count: r.like_count + (r.liked ? -1 : 1) } : r
+              ),
+            }
+          : c
+      )
+    );
+    const { error } = await toggleCommentLike(reply.id, user.id, reply.liked);
+    if (error) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? {
+                ...c,
+                replies: (c.replies ?? []).map((r) =>
+                  r.id === reply.id ? { ...r, liked: reply.liked, like_count: reply.like_count } : r
+                ),
+              }
+            : c
+        )
+      );
+      Alert.alert('Could not update like', error);
+    }
+  }, [user]);
+
   if (!post) return null;
 
   return (
@@ -150,6 +182,8 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
                   comment={item}
                   onLike={() => handleLikeComment(item)}
                   onReply={() => setReplyTo(item)}
+                  onLikeReply={(reply) => handleLikeReply(item.id, reply)}
+                  onReplyToReply={(reply) => setReplyTo(reply)}
                 />
               )}
               contentContainerStyle={s.listContent}
@@ -210,10 +244,14 @@ function CommentRow({
   comment,
   onLike,
   onReply,
+  onLikeReply,
+  onReplyToReply,
 }: {
   comment: PostComment;
   onLike: () => void;
   onReply: () => void;
+  onLikeReply: (reply: PostComment) => void;
+  onReplyToReply: (reply: PostComment) => void;
 }) {
   return (
     <View style={cr.wrap}>
@@ -256,6 +294,23 @@ function CommentRow({
                 <Text style={cr.time}>{postTimeAgo(reply.created_at)}</Text>
               </View>
               <Text style={cr.text}>{reply.body}</Text>
+              <View style={cr.actions}>
+                <TouchableOpacity onPress={() => onReplyToReply(reply)} style={cr.actionBtn}>
+                  <Text style={cr.actionTxt}>Reply</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onLikeReply(reply)} style={cr.likeBtn}>
+                  <Heart
+                    color={reply.liked ? Colors.error : Colors.textDisabled}
+                    fill={reply.liked ? Colors.error : 'transparent'}
+                    size={12}
+                  />
+                  {reply.like_count > 0 && (
+                    <Text style={[cr.likeCount, reply.liked && { color: Colors.error }]}>
+                      {reply.like_count}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         ))}
