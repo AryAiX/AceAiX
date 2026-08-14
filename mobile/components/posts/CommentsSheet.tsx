@@ -74,10 +74,10 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   const handleSubmit = useCallback(async () => {
     if (!text.trim() || !post || !user) return;
     setSubmitting(true);
-    const comment = await addComment(post.id, user.id, text.trim(), replyTo?.id);
+    const { comment, error } = await addComment(post.id, user.id, text.trim(), replyTo?.id);
     setSubmitting(false);
     if (!comment) {
-      Alert.alert('Comment not sent', 'Something went wrong. Please try again.');
+      Alert.alert('Comment not sent', error ?? 'Something went wrong. Please try again.');
       return;
     }
     if (replyTo) {
