@@ -33,6 +33,7 @@ import {
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import {
   PostAudience,
   PostTag,
@@ -204,7 +205,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     setPosting(false);
 
     if (createError) {
+      const paths = uploadedMedia.map((m) => m.path);
+      if (paths.length > 0) {
+        await supabase.storage.from('posts').remove(paths);
+      }
       Alert.alert('Error', createError);
+      setPosting(false);
       return;
     }
     reset();
