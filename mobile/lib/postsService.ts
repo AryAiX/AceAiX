@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { normalizeSportKey } from '@/constants/sportsConfig';
 
 export type PostType = 'post' | 'reel';
 export type PostAudience = 'public' | 'followers' | 'connections';
@@ -110,10 +111,11 @@ export async function fetchFeedPosts(
   currentUserId: string,
   cursor?: string,
   limit = 20,
-  followingOnly = false,
+  mode: 'for_you' | 'following' | 'latest' = 'latest',
+  viewerSport?: string | null,
 ): Promise<FeedPost[]> {
   let authorIds: string[] | null = null;
-  if (followingOnly) {
+  if (mode === 'following') {
     const { data: follows, error: followsError } = await supabase
       .from('follows')
       .select('following_id')
@@ -122,15 +124,21 @@ export async function fetchFeedPosts(
     authorIds = [currentUserId, ...(follows ?? []).map((follow) => follow.following_id)];
   }
 
+  const sportKey = mode === 'for_you' ? normalizeSportKey(viewerSport) : null;
+  const athleteSelect = sportKey
+    ? 'athlete:athlete_profiles!inner(sport, position, position_primary)'
+    : 'athlete:athlete_profiles(sport, position, position_primary)';
+
   let query = supabase
     .from('posts')
-    .select('*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), athlete:athlete_profiles(sport, position, position_primary)')
+    .select(`*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), ${athleteSelect}`)
     .in('type', ['post', 'standard'])
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
+  if (sportKey) query = query.ilike('athlete.sport', `%${sportKey}%`);
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
