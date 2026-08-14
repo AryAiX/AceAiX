@@ -77,12 +77,15 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
       let signed_url: string | undefined;
       if (/^https?:\/\//i.test(row.media_url)) {
         signed_url = row.media_url;
-      } else try {
-        const { data: urlData } = await supabase.storage
+      } else {
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('stories')
           .createSignedUrl(row.media_url, 3600);
+        if (urlError) {
+          console.warn(`[storiesService] Failed to sign story media URL for ${row.id}: ${urlError.message}`);
+        }
         signed_url = urlData?.signedUrl;
-      } catch (_) {}
+      }
       return {
         id: row.id,
         author_id: row.author_id,
