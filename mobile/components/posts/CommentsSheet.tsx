@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Heart, Send, CornerDownRight } from 'lucide-react-native';
@@ -101,7 +102,15 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
           : c
       )
     );
-    await toggleCommentLike(comment.id, user.id, comment.liked);
+    const { error } = await toggleCommentLike(comment.id, user.id, comment.liked);
+    if (error) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === comment.id ? { ...c, liked: comment.liked, like_count: comment.like_count } : c
+        )
+      );
+      Alert.alert('Could not update like', error);
+    }
   }, [user]);
 
   if (!post) return null;
