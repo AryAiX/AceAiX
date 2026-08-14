@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export type StoryAudience = 'connections' | 'followers' | 'public';
 export type StoryMediaType = 'photo' | 'video';
@@ -160,26 +161,20 @@ export async function uploadStoryMedia(
   mediaType: StoryMediaType
 ): Promise<{ path: string | null; error: string | null }> {
   try {
-    let info = await FileSystem.getInfoAsync(uri, { size: true });
-    if (info.exists && info.size === 0) {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      info = await FileSystem.getInfoAsync(uri, { size: true });
-    }
-    if (!info.exists || info.size === 0) {
-      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
-    }
-
     const ext = mediaType === 'video' ? 'mp4' : 'jpg';
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    if (!base64) {
+      return { path: null, error: 'Captured file could not be read. Please try again.' };
+    }
+    const arrayBuffer = decode(base64);
+    if (arrayBuffer.byteLength === 0) {
+      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
+    }
 
-    const { error } = await supabase.storage.from('stories').upload(path, blob, {
-      contentType,
-      upsert: false,
-    });
+    const { error } = await supabase.storage.from('stories').upload(path, arrayBuffer, { contentType });
     if (error) return { path: null, error: error.message };
     return { path, error: null };
   } catch (e) {
