@@ -313,13 +313,13 @@ export async function toggleLike(
   postId: string,
   userId: string,
   currently_liked: boolean
-): Promise<boolean> {
+): Promise<{ liked: boolean; error: string | null }> {
   if (currently_liked) {
-    await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
-    return false;
+    const { error } = await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
+    return { liked: error ? currently_liked : false, error: error?.message ?? null };
   } else {
-    await supabase.from('post_likes').upsert({ post_id: postId, user_id: userId });
-    return true;
+    const { error } = await supabase.from('post_likes').upsert({ post_id: postId, user_id: userId });
+    return { liked: error ? currently_liked : true, error: error?.message ?? null };
   }
 }
 
@@ -327,13 +327,13 @@ export async function toggleSave(
   postId: string,
   userId: string,
   currently_saved: boolean
-): Promise<boolean> {
+): Promise<{ saved: boolean; error: string | null }> {
   if (currently_saved) {
-    await supabase.from('post_saves').delete().eq('post_id', postId).eq('user_id', userId);
-    return false;
+    const { error } = await supabase.from('post_saves').delete().eq('post_id', postId).eq('user_id', userId);
+    return { saved: error ? currently_saved : false, error: error?.message ?? null };
   } else {
-    await supabase.from('post_saves').upsert({ post_id: postId, user_id: userId });
-    return true;
+    const { error } = await supabase.from('post_saves').upsert({ post_id: postId, user_id: userId });
+    return { saved: error ? currently_saved : true, error: error?.message ?? null };
   }
 }
 
@@ -431,11 +431,13 @@ export async function toggleCommentLike(
   commentId: string,
   userId: string,
   liked: boolean
-): Promise<void> {
+): Promise<{ error: string | null }> {
   if (liked) {
-    await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+    const { error } = await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+    return { error: error?.message ?? null };
   } else {
-    await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
+    const { error } = await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
+    return { error: error?.message ?? null };
   }
 }
 
