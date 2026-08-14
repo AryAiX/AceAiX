@@ -43,12 +43,12 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const listRef = useRef<FlatList>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!post || !user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const data = await fetchComments(post.id, user.id);
     setComments(data);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [post?.id, user]);
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
         schema: 'public',
         table: 'post_comments',
         filter: `post_id=eq.${post.id}`,
-      }, () => { load(); })
+      }, () => { load(true); })
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [post?.id, load]);
