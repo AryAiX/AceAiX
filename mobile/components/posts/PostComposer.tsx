@@ -32,6 +32,7 @@ import {
   Play,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
+import { getSportConfig } from '@/constants/sportsConfig';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import {
@@ -50,12 +51,8 @@ const AUDIENCE_OPTIONS: { value: PostAudience; label: string; sub: string }[] = 
   { value: 'public', label: 'Public', sub: 'Anyone on AceAiX' },
 ];
 
-const TAG_PRESETS: Array<{ label: string; tag: PostTag }> = [
+const BASE_TAG_PRESETS: Array<{ label: string; tag: PostTag }> = [
   { label: '🎯 Open to Trials', tag: { type: 'open_to_trials', value: 'Open to Trials' } },
-  { label: '⚽ Shooting', tag: { type: 'attribute', value: 'Shooting' } },
-  { label: '💨 Pace', tag: { type: 'attribute', value: 'Pace' } },
-  { label: '🎯 Dribbling', tag: { type: 'attribute', value: 'Dribbling' } },
-  { label: '🏋 Physical', tag: { type: 'attribute', value: 'Physical' } },
   { label: '🎵 Training', tag: { type: 'match', value: 'Training' } },
   { label: '🏆 Match Day', tag: { type: 'match', value: 'Match Day' } },
 ];
@@ -74,7 +71,7 @@ interface Props {
 
 export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [step, setStep] = useState<'compose' | 'camera'>('compose');
@@ -160,6 +157,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
       return exists ? prev.filter((t) => !(t.type === tag.type && t.value === tag.value)) : [...prev, tag];
     });
   }, []);
+
+  const sportConfig = getSportConfig(profile?.sport);
+  const attributePresets: Array<{ label: string; tag: PostTag }> = (sportConfig?.metrics ?? [])
+    .slice(0, 4)
+    .map((metric) => ({ label: metric.label, tag: { type: 'attribute', value: metric.label } }));
+  const tagPresets = [...attributePresets, ...BASE_TAG_PRESETS];
 
   const handlePost = useCallback(async () => {
     if (!user) return;
@@ -366,7 +369,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             <View style={s.section}>
               <Text style={s.sectionTitle}>Tags</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
-                {TAG_PRESETS.map((p) => {
+                {tagPresets.map((p) => {
                   const active = tags.some((t) => t.type === p.tag.type && t.value === p.tag.value);
                   return (
                     <TouchableOpacity
