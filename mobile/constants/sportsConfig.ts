@@ -130,10 +130,15 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
 
 export default SPORTS_CONFIG;
 
-export function getSportConfig(sport: string | null | undefined): SportConfig | null {
+export function normalizeSportKey(sport: string | null | undefined): string | null {
   if (!sport) return null;
   const normalized = sport.trim().toLowerCase();
-  const key = SPORT_ALIASES[normalized] ?? normalized;
+  return SPORT_ALIASES[normalized] ?? normalized;
+}
+
+export function getSportConfig(sport: string | null | undefined): SportConfig | null {
+  const key = normalizeSportKey(sport);
+  if (!key) return null;
   return SPORTS_CONFIG[key] ?? null;
 }
 
