@@ -363,8 +363,9 @@ export async function markPostViewed(postId: string, viewerId: string): Promise<
   try { await supabase.rpc('increment_post_view', { p_id: postId }); } catch (_) {}
 }
 
-export async function toggleFeatureReel(postId: string, featured: boolean): Promise<void> {
-  await supabase.from('posts').update({ is_featured: featured }).eq('id', postId);
+export async function toggleFeatureReel(postId: string, featured: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('posts').update({ is_featured: featured }).eq('id', postId);
+  return { error: error?.message ?? null };
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────
