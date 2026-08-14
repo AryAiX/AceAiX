@@ -182,20 +182,32 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
     if (!user) return;
     const newLiked = !reel.liked;
     onUpdate(reel.id, { liked: newLiked, like_count: reel.like_count + (newLiked ? 1 : -1) });
-    await toggleLike(reel.id, user.id, reel.liked);
+    const { error } = await toggleLike(reel.id, user.id, reel.liked);
+    if (error) {
+      onUpdate(reel.id, { liked: reel.liked, like_count: reel.like_count });
+      Alert.alert('Could not update like', error);
+    }
   }, [reel, user, onUpdate]);
 
   const handleSave = useCallback(async () => {
     if (!user) return;
     const newSaved = !reel.saved;
     onUpdate(reel.id, { saved: newSaved, save_count: reel.save_count + (newSaved ? 1 : -1) });
-    await toggleSave(reel.id, user.id, reel.saved);
+    const { error } = await toggleSave(reel.id, user.id, reel.saved);
+    if (error) {
+      onUpdate(reel.id, { saved: reel.saved, save_count: reel.save_count });
+      Alert.alert('Could not update save', error);
+    }
   }, [reel, user, onUpdate]);
 
   const handleFeature = useCallback(async () => {
     const newFeatured = !reel.is_featured;
     onUpdate(reel.id, { is_featured: newFeatured });
-    await toggleFeatureReel(reel.id, newFeatured);
+    const { error } = await toggleFeatureReel(reel.id, newFeatured);
+    if (error) {
+      onUpdate(reel.id, { is_featured: reel.is_featured });
+      Alert.alert('Could not update featured status', error);
+    }
   }, [reel, onUpdate]);
 
   const handleShare = useCallback(async () => {
