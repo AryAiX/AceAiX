@@ -102,7 +102,11 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         ]),
       ]).start();
     }
-    await toggleLike(post.id, user.id, post.liked);
+    const { error } = await toggleLike(post.id, user.id, post.liked);
+    if (error) {
+      onUpdate(post.id, { liked: post.liked, like_count: post.like_count });
+      Alert.alert('Could not update like', error);
+    }
   }, [post, user, heartScale, heartGlowAnim, onUpdate]);
 
   const handleSave = useCallback(async () => {
@@ -113,7 +117,11 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
       Animated.spring(saveScale, { toValue: 1.3, useNativeDriver: true }),
       Animated.spring(saveScale, { toValue: 1,   useNativeDriver: true }),
     ]).start();
-    await toggleSave(post.id, user.id, post.saved);
+    const { error } = await toggleSave(post.id, user.id, post.saved);
+    if (error) {
+      onUpdate(post.id, { saved: post.saved, save_count: post.save_count });
+      Alert.alert('Could not update save', error);
+    }
   }, [post, user, saveScale, onUpdate]);
 
   const performDelete = useCallback(async () => {
