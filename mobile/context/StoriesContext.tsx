@@ -46,18 +46,22 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
   const markSeen = useCallback(
     async (storyId: string) => {
       if (!user) return;
-      await markStorySeen(storyId, user.id);
-      setGroups((prev) =>
-        prev.map((g) => ({
-          ...g,
-          stories: g.stories.map((s) =>
-            s.id === storyId ? { ...s, seen: true } : s
-          ),
-          has_unseen: g.stories.some(
-            (s) => s.id !== storyId && !s.seen
-          ),
-        }))
-      );
+      try {
+        await markStorySeen(storyId, user.id);
+        setGroups((prev) =>
+          prev.map((g) => ({
+            ...g,
+            stories: g.stories.map((s) =>
+              s.id === storyId ? { ...s, seen: true } : s
+            ),
+            has_unseen: g.stories.some(
+              (s) => s.id !== storyId && !s.seen
+            ),
+          }))
+        );
+      } catch (_) {
+        // View-tracking is a soft feature — fail silently rather than disrupting story viewing
+      }
     },
     [user]
   );
