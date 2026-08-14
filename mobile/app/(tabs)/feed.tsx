@@ -60,7 +60,7 @@ export default function FeedScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
-    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter === 'following');
+    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
     if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
     hasMoreRef.current = data.length === 20;
     setPosts(prev => reset ? data : [...prev, ...data]);
