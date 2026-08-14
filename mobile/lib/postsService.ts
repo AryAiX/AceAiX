@@ -412,26 +412,29 @@ export async function addComment(
   authorId: string,
   body: string,
   parentId?: string
-): Promise<PostComment | null> {
+): Promise<{ comment: PostComment | null; error: string | null }> {
   const { data, error } = await supabase
     .from('post_comments')
     .insert({ post_id: postId, author_id: authorId, body, parent_id: parentId ?? null })
     .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) return { comment: null, error: error?.message ?? 'Unknown error' };
   return {
-    id: data.id,
-    post_id: data.post_id,
-    author_id: data.author_id,
-    body: data.body,
-    parent_id: data.parent_id,
-    like_count: data.like_count,
-    created_at: data.created_at,
-    author_name: (data.author as any)?.full_name ?? null,
-    author_avatar: (data.author as any)?.avatar_url ?? null,
-    liked: false,
-    replies: [],
+    comment: {
+      id: data.id,
+      post_id: data.post_id,
+      author_id: data.author_id,
+      body: data.body,
+      parent_id: data.parent_id,
+      like_count: data.like_count,
+      created_at: data.created_at,
+      author_name: (data.author as any)?.full_name ?? null,
+      author_avatar: (data.author as any)?.avatar_url ?? null,
+      liked: false,
+      replies: [],
+    },
+    error: null,
   };
 }
 
