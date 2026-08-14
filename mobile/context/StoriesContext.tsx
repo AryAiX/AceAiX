@@ -35,12 +35,12 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const data = await fetchActiveStories(user.id);
     setGroups(data);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [user]);
 
   const markSeen = useCallback(
@@ -77,7 +77,7 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
     channelRef.current = supabase
       .channel('stories_realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stories' }, () => {
-        refresh();
+        refresh(true);
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'stories' }, (payload) => {
         const deleted = (payload.old as any)?.id;
