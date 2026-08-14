@@ -76,18 +76,20 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
     setSubmitting(true);
     const comment = await addComment(post.id, user.id, text.trim(), replyTo?.id);
     setSubmitting(false);
-    if (comment) {
-      if (replyTo) {
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === replyTo.id ? { ...c, replies: [...(c.replies ?? []), comment] } : c
-          )
-        );
-      } else {
-        setComments((prev) => [...prev, { ...comment, replies: [] }]);
-      }
-      onCommentAdded(post.id);
+    if (!comment) {
+      Alert.alert('Comment not sent', 'Something went wrong. Please try again.');
+      return;
     }
+    if (replyTo) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === replyTo.id ? { ...c, replies: [...(c.replies ?? []), comment] } : c
+        )
+      );
+    } else {
+      setComments((prev) => [...prev, { ...comment, replies: [] }]);
+    }
+    onCommentAdded(post.id);
     setText('');
     setReplyTo(null);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
