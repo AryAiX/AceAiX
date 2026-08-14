@@ -41,6 +41,7 @@ import {
   toggleSave,
   deletePost,
   updatePostCaption,
+  markPostViewed,
 } from '@/lib/postsService';
 import { useAuth } from '@/context/AuthContext';
 import { blockUser, reportContent } from '@/lib/contentSafetyService';
@@ -82,6 +83,11 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
       Animated.timing(entryY,      { toValue: 0, duration: 380, delay: 50, useNativeDriver: true }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    if (!user || user.id === post.author_id) return;
+    void markPostViewed(post.id, user.id);
+  }, [post.id, user]);
 
   const handleLike = useCallback(async () => {
     if (!user) return;
