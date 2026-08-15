@@ -8,7 +8,9 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 
-const FILTERS = ['All', ...Object.values(SPORTS_CONFIG).map((c) => c.displayName)];
+const sportNames = Object.values(SPORTS_CONFIG).map((c) => c.displayName);
+const orderedSportNames = ['Football', ...sportNames.filter((name) => name !== 'Football')];
+const FILTERS = ['All', ...orderedSportNames];
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
 
 interface AthleteRow {
