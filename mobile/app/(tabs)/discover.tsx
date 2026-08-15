@@ -101,13 +101,13 @@ export default function Discover() {
     <View style={s.root}>
       <AppHeader title="Discover Athletes" />
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-        <View style={s.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
           {FILTERS.map(f => (
             <TouchableOpacity key={f} style={[s.chip, f === activeFilter && s.chipActive]} onPress={() => setActiveFilter(f)}>
               <Text style={[s.chipTxt, f === activeFilter && s.chipTxtActive]}>{f}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         <View style={s.statsRow}>
           <View style={s.statBox}>
