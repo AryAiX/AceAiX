@@ -6,8 +6,9 @@ import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 
-const FILTERS = ['All', 'Football', 'Basketball', 'Tennis', 'Athletics'];
+const FILTERS = ['All', ...Object.values(SPORTS_CONFIG).map((c) => c.displayName)];
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
 
 interface AthleteRow {
@@ -32,7 +33,7 @@ export default function Discover() {
   const searchQuery = typeof params.query === 'string' ? params.query.trim().toLowerCase() : '';
   const filteredAthletes = athletes.filter((athlete) => {
     const matchesSport = activeFilter === 'All'
-      || athlete.sport.toLowerCase() === activeFilter.toLowerCase();
+      || normalizeSportKey(athlete.sport) === normalizeSportKey(activeFilter);
     const matchesSearch = !searchQuery || [
       athlete.name,
       athlete.pos,
