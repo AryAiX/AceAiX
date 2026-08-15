@@ -44,7 +44,7 @@ export default function Network() {
     if (!user) return;
     let mounted = true;
     Promise.all([
-      supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).limit(50),
+      supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(100),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
       supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
     ]).then(([profilesResult, followsResult, blocksResult]) => {
