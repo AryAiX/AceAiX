@@ -53,10 +53,10 @@ export default function Discover() {
         .neq('user_id', user.id)
         .limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
-      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+      supabase.rpc('get_blocked_user_ids'),
     ]).then(([athletesResult, followsResult, blocksResult]) => {
       if (!mounted) return;
-      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
       setAthletes((athletesResult.data ?? [])
         .filter((row: any) => !blockedIds.has(row.user_id))
         .map((row: any) => ({
