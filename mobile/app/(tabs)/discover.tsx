@@ -21,7 +21,6 @@ interface AthleteRow {
   loc: string;
   rating: string;
   verified: boolean;
-  tags: string[];
 }
 
 export default function Discover() {
@@ -70,7 +69,6 @@ export default function Discover() {
         loc: [row.user?.city, row.user?.country].filter(Boolean).join(', ') || 'Location not set',
         rating: row.performance_score != null ? (row.performance_score / 10).toFixed(1) : '—',
         verified: row.user?.is_verified ?? false,
-        tags: [],
         })));
       setConnected(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     });
@@ -147,13 +145,6 @@ export default function Discover() {
                     <MapPin color={Colors.textDisabled} size={11} />
                     <Text style={s.loc}>{a.loc}</Text>
                   </View>
-                  <View style={s.tagsRow}>
-                    {a.tags.map(tag => (
-                      <View key={tag} style={s.tag}>
-                        <Text style={s.tagTxt}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
                 </View>
                 <View style={s.right}>
                   <View style={s.ratingBadge}>
@@ -211,9 +202,6 @@ const s = StyleSheet.create({
   pos: { fontFamily: Typography.family.medium, fontSize: Typography.size.xs, color: Colors.primary },
   club: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted },
   loc: { fontFamily: Typography.family.regular, fontSize: 10, color: Colors.textDisabled },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
-  tag: { backgroundColor: `${Colors.accent}18`, borderRadius: Radii.full, paddingHorizontal: 7, paddingVertical: 2 },
-  tagTxt: { fontFamily: Typography.family.bold, fontSize: 9, color: Colors.accent },
   right: { alignItems: 'flex-end', gap: Spacing.sm },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${Colors.accent}15`, borderRadius: Radii.full, paddingHorizontal: 8, paddingVertical: 3 },
   ratingTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.accent },
