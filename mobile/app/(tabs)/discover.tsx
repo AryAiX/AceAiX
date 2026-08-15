@@ -68,7 +68,7 @@ export default function Discover() {
         sport: row.sport ?? 'Football',
         club: row.current_club ?? 'Club not set',
         loc: [row.user?.city, row.user?.country].filter(Boolean).join(', ') || 'Location not set',
-        rating: row.performance_score ? (row.performance_score / 10).toFixed(1) : '—',
+        rating: row.performance_score != null ? (row.performance_score / 10).toFixed(1) : '—',
         verified: row.user?.is_verified ?? false,
         tags: [],
         })));
