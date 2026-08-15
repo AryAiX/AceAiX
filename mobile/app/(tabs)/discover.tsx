@@ -83,7 +83,10 @@ export default function Discover() {
     if (isConnected) {
       ({ error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', athleteUserId));
     } else {
-      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: athleteUserId }));
+      ({ error } = await supabase.from('follows').upsert(
+        { follower_id: user.id, following_id: athleteUserId },
+        { onConflict: 'follower_id,following_id' }
+      ));
     }
     if (error) {
       Alert.alert('Connection not updated', error.message);
