@@ -507,10 +507,10 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
     conversational: 0.65,
     basic: 0.4,
   };
-  const languages: { lang: string; proficiency: string; pct: number }[] = (profile?.languages ?? []).map((language: { language: string; proficiency: string }) => ({
+  const languages: { lang: string; proficiency: string; pct: number }[] = (profile?.languages ?? []).map((language: { language: string; proficiency?: string }) => ({
     lang: language.language,
-    proficiency: language.proficiency,
-    pct: languageLevels[language.proficiency.toLowerCase()] ?? 0.6,
+    proficiency: language.proficiency ?? 'Not specified',
+    pct: languageLevels[(language.proficiency ?? '').toLowerCase()] ?? 0.6,
   }));
 
   useEffect(() => {
