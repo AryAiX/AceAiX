@@ -980,20 +980,10 @@ function CareerTab({ router, reduced, profile }: { router: any; reduced: boolean
 }
 
 // ── Network Tab ────────────────────────────────────────────────────────────────
-function NetworkTab({ router, reduced, profile }: { router: any; reduced: boolean; profile: any }) {
-  const [scoutViewTarget, setScoutViewTarget] = useState(0);
+function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any; reduced: boolean; profile: any; scoutViewCount: number | null }) {
   const followers   = useCountUp(profile?.followers_count ?? 0, 1000, 100);
   const connections = useCountUp(profile?.connections_count ?? 0, 900, 200);
-  const scoutViews  = useCountUp(scoutViewTarget, 1100, 300);
-
-  useEffect(() => {
-    if (!profile?.athlete_profile_id) return;
-    supabase
-      .from('profile_views')
-      .select('id', { count: 'exact', head: true })
-      .eq('athlete_id', profile.athlete_profile_id)
-      .then(({ count }) => setScoutViewTarget(count ?? 0));
-  }, [profile?.athlete_profile_id]);
+  const scoutViews  = useCountUp(scoutViewCount ?? 0, 1100, 300);
 
   return (
     <>
@@ -1051,6 +1041,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [reduced, setReduced] = useState(false);
   const [medicallyCleared, setMedicallyCleared] = useState(false);
+  const [scoutViewCount, setScoutViewCount] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const tabOffsetY = useRef(0);
   const [sticky, setSticky] = useState(false);
@@ -1093,6 +1084,19 @@ export default function Profile() {
           || new Date(data.effective_to).getTime() >= new Date().setHours(0, 0, 0, 0);
         setMedicallyCleared(Boolean(data && valid));
       });
+  }, [profile?.athlete_profile_id]);
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id) {
+      setScoutViewCount(null);
+      return;
+    }
+    supabase
+      .from('profile_views')
+      .select('id', { count: 'exact', head: true })
+      .eq('athlete_id', profile.athlete_profile_id)
+      .then(({ count }) => setScoutViewCount(count ?? 0))
+      .catch(() => setScoutViewCount(null));
   }, [profile?.athlete_profile_id]);
 
   useEffect(() => {
@@ -1198,7 +1202,9 @@ export default function Profile() {
           {/* Scout count live */}
           <Animated.View style={[s.scoutCountBadge, { opacity: heroFade }]}>
             <View style={s.scoutCountDot} />
-            <Text style={s.scoutCountTxt}>No scout watch data yet</Text>
+            <Text style={s.scoutCountTxt}>
+              {scoutViewCount ? `${scoutViewCount} scout${scoutViewCount === 1 ? '' : 's'} viewing this profile` : 'No scout watch data yet'}
+            </Text>
           </Animated.View>
         </View>
 
@@ -1373,7 +1379,7 @@ export default function Profile() {
           {activeTab === 'Overview'    && <OverviewTab profile={profile} reduced={reduced} isOwn={isOwn} router={router} />}
           {activeTab === 'Performance' && <PerformanceTab router={router} sport={profile?.sport ?? null} userId={profile?.id} profile={profile} />}
           {activeTab === 'Career'      && <CareerTab router={router} reduced={reduced} profile={profile} />}
-          {activeTab === 'Network'     && <NetworkTab router={router} reduced={reduced} profile={profile} />}
+          {activeTab === 'Network'     && <NetworkTab router={router} reduced={reduced} profile={profile} scoutViewCount={scoutViewCount} />}
         </View>
 
         <View style={{ height: 40 }} />
