@@ -26,8 +26,6 @@ import { supabase } from '@/lib/supabase';
 import { getSportConfig } from '@/constants/sportsConfig';
 
 const { width: SW } = Dimensions.get('window');
-
-const SIMILAR_ATHLETES: Array<{ name: string; pos: string; club: string; score: number }> = [];
 const NETWORK_LIST: Array<{ name: string; role: string; org: string; type: string; connected: boolean }> = [];
 
 interface ProfileHighlight {
@@ -475,6 +473,8 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
   const [highlightsLoading, setHighlightsLoading] = useState(true);
   const [highlightsError, setHighlightsError] = useState(false);
   const [endorsementCounts, setEndorsementCounts] = useState<Record<string, number>>({});
+  const [similarAthletes, setSimilarAthletes] = useState<Array<{ userId: string; name: string; pos: string; club: string; score: number }>>([]);
+  const [followPending, setFollowPending] = useState<Set<string>>(new Set());
   const scoutPulse = useRef(new Animated.Value(1)).current;
   const scoutGlow  = useRef(new Animated.Value(0.5)).current;
   const bio = profile?.bio || 'No athlete bio has been added yet.';
@@ -572,6 +572,43 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       })
       .catch(() => setEndorsementCounts({}));
   }, [profile?.athlete_profile_id]);
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setSimilarAthletes([]);
+      return;
+    }
+    supabase
+      .rpc('get_similar_athletes', { p_limit: 5 })
+      .then(({ data }) => {
+        setSimilarAthletes((data ?? []).map((row: any) => ({
+          userId: row.user_id,
+          name: row.full_name ?? 'Athlete',
+          pos: row.position ?? '',
+          club: row.current_club ?? '',
+          score: Math.round(row.performance_score ?? 0),
+        })));
+      })
+      .catch(() => setSimilarAthletes([]));
+  }, [profile?.id]);
+
+  async function handleFollowSimilar(targetUserId: string) {
+    if (!profile?.id || followPending.has(targetUserId)) return;
+    setFollowPending((prev) => new Set(prev).add(targetUserId));
+    const { error } = await supabase
+      .from('follows')
+      .upsert({ follower_id: profile.id, following_id: targetUserId }, { onConflict: 'follower_id,following_id' });
+    setFollowPending((prev) => {
+      const next = new Set(prev);
+      next.delete(targetUserId);
+      return next;
+    });
+    if (error) {
+      Alert.alert('Could not follow', 'Something went wrong. Please try again.');
+      return;
+    }
+    setSimilarAthletes((prev) => prev.filter((a) => a.userId !== targetUserId));
+  }
 
   useEffect(() => {
     if (reduced) return;
@@ -781,12 +818,12 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       </View>
 
       {/* People Also Viewed */}
-      {SIMILAR_ATHLETES.length > 0 && (
+      {similarAthletes.length > 0 && (
         <View style={s.card}>
           <SH title="People Also Viewed" color={Colors.primary} />
           <View style={{ gap: Spacing.sm }}>
-            {SIMILAR_ATHLETES.map((a, i) => (
-            <View key={a.name} style={[s.similarRow, i < SIMILAR_ATHLETES.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
+            {similarAthletes.map((a, i) => (
+            <View key={a.userId} style={[s.similarRow, i < similarAthletes.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
               <LinearGradient
                 colors={[Colors.primary, Colors.primaryGlow]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -802,7 +839,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
                 <Zap color={Colors.bg} size={9} fill={Colors.bg} />
                 <Text style={s.aiScoreChipTxt}>{a.score}</Text>
               </View>
-              <TouchableOpacity style={s.followBtn}>
+              <TouchableOpacity style={s.followBtn} disabled={followPending.has(a.userId)} onPress={() => handleFollowSimilar(a.userId)}>
                 <Plus color={Colors.primary} size={14} />
               </TouchableOpacity>
             </View>
