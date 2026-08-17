@@ -4,7 +4,7 @@ returns table (
   user_id uuid,
   full_name varchar,
   avatar_url varchar,
-  position varchar,
+  "position" varchar,
   sport varchar,
   current_club varchar,
   performance_score int
