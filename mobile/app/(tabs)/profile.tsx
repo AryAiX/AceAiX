@@ -472,6 +472,8 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
   const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
   const [matchCount, setMatchCount] = useState(0);
+  const [highlightsLoading, setHighlightsLoading] = useState(true);
+  const [highlightsError, setHighlightsError] = useState(false);
   const [endorsementCounts, setEndorsementCounts] = useState<Record<string, number>>({});
   const scoutPulse = useRef(new Animated.Value(1)).current;
   const scoutGlow  = useRef(new Animated.Value(0.5)).current;
@@ -517,6 +519,8 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
   useEffect(() => {
     if (!profile?.id) return;
     let mounted = true;
+    setHighlightsLoading(true);
+    setHighlightsError(false);
     Promise.all([
       fetchMyPosts(profile.id),
       supabase
@@ -541,6 +545,11 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
           imageUrl: post.media[0]?.signed_url,
         })));
       setMatchCount(matches.count ?? 0);
+      setHighlightsLoading(false);
+    }).catch(() => {
+      if (!mounted) return;
+      setHighlightsLoading(false);
+      setHighlightsError(true);
     });
     return () => { mounted = false; };
   }, [profile?.id]);
@@ -696,7 +705,15 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
             </TouchableOpacity>
           )}
         </View>
-        {highlightTab === 'Highlights' ? (
+        {highlightsLoading ? (
+          <View style={s.activityEmpty}>
+            <Text style={s.activityEmptyTxt}>Loading…</Text>
+          </View>
+        ) : highlightsError ? (
+          <View style={s.activityEmpty}>
+            <Text style={s.activityEmptyTxt}>Couldn't load this right now. Pull down to refresh and try again.</Text>
+          </View>
+        ) : highlightTab === 'Highlights' ? (
           highlights.length > 0 ? (
             <>
               <ClipCard clip={highlights[0]} wide />
