@@ -1,13 +1,8 @@
-ALTER POLICY msg_insert ON messages
-WITH CHECK (
-  (sender_id = auth.uid())
-  AND private.in_conversation(conversation_id)
-  AND NOT EXISTS (
-    SELECT 1 FROM conversations c
-    JOIN user_blocks b ON (
-      (b.blocker_id = c.participant_1_id AND b.blocked_id = c.participant_2_id)
-      OR (b.blocker_id = c.participant_2_id AND b.blocked_id = c.participant_1_id)
-    )
-    WHERE c.id = conversation_id
-  )
-);
+ALTER TABLE conversations
+ADD COLUMN IF NOT EXISTS participant_pair_key text
+GENERATED ALWAYS AS (
+  least(participant_1_id, participant_2_id)::text || '_' || greatest(participant_1_id, participant_2_id)::text
+) STORED;
+
+CREATE UNIQUE INDEX IF NOT EXISTS conversations_participant_pair_unique
+ON conversations (participant_pair_key);
