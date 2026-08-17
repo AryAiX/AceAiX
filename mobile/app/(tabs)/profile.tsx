@@ -1045,8 +1045,58 @@ function AnalyticsCard({ router }: { router: any }) {
 }
 
 // ── Career Tab ─────────────────────────────────────────────────────────────────
+const MILESTONE_ICON: Record<string, { icon: any; color: string }> = {
+  trophy: { icon: Award, color: Colors.warning },
+  debut: { icon: Star, color: Colors.success },
+  signed: { icon: BadgeCheck, color: Colors.primary },
+};
+
 function CareerTab({ router, reduced, profile }: { router: any; reduced: boolean; profile: any }) {
-  const MILESTONES: Array<{ label: string; date: string; icon: any; color: string }> = [];
+  const [milestones, setMilestones] = useState<Array<{ label: string; date: string; icon: any; color: string }>>([]);
+  const [milestonesLoading, setMilestonesLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id) {
+      setMilestones([]);
+      setMilestonesLoading(false);
+      return;
+    }
+    setMilestonesLoading(true);
+    supabase
+      .from('career_milestones')
+      .select('milestone_type, club_or_event, achieved_at, notes')
+      .eq('athlete_id', profile.athlete_profile_id)
+      .order('achieved_at', { ascending: false })
+      .then(({ data }) => {
+        const seen = new Set<string>();
+        const rows = (data ?? [])
+          .filter((row) => {
+            const dedupeKey = `${row.milestone_type}|${row.club_or_event}|${row.achieved_at}|${row.notes}`;
+            if (seen.has(dedupeKey)) return false;
+            seen.add(dedupeKey);
+            return true;
+          })
+          .map((row) => {
+            const type = (row.milestone_type ?? '').toLowerCase();
+            const { icon, color } = MILESTONE_ICON[type] ?? { icon: TrendingUp, color: Colors.accent };
+            const dateObj = new Date(`${row.achieved_at}T00:00:00`);
+            const formattedDate = isNaN(dateObj.getTime()) ? row.achieved_at : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return {
+              label: row.notes || row.club_or_event || 'Milestone',
+              date: [row.club_or_event, formattedDate].filter(Boolean).join(' · '),
+              icon,
+              color,
+            };
+          });
+        setMilestones(rows);
+        setMilestonesLoading(false);
+      })
+      .catch(() => {
+        setMilestones([]);
+        setMilestonesLoading(false);
+      });
+  }, [profile?.athlete_profile_id]);
+
   const careerTimeline: CareerEntry[] = profile?.current_club ? [{
     club: profile.current_club,
     role: profile.position ?? 'Athlete',
@@ -1069,25 +1119,31 @@ function CareerTab({ router, reduced, profile }: { router: any; reduced: boolean
       </View>
       <View style={s.card}>
         <SH title="Milestones" color={Colors.accent} />
-        {MILESTONES.map(({ label, date, icon: Icon, color }, i) => (
-          <View key={label} style={[s.milestoneRow, i < MILESTONES.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
-            <LinearGradient
-              colors={[`${color}25`, `${color}10`]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={s.milestoneIcon}
-            >
-              <Icon color={color} size={15} />
-            </LinearGradient>
-            <View style={{ flex: 1 }}>
-              <Text style={s.milestoneTxt}>{label}</Text>
-              <Text style={s.milestoneDate}>{date}</Text>
-            </View>
-            <View style={[s.milestonePill, { borderColor: `${color}30` }]}>
-              <Text style={[s.milestonePillTxt, { color }]}>Achieved</Text>
-            </View>
-          </View>
-        ))}
-        {MILESTONES.length === 0 && <Text style={s.emptyText}>No milestones have been added yet.</Text>}
+        {milestonesLoading ? (
+          <Text style={s.emptyText}>Loading…</Text>
+        ) : (
+          <>
+            {milestones.map(({ label, date, icon: Icon, color }, i) => (
+              <View key={`${label}-${i}`} style={[s.milestoneRow, i < milestones.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
+                <LinearGradient
+                  colors={[`${color}25`, `${color}10`]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={s.milestoneIcon}
+                >
+                  <Icon color={color} size={15} />
+                </LinearGradient>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.milestoneTxt}>{label}</Text>
+                  <Text style={s.milestoneDate}>{date}</Text>
+                </View>
+                <View style={[s.milestonePill, { borderColor: `${color}30` }]}>
+                  <Text style={[s.milestonePillTxt, { color }]}>Achieved</Text>
+                </View>
+              </View>
+            ))}
+            {milestones.length === 0 && <Text style={s.emptyText}>No milestones have been added yet.</Text>}
+          </>
+        )}
       </View>
     </>
   );
