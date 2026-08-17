@@ -180,6 +180,11 @@ export default function Events() {
                         <Text style={s.metaTxt}>{ev.location}</Text>
                       </View>
                     ) : null}
+                    {ev.is_public && ev.attendee_count !== undefined && (
+                      <Text style={s.metaTxt}>
+                        {ev.attendee_count === 1 ? '1 attending' : `${ev.attendee_count} attending`}
+                      </Text>
+                    )}
                     {ev.description ? (
                       <Text style={s.description} numberOfLines={2}>{ev.description}</Text>
                     ) : null}

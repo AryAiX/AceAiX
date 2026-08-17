@@ -12,6 +12,7 @@ export interface AthleteEvent {
   color: string;
   is_public: boolean;
   created_at: string;
+  attendee_count?: number;
 }
 
 export interface CreateEventInput {
@@ -37,7 +38,27 @@ export async function fetchMyEvents(): Promise<{ data: AthleteEvent[]; error: st
     .gte('event_date', today)
     .order('event_date', { ascending: true });
 
-  return { data: data ?? [], error: error?.message ?? null };
+  if (error) return { data: data ?? [], error: error.message };
+  if (!data || data.length === 0) return { data: [], error: null };
+
+  const publicEventIds = data.filter((e) => e.is_public).map((e) => e.id);
+  if (publicEventIds.length === 0) return { data, error: null };
+
+  const { data: attendeeRows } = await supabase
+    .from('event_attendees')
+    .select('event_id')
+    .in('event_id', publicEventIds);
+
+  const countMap = new Map<string, number>();
+  for (const row of attendeeRows ?? []) {
+    countMap.set(row.event_id, (countMap.get(row.event_id) ?? 0) + 1);
+  }
+
+  const mapped: AthleteEvent[] = data.map((e) =>
+    e.is_public ? { ...e, attendee_count: countMap.get(e.id) ?? 0 } : e
+  );
+
+  return { data: mapped, error: null };
 }
 
 export async function createEvent(input: CreateEventInput): Promise<{ data: AthleteEvent | null; error: string | null }> {
