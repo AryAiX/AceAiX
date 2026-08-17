@@ -1120,7 +1120,8 @@ export default function Profile() {
         const valid = !data?.effective_to
           || new Date(data.effective_to).getTime() >= new Date().setHours(0, 0, 0, 0);
         setMedicallyCleared(Boolean(data && valid));
-      });
+      })
+      .catch(() => setMedicallyCleared(false));
   }, [profile?.athlete_profile_id]);
 
   useEffect(() => {
