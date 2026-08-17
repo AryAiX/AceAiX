@@ -737,7 +737,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
         <SH title="Languages" color={Colors.warning} />
         <View style={{ gap: 14 }}>
           {languages.map(({ lang, proficiency, pct }, i) => (
-            <LangBar key={lang} lang={lang} proficiency={proficiency} pct={pct} reduced={reduced} delay={i * 120} />
+            <LangBar key={`${lang ?? 'lang'}-${i}`} lang={lang ?? 'Not specified'} proficiency={proficiency} pct={pct} reduced={reduced} delay={i * 120} />
           ))}
           {languages.length === 0 && <Text style={s.emptyText}>No languages have been added yet.</Text>}
         </View>
