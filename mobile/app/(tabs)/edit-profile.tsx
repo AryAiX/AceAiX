@@ -185,47 +185,47 @@ export default function EditProfile() {
     }
   }
 
+  const BIRTHDATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
+
+  function isValidCalendarDate(value: string): boolean {
+    if (!BIRTHDATE_FORMAT.test(value)) return false;
+    const [year, month, day] = value.split('-').map(Number);
+    const date = new Date(value + 'T00:00:00Z');
+    return (
+      date.getUTCFullYear() === year
+      && date.getUTCMonth() + 1 === month
+      && date.getUTCDate() === day
+    );
+  }
+
   async function saveProfile() {
     if (!user || saving) return;
     if (!form.fullName.trim()) {
       Alert.alert('Full name required', 'Enter your full name before saving.');
       return;
     }
+    if (form.birthdate.trim() && !isValidCalendarDate(form.birthdate.trim())) {
+      Alert.alert('Invalid date of birth', 'Enter a real date in YYYY-MM-DD format, e.g. 2005-03-14.');
+      return;
+    }
+    const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
 
     setSaving(true);
-    const [publicResult, athleteResult, privateResult] = await Promise.all([
-      supabase
-        .from('user_profiles')
-        .update({
-          full_name: form.fullName.trim(),
-          bio: optional(form.bio),
-          city: optional(form.city),
-          country: optional(form.country),
-        })
-        .eq('id', user.id),
-      supabase
-        .from('athlete_profiles')
-        .update({
-          sport: optional(form.sport),
-          position: optional(form.position),
-          position_primary: optional(form.position),
-          current_club: optional(form.currentClub),
-          level: optional(form.level) ?? 'amateur',
-          nationality: optional(form.nationality),
-          bio: optional(form.bio),
-        })
-        .eq('user_id', user.id),
-      supabase
-        .from('user_private')
-        .upsert({
-          user_id: user.id,
-          phone: optional(form.phone),
-          date_of_birth: optional(form.birthdate),
-        }),
-    ]);
+    const { error } = await supabase.rpc('update_own_profile', {
+      p_full_name: form.fullName.trim(),
+      p_bio: optional(form.bio),
+      p_city: optional(form.city),
+      p_country: optional(form.country),
+      p_sport: optional(finalSport),
+      p_position: optional(form.position),
+      p_current_club: optional(form.currentClub),
+      p_level: optional(form.level),
+      p_nationality: optional(form.nationality),
+      p_phone: optional(form.phone),
+      p_date_of_birth: optional(form.birthdate),
+    });
     setSaving(false);
 
-    const error = publicResult.error ?? athleteResult.error ?? privateResult.error;
     if (error) {
       Alert.alert('Unable to save profile', error.message);
       return;
