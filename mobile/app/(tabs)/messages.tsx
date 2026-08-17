@@ -381,7 +381,7 @@ function NewConversationModal({
         .in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'])
         .order('full_name', { ascending: true })
         .limit(100),
-      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', userId),
+      supabase.rpc('get_blocked_user_ids'),
     ])
       .then(([membersResult, blocksResult]) => {
         if (!mounted) return;
@@ -392,7 +392,7 @@ function NewConversationModal({
           );
           setMembers([]);
         } else {
-          const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+          const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
           setMembers(((membersResult.data ?? []) as MemberRow[])
             .filter((member) => !blockedIds.has(member.id)));
         }
@@ -568,7 +568,7 @@ export default function Messages() {
             .neq('sender_id', user.id)
             .eq('is_read', false)
         : Promise.resolve({ data: [] as { id: string; conversation_id: string }[], error: null }),
-      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+      supabase.rpc('get_blocked_user_ids'),
     ]);
 
     if (profilesResult.error || unreadResult.error || blocksResult.error) {
@@ -581,7 +581,7 @@ export default function Messages() {
       ((profilesResult.data ?? []) as MemberRow[]).map((profile) => [profile.id, profile]),
     );
     const unreadMap = new Map<string, number>();
-    const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+    const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
     for (const message of unreadResult.data ?? []) {
       unreadMap.set(message.conversation_id, (unreadMap.get(message.conversation_id) ?? 0) + 1);
     }
