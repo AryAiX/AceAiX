@@ -378,6 +378,7 @@ function NewConversationModal({
         .from('user_profiles')
         .select('id,full_name,role,is_verified')
         .neq('id', userId)
+        .in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'])
         .order('full_name', { ascending: true })
         .limit(100),
       supabase.from('user_blocks').select('blocked_id').eq('blocker_id', userId),
