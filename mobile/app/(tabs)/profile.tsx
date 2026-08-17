@@ -856,6 +856,19 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
     (sport && sport !== 'chess') ? userId : null
   );
   const [refreshing, setRefreshing] = React.useState(false);
+  const [matchRecords, setMatchRecords] = useState<Array<{ opp: string; date: string; rating: number; result: 'W' | 'D' | 'L' }>>([]);
+  const [matchRecordsLoading, setMatchRecordsLoading] = useState(true);
+
+  function normalizeMatchResult(raw: string | null | undefined): 'W' | 'D' | 'L' | null {
+    if (!raw) return null;
+    const lastToken = raw.trim().split(/\s+/).pop()?.toUpperCase() ?? '';
+    if (lastToken === 'W' || lastToken === 'D' || lastToken === 'L') return lastToken;
+    const wholeWord = raw.trim().toUpperCase();
+    if (wholeWord === 'WIN') return 'W';
+    if (wholeWord === 'DRAW') return 'D';
+    if (wholeWord === 'LOSS' || wholeWord === 'LOSE' || wholeWord === 'LOST') return 'L';
+    return null;
+  }
 
   const seasonStats = (getSportConfig(sport)?.metrics ?? [])
     .map((metric) => {
@@ -891,6 +904,42 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
     await footballRefresh();
     setRefreshing(false);
   }
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id || sport === 'chess') {
+      setMatchRecords([]);
+      setMatchRecordsLoading(false);
+      return;
+    }
+    setMatchRecordsLoading(true);
+    supabase
+      .from('match_records')
+      .select('match_date, opponent, result, stats')
+      .eq('athlete_id', profile.athlete_profile_id)
+      .order('match_date', { ascending: false })
+      .limit(5)
+      .then(({ data }) => {
+        const rows = (data ?? [])
+          .map((row) => {
+            const result = normalizeMatchResult(row.result);
+            if (!result) return null;
+            const dateObj = new Date(`${row.match_date}T00:00:00`);
+            return {
+              opp: row.opponent ?? 'Unknown opponent',
+              date: isNaN(dateObj.getTime()) ? row.match_date : dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              rating: Number(row.stats?.rating ?? 0),
+              result,
+            };
+          })
+          .filter((r): r is { opp: string; date: string; rating: number; result: 'W' | 'D' | 'L' } => r !== null);
+        setMatchRecords(rows);
+        setMatchRecordsLoading(false);
+      })
+      .catch(() => {
+        setMatchRecords([]);
+        setMatchRecordsLoading(false);
+      });
+  }, [profile?.athlete_profile_id, sport]);
 
   if (sport === 'chess') {
     return (
@@ -942,24 +991,32 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
       )}
       <View style={s.card}>
         <SH title="Match Ratings" color={Colors.warning} action="Full History" onAction={() => router.push('/(tabs)/performance' as any)} />
-        {([] as Array<{ opp: string; date: string; rating: number; result: 'W' | 'D' | 'L' }>).map((m, i) => {
-          const rc = m.result === 'W' ? Colors.success : m.result === 'D' ? Colors.warning : Colors.error;
-          return (
-            <View key={i} style={s.matchRow}>
-              <View style={[s.resultBadge, { backgroundColor: `${rc}18`, borderColor: rc }]}>
-                <Text style={[s.resultTxt, { color: rc }]}>{m.result}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.matchOpp}>{m.opp}</Text>
-                <Text style={s.matchDate}>{m.date}</Text>
-              </View>
-              <Text style={[s.matchRating, { color: m.rating >= 8 ? Colors.accent : m.rating >= 7 ? Colors.primary : Colors.textMuted }]}>
-                {m.rating.toFixed(1)}
-              </Text>
-            </View>
-          );
-        })}
-        <Text style={s.emptyText}>No match ratings have been added yet.</Text>
+        {matchRecordsLoading ? (
+          <Text style={s.emptyText}>Loading…</Text>
+        ) : (
+          <>
+            {matchRecords.map((m, i) => {
+              const rc = m.result === 'W' ? Colors.success : m.result === 'D' ? Colors.warning : Colors.error;
+              return (
+                <View key={i} style={s.matchRow}>
+                  <View style={[s.resultBadge, { backgroundColor: `${rc}18`, borderColor: rc }]}>
+                    <Text style={[s.resultTxt, { color: rc }]}>{m.result}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.matchOpp}>{m.opp}</Text>
+                    <Text style={s.matchDate}>{m.date}</Text>
+                  </View>
+                  <Text style={[s.matchRating, { color: m.rating >= 8 ? Colors.accent : m.rating >= 7 ? Colors.primary : Colors.textMuted }]}>
+                    {m.rating.toFixed(1)}
+                  </Text>
+                </View>
+              );
+            })}
+            {matchRecords.length === 0 && (
+              <Text style={s.emptyText}>No match ratings have been added yet.</Text>
+            )}
+          </>
+        )}
       </View>
       <AnalyticsCard router={router} />
     </>
