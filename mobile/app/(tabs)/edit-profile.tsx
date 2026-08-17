@@ -301,13 +301,41 @@ export default function EditProfile() {
               placeholder="Tell scouts about your background and goals"
               multiline
             />
-            <Field
-              label="Sport"
-              value={form.sport}
-              onChangeText={(value) => update('sport', value)}
-              placeholder="e.g. Football"
-              autoCapitalize="words"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Sport</Text>
+              <View style={s.sportChipsRow}>
+                {Object.values(SPORTS_CONFIG).map((config) => (
+                  <TouchableOpacity
+                    key={config.sport}
+                    style={[s.sportChip, form.sportKey === config.sport && s.sportChipActive]}
+                    onPress={() => setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }))}
+                  >
+                    <Text style={[s.sportChipTxt, form.sportKey === config.sport && s.sportChipTxtActive]}>
+                      {config.displayName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[s.sportChip, form.sportKey === 'other' && s.sportChipActive]}
+                  onPress={() => setForm((current) => ({ ...current, sportKey: 'other' }))}
+                >
+                  <Text style={[s.sportChipTxt, form.sportKey === 'other' && s.sportChipTxtActive]}>
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {form.sportKey === 'other' && (
+                <TextInput
+                  accessibilityLabel="Sport (other)"
+                  style={s.input}
+                  value={form.sportOther}
+                  onChangeText={(value) => update('sportOther', value)}
+                  placeholder="Enter your sport"
+                  placeholderTextColor={Colors.textDisabled}
+                  autoCapitalize="words"
+                />
+              )}
+            </View>
             <Field
               label="Primary position"
               value={form.position}
@@ -459,6 +487,11 @@ const s = StyleSheet.create({
     gap: Spacing.md,
   },
   field: { gap: 7 },
+  sportChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  sportChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.full, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
+  sportChipActive: { backgroundColor: `${Colors.primary}20`, borderColor: `${Colors.primary}50` },
+  sportChipTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted },
+  sportChipTxtActive: { color: Colors.primary, fontFamily: Typography.family.bold },
   label: {
     fontFamily: Typography.family.semiBold,
     fontSize: Typography.size.xs,
