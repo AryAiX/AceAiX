@@ -229,11 +229,6 @@ function AttrBar({ label, value, endorsements, isOwn, reduced, delay }: {
         <ThumbsUp color={Colors.textDisabled} size={9} />
         <Text style={s.endorseCountTxt}>{endorsements}</Text>
       </View>
-      {!isOwn && (
-        <TouchableOpacity style={[s.endorseBtn, { borderColor: `${col}30` }]}>
-          <Text style={[s.endorseBtnTxt, { color: col }]}>+1</Text>
-        </TouchableOpacity>
-      )}
     </Animated.View>
   );
 }
@@ -1517,7 +1512,7 @@ export default function Profile() {
                   style={StyleSheet.absoluteFillObject}
                 />
               </View>
-              <Text style={s.ownBannerTxt}>You are viewing your public profile</Text>
+              <Text style={s.ownBannerTxt}>This is your profile</Text>
               <View style={{ flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm }}>
                 <TouchableOpacity style={s.dashBtn} onPress={() => router.push('/(tabs)/' as any)}>
                   <Text style={s.dashBtnTxt}>Dashboard</Text>
@@ -1550,12 +1545,6 @@ export default function Profile() {
                 <Text style={s.endorseActionTxt}>Endorse</Text>
               </LinearGradient>
             </TouchableOpacity>
-            {!isOwn && (
-              <TouchableOpacity style={s.connectBtn}>
-                <UserCheck color={Colors.primary} size={15} />
-                <Text style={s.connectBtnTxt}>Connect</Text>
-              </TouchableOpacity>
-            )}
             <TouchableOpacity style={s.shareBtn} onPress={handleShare}>
               <Share2 color={Colors.textMuted} size={15} />
               <Text style={s.shareBtnTxt}>Share</Text>
