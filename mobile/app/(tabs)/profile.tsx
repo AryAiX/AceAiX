@@ -858,8 +858,9 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
   const [refreshing, setRefreshing] = React.useState(false);
 
   async function handleChessRefresh() {
+    if (!userId || (!profile?.chesscom_username && !profile?.lichess_username)) return;
     setRefreshing(true);
-    await triggerChessSyncFull(userId!, profile?.chesscom_username, profile?.lichess_username);
+    await triggerChessSyncFull(userId, profile?.chesscom_username, profile?.lichess_username);
     await chessRefresh();
     setRefreshing(false);
   }
