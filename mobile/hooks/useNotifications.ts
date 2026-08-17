@@ -6,15 +6,17 @@ export function useNotifications(): {
   groups: NotificationGroup[];
   unreadCount: number;
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
-  markRead: (id: string) => Promise<void>;
-  markAllRead: () => Promise<void>;
-  removeNotif: (id: string) => void;
+  markRead: (id: string) => Promise<{ error: string | null }>;
+  markAllRead: () => Promise<{ error: string | null }>;
+  dismissNotification: (id: string) => Promise<{ error: string | null }>;
+  clearAll: () => Promise<{ error: string | null }>;
 } {
-  const { notifications, unreadCount, loading, refresh, markRead, markAllRead, removeNotif } =
+  const { notifications, unreadCount, loading, error, refresh, markRead, markAllRead, dismissNotification, clearAll } =
     useNotificationContext();
 
   const groups = useMemo(() => groupNotifications(notifications), [notifications]);
 
-  return { groups, unreadCount, loading, refresh, markRead, markAllRead, removeNotif };
+  return { groups, unreadCount, loading, error, refresh, markRead, markAllRead, dismissNotification, clearAll };
 }
