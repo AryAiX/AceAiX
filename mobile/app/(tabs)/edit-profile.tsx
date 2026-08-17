@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Save, UserRound } from 'lucide-react-native';
+import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -23,7 +24,8 @@ import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
 type ProfileForm = {
   fullName: string;
   bio: string;
-  sport: string;
+  sportKey: string;
+  sportOther: string;
   position: string;
   currentClub: string;
   level: string;
@@ -37,7 +39,8 @@ type ProfileForm = {
 const EMPTY_FORM: ProfileForm = {
   fullName: '',
   bio: '',
-  sport: '',
+  sportKey: '',
+  sportOther: '',
   position: '',
   currentClub: '',
   level: '',
@@ -97,17 +100,21 @@ export default function EditProfile() {
   const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
-    const [city = '', country = ''] = (profile?.current_location ?? '').split(',').map((part) => part.trim());
+    const normalizedSport = normalizeSportKey(profile?.sport);
+    const isKnownSport = normalizedSport
+      ? Object.prototype.hasOwnProperty.call(SPORTS_CONFIG, normalizedSport)
+      : false;
     setForm({
       fullName: profile?.full_name ?? '',
       bio: profile?.bio ?? '',
-      sport: profile?.sport ?? '',
+      sportKey: isKnownSport ? normalizedSport! : (profile?.sport ? 'other' : ''),
+      sportOther: isKnownSport ? '' : (profile?.sport ?? ''),
       position: profile?.position ?? '',
       currentClub: profile?.current_club ?? '',
-      level: profile?.league ?? '',
+      level: profile?.league ?? 'amateur',
       nationality: profile?.nationality ?? '',
-      city: profile?.hometown ?? city,
-      country,
+      city: profile?.hometown ?? '',
+      country: profile?.country ?? '',
       phone: profile?.phone ?? '',
       birthdate: profile?.birthdate ?? '',
     });
@@ -115,7 +122,7 @@ export default function EditProfile() {
     profile?.bio,
     profile?.birthdate,
     profile?.current_club,
-    profile?.current_location,
+    profile?.country,
     profile?.full_name,
     profile?.hometown,
     profile?.id,
