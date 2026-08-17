@@ -16,6 +16,7 @@ export interface Profile {
   sport_category: string | null;
   birthdate: string | null;
   hometown: string | null;
+  country: string | null;
   current_location: string | null;
   nationality: string | null;
   league: string | null;
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sport_category: athleteProfile?.sport ?? null,
       birthdate: privateProfile?.date_of_birth ?? null,
       hometown: publicProfile.city ?? null,
+      country: publicProfile.country ?? null,
       current_location: [publicProfile.city, publicProfile.country].filter(Boolean).join(', ') || null,
       nationality: athleteProfile?.nationality ?? null,
       league: athleteProfile?.level ?? null,
