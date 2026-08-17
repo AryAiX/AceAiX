@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
+import { normalizeSportKey } from '@/constants/sportsConfig';
 import { supabase } from '@/lib/supabase';
 import { triggerChessSyncFull, isSyncStale } from '@/lib/chessService';
 import { useChessStats } from '@/hooks/useChessStats';
@@ -254,8 +255,8 @@ export default function Settings() {
     router.replace('/login');
   }
 
-  const isChessSport = profile?.sport === 'chess';
-  const isFootballSport = profile?.sport && profile.sport !== 'chess';
+  const isChessSport = normalizeSportKey(profile?.sport) === 'chess';
+  const isFootballSport = normalizeSportKey(profile?.sport) === 'football';
 
   return (
     <View style={s.root}>
@@ -434,46 +435,50 @@ export default function Settings() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Connected Data</Text>
           <View style={s.group}>
-            {/* Chess.com */}
-            <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
-              <View style={s.rowLeft}>
-                <Link color={Colors.textMuted} size={18} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowLabel}>Chess.com Username</Text>
-                  <Text style={s.rowSub}>Auto-syncs ratings, records, and recent games</Text>
+            {isChessSport && (
+              <>
+                {/* Chess.com */}
+                <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+                  <View style={s.rowLeft}>
+                    <Link color={Colors.textMuted} size={18} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowLabel}>Chess.com Username</Text>
+                      <Text style={s.rowSub}>Auto-syncs ratings, records, and recent games</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={s.connInput}
+                    value={chesscom}
+                    onChangeText={setChesscom}
+                    placeholder="e.g. magnuscarlsen"
+                    placeholderTextColor={Colors.textDisabled}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
-              </View>
-              <TextInput
-                style={s.connInput}
-                value={chesscom}
-                onChangeText={setChesscom}
-                placeholder="e.g. magnuscarlsen"
-                placeholderTextColor={Colors.textDisabled}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            {/* Lichess */}
-            <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
-              <View style={s.rowLeft}>
-                <Link color={Colors.textMuted} size={18} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowLabel}>Lichess Username</Text>
-                  <Text style={s.rowSub}>Rating history + W/L/D synced from Lichess</Text>
+                {/* Lichess */}
+                <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+                  <View style={s.rowLeft}>
+                    <Link color={Colors.textMuted} size={18} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowLabel}>Lichess Username</Text>
+                      <Text style={s.rowSub}>Rating history + W/L/D synced from Lichess</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={s.connInput}
+                    value={lichess}
+                    onChangeText={setLichess}
+                    placeholder="e.g. DrNykterstein"
+                    placeholderTextColor={Colors.textDisabled}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
-              </View>
-              <TextInput
-                style={s.connInput}
-                value={lichess}
-                onChangeText={setLichess}
-                placeholder="e.g. DrNykterstein"
-                placeholderTextColor={Colors.textDisabled}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+              </>
+            )}
             {isFootballSport && (
-              <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+              <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
                 <View style={s.rowLeft}>
                   <Link color={Colors.textMuted} size={18} />
                   <View style={{ flex: 1 }}>
