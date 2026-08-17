@@ -472,6 +472,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
   const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
   const [matchCount, setMatchCount] = useState(0);
+  const [endorsementCounts, setEndorsementCounts] = useState<Record<string, number>>({});
   const scoutPulse = useRef(new Animated.Value(1)).current;
   const scoutGlow  = useRef(new Animated.Value(0.5)).current;
   const bio = profile?.bio || 'No athlete bio has been added yet.';
@@ -487,11 +488,14 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
   const attributes = Object.entries(profile?.attributes ?? {})
     .filter(([, value]) => typeof value === 'number')
     .slice(0, 6)
-    .map(([label, value]) => ({
-      label: label.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()),
-      value: Math.max(0, Math.min(100, Number(value))),
-      endorsements: 0,
-    }));
+    .map(([label, value]) => {
+      const prettyLabel = label.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+      return {
+        label: prettyLabel,
+        value: Math.max(0, Math.min(100, Number(value))),
+        endorsements: endorsementCounts[prettyLabel] ?? 0,
+      };
+    });
   const statTiles = Object.entries(profile?.highlighted_stats ?? {})
     .filter(([, value]) => typeof value === 'number')
     .slice(0, 6)
@@ -543,6 +547,25 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
     });
     return () => { mounted = false; };
   }, [profile?.id]);
+
+  useEffect(() => {
+    if (!profile?.athlete_profile_id) {
+      setEndorsementCounts({});
+      return;
+    }
+    supabase
+      .from('endorsements')
+      .select('skill_or_trait')
+      .eq('athlete_id', profile.athlete_profile_id)
+      .then(({ data }) => {
+        const counts: Record<string, number> = {};
+        (data ?? []).forEach((row) => {
+          counts[row.skill_or_trait] = (counts[row.skill_or_trait] ?? 0) + 1;
+        });
+        setEndorsementCounts(counts);
+      })
+      .catch(() => setEndorsementCounts({}));
+  }, [profile?.athlete_profile_id]);
 
   useEffect(() => {
     if (reduced) return;
