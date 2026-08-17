@@ -226,6 +226,9 @@ export default function Events() {
                   <MapPin color={Colors.textDisabled} size={12} />
                   <Text style={s.metaTxt}>{ev.location}</Text>
                 </View>
+                <Text style={s.metaTxt}>
+                  {ev.attendee_count === 1 ? '1 attending' : `${ev.attendee_count} attending`}
+                </Text>
                 <View style={s.cardFooter}>
                   <TouchableOpacity
                     style={[s.rsvpBtn, isAttending && s.rsvpBtnActive]}
