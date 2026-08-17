@@ -90,6 +90,22 @@ export default function Settings() {
     setShowcaseOptIn(profile?.showcase_opt_in ?? false);
   }, [profile?.showcase_opt_in]);
 
+  useEffect(() => {
+    setChesscom(profile?.chesscom_username ?? '');
+  }, [profile?.chesscom_username]);
+
+  useEffect(() => {
+    setLichess(profile?.lichess_username ?? '');
+  }, [profile?.lichess_username]);
+
+  useEffect(() => {
+    setFootballPlayerId(profile?.football_api_player_id ?? '');
+  }, [profile?.football_api_player_id]);
+
+  useEffect(() => {
+    setSportifyId(profile?.sportify_athlete_id ?? '');
+  }, [profile?.sportify_athlete_id]);
+
   async function handleVisibilityChange(value: boolean) {
     if (!user || savingVisibility) return;
     const previous = publicProfile;
