@@ -17,6 +17,7 @@ import {
 } from '@/lib/notificationService';
 import {
   fetchConsent,
+  linkSportifyAccount,
   SportifyConsent,
 } from '@/lib/sportifyService';
 import { SportifyConsentModal } from '@/components/sportify/SportifyConsentModal';
@@ -208,12 +209,9 @@ export default function Settings() {
       setSportifyMsg(lookupError?.message ?? 'No partner-issued result matches this ID.');
       return;
     }
-    const { error } = await supabase
-      .from('athlete_profiles')
-      .update({ sportify_linked: true, sportify_athlete_id: partnerId })
-      .eq('user_id', user.id);
+    const { error } = await linkSportifyAccount(user.id, partnerId);
     if (error) {
-      setSportifyMsg(error.message);
+      setSportifyMsg(error);
     } else {
       await refreshProfile();
       setSportifyMsg('Sportify account linked!');
