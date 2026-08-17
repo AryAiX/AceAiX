@@ -29,33 +29,45 @@ export interface NotificationGroup {
   items: AppNotification[];
 }
 
-export async function fetchNotifications(userId: string): Promise<AppNotification[]> {
+export function normalizeNotifRow(row: any): AppNotification {
+  return {
+    ...row,
+    body: row.body ?? '',
+    data: row.data ?? {},
+    action_url: row.action_url ?? null,
+    read: row.read ?? row.is_read ?? false,
+  };
+}
+
+export async function fetchNotifications(userId: string): Promise<{ data: AppNotification[]; error: string | null }> {
   const { data, error } = await supabase
     .from('notifications')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(100);
-  if (error || !data) return [];
-  return data.map((row: any) => ({
-    ...row,
-    body: row.body ?? '',
-    data: row.data ?? {},
-    action_url: row.action_url ?? null,
-    read: row.read ?? row.is_read ?? false,
-  })) as AppNotification[];
+  if (error) return { data: [], error: error.message };
+  return { data: (data ?? []).map(normalizeNotifRow), error: null };
 }
 
-export async function markRead(notifId: string): Promise<void> {
-  await supabase.from('notifications').update({ read: true, is_read: true }).eq('id', notifId);
+export async function markRead(notifId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('notifications').update({ read: true, is_read: true }).eq('id', notifId);
+  return { error: error?.message ?? null };
 }
 
-export async function markAllRead(userId: string): Promise<void> {
-  await supabase.from('notifications').update({ read: true, is_read: true }).eq('user_id', userId);
+export async function markAllRead(userId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('notifications').update({ read: true, is_read: true }).eq('user_id', userId);
+  return { error: error?.message ?? null };
 }
 
-export async function dismissNotif(notifId: string): Promise<void> {
-  await supabase.from('notifications').delete().eq('id', notifId);
+export async function dismissNotif(notifId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('notifications').delete().eq('id', notifId);
+  return { error: error?.message ?? null };
+}
+
+export async function clearAllNotifs(userId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
+  return { error: error?.message ?? null };
 }
 
 export function groupNotifications(notifs: AppNotification[]): NotificationGroup[] {
