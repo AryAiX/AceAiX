@@ -149,6 +149,13 @@ export default function Settings() {
 
   async function handleSavePrefs() {
     if (!user) return;
+    const timeFormat = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    const quietStart = prefs.quiet_start ?? DEFAULT_PREFS.quiet_start;
+    const quietEnd = prefs.quiet_end ?? DEFAULT_PREFS.quiet_end;
+    if (!timeFormat.test(quietStart) || !timeFormat.test(quietEnd)) {
+      Alert.alert('Invalid quiet hours', 'Enter times in 24-hour HH:MM format, e.g. 22:00.');
+      return;
+    }
     setSavingPrefs(true);
     const { error } = await saveNotifPrefs(user.id, prefs);
     setSavingPrefs(false);
