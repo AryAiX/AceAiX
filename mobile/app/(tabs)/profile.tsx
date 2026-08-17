@@ -23,12 +23,12 @@ import { FootballStatsCard } from '@/components/performance/FootballStatsCard';
 import { useRouter } from 'expo-router';
 import { fetchMyPosts } from '@/lib/postsService';
 import { supabase } from '@/lib/supabase';
+import { getSportConfig } from '@/constants/sportsConfig';
 
 const { width: SW } = Dimensions.get('window');
 
 const SIMILAR_ATHLETES: Array<{ name: string; pos: string; club: string; score: number }> = [];
 const NETWORK_LIST: Array<{ name: string; role: string; org: string; type: string; connected: boolean }> = [];
-const SEASON_STATS: Array<{ label: string; value: string; sub: string }> = [];
 
 interface ProfileHighlight {
   id: string;
@@ -857,6 +857,25 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
   );
   const [refreshing, setRefreshing] = React.useState(false);
 
+  const seasonStats = (getSportConfig(sport)?.metrics ?? [])
+    .map((metric) => {
+      const raw = profile?.highlighted_stats?.[metric.key];
+      if (raw === undefined || raw === null || raw === '') return null;
+      let value: string;
+      if (metric.type === 'time') {
+        const totalSeconds = Number(raw);
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = (totalSeconds % 60).toFixed(2).padStart(5, '0');
+        value = mins > 0 ? `${mins}:${secs}` : `${secs}s`;
+      } else if (metric.type === 'percent') {
+        value = `${raw}%`;
+      } else {
+        value = String(raw);
+      }
+      return { label: metric.label, value, sub: metric.type === 'time' ? '' : metric.unit };
+    })
+    .filter((s): s is { label: string; value: string; sub: string } => s !== null);
+
   async function handleChessRefresh() {
     if (!userId || (!profile?.chesscom_username && !profile?.lichess_username)) return;
     setRefreshing(true);
@@ -908,7 +927,7 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
         <View style={s.card}>
           <SH title="Season Stats" color={Colors.accent} />
           <View style={s.statsGrid}>
-            {SEASON_STATS.map(({ label, value, sub }) => (
+            {seasonStats.map(({ label, value, sub }) => (
               <View key={label} style={s.statsCell}>
                 <Text style={s.statsCellVal}>{value}</Text>
                 <Text style={s.statsCellLabel}>{label}</Text>
@@ -916,7 +935,7 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
               </View>
             ))}
           </View>
-          {SEASON_STATS.length === 0 && (
+          {seasonStats.length === 0 && (
             <Text style={s.emptyText}>No season stats have been added yet.</Text>
           )}
         </View>
