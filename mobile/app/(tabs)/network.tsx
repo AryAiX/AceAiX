@@ -129,7 +129,11 @@ export default function Network() {
               next.delete(id);
               return next;
             });
-            setPeople(prev => prev.filter(p => p.id !== id));
+            setMyBlockedIds(prev => {
+              const next = new Set(prev);
+              next.add(id);
+              return next;
+            });
           },
         },
       ],
