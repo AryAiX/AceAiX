@@ -30,7 +30,8 @@ export default function Network() {
   const [filter, setFilter] = useState('All');
   const [people, setPeople] = useState<ConnectionRow[]>([]);
   const [conns, setConns] = useState(new Set<string>());
-  const filters = ['All', 'Scouts', 'Clubs', 'Coaches', 'Agents', 'Athletes'];
+  const [myBlockedIds, setMyBlockedIds] = useState(new Set<string>());
+  const filters = ['All', 'Scouts', 'Clubs', 'Coaches', 'Agents', 'Athletes', 'Blocked'];
   const typeMap: Record<string, string> = {
     Scouts: 'scout',
     Clubs: 'club',
@@ -38,7 +39,11 @@ export default function Network() {
     Agents: 'agent',
     Athletes: 'athlete',
   };
-  const filtered = people.filter(c => filter === 'All' || c.type === typeMap[filter]);
+  const filtered = people.filter(c => {
+    if (filter === 'Blocked') return myBlockedIds.has(c.id);
+    if (myBlockedIds.has(c.id)) return false;
+    return filter === 'All' || c.type === typeMap[filter];
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -47,11 +52,15 @@ export default function Network() {
       supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(100),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
       supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
-    ]).then(([profilesResult, followsResult, blocksResult]) => {
+      supabase.rpc('get_blocked_user_ids'),
+    ]).then(([profilesResult, followsResult, myBlocksResult, reciprocalResult]) => {
       if (!mounted) return;
-      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+      const ownBlocked = new Set((myBlocksResult.data ?? []).map((row: any) => row.blocked_id));
+      const reciprocalIds = new Set((reciprocalResult.data ?? []).map((row: any) => row.blocked_user_id));
+      const blockedByOthersIds = new Set([...reciprocalIds].filter((id) => !ownBlocked.has(id)));
+      setMyBlockedIds(ownBlocked);
       setPeople((profilesResult.data ?? [])
-        .filter((row: any) => !blockedIds.has(row.id))
+        .filter((row: any) => !blockedByOthersIds.has(row.id))
         .map((row: any) => ({
         id: row.id,
         name: row.full_name ?? 'AceAiX member',
@@ -80,6 +89,20 @@ export default function Network() {
     setConns(prev => {
       const next = new Set(prev);
       connected ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function unblockUser(id: string) {
+    if (!user) return;
+    const { error } = await supabase.from('user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', id);
+    if (error) {
+      Alert.alert('Could not unblock', error.message);
+      return;
+    }
+    setMyBlockedIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
       return next;
     });
   }
@@ -147,6 +170,11 @@ export default function Network() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <Text style={s.cName}>{c.name}</Text>
                     {c.verified && <BadgeCheck color={Colors.primary} size={13} />}
+                    {filter === 'Blocked' && (
+                      <View style={s.blockedBadge}>
+                        <Text style={s.blockedBadgeTxt}>Blocked</Text>
+                      </View>
+                    )}
                   </View>
                   <Text style={s.cRole}>{c.role}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
@@ -154,6 +182,16 @@ export default function Network() {
                     <Text style={s.cOrg}>{c.org}</Text>
                   </View>
                 </View>
+                {filter === 'Blocked' ? (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Unblock ${c.name}`}
+                    style={s.unblockBtn}
+                    onPress={() => unblockUser(c.id)}
+                  >
+                    <Text style={s.unblockTxt}>Unblock</Text>
+                  </TouchableOpacity>
+                ) : (
                 <View style={s.actions}>
                   <TouchableOpacity
                     accessibilityRole="button"
@@ -183,6 +221,7 @@ export default function Network() {
                     <UserX color={Colors.textMuted} size={16} />
                   </TouchableOpacity>
                 </View>
+                )}
               </View>
             );
           })}
@@ -212,6 +251,10 @@ const s = StyleSheet.create({
   chipActive: { backgroundColor: `${Colors.primary}20`, borderColor: `${Colors.primary}50` },
   chipTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.xs, color: Colors.textMuted },
   chipTxtActive: { color: Colors.primary },
+  blockedBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radii.full, backgroundColor: `${Colors.error}20`, borderWidth: 1, borderColor: `${Colors.error}50` },
+  blockedBadgeTxt: { fontFamily: Typography.family.medium, fontSize: 10, color: Colors.error },
+  unblockBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radii.md, backgroundColor: `${Colors.error}15`, borderWidth: 1, borderColor: `${Colors.error}40` },
+  unblockTxt: { fontFamily: Typography.family.medium, fontSize: 11, color: Colors.error },
   list: { paddingHorizontal: Spacing.lg, gap: Spacing.md },
   card: { flexDirection: 'row', backgroundColor: Colors.surface, borderRadius: Radii.lg, padding: Spacing.md, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md, alignItems: 'center' },
   av: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
