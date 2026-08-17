@@ -485,17 +485,14 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
     source: 'Verified by AceAiX',
     color: Colors.success,
   }] : [];
-  const attributes = Object.entries(profile?.attributes ?? {})
-    .filter(([, value]) => typeof value === 'number')
+  const attributes = (Array.isArray(profile?.attributes) ? profile.attributes : [])
+    .filter((a: any) => a && typeof a.label === 'string' && typeof a.value === 'number')
     .slice(0, 6)
-    .map(([label, value]) => {
-      const prettyLabel = label.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-      return {
-        label: prettyLabel,
-        value: Math.max(0, Math.min(100, Number(value))),
-        endorsements: endorsementCounts[prettyLabel] ?? 0,
-      };
-    });
+    .map((a: any) => ({
+      label: a.label,
+      value: Math.max(0, Math.min(100, Number(a.value))),
+      endorsements: endorsementCounts[a.label] ?? 0,
+    }));
   const statTiles = Object.entries(profile?.highlighted_stats ?? {})
     .filter(([, value]) => typeof value === 'number')
     .slice(0, 6)
