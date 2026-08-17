@@ -1,67 +1,96 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { AppNotification, fetchNotifications, markAllRead as svcMarkAllRead, markRead as svcMarkRead } from '@/lib/notificationService';
+import {
+  AppNotification,
+  fetchNotifications,
+  markAllRead as svcMarkAllRead,
+  markRead as svcMarkRead,
+  dismissNotif as svcDismissNotif,
+  clearAllNotifs as svcClearAllNotifs,
+  normalizeNotifRow,
+} from '@/lib/notificationService';
 import { useAuth } from '@/context/AuthContext';
 
 interface NotificationState {
   notifications: AppNotification[];
   unreadCount: number;
   loading: boolean;
+  error: string | null;
   refresh: () => Promise<void>;
-  markRead: (id: string) => Promise<void>;
-  markAllRead: () => Promise<void>;
-  removeNotif: (id: string) => void;
+  markRead: (id: string) => Promise<{ error: string | null }>;
+  markAllRead: () => Promise<{ error: string | null }>;
+  dismissNotification: (id: string) => Promise<{ error: string | null }>;
+  clearAll: () => Promise<{ error: string | null }>;
 }
 
 const NotificationContext = createContext<NotificationState>({
   notifications: [],
   unreadCount: 0,
   loading: false,
+  error: null,
   refresh: async () => {},
-  markRead: async () => {},
-  markAllRead: async () => {},
-  removeNotif: () => {},
+  markRead: async () => ({ error: null }),
+  markAllRead: async () => ({ error: null }),
+  dismissNotification: async () => ({ error: null }),
+  clearAll: async () => ({ error: null }),
 });
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const data = await fetchNotifications(user.id);
+    const { data, error: fetchError } = await fetchNotifications(user.id);
     setNotifications(data);
+    setError(fetchError);
     setLoading(false);
   }, [user]);
 
   const markRead = useCallback(async (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
-    await svcMarkRead(id);
-  }, []);
+    const prev = notifications;
+    setNotifications((cur) => cur.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    const { error: reqError } = await svcMarkRead(id);
+    if (reqError) setNotifications(prev);
+    return { error: reqError };
+  }, [notifications]);
 
   const markAllRead = useCallback(async () => {
-    if (!user) return;
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    await svcMarkAllRead(user.id);
-  }, [user]);
+    if (!user) return { error: null };
+    const prev = notifications;
+    setNotifications((cur) => cur.map((n) => ({ ...n, read: true })));
+    const { error: reqError } = await svcMarkAllRead(user.id);
+    if (reqError) setNotifications(prev);
+    return { error: reqError };
+  }, [notifications, user]);
 
-  const removeNotif = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const dismissNotification = useCallback(async (id: string) => {
+    const prev = notifications;
+    setNotifications((cur) => cur.filter((n) => n.id !== id));
+    const { error: reqError } = await svcDismissNotif(id);
+    if (reqError) setNotifications(prev);
+    return { error: reqError };
+  }, [notifications]);
 
-  // Initial load
+  const clearAll = useCallback(async () => {
+    if (!user) return { error: null };
+    const prev = notifications;
+    setNotifications([]);
+    const { error: reqError } = await svcClearAllNotifs(user.id);
+    if (reqError) setNotifications(prev);
+    return { error: reqError };
+  }, [notifications, user]);
+
   useEffect(() => {
     if (user) refresh();
     else setNotifications([]);
   }, [user, refresh]);
 
-  // Realtime subscription
   useEffect(() => {
     if (!user) return;
 
@@ -69,40 +98,23 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .channel(`notifications:${user.id}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const newNotif = payload.new as AppNotification;
+          const newNotif = normalizeNotifRow(payload.new);
           setNotifications((prev) => [newNotif, ...prev]);
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
-          const updated = payload.new as AppNotification;
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === updated.id ? updated : n))
-          );
+          const updated = normalizeNotifRow(payload.new);
+          setNotifications((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${user.id}`,
-        },
+        { event: 'DELETE', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
         (payload) => {
           const deleted = payload.old as { id: string };
           setNotifications((prev) => prev.filter((n) => n.id !== deleted.id));
@@ -119,7 +131,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   return (
     <NotificationContext.Provider
-      value={{ notifications, unreadCount, loading, refresh, markRead, markAllRead, removeNotif }}
+      value={{ notifications, unreadCount, loading, error, refresh, markRead, markAllRead, dismissNotification, clearAll }}
     >
       {children}
     </NotificationContext.Provider>
