@@ -61,6 +61,7 @@ interface MemberRow {
 }
 
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
+const ALLOWED_MESSAGE_ROLES = ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'];
 const FILTERS = ['All', 'Scouts', 'Clubs', 'Athletes', 'Coaches'] as const;
 type MessageFilter = (typeof FILTERS)[number];
 
@@ -378,7 +379,7 @@ function NewConversationModal({
         .from('user_profiles')
         .select('id,full_name,role,is_verified')
         .neq('id', userId)
-        .in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'])
+        .in('role', ALLOWED_MESSAGE_ROLES)
         .order('full_name', { ascending: true })
         .limit(100),
       supabase.rpc('get_blocked_user_ids'),
@@ -633,6 +634,22 @@ export default function Messages() {
         .maybeSingle();
       if (memberError || !member) {
         Alert.alert('Member unavailable', memberError?.message ?? 'This member could not be found.');
+        return;
+      }
+
+      if (!ALLOWED_MESSAGE_ROLES.includes(member.role)) {
+        Alert.alert('Unable to start conversation', 'This member cannot be messaged directly.');
+        return;
+      }
+
+      const { data: blockedRows, error: blockedError } = await supabase.rpc('get_blocked_user_ids');
+      if (blockedError) {
+        Alert.alert('Unable to start conversation', 'Please try again.');
+        return;
+      }
+      const blockedIds = new Set((blockedRows ?? []).map((row) => row.blocked_user_id));
+      if (blockedIds.has(memberId)) {
+        Alert.alert('Unable to start conversation', 'You cannot message this person.');
         return;
       }
 
