@@ -13,6 +13,17 @@ export interface PartnerConsentInfo {
 export async function fetchConnectedPartners(
   athleteId: string,
 ): Promise<{ data: PartnerConsentInfo[]; error: string | null }> {
+  const { data: consentRows, error: consentsError } = await supabase
+    .from('medical_consents')
+    .select('grantee_user_id, status, scope, granted_at, revoked_at')
+    .eq('athlete_id', athleteId);
+
+  if (consentsError) return { data: [], error: consentsError.message };
+
+  const consentGranteeIds = [...new Set(
+    (consentRows ?? []).map((row) => row.grantee_user_id).filter((id): id is string => Boolean(id)),
+  )];
+
   const { data: recordRows, error: recordsError } = await supabase
     .from('medical_records')
     .select('partner_id')
@@ -22,44 +33,35 @@ export async function fetchConnectedPartners(
 
   if (recordsError) return { data: [], error: recordsError.message };
 
-  const partnerIds = [...new Set(
+  const recordPartnerIds = [...new Set(
     (recordRows ?? []).map((row) => row.partner_id).filter((id): id is string => Boolean(id)),
   )];
-  if (partnerIds.length === 0) return { data: [], error: null };
 
-  const { data: partners, error: partnersError } = await supabase
+  if (consentGranteeIds.length === 0 && recordPartnerIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  let partnersQuery = supabase
     .from('medical_partners')
-    .select('id, user_id, name, accreditation_status')
-    .in('id', partnerIds);
+    .select('id, user_id, name, accreditation_status');
+
+  if (recordPartnerIds.length > 0 && consentGranteeIds.length > 0) {
+    partnersQuery = partnersQuery.or(
+      `id.in.(${recordPartnerIds.join(',')}),user_id.in.(${consentGranteeIds.join(',')})`,
+    );
+  } else if (recordPartnerIds.length > 0) {
+    partnersQuery = partnersQuery.in('id', recordPartnerIds);
+  } else {
+    partnersQuery = partnersQuery.in('user_id', consentGranteeIds);
+  }
+
+  const { data: partners, error: partnersError } = await partnersQuery;
 
   if (partnersError) return { data: [], error: partnersError.message };
   if (!partners || partners.length === 0) return { data: [], error: null };
 
-  const granteeIds = [...new Set(
-    partners.map((row) => row.user_id).filter((id): id is string => Boolean(id)),
-  )];
-
-  let consentRows: Array<{
-    grantee_user_id: string | null;
-    status: string | null;
-    scope: string | null;
-    granted_at: string | null;
-    revoked_at: string | null;
-  }> = [];
-
-  if (granteeIds.length > 0) {
-    const { data: consents, error: consentsError } = await supabase
-      .from('medical_consents')
-      .select('grantee_user_id, status, scope, granted_at, revoked_at')
-      .eq('athlete_id', athleteId)
-      .in('grantee_user_id', granteeIds);
-
-    if (consentsError) return { data: [], error: consentsError.message };
-    consentRows = consents ?? [];
-  }
-
   const mapped: PartnerConsentInfo[] = partners.map((partner) => {
-    const consent = consentRows.find((row) => row.grantee_user_id === partner.user_id);
+    const consent = (consentRows ?? []).find((row) => row.grantee_user_id === partner.user_id);
     return {
       partnerId: partner.id,
       partnerName: partner.name ?? 'Medical Partner',
