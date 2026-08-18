@@ -449,7 +449,7 @@ export default function OpportunitiesScreen() {
   const [refreshing,  setRefreshing]  = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const allCursorRef  = useRef<string | undefined>(undefined);
+  const allCursorRef  = useRef<{ createdAt: string; id: string } | undefined>(undefined);
   const allHasMoreRef = useRef(true);
   const fetchedTabs   = useRef<Set<Tab>>(new Set());
 
@@ -476,7 +476,10 @@ export default function OpportunitiesScreen() {
     const f = { ...filters, search: searchText || undefined };
     const cursor = reset ? undefined : allCursorRef.current;
     const data = await fetchAllOpportunities(user.id, cursor, f);
-    if (data.length > 0) allCursorRef.current = data[data.length - 1].created_at;
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      allCursorRef.current = { createdAt: last.created_at, id: last.id };
+    }
     allHasMoreRef.current = data.length === 20;
     setAll(prev => reset ? data : [...prev, ...data]);
   }, [user, filters, searchText]);

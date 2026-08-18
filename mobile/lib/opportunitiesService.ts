@@ -192,7 +192,7 @@ export async function fetchForYouOpportunities(
 
 export async function fetchAllOpportunities(
   athleteId: string,
-  cursor?: string,
+  cursor?: { createdAt: string; id: string },
   filters?: OpportunityFilters,
   limit = 20
 ): Promise<Opportunity[]> {
@@ -201,9 +201,12 @@ export async function fetchAllOpportunities(
     .select('*, organization:organizations(name, short_name, initials, city, country)')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit);
 
-  if (cursor) q = q.lt('created_at', cursor);
+  if (cursor) {
+    q = q.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
+  }
   let matchingOrgIds: string[] | undefined;
   if (filters?.search) {
     matchingOrgIds = await searchMatchingOrgIds(filters.search);
