@@ -13,6 +13,7 @@ import {
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { normalizeMatchResult } from '@/lib/matchResults';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 
@@ -296,17 +297,6 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
   );
 }
 
-function normalizeResult(raw: string): 'W' | 'D' | 'L' | null {
-  const tokens = raw.trim().split(/\s+/);
-  const lastToken = tokens[tokens.length - 1]?.toUpperCase();
-  if (lastToken === 'W' || lastToken === 'D' || lastToken === 'L') return lastToken;
-  const lower = raw.trim().toLowerCase();
-  if (lower === 'win') return 'W';
-  if (lower === 'draw') return 'D';
-  if (lower === 'loss' || lower === 'lose') return 'L';
-  return null;
-}
-
 function formatSalaryRange(min: number | null, max: number | null, currency: string | null): string {
   const symbol = !currency || currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : `${currency} `;
   const fmt = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}K` : `${v}`);
@@ -460,7 +450,7 @@ export default function Dashboard() {
         stats: { rating?: number } | null; match_date: string;
       }>)
         .map(row => {
-          const r = normalizeResult(row.result);
+          const r = normalizeMatchResult(row.result);
           if (!r) return null;
           const card: MatchCard = {
             r,

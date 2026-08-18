@@ -24,6 +24,7 @@ import { useRouter } from 'expo-router';
 import { fetchMyPosts } from '@/lib/postsService';
 import { supabase } from '@/lib/supabase';
 import { getSportConfig } from '@/constants/sportsConfig';
+import { normalizeMatchResult } from '@/lib/matchResults';
 
 const { width: SW } = Dimensions.get('window');
 const NETWORK_LIST: Array<{ name: string; role: string; org: string; type: string; connected: boolean }> = [];
@@ -890,17 +891,6 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
   const [refreshing, setRefreshing] = React.useState(false);
   const [matchRecords, setMatchRecords] = useState<Array<{ opp: string; date: string; rating: number; result: 'W' | 'D' | 'L' }>>([]);
   const [matchRecordsLoading, setMatchRecordsLoading] = useState(true);
-
-  function normalizeMatchResult(raw: string | null | undefined): 'W' | 'D' | 'L' | null {
-    if (!raw) return null;
-    const lastToken = raw.trim().split(/\s+/).pop()?.toUpperCase() ?? '';
-    if (lastToken === 'W' || lastToken === 'D' || lastToken === 'L') return lastToken;
-    const wholeWord = raw.trim().toUpperCase();
-    if (wholeWord === 'WIN') return 'W';
-    if (wholeWord === 'DRAW') return 'D';
-    if (wholeWord === 'LOSS' || wholeWord === 'LOSE' || wholeWord === 'LOST') return 'L';
-    return null;
-  }
 
   const seasonStats = (getSportConfig(sport)?.metrics ?? [])
     .map((metric) => {
