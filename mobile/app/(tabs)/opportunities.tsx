@@ -285,7 +285,7 @@ function OpportunityCard({
             <View style={c.appliedChip}>
               <BadgeCheck color={Colors.success} size={13} />
               <Text style={c.appliedTxt}>
-                {APP_STATUS_LABELS[opp.application_status ?? 'applied']}
+                {APP_STATUS_LABELS[opp.application_status ?? 'applied'] ?? (opp.application_status ?? 'applied')}
               </Text>
             </View>
           ) : (
@@ -331,7 +331,7 @@ function TypeChipSmall({ type, color }: { type: string; color: string }) {
 // ── ApplicationRow ────────────────────────────────────────────────────────────
 function ApplicationRow({ app, onPress }: { app: Application; onPress: () => void }) {
   const opp     = app.opportunity;
-  const color   = APP_STATUS_COLORS[app.status];
+  const color   = APP_STATUS_COLORS[app.status] ?? Colors.textMuted;
   const pulse   = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -368,7 +368,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
       </View>
       <View style={[ar.statusPill, { borderColor: `${color}55`, backgroundColor: `${color}15` }]}>
         <Animated.View style={[ar.statusDot, { backgroundColor: color, opacity: pulse }]} />
-        <Text style={[ar.statusTxt, { color }]}>{APP_STATUS_LABELS[app.status]}</Text>
+        <Text style={[ar.statusTxt, { color }]}>{APP_STATUS_LABELS[app.status] ?? app.status}</Text>
       </View>
     </TouchableOpacity>
   );
