@@ -44,6 +44,28 @@ export default function Medical() {
   const NO_CLEARANCE_META = { label: 'No active clearance', color: Colors.warning, subtitle: 'No active clearance' };
   const clearanceMeta = clearance ? (CLEARANCE_META[clearance.status] ?? NO_CLEARANCE_META) : NO_CLEARANCE_META;
 
+  const expiryInfo = (() => {
+    if (!clearance?.effective_to) {
+      return { text: 'No expiry set', color: Colors.textMuted };
+    }
+    const daysRemaining = Math.ceil(
+      (new Date(clearance.effective_to).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysRemaining < 0) return { text: 'Expired', color: Colors.error };
+    if (daysRemaining <= 30) return { text: `${daysRemaining}d left`, color: Colors.warning };
+    return { text: `${daysRemaining}d left`, color: Colors.success };
+  })();
+
+  const verifiedCount = records.filter((r) => r.status === 'Verified').length;
+  const recordsVerifiedInfo = {
+    text: `${verifiedCount} of ${records.length}`,
+    color: records.length === 0
+      ? Colors.textMuted
+      : verifiedCount === records.length
+        ? Colors.success
+        : Colors.warning,
+  };
+
   return (
     <View style={s.root}>
       <AppHeader title="Medical" />
@@ -82,8 +104,12 @@ export default function Medical() {
           </Text>
           <View style={s.riskGrid}>
             <View style={s.riskItem}>
-              <Text style={[s.riskLevel, { color: clearanceMeta.color }]}>{clearanceMeta.label}</Text>
-              <Text style={s.riskLabel}>Clearance Status</Text>
+              <Text style={[s.riskLevel, { color: expiryInfo.color }]}>{expiryInfo.text}</Text>
+              <Text style={s.riskLabel}>Clearance Expiry</Text>
+            </View>
+            <View style={s.riskItem}>
+              <Text style={[s.riskLevel, { color: recordsVerifiedInfo.color }]}>{recordsVerifiedInfo.text}</Text>
+              <Text style={s.riskLabel}>Records Verified</Text>
             </View>
           </View>
         </View>
