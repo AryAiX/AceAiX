@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Shield, Activity, AlertCircle, CheckCircle2, Clock, FileText, BadgeCheck } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
+import { PartnerConsentsModal } from '@/components/medical/PartnerConsentsModal';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +13,7 @@ export default function Medical() {
   const [clearance, setClearance] = useState<{ status: string; effective_to: string | null; created_at: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [partnersModalVisible, setPartnersModalVisible] = useState(false);
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
@@ -119,16 +121,26 @@ export default function Medical() {
           ) : null}
         </View>
 
-        <View style={s.uploadBtn}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="View connected medical partners"
+          style={s.uploadBtn}
+          onPress={() => setPartnersModalVisible(true)}
+        >
           <FileText color={Colors.primary} size={18} />
           <View style={{ flex: 1 }}>
             <Text style={s.uploadTxt}>Partner-issued records</Text>
             <Text style={s.recordDate}>Verified medical partners add and manage records securely.</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={{ height: 24 }} />
       </ScrollView>
+      <PartnerConsentsModal
+        visible={partnersModalVisible}
+        athleteId={profile?.athlete_profile_id}
+        onClose={() => setPartnersModalVisible(false)}
+      />
     </View>
   );
 }
