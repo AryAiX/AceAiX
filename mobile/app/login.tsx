@@ -33,9 +33,14 @@ export default function LoginScreen() {
     }
     setLoading(true);
     setError(null);
-    const { error: authError } = await signIn(email.trim(), password);
+
+    const timeout = new Promise<{ error: string }>((resolve) =>
+      setTimeout(() => resolve({ error: 'Request timed out. Check your connection and try again.' }), 5000)
+    );
+
+    const result = await Promise.race([signIn(email.trim(), password), timeout]);
     setLoading(false);
-    if (authError) setError(authError);
+    if (result.error) setError(result.error);
   }
 
   return (
@@ -77,6 +82,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoComplete="email"
               returnKeyType="next"
+              editable={!loading}
             />
           </View>
 
@@ -93,6 +99,7 @@ export default function LoginScreen() {
                 autoComplete="password"
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
+                editable={!loading}
               />
               <TouchableOpacity
                 style={styles.eyeBtn}
