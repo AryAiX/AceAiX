@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Award, MapPin, Plus, Trash2, X } from 'lucide-react-native';
+import { Award, Edit, MapPin, Plus, Trash2, X } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -39,6 +39,24 @@ export default function Career() {
   const [clubOrEvent, setClubOrEvent] = useState('');
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function openEditor(entry?: CareerMilestone) {
+    if (entry) {
+      setEditingId(entry.id);
+      setType(entry.milestone_type ?? '');
+      setClubOrEvent(entry.club_or_event ?? '');
+      setDate(entry.achieved_at ?? '');
+      setNotes(entry.notes ?? '');
+    } else {
+      setEditingId(null);
+      setType('');
+      setClubOrEvent('');
+      setDate('');
+      setNotes('');
+    }
+    setEditorOpen(true);
+  }
 
   const loadEntries = useCallback(async () => {
     if (!profile?.athlete_profile_id) {
@@ -66,7 +84,7 @@ export default function Career() {
     void loadEntries();
   }, [loadEntries]);
 
-  async function addEntry() {
+  async function saveEntry() {
     if (!profile?.athlete_profile_id || !type.trim() || !clubOrEvent.trim()) {
       Alert.alert('Complete the entry', 'Add a milestone type and club or event.');
       return;
@@ -81,13 +99,15 @@ export default function Career() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from('career_milestones').insert({
-      athlete_id: profile.athlete_profile_id,
+    const payload = {
       milestone_type: type.trim(),
       club_or_event: clubOrEvent.trim(),
       achieved_at: date || null,
       notes: notes.trim() || null,
-    });
+    };
+    const { error } = editingId
+      ? await supabase.from('career_milestones').update(payload).eq('id', editingId)
+      : await supabase.from('career_milestones').insert({ ...payload, athlete_id: profile.athlete_profile_id });
     setSaving(false);
     if (error) {
       Alert.alert('Career entry not added', error.message);
@@ -97,6 +117,7 @@ export default function Career() {
     setClubOrEvent('');
     setDate('');
     setNotes('');
+    setEditingId(null);
     setEditorOpen(false);
     await loadEntries();
   }
@@ -198,18 +219,32 @@ export default function Career() {
                 </View>
                 {m.current && <View style={s.currentBadge}><Text style={s.currentTxt}>Current</Text></View>}
                 {!m.current && (
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete career entry ${m.club}`}
-                    style={s.deleteEntry}
-                    onPress={() => {
-                      const entry = entries.find((candidate) => candidate.id === m.id);
-                      if (entry) confirmRemove(entry);
-                    }}
-                  >
-                    <Trash2 color={Colors.error} size={14} />
-                    <Text style={s.deleteEntryText}>Delete</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit career entry ${m.club}`}
+                      style={s.editEntry}
+                      onPress={() => {
+                        const entry = entries.find((candidate) => candidate.id === m.id);
+                        if (entry) openEditor(entry);
+                      }}
+                    >
+                      <Edit color={Colors.primary} size={14} />
+                      <Text style={s.editEntryText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete career entry ${m.club}`}
+                      style={s.deleteEntry}
+                      onPress={() => {
+                        const entry = entries.find((candidate) => candidate.id === m.id);
+                        if (entry) confirmRemove(entry);
+                      }}
+                    >
+                      <Trash2 color={Colors.error} size={14} />
+                      <Text style={s.deleteEntryText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             </View>
@@ -246,7 +281,7 @@ export default function Career() {
           accessibilityRole="button"
           accessibilityLabel="Add career entry"
           style={s.addBtn}
-          onPress={() => setEditorOpen(true)}
+          onPress={() => openEditor()}
         >
           <Plus color={Colors.primary} size={18} />
           <Text style={s.addTxt}>Add Career Entry</Text>
@@ -255,12 +290,12 @@ export default function Career() {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={() => setEditorOpen(false)}>
+      <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={() => { setEditingId(null); setEditorOpen(false); }}>
         <View style={s.modalBackdrop}>
           <View style={s.editor}>
             <View style={s.editorHeader}>
-              <Text style={s.editorTitle}>Add Career Entry</Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={() => setEditorOpen(false)}>
+              <Text style={s.editorTitle}>{editingId ? 'Edit Career Entry' : 'Add Career Entry'}</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={() => { setEditingId(null); setEditorOpen(false); }}>
                 <X color={Colors.textMuted} size={22} />
               </TouchableOpacity>
             </View>
@@ -308,9 +343,9 @@ export default function Career() {
               accessibilityLabel="Save career entry"
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
               disabled={saving}
-              onPress={() => void addEntry()}
+              onPress={() => void saveEntry()}
             >
-              {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>Save Entry</Text>}
+              {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>{editingId ? 'Save Changes' : 'Save Entry'}</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -348,6 +383,8 @@ const s = StyleSheet.create({
   currentTxt: { fontFamily: Typography.family.bold, fontSize: 10, color: Colors.primary },
   deleteEntry: { marginTop: Spacing.sm, alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, padding: 6 },
   deleteEntryText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.error },
+  editEntry: { marginTop: Spacing.sm, alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, padding: 6 },
+  editEntryText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.primary },
   achRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   achLabel: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   achOrg: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted, marginTop: 2 },
