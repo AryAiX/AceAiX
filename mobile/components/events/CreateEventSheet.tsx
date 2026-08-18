@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Modal, ScrollView, ActivityIndicator, Switch,
 } from 'react-native';
 import { X, Calendar, Clock, MapPin } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
-import { createEvent, type CreateEventInput } from '@/lib/eventsService';
+import { createEvent, updateEvent, type AthleteEvent, type CreateEventInput } from '@/lib/eventsService';
 
 const EVENT_TYPES = ['Match', 'Training', 'Showcase', 'Trial', 'Camp', 'Friendly', 'Tournament', 'Other'];
 
@@ -24,9 +24,10 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onCreated: () => void;
+  editingEvent?: AthleteEvent | null;
 }
 
-export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
+export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: Props) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('Training');
   const [date, setDate] = useState('');
@@ -41,6 +42,22 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
     setTitle(''); setType('Training'); setDate(''); setTime('');
     setLocation(''); setDescription(''); setIsPublic(false); setError(null);
   }
+
+  useEffect(() => {
+    if (!visible) return;
+    if (editingEvent) {
+      setTitle(editingEvent.title);
+      setType(editingEvent.type);
+      setDate(editingEvent.event_date);
+      setTime(editingEvent.event_time);
+      setLocation(editingEvent.location);
+      setDescription(editingEvent.description ?? '');
+      setIsPublic(editingEvent.is_public);
+      setError(null);
+    } else {
+      reset();
+    }
+  }, [visible, editingEvent]);
 
   function handleClose() {
     reset();
@@ -75,7 +92,9 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
       is_public: isPublic,
     };
 
-    const { error: err } = await createEvent(input);
+    const { error: err } = editingEvent
+      ? await updateEvent(editingEvent.id, input)
+      : await createEvent(input);
     setLoading(false);
     if (err) { setError(err); return; }
     reset();
@@ -89,7 +108,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
           <View style={s.handle} />
 
           <View style={s.header}>
-            <Text style={s.heading}>Create Event</Text>
+            <Text style={s.heading}>{editingEvent ? 'Edit Event' : 'Create Event'}</Text>
             <TouchableOpacity onPress={handleClose} hitSlop={8}>
               <X color={Colors.textMuted} size={22} />
             </TouchableOpacity>
@@ -218,7 +237,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               accessibilityRole="button"
-              accessibilityLabel="Create event"
+              accessibilityLabel={editingEvent ? 'Save changes' : 'Create event'}
               style={[s.createBtn, loading && { opacity: 0.7 }]}
               onPress={handleCreate}
               activeOpacity={0.8}
@@ -226,7 +245,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             >
               {loading
                 ? <ActivityIndicator color={Colors.white} size="small" />
-                : <Text style={s.createTxt}>Create Event</Text>
+                : <Text style={s.createTxt}>{editingEvent ? 'Save Changes' : 'Create Event'}</Text>
               }
             </TouchableOpacity>
           </View>

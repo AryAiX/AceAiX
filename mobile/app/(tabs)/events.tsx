@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import {
-  Calendar, MapPin, Clock, ChevronRight, Plus, Trash2,
+  Calendar, MapPin, Clock, ChevronRight, Plus, Trash2, Edit,
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
@@ -16,6 +16,7 @@ export default function Events() {
   const [myEvents, setMyEvents] = useState<AthleteEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AthleteEvent | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [platformEvents, setPlatformEvents] = useState<PlatformEvent[]>([]);
   const [platformLoading, setPlatformLoading] = useState(true);
@@ -111,7 +112,7 @@ export default function Events() {
         </View>
 
         {/* Create button */}
-        <TouchableOpacity style={s.createBanner} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+        <TouchableOpacity style={s.createBanner} onPress={() => { setEditingEvent(null); setShowCreate(true); }} activeOpacity={0.85}>
           <View style={s.createBannerLeft}>
             <View style={s.createIcon}>
               <Plus color={Colors.primary} size={18} />
@@ -147,19 +148,30 @@ export default function Events() {
                           <Text style={s.publicTxt}>Public</Text>
                         </View>
                       )}
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={`Delete event ${ev.title}`}
-                        style={s.deleteBtn}
-                        onPress={() => confirmDelete(ev)}
-                        disabled={isDeleting}
-                        hitSlop={8}
-                      >
-                        {isDeleting
-                          ? <ActivityIndicator color={Colors.error} size="small" />
-                          : <Trash2 color={Colors.error} size={14} />
-                        }
-                      </TouchableOpacity>
+                      <View style={s.headerActions}>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit event ${ev.title}`}
+                          style={s.editBtn}
+                          onPress={() => { setEditingEvent(ev); setShowCreate(true); }}
+                          hitSlop={8}
+                        >
+                          <Edit color={Colors.primary} size={14} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete event ${ev.title}`}
+                          style={s.deleteBtn}
+                          onPress={() => confirmDelete(ev)}
+                          disabled={isDeleting}
+                          hitSlop={8}
+                        >
+                          {isDeleting
+                            ? <ActivityIndicator color={Colors.error} size="small" />
+                            : <Trash2 color={Colors.error} size={14} />
+                          }
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     <Text style={s.eventTitle}>{ev.title}</Text>
                     <View style={s.metaRow}>
@@ -258,11 +270,9 @@ export default function Events() {
 
       <CreateEventSheet
         visible={showCreate}
-        onClose={() => setShowCreate(false)}
-        onCreated={() => {
-          setShowCreate(false);
-          load();
-        }}
+        editingEvent={editingEvent}
+        onClose={() => { setShowCreate(false); setEditingEvent(null); }}
+        onCreated={() => { setShowCreate(false); setEditingEvent(null); load(); }}
       />
     </View>
   );
@@ -350,7 +360,9 @@ const s = StyleSheet.create({
     borderColor: `${Colors.primary}35`,
   },
   publicTxt: { fontFamily: Typography.family.bold, fontSize: 11, color: Colors.primary },
-  deleteBtn: { marginLeft: 'auto' as any },
+  headerActions: { marginLeft: 'auto' as any, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  editBtn: {},
+  deleteBtn: {},
   eventTitle: {
     fontFamily: Typography.family.bold,
     fontSize: Typography.size.md,

@@ -74,6 +74,14 @@ export async function createEvent(input: CreateEventInput): Promise<{ data: Athl
   return { data, error: error?.message ?? null };
 }
 
+export async function updateEvent(id: string, input: CreateEventInput): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('athlete_events')
+    .update(input)
+    .eq('id', id);
+  return { error: error?.message ?? null };
+}
+
 export async function deleteEvent(id: string): Promise<{ error: string | null }> {
   const { error } = await supabase.from('athlete_events').delete().eq('id', id);
   return { error: error?.message ?? null };
