@@ -146,6 +146,11 @@ export default function Career() {
   const achievements = entries.filter((entry) =>
     ACHIEVEMENT_TYPES.has((entry.milestone_type ?? '').toLowerCase()),
   );
+  const clubCount = new Set(
+    milestones
+      .filter((entry) => !ACHIEVEMENT_TYPES.has((entry.event ?? '').toLowerCase()))
+      .map((entry) => entry.club.trim().toLowerCase().replace(/\s+/g, ' '))
+  ).size;
 
   return (
     <View style={s.root}>
@@ -155,7 +160,7 @@ export default function Career() {
         <View style={s.summaryRow}>
           {[
             { label: 'Entries', value: String(milestones.length) },
-            { label: 'Clubs', value: String(new Set(milestones.map((entry) => entry.club)).size) },
+            { label: 'Clubs', value: String(clubCount) },
             { label: 'Career Rating', value: profile?.performance_score ? (profile.performance_score / 10).toFixed(1) : '—' },
           ].map((st, i) => (
             <View key={st.label} style={[s.summaryItem, i < 2 && s.summaryBorder]}>
