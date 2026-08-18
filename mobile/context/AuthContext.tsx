@@ -69,6 +69,8 @@ interface AuthState {
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -82,6 +84,8 @@ const AuthContext = createContext<AuthState>({
   signOut: async () => {},
   deleteAccount: async () => ({ error: null }),
   refreshProfile: async () => {},
+  requestPasswordReset: async () => ({ error: null }),
+  updatePassword: async () => ({ error: null }),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -299,6 +303,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRole(null);
   }
 
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: 'aceaix://reset-password' }
+    );
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  async function updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
   async function deleteAccount() {
     if (!session?.access_token || !user) {
       return { error: 'You must be signed in to delete your account.' };
@@ -347,7 +366,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile }}
+      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile, requestPasswordReset, updatePassword }}
     >
       {children}
     </AuthContext.Provider>
