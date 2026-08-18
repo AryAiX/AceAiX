@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, RefreshControl, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
@@ -31,6 +31,9 @@ export default function Network() {
   const [people, setPeople] = useState<ConnectionRow[]>([]);
   const [conns, setConns] = useState(new Set<string>());
   const [myBlockedIds, setMyBlockedIds] = useState(new Set<string>());
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const mountedRef = useRef(true);
   const filters = ['All', 'Scouts', 'Clubs', 'Coaches', 'Agents', 'Athletes', 'Blocked'];
   const typeMap: Record<string, string> = {
     Scouts: 'scout',
@@ -45,16 +48,23 @@ export default function Network() {
     return filter === 'All' || c.type === typeMap[filter];
   });
 
-  useEffect(() => {
+  const loadNetwork = useCallback(async () => {
     if (!user) return;
-    let mounted = true;
-    Promise.all([
-      supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(100),
-      supabase.from('follows').select('following_id').eq('follower_id', user.id),
-      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
-      supabase.rpc('get_blocked_user_ids'),
-    ]).then(([profilesResult, followsResult, myBlocksResult, reciprocalResult]) => {
-      if (!mounted) return;
+    if (!mountedRef.current) return;
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [profilesResult, followsResult, myBlocksResult, reciprocalResult] = await Promise.all([
+        supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(100),
+        supabase.from('follows').select('following_id').eq('follower_id', user.id),
+        supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+        supabase.rpc('get_blocked_user_ids'),
+      ]);
+      if (!mountedRef.current) return;
+      if (profilesResult.error || followsResult.error || myBlocksResult.error || reciprocalResult.error) {
+        setLoadError(true);
+        return;
+      }
       const ownBlocked = new Set((myBlocksResult.data ?? []).map((row: any) => row.blocked_id));
       const reciprocalIds = new Set((reciprocalResult.data ?? []).map((row: any) => row.blocked_user_id));
       const blockedByOthersIds = new Set([...reciprocalIds].filter((id) => !ownBlocked.has(id)));
@@ -70,9 +80,17 @@ export default function Network() {
         verified: row.is_verified ?? false,
         })));
       setConns(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
-    });
-    return () => { mounted = false; };
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => { void loadNetwork(); }, [loadNetwork]);
 
   async function toggleConnection(id: string, connected: boolean) {
     if (!user) return;
@@ -143,7 +161,13 @@ export default function Network() {
   return (
     <View style={s.root}>
       <AppHeader title="Network" />
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={loading} onRefresh={loadNetwork} tintColor={Colors.primary} colors={[Colors.primary]} />
+        }
+      >
         <View style={s.statsRow}>
           {[{ label: 'Connections', value: String(conns.size) }, { label: 'Scouts', value: String(people.filter(p => p.type === 'scout' && conns.has(p.id)).length) }, { label: 'Clubs', value: String(people.filter(p => p.type === 'club' && conns.has(p.id)).length) }].map((st, i) => (
             <View key={st.label} style={[s.stat, i < 2 && s.statBorder]}>
@@ -161,6 +185,15 @@ export default function Network() {
           ))}
         </ScrollView>
 
+        {loading && people.length === 0 ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
+        ) : loadError ? (
+          <View style={s.emptyState}>
+            <Text style={s.emptyTitle}>Couldn't load your network</Text>
+            <Text style={s.emptyText}>Pull down to try again.</Text>
+          </View>
+        ) : (
+          <>
         <View style={s.list}>
           {filtered.map(c => {
             const isConn = conns.has(c.id);
@@ -235,6 +268,8 @@ export default function Network() {
             <Text style={s.emptyTitle}>No network matches</Text>
             <Text style={s.emptyText}>Verified AceAiX members will appear here as real profiles are added.</Text>
           </View>
+        )}
+          </>
         )}
         <View style={{ height: 24 }} />
       </ScrollView>
