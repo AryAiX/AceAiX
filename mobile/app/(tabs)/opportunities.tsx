@@ -431,7 +431,7 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function OpportunitiesScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const [tab, setTab]         = useState<Tab>('For You');
@@ -467,22 +467,22 @@ export default function OpportunitiesScreen() {
   const loadForYou = useCallback(async () => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
-    const data = await fetchForYouOpportunities(user.id, f);
+    const data = await fetchForYouOpportunities(user.id, profile?.sport ?? null, profile?.position ?? null, f);
     setForYou(data);
-  }, [user, filters, searchText]);
+  }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadAll = useCallback(async (reset = false) => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
     const cursor = reset ? undefined : allCursorRef.current;
-    const data = await fetchAllOpportunities(user.id, cursor, f);
+    const data = await fetchAllOpportunities(user.id, cursor, f, 20, profile?.sport ?? null, profile?.position ?? null);
     if (data.length > 0) {
       const last = data[data.length - 1];
       allCursorRef.current = { createdAt: last.created_at, id: last.id };
     }
     allHasMoreRef.current = data.length === 20;
     setAll(prev => reset ? data : [...prev, ...data]);
-  }, [user, filters, searchText]);
+  }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadSaved   = useCallback(async () => {
     if (!user) return;

@@ -65,6 +65,25 @@ export interface OpportunityFilters {
   search?: string;
 }
 
+function normalizeStr(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function computeLiveMatchScore(
+  oppSport: string,
+  oppPosition: string,
+  athleteSport: string | null,
+  athletePosition: string | null
+): number | undefined {
+  if (!athleteSport) return undefined;
+  const sportMatches = normalizeStr(oppSport) === normalizeStr(athleteSport);
+  if (!sportMatches) return 0;
+  const positionMatches = athletePosition
+    ? normalizeStr(oppPosition) === normalizeStr(athletePosition)
+    : false;
+  return positionMatches ? 95 : 70;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mapRow(
@@ -159,6 +178,8 @@ async function searchMatchingOrgIds(search: string): Promise<string[]> {
 
 export async function fetchForYouOpportunities(
   athleteId: string,
+  athleteSport: string | null,
+  athletePosition: string | null,
   filters?: OpportunityFilters
 ): Promise<Opportunity[]> {
   let q = supabase
@@ -176,12 +197,19 @@ export async function fetchForYouOpportunities(
   const { data, error } = await q;
   if (error || !data) return [];
 
+  if (!athleteSport) return [];
+
   const ids = data.map((r: any) => r.id);
   const { savedIds, matchMap, appliedMap } = await fetchSupportData(ids, athleteId);
 
-  const mapped = data.map((r: any) => mapRow(r, savedIds, matchMap, appliedMap));
+  const mapped = data
+    .map((r: any) => {
+      const base = mapRow(r, savedIds, matchMap, appliedMap);
+      const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', athleteSport, athletePosition);
+      return { ...base, match_score: liveScore ?? base.match_score };
+    })
+    .filter((o) => (o.match_score ?? 0) > 0);
 
-  // Sort by match_score desc, falling back to date
   return mapped.sort((a, b) => {
     const sa = a.match_score ?? 0;
     const sb = b.match_score ?? 0;
@@ -194,7 +222,9 @@ export async function fetchAllOpportunities(
   athleteId: string,
   cursor?: { createdAt: string; id: string },
   filters?: OpportunityFilters,
-  limit = 20
+  limit = 20,
+  athleteSport?: string | null,
+  athletePosition?: string | null
 ): Promise<Opportunity[]> {
   let q = supabase
     .from('opportunities')
@@ -219,7 +249,11 @@ export async function fetchAllOpportunities(
   const ids = data.map((r: any) => r.id);
   const { savedIds, matchMap, appliedMap } = await fetchSupportData(ids, athleteId);
 
-  return data.map((r: any) => mapRow(r, savedIds, matchMap, appliedMap));
+  return data.map((r: any) => {
+    const base = mapRow(r, savedIds, matchMap, appliedMap);
+    const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', athleteSport ?? null, athletePosition ?? null);
+    return { ...base, match_score: liveScore ?? base.match_score };
+  });
 }
 
 export async function fetchSavedOpportunities(athleteId: string): Promise<Opportunity[]> {
