@@ -20,36 +20,62 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Country, City } from 'country-state-city';
+import { POSITIONS_BY_SPORT } from '@/constants/positions';
+import { LEVEL_OPTIONS } from '@/constants/levels';
 
 type ProfileForm = {
-  fullName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   bio: string;
   sportKey: string;
   sportOther: string;
   position: string;
   currentClub: string;
   level: string;
+  league: string;
   nationality: string;
+  countryIsoCode: string;
   city: string;
-  country: string;
   phone: string;
   birthdate: string;
 };
 
 const EMPTY_FORM: ProfileForm = {
-  fullName: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
   bio: '',
   sportKey: '',
   sportOther: '',
   position: '',
   currentClub: '',
   level: '',
+  league: '',
   nationality: '',
+  countryIsoCode: '',
   city: '',
-  country: '',
   phone: '',
   birthdate: '',
 };
+
+const ALL_COUNTRIES = Country.getAllCountries()
+  .slice()
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+type LegacyProfileNames = {
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+};
+
+function legacyName(source: unknown, key: keyof LegacyProfileNames): string {
+  const record = source as LegacyProfileNames | null | undefined;
+  return record?.[key] ?? '';
+}
 
 function optional(value: string): string | null {
   return value.trim() || null;
@@ -98,23 +124,46 @@ export default function EditProfile() {
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const normalizedSport = normalizeSportKey(profile?.sport);
     const isKnownSport = normalizedSport
       ? Object.prototype.hasOwnProperty.call(SPORTS_CONFIG, normalizedSport)
       : false;
+
+    let firstName = legacyName(profile, 'first_name');
+    let middleName = legacyName(profile, 'middle_name');
+    let lastName = legacyName(profile, 'last_name');
+    if (!firstName && profile?.full_name) {
+      const parts = profile.full_name.trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        firstName = parts[0];
+      } else if (parts.length > 1) {
+        firstName = parts[0];
+        lastName = parts[parts.length - 1];
+        middleName = parts.slice(1, -1).join(' ');
+      }
+    }
+
+    const matchedCountry = profile?.country
+      ? ALL_COUNTRIES.find((c) => c.name === profile.country)
+      : undefined;
+
     setForm({
-      fullName: profile?.full_name ?? '',
+      firstName,
+      middleName,
+      lastName,
       bio: profile?.bio ?? '',
       sportKey: isKnownSport ? normalizedSport! : (profile?.sport ? 'other' : ''),
       sportOther: isKnownSport ? '' : (profile?.sport ?? ''),
       position: profile?.position ?? '',
       currentClub: profile?.current_club ?? '',
       level: profile?.league ?? 'amateur',
+      league: profile?.league ?? '',
       nationality: profile?.nationality ?? '',
+      countryIsoCode: matchedCountry?.isoCode ?? '',
       city: profile?.hometown ?? '',
-      country: profile?.country ?? '',
       phone: profile?.phone ?? '',
       birthdate: profile?.birthdate ?? '',
     });
@@ -124,6 +173,9 @@ export default function EditProfile() {
     profile?.current_club,
     profile?.country,
     profile?.full_name,
+    legacyName(profile, 'first_name'),
+    legacyName(profile, 'middle_name'),
+    legacyName(profile, 'last_name'),
     profile?.hometown,
     profile?.id,
     profile?.league,
@@ -185,41 +237,30 @@ export default function EditProfile() {
     }
   }
 
-  const BIRTHDATE_FORMAT = /^\d{4}-\d{2}-\d{2}$/;
-
-  function isValidCalendarDate(value: string): boolean {
-    if (!BIRTHDATE_FORMAT.test(value)) return false;
-    const [year, month, day] = value.split('-').map(Number);
-    const date = new Date(value + 'T00:00:00Z');
-    return (
-      date.getUTCFullYear() === year
-      && date.getUTCMonth() + 1 === month
-      && date.getUTCDate() === day
-    );
-  }
-
   async function saveProfile() {
     if (!user || saving) return;
-    if (!form.fullName.trim()) {
-      Alert.alert('Full name required', 'Enter your full name before saving.');
-      return;
-    }
-    if (form.birthdate.trim() && !isValidCalendarDate(form.birthdate.trim())) {
-      Alert.alert('Invalid date of birth', 'Enter a real date in YYYY-MM-DD format, e.g. 2005-03-14.');
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      Alert.alert('Name required', 'Enter your first and last name before saving.');
       return;
     }
     const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
+    const countryName = form.countryIsoCode
+      ? ALL_COUNTRIES.find((c) => c.isoCode === form.countryIsoCode)?.name ?? ''
+      : '';
 
     setSaving(true);
     const { error } = await supabase.rpc('update_own_profile', {
-      p_full_name: form.fullName.trim(),
+      p_first_name: form.firstName.trim(),
+      p_middle_name: optional(form.middleName),
+      p_last_name: form.lastName.trim(),
       p_bio: optional(form.bio),
       p_city: optional(form.city),
-      p_country: optional(form.country),
+      p_country: optional(countryName),
       p_sport: optional(finalSport),
       p_position: optional(form.position),
       p_current_club: optional(form.currentClub),
       p_level: optional(form.level),
+      p_league: optional(form.league),
       p_nationality: optional(form.nationality),
       p_phone: optional(form.phone),
       p_date_of_birth: optional(form.birthdate),
@@ -236,6 +277,10 @@ export default function EditProfile() {
       { text: 'Done', onPress: () => router.back() },
     ]);
   }
+
+  const citiesForCountry = form.countryIsoCode
+    ? (City.getCitiesOfCountry(form.countryIsoCode) ?? [])
+    : [];
 
   return (
     <View style={s.root}>
@@ -288,10 +333,24 @@ export default function EditProfile() {
 
           <View style={s.card}>
             <Field
-              label="Full name"
-              value={form.fullName}
-              onChangeText={(value) => update('fullName', value)}
-              placeholder="Your full name"
+              label="First name"
+              value={form.firstName}
+              onChangeText={(value) => update('firstName', value)}
+              placeholder="First name"
+              autoCapitalize="words"
+            />
+            <Field
+              label="Middle name (optional)"
+              value={form.middleName}
+              onChangeText={(value) => update('middleName', value)}
+              placeholder="Middle name"
+              autoCapitalize="words"
+            />
+            <Field
+              label="Last name"
+              value={form.lastName}
+              onChangeText={(value) => update('lastName', value)}
+              placeholder="Last name"
               autoCapitalize="words"
             />
             <Field
@@ -336,13 +395,32 @@ export default function EditProfile() {
                 />
               )}
             </View>
-            <Field
-              label="Primary position"
-              value={form.position}
-              onChangeText={(value) => update('position', value)}
-              placeholder="e.g. Goalkeeper"
-              autoCapitalize="words"
-            />
+            {POSITIONS_BY_SPORT[form.sportKey] ? (
+              <View style={s.field}>
+                <Text style={s.label}>Primary position</Text>
+                <View style={s.input}>
+                  <Picker
+                    selectedValue={form.position}
+                    onValueChange={(value) => update('position', value)}
+                    style={{ color: Colors.textPrimary }}
+                    dropdownIconColor={Colors.textPrimary}
+                  >
+                    <Picker.Item label="Select position" value="" />
+                    {POSITIONS_BY_SPORT[form.sportKey].map((pos) => (
+                      <Picker.Item key={pos} label={pos} value={pos} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+            ) : (
+              <Field
+                label="Primary position"
+                value={form.position}
+                onChangeText={(value) => update('position', value)}
+                placeholder="e.g. Goalkeeper"
+                autoCapitalize="words"
+              />
+            )}
             <Field
               label="Current club"
               value={form.currentClub}
@@ -350,38 +428,86 @@ export default function EditProfile() {
               placeholder="Your current club"
               autoCapitalize="words"
             />
+            <View style={s.field}>
+              <Text style={s.label}>Level</Text>
+              <View style={s.input}>
+                <Picker
+                  selectedValue={form.level}
+                  onValueChange={(value) => update('level', value)}
+                  style={{ color: Colors.textPrimary }}
+                  dropdownIconColor={Colors.textPrimary}
+                >
+                  {LEVEL_OPTIONS.map((opt) => (
+                    <Picker.Item key={opt.key} label={opt.label} value={opt.key} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
             <Field
-              label="Level or league"
-              value={form.level}
-              onChangeText={(value) => update('level', value)}
-              placeholder="e.g. Amateur or UAE Pro League"
+              label="League name (optional)"
+              value={form.league}
+              onChangeText={(value) => update('league', value)}
+              placeholder="e.g. UAE Pro League"
               autoCapitalize="words"
             />
-            <Field
-              label="Nationality"
-              value={form.nationality}
-              onChangeText={(value) => update('nationality', value)}
-              placeholder="Your nationality"
-              autoCapitalize="words"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Nationality</Text>
+              <View style={s.input}>
+                <Picker
+                  selectedValue={form.nationality}
+                  onValueChange={(value) => update('nationality', value)}
+                  style={{ color: Colors.textPrimary }}
+                  dropdownIconColor={Colors.textPrimary}
+                >
+                  <Picker.Item label="Select nationality" value="" />
+                  {ALL_COUNTRIES.map((c) => (
+                    <Picker.Item key={c.isoCode} label={c.name} value={c.name} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
             <View style={s.twoColumns}>
               <View style={s.column}>
-                <Field
-                  label="City"
-                  value={form.city}
-                  onChangeText={(value) => update('city', value)}
-                  placeholder="City"
-                  autoCapitalize="words"
-                />
+                <View style={s.field}>
+                  <Text style={s.label}>Country</Text>
+                  <View style={s.input}>
+                    <Picker
+                      selectedValue={form.countryIsoCode}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, countryIsoCode: value, city: '' }))
+                      }
+                      style={{ color: Colors.textPrimary }}
+                      dropdownIconColor={Colors.textPrimary}
+                    >
+                      <Picker.Item label="Select country" value="" />
+                      {ALL_COUNTRIES.map((c) => (
+                        <Picker.Item key={c.isoCode} label={c.name} value={c.isoCode} />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
               </View>
               <View style={s.column}>
-                <Field
-                  label="Country"
-                  value={form.country}
-                  onChangeText={(value) => update('country', value)}
-                  placeholder="Country"
-                  autoCapitalize="words"
-                />
+                <View style={s.field}>
+                  <Text style={s.label}>City</Text>
+                  <View style={s.input}>
+                    <Picker
+                      enabled={!!form.countryIsoCode}
+                      selectedValue={form.city}
+                      onValueChange={(value) => update('city', value)}
+                      style={{ color: Colors.textPrimary }}
+                      dropdownIconColor={Colors.textPrimary}
+                    >
+                      <Picker.Item
+                        label={form.countryIsoCode ? 'Select city' : 'Select country first'}
+                        value=""
+                      />
+                      {citiesForCountry.map((city) => (
+                        <Picker.Item key={city.name} label={city.name} value={city.name} />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
               </View>
             </View>
             <Field
@@ -392,14 +518,22 @@ export default function EditProfile() {
               keyboardType="phone-pad"
               autoCapitalize="none"
             />
-            <Field
-              label="Date of birth"
-              value={form.birthdate}
-              onChangeText={(value) => update('birthdate', value)}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              autoCapitalize="none"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Date of birth</Text>
+              <TouchableOpacity
+                accessibilityLabel="Date of birth"
+                style={s.input}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{
+                  fontFamily: Typography.family.regular,
+                  fontSize: Typography.size.sm,
+                  color: form.birthdate ? Colors.textPrimary : Colors.textDisabled,
+                }}>
+                  {form.birthdate || 'Select date of birth'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <TouchableOpacity
@@ -417,6 +551,47 @@ export default function EditProfile() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showDatePicker && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+          }}
+        >
+          <View style={[s.card, { width: '85%' }]}>
+            <DateTimePicker
+              value={form.birthdate ? new Date(`${form.birthdate}T00:00:00Z`) : new Date(2005, 0, 1)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={new Date()}
+              onChange={(_event, selectedDate) => {
+                if (Platform.OS === 'android') setShowDatePicker(false);
+                if (selectedDate) {
+                  update('birthdate', selectedDate.toISOString().slice(0, 10));
+                }
+              }}
+            />
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Confirm date of birth"
+                style={s.saveButton}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={s.saveText}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
