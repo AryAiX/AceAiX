@@ -19,6 +19,7 @@ export interface Profile {
   country: string | null;
   current_location: string | null;
   nationality: string | null;
+  level: string | null;
   league: string | null;
   chesscom_username: string | null;
   lichess_username: string | null;
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
       supabase
         .from('athlete_profiles')
-        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, showcase_opt_in, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
+        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, league, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, showcase_opt_in, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -139,7 +140,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       country: publicProfile.country ?? null,
       current_location: [publicProfile.city, publicProfile.country].filter(Boolean).join(', ') || null,
       nationality: athleteProfile?.nationality ?? null,
-      league: athleteProfile?.level ?? null,
+      level: athleteProfile?.level ?? null,
+      league: athleteProfile?.league ?? null,
       chesscom_username: athleteProfile?.chesscom_username ?? null,
       lichess_username: athleteProfile?.lichess_username ?? null,
       external_provider: athleteProfile?.external_provider ?? null,
@@ -200,7 +202,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('athlete_profiles')
         .update({
           sport: data.sport_category || null,
-          level: data.league || 'amateur',
+          level: 'amateur',
+          league: data.league || null,
           nationality: data.nationality || null,
         })
         .eq('user_id', userId),
