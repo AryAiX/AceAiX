@@ -3,6 +3,7 @@ import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Te
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { normalizeSportKey } from '@/constants/sportsConfig';
@@ -287,7 +288,11 @@ export default function Settings() {
         {/* Profile summary */}
         <TouchableOpacity style={s.profileCard} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
           <View style={s.profileAv}>
-            <Text style={s.profileAvTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
+            <Avatar
+              uri={profile?.avatar_url}
+              initial={profile?.full_name?.[0]?.toUpperCase() ?? 'A'}
+              size={52}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.profileName}>{profile?.full_name ?? 'Athlete'}</Text>
@@ -765,7 +770,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: Spacing.lg, gap: Spacing.lg },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radii.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
-  profileAv: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  profileAv: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   profileAvTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xl, color: Colors.white },
   profileName: { fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary },
   profileSub: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, marginTop: 2 },

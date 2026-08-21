@@ -160,7 +160,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
-                  : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>Auto-Sync from Chess.com / Lichess</Text></>
+                  : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>{config.syncButtonLabel ?? 'Sync Now'}</Text></>
                 }
               </TouchableOpacity>
               {config.sport === 'football' && !profile?.football_api_player_id && (

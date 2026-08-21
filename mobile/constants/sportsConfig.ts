@@ -23,6 +23,7 @@ export interface SportConfig {
   metrics: MetricDef[];
   supportsAutoSync: boolean;
   syncNote?: string;
+  syncButtonLabel?: string;
 }
 
 const SPORT_ALIASES: Record<string, string> = {
@@ -98,6 +99,7 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     archetype: 'rated_ladder',
     supportsAutoSync: true,
     syncNote: 'Auto-syncs from Chess.com and Lichess via public APIs. Enter your usernames in Settings.',
+    syncButtonLabel: 'Auto-Sync from Chess.com / Lichess',
     metrics: [
       { key: 'rapid_rating', label: 'Rapid', unit: '', type: 'rating', higherIsBetter: true },
       { key: 'blitz_rating', label: 'Blitz', unit: '', type: 'rating', higherIsBetter: true },
@@ -117,6 +119,7 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     archetype: 'team_match',
     supportsAutoSync: true,
     syncNote: 'Auto-syncs from your linked football player ID. Link it in Settings.',
+    syncButtonLabel: 'Sync from Linked Player ID',
     metrics: [
       { key: 'goals', label: 'Goals', unit: '', type: 'number', higherIsBetter: true },
       { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true },

@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Pencil, Flame, Users, Clock } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { Colors, Spacing, Radii, Typography, Shadows } from '@/constants/theme';
 import { StoriesTray } from '@/components/stories/StoriesTray';
 import { StoryViewer } from '@/components/stories/StoryViewer';
@@ -187,7 +188,7 @@ export default function FeedScreen() {
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={s.composeAvatarTxt}>{initial}</Text>
+          <Avatar uri={profile?.avatar_url} initial={initial} size={38} />
         </View>
         <Text style={s.composePlaceholder}>Share a moment, result, or milestone…</Text>
         <View style={s.composeActions}>

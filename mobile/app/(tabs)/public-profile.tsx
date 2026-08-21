@@ -7,6 +7,7 @@ import {
   BadgeCheck, MapPin, Globe, Share2, ThumbsUp, UserCheck, Zap,
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useRouter } from 'expo-router';
@@ -63,7 +64,11 @@ export default function PublicProfile() {
         <View style={s.heroCard}>
           <View style={s.avatarWrap}>
             <View style={s.avatar}>
-              <Text style={s.avatarTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
+              <Avatar
+                uri={profile?.avatar_url}
+                initial={profile?.full_name?.[0]?.toUpperCase() ?? 'A'}
+                size={76}
+              />
             </View>
           </View>
 
@@ -74,6 +79,9 @@ export default function PublicProfile() {
           <Text style={s.pos}>
             {[profile?.position, profile?.sport].filter(Boolean).join(' · ') || 'Sport profile not completed'}
           </Text>
+          {profile?.current_club && (
+            <Text style={s.club}>{profile.current_club}</Text>
+          )}
 
           <View style={s.metaRow}>
             {profile?.current_location && (
@@ -179,11 +187,12 @@ const s = StyleSheet.create({
   eliteTxt: { fontFamily: Typography.family.display, fontSize: 9, color: Colors.bg },
   heroCard: { backgroundColor: Colors.surface, marginHorizontal: Spacing.lg, marginTop: -Spacing.xxl, borderRadius: Radii.xl, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
   avatarWrap: { marginBottom: Spacing.md },
-  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.bg },
+  avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.bg, overflow: 'hidden' },
   avatarTxt: { fontFamily: Typography.family.display, fontSize: 28, color: Colors.white },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   name: { fontFamily: Typography.family.display, fontSize: 24, color: Colors.textPrimary, flex: 1 },
-  pos: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted, marginBottom: Spacing.sm },
+  pos: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted, marginBottom: 2 },
+  club: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textDisabled, marginBottom: Spacing.sm },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm, marginBottom: Spacing.md },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaTxt: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted },
