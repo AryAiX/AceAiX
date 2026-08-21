@@ -129,6 +129,7 @@ export default function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false });
   const [positionModalOpen, setPositionModalOpen] = useState(false);
   const [levelModalOpen, setLevelModalOpen] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
@@ -251,10 +252,20 @@ export default function EditProfile() {
     }
   }
 
+  const sportValid = form.sportKey !== '' && (form.sportKey !== 'other' || form.sportOther.trim() !== '');
+  const countryValid = form.countryIsoCode !== '';
+  const birthdateValid = form.birthdate !== '';
+  const positionRequired = !!POSITIONS_BY_SPORT[form.sportKey];
+  const positionValid = !positionRequired || form.position !== '';
+
   async function saveProfile() {
     if (!user || saving) return;
     if (!form.firstName.trim() || !form.lastName.trim()) {
       Alert.alert('Name required', 'Enter your first and last name before saving.');
+      return;
+    }
+    setTouched({ sport: true, country: true, birthdate: true, position: true });
+    if (!sportValid || !countryValid || !birthdateValid || !positionValid) {
       return;
     }
     const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
@@ -381,7 +392,10 @@ export default function EditProfile() {
                   <TouchableOpacity
                     key={config.sport}
                     style={[s.sportChip, form.sportKey === config.sport && s.sportChipActive]}
-                    onPress={() => setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }))}
+                    onPress={() => {
+                      setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }));
+                      setTouched((t) => ({ ...t, sport: true }));
+                    }}
                   >
                     <Text style={[s.sportChipTxt, form.sportKey === config.sport && s.sportChipTxtActive]}>
                       {config.displayName}
@@ -390,7 +404,10 @@ export default function EditProfile() {
                 ))}
                 <TouchableOpacity
                   style={[s.sportChip, form.sportKey === 'other' && s.sportChipActive]}
-                  onPress={() => setForm((current) => ({ ...current, sportKey: 'other' }))}
+                  onPress={() => {
+                    setForm((current) => ({ ...current, sportKey: 'other' }));
+                    setTouched((t) => ({ ...t, sport: true }));
+                  }}
                 >
                   <Text style={[s.sportChipTxt, form.sportKey === 'other' && s.sportChipTxtActive]}>
                     Other
@@ -408,6 +425,7 @@ export default function EditProfile() {
                   autoCapitalize="words"
                 />
               )}
+              {touched.sport && !sportValid && <Text style={s.errorText}>Sport is required</Text>}
             </View>
             {POSITIONS_BY_SPORT[form.sportKey] ? (
               <View style={s.field}>
@@ -427,8 +445,12 @@ export default function EditProfile() {
                   options={POSITIONS_BY_SPORT[form.sportKey].map((pos) => ({ label: pos, value: pos }))}
                   selectedValue={form.position}
                   onSelect={(value) => update('position', value)}
-                  onClose={() => setPositionModalOpen(false)}
+                  onClose={() => {
+                    setPositionModalOpen(false);
+                    setTouched((t) => ({ ...t, position: true }));
+                  }}
                 />
+                {touched.position && !positionValid && <Text style={s.errorText}>Position is required</Text>}
               </View>
             ) : (
               <Field
@@ -508,9 +530,13 @@ export default function EditProfile() {
                     options={ALL_COUNTRIES.map((c) => ({ label: c.name, value: c.isoCode }))}
                     selectedValue={form.countryIsoCode}
                     onSelect={(value) => setForm((current) => ({ ...current, countryIsoCode: value, city: '' }))}
-                    onClose={() => setCountryModalOpen(false)}
+                    onClose={() => {
+                      setCountryModalOpen(false);
+                      setTouched((t) => ({ ...t, country: true }));
+                    }}
                     searchable
                   />
+                  {touched.country && !countryValid && <Text style={s.errorText}>Country is required</Text>}
                 </View>
               </View>
               <View style={s.column}>
@@ -565,6 +591,7 @@ export default function EditProfile() {
                   {form.birthdate || 'Select date of birth'}
                 </Text>
               </TouchableOpacity>
+              {touched.birthdate && !birthdateValid && <Text style={s.errorText}>Date of birth is required</Text>}
             </View>
           </View>
 
@@ -605,7 +632,10 @@ export default function EditProfile() {
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               maximumDate={new Date()}
               onChange={(_event, selectedDate) => {
-                if (Platform.OS === 'android') setShowDatePicker(false);
+                if (Platform.OS === 'android') {
+                  setShowDatePicker(false);
+                  setTouched((t) => ({ ...t, birthdate: true }));
+                }
                 if (selectedDate) {
                   update('birthdate', selectedDate.toISOString().slice(0, 10));
                 }
@@ -616,7 +646,10 @@ export default function EditProfile() {
                 accessibilityRole="button"
                 accessibilityLabel="Confirm date of birth"
                 style={s.saveButton}
-                onPress={() => setShowDatePicker(false)}
+                onPress={() => {
+                  setShowDatePicker(false);
+                  setTouched((t) => ({ ...t, birthdate: true }));
+                }}
               >
                 <Text style={s.saveText}>Done</Text>
               </TouchableOpacity>
@@ -703,6 +736,12 @@ const s = StyleSheet.create({
     fontFamily: Typography.family.semiBold,
     fontSize: Typography.size.xs,
     color: Colors.textMuted,
+  },
+  errorText: {
+    marginTop: 2,
+    fontFamily: Typography.family.regular,
+    fontSize: Typography.size.xs,
+    color: Colors.error,
   },
   input: {
     minHeight: 46,
