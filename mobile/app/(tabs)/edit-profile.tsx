@@ -25,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Country, City } from 'country-state-city';
 import { POSITIONS_BY_SPORT } from '@/constants/positions';
 import { LEVEL_OPTIONS } from '@/constants/levels';
+import SelectModal from '@/components/SelectModal';
 
 type ProfileForm = {
   firstName: string;
@@ -70,6 +71,7 @@ type LegacyProfileNames = {
   first_name?: string | null;
   middle_name?: string | null;
   last_name?: string | null;
+  level?: string | null;
 };
 
 function legacyName(source: unknown, key: keyof LegacyProfileNames): string {
@@ -125,6 +127,10 @@ export default function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [positionModalOpen, setPositionModalOpen] = useState(false);
+  const [levelModalOpen, setLevelModalOpen] = useState(false);
+  const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
     const normalizedSport = normalizeSportKey(profile?.sport);
@@ -159,7 +165,7 @@ export default function EditProfile() {
       sportOther: isKnownSport ? '' : (profile?.sport ?? ''),
       position: profile?.position ?? '',
       currentClub: profile?.current_club ?? '',
-      level: profile?.league ?? 'amateur',
+      level: legacyName(profile, 'level') || 'amateur',
       league: profile?.league ?? '',
       nationality: profile?.nationality ?? '',
       countryIsoCode: matchedCountry?.isoCode ?? '',
@@ -179,6 +185,7 @@ export default function EditProfile() {
     profile?.hometown,
     profile?.id,
     profile?.league,
+    legacyName(profile, 'level'),
     profile?.nationality,
     profile?.phone,
     profile?.position,
@@ -398,19 +405,23 @@ export default function EditProfile() {
             {POSITIONS_BY_SPORT[form.sportKey] ? (
               <View style={s.field}>
                 <Text style={s.label}>Primary position</Text>
-                <View style={s.input}>
-                  <Picker
-                    selectedValue={form.position}
-                    onValueChange={(value) => update('position', value)}
-                    style={{ color: Colors.textPrimary }}
-                    dropdownIconColor={Colors.textPrimary}
-                  >
-                    <Picker.Item label="Select position" value="" />
-                    {POSITIONS_BY_SPORT[form.sportKey].map((pos) => (
-                      <Picker.Item key={pos} label={pos} value={pos} />
-                    ))}
-                  </Picker>
-                </View>
+                <TouchableOpacity style={s.input} onPress={() => setPositionModalOpen(true)}>
+                  <Text style={{
+                    fontFamily: Typography.family.regular,
+                    fontSize: Typography.size.sm,
+                    color: form.position ? Colors.textPrimary : Colors.textDisabled,
+                  }}>
+                    {form.position || 'Select position'}
+                  </Text>
+                </TouchableOpacity>
+                <SelectModal
+                  visible={positionModalOpen}
+                  title="Select position"
+                  options={POSITIONS_BY_SPORT[form.sportKey].map((pos) => ({ label: pos, value: pos }))}
+                  selectedValue={form.position}
+                  onSelect={(value) => update('position', value)}
+                  onClose={() => setPositionModalOpen(false)}
+                />
               </View>
             ) : (
               <Field
@@ -430,18 +441,23 @@ export default function EditProfile() {
             />
             <View style={s.field}>
               <Text style={s.label}>Level</Text>
-              <View style={s.input}>
-                <Picker
-                  selectedValue={form.level}
-                  onValueChange={(value) => update('level', value)}
-                  style={{ color: Colors.textPrimary }}
-                  dropdownIconColor={Colors.textPrimary}
-                >
-                  {LEVEL_OPTIONS.map((opt) => (
-                    <Picker.Item key={opt.key} label={opt.label} value={opt.key} />
-                  ))}
-                </Picker>
-              </View>
+              <TouchableOpacity style={s.input} onPress={() => setLevelModalOpen(true)}>
+                <Text style={{
+                  fontFamily: Typography.family.regular,
+                  fontSize: Typography.size.sm,
+                  color: Colors.textPrimary,
+                }}>
+                  {LEVEL_OPTIONS.find((opt) => opt.key === form.level)?.label || 'Select level'}
+                </Text>
+              </TouchableOpacity>
+              <SelectModal
+                visible={levelModalOpen}
+                title="Select level"
+                options={LEVEL_OPTIONS.map((opt) => ({ label: opt.label, value: opt.key }))}
+                selectedValue={form.level}
+                onSelect={(value) => update('level', value)}
+                onClose={() => setLevelModalOpen(false)}
+              />
             </View>
             <Field
               label="League name (optional)"
@@ -470,43 +486,52 @@ export default function EditProfile() {
               <View style={s.column}>
                 <View style={s.field}>
                   <Text style={s.label}>Country</Text>
-                  <View style={s.input}>
-                    <Picker
-                      selectedValue={form.countryIsoCode}
-                      onValueChange={(value) =>
-                        setForm((current) => ({ ...current, countryIsoCode: value, city: '' }))
-                      }
-                      style={{ color: Colors.textPrimary }}
-                      dropdownIconColor={Colors.textPrimary}
-                    >
-                      <Picker.Item label="Select country" value="" />
-                      {ALL_COUNTRIES.map((c) => (
-                        <Picker.Item key={c.isoCode} label={c.name} value={c.isoCode} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <TouchableOpacity style={s.input} onPress={() => setCountryModalOpen(true)}>
+                    <Text style={{
+                      fontFamily: Typography.family.regular,
+                      fontSize: Typography.size.sm,
+                      color: form.countryIsoCode ? Colors.textPrimary : Colors.textDisabled,
+                    }}>
+                      {ALL_COUNTRIES.find((c) => c.isoCode === form.countryIsoCode)?.name || 'Select country'}
+                    </Text>
+                  </TouchableOpacity>
+                  <SelectModal
+                    visible={countryModalOpen}
+                    title="Select country"
+                    options={ALL_COUNTRIES.map((c) => ({ label: c.name, value: c.isoCode }))}
+                    selectedValue={form.countryIsoCode}
+                    onSelect={(value) => setForm((current) => ({ ...current, countryIsoCode: value, city: '' }))}
+                    onClose={() => setCountryModalOpen(false)}
+                    searchable
+                  />
                 </View>
               </View>
               <View style={s.column}>
                 <View style={s.field}>
                   <Text style={s.label}>City</Text>
-                  <View style={s.input}>
-                    <Picker
-                      enabled={!!form.countryIsoCode}
-                      selectedValue={form.city}
-                      onValueChange={(value) => update('city', value)}
-                      style={{ color: Colors.textPrimary }}
-                      dropdownIconColor={Colors.textPrimary}
-                    >
-                      <Picker.Item
-                        label={form.countryIsoCode ? 'Select city' : 'Select country first'}
-                        value=""
-                      />
-                      {citiesForCountry.map((city) => (
-                        <Picker.Item key={city.name} label={city.name} value={city.name} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <TouchableOpacity
+                    style={[s.input, !form.countryIsoCode && { opacity: 0.5 }]}
+                    disabled={!form.countryIsoCode}
+                    onPress={() => setCityModalOpen(true)}
+                  >
+                    <Text style={{
+                      fontFamily: Typography.family.regular,
+                      fontSize: Typography.size.sm,
+                      color: form.city ? Colors.textPrimary : Colors.textDisabled,
+                    }}>
+                      {form.city || (form.countryIsoCode ? 'Select city' : 'Select country first')}
+                    </Text>
+                  </TouchableOpacity>
+                  <SelectModal
+                    visible={cityModalOpen}
+                    title="Select city"
+                    options={citiesForCountry.map((city) => ({ label: city.name, value: city.name }))}
+                    selectedValue={form.city}
+                    onSelect={(value) => update('city', value)}
+                    onClose={() => setCityModalOpen(false)}
+                    searchable
+                    emptyMessage="No cities found for this country"
+                  />
                 </View>
               </View>
             </View>
