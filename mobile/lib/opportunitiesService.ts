@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getPositionGroup } from '@/constants/positions';
 
 export type OpportunityType = 'Trial' | 'Contract' | 'Academy' | 'Loan' | 'Tryout';
 export type AppStatus =
@@ -72,16 +73,28 @@ function normalizeStr(value: string | null | undefined): string {
 function computeLiveMatchScore(
   oppSport: string,
   oppPosition: string,
+  oppRequirements: OpportunityRequirements | undefined,
   athleteSport: string | null,
   athletePosition: string | null
 ): number | undefined {
   if (!athleteSport) return undefined;
   const sportMatches = normalizeStr(oppSport) === normalizeStr(athleteSport);
   if (!sportMatches) return 0;
-  const positionMatches = athletePosition
-    ? normalizeStr(oppPosition) === normalizeStr(athletePosition)
-    : false;
-  return positionMatches ? 95 : 70;
+
+  if (!athletePosition) return 65;
+
+  const acceptablePositions = [oppPosition, ...(oppRequirements?.positions ?? [])]
+    .filter(Boolean)
+    .map(normalizeStr);
+  if (acceptablePositions.includes(normalizeStr(athletePosition))) return 95;
+
+  const oppGroup = getPositionGroup(athleteSport, oppPosition);
+  const athleteGroup = getPositionGroup(athleteSport, athletePosition);
+  if (oppGroup && athleteGroup) {
+    return oppGroup === athleteGroup ? 82 : 60;
+  }
+
+  return 70;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -205,7 +218,7 @@ export async function fetchForYouOpportunities(
   const mapped = data
     .map((r: any) => {
       const base = mapRow(r, savedIds, matchMap, appliedMap);
-      const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', athleteSport, athletePosition);
+      const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport, athletePosition);
       return { ...base, match_score: liveScore ?? base.match_score };
     })
     .filter((o) => (o.match_score ?? 0) > 0);
@@ -251,7 +264,7 @@ export async function fetchAllOpportunities(
 
   return data.map((r: any) => {
     const base = mapRow(r, savedIds, matchMap, appliedMap);
-    const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', athleteSport ?? null, athletePosition ?? null);
+    const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport ?? null, athletePosition ?? null);
     return { ...base, match_score: liveScore ?? base.match_score };
   });
 }
