@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Save, UserRound } from 'lucide-react-native';
 import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
@@ -216,17 +218,22 @@ export default function EditProfile() {
           : 'jpg';
       const contentType = asset.mimeType ?? 'image/jpeg';
       const path = `${user.id}/avatar.${extension}`;
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
+
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const fileData = decode(base64);
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { contentType, upsert: true });
+        .upload(path, fileData, { contentType, upsert: true });
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const cacheBustedUrl = `${data.publicUrl}?t=${Date.now()}`;
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({ avatar_url: data.publicUrl })
+        .update({ avatar_url: cacheBustedUrl })
         .eq('id', user.id);
       if (profileError) throw profileError;
 
