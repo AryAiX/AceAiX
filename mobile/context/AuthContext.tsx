@@ -41,7 +41,7 @@ export interface Profile {
   followers_count: number;
   connections_count: number;
   highlighted_stats: Record<string, number>;
-  attributes: Record<string, number>;
+  attributes: { label: string; value: number }[];
   languages: { language: string; proficiency: string }[];
   trajectory: { season: string; score?: number; forecast?: number }[];
 }
@@ -162,7 +162,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       followers_count: athleteProfile?.followers_count ?? 0,
       connections_count: athleteProfile?.connections_count ?? 0,
       highlighted_stats: (athleteProfile?.highlighted_stats as Record<string, number>) ?? {},
-      attributes: (athleteProfile?.attributes as Record<string, number>) ?? {},
+      attributes: Array.isArray(athleteProfile?.attributes)
+        ? (athleteProfile.attributes as { label: string; value: number }[])
+        : [],
       languages: Array.isArray(athleteProfile?.languages)
         ? athleteProfile.languages as { language: string; proficiency: string }[]
         : [],

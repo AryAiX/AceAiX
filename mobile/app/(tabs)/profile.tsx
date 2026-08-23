@@ -555,10 +555,12 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       setEndorsementCounts({});
       return;
     }
-    supabase
-      .from('endorsements')
-      .select('skill_or_trait')
-      .eq('athlete_id', profile.athlete_profile_id)
+    Promise.resolve(
+      supabase
+        .from('endorsements')
+        .select('skill_or_trait')
+        .eq('athlete_id', profile.athlete_profile_id)
+    )
       .then(({ data }) => {
         const counts: Record<string, number> = {};
         (data ?? []).forEach((row) => {
@@ -574,8 +576,10 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
       setSimilarAthletes([]);
       return;
     }
-    supabase
-      .rpc('get_similar_athletes', { p_limit: 5 })
+    Promise.resolve(
+      supabase
+        .rpc('get_similar_athletes', { p_limit: 5 })
+    )
       .then(({ data }) => {
         setSimilarAthletes((data ?? []).map((row: any) => ({
           userId: row.user_id,
@@ -934,12 +938,14 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
       return;
     }
     setMatchRecordsLoading(true);
-    supabase
-      .from('match_records')
-      .select('match_date, opponent, result, stats')
-      .eq('athlete_id', profile.athlete_profile_id)
-      .order('match_date', { ascending: false })
-      .limit(5)
+    Promise.resolve(
+      supabase
+        .from('match_records')
+        .select('match_date, opponent, result, stats')
+        .eq('athlete_id', profile.athlete_profile_id)
+        .order('match_date', { ascending: false })
+        .limit(5)
+    )
       .then(({ data }) => {
         const rows = (data ?? [])
           .map((row) => {
@@ -1084,11 +1090,13 @@ function CareerTab({ router, reduced, profile }: { router: any; reduced: boolean
       return;
     }
     setMilestonesLoading(true);
-    supabase
-      .from('career_milestones')
-      .select('milestone_type, club_or_event, achieved_at, notes')
-      .eq('athlete_id', profile.athlete_profile_id)
-      .order('achieved_at', { ascending: false })
+    Promise.resolve(
+      supabase
+        .from('career_milestones')
+        .select('milestone_type, club_or_event, achieved_at, notes')
+        .eq('athlete_id', profile.athlete_profile_id)
+        .order('achieved_at', { ascending: false })
+    )
       .then(({ data }) => {
         const seen = new Set<string>();
         const rows = (data ?? [])
@@ -1263,14 +1271,16 @@ export default function Profile() {
       setMedicallyCleared(false);
       return;
     }
-    supabase
-      .from('medical_clearances')
-      .select('status,effective_to')
-      .eq('athlete_id', profile.athlete_profile_id)
-      .eq('status', 'cleared')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    Promise.resolve(
+      supabase
+        .from('medical_clearances')
+        .select('status,effective_to')
+        .eq('athlete_id', profile.athlete_profile_id)
+        .eq('status', 'cleared')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    )
       .then(({ data }) => {
         const valid = !data?.effective_to
           || new Date(data.effective_to).getTime() >= new Date().setHours(0, 0, 0, 0);
@@ -1284,10 +1294,12 @@ export default function Profile() {
       setScoutViewCount(null);
       return;
     }
-    supabase
-      .from('profile_views')
-      .select('id', { count: 'exact', head: true })
-      .eq('athlete_id', profile.athlete_profile_id)
+    Promise.resolve(
+      supabase
+        .from('profile_views')
+        .select('id', { count: 'exact', head: true })
+        .eq('athlete_id', profile.athlete_profile_id)
+    )
       .then(({ count }) => setScoutViewCount(count ?? 0))
       .catch(() => setScoutViewCount(null));
   }, [profile?.athlete_profile_id]);
