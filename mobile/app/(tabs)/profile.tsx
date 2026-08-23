@@ -12,7 +12,7 @@ import {
   Users, Radio, Target,
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
-import { useAuth, Profile } from '@/context/AuthContext';
+import { useAuth, Profile as AuthProfile } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useChessStats } from '@/hooks/useChessStats';
 import { useFootballStats } from '@/hooks/useFootballStats';
@@ -461,7 +461,7 @@ function StatTile({ label, value, unit, delay, reduced }: {
 }
 
 // ── Overview Tab ───────────────────────────────────────────────────────────────
-function OverviewTab({ profile, reduced, isOwn, router }: { profile: Profile | null; reduced: boolean; isOwn: boolean; router: any }) {
+function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile | null; reduced: boolean; isOwn: boolean; router: any }) {
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
   const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
