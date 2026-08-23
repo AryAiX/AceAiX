@@ -42,9 +42,19 @@ export function StoriesTray({ onOpenViewer, onOpenCreator }: Props) {
       >
         <View style={s.avatarWrap}>
           {ownGroup ? (
-            <PulseRingWrapper unseen={ownGroup.has_unseen} own>
-              <AvatarInner name={profile?.full_name} avatar={profile?.avatar_url} />
-            </PulseRingWrapper>
+            <>
+              <PulseRingWrapper unseen={ownGroup.has_unseen} own>
+                <AvatarInner name={profile?.full_name} avatar={profile?.avatar_url} />
+              </PulseRingWrapper>
+              <TouchableOpacity
+                style={s.addBadge}
+                onPress={onOpenCreator}
+                hitSlop={6}
+                accessibilityLabel="Add another story"
+              >
+                <Plus color={Colors.white} size={12} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </>
           ) : (
             <AddStoryButton name={profile?.full_name} avatar={profile?.avatar_url} />
           )}
