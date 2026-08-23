@@ -12,7 +12,7 @@ import {
   Users, Radio, Target,
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth, Profile } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useChessStats } from '@/hooks/useChessStats';
 import { useFootballStats } from '@/hooks/useFootballStats';
@@ -461,7 +461,7 @@ function StatTile({ label, value, unit, delay, reduced }: {
 }
 
 // ── Overview Tab ───────────────────────────────────────────────────────────────
-function OverviewTab({ profile, reduced, isOwn, router }: any) {
+function OverviewTab({ profile, reduced, isOwn, router }: { profile: Profile | null; reduced: boolean; isOwn: boolean; router: any }) {
   const [aboutExpanded, setAboutExpanded] = useState(false);
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
   const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
@@ -483,10 +483,10 @@ function OverviewTab({ profile, reduced, isOwn, router }: any) {
     source: 'Verified by AceAiX',
     color: Colors.success,
   }] : [];
-  const attributes = (Array.isArray(profile?.attributes) ? profile.attributes : [])
-    .filter((a: any) => a && typeof a.label === 'string' && typeof a.value === 'number')
+  const attributes = (profile?.attributes ?? [])
+    .filter((a) => a && typeof a.label === 'string' && typeof a.value === 'number')
     .slice(0, 6)
-    .map((a: any) => ({
+    .map((a) => ({
       label: a.label,
       value: Math.max(0, Math.min(100, Number(a.value))),
       endorsements: endorsementCounts[a.label] ?? 0,
