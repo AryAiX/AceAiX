@@ -8,27 +8,13 @@ import MatchDetailModal from '../../components/athlete/MatchDetailModal';
 import StatTileCard, { SeasonStat } from '../../components/athlete/StatTileCard';
 import VerifiedBadge from '../../components/ui/VerifiedBadge';
 import type { MatchRecord } from '../../types';
+import { resultKind } from '../../lib/matchResult';
 
 const RESULT_STYLE: Record<string, [string, string, string]> = {
   win:  ['#1FB57A', 'rgba(31,181,122,0.12)',  'rgba(31,181,122,0.30)'],
   draw: ['#F5A623', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.30)'],
   loss: ['#EF5350', 'rgba(239,83,80,0.12)',   'rgba(239,83,80,0.30)'],
 };
-
-function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
-  if (!r) return 'draw';
-  const normalized = r.trim().toUpperCase();
-  const trailing = normalized.match(/\s([WDL])$/);
-  const code = trailing
-    ? trailing[1]
-    : normalized === 'W' || normalized === 'WIN' ? 'W'
-    : normalized === 'D' || normalized === 'DRAW' ? 'D'
-    : normalized === 'L' || normalized === 'LOSS' || normalized === 'LOST' ? 'L'
-    : null;
-  if (code === 'W') return 'win';
-  if (code === 'L') return 'loss';
-  return 'draw';
-}
 
 function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
