@@ -258,12 +258,16 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
 }
 
 /* ── mini bar chart ─────────────────────────────────────────── */
-function FormBars({ matches: source }: { matches: MatchView[] }) {
+function FormBars({ matches: source, hasError }: { matches: MatchView[]; hasError: boolean }) {
   const [vis, setVis] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 300); return () => clearTimeout(t); }, []);
   const matches = [...source].reverse();
   if (!matches.length) {
-    return <div className="flex items-center justify-center h-28 text-xs text-white/30">No matches logged yet</div>;
+    return (
+      <div className="flex items-center justify-center h-28 text-xs text-white/30">
+        {hasError ? "Couldn't load your performance data — please try refreshing the page." : 'No matches logged yet'}
+      </div>
+    );
   }
   return (
     <div className="flex items-end gap-2 h-28">
@@ -294,7 +298,7 @@ function FormBars({ matches: source }: { matches: MatchView[] }) {
 
 /* ── main ───────────────────────────────────────────────────── */
 export default function PerformancePage() {
-  const { data: athlete } = useMyAthlete();
+  const { data: athlete, isError: athleteError } = useMyAthlete();
   const athleteId = athlete?.id;
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
@@ -304,11 +308,24 @@ export default function PerformancePage() {
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
-  const { data: rawMatches = [] } = useQuery({
+  const { data: rawMatches = [], isLoading: matchesLoading, isError: matchesError } = useQuery({
     queryKey: ['matches', athleteId, 'all'],
     queryFn: () => listMatches(athleteId!),
     enabled: !!athleteId,
   });
+
+  if (matchesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-azure/10 border border-azure/20 flex items-center justify-center">
+            <Loader2 size={18} className="text-azure animate-spin" />
+          </div>
+          <p className="text-xs text-white/30 uppercase tracking-widest">Loading performance…</p>
+        </div>
+      </div>
+    );
+  }
 
   const currentSeason = seasonLabel(rawMatches[0]?.match_date);
 
@@ -492,7 +509,7 @@ export default function PerformancePage() {
               <span className="ml-auto badge-volt text-[10px]">Last 6</span>
             </div>
 
-            <FormBars matches={matches} />
+            <FormBars matches={matches} hasError={athleteError || matchesError} />
 
             {/* legend */}
             <div className="flex items-center gap-4 mt-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
@@ -547,7 +564,9 @@ export default function PerformancePage() {
               </thead>
               <tbody>
                 {!recentMatches.length && (
-                  <tr><td colSpan={8} className="py-8 text-center text-white/30">No match records yet. Log your first match.</td></tr>
+                  <tr><td colSpan={8} className="py-8 text-center text-white/30">
+                    {(athleteError || matchesError) ? "Couldn't load your performance data — please try refreshing the page." : 'No match records yet. Log your first match.'}
+                  </td></tr>
                 )}
                 {recentMatches.map((match, i) => {
                   const [color, bg, border] = RESULT_STYLE[match.result];
