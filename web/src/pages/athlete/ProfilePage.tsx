@@ -151,6 +151,7 @@ export default function AthleteProfilePage() {
 
   useEffect(() => {
     if (!profile) return;
+    if (dirty) return;
     setForm(f => ({
       ...f,
       first_name: profile.first_name || '',
@@ -164,6 +165,7 @@ export default function AthleteProfilePage() {
 
   useEffect(() => {
     if (!athlete) return;
+    if (dirty) return;
     setForm(f => ({
       ...f,
       bio: athlete.bio || '',
