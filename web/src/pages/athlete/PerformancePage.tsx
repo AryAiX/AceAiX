@@ -96,7 +96,7 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ opponent: '', competition: '', result: 'win', teamScore: '', opponentScore: '', goals: '', assists: '', minutes: '90', rating: '' });
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), opponent: '', competition: '', result: 'win', teamScore: '', opponentScore: '', goals: '', assists: '', minutes: '90', rating: '' });
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -120,7 +120,7 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
     try {
       await createMatch({
         athlete_id: athleteId,
-        match_date: new Date().toISOString().slice(0, 10),
+        match_date: form.date,
         opponent: form.opponent.trim() || null,
         competition: form.competition.trim() || null,
         result: resultText,
@@ -177,6 +177,13 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
               <input value={form.competition} onChange={e => set('competition', e.target.value)}
                 className="input-field" placeholder="e.g. AGL" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Match Date</label>
+            <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              className="input-field" />
           </div>
 
           {/* result pills */}
