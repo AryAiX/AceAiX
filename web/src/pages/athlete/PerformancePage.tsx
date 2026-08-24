@@ -107,6 +107,16 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
     const resultText = form.teamScore !== '' && form.opponentScore !== ''
       ? `${form.teamScore}-${form.opponentScore} ${RESULT_LETTER[form.result]}`
       : form.result;
+    if (form.teamScore !== '' && form.opponentScore !== '') {
+      const teamScoreNum = parseInt(form.teamScore, 10);
+      const opponentScoreNum = parseInt(form.opponentScore, 10);
+      const actualOutcome = teamScoreNum > opponentScoreNum ? 'win' : teamScoreNum < opponentScoreNum ? 'loss' : 'draw';
+      if (actualOutcome !== form.result) {
+        setSaving(false);
+        setError("Your score doesn't match the selected result — please check both.");
+        return;
+      }
+    }
     try {
       await createMatch({
         athlete_id: athleteId,
