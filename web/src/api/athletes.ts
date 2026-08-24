@@ -50,3 +50,13 @@ export async function getAthleteByUserId(userId: string): Promise<AthleteWithUse
 export async function updateAthlete(id: string, patch: Partial<AthleteProfile>): Promise<AthleteProfile> {
   return unwrap<AthleteProfile>(await supabase.from('athlete_profiles').update(patch).eq('id', id).select('*').single());
 }
+
+export async function createAthlete(userId: string, patch: Partial<AthleteProfile>): Promise<AthleteProfile> {
+  return unwrap<AthleteProfile>(
+    await supabase
+      .from('athlete_profiles')
+      .insert({ user_id: userId, ...patch })
+      .select('*')
+      .single(),
+  );
+}
