@@ -116,7 +116,7 @@ export default function AthleteProfilePage() {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [dirty, setDirty] = useState(false);
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
@@ -214,12 +214,18 @@ export default function AthleteProfilePage() {
       return;
     }
     setSaving(true);
-    setSaveError(false);
+    setSaveError('');
+    let profileFailed = false;
+    let athleteFailed = false;
     try {
       await updateUserProfile(profile.id, {
         first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
         bio: form.bio, city: form.city, country: form.country,
       });
+    } catch {
+      profileFailed = true;
+    }
+    try {
       const athletePatch = {
         sport: form.sport, position_primary: form.position_primary,
         position: form.position_primary,
@@ -234,20 +240,26 @@ export default function AthleteProfilePage() {
       };
       if (athlete) {
         await updateAthlete(athlete.id, athletePatch);
-        queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
       } else if (!athleteError && user) {
         await createAthlete(user.id, athletePatch);
-        queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
       }
-      await refreshProfile();
+    } catch {
+      athleteFailed = true;
+    }
+    queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
+    await refreshProfile();
+    if (profileFailed && athleteFailed) {
+      setSaveError("Couldn't save your changes — please try again.");
+    } else if (athleteFailed) {
+      setSaveError('Your personal info saved, but athletic details failed to save — please try again.');
+    } else if (profileFailed) {
+      setSaveError('Your athletic details saved, but personal info failed to save — please try again.');
+    } else {
       setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch {
-      setSaveError(true);
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   }
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -440,7 +452,7 @@ export default function AthleteProfilePage() {
 
         {(saveError || avatarError || firstNameError || lastNameError || athleteError) && (
           <div className="px-6 sm:px-8 pb-4 -mt-2">
-            {saveError && <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>}
+            {saveError && <p className="text-[11px] text-coral">{saveError}</p>}
             {avatarError && <p className="text-[11px] text-coral">{avatarError}</p>}
             {(firstNameError || lastNameError) && <p className="text-[11px] text-coral">Please fill in your first and last name.</p>}
             {athleteError && <p className="text-[11px] text-coral">Couldn't load your athlete data — try refreshing the page.</p>}
