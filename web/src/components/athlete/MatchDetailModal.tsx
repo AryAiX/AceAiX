@@ -201,15 +201,16 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
 
             <div className="grid grid-cols-4 gap-3">
               {[
-                { key: 'goals',   label: 'Goals',   placeholder: '0' },
-                { key: 'assists', label: 'Assists',  placeholder: '0' },
-                { key: 'minutes', label: 'Minutes',  placeholder: '90' },
-                { key: 'rating',  label: 'Rating',   placeholder: '7.5' },
+                { key: 'goals',   label: 'Goals',   placeholder: '0',   min: 0, max: 20 },
+                { key: 'assists', label: 'Assists',  placeholder: '0',   min: 0, max: 20 },
+                { key: 'minutes', label: 'Minutes',  placeholder: '90',  min: 0, max: 130 },
+                { key: 'rating',  label: 'Rating',   placeholder: '7.5', min: 0, max: 10 },
               ].map(f => (
                 <div key={f.key}>
                   <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">{f.label}</label>
                   <input type="number" value={(form as Record<string, string>)[f.key]}
                     onChange={e => set(f.key, e.target.value)}
+                    min={f.min} max={f.max}
                     className="input-field text-center" placeholder={f.placeholder} />
                 </div>
               ))}
