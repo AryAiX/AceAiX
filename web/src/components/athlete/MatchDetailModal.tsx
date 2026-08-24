@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { X, Calendar, FileText, Pencil, Loader2, Check } from 'lucide-react';
+import { X, Calendar, FileText, Pencil, Loader2, Check, Trash2 } from 'lucide-react';
 import type { MatchRecord } from '../../types';
-import { updateMatch } from '../../api/portfolio';
+import { updateMatch, deleteMatch } from '../../api/portfolio';
 import VerifiedBadge from '../ui/VerifiedBadge';
 import { resultKind, parseResultForEdit } from '../../lib/matchResult';
 
@@ -20,6 +20,7 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
   const canEdit = match.source !== 'verified';
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const parsedResult = parseResultForEdit(match.result);
   const [form, setForm] = useState({
@@ -77,6 +78,21 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
     }
   }
 
+  async function handleDelete() {
+    const confirmed = window.confirm("Delete this match? This can't be undone.");
+    if (!confirmed) return;
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteMatch(match.id);
+      onSaved();
+      onClose();
+    } catch (e) {
+      setDeleting(false);
+      setError(e instanceof Error ? e.message : 'Failed to delete match.');
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
       style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}
@@ -104,6 +120,11 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
                 <Pencil size={13} />
               </button>
             )}
+            {!isEditing && canEdit && (
+              <button onClick={handleDelete} disabled={deleting} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-coral hover:bg-white/08 transition-colors disabled:opacity-60">
+                {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              </button>
+            )}
             <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors">
               <X size={14} />
             </button>
@@ -112,6 +133,7 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
 
         {!isEditing ? (
           <div className="p-6 space-y-4">
+            {error && <p className="text-xs text-coral">{error}</p>}
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-bold capitalize" style={{ background: bg, border: `1px solid ${border}`, color }}>
                 {kind}
