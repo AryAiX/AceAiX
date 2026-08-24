@@ -64,6 +64,10 @@ export async function updateMatch(id: string, patch: Partial<MatchRecord>): Prom
   return unwrap(await supabase.from('match_records').update(patch).eq('id', id).select('*').single()) as MatchRecord;
 }
 
+export async function deleteMatch(id: string): Promise<void> {
+  unwrap(await supabase.from('match_records').delete().eq('id', id).select('id'));
+}
+
 // ---- Attributes (normalized) ----
 export async function listAttributes(athleteId: string): Promise<AthleteAttribute[]> {
   return unwrap(
