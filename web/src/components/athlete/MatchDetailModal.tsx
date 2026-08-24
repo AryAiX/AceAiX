@@ -3,37 +3,13 @@ import { X, Calendar, FileText, Pencil, Loader2, Check } from 'lucide-react';
 import type { MatchRecord } from '../../types';
 import { updateMatch } from '../../api/portfolio';
 import VerifiedBadge from '../ui/VerifiedBadge';
+import { resultKind, parseResultForEdit } from '../../lib/matchResult';
 
 const RESULT_STYLE: Record<string, [string, string, string]> = {
   win:  ['#1FB57A', 'rgba(31,181,122,0.12)',  'rgba(31,181,122,0.30)'],
   draw: ['#F5A623', 'rgba(245,166,35,0.12)',  'rgba(245,166,35,0.30)'],
   loss: ['#EF5350', 'rgba(239,83,80,0.12)',   'rgba(239,83,80,0.30)'],
 };
-
-function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
-  if (!r) return 'draw';
-  const normalized = r.trim().toUpperCase();
-  const trailing = normalized.match(/\s([WDL])$/);
-  const code = trailing
-    ? trailing[1]
-    : normalized === 'W' || normalized === 'WIN' ? 'W'
-    : normalized === 'D' || normalized === 'DRAW' ? 'D'
-    : normalized === 'L' || normalized === 'LOSS' || normalized === 'LOST' ? 'L'
-    : null;
-  if (code === 'W') return 'win';
-  if (code === 'L') return 'loss';
-  return 'draw';
-}
-
-function parseResultForEdit(r: string | null): { teamScore: string; opponentScore: string; result: 'win' | 'draw' | 'loss' } {
-  const kind = resultKind(r);
-  if (!r) return { teamScore: '', opponentScore: '', result: kind };
-  const scoreMatch = r.trim().match(/^(\d+)-(\d+)/);
-  if (scoreMatch) {
-    return { teamScore: scoreMatch[1], opponentScore: scoreMatch[2], result: kind };
-  }
-  return { teamScore: '', opponentScore: '', result: kind };
-}
 
 export default function MatchDetailModal({ match, onClose, onSaved }: { match: MatchRecord; onClose: () => void; onSaved: () => void }) {
   const kind = resultKind(match.result);

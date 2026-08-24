@@ -8,6 +8,7 @@ import {
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches, createMatch } from '../../api/portfolio';
 import type { MatchRecord, AttributeData } from '../../types';
+import { resultKind } from '../../lib/matchResult';
 import { Link } from 'react-router-dom';
 import MatchDetailModal from '../../components/athlete/MatchDetailModal';
 import StatTileCard, { SeasonStat } from '../../components/athlete/StatTileCard';
@@ -33,21 +34,6 @@ interface Percentile {
 }
 
 const PCT_COLORS = ['#B8F135', '#2F80ED', '#1FB57A', '#F5A623', '#A78BFA'];
-
-function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
-  if (!r) return 'draw';
-  const normalized = r.trim().toUpperCase();
-  const trailing = normalized.match(/\s([WDL])$/);
-  const code = trailing
-    ? trailing[1]
-    : normalized === 'W' || normalized === 'WIN' ? 'W'
-    : normalized === 'D' || normalized === 'DRAW' ? 'D'
-    : normalized === 'L' || normalized === 'LOSS' || normalized === 'LOST' ? 'L'
-    : null;
-  if (code === 'W') return 'win';
-  if (code === 'L') return 'loss';
-  return 'draw';
-}
 
 function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
