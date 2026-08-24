@@ -8,7 +8,7 @@ import {
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { updateAthlete } from '../../api/athletes';
+import { updateAthlete, createAthlete } from '../../api/athletes';
 import { updateUserProfile, uploadAvatar, removeAvatar } from '../../api/profiles';
 import { COUNTRIES, CITIES_BY_COUNTRY } from '../../data/countries';
 import { POSITIONS } from '../../data/positions';
@@ -107,9 +107,9 @@ const CHECKLIST_FIELDS: { label: string; key: string }[] = [
 ];
 
 export default function AthleteProfilePage() {
-  const { profile, refreshProfile, loading: authLoading } = useAuth();
-  const { data: athlete, isLoading: athleteLoading } = useMyAthlete();
-  const { data: clubs = [] } = useQuery({
+  const { user, profile, refreshProfile, loading: authLoading } = useAuth();
+  const { data: athlete, isLoading: athleteLoading, isError: athleteError } = useMyAthlete();
+  const { data: clubs = [], isError: clubsError } = useQuery({
     queryKey: ['organizations', { type: 'club' }],
     queryFn: () => listOrganizations({ type: 'club' }),
   });
@@ -220,18 +220,23 @@ export default function AthleteProfilePage() {
         first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
         bio: form.bio, city: form.city, country: form.country,
       });
+      const athletePatch = {
+        sport: form.sport, position_primary: form.position_primary,
+        position: form.position_primary,
+        position_secondary: form.position_secondary,
+        height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
+        weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
+        nationality: form.nationality, birth_date: form.birth_date || null, current_club: form.current_club,
+        current_club_id: matchedClubId,
+        level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
+        is_open_to_offers: form.is_open_to_offers,
+        profile_completeness: completeness,
+      };
       if (athlete) {
-        await updateAthlete(athlete.id, {
-          sport: form.sport, position_primary: form.position_primary,
-          position_secondary: form.position_secondary,
-          height_cm: form.height_cm ? parseFloat(form.height_cm) : null,
-          weight_kg: form.weight_kg ? parseFloat(form.weight_kg) : null,
-          nationality: form.nationality, birth_date: form.birth_date || null, current_club: form.current_club,
-          current_club_id: matchedClubId,
-          level: form.level, dominant_foot: form.dominant_foot, bio: form.bio,
-          is_open_to_offers: form.is_open_to_offers,
-          profile_completeness: completeness,
-        });
+        await updateAthlete(athlete.id, athletePatch);
+        queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
+      } else if (!athleteError && user) {
+        await createAthlete(user.id, athletePatch);
         queryClient.invalidateQueries({ queryKey: ['my-athlete'] });
       }
       await refreshProfile();
@@ -433,11 +438,12 @@ export default function AthleteProfilePage() {
           </button>
         </div>
 
-        {(saveError || avatarError || firstNameError || lastNameError) && (
+        {(saveError || avatarError || firstNameError || lastNameError || athleteError) && (
           <div className="px-6 sm:px-8 pb-4 -mt-2">
             {saveError && <p className="text-[11px] text-coral">Couldn't save your changes — please try again.</p>}
             {avatarError && <p className="text-[11px] text-coral">{avatarError}</p>}
             {(firstNameError || lastNameError) && <p className="text-[11px] text-coral">Please fill in your first and last name.</p>}
+            {athleteError && <p className="text-[11px] text-coral">Couldn't load your athlete data — try refreshing the page.</p>}
           </div>
         )}
 
@@ -462,10 +468,12 @@ export default function AthleteProfilePage() {
             />
           </div>
           <span className="text-[11px] font-bold tabular" style={{ color: completeness >= 80 ? '#B8F135' : '#2F80ED' }}>{completeness}%</span>
-          <a href={`/athletes/${athlete?.id ?? ''}`} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] text-azure/70 hover:text-azure transition-colors ml-2">
-            Preview <ArrowUpRight size={10} />
-          </a>
+          {athlete?.id && (
+            <a href={`/athletes/${athlete.id}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-azure/70 hover:text-azure transition-colors ml-2">
+              Preview <ArrowUpRight size={10} />
+            </a>
+          )}
         </div>
       </div>
 
@@ -597,6 +605,7 @@ export default function AthleteProfilePage() {
             <Field label="Current Club" icon={Zap} delay={160}>
               <SearchableSelect value={form.current_club} onChange={v => set('current_club', v)}
                 options={clubNames} allowFreeText placeholder="Select or type your club" />
+              {clubsError && <p className="text-[11px] text-white/30 mt-1">Club list unavailable — you can still type your club.</p>}
             </Field>
 
             <Field label="Dominant Foot" icon={Footprints} delay={200}>
