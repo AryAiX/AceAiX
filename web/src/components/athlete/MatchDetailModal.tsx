@@ -43,6 +43,16 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
     const resultText = form.teamScore !== '' && form.opponentScore !== ''
       ? `${form.teamScore}-${form.opponentScore} ${RESULT_LETTER[form.result]}`
       : form.result;
+    if (form.teamScore !== '' && form.opponentScore !== '') {
+      const teamScoreNum = parseInt(form.teamScore, 10);
+      const opponentScoreNum = parseInt(form.opponentScore, 10);
+      const actualOutcome = teamScoreNum > opponentScoreNum ? 'win' : teamScoreNum < opponentScoreNum ? 'loss' : 'draw';
+      if (actualOutcome !== form.result) {
+        setSaving(false);
+        setError("Your score doesn't match the selected result — please check both.");
+        return;
+      }
+    }
     const existingStats = (match.stats && typeof match.stats === 'object') ? { ...(match.stats as Record<string, unknown>) } : {};
     if (form.rating) {
       existingStats.rating = parseFloat(form.rating);
