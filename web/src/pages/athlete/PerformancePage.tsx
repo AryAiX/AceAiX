@@ -100,6 +100,14 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
   const [error, setError] = useState('');
   const [form, setForm] = useState({ opponent: '', competition: '', result: 'win', goals: '', assists: '', minutes: '90', rating: '' });
 
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !saving) onClose();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [onClose, saving]);
+
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
   async function handleSave() {
@@ -128,7 +136,8 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+    <div role="dialog" aria-modal="true" aria-labelledby="add-match-title"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
       style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}>
       <div className="w-full max-w-md rounded-3xl overflow-hidden"
         style={{
@@ -145,9 +154,9 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
               style={{ background: 'rgba(184,241,53,0.12)', border: '1px solid rgba(184,241,53,0.25)' }}>
               <Plus size={14} className="text-volt" />
             </div>
-            <h3 className="text-sm font-bold text-white">Log Match</h3>
+            <h3 id="add-match-title" className="text-sm font-bold text-white">Log Match</h3>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors">
+          <button onClick={onClose} aria-label="Close match dialog" className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors">
             <X size={14} />
           </button>
         </div>
