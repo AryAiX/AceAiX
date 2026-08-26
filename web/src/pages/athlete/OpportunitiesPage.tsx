@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Briefcase, MapPin, Clock, ShieldCheck,
   Bookmark, BookmarkCheck, Zap, ArrowRight, Filter, TrendingUp,
   CheckCircle, ChevronDown, Loader2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { listOpportunities } from '../../api/opportunities';
+import { useAuth } from '../../context/AuthContext';
+import {
+  applyToOpportunity,
+  listAppliedOpportunityIds,
+  listOpportunities,
+  listSavedOpportunityIds,
+  setOpportunitySaved,
+} from '../../api/opportunities';
 import type { AthleteProfile, Opportunity } from '../../types';
 import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
 
@@ -88,17 +95,52 @@ function MatchRing({ pct }: { pct: number }) {
 }
 
 export default function OpportunitiesPage() {
+  const { user } = useAuth();
   const { data: athlete } = useMyAthlete();
+  const queryClient = useQueryClient();
   const [filter, setFilter]   = useState('all');
   const [sort, setSort]       = useState<'match' | 'deadline'>('match');
-  const [saved, setSaved]     = useState<Set<string>>(new Set());
-  const [applied, setApplied] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const { data: rawOpps = [], isLoading } = useQuery({
     queryKey: ['opportunities'],
     queryFn: () => listOpportunities({}),
   });
+  const { data: savedIds = [] } = useQuery({
+    queryKey: ['opportunity-saves', user?.id],
+    queryFn: () => listSavedOpportunityIds(user!.id),
+    enabled: !!user,
+  });
+  const { data: appliedIds = [] } = useQuery({
+    queryKey: ['opportunity-applications', user?.id],
+    queryFn: () => listAppliedOpportunityIds(user!.id),
+    enabled: !!user,
+  });
+  const saved = new Set(savedIds);
+  const applied = new Set(appliedIds);
+
+  async function apply(opportunityId: string) {
+    if (!user || applied.has(opportunityId)) return;
+    setActionError('');
+    try {
+      await applyToOpportunity(opportunityId, user.id);
+      await queryClient.invalidateQueries({ queryKey: ['opportunity-applications', user.id] });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to apply right now.');
+    }
+  }
+
+  async function toggleSaved(opportunityId: string) {
+    if (!user) return;
+    setActionError('');
+    try {
+      await setOpportunitySaved(opportunityId, user.id, !saved.has(opportunityId));
+      await queryClient.invalidateQueries({ queryKey: ['opportunity-saves', user.id] });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to update saved opportunities.');
+    }
+  }
 
   const opportunities: OppView[] = rawOpps.map(o => toOppView(o, athlete));
   // Mark the strongest explainable profile match as featured.
@@ -134,6 +176,11 @@ export default function OpportunitiesPage() {
           </div>
         </div>
       </div>
+      {actionError && (
+        <p role="alert" className="rounded-xl border border-coral/30 bg-coral/10 px-4 py-3 text-sm text-coral">
+          {actionError}
+        </p>
+      )}
 
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-3">
@@ -217,7 +264,7 @@ export default function OpportunitiesPage() {
                   {featured.salary !== 'TBD' && <span className="text-emerald font-medium">{featured.salary}</span>}
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button onClick={() => setApplied(s => new Set([...s, featured.id]))}
+                  <button onClick={() => void apply(featured.id)}
                     disabled={applied.has(featured.id)}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
                       applied.has(featured.id)
@@ -226,12 +273,7 @@ export default function OpportunitiesPage() {
                     }`}>
                     {applied.has(featured.id) ? <><CheckCircle size={14} /> Applied</> : <>Apply Now <ArrowRight size={14} /></>}
                   </button>
-                  <button onClick={() => setSaved(s => {
-                    const next = new Set(s);
-                    if (next.has(featured.id)) next.delete(featured.id);
-                    else next.add(featured.id);
-                    return next;
-                  })}
+                  <button onClick={() => void toggleSaved(featured.id)}
                     className={`p-2.5 rounded-xl border transition-all ${saved.has(featured.id) ? 'border-azure/30 text-azure bg-azure/10' : 'border-white/10 text-muted hover:border-white/25 hover:text-white'}`}>
                     {saved.has(featured.id) ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                   </button>
@@ -291,7 +333,7 @@ export default function OpportunitiesPage() {
               </div>
 
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.05]">
-                <button onClick={() => setApplied(s => new Set([...s, opp.id]))}
+                <button onClick={() => void apply(opp.id)}
                   disabled={applied.has(opp.id)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                     applied.has(opp.id)
@@ -300,12 +342,7 @@ export default function OpportunitiesPage() {
                   }`}>
                   {applied.has(opp.id) ? <><CheckCircle size={13} /> Applied</> : <>Apply Now <ArrowRight size={13} /></>}
                 </button>
-                <button onClick={() => setSaved(s => {
-                  const next = new Set(s);
-                  if (next.has(opp.id)) next.delete(opp.id);
-                  else next.add(opp.id);
-                  return next;
-                })}
+                <button onClick={() => void toggleSaved(opp.id)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
                     saved.has(opp.id) ? 'border-azure/30 text-azure bg-azure/5' : 'border-white/10 text-muted hover:text-white hover:border-white/20'
                   }`}>

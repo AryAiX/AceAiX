@@ -43,6 +43,23 @@ test.describe('accessibility and access-control regressions', () => {
     await expect(page).toHaveURL(/\/athletes\/[0-9a-f-]{36}$/i);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Rudy Fuller/i);
   });
+
+  test('opportunity saves persist across reloads', async ({ page }) => {
+    await login(page, 'athlete');
+    await page.goto('/athlete/opportunities');
+
+    const saveButton = page.getByRole('button', { name: /^(save|saved)$/i }).first();
+    const wasSaved = (await saveButton.textContent())?.trim() === 'Saved';
+    await saveButton.click();
+    await expect(saveButton).toHaveText(wasSaved ? 'Save' : 'Saved');
+
+    await page.reload();
+    const persistedButton = page.getByRole('button', { name: /^(save|saved)$/i }).first();
+    await expect(persistedButton).toHaveText(wasSaved ? 'Save' : 'Saved');
+
+    await persistedButton.click();
+    await expect(persistedButton).toHaveText(wasSaved ? 'Saved' : 'Save');
+  });
 });
 
 test('public, scout, and admin views resolve the same athlete identity', async ({ browser }) => {
