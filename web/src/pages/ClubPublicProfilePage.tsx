@@ -297,9 +297,20 @@ export default function ClubPublicProfilePage() {
   // Load follow state
   useEffect(() => {
     async function load() {
-      if (!user || !id) return;
-      const { data } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', id).maybeSingle();
-      setIsFollowing(!!data);
+      if (!id) return;
+      const { count } = await supabase
+        .from('organization_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', id);
+      if (count !== null) setFollowerCount(count);
+      if (!user) return;
+      const { data } = await supabase
+        .from('organization_follows')
+        .select('organization_id')
+        .eq('follower_id', user.id)
+        .eq('organization_id', id)
+        .maybeSingle();
+      setIsFollowing(Boolean(data));
     }
     load();
   }, [id, user]);
@@ -308,11 +319,23 @@ export default function ClubPublicProfilePage() {
     if (!user) { navigate('/auth/login'); return; }
     setFollowLoading(true);
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id);
-      setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+      const { error } = await supabase
+        .from('organization_follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('organization_id', id);
+      if (!error) {
+        setIsFollowing(false);
+        setFollowerCount(c => Math.max(0, c - 1));
+      }
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: id });
-      setIsFollowing(true); setFollowerCount(c => c + 1);
+      const { error } = await supabase
+        .from('organization_follows')
+        .insert({ follower_id: user.id, organization_id: id });
+      if (!error) {
+        setIsFollowing(true);
+        setFollowerCount(c => c + 1);
+      }
     }
     setFollowLoading(false);
   }

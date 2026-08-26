@@ -42,6 +42,10 @@ test.describe('accessibility and access-control regressions', () => {
     await profileLink.click();
     await expect(page).toHaveURL(/\/athletes\/[0-9a-f-]{36}$/i);
     await expect(page.getByRole('heading', { level: 1 })).toContainText(/Rudy Fuller/i);
+
+    await page.getByRole('button', { name: /account menu/i }).click();
+    await expect(page.getByRole('banner').getByRole('link', { name: /view public profile/i }))
+      .toHaveAttribute('href', /^\/athletes\/[0-9a-f-]{36}$/i);
   });
 
   test('opportunity saves persist across reloads', async ({ page }) => {
@@ -59,6 +63,25 @@ test.describe('accessibility and access-control regressions', () => {
 
     await persistedButton.click();
     await expect(persistedButton).toHaveText(wasSaved ? 'Saved' : 'Save');
+  });
+
+  test('club follows persist without corrupting user follows', async ({ page }) => {
+    await login(page, 'athlete');
+    await page.goto('/clubs');
+    const clubHref = await page.locator('a[href^="/clubs/"]').first().getAttribute('href');
+    expect(clubHref).toMatch(/^\/clubs\/[0-9a-f-]{36}$/i);
+    await page.goto(clubHref!);
+
+    const followButton = page.getByRole('button', { name: /^(follow|following)$/i }).first();
+    const wasFollowing = (await followButton.textContent())?.trim() === 'Following';
+    await followButton.click();
+    await expect(followButton).toHaveText(wasFollowing ? 'Follow' : 'Following');
+
+    await page.reload();
+    const persistedButton = page.getByRole('button', { name: /^(follow|following)$/i }).first();
+    await expect(persistedButton).toHaveText(wasFollowing ? 'Follow' : 'Following');
+    await persistedButton.click();
+    await expect(persistedButton).toHaveText(wasFollowing ? 'Following' : 'Follow');
   });
 });
 

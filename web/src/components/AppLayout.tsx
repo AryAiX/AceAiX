@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useMyAthlete } from '../hooks/useAthlete';
+import { safeInternalPath } from '../lib/navigation';
 import { listNotifications, unreadCount as fetchUnreadCount, markNotificationRead } from '../api/notifications';
 import type { Notification } from '../types';
 
@@ -137,7 +138,8 @@ export default function AppLayout() {
   function handleNotificationClick(n: Notification) {
     if (!n.is_read) markRead.mutate(n.id);
     setNotifOpen(false);
-    if (n.action_url) navigate(n.action_url);
+    const destination = safeInternalPath(n.action_url);
+    if (destination) navigate(destination);
   }
 
   async function handleSignOut() {
