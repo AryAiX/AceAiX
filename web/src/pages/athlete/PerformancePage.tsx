@@ -117,6 +117,30 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
         return;
       }
     }
+    const goalsNum = form.goals ? parseInt(form.goals, 10) : 0;
+    const assistsNum = form.assists ? parseInt(form.assists, 10) : 0;
+    const minutesNum = form.minutes ? parseInt(form.minutes, 10) : null;
+    const ratingNum = form.rating ? parseFloat(form.rating) : null;
+    if (goalsNum < 0 || goalsNum > 20) {
+      setSaving(false);
+      setError('Goals must be between 0 and 20.');
+      return;
+    }
+    if (assistsNum < 0 || assistsNum > 20) {
+      setSaving(false);
+      setError('Assists must be between 0 and 20.');
+      return;
+    }
+    if (minutesNum !== null && (minutesNum < 0 || minutesNum > 130)) {
+      setSaving(false);
+      setError('Minutes must be between 0 and 130.');
+      return;
+    }
+    if (ratingNum !== null && (ratingNum < 0 || ratingNum > 10)) {
+      setSaving(false);
+      setError('Rating must be between 0 and 10.');
+      return;
+    }
     try {
       await createMatch({
         athlete_id: athleteId,
@@ -124,10 +148,10 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
         opponent: form.opponent.trim() || null,
         competition: form.competition.trim() || null,
         result: resultText,
-        minutes_played: form.minutes ? parseInt(form.minutes, 10) : null,
-        goals: form.goals ? parseInt(form.goals, 10) : 0,
-        assists: form.assists ? parseInt(form.assists, 10) : 0,
-        stats: form.rating ? { rating: parseFloat(form.rating) } : {},
+        minutes_played: minutesNum,
+        goals: goalsNum,
+        assists: assistsNum,
+        stats: ratingNum !== null ? { rating: ratingNum } : {},
       });
       setSaving(false);
       setSaved(true);
