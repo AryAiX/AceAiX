@@ -55,14 +55,17 @@ function RootNavigator() {
   useEffect(() => {
     if (loading) return;
     const isPublicAuthRoute = pathname === '/login' || pathname === '/signup';
+    const onAthletesOnly = pathname === '/athletes-only';
     if (!session && !isPublicAuthRoute) {
       router.replace('/login');
-    } else if (role === 'athlete' && isPublicAuthRoute) {
+    } else if (role === 'athlete' && (isPublicAuthRoute || onAthletesOnly)) {
       router.replace('/');
     } else if (role !== null && role !== 'athlete') {
-      router.replace('/athletes-only');
+      if (!onAthletesOnly) router.replace('/athletes-only');
     } else if (session && role === null) {
-      router.replace({ pathname: '/athletes-only', params: { reason: 'no-profile' } });
+      if (!onAthletesOnly) {
+        router.replace({ pathname: '/athletes-only', params: { reason: 'no-profile' } });
+      }
     }
   }, [session, role, loading, pathname]);
 
