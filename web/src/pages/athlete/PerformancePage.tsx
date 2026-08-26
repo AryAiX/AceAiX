@@ -6,6 +6,7 @@ import {
   Loader2, Swords, Clock, Star,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
+import { normalizeAttributes } from '../../lib/profileData';
 import { listMatches, createMatch } from '../../api/portfolio';
 import type { MatchRecord, AttributeData } from '../../types';
 
@@ -345,7 +346,7 @@ export default function PerformancePage() {
     { label: 'Wins',    value: String(wins),         icon: Award,    color: '#EF5350', max: Math.max(24, matches.length),  raw: wins },
   ];
 
-  const attrs = (athlete?.attributes ?? []) as AttributeData[];
+  const attrs = normalizeAttributes(athlete?.attributes);
   const analyticsPct = (athlete?.analytics as { percentiles?: Percentile[] } | undefined)?.percentiles;
   const percentiles: Percentile[] = analyticsPct?.length
     ? analyticsPct.slice(0, 5)

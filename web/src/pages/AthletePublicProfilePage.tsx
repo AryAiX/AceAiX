@@ -37,7 +37,8 @@ import { listMedia, listMatches } from '../api/portfolio';
 import { listEndorsements, listRecommendations } from '../api/network';
 import { latestClearance, listMedicalRecords } from '../api/medical';
 import { listPosts } from '../api/content';
-import type { UserProfile, AttributeData } from '../types';
+import { normalizeAttributes } from '../lib/profileData';
+import type { UserProfile } from '../types';
 
 const DEFAULT_COVER = 'https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=1400';
 
@@ -322,7 +323,7 @@ export default function AthletePublicProfilePage() {
       acc[e.skill_or_trait] = (acc[e.skill_or_trait] ?? 0) + 1;
       return acc;
     }, {});
-    const attributes = ((athleteRow?.attributes ?? []) as AttributeData[]).map(a => ({
+    const attributes = normalizeAttributes(athleteRow?.attributes).map(a => ({
       ...a,
       endorsements: endorsementCounts[a.label] ?? a.endorsements ?? 0,
     }));
