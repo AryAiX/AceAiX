@@ -54,9 +54,33 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
         return;
       }
     }
+    const goalsNum = form.goals ? parseInt(form.goals, 10) : 0;
+    const assistsNum = form.assists ? parseInt(form.assists, 10) : 0;
+    const minutesNum = form.minutes ? parseInt(form.minutes, 10) : null;
+    const ratingNum = form.rating ? parseFloat(form.rating) : null;
+    if (goalsNum < 0 || goalsNum > 20) {
+      setSaving(false);
+      setError('Goals must be between 0 and 20.');
+      return;
+    }
+    if (assistsNum < 0 || assistsNum > 20) {
+      setSaving(false);
+      setError('Assists must be between 0 and 20.');
+      return;
+    }
+    if (minutesNum !== null && (minutesNum < 0 || minutesNum > 130)) {
+      setSaving(false);
+      setError('Minutes must be between 0 and 130.');
+      return;
+    }
+    if (ratingNum !== null && (ratingNum < 0 || ratingNum > 10)) {
+      setSaving(false);
+      setError('Rating must be between 0 and 10.');
+      return;
+    }
     const existingStats = (match.stats && typeof match.stats === 'object') ? { ...(match.stats as Record<string, unknown>) } : {};
-    if (form.rating) {
-      existingStats.rating = parseFloat(form.rating);
+    if (ratingNum !== null) {
+      existingStats.rating = ratingNum;
     } else {
       delete existingStats.rating;
     }
@@ -65,9 +89,9 @@ export default function MatchDetailModal({ match, onClose, onSaved }: { match: M
         opponent: form.opponent.trim() || null,
         competition: form.competition.trim() || null,
         result: resultText,
-        minutes_played: form.minutes ? parseInt(form.minutes, 10) : null,
-        goals: form.goals ? parseInt(form.goals, 10) : 0,
-        assists: form.assists ? parseInt(form.assists, 10) : 0,
+        minutes_played: minutesNum,
+        goals: goalsNum,
+        assists: assistsNum,
         stats: existingStats,
       });
       onSaved();
