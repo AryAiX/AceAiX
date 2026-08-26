@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function fetchProfile(userId: string) {
     const requestId = ++profileRequest.current;
-    setProfile(null);
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')
@@ -56,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         setLoading(true);
+        setProfile(null);
         fetchProfile(session.user.id).finally(() => setLoading(false));
       } else {
         profileRequest.current += 1;

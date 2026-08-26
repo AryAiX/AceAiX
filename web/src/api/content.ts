@@ -15,7 +15,10 @@ export async function getSuccessStory(slug: string): Promise<SuccessStory | null
 
 // ---- Posts (feed + activity) ----
 export async function listPosts(opts: { authorId?: string; athleteId?: string; limit?: number } = {}): Promise<Post[]> {
-  let q = supabase.from('posts').select(`*, author:user_profiles(${USER_FIELDS})`).order('created_at', { ascending: false });
+  let q = supabase
+    .from('posts')
+    .select(`*, author:user_profiles!posts_author_id_fkey(${USER_FIELDS})`)
+    .order('created_at', { ascending: false });
   if (opts.authorId) q = q.eq('author_id', opts.authorId);
   if (opts.athleteId) q = q.eq('athlete_id', opts.athleteId);
   if (opts.limit) q = q.limit(opts.limit);

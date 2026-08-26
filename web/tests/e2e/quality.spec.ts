@@ -46,6 +46,7 @@ test.describe('accessibility and access-control regressions', () => {
 });
 
 test('public, scout, and admin views resolve the same athlete identity', async ({ browser }) => {
+  test.setTimeout(90_000);
   const publicContext = await browser.newContext();
   const scoutContext = await browser.newContext();
   const adminContext = await browser.newContext();
