@@ -42,7 +42,7 @@ function staffAvatar(name: string) {
 function useCountUp(target: number) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!ref.current || started.current) return;
     const obs = new IntersectionObserver(([e]) => {
@@ -422,12 +422,12 @@ export default function ClubPublicProfilePage() {
               <div className="flex items-center gap-4 mt-3">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-azure">
                   <Users size={12} />
-                  <span ref={followerRef as any} className="tabular">{followerDisplay.toLocaleString()}</span>
+                  <span ref={followerRef} className="tabular">{followerDisplay.toLocaleString()}</span>
                   <span className="text-muted font-normal">followers</span>
                 </span>
                 <span className="text-white/10">·</span>
                 <span className="flex items-center gap-1 text-xs text-muted">
-                  <span ref={playerRef as any} className="font-semibold text-white tabular">{playerDisplay}</span> squad members
+                  <span ref={playerRef} className="font-semibold text-white tabular">{playerDisplay}</span> squad members
                 </span>
                 <span className="text-white/10 hidden sm:inline">·</span>
                 <span className="text-xs text-muted hidden sm:inline">{club.staffCount} staff</span>

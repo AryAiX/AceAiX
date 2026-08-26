@@ -91,8 +91,9 @@ export default function RegisterPage() {
     } else if (param === 'medical_partner') {
       setSel({ groupId: 'medical', dbRole: 'medical_partner', label: 'Medical Partner', color: '#1FB57A', textDark: false });
     }
-    requestAnimationFrame(() => setMounted(true));
-  }, []);
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

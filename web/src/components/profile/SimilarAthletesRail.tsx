@@ -94,7 +94,12 @@ export default function SimilarAthletesRail({ athletes = [] }: SimilarAthletesRa
   const ctaRef = useFadeIn(0.1);
 
   function toggle(id: string) {
-    setFollowing(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setFollowing(s => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   }
 
   return (
