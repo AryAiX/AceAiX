@@ -33,9 +33,14 @@ export default function LoginScreen() {
     }
     setLoading(true);
     setError(null);
-    const { error: authError } = await signIn(email.trim(), password);
+
+    const timeout = new Promise<{ error: string }>((resolve) =>
+      setTimeout(() => resolve({ error: 'Request timed out. Check your connection and try again.' }), 5000)
+    );
+
+    const result = await Promise.race([signIn(email.trim(), password), timeout]);
     setLoading(false);
-    if (authError) setError(authError);
+    if (result.error) setError(result.error);
   }
 
   return (
@@ -77,6 +82,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoComplete="email"
               returnKeyType="next"
+              editable={!loading}
             />
           </View>
 
@@ -93,6 +99,7 @@ export default function LoginScreen() {
                 autoComplete="password"
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
+                editable={!loading}
               />
               <TouchableOpacity
                 style={styles.eyeBtn}
@@ -105,6 +112,14 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          <TouchableOpacity
+            style={styles.forgotBtn}
+            onPress={() => router.push('/forgot-password')}
+            hitSlop={8}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.primaryBtn, loading && styles.btnDisabled]}
@@ -228,6 +243,8 @@ const styles = StyleSheet.create({
   passwordWrap: { position: 'relative' },
   passwordInput: { paddingRight: 48 },
   eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
+  forgotBtn: { alignSelf: 'flex-end', marginBottom: Spacing.md },
+  forgotText: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.primary },
   primaryBtn: {
     borderRadius: Radii.md,
     overflow: 'hidden',

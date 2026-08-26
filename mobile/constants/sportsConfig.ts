@@ -23,7 +23,13 @@ export interface SportConfig {
   metrics: MetricDef[];
   supportsAutoSync: boolean;
   syncNote?: string;
+  syncButtonLabel?: string;
 }
+
+const SPORT_ALIASES: Record<string, string> = {
+  'football (soccer)': 'football',
+  'soccer': 'football',
+};
 
 const SPORTS_CONFIG: Record<string, SportConfig> = {
   volleyball: {
@@ -93,6 +99,7 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     archetype: 'rated_ladder',
     supportsAutoSync: true,
     syncNote: 'Auto-syncs from Chess.com and Lichess via public APIs. Enter your usernames in Settings.',
+    syncButtonLabel: 'Auto-Sync from Chess.com / Lichess',
     metrics: [
       { key: 'rapid_rating', label: 'Rapid', unit: '', type: 'rating', higherIsBetter: true },
       { key: 'blitz_rating', label: 'Blitz', unit: '', type: 'rating', higherIsBetter: true },
@@ -110,7 +117,9 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     sport: 'football',
     displayName: 'Football',
     archetype: 'team_match',
-    supportsAutoSync: false,
+    supportsAutoSync: true,
+    syncNote: 'Auto-syncs from your linked football player ID. Link it in Settings.',
+    syncButtonLabel: 'Sync from Linked Player ID',
     metrics: [
       { key: 'goals', label: 'Goals', unit: '', type: 'number', higherIsBetter: true },
       { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true },
@@ -124,9 +133,16 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
 
 export default SPORTS_CONFIG;
 
-export function getSportConfig(sport: string | null | undefined): SportConfig | null {
+export function normalizeSportKey(sport: string | null | undefined): string | null {
   if (!sport) return null;
-  return SPORTS_CONFIG[sport.toLowerCase()] ?? null;
+  const normalized = sport.trim().toLowerCase();
+  return SPORT_ALIASES[normalized] ?? normalized;
+}
+
+export function getSportConfig(sport: string | null | undefined): SportConfig | null {
+  const key = normalizeSportKey(sport);
+  if (!key) return null;
+  return SPORTS_CONFIG[key] ?? null;
 }
 
 export const ARCHETYPE_LABELS: Record<Archetype, string> = {

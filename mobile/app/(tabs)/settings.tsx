@@ -3,8 +3,10 @@ import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Te
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
+import { normalizeSportKey } from '@/constants/sportsConfig';
 import { supabase } from '@/lib/supabase';
 import { triggerChessSyncFull, isSyncStale } from '@/lib/chessService';
 import { useChessStats } from '@/hooks/useChessStats';
@@ -16,6 +18,7 @@ import {
 } from '@/lib/notificationService';
 import {
   fetchConsent,
+  linkSportifyAccount,
   SportifyConsent,
 } from '@/lib/sportifyService';
 import { SportifyConsentModal } from '@/components/sportify/SportifyConsentModal';
@@ -45,6 +48,8 @@ export default function Settings() {
   const router = useRouter();
   const [publicProfile, setPublicProfile] = useState(profile?.is_open_to_offers ?? true);
   const [savingVisibility, setSavingVisibility] = useState(false);
+  const [showcaseOptIn, setShowcaseOptIn] = useState(profile?.showcase_opt_in ?? false);
+  const [savingShowcase, setSavingShowcase] = useState(false);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
   const [lichess, setLichess] = useState(profile?.lichess_username ?? '');
   const [footballPlayerId, setFootballPlayerId] = useState(profile?.football_api_player_id ?? '');
@@ -83,6 +88,26 @@ export default function Settings() {
     setPublicProfile(profile?.is_open_to_offers ?? true);
   }, [profile?.is_open_to_offers]);
 
+  useEffect(() => {
+    setShowcaseOptIn(profile?.showcase_opt_in ?? false);
+  }, [profile?.showcase_opt_in]);
+
+  useEffect(() => {
+    setChesscom(profile?.chesscom_username ?? '');
+  }, [profile?.chesscom_username]);
+
+  useEffect(() => {
+    setLichess(profile?.lichess_username ?? '');
+  }, [profile?.lichess_username]);
+
+  useEffect(() => {
+    setFootballPlayerId(profile?.football_api_player_id ?? '');
+  }, [profile?.football_api_player_id]);
+
+  useEffect(() => {
+    setSportifyId(profile?.sportify_athlete_id ?? '');
+  }, [profile?.sportify_athlete_id]);
+
   async function handleVisibilityChange(value: boolean) {
     if (!user || savingVisibility) return;
     const previous = publicProfile;
@@ -101,12 +126,37 @@ export default function Settings() {
     await refreshProfile();
   }
 
+  async function handleShowcaseChange(value: boolean) {
+    if (!user || savingShowcase) return;
+    const previous = showcaseOptIn;
+    setShowcaseOptIn(value);
+    setSavingShowcase(true);
+    const { error } = await supabase
+      .from('athlete_profiles')
+      .update({ showcase_opt_in: value })
+      .eq('user_id', user.id);
+    setSavingShowcase(false);
+    if (error) {
+      setShowcaseOptIn(previous);
+      Alert.alert('Setting not updated', error.message);
+      return;
+    }
+    await refreshProfile();
+  }
+
   function setPref<K extends keyof NotificationPrefs>(key: K, val: NotificationPrefs[K]) {
     setPrefs((prev) => ({ ...prev, [key]: val }));
   }
 
   async function handleSavePrefs() {
     if (!user) return;
+    const timeFormat = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    const quietStart = prefs.quiet_start ?? DEFAULT_PREFS.quiet_start;
+    const quietEnd = prefs.quiet_end ?? DEFAULT_PREFS.quiet_end;
+    if (!timeFormat.test(quietStart) || !timeFormat.test(quietEnd)) {
+      Alert.alert('Invalid quiet hours', 'Enter times in 24-hour HH:MM format, e.g. 22:00.');
+      return;
+    }
     setSavingPrefs(true);
     const { error } = await saveNotifPrefs(user.id, prefs);
     setSavingPrefs(false);
@@ -167,12 +217,9 @@ export default function Settings() {
       setSportifyMsg(lookupError?.message ?? 'No partner-issued result matches this ID.');
       return;
     }
-    const { error } = await supabase
-      .from('athlete_profiles')
-      .update({ sportify_linked: true, sportify_athlete_id: partnerId })
-      .eq('user_id', user.id);
+    const { error } = await linkSportifyAccount(user.id, partnerId);
     if (error) {
-      setSportifyMsg(error.message);
+      setSportifyMsg(error);
     } else {
       await refreshProfile();
       setSportifyMsg('Sportify account linked!');
@@ -230,8 +277,8 @@ export default function Settings() {
     router.replace('/login');
   }
 
-  const isChessSport = profile?.sport === 'chess';
-  const isFootballSport = profile?.sport && profile.sport !== 'chess';
+  const isChessSport = normalizeSportKey(profile?.sport) === 'chess';
+  const isFootballSport = normalizeSportKey(profile?.sport) === 'football';
 
   return (
     <View style={s.root}>
@@ -241,7 +288,11 @@ export default function Settings() {
         {/* Profile summary */}
         <TouchableOpacity style={s.profileCard} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
           <View style={s.profileAv}>
-            <Text style={s.profileAvTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
+            <Avatar
+              uri={profile?.avatar_url}
+              initial={profile?.full_name?.[0]?.toUpperCase() ?? 'A'}
+              size={52}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.profileName}>{profile?.full_name ?? 'Athlete'}</Text>
@@ -386,6 +437,23 @@ export default function Settings() {
                 thumbColor={publicProfile ? Colors.primary : Colors.textDisabled}
               />
             </View>
+            <View style={[s.row, s.rowBorder]}>
+              <View style={s.rowLeft}>
+                <Eye color={Colors.textMuted} size={18} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.rowLabel}>Show My Stats in Performance Gallery</Text>
+                  <Text style={s.rowSub}>Let other athletes see your performance stats as a public example</Text>
+                </View>
+              </View>
+              <Switch
+                accessibilityLabel="Show my stats in performance gallery"
+                value={showcaseOptIn}
+                onValueChange={(value) => void handleShowcaseChange(value)}
+                disabled={savingShowcase}
+                trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
+                thumbColor={showcaseOptIn ? Colors.primary : Colors.textDisabled}
+              />
+            </View>
           </View>
         </View>
 
@@ -393,46 +461,50 @@ export default function Settings() {
         <View style={s.section}>
           <Text style={s.sectionTitle}>Connected Data</Text>
           <View style={s.group}>
-            {/* Chess.com */}
-            <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
-              <View style={s.rowLeft}>
-                <Link color={Colors.textMuted} size={18} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowLabel}>Chess.com Username</Text>
-                  <Text style={s.rowSub}>Auto-syncs ratings, records, and recent games</Text>
+            {isChessSport && (
+              <>
+                {/* Chess.com */}
+                <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+                  <View style={s.rowLeft}>
+                    <Link color={Colors.textMuted} size={18} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowLabel}>Chess.com Username</Text>
+                      <Text style={s.rowSub}>Auto-syncs ratings, records, and recent games</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={s.connInput}
+                    value={chesscom}
+                    onChangeText={setChesscom}
+                    placeholder="e.g. magnuscarlsen"
+                    placeholderTextColor={Colors.textDisabled}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
-              </View>
-              <TextInput
-                style={s.connInput}
-                value={chesscom}
-                onChangeText={setChesscom}
-                placeholder="e.g. magnuscarlsen"
-                placeholderTextColor={Colors.textDisabled}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            {/* Lichess */}
-            <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
-              <View style={s.rowLeft}>
-                <Link color={Colors.textMuted} size={18} />
-                <View style={{ flex: 1 }}>
-                  <Text style={s.rowLabel}>Lichess Username</Text>
-                  <Text style={s.rowSub}>Rating history + W/L/D synced from Lichess</Text>
+                {/* Lichess */}
+                <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+                  <View style={s.rowLeft}>
+                    <Link color={Colors.textMuted} size={18} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowLabel}>Lichess Username</Text>
+                      <Text style={s.rowSub}>Rating history + W/L/D synced from Lichess</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={s.connInput}
+                    value={lichess}
+                    onChangeText={setLichess}
+                    placeholder="e.g. DrNykterstein"
+                    placeholderTextColor={Colors.textDisabled}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
                 </View>
-              </View>
-              <TextInput
-                style={s.connInput}
-                value={lichess}
-                onChangeText={setLichess}
-                placeholder="e.g. DrNykterstein"
-                placeholderTextColor={Colors.textDisabled}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
+              </>
+            )}
             {isFootballSport && (
-              <View style={[s.row, s.rowBorder, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
+              <View style={[s.row, { flexDirection: 'column', alignItems: 'flex-start', gap: Spacing.sm }]}>
                 <View style={s.rowLeft}>
                   <Link color={Colors.textMuted} size={18} />
                   <View style={{ flex: 1 }}>
@@ -698,7 +770,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: Spacing.lg, gap: Spacing.lg },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, backgroundColor: Colors.surface, borderRadius: Radii.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
-  profileAv: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  profileAv: { width: 52, height: 52, borderRadius: 26, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   profileAvTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xl, color: Colors.white },
   profileName: { fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary },
   profileSub: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, marginTop: 2 },

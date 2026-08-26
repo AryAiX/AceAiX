@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Eye, Star, Target, Users } from 'lucide-react-native';
-import Svg, { Rect, Line } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -11,7 +11,7 @@ const { width: SW } = Dimensions.get('window');
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-function BarChartComponent({ data, months, w, h }: { data: number[]; months: string[]; w: number; h: number }) {
+function BarChartComponent({ data, w, h }: { data: number[]; w: number; h: number }) {
   const max = Math.max(...data, 1);
   const barW = (w - 20) / data.length - 4;
   return (
@@ -21,12 +21,7 @@ function BarChartComponent({ data, months, w, h }: { data: number[]; months: str
         const x = 10 + i * ((w - 20) / data.length);
         const y = h - 20 - barH;
         return (
-          <React.Fragment key={i}>
-            <Rect x={x} y={y} width={barW} height={barH} rx={3} fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`} />
-            <Svg x={x} y={h - 18} width={barW} height={16}>
-              <Line x1={barW / 2} y1={0} x2={barW / 2} y2={16} stroke="transparent" />
-            </Svg>
-          </React.Fragment>
+          <Rect key={i} x={x} y={y} width={barW} height={barH} rx={3} fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`} />
         );
       })}
     </Svg>
@@ -41,10 +36,14 @@ export default function Analytics() {
   const [savedCount, setSavedCount] = useState(0);
   const [applications, setApplications] = useState<{ status: string }[]>([]);
   const [regions, setRegions] = useState<{ region: string; views: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     if (!user || !profile?.athlete_profile_id) return;
     let mounted = true;
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       supabase
         .from('profile_views')
@@ -63,8 +62,8 @@ export default function Analytics() {
       for (const view of views) {
         const date = new Date(view.created_at);
         if (date.getFullYear() === currentYear) months[date.getMonth()] += 1;
-        const region = view.viewer_org?.trim();
-        if (region) regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+        const region = view.viewer_org?.trim() || 'Unspecified';
+        regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
       }
 
       setMonthlyViews(months);
@@ -76,7 +75,8 @@ export default function Analytics() {
         .map(([region, viewCount]) => ({ region, views: viewCount }))
         .sort((a, b) => b.views - a.views)
         .slice(0, 5));
-    });
+    }).catch(() => { if (mounted) setLoadError(true); })
+      .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, [profile?.athlete_profile_id, user]);
 
@@ -106,57 +106,71 @@ export default function Analytics() {
       <AppHeader title="Analytics" />
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-        <View style={s.insightsGrid}>
-          {insights.map(({ label, value, delta, Icon }) => (
-            <View key={label} style={s.insightCard}>
-              <View style={s.insightTop}>
-                <Icon color={Colors.primary} size={16} />
-                <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
-              </View>
-              <Text style={s.insightVal}>{value}</Text>
-              <Text style={s.insightLabel}>{label}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
-          <BarChartComponent data={monthlyViews} months={MONTHS} w={SW - 64} h={120} />
-          <View style={s.monthRow}>
-            {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
-          </View>
-        </View>
-
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
-          {engagement.map(row => (
-            <View key={row.label} style={s.engRow}>
-              <View style={s.engLeft}>
-                <Text style={s.engLabel}>{row.label}</Text>
-                <View style={s.engBar}>
-                  <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
+        {loading ? (
+          <Text style={s.emptyText}>Loading analytics...</Text>
+        ) : loadError ? (
+          <Text style={s.emptyText}>Couldn't load analytics data — pull to refresh or try again.</Text>
+        ) : (
+          <>
+            <View style={s.insightsGrid}>
+              {insights.map(({ label, value, delta, Icon }) => (
+                <View key={label} style={s.insightCard}>
+                  <View style={s.insightTop}>
+                    <Icon color={Colors.primary} size={16} />
+                    <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
+                  </View>
+                  <Text style={s.insightVal}>{value}</Text>
+                  <Text style={s.insightLabel}>{label}</Text>
                 </View>
-              </View>
-              <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
+              ))}
             </View>
-          ))}
-        </View>
 
-        <View style={s.card}>
-          <Text style={s.cardTitle}>Viewer Organizations</Text>
-          {regions.map(r => (
-            <View key={r.region} style={s.geoRow}>
-              <Text style={s.geoRegion}>{r.region}</Text>
-              <View style={s.geoBarWrap}>
-                <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
-              </View>
-              <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
+              {monthlyViews.some((v) => v > 0) ? (
+                <>
+                  <BarChartComponent data={monthlyViews} w={SW - 64} h={120} />
+                  <View style={s.monthRow}>
+                    {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
+                  </View>
+                </>
+              ) : (
+                <Text style={s.emptyText}>No profile views recorded yet this year.</Text>
+              )}
             </View>
-          ))}
-          {regions.length === 0 && (
-            <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
-          )}
-        </View>
+
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
+              {engagement.map(row => (
+                <View key={row.label} style={s.engRow}>
+                  <View style={s.engLeft}>
+                    <Text style={s.engLabel}>{row.label}</Text>
+                    <View style={s.engBar}>
+                      <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
+                    </View>
+                  </View>
+                  <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={s.card}>
+              <Text style={s.cardTitle}>Viewer Organizations</Text>
+              {regions.map(r => (
+                <View key={r.region} style={s.geoRow}>
+                  <Text style={s.geoRegion}>{r.region}</Text>
+                  <View style={s.geoBarWrap}>
+                    <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
+                  </View>
+                  <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
+                </View>
+              ))}
+              {regions.length === 0 && (
+                <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
+              )}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -185,7 +199,6 @@ const s = StyleSheet.create({
   engFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 3 },
   engVal: { fontFamily: Typography.family.mono, fontSize: Typography.size.sm, color: Colors.textMuted, width: 50, textAlign: 'right' },
   geoRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: Colors.border },
-  geoFlag: { fontSize: 18, width: 26 },
   geoRegion: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textPrimary, width: 80 },
   geoBarWrap: { flex: 1, height: 6, backgroundColor: Colors.elevated, borderRadius: 3, overflow: 'hidden' },
   geoBar: { height: '100%', backgroundColor: `${Colors.primary}70`, borderRadius: 3 },

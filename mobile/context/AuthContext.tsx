@@ -16,8 +16,10 @@ export interface Profile {
   sport_category: string | null;
   birthdate: string | null;
   hometown: string | null;
+  country: string | null;
   current_location: string | null;
   nationality: string | null;
+  level: string | null;
   league: string | null;
   chesscom_username: string | null;
   lichess_username: string | null;
@@ -34,12 +36,14 @@ export interface Profile {
   fitness_score: number;
   current_club: string | null;
   is_open_to_offers: boolean;
+  showcase_opt_in: boolean;
   is_verified: boolean;
   followers_count: number;
   connections_count: number;
   highlighted_stats: Record<string, number>;
-  attributes: Record<string, number>;
+  attributes: { label: string; value: number }[];
   languages: { language: string; proficiency: string }[];
+  trajectory: { season: string; score?: number; forecast?: number }[];
 }
 
 export interface SignUpData {
@@ -66,6 +70,8 @@ interface AuthState {
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error: string | null }>;
   refreshProfile: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthState>({
@@ -79,6 +85,8 @@ const AuthContext = createContext<AuthState>({
   signOut: async () => {},
   deleteAccount: async () => ({ error: null }),
   refreshProfile: async () => {},
+  requestPasswordReset: async () => ({ error: null }),
+  updatePassword: async () => ({ error: null }),
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -90,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const profileRequest = useRef(0);
 
   async function fetchProfile(userId: string): Promise<Profile | null> {
-    const [{ data: publicProfile, error: publicError }, { data: privateProfile }, { data: athleteProfile }] = await Promise.all([
+    const [{ data: publicProfile, error: publicError }, { data: privateProfile, error: privateError }, { data: athleteProfile, error: athleteError }] = await Promise.all([
       supabase
         .from('user_profiles')
         .select('id, role, full_name, avatar_url, bio, city, country, locale, is_verified, subscription_tier')
@@ -103,12 +111,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
       supabase
         .from('athlete_profiles')
-        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, followers_count, connections_count, highlighted_stats, attributes, languages, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
+        .select('id, sport, position, position_primary, position_secondary, nationality, current_club, level, league, bio, visibility_score, performance_score, fitness_score, profile_completeness, is_open_to_offers, showcase_opt_in, followers_count, connections_count, highlighted_stats, attributes, languages, trajectory, chesscom_username, lichess_username, external_provider, external_player_id, football_api_player_id, sportify_linked, sportify_athlete_id, sportify_is_minor')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
 
     if (publicError || !publicProfile) return null;
+
+    if (privateError) {
+      console.warn(`[AuthContext] user_private fetch failed for ${userId}: ${privateError.message}`);
+    }
+    if (athleteError) {
+      console.warn(`[AuthContext] athlete_profiles fetch failed for ${userId}: ${athleteError.message}`);
+    }
 
     return {
       id: publicProfile.id,
@@ -122,9 +137,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sport_category: athleteProfile?.sport ?? null,
       birthdate: privateProfile?.date_of_birth ?? null,
       hometown: publicProfile.city ?? null,
+      country: publicProfile.country ?? null,
       current_location: [publicProfile.city, publicProfile.country].filter(Boolean).join(', ') || null,
       nationality: athleteProfile?.nationality ?? null,
-      league: athleteProfile?.level ?? null,
+      level: athleteProfile?.level ?? null,
+      league: athleteProfile?.league ?? null,
       chesscom_username: athleteProfile?.chesscom_username ?? null,
       lichess_username: athleteProfile?.lichess_username ?? null,
       external_provider: athleteProfile?.external_provider ?? null,
@@ -140,13 +157,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fitness_score: athleteProfile?.fitness_score ?? 0,
       current_club: athleteProfile?.current_club ?? null,
       is_open_to_offers: athleteProfile?.is_open_to_offers ?? true,
+      showcase_opt_in: athleteProfile?.showcase_opt_in ?? false,
       is_verified: publicProfile.is_verified ?? false,
       followers_count: athleteProfile?.followers_count ?? 0,
       connections_count: athleteProfile?.connections_count ?? 0,
       highlighted_stats: (athleteProfile?.highlighted_stats as Record<string, number>) ?? {},
-      attributes: (athleteProfile?.attributes as Record<string, number>) ?? {},
+      attributes: Array.isArray(athleteProfile?.attributes)
+        ? (athleteProfile.attributes as { label: string; value: number }[])
+        : [],
       languages: Array.isArray(athleteProfile?.languages)
         ? athleteProfile.languages as { language: string; proficiency: string }[]
+        : [],
+      trajectory: Array.isArray(athleteProfile?.trajectory)
+        ? athleteProfile.trajectory as { season: string; score?: number; forecast?: number }[]
         : [],
     };
   }
@@ -181,7 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('athlete_profiles')
         .update({
           sport: data.sport_category || null,
-          level: data.league || 'amateur',
+          level: 'amateur',
+          league: data.league || null,
           nationality: data.nationality || null,
         })
         .eq('user_id', userId),
@@ -284,6 +308,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setRole(null);
   }
 
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      email.trim().toLowerCase(),
+      { redirectTo: 'aceaix://reset-password' }
+    );
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
+  async function updatePassword(newPassword: string) {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: error.message };
+    return { error: null };
+  }
+
   async function deleteAccount() {
     if (!session?.access_token || !user) {
       return { error: 'You must be signed in to delete your account.' };
@@ -332,7 +371,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile }}
+      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile, requestPasswordReset, updatePassword }}
     >
       {children}
     </AuthContext.Provider>

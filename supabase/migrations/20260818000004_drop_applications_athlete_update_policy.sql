@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS applications_update ON applications;

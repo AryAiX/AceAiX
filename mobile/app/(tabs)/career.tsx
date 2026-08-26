@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Award, MapPin, Plus, Trash2, X } from 'lucide-react-native';
+import { Award, Edit, MapPin, Plus, Trash2, X } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
@@ -25,16 +25,38 @@ interface CareerMilestone {
   notes: string | null;
 }
 
+const MILESTONE_TYPES = ['Signed', 'Debut', 'Trophy', 'Championship', 'Award', 'Milestone', 'Other'];
+const ACHIEVEMENT_TYPES = new Set(['trophy', 'championship', 'award']);
+
 export default function Career() {
   const { profile } = useAuth();
   const [entries, setEntries] = useState<CareerMilestone[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [type, setType] = useState('');
   const [clubOrEvent, setClubOrEvent] = useState('');
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function openEditor(entry?: CareerMilestone) {
+    if (entry) {
+      setEditingId(entry.id);
+      setType(entry.milestone_type ?? '');
+      setClubOrEvent(entry.club_or_event ?? '');
+      setDate(entry.achieved_at ?? '');
+      setNotes(entry.notes ?? '');
+    } else {
+      setEditingId(null);
+      setType('');
+      setClubOrEvent('');
+      setDate('');
+      setNotes('');
+    }
+    setEditorOpen(true);
+  }
 
   const loadEntries = useCallback(async () => {
     if (!profile?.athlete_profile_id) {
@@ -43,6 +65,7 @@ export default function Career() {
       return;
     }
     setLoading(true);
+    setLoadError(false);
     const { data, error } = await supabase
       .from('career_milestones')
       .select('id,milestone_type,club_or_event,achieved_at,notes')
@@ -50,6 +73,7 @@ export default function Career() {
       .order('achieved_at', { ascending: false });
     setLoading(false);
     if (error) {
+      setLoadError(true);
       Alert.alert('Career history unavailable', error.message);
       return;
     }
@@ -60,7 +84,7 @@ export default function Career() {
     void loadEntries();
   }, [loadEntries]);
 
-  async function addEntry() {
+  async function saveEntry() {
     if (!profile?.athlete_profile_id || !type.trim() || !clubOrEvent.trim()) {
       Alert.alert('Complete the entry', 'Add a milestone type and club or event.');
       return;
@@ -69,14 +93,21 @@ export default function Career() {
       Alert.alert('Check the date', 'Use YYYY-MM-DD format.');
       return;
     }
+    const parsed = new Date(date);
+    if (date && Number.isNaN(parsed.getTime()) || (date && parsed.toISOString().slice(0, 10) !== date)) {
+      Alert.alert('Check the date', 'Enter a valid calendar date.');
+      return;
+    }
     setSaving(true);
-    const { error } = await supabase.from('career_milestones').insert({
-      athlete_id: profile.athlete_profile_id,
+    const payload = {
       milestone_type: type.trim(),
       club_or_event: clubOrEvent.trim(),
       achieved_at: date || null,
       notes: notes.trim() || null,
-    });
+    };
+    const { error } = editingId
+      ? await supabase.from('career_milestones').update(payload).eq('id', editingId)
+      : await supabase.from('career_milestones').insert({ ...payload, athlete_id: profile.athlete_profile_id });
     setSaving(false);
     if (error) {
       Alert.alert('Career entry not added', error.message);
@@ -86,6 +117,7 @@ export default function Career() {
     setClubOrEvent('');
     setDate('');
     setNotes('');
+    setEditingId(null);
     setEditorOpen(false);
     await loadEntries();
   }
@@ -133,8 +165,13 @@ export default function Career() {
     })),
   ];
   const achievements = entries.filter((entry) =>
-    /achievement|award|champion|trophy/i.test(entry.milestone_type ?? ''),
+    ACHIEVEMENT_TYPES.has((entry.milestone_type ?? '').toLowerCase()),
   );
+  const clubCount = new Set(
+    milestones
+      .filter((entry) => !ACHIEVEMENT_TYPES.has((entry.event ?? '').toLowerCase()))
+      .map((entry) => entry.club.trim().toLowerCase().replace(/\s+/g, ' '))
+  ).size;
 
   return (
     <View style={s.root}>
@@ -144,7 +181,7 @@ export default function Career() {
         <View style={s.summaryRow}>
           {[
             { label: 'Entries', value: String(milestones.length) },
-            { label: 'Clubs', value: String(new Set(milestones.map((entry) => entry.club)).size) },
+            { label: 'Clubs', value: String(clubCount) },
             { label: 'Career Rating', value: profile?.performance_score ? (profile.performance_score / 10).toFixed(1) : '—' },
           ].map((st, i) => (
             <View key={st.label} style={[s.summaryItem, i < 2 && s.summaryBorder]}>
@@ -182,24 +219,41 @@ export default function Career() {
                 </View>
                 {m.current && <View style={s.currentBadge}><Text style={s.currentTxt}>Current</Text></View>}
                 {!m.current && (
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel={`Delete career entry ${m.club}`}
-                    style={s.deleteEntry}
-                    onPress={() => {
-                      const entry = entries.find((candidate) => candidate.id === m.id);
-                      if (entry) confirmRemove(entry);
-                    }}
-                  >
-                    <Trash2 color={Colors.error} size={14} />
-                    <Text style={s.deleteEntryText}>Delete</Text>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit career entry ${m.club}`}
+                      style={s.editEntry}
+                      onPress={() => {
+                        const entry = entries.find((candidate) => candidate.id === m.id);
+                        if (entry) openEditor(entry);
+                      }}
+                    >
+                      <Edit color={Colors.primary} size={14} />
+                      <Text style={s.editEntryText}>Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete career entry ${m.club}`}
+                      style={s.deleteEntry}
+                      onPress={() => {
+                        const entry = entries.find((candidate) => candidate.id === m.id);
+                        if (entry) confirmRemove(entry);
+                      }}
+                    >
+                      <Trash2 color={Colors.error} size={14} />
+                      <Text style={s.deleteEntryText}>Delete</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             </View>
           ))}
           {loading && <ActivityIndicator color={Colors.primary} />}
-          {!loading && milestones.length === 0 && (
+          {!loading && loadError && (
+            <Text style={s.emptyText}>Couldn't load your career history. Pull to refresh or try again.</Text>
+          )}
+          {!loading && !loadError && milestones.length === 0 && (
             <Text style={s.emptyText}>No career entries yet. Add a verified milestone to start building your timeline.</Text>
           )}
         </View>
@@ -227,7 +281,7 @@ export default function Career() {
           accessibilityRole="button"
           accessibilityLabel="Add career entry"
           style={s.addBtn}
-          onPress={() => setEditorOpen(true)}
+          onPress={() => openEditor()}
         >
           <Plus color={Colors.primary} size={18} />
           <Text style={s.addTxt}>Add Career Entry</Text>
@@ -236,23 +290,28 @@ export default function Career() {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={() => setEditorOpen(false)}>
+      <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={() => { setEditingId(null); setEditorOpen(false); }}>
         <View style={s.modalBackdrop}>
           <View style={s.editor}>
             <View style={s.editorHeader}>
-              <Text style={s.editorTitle}>Add Career Entry</Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={() => setEditorOpen(false)}>
+              <Text style={s.editorTitle}>{editingId ? 'Edit Career Entry' : 'Add Career Entry'}</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={() => { setEditingId(null); setEditorOpen(false); }}>
                 <X color={Colors.textMuted} size={22} />
               </TouchableOpacity>
             </View>
-            <TextInput
-              accessibilityLabel="Career milestone type"
-              style={s.input}
-              value={type}
-              onChangeText={setType}
-              placeholder="Type, e.g. Signed, Award, Championship"
-              placeholderTextColor={Colors.textDisabled}
-            />
+            <View style={s.typeGrid}>
+              {MILESTONE_TYPES.map((t) => (
+                <TouchableOpacity
+                  key={t}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select milestone type ${t}`}
+                  style={[s.typeChip, type === t && s.typeChipActive]}
+                  onPress={() => setType(t)}
+                >
+                  <Text style={[s.typeChipTxt, type === t && s.typeChipTxtActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <TextInput
               accessibilityLabel="Career club or event"
               style={s.input}
@@ -284,9 +343,9 @@ export default function Career() {
               accessibilityLabel="Save career entry"
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
               disabled={saving}
-              onPress={() => void addEntry()}
+              onPress={() => void saveEntry()}
             >
-              {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>Save Entry</Text>}
+              {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>{editingId ? 'Save Changes' : 'Save Entry'}</Text>}
             </TouchableOpacity>
           </View>
         </View>
@@ -324,6 +383,8 @@ const s = StyleSheet.create({
   currentTxt: { fontFamily: Typography.family.bold, fontSize: 10, color: Colors.primary },
   deleteEntry: { marginTop: Spacing.sm, alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, padding: 6 },
   deleteEntryText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.error },
+  editEntry: { marginTop: Spacing.sm, alignSelf: 'flex-end', flexDirection: 'row', alignItems: 'center', gap: 4, padding: 6 },
+  editEntryText: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.primary },
   achRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
   achLabel: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   achOrg: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted, marginTop: 2 },
@@ -335,6 +396,11 @@ const s = StyleSheet.create({
   editorHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   editorTitle: { fontFamily: Typography.family.display, fontSize: Typography.size.xl, color: Colors.textPrimary },
   input: { backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textPrimary },
+  typeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  typeChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.full, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
+  typeChipActive: { backgroundColor: `${Colors.primary}20`, borderColor: `${Colors.primary}50` },
+  typeChipTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted },
+  typeChipTxtActive: { color: Colors.primary },
   notesInput: { minHeight: 88, textAlignVertical: 'top' },
   saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: Radii.md, minHeight: 48 },
   saveBtnText: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.white },

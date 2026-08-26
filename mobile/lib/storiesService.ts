@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export type StoryAudience = 'connections' | 'followers' | 'public';
 export type StoryMediaType = 'photo' | 'video';
@@ -77,12 +79,15 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
       let signed_url: string | undefined;
       if (/^https?:\/\//i.test(row.media_url)) {
         signed_url = row.media_url;
-      } else try {
-        const { data: urlData } = await supabase.storage
+      } else {
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('stories')
           .createSignedUrl(row.media_url, 3600);
+        if (urlError) {
+          console.warn(`[storiesService] Failed to sign story media URL for ${row.id}: ${urlError.message}`);
+        }
         signed_url = urlData?.signedUrl;
-      } catch (_) {}
+      }
       return {
         id: row.id,
         author_id: row.author_id,
@@ -160,13 +165,16 @@ export async function uploadStoryMedia(
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    if (!base64) {
+      return { path: null, error: 'Captured file could not be read. Please try again.' };
+    }
+    const arrayBuffer = decode(base64);
+    if (arrayBuffer.byteLength === 0) {
+      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
+    }
 
-    const { error } = await supabase.storage.from('stories').upload(path, blob, {
-      contentType,
-      upsert: false,
-    });
+    const { error } = await supabase.storage.from('stories').upload(path, arrayBuffer, { contentType });
     if (error) return { path: null, error: error.message };
     return { path, error: null };
   } catch (e) {

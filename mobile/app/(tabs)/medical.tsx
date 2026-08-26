@@ -1,33 +1,70 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Shield, Activity, AlertCircle, CheckCircle2, Clock, FileText, BadgeCheck } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
+import { PartnerConsentsModal } from '@/components/medical/PartnerConsentsModal';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
 export default function Medical() {
   const { profile } = useAuth();
-  const [records, setRecords] = useState<Array<{ date: string; type: string; status: string; notes: string }>>([]);
+  const [records, setRecords] = useState<Array<{ id: string; date: string; type: string; status: string; notes: string }>>([]);
   const [clearance, setClearance] = useState<{ status: string; effective_to: string | null; created_at: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [partnersModalVisible, setPartnersModalVisible] = useState(false);
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
+    setLoading(true);
+    setLoadError(false);
     Promise.all([
       supabase.from('medical_clearances').select('status,effective_to,created_at').eq('athlete_id', profile.athlete_profile_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      supabase.from('medical_records').select('record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
+      supabase.from('medical_records').select('id,record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
     ]).then(([clearanceResult, recordsResult]) => {
       setClearance(clearanceResult.data as any ?? null);
       setRecords((recordsResult.data ?? []).map((row: any) => ({
+        id: row.id,
         date: row.issued_at ? new Date(row.issued_at).toLocaleDateString() : '',
         type: row.title ?? row.record_type,
         status: row.is_verified ? 'Verified' : 'Pending',
         notes: row.summary ?? 'No summary provided.',
       })));
-    });
+    }).catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
   }, [profile?.athlete_profile_id]);
 
-  const isCleared = clearance?.status === 'cleared';
+  const CLEARANCE_META: Record<string, { label: string; color: string; subtitle: string }> = {
+    cleared: { label: 'Cleared', color: Colors.success, subtitle: 'Medically verified athlete' },
+    restricted: { label: 'Restricted', color: Colors.warning, subtitle: 'Cleared with restrictions — see notes' },
+    not_cleared: { label: 'Not Cleared', color: Colors.error, subtitle: 'Not currently cleared to participate' },
+    pending: { label: 'Pending', color: Colors.warning, subtitle: 'Awaiting partner-issued clearance' },
+  };
+  const NO_CLEARANCE_META = { label: 'No active clearance', color: Colors.warning, subtitle: 'No active clearance' };
+  const clearanceMeta = clearance ? (CLEARANCE_META[clearance.status] ?? NO_CLEARANCE_META) : NO_CLEARANCE_META;
+
+  const expiryInfo = (() => {
+    if (!clearance?.effective_to) {
+      return { text: 'No expiry set', color: Colors.textMuted };
+    }
+    const daysRemaining = Math.ceil(
+      (new Date(clearance.effective_to).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysRemaining < 0) return { text: 'Expired', color: Colors.error };
+    if (daysRemaining <= 30) return { text: `${daysRemaining}d left`, color: Colors.warning };
+    return { text: `${daysRemaining}d left`, color: Colors.success };
+  })();
+
+  const verifiedCount = records.filter((r) => r.status === 'Verified').length;
+  const recordsVerifiedInfo = {
+    text: `${verifiedCount} of ${records.length}`,
+    color: records.length === 0
+      ? Colors.textMuted
+      : verifiedCount === records.length
+        ? Colors.success
+        : Colors.warning,
+  };
 
   return (
     <View style={s.root}>
@@ -35,14 +72,22 @@ export default function Medical() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
         <View style={[s.card, s.clearanceCard]}>
           <View style={s.clearanceRow}>
-            <Shield color={isCleared ? Colors.success : Colors.warning} size={32} />
+            <Shield color={clearanceMeta.color} size={32} />
             <View>
-              <Text style={[s.clearanceStatus, { color: isCleared ? Colors.success : Colors.warning }]}>
-                {clearance ? clearance.status.replace('_', ' ') : 'No active clearance'}
-              </Text>
-              <Text style={s.clearanceSub}>{isCleared ? 'Medically verified athlete' : 'Awaiting partner-issued clearance'}</Text>
+              {loading ? (
+                <Text style={s.clearanceSub}>Loading medical data...</Text>
+              ) : loadError ? (
+                <Text style={s.clearanceSub}>Couldn't load medical data — pull to refresh or try again.</Text>
+              ) : (
+                <>
+                  <Text style={[s.clearanceStatus, { color: clearanceMeta.color }]}>
+                    {clearanceMeta.label}
+                  </Text>
+                  <Text style={s.clearanceSub}>{clearanceMeta.subtitle}</Text>
+                </>
+              )}
             </View>
-            <BadgeCheck color={isCleared ? Colors.success : Colors.warning} size={22} />
+            <BadgeCheck color={clearanceMeta.color} size={22} />
           </View>
           <View style={s.clearanceMeta}>
             <Clock color={Colors.textDisabled} size={12} />
@@ -59,42 +104,69 @@ export default function Medical() {
           </Text>
           <View style={s.riskGrid}>
             <View style={s.riskItem}>
-              <Text style={[s.riskLevel, { color: isCleared ? Colors.success : Colors.warning }]}>{clearance?.status ?? 'Pending'}</Text>
-              <Text style={s.riskLabel}>Clearance Status</Text>
+              <Text style={[s.riskLevel, { color: expiryInfo.color }]}>{expiryInfo.text}</Text>
+              <Text style={s.riskLabel}>Clearance Expiry</Text>
+            </View>
+            <View style={s.riskItem}>
+              <Text style={[s.riskLevel, { color: recordsVerifiedInfo.color }]}>{recordsVerifiedInfo.text}</Text>
+              <Text style={s.riskLabel}>Records Verified</Text>
             </View>
           </View>
         </View>
 
         <View style={s.card}>
           <Text style={s.cardTitle}>Medical Records</Text>
-          {records.map((rec, i) => (
-            <View key={rec.date} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
-              <View style={s.recordLeft}>
-                <CheckCircle2 color={Colors.success} size={16} />
-                <View>
-                  <Text style={s.recordType}>{rec.type}</Text>
-                  <Text style={s.recordDate}>{rec.date}</Text>
-                  <Text style={s.recordNotes}>{rec.notes}</Text>
+          {records.map((rec, i) => {
+            const recColor = rec.status === 'Verified' ? Colors.success : Colors.warning;
+            return (
+              <View key={rec.id} style={[s.recordRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.border }]}>
+                <View style={s.recordLeft}>
+                  {rec.status === 'Verified' ? (
+                    <CheckCircle2 color={recColor} size={16} />
+                  ) : (
+                    <Clock color={recColor} size={16} />
+                  )}
+                  <View>
+                    <Text style={s.recordType}>{rec.type}</Text>
+                    <Text style={s.recordDate}>{rec.date}</Text>
+                    <Text style={s.recordNotes}>{rec.notes}</Text>
+                  </View>
+                </View>
+                <View style={[s.recordStatus, { backgroundColor: `${recColor}20`, borderColor: `${recColor}35` }]}>
+                  <Text style={[s.recordStatusTxt, { color: recColor }]}>{rec.status}</Text>
                 </View>
               </View>
-              <View style={s.recordStatus}>
-                <Text style={s.recordStatusTxt}>{rec.status}</Text>
-              </View>
-            </View>
-          ))}
-          {records.length === 0 && <Text style={s.aiSummary}>No medical records have been issued yet.</Text>}
+            );
+          })}
+          {loading ? (
+            <Text style={s.aiSummary}>Loading medical records...</Text>
+          ) : loadError ? (
+            <Text style={s.aiSummary}>Couldn't load medical records — pull to refresh or try again.</Text>
+          ) : records.length === 0 ? (
+            <Text style={s.aiSummary}>No medical records have been issued yet.</Text>
+          ) : null}
         </View>
 
-        <View style={s.uploadBtn}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="View connected medical partners"
+          style={s.uploadBtn}
+          onPress={() => setPartnersModalVisible(true)}
+        >
           <FileText color={Colors.primary} size={18} />
           <View style={{ flex: 1 }}>
             <Text style={s.uploadTxt}>Partner-issued records</Text>
             <Text style={s.recordDate}>Verified medical partners add and manage records securely.</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         <View style={{ height: 24 }} />
       </ScrollView>
+      <PartnerConsentsModal
+        visible={partnersModalVisible}
+        athleteId={profile?.athlete_profile_id}
+        onClose={() => setPartnersModalVisible(false)}
+      />
     </View>
   );
 }
@@ -121,8 +193,8 @@ const s = StyleSheet.create({
   recordType: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   recordDate: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted, marginTop: 2 },
   recordNotes: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textDisabled, marginTop: 3, maxWidth: 220 },
-  recordStatus: { backgroundColor: `${Colors.success}20`, borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: `${Colors.success}35` },
-  recordStatusTxt: { fontFamily: Typography.family.bold, fontSize: 10, color: Colors.success },
+  recordStatus: { borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
+  recordStatusTxt: { fontFamily: Typography.family.bold, fontSize: 10 },
   uploadBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.md, borderRadius: Radii.lg, paddingVertical: Spacing.md + 2, borderWidth: 2, borderColor: `${Colors.primary}40`, borderStyle: 'dashed' as any },
   uploadTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.primary },
 });

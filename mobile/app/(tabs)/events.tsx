@@ -3,31 +3,44 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import {
-  Calendar, MapPin, Clock, ChevronRight, Plus, Trash2,
+  Calendar, MapPin, Clock, ChevronRight, Plus, Trash2, Edit,
 } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { CreateEventSheet, TYPE_COLORS } from '@/components/events/CreateEventSheet';
 import {
-  fetchMyEvents, deleteEvent, formatEventDate, type AthleteEvent,
+  fetchMyEvents, deleteEvent, formatEventDate, fetchPlatformEvents, toggleEventAttendance, type AthleteEvent, type PlatformEvent,
 } from '@/lib/eventsService';
-
-const PLATFORM_EVENTS: Array<{ id: string; title: string; type: string; date: string; time: string; location: string; color: string }> = [];
 
 export default function Events() {
   const [myEvents, setMyEvents] = useState<AthleteEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AthleteEvent | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [platformAttending, setPlatformAttending] = useState(new Set<string>());
+  const [platformEvents, setPlatformEvents] = useState<PlatformEvent[]>([]);
+  const [platformLoading, setPlatformLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [platformError, setPlatformError] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadPlatform(); }, []);
 
   async function load() {
     setLoading(true);
-    const { data } = await fetchMyEvents();
+    setLoadError(false);
+    const { data, error } = await fetchMyEvents();
     setMyEvents(data);
+    if (error) setLoadError(true);
     setLoading(false);
+  }
+
+  async function loadPlatform() {
+    setPlatformLoading(true);
+    setPlatformError(false);
+    const { data, error } = await fetchPlatformEvents();
+    setPlatformEvents(data);
+    if (error) setPlatformError(true);
+    setPlatformLoading(false);
   }
 
   async function handleDelete(id: string) {
@@ -62,8 +75,22 @@ export default function Events() {
     );
   }
 
-  const totalUpcoming = PLATFORM_EVENTS.length + myEvents.length;
-  const totalConfirmed = platformAttending.size + myEvents.length;
+  async function handleRsvpToggle(eventId: string, currentlyAttending: boolean) {
+    const previous = platformEvents;
+    setPlatformEvents(prev => prev.map(e =>
+      e.id === eventId
+        ? { ...e, is_attending: !currentlyAttending, attendee_count: e.attendee_count + (currentlyAttending ? -1 : 1) }
+        : e
+    ));
+    const { error } = await toggleEventAttendance(eventId, currentlyAttending);
+    if (error) {
+      setPlatformEvents(previous);
+      Alert.alert('Could not update RSVP', error);
+    }
+  }
+
+  const totalUpcoming = platformEvents.length + myEvents.length;
+  const totalConfirmed = platformEvents.filter(e => e.is_attending).length + myEvents.length;
 
   return (
     <View style={s.root}>
@@ -85,7 +112,7 @@ export default function Events() {
         </View>
 
         {/* Create button */}
-        <TouchableOpacity style={s.createBanner} onPress={() => setShowCreate(true)} activeOpacity={0.85}>
+        <TouchableOpacity style={s.createBanner} onPress={() => { setEditingEvent(null); setShowCreate(true); }} activeOpacity={0.85}>
           <View style={s.createBannerLeft}>
             <View style={s.createIcon}>
               <Plus color={Colors.primary} size={18} />
@@ -99,11 +126,13 @@ export default function Events() {
         </TouchableOpacity>
 
         {/* My Events */}
-        {(loading || myEvents.length > 0) && (
+        {(loading || loadError || myEvents.length > 0) && (
           <View>
             <Text style={s.sectionTitle}>My Events</Text>
             {loading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
+            ) : loadError ? (
+              <Text style={s.summaryLbl}>Couldn't load your events. Pull to refresh or try again.</Text>
             ) : (
               myEvents.map(ev => {
                 const col = ev.color;
@@ -119,19 +148,30 @@ export default function Events() {
                           <Text style={s.publicTxt}>Public</Text>
                         </View>
                       )}
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={`Delete event ${ev.title}`}
-                        style={s.deleteBtn}
-                        onPress={() => confirmDelete(ev)}
-                        disabled={isDeleting}
-                        hitSlop={8}
-                      >
-                        {isDeleting
-                          ? <ActivityIndicator color={Colors.error} size="small" />
-                          : <Trash2 color={Colors.error} size={14} />
-                        }
-                      </TouchableOpacity>
+                      <View style={s.headerActions}>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={`Edit event ${ev.title}`}
+                          style={s.editBtn}
+                          onPress={() => { setEditingEvent(ev); setShowCreate(true); }}
+                          hitSlop={8}
+                        >
+                          <Edit color={Colors.primary} size={14} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={`Delete event ${ev.title}`}
+                          style={s.deleteBtn}
+                          onPress={() => confirmDelete(ev)}
+                          disabled={isDeleting}
+                          hitSlop={8}
+                        >
+                          {isDeleting
+                            ? <ActivityIndicator color={Colors.error} size="small" />
+                            : <Trash2 color={Colors.error} size={14} />
+                          }
+                        </TouchableOpacity>
+                      </View>
                     </View>
                     <Text style={s.eventTitle}>{ev.title}</Text>
                     <View style={s.metaRow}>
@@ -152,6 +192,11 @@ export default function Events() {
                         <Text style={s.metaTxt}>{ev.location}</Text>
                       </View>
                     ) : null}
+                    {ev.is_public && ev.attendee_count !== undefined && (
+                      <Text style={s.metaTxt}>
+                        {ev.attendee_count === 1 ? '1 attending' : `${ev.attendee_count} attending`}
+                      </Text>
+                    )}
                     {ev.description ? (
                       <Text style={s.description} numberOfLines={2}>{ev.description}</Text>
                     ) : null}
@@ -164,67 +209,70 @@ export default function Events() {
 
         {/* Platform Events */}
         <Text style={s.sectionTitle}>Platform Events</Text>
-        {PLATFORM_EVENTS.map(ev => {
-          const isAttending = platformAttending.has(ev.id);
-          return (
-            <View key={ev.id} style={[s.card, { borderLeftWidth: 4, borderLeftColor: ev.color }]}>
-              <View style={s.cardHeader}>
-                <View style={[s.typeBadge, { backgroundColor: `${ev.color}18` }]}>
-                  <Text style={[s.typeTxt, { color: ev.color }]}>{ev.type}</Text>
-                </View>
-                {isAttending && (
-                  <View style={s.confirmedBadge}>
-                    <Text style={s.confirmedTxt}>Confirmed</Text>
+        {platformLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
+        ) : platformError ? (
+          <Text style={s.summaryLbl}>Couldn't load platform events. Pull to refresh or try again.</Text>
+        ) : (
+          platformEvents.map(ev => {
+            const isAttending = ev.is_attending;
+            return (
+              <View key={ev.id} style={[s.card, { borderLeftWidth: 4, borderLeftColor: ev.color }]}>
+                <View style={s.cardHeader}>
+                  <View style={[s.typeBadge, { backgroundColor: `${ev.color}18` }]}>
+                    <Text style={[s.typeTxt, { color: ev.color }]}>{ev.type}</Text>
                   </View>
-                )}
-              </View>
-              <Text style={s.eventTitle}>{ev.title}</Text>
-              <View style={s.metaRow}>
-                <View style={s.metaItem}>
-                  <Calendar color={Colors.textDisabled} size={12} />
-                  <Text style={s.metaTxt}>{ev.date}</Text>
+                  {isAttending && (
+                    <View style={s.confirmedBadge}>
+                      <Text style={s.confirmedTxt}>Confirmed</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={s.eventTitle}>{ev.title}</Text>
+                <View style={s.metaRow}>
+                  <View style={s.metaItem}>
+                    <Calendar color={Colors.textDisabled} size={12} />
+                    <Text style={s.metaTxt}>{formatEventDate(ev.event_date)}</Text>
+                  </View>
+                  <View style={s.metaItem}>
+                    <Clock color={Colors.textDisabled} size={12} />
+                    <Text style={s.metaTxt}>{ev.event_time}</Text>
+                  </View>
                 </View>
                 <View style={s.metaItem}>
-                  <Clock color={Colors.textDisabled} size={12} />
-                  <Text style={s.metaTxt}>{ev.time}</Text>
+                  <MapPin color={Colors.textDisabled} size={12} />
+                  <Text style={s.metaTxt}>{ev.location}</Text>
+                </View>
+                <Text style={s.metaTxt}>
+                  {ev.attendee_count === 1 ? '1 attending' : `${ev.attendee_count} attending`}
+                </Text>
+                <View style={s.cardFooter}>
+                  <TouchableOpacity
+                    style={[s.rsvpBtn, isAttending && s.rsvpBtnActive]}
+                    onPress={() => handleRsvpToggle(ev.id, ev.is_attending)}
+                  >
+                    <Text style={[s.rsvpTxt, isAttending && s.rsvpTxtActive]}>
+                      {isAttending ? 'Attending' : 'RSVP'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.detailsBtn}>
+                    <Text style={s.detailsTxt}>Details</Text>
+                    <ChevronRight color={Colors.textMuted} size={14} />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={s.metaItem}>
-                <MapPin color={Colors.textDisabled} size={12} />
-                <Text style={s.metaTxt}>{ev.location}</Text>
-              </View>
-              <View style={s.cardFooter}>
-                <TouchableOpacity
-                  style={[s.rsvpBtn, isAttending && s.rsvpBtnActive]}
-                  onPress={() => setPlatformAttending(prev => {
-                    const next = new Set(prev);
-                    isAttending ? next.delete(ev.id) : next.add(ev.id);
-                    return next;
-                  })}
-                >
-                  <Text style={[s.rsvpTxt, isAttending && s.rsvpTxtActive]}>
-                    {isAttending ? 'Attending' : 'RSVP'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={s.detailsBtn}>
-                  <Text style={s.detailsTxt}>Details</Text>
-                  <ChevronRight color={Colors.textMuted} size={14} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
 
         <View style={{ height: 24 }} />
       </ScrollView>
 
       <CreateEventSheet
         visible={showCreate}
-        onClose={() => setShowCreate(false)}
-        onCreated={() => {
-          setShowCreate(false);
-          load();
-        }}
+        editingEvent={editingEvent}
+        onClose={() => { setShowCreate(false); setEditingEvent(null); }}
+        onCreated={() => { setShowCreate(false); setEditingEvent(null); load(); }}
       />
     </View>
   );
@@ -312,7 +360,9 @@ const s = StyleSheet.create({
     borderColor: `${Colors.primary}35`,
   },
   publicTxt: { fontFamily: Typography.family.bold, fontSize: 11, color: Colors.primary },
-  deleteBtn: { marginLeft: 'auto' as any },
+  headerActions: { marginLeft: 'auto' as any, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  editBtn: {},
+  deleteBtn: {},
   eventTitle: {
     fontFamily: Typography.family.bold,
     fontSize: Typography.size.md,

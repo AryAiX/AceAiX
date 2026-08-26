@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Modal, ScrollView, ActivityIndicator, Switch,
 } from 'react-native';
 import { X, Calendar, Clock, MapPin } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
-import { createEvent, type CreateEventInput } from '@/lib/eventsService';
+import { createEvent, updateEvent, type AthleteEvent, type CreateEventInput } from '@/lib/eventsService';
 
 const EVENT_TYPES = ['Match', 'Training', 'Showcase', 'Trial', 'Camp', 'Friendly', 'Tournament', 'Other'];
 
@@ -24,9 +24,10 @@ interface Props {
   visible: boolean;
   onClose: () => void;
   onCreated: () => void;
+  editingEvent?: AthleteEvent | null;
 }
 
-export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
+export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: Props) {
   const [title, setTitle] = useState('');
   const [type, setType] = useState('Training');
   const [date, setDate] = useState('');
@@ -42,6 +43,22 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
     setLocation(''); setDescription(''); setIsPublic(false); setError(null);
   }
 
+  useEffect(() => {
+    if (!visible) return;
+    if (editingEvent) {
+      setTitle(editingEvent.title);
+      setType(editingEvent.type);
+      setDate(editingEvent.event_date);
+      setTime(editingEvent.event_time);
+      setLocation(editingEvent.location);
+      setDescription(editingEvent.description ?? '');
+      setIsPublic(editingEvent.is_public);
+      setError(null);
+    } else {
+      reset();
+    }
+  }, [visible, editingEvent]);
+
   function handleClose() {
     reset();
     onClose();
@@ -50,6 +67,15 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
   async function handleCreate() {
     if (!title.trim()) { setError('Title is required.'); return; }
     if (!date.trim()) { setError('Date is required (YYYY-MM-DD).'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) {
+      setError('Enter the date as YYYY-MM-DD.');
+      return;
+    }
+    const parsedDate = new Date(date.trim() + 'T00:00:00');
+    if (Number.isNaN(parsedDate.getTime())) {
+      setError('Enter a valid calendar date.');
+      return;
+    }
     if (!location.trim()) { setError('Location is required.'); return; }
 
     setLoading(true);
@@ -66,7 +92,9 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
       is_public: isPublic,
     };
 
-    const { error: err } = await createEvent(input);
+    const { error: err } = editingEvent
+      ? await updateEvent(editingEvent.id, input)
+      : await createEvent(input);
     setLoading(false);
     if (err) { setError(err); return; }
     reset();
@@ -80,7 +108,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
           <View style={s.handle} />
 
           <View style={s.header}>
-            <Text style={s.heading}>Create Event</Text>
+            <Text style={s.heading}>{editingEvent ? 'Edit Event' : 'Create Event'}</Text>
             <TouchableOpacity onPress={handleClose} hitSlop={8}>
               <X color={Colors.textMuted} size={22} />
             </TouchableOpacity>
@@ -209,7 +237,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             </TouchableOpacity>
             <TouchableOpacity
               accessibilityRole="button"
-              accessibilityLabel="Create event"
+              accessibilityLabel={editingEvent ? 'Save changes' : 'Create event'}
               style={[s.createBtn, loading && { opacity: 0.7 }]}
               onPress={handleCreate}
               activeOpacity={0.8}
@@ -217,7 +245,7 @@ export function CreateEventSheet({ visible, onClose, onCreated }: Props) {
             >
               {loading
                 ? <ActivityIndicator color={Colors.white} size="small" />
-                : <Text style={s.createTxt}>Create Event</Text>
+                : <Text style={s.createTxt}>{editingEvent ? 'Save Changes' : 'Create Event'}</Text>
               }
             </TouchableOpacity>
           </View>

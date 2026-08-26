@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Heart, Send, CornerDownRight } from 'lucide-react-native';
@@ -42,12 +43,12 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const listRef = useRef<FlatList>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!post || !user) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     const data = await fetchComments(post.id, user.id);
     setComments(data);
-    setLoading(false);
+    if (!silent) setLoading(false);
   }, [post?.id, user]);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
         schema: 'public',
         table: 'post_comments',
         filter: `post_id=eq.${post.id}`,
-      }, () => { load(); })
+      }, () => { load(true); })
       .subscribe();
     return () => { channel.unsubscribe(); };
   }, [post?.id, load]);
@@ -73,20 +74,22 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   const handleSubmit = useCallback(async () => {
     if (!text.trim() || !post || !user) return;
     setSubmitting(true);
-    const comment = await addComment(post.id, user.id, text.trim(), replyTo?.id);
+    const { comment, error } = await addComment(post.id, user.id, text.trim(), replyTo?.id);
     setSubmitting(false);
-    if (comment) {
-      if (replyTo) {
-        setComments((prev) =>
-          prev.map((c) =>
-            c.id === replyTo.id ? { ...c, replies: [...(c.replies ?? []), comment] } : c
-          )
-        );
-      } else {
-        setComments((prev) => [...prev, { ...comment, replies: [] }]);
-      }
-      onCommentAdded(post.id);
+    if (!comment) {
+      Alert.alert('Comment not sent', error ?? 'Something went wrong. Please try again.');
+      return;
     }
+    if (replyTo) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === replyTo.id ? { ...c, replies: [...(c.replies ?? []), comment] } : c
+        )
+      );
+    } else {
+      setComments((prev) => [...prev, { ...comment, replies: [] }]);
+    }
+    onCommentAdded(post.id);
     setText('');
     setReplyTo(null);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -101,7 +104,47 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
           : c
       )
     );
-    await toggleCommentLike(comment.id, user.id, comment.liked);
+    const { error } = await toggleCommentLike(comment.id, user.id, comment.liked);
+    if (error) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === comment.id ? { ...c, liked: comment.liked, like_count: comment.like_count } : c
+        )
+      );
+      Alert.alert('Could not update like', error);
+    }
+  }, [user]);
+
+  const handleLikeReply = useCallback(async (parentId: string, reply: PostComment) => {
+    if (!user) return;
+    setComments((prev) =>
+      prev.map((c) =>
+        c.id === parentId
+          ? {
+              ...c,
+              replies: (c.replies ?? []).map((r) =>
+                r.id === reply.id ? { ...r, liked: !r.liked, like_count: r.like_count + (r.liked ? -1 : 1) } : r
+              ),
+            }
+          : c
+      )
+    );
+    const { error } = await toggleCommentLike(reply.id, user.id, reply.liked);
+    if (error) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c.id === parentId
+            ? {
+                ...c,
+                replies: (c.replies ?? []).map((r) =>
+                  r.id === reply.id ? { ...r, liked: reply.liked, like_count: reply.like_count } : r
+                ),
+              }
+            : c
+        )
+      );
+      Alert.alert('Could not update like', error);
+    }
   }, [user]);
 
   if (!post) return null;
@@ -141,6 +184,8 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
                   comment={item}
                   onLike={() => handleLikeComment(item)}
                   onReply={() => setReplyTo(item)}
+                  onLikeReply={(reply) => handleLikeReply(item.id, reply)}
+                  onReplyToReply={(reply) => setReplyTo(reply)}
                 />
               )}
               contentContainerStyle={s.listContent}
@@ -201,10 +246,14 @@ function CommentRow({
   comment,
   onLike,
   onReply,
+  onLikeReply,
+  onReplyToReply,
 }: {
   comment: PostComment;
   onLike: () => void;
   onReply: () => void;
+  onLikeReply: (reply: PostComment) => void;
+  onReplyToReply: (reply: PostComment) => void;
 }) {
   return (
     <View style={cr.wrap}>
@@ -247,6 +296,23 @@ function CommentRow({
                 <Text style={cr.time}>{postTimeAgo(reply.created_at)}</Text>
               </View>
               <Text style={cr.text}>{reply.body}</Text>
+              <View style={cr.actions}>
+                <TouchableOpacity onPress={() => onReplyToReply(reply)} style={cr.actionBtn}>
+                  <Text style={cr.actionTxt}>Reply</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onLikeReply(reply)} style={cr.likeBtn}>
+                  <Heart
+                    color={reply.liked ? Colors.error : Colors.textDisabled}
+                    fill={reply.liked ? Colors.error : 'transparent'}
+                    size={12}
+                  />
+                  {reply.like_count > 0 && (
+                    <Text style={[cr.likeCount, reply.liked && { color: Colors.error }]}>
+                      {reply.like_count}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         ))}

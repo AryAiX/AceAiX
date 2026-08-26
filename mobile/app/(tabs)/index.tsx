@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
   Animated, AccessibilityInfo,
@@ -13,17 +13,17 @@ import {
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { normalizeMatchResult } from '@/lib/matchResults';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 
 const { width: SW } = Dimensions.get('window');
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const FORM: Array<{ r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number }> = [];
-const ATTRIBUTES: Array<{ label: string; v: number; color: string }> = [];
-const CAREER = { years: [] as string[], actual: [] as number[], forecast: [] as number[] };
-const SCOUTS: Array<{ name: string; role: string; verified: boolean; time: string; views: number; color: string }> = [];
-const OPPS: Array<{ title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number }> = [];
+type MatchCard = { r: 'W' | 'D' | 'L'; opp: string; rating: number; g: number; a: number };
+type AttributeCard = { label: string; v: number; color: string };
+type ScoutCard = { name: string; role: string; verified: boolean; time: string; views: number; color: string };
+type OppCard = { title: string; club: string; loc: string; salary: string; tag: string; isNew: boolean; match: number };
 
 // ── Animation hooks ───────────────────────────────────────────────────────────
 function useCountUp(to: number, duration = 1200, delay = 400): number {
@@ -196,16 +196,32 @@ function AnimatedRadar({ data, size = 166 }: { data: number[]; size?: number }) 
   );
 }
 
-function LineAreaChart({ actual, forecast, w, h }: { actual: number[]; forecast: number[]; w: number; h: number }) {
+function LineAreaChart({ actual, forecast, w, h }: { actual: (number | null)[]; forecast: (number | null)[]; w: number; h: number }) {
   const pad = { t: 8, r: 8, b: 8, l: 8 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
-  const all = [...actual, ...forecast];
+  const all = [...actual, ...forecast].filter((v): v is number => v !== null);
   const minV = Math.min(...all) - 0.3, maxV = Math.max(...all) + 0.3;
   const xS = (i: number) => pad.l + (i / (actual.length - 1)) * cw;
   const yS = (v: number) => pad.t + ch - ((v - minV) / (maxV - minV)) * ch;
-  const aPath = actual.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ');
-  const fPath = forecast.map((v, i) => `${i === 0 ? 'M' : 'L'}${xS(i)},${yS(v)}`).join(' ');
-  const areaPath = `${aPath} L${xS(actual.length - 1)},${pad.t + ch} L${xS(0)},${pad.t + ch} Z`;
+  const buildPath = (values: (number | null)[]) => {
+    let path = '';
+    let started = false;
+    values.forEach((v, i) => {
+      if (v === null) { started = false; return; }
+      path += `${started ? 'L' : 'M'}${xS(i)},${yS(v)} `;
+      started = true;
+    });
+    return path.trim();
+  };
+  const aPath = buildPath(actual);
+  const fPath = buildPath(forecast);
+  let lastActualIndex = -1;
+  for (let i = actual.length - 1; i >= 0; i--) {
+    if (actual[i] !== null) { lastActualIndex = i; break; }
+  }
+  const areaPath = lastActualIndex >= 0
+    ? `${aPath} L${xS(lastActualIndex)},${pad.t + ch} L${xS(0)},${pad.t + ch} Z`
+    : '';
   return (
     <Svg width={w} height={h}>
       <Defs>
@@ -281,6 +297,26 @@ function StatCard({ card, delay }: { card: DashboardStatCard; delay: number }) {
   );
 }
 
+function formatSalaryRange(min: number | null, max: number | null, currency: string | null): string {
+  const symbol = !currency || currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : `${currency} `;
+  const fmt = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}K` : `${v}`);
+  if (min != null && max != null) return `${symbol}${fmt(min)} - ${symbol}${fmt(max)}`;
+  if (min != null) return `${symbol}${fmt(min)}+`;
+  if (max != null) return `Up to ${symbol}${fmt(max)}`;
+  return 'Salary undisclosed';
+}
+
+function formatRelativeTime(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { profile, user } = useAuth();
@@ -288,6 +324,10 @@ export default function Dashboard() {
   const [reduced, setReduced] = useState(false);
   const [scoutViews, setScoutViews] = useState(0);
   const [opportunityMatches, setOpportunityMatches] = useState(0);
+  const [scouts, setScouts] = useState<ScoutCard[]>([]);
+  const [opps, setOpps] = useState<OppCard[]>([]);
+  const [attributes, setAttributes] = useState<AttributeCard[]>([]);
+  const [form, setForm] = useState<MatchCard[]>([]);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -306,11 +346,140 @@ export default function Dashboard() {
         .from('opportunity_matches')
         .select('opportunity_id', { count: 'exact', head: true })
         .eq('athlete_id', user.id),
-    ]).then(([views, matches]) => {
+      profile?.athlete_profile_id
+        ? supabase
+          .from('profile_views')
+          .select('viewer_user_id, viewer_name, viewer_role, viewer_verified, created_at')
+          .eq('athlete_id', profile.athlete_profile_id)
+          .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from('opportunity_matches')
+        .select('match_score, created_at, opportunities(title, location, salary_min, salary_max, currency, type, is_active, organizations(name, short_name))')
+        .eq('athlete_id', user.id)
+        .order('match_score', { ascending: false }),
+      profile?.athlete_profile_id
+        ? supabase
+          .from('athlete_attributes')
+          .select('attribute_key, value')
+          .eq('athlete_id', profile.athlete_profile_id)
+        : Promise.resolve({ data: [] }),
+      profile?.athlete_profile_id
+        ? supabase
+          .from('match_records')
+          .select('opponent, result, goals, assists, stats, match_date')
+          .eq('athlete_id', profile.athlete_profile_id)
+          .order('match_date', { ascending: false })
+          .limit(5)
+        : Promise.resolve({ data: [] }),
+    ]).then(([views, matches, scoutRows, oppRows, attributeRows, matchRows]) => {
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
+
+      const palette = [Colors.primary, Colors.accent, Colors.success];
+      const byViewer = new Map<string, { name: string; role: string; verified: boolean; time: string; views: number }>();
+      for (const row of (scoutRows.data ?? []) as Array<{
+        viewer_user_id: string; viewer_name: string; viewer_role: string;
+        viewer_verified: boolean; created_at: string;
+      }>) {
+        const existing = byViewer.get(row.viewer_user_id);
+        if (existing) {
+          existing.views += 1;
+        } else {
+          byViewer.set(row.viewer_user_id, {
+            name: row.viewer_name,
+            role: row.viewer_role,
+            verified: row.viewer_verified,
+            time: formatRelativeTime(row.created_at),
+            views: 1,
+          });
+        }
+      }
+      const grouped: ScoutCard[] = Array.from(byViewer.values()).map((sc, i) => ({
+        ...sc,
+        color: palette[i % palette.length],
+      }));
+      setScouts(grouped);
+
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+      const mappedOpps: OppCard[] = ((oppRows.data ?? []) as Array<{
+        match_score: number; created_at: string;
+        opportunities: {
+          title: string; location: string; salary_min: number | null; salary_max: number | null;
+          currency: string | null; type: string | null; is_active: boolean;
+          organizations: { name: string; short_name: string | null } | { name: string; short_name: string | null }[] | null;
+        } | Array<{
+          title: string; location: string; salary_min: number | null; salary_max: number | null;
+          currency: string | null; type: string | null; is_active: boolean;
+          organizations: { name: string; short_name: string | null } | { name: string; short_name: string | null }[] | null;
+        }> | null;
+      }>)
+        .map(row => {
+          const opp = Array.isArray(row.opportunities) ? row.opportunities[0] : row.opportunities;
+          if (!opp || opp.is_active === false) return null;
+          const org = Array.isArray(opp.organizations) ? opp.organizations[0] : opp.organizations;
+          const club = org?.short_name || org?.name || 'Unknown Club';
+          const isNew = Date.now() - new Date(row.created_at).getTime() < sevenDaysMs;
+          const tag = row.match_score >= 90 ? 'Hot Match' : (opp.type || 'Open Opportunity');
+          const card: OppCard = {
+            title: opp.title,
+            club,
+            loc: opp.location,
+            salary: formatSalaryRange(opp.salary_min, opp.salary_max, opp.currency),
+            tag,
+            isNew,
+            match: row.match_score,
+          };
+          return card;
+        })
+        .filter((c): c is OppCard => c !== null);
+      setOpps(mappedOpps);
+
+      const attrPalette = [Colors.primary, Colors.accent, Colors.success];
+      const mappedAttributes: AttributeCard[] = ((attributeRows.data ?? []) as Array<{
+        attribute_key: string; value: number | null;
+      }>).map((row, i) => ({
+        label: row.attribute_key,
+        v: row.value ?? 0,
+        color: attrPalette[i % attrPalette.length],
+      }));
+      setAttributes(mappedAttributes);
+
+      const mappedForm: MatchCard[] = ((matchRows.data ?? []) as Array<{
+        opponent: string; result: string; goals: number; assists: number;
+        stats: { rating?: number } | null; match_date: string;
+      }>)
+        .map(row => {
+          const r = normalizeMatchResult(row.result);
+          if (!r) return null;
+          const card: MatchCard = {
+            r,
+            opp: row.opponent,
+            rating: Number(row.stats?.rating ?? 0),
+            g: row.goals,
+            a: row.assists,
+          };
+          return card;
+        })
+        .filter((c): c is MatchCard => c !== null);
+      setForm(mappedForm);
     });
   }, [profile?.athlete_profile_id, user]);
+
+  const career = useMemo(() => {
+    const trajectory = (profile?.trajectory ?? []) as Array<{ season: string; score?: number; forecast?: number }>;
+    const years = trajectory.map(t => t.season);
+    const actual: (number | null)[] = trajectory.map(t => (typeof t.score === 'number' ? t.score : null));
+    const forecast: (number | null)[] = trajectory.map(t => (typeof t.forecast === 'number' ? t.forecast : null));
+    let lastActualIndex = -1;
+    for (let i = actual.length - 1; i >= 0; i--) {
+      if (actual[i] !== null) { lastActualIndex = i; break; }
+    }
+    if (lastActualIndex !== -1 && forecast[lastActualIndex] === null) {
+      forecast[lastActualIndex] = actual[lastActualIndex];
+    }
+    return { years, actual, forecast };
+  }, [profile?.trajectory]);
 
   const completeness = Math.round(profile?.profile_completeness ?? 0);
 
@@ -388,7 +557,7 @@ export default function Dashboard() {
               <View>
                 <Text style={s.formLabel}>RECENT FORM</Text>
                 <View style={{ flexDirection: 'row', gap: 5 }}>
-                  {FORM.map((m, i) => (
+                  {form.map((m, i) => (
                     <View key={i} style={[s.fc,
                       m.r === 'W' && s.fw, m.r === 'D' && s.fd, m.r === 'L' && s.fl]}>
                       <Text style={s.fcTxt}>{m.r}</Text>
@@ -467,11 +636,11 @@ export default function Dashboard() {
         <RevealCard index={2} reduced={reduced}>
           <SH title="Attribute Breakdown" color={Colors.primary} />
           <Text style={s.attrSubtitle}>Profile attributes · {profile?.sport ?? 'Sport'} · Current season</Text>
-          {ATTRIBUTES.length ? (
+          {attributes.length ? (
             <View style={s.attrRow}>
-              <AnimatedRadar data={ATTRIBUTES.map(a => a.v)} size={166} />
+              <AnimatedRadar data={attributes.map(a => a.v)} size={166} />
               <View style={s.attrList}>
-                {ATTRIBUTES.map((a, i) => (
+                {attributes.map((a, i) => (
                   <View key={a.label} style={s.attrItem}>
                     <View style={s.attrLabelRow}>
                       <Text style={s.attrLabel}>{a.label}</Text>
@@ -496,11 +665,11 @@ export default function Dashboard() {
               <Text style={s.top15Txt}>Live</Text>
             </View>
           </View>
-          {CAREER.actual.length ? (
+          {career.actual.some(v => v !== null) ? (
             <>
-              <LineAreaChart actual={CAREER.actual} forecast={CAREER.forecast} w={SW - 64} h={110} />
+              <LineAreaChart actual={career.actual} forecast={career.forecast} w={SW - 64} h={110} />
               <View style={s.yearRow}>
-                {CAREER.years.map(y => <Text key={y} style={s.yearLabel}>{y}</Text>)}
+                {career.years.map(y => <Text key={y} style={s.yearLabel}>{y}</Text>)}
               </View>
               <View style={s.legendRow}>
                 {[
@@ -527,8 +696,8 @@ export default function Dashboard() {
             style={[StyleSheet.absoluteFill, { borderRadius: Radii.lg }]}
           />
           <SH title="Scout Interest" color={Colors.success} onMore={() => router.push('/(tabs)/network' as any)} />
-          {SCOUTS.map((sc, i) => (
-            <View key={sc.name} style={[s.scoutRow, i < SCOUTS.length - 1 && s.scoutBorder]}>
+          {scouts.map((sc, i) => (
+            <View key={sc.name} style={[s.scoutRow, i < scouts.length - 1 && s.scoutBorder]}>
               <View style={[s.scoutAv, { backgroundColor: `${sc.color}22`, borderColor: sc.color }]}>
                 <Text style={[s.scoutAvTxt, { color: sc.color }]}>{sc.name[0]}</Text>
               </View>
@@ -545,7 +714,7 @@ export default function Dashboard() {
               </View>
             </View>
           ))}
-          {SCOUTS.length === 0 && <Text style={s.emptySectionText}>No scout profile views yet.</Text>}
+          {scouts.length === 0 && <Text style={s.emptySectionText}>No scout profile views yet.</Text>}
         </RevealCard>
 
         {/* ── MATCHED OPPORTUNITIES ────────────────────────────────────── */}
@@ -556,7 +725,7 @@ export default function Dashboard() {
             style={[StyleSheet.absoluteFill, { borderRadius: Radii.lg }]}
           />
           <SH title="Matched Opportunities" color={Colors.warning} onMore={() => router.push('/(tabs)/opportunities' as any)} />
-          {OPPS.map(opp => (
+          {opps.map(opp => (
             <View key={opp.title} style={s.oppCard}>
               <View style={s.oppRow}>
                 <View style={s.oppMatchWrap}>
@@ -590,16 +759,16 @@ export default function Dashboard() {
               </View>
             </View>
           ))}
-          {OPPS.length === 0 && <Text style={s.emptySectionText}>No matched opportunities yet. Complete your sport and position to improve matching.</Text>}
+          {opps.length === 0 && <Text style={s.emptySectionText}>No matched opportunities yet. Complete your sport and position to improve matching.</Text>}
         </RevealCard>
 
         {/* ── LAST 5 PERFORMANCES ──────────────────────────────────────── */}
         <RevealCard index={6} reduced={reduced}>
           <SH title="Last 5 Performances" color={Colors.primary} onMore={() => router.push('/(tabs)/performance' as any)} />
-          {FORM.map((m, i) => {
+          {form.map((m, i) => {
             const resultColor = m.r === 'W' ? Colors.success : m.r === 'D' ? Colors.warning : Colors.error;
             return (
-              <View key={i} style={[s.matchRow, i < FORM.length - 1 && s.matchBorder]}>
+              <View key={i} style={[s.matchRow, i < form.length - 1 && s.matchBorder]}>
                 <View style={[s.mrBadge, { backgroundColor: `${resultColor}22`, borderColor: resultColor }]}>
                   <Text style={[s.mrTxt, { color: resultColor }]}>{m.r}</Text>
                 </View>
@@ -611,7 +780,7 @@ export default function Dashboard() {
               </View>
             );
           })}
-          {FORM.length === 0 && <Text style={s.emptySectionText}>No recent match records yet.</Text>}
+          {form.length === 0 && <Text style={s.emptySectionText}>No recent match records yet.</Text>}
         </RevealCard>
 
         {/* ── MEDICAL INTEL ────────────────────────────────────────────── */}

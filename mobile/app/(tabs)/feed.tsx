@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Camera, Pencil, Flame, Users, Clock } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { Colors, Spacing, Radii, Typography, Shadows } from '@/constants/theme';
 import { StoriesTray } from '@/components/stories/StoriesTray';
 import { StoryViewer } from '@/components/stories/StoryViewer';
@@ -60,7 +61,7 @@ export default function FeedScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
-    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter === 'following');
+    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
     if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
     hasMoreRef.current = data.length === 20;
     setPosts(prev => reset ? data : [...prev, ...data]);
@@ -187,7 +188,7 @@ export default function FeedScreen() {
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={s.composeAvatarTxt}>{initial}</Text>
+          <Avatar uri={profile?.avatar_url} initial={initial} size={38} />
         </View>
         <Text style={s.composePlaceholder}>Share a moment, result, or milestone…</Text>
         <View style={s.composeActions}>

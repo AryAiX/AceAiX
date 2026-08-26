@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -27,7 +28,7 @@ import {
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useNotifications } from '@/hooks/useNotifications';
-import { AppNotification, NotifType, timeAgo, dismissNotif } from '@/lib/notificationService';
+import { AppNotification, NotifType, timeAgo } from '@/lib/notificationService';
 
 // ── Type → icon / color map ────────────────────────────────────────────────────
 const TYPE_META: Record<NotifType, { icon: React.ComponentType<any>; color: string; label: string }> = {
@@ -102,7 +103,7 @@ function NotifRow({
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { groups, unreadCount, loading, refresh, markRead, markAllRead, removeNotif } =
+  const { groups, unreadCount, loading, refresh, markRead, markAllRead, dismissNotification, clearAll } =
     useNotifications();
 
   const handlePress = useCallback(
@@ -116,11 +117,29 @@ export default function NotificationsScreen() {
 
   const handleDismiss = useCallback(
     async (id: string) => {
-      removeNotif(id);
-      await dismissNotif(id);
+      const { error: dismissError } = await dismissNotification(id);
+      if (dismissError) Alert.alert('Could not remove notification', dismissError);
     },
-    [removeNotif]
+    [dismissNotification]
   );
+
+  const handleClearAll = useCallback(() => {
+    Alert.alert(
+      'Clear all notifications?',
+      'This will permanently remove all your notifications. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            const { error: clearError } = await clearAll();
+            if (clearError) Alert.alert('Could not clear notifications', clearError);
+          },
+        },
+      ]
+    );
+  }, [clearAll]);
 
   const isEmpty = groups.length === 0;
 
@@ -134,12 +153,25 @@ export default function NotificationsScreen() {
             <Text style={s.unreadLabel}>{unreadCount} unread</Text>
           )}
         </View>
-        {unreadCount > 0 && (
-          <TouchableOpacity style={s.markAllBtn} onPress={markAllRead} activeOpacity={0.75}>
-            <Check color={Colors.primary} size={13} strokeWidth={2.5} />
-            <Text style={s.markAllTxt}>Mark all read</Text>
-          </TouchableOpacity>
-        )}
+        <View style={s.headerActions}>
+          {unreadCount > 0 && (
+            <TouchableOpacity style={s.markAllBtn} onPress={markAllRead} activeOpacity={0.75}>
+              <Check color={Colors.primary} size={13} strokeWidth={2.5} />
+              <Text style={s.markAllTxt}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+          {!isEmpty && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Clear all notifications"
+              style={s.clearAllBtn}
+              onPress={handleClearAll}
+              activeOpacity={0.75}
+            >
+              <Trash2 color={Colors.textMuted} size={13} strokeWidth={2.5} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <ScrollView
@@ -225,6 +257,20 @@ const s = StyleSheet.create({
     fontFamily: Typography.family.medium,
     fontSize: Typography.size.xs,
     color: Colors.primary,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  clearAllBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   scroll: { paddingBottom: Spacing.xxxl },

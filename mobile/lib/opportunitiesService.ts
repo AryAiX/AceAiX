@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { getPositionGroup } from '@/constants/positions';
 
 export type OpportunityType = 'Trial' | 'Contract' | 'Academy' | 'Loan' | 'Tryout';
 export type AppStatus =
@@ -65,6 +66,37 @@ export interface OpportunityFilters {
   search?: string;
 }
 
+function normalizeStr(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+function computeLiveMatchScore(
+  oppSport: string,
+  oppPosition: string,
+  oppRequirements: OpportunityRequirements | undefined,
+  athleteSport: string | null,
+  athletePosition: string | null
+): number | undefined {
+  if (!athleteSport) return undefined;
+  const sportMatches = normalizeStr(oppSport) === normalizeStr(athleteSport);
+  if (!sportMatches) return 0;
+
+  if (!athletePosition) return 65;
+
+  const acceptablePositions = [oppPosition, ...(oppRequirements?.positions ?? [])]
+    .filter(Boolean)
+    .map(normalizeStr);
+  if (acceptablePositions.includes(normalizeStr(athletePosition))) return 95;
+
+  const oppGroup = getPositionGroup(athleteSport, oppPosition);
+  const athleteGroup = getPositionGroup(athleteSport, athletePosition);
+  if (oppGroup && athleteGroup) {
+    return oppGroup === athleteGroup ? 82 : 60;
+  }
+
+  return 70;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function mapRow(
@@ -79,8 +111,8 @@ function mapRow(
   return {
     id: row.id,
     posted_by: row.posted_by ?? row.created_by_id ?? null,
-    club: row.club ?? org?.name ?? row.title ?? 'Club opportunity',
-    club_abbr: row.club_abbr ?? org?.short_name ?? org?.initials ?? null,
+    club: org?.name ?? row.title ?? 'Club opportunity',
+    club_abbr: org?.short_name ?? org?.initials ?? null,
     sport: row.sport,
     position: row.position ?? 'Open role',
     type: (row.type ?? 'Trial') as OpportunityType,
@@ -91,8 +123,8 @@ function mapRow(
     currency: row.currency,
     description: row.description,
     requirements: row.requirements ?? {},
-    deadline: row.deadline ?? row.application_deadline ?? null,
-    status: row.status ?? (row.is_active ? 'active' : 'closed'),
+    deadline: row.application_deadline ?? null,
+    status: row.is_active ? 'active' : 'closed',
     created_at: row.created_at,
     match_score: m?.score,
     match_reasons: m?.reasons,
@@ -149,8 +181,18 @@ async function fetchSupportData(
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
+async function searchMatchingOrgIds(search: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('organizations')
+    .select('id')
+    .ilike('name', `%${search}%`);
+  return (data ?? []).map((o: any) => o.id);
+}
+
 export async function fetchForYouOpportunities(
   athleteId: string,
+  athleteSport: string | null,
+  athletePosition: string | null,
   filters?: OpportunityFilters
 ): Promise<Opportunity[]> {
   let q = supabase
@@ -159,17 +201,28 @@ export async function fetchForYouOpportunities(
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
-  q = applyFilters(q, filters);
+  let matchingOrgIds: string[] | undefined;
+  if (filters?.search) {
+    matchingOrgIds = await searchMatchingOrgIds(filters.search);
+  }
+  q = applyFilters(q, filters, matchingOrgIds);
 
   const { data, error } = await q;
   if (error || !data) return [];
 
+  if (!athleteSport) return [];
+
   const ids = data.map((r: any) => r.id);
   const { savedIds, matchMap, appliedMap } = await fetchSupportData(ids, athleteId);
 
-  const mapped = data.map((r: any) => mapRow(r, savedIds, matchMap, appliedMap));
+  const mapped = data
+    .map((r: any) => {
+      const base = mapRow(r, savedIds, matchMap, appliedMap);
+      const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport, athletePosition);
+      return { ...base, match_score: liveScore ?? base.match_score };
+    })
+    .filter((o) => (o.match_score ?? 0) > 0);
 
-  // Sort by match_score desc, falling back to date
   return mapped.sort((a, b) => {
     const sa = a.match_score ?? 0;
     const sb = b.match_score ?? 0;
@@ -180,19 +233,28 @@ export async function fetchForYouOpportunities(
 
 export async function fetchAllOpportunities(
   athleteId: string,
-  cursor?: string,
+  cursor?: { createdAt: string; id: string },
   filters?: OpportunityFilters,
-  limit = 20
+  limit = 20,
+  athleteSport?: string | null,
+  athletePosition?: string | null
 ): Promise<Opportunity[]> {
   let q = supabase
     .from('opportunities')
     .select('*, organization:organizations(name, short_name, initials, city, country)')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit);
 
-  if (cursor) q = q.lt('created_at', cursor);
-  q = applyFilters(q, filters);
+  if (cursor) {
+    q = q.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
+  }
+  let matchingOrgIds: string[] | undefined;
+  if (filters?.search) {
+    matchingOrgIds = await searchMatchingOrgIds(filters.search);
+  }
+  q = applyFilters(q, filters, matchingOrgIds);
 
   const { data, error } = await q;
   if (error || !data) return [];
@@ -200,7 +262,11 @@ export async function fetchAllOpportunities(
   const ids = data.map((r: any) => r.id);
   const { savedIds, matchMap, appliedMap } = await fetchSupportData(ids, athleteId);
 
-  return data.map((r: any) => mapRow(r, savedIds, matchMap, appliedMap));
+  return data.map((r: any) => {
+    const base = mapRow(r, savedIds, matchMap, appliedMap);
+    const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport ?? null, athletePosition ?? null);
+    return { ...base, match_score: liveScore ?? base.match_score };
+  });
 }
 
 export async function fetchSavedOpportunities(athleteId: string): Promise<Opportunity[]> {
@@ -271,17 +337,19 @@ export async function toggleOpportunitySave(
   opportunityId: string,
   athleteId: string,
   currentlySaved: boolean
-): Promise<void> {
+): Promise<{ error: string | null }> {
   if (currentlySaved) {
-    await supabase
+    const { error } = await supabase
       .from('opportunity_saves')
       .delete()
       .eq('opportunity_id', opportunityId)
       .eq('athlete_id', athleteId);
+    return { error: error?.message ?? null };
   } else {
-    await supabase
+    const { error } = await supabase
       .from('opportunity_saves')
       .upsert({ opportunity_id: opportunityId, athlete_id: athleteId });
+    return { error: error?.message ?? null };
   }
 }
 
@@ -354,17 +422,23 @@ export const OPP_SPORTS = [
 export const OPP_TYPES: OpportunityType[] = ['Trial', 'Contract', 'Academy', 'Loan', 'Tryout'];
 
 // internal helper — applyFilters is not exported; used above
-function applyFilters(q: any, filters?: OpportunityFilters): any {
+function applyFilters(q: any, filters?: OpportunityFilters, matchingOrgIds?: string[]): any {
   if (!filters) return q;
   if (filters.sport) q = q.eq('sport', filters.sport);
-  if (filters.type) q = q.eq('type', filters.type);
+  if (filters.type) q = q.ilike('type', filters.type);
   if (filters.location) q = q.ilike('location', `%${filters.location}%`);
   if (filters.salary_min) q = q.gte('salary_max', filters.salary_min);
   if (filters.salary_max) q = q.lte('salary_min', filters.salary_max);
   if (filters.search) {
-    q = q.or(
-      `title.ilike.%${filters.search}%,position.ilike.%${filters.search}%,location.ilike.%${filters.search}%`
-    );
+    const conditions = [
+      `title.ilike.%${filters.search}%`,
+      `position.ilike.%${filters.search}%`,
+      `location.ilike.%${filters.search}%`,
+    ];
+    if (matchingOrgIds && matchingOrgIds.length > 0) {
+      conditions.push(`organization_id.in.(${matchingOrgIds.join(',')})`);
+    }
+    q = q.or(conditions.join(','));
   }
   return q;
 }

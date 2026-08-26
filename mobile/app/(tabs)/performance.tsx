@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
@@ -9,6 +9,8 @@ import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { getSportConfig, ARCHETYPE_LABELS, SportConfig } from '@/constants/sportsConfig';
 import { usePerformanceData } from '@/hooks/usePerformanceData';
 import { triggerChessSync } from '@/lib/performanceService';
+import { triggerFootballSync } from '@/lib/footballService';
+import { supabase } from '@/lib/supabase';
 import { TeamMatchRenderer } from '@/components/performance/TeamMatchRenderer';
 import { RatedLadderRenderer } from '@/components/performance/RatedLadderRenderer';
 import { TimedMeasuredRenderer } from '@/components/performance/TimedMeasuredRenderer';
@@ -16,6 +18,7 @@ import { HandicapNicheRenderer } from '@/components/performance/HandicapNicheRen
 import { SelfReportForm } from '@/components/performance/SelfReportForm';
 
 interface GalleryAthlete {
+  athleteId: string;
   name: string;
   sport: string;
   team: string;
@@ -24,8 +27,6 @@ interface GalleryAthlete {
   lastSyncedAt: string;
   stats: Record<string, any>;
 }
-
-const GALLERY_ATHLETES: GalleryAthlete[] = [];
 
 // ── Archetype renderer dispatcher ─────────────────────────────────────────────
 function ArchetypeRenderer({
@@ -57,30 +58,41 @@ function ArchetypeRenderer({
 // ── My Performance panel ──────────────────────────────────────────────────────
 function MyPerformance({ userId, sport }: { userId: string; sport: string | null }) {
   const config = getSportConfig(sport);
-  const { record, loading, refresh } = usePerformanceData(userId, sport);
+  const { record, loading, error, refresh } = usePerformanceData(userId, sport);
   const [showForm, setShowForm] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const { profile } = useAuth();
 
-  async function handleChessSync() {
+  async function handleSync() {
     setSyncing(true);
     setSyncError(null);
-    const { ok, error } = await triggerChessSync(
-      userId,
-      profile?.chesscom_username,
-      profile?.lichess_username
-    );
-    if (!ok) setSyncError(error);
-    else await refresh();
+    if (config?.sport === 'football') {
+      if (!profile?.football_api_player_id) {
+        setSyncError('Link your football player ID in Settings to enable auto-sync.');
+        setSyncing(false);
+        return;
+      }
+      const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
+      if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
+      else await refresh();
+    } else {
+      const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
+      if (!ok) setSyncError(error);
+      else await refresh();
+    }
     setSyncing(false);
   }
 
   if (!config) {
     return (
       <View style={s.emptyState}>
-        <Text style={s.emptyTitle}>No sport configured</Text>
-        <Text style={s.emptyBody}>Update your profile to set your sport and unlock the performance engine.</Text>
+        <Text style={s.emptyTitle}>{sport ? 'Performance tracking not available yet' : 'No sport configured'}</Text>
+        <Text style={s.emptyBody}>
+          {sport
+            ? `We don't have a performance engine for ${sport} yet. Support for more sports is coming soon.`
+            : 'Update your profile to set your sport and unlock the performance engine.'}
+        </Text>
       </View>
     );
   }
@@ -96,7 +108,14 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
 
       {loading && <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.xl }} />}
 
-      {!loading && record && !showForm && (
+      {!loading && error && (
+        <View style={s.emptyState}>
+          <Text style={s.emptyTitle}>Couldn't load performance data</Text>
+          <Text style={s.emptyBody}>Pull to refresh or try again later.</Text>
+        </View>
+      )}
+
+      {!loading && !error && record && !showForm && (
         <>
           <ArchetypeRenderer
             config={config}
@@ -107,7 +126,11 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           />
           <View style={s.actionRow}>
             {config.supportsAutoSync && (
-              <TouchableOpacity style={s.syncBtn} onPress={handleChessSync} disabled={syncing}>
+              <TouchableOpacity
+                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                onPress={handleSync}
+                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+              >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
                   : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>Sync Now</Text></>
@@ -118,21 +141,31 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
               <Text style={s.editBtnTxt}>Edit Stats</Text>
             </TouchableOpacity>
           </View>
+          {config.supportsAutoSync && config.sport === 'football' && !profile?.football_api_player_id && (
+            <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
+          )}
         </>
       )}
 
-      {!loading && !record && !showForm && (
+      {!loading && !error && !record && !showForm && (
         <View style={s.noDataState}>
           <Text style={s.noDataTitle}>No performance data yet</Text>
           {config.supportsAutoSync ? (
             <>
               <Text style={s.noDataBody}>{config.syncNote}</Text>
-              <TouchableOpacity style={s.syncBtn} onPress={handleChessSync} disabled={syncing}>
+              <TouchableOpacity
+                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                onPress={handleSync}
+                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+              >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
-                  : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>Auto-Sync from Chess.com / Lichess</Text></>
+                  : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>{config.syncButtonLabel ?? 'Sync Now'}</Text></>
                 }
               </TouchableOpacity>
+              {config.sport === 'football' && !profile?.football_api_player_id && (
+                <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
+              )}
               <Text style={s.dividerTxt}>— or enter manually —</Text>
             </>
           ) : (
@@ -194,6 +227,49 @@ function GalleryAthleteCard({ athlete }: { athlete: GalleryAthlete }) {
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function Performance() {
   const { user, profile } = useAuth();
+  const [gallery, setGallery] = useState<GalleryAthlete[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(true);
+  const [galleryError, setGalleryError] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setGalleryLoading(false); return; }
+    let mounted = true;
+    supabase
+      .from('performance_records')
+      .select('athlete_id, sport, season_or_period, stats, source, last_synced_at, user_profiles(full_name)')
+      .neq('athlete_id', user.id)
+      .order('last_synced_at', { ascending: false })
+      .limit(20)
+      .then(({ data, error }) => {
+        if (!mounted) return;
+        if (error) {
+          setGalleryError(true);
+          setGalleryLoading(false);
+          return;
+        }
+        const seen = new Set<string>();
+        const unique: GalleryAthlete[] = [];
+        for (const row of data ?? []) {
+          if (seen.has(row.athlete_id)) continue;
+          seen.add(row.athlete_id);
+          const statsObj = (row.stats ?? {}) as Record<string, any>;
+          unique.push({
+            athleteId: row.athlete_id,
+            name: (row.user_profiles as any)?.full_name ?? 'AceAiX Athlete',
+            sport: row.sport,
+            team: typeof statsObj.team === 'string' ? statsObj.team : 'AceAiX',
+            season: row.season_or_period ?? 'Current',
+            source: row.source,
+            lastSyncedAt: row.last_synced_at,
+            stats: statsObj,
+          });
+          if (unique.length >= 10) break;
+        }
+        setGallery(unique);
+        setGalleryLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [user]);
 
   return (
     <View style={s.root}>
@@ -221,8 +297,15 @@ export default function Performance() {
         <Text style={s.gallerySubtitle}>
           Live performance examples will appear here when athlete records are available.
         </Text>
-        {GALLERY_ATHLETES.map(a => <GalleryAthleteCard key={a.name} athlete={a} />)}
-        {GALLERY_ATHLETES.length === 0 && (
+        {galleryLoading && <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />}
+        {!galleryLoading && galleryError && (
+          <View style={s.card}>
+            <Text style={s.emptyTitle}>Couldn't load gallery</Text>
+            <Text style={s.emptyBody}>Pull to refresh or try again later.</Text>
+          </View>
+        )}
+        {!galleryLoading && !galleryError && gallery.map(a => <GalleryAthleteCard key={a.athleteId} athlete={a} />)}
+        {!galleryLoading && !galleryError && gallery.length === 0 && (
           <View style={s.card}>
             <Text style={s.emptyTitle}>No comparison records yet</Text>
             <Text style={s.emptyBody}>Add or sync verified performance records to populate this section.</Text>
@@ -262,6 +345,7 @@ const s = StyleSheet.create({
 
   actionRow: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.lg },
   syncBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: `${Colors.primary}15`, borderRadius: Radii.md, paddingVertical: 10, borderWidth: 1, borderColor: `${Colors.primary}30` },
+  syncBtnDisabled: { opacity: 0.5 },
   syncBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.primary },
   editBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.elevated, borderRadius: Radii.md, paddingVertical: 10, borderWidth: 1, borderColor: Colors.border },
   editBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textMuted },

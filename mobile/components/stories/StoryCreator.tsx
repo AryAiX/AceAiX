@@ -12,6 +12,7 @@ import {
   Alert,
   Dimensions,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -341,7 +342,11 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
             )}
 
             {/* Bottom: caption + audience + post */}
-            <View style={[s.previewBottom, { paddingBottom: insets.bottom + Spacing.md }]}>
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              style={[s.previewBottom, { paddingBottom: insets.bottom + Spacing.md }]}
+              keyboardVerticalOffset={insets.top}
+            >
               <TextInput
                 style={s.captionInput}
                 value={caption}
@@ -403,7 +408,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
                   <View style={[s.progressFill, { width: `${uploadProgress * 100}%` as any }]} />
                 </View>
               )}
-            </View>
+            </KeyboardAvoidingView>
           </View>
         )}
       </View>

@@ -37,6 +37,7 @@ export default function MediaScreen() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsRefreshing, setPostsRefreshing] = useState(false);
+  const [postsLoadingMore, setPostsLoadingMore] = useState(false);
   const postsCursorRef = useRef<string | undefined>(undefined);
   const postsHasMoreRef = useRef(true);
 
@@ -44,6 +45,7 @@ export default function MediaScreen() {
   const [reels, setReels] = useState<FeedPost[]>([]);
   const [reelsLoading, setReelsLoading] = useState(false);
   const [reelsFetched, setReelsFetched] = useState(false);
+  const [reelsLoadingMore, setReelsLoadingMore] = useState(false);
   const reelsCursorRef = useRef<string | undefined>(undefined);
   const reelsHasMoreRef = useRef(true);
 
@@ -173,8 +175,9 @@ export default function MediaScreen() {
             contentContainerStyle={s.gridContent}
             showsVerticalScrollIndicator={false}
             onEndReached={() => {
-              if (!postsHasMoreRef.current) return;
-              loadPosts(false);
+              if (postsLoadingMore || !postsHasMoreRef.current) return;
+              setPostsLoadingMore(true);
+              loadPosts(false).finally(() => setPostsLoadingMore(false));
             }}
             onEndReachedThreshold={0.5}
             refreshControl={
@@ -196,8 +199,9 @@ export default function MediaScreen() {
             onRemove={(id) => setReels((current) => current.filter((reel) => reel.id !== id))}
             onComments={setCommentPost}
             onLoadMore={() => {
-              if (!reelsHasMoreRef.current) return;
-              loadReels(false);
+              if (reelsLoadingMore || !reelsHasMoreRef.current) return;
+              setReelsLoadingMore(true);
+              loadReels(false).finally(() => setReelsLoadingMore(false));
             }}
           />
         )

@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Dimensions,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,6 +66,10 @@ const TYPE_COLORS: Record<string, string> = {
   Loan:     Colors.accent,
   Tryout:   Colors.error,
 };
+
+function normalizeType(type: string): string {
+  return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+}
 
 // ── Animation hooks ───────────────────────────────────────────────────────────
 function useCountUp(to: number, delay = 300): number {
@@ -160,7 +165,7 @@ function OpportunityCard({
   const score    = opp.match_score;
   const isHot    = score != null && score >= 85;
   const isNew    = Date.now() - new Date(opp.created_at).getTime() < 48 * 3600000;
-  const typeColor  = TYPE_COLORS[opp.type] ?? Colors.primary;
+  const typeColor  = TYPE_COLORS[normalizeType(opp.type)] ?? Colors.primary;
   const scoreColor = score == null ? Colors.primary : score >= 85 ? Colors.error : score >= 70 ? Colors.warning : Colors.primary;
 
   // Entry animation
@@ -280,7 +285,7 @@ function OpportunityCard({
             <View style={c.appliedChip}>
               <BadgeCheck color={Colors.success} size={13} />
               <Text style={c.appliedTxt}>
-                {APP_STATUS_LABELS[opp.application_status ?? 'applied']}
+                {APP_STATUS_LABELS[opp.application_status ?? 'applied'] ?? (opp.application_status ?? 'applied')}
               </Text>
             </View>
           ) : (
@@ -318,7 +323,7 @@ function OpportunityCard({
 function TypeChipSmall({ type, color }: { type: string; color: string }) {
   return (
     <View style={[tc.wrap, { borderColor: `${color}60`, backgroundColor: `${color}12` }]}>
-      <Text style={[tc.txt, { color }]}>{type}</Text>
+      <Text style={[tc.txt, { color }]}>{normalizeType(type)}</Text>
     </View>
   );
 }
@@ -326,7 +331,7 @@ function TypeChipSmall({ type, color }: { type: string; color: string }) {
 // ── ApplicationRow ────────────────────────────────────────────────────────────
 function ApplicationRow({ app, onPress }: { app: Application; onPress: () => void }) {
   const opp     = app.opportunity;
-  const color   = APP_STATUS_COLORS[app.status];
+  const color   = APP_STATUS_COLORS[app.status] ?? Colors.textMuted;
   const pulse   = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -339,7 +344,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
     ).start();
   }, [app.status]);
 
-  const typeColor = opp?.type ? (TYPE_COLORS[opp.type] ?? Colors.primary) : Colors.primary;
+  const typeColor = opp?.type ? (TYPE_COLORS[normalizeType(opp.type)] ?? Colors.primary) : Colors.primary;
 
   return (
     <TouchableOpacity style={ar.card} onPress={onPress} activeOpacity={0.85}>
@@ -363,7 +368,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
       </View>
       <View style={[ar.statusPill, { borderColor: `${color}55`, backgroundColor: `${color}15` }]}>
         <Animated.View style={[ar.statusDot, { backgroundColor: color, opacity: pulse }]} />
-        <Text style={[ar.statusTxt, { color }]}>{APP_STATUS_LABELS[app.status]}</Text>
+        <Text style={[ar.statusTxt, { color }]}>{APP_STATUS_LABELS[app.status] ?? app.status}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -426,7 +431,7 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
 // ── Main screen ───────────────────────────────────────────────────────────────
 export default function OpportunitiesScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
 
   const [tab, setTab]         = useState<Tab>('For You');
@@ -444,7 +449,7 @@ export default function OpportunitiesScreen() {
   const [refreshing,  setRefreshing]  = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const allCursorRef  = useRef<string | undefined>(undefined);
+  const allCursorRef  = useRef<{ createdAt: string; id: string } | undefined>(undefined);
   const allHasMoreRef = useRef(true);
   const fetchedTabs   = useRef<Set<Tab>>(new Set());
 
@@ -462,19 +467,22 @@ export default function OpportunitiesScreen() {
   const loadForYou = useCallback(async () => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
-    const data = await fetchForYouOpportunities(user.id, f);
+    const data = await fetchForYouOpportunities(user.id, profile?.sport ?? null, profile?.position ?? null, f);
     setForYou(data);
-  }, [user, filters, searchText]);
+  }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadAll = useCallback(async (reset = false) => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
     const cursor = reset ? undefined : allCursorRef.current;
-    const data = await fetchAllOpportunities(user.id, cursor, f);
-    if (data.length > 0) allCursorRef.current = data[data.length - 1].created_at;
+    const data = await fetchAllOpportunities(user.id, cursor, f, 20, profile?.sport ?? null, profile?.position ?? null);
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      allCursorRef.current = { createdAt: last.created_at, id: last.id };
+    }
     allHasMoreRef.current = data.length === 20;
     setAll(prev => reset ? data : [...prev, ...data]);
-  }, [user, filters, searchText]);
+  }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadSaved   = useCallback(async () => {
     if (!user) return;
@@ -551,12 +559,21 @@ export default function OpportunitiesScreen() {
   // ── Mutations ──────────────────────────────────────────────────────────────
   const handleSaveToggle = useCallback(async (oppId: string, nowSaved: boolean) => {
     if (!user) return;
+    const previous = !nowSaved;
     const update = (opp: Opportunity) => opp.id === oppId ? { ...opp, saved: nowSaved } : opp;
     setForYou(p => p.map(update));
     setAll(p => p.map(update));
     setSaved(p => nowSaved ? p : p.filter(o => o.id !== oppId));
     if (detailOpp?.id === oppId) setDetailOpp(prev => prev ? { ...prev, saved: nowSaved } : prev);
-    await toggleOpportunitySave(oppId, user.id, !nowSaved);
+    const { error } = await toggleOpportunitySave(oppId, user.id, !nowSaved);
+    if (error) {
+      const revert = (opp: Opportunity) => opp.id === oppId ? { ...opp, saved: previous } : opp;
+      setForYou(p => p.map(revert));
+      setAll(p => p.map(revert));
+      setSaved(p => previous ? p : p.filter(o => o.id !== oppId));
+      if (detailOpp?.id === oppId) setDetailOpp(prev => prev ? { ...prev, saved: previous } : prev);
+      Alert.alert('Could not update saved opportunities', error);
+    }
   }, [user, detailOpp]);
 
   const handleApplied = useCallback((oppId: string, appId: string) => {

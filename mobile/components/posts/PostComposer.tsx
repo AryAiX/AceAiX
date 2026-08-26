@@ -32,7 +32,11 @@ import {
   Play,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
+import { City } from 'country-state-city';
+import SelectModal from '@/components/SelectModal';
+import { getSportConfig } from '@/constants/sportsConfig';
 import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 import {
   PostAudience,
   PostTag,
@@ -42,6 +46,7 @@ import {
 } from '@/lib/postsService';
 
 const { width: SW } = Dimensions.get('window');
+const UAE_CITIES = City.getCitiesOfCountry('AE') ?? [];
 
 const AUDIENCE_OPTIONS: { value: PostAudience; label: string; sub: string }[] = [
   { value: 'followers', label: 'Followers', sub: 'Everyone following you (default)' },
@@ -49,12 +54,8 @@ const AUDIENCE_OPTIONS: { value: PostAudience; label: string; sub: string }[] = 
   { value: 'public', label: 'Public', sub: 'Anyone on AceAiX' },
 ];
 
-const TAG_PRESETS: Array<{ label: string; tag: PostTag }> = [
+const BASE_TAG_PRESETS: Array<{ label: string; tag: PostTag }> = [
   { label: '🎯 Open to Trials', tag: { type: 'open_to_trials', value: 'Open to Trials' } },
-  { label: '⚽ Shooting', tag: { type: 'attribute', value: 'Shooting' } },
-  { label: '💨 Pace', tag: { type: 'attribute', value: 'Pace' } },
-  { label: '🎯 Dribbling', tag: { type: 'attribute', value: 'Dribbling' } },
-  { label: '🏋 Physical', tag: { type: 'attribute', value: 'Physical' } },
   { label: '🎵 Training', tag: { type: 'match', value: 'Training' } },
   { label: '🏆 Match Day', tag: { type: 'match', value: 'Match Day' } },
 ];
@@ -73,7 +74,7 @@ interface Props {
 
 export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [facing, setFacing] = useState<CameraType>('back');
   const [step, setStep] = useState<'compose' | 'camera'>('compose');
@@ -82,7 +83,9 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
   const [tags, setTags] = useState<PostTag[]>([]);
   const [audience, setAudience] = useState<PostAudience>('followers');
   const [showAudience, setShowAudience] = useState(false);
-  const [locationText, setLocationText] = useState('');
+  const [cityName, setCityName] = useState('');
+  const [venueText, setVenueText] = useState('');
+  const [cityModalOpen, setCityModalOpen] = useState(false);
   const [showTagSheet, setShowTagSheet] = useState(false);
   const [posting, setPosting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -94,7 +97,8 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     setMedia([]);
     setTags([]);
     setAudience('followers');
-    setLocationText('');
+    setCityName('');
+    setVenueText('');
     setShowTagSheet(false);
     setPosting(false);
     setProgress(0);
@@ -160,6 +164,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     });
   }, []);
 
+  const sportConfig = getSportConfig(profile?.sport);
+  const attributePresets: Array<{ label: string; tag: PostTag }> = (sportConfig?.metrics ?? [])
+    .slice(0, 4)
+    .map((metric) => ({ label: metric.label, tag: { type: 'attribute', value: metric.label } }));
+  const tagPresets = [...attributePresets, ...BASE_TAG_PRESETS];
+
   const handlePost = useCallback(async () => {
     if (!user) return;
     if (!caption.trim() && media.length === 0) {
@@ -174,7 +184,8 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     setProgress(0.1);
 
     const allTags: PostTag[] = [...tags];
-    if (locationText.trim()) allTags.push({ type: 'location', value: locationText.trim() });
+    const locationValue = [venueText.trim(), cityName].filter(Boolean).join(', ');
+    if (locationValue) allTags.push({ type: 'location', value: locationValue });
 
     // Upload media
     const uploadedMedia: Array<{ path: string; type: 'photo' | 'video' }> = [];
@@ -204,12 +215,17 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     setPosting(false);
 
     if (createError) {
+      const paths = uploadedMedia.map((m) => m.path);
+      if (paths.length > 0) {
+        await supabase.storage.from('posts').remove(paths);
+      }
       Alert.alert('Error', createError);
+      setPosting(false);
       return;
     }
     reset();
     onPosted();
-  }, [user, caption, media, tags, locationText, audience, postType, reset, onPosted]);
+  }, [user, caption, media, tags, cityName, venueText, audience, postType, reset, onPosted]);
 
   if (!visible) return null;
 
@@ -360,7 +376,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             <View style={s.section}>
               <Text style={s.sectionTitle}>Tags</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tagRow}>
-                {TAG_PRESETS.map((p) => {
+                {tagPresets.map((p) => {
                   const active = tags.some((t) => t.type === p.tag.type && t.value === p.tag.value);
                   return (
                     <TouchableOpacity
@@ -378,13 +394,27 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             {/* Location */}
             <View style={s.section}>
               <Text style={s.sectionTitle}>Location</Text>
-              <View style={s.locationRow}>
+              <TouchableOpacity style={s.locationRow} onPress={() => setCityModalOpen(true)}>
                 <MapPin color={Colors.textMuted} size={16} />
+                <Text style={[s.locationInput, { color: cityName ? Colors.textPrimary : Colors.textDisabled }]}>
+                  {cityName || 'Select city (UAE)'}
+                </Text>
+              </TouchableOpacity>
+              <SelectModal
+                visible={cityModalOpen}
+                title="Select city"
+                options={UAE_CITIES.map((c) => ({ label: c.name, value: c.name }))}
+                selectedValue={cityName}
+                onSelect={setCityName}
+                onClose={() => setCityModalOpen(false)}
+                searchable
+              />
+              <View style={s.locationRow}>
                 <TextInput
                   style={s.locationInput}
-                  value={locationText}
-                  onChangeText={setLocationText}
-                  placeholder="City or area"
+                  value={venueText}
+                  onChangeText={setVenueText}
+                  placeholder="Venue or area (optional)"
                   placeholderTextColor={Colors.textDisabled}
                   maxLength={60}
                 />

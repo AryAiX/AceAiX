@@ -6,8 +6,11 @@ import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 
-const FILTERS = ['All', 'Football', 'Basketball', 'Tennis', 'Athletics'];
+const sportNames = Object.values(SPORTS_CONFIG).map((c) => c.displayName);
+const orderedSportNames = ['Football', ...sportNames.filter((name) => name !== 'Football')];
+const FILTERS = ['All', ...orderedSportNames];
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
 
 interface AthleteRow {
@@ -20,7 +23,6 @@ interface AthleteRow {
   loc: string;
   rating: string;
   verified: boolean;
-  tags: string[];
 }
 
 export default function Discover() {
@@ -32,7 +34,7 @@ export default function Discover() {
   const searchQuery = typeof params.query === 'string' ? params.query.trim().toLowerCase() : '';
   const filteredAthletes = athletes.filter((athlete) => {
     const matchesSport = activeFilter === 'All'
-      || athlete.sport.toLowerCase() === activeFilter.toLowerCase();
+      || normalizeSportKey(athlete.sport) === normalizeSportKey(activeFilter);
     const matchesSearch = !searchQuery || [
       athlete.name,
       athlete.pos,
@@ -53,10 +55,10 @@ export default function Discover() {
         .neq('user_id', user.id)
         .limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
-      supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
+      supabase.rpc('get_blocked_user_ids'),
     ]).then(([athletesResult, followsResult, blocksResult]) => {
       if (!mounted) return;
-      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_id));
+      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
       setAthletes((athletesResult.data ?? [])
         .filter((row: any) => !blockedIds.has(row.user_id))
         .map((row: any) => ({
@@ -67,9 +69,8 @@ export default function Discover() {
         sport: row.sport ?? 'Football',
         club: row.current_club ?? 'Club not set',
         loc: [row.user?.city, row.user?.country].filter(Boolean).join(', ') || 'Location not set',
-        rating: row.performance_score ? (row.performance_score / 10).toFixed(1) : '—',
+        rating: row.performance_score != null ? (row.performance_score / 10).toFixed(1) : '—',
         verified: row.user?.is_verified ?? false,
-        tags: [],
         })));
       setConnected(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     });
@@ -82,7 +83,10 @@ export default function Discover() {
     if (isConnected) {
       ({ error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', athleteUserId));
     } else {
-      ({ error } = await supabase.from('follows').upsert({ follower_id: user.id, following_id: athleteUserId }));
+      ({ error } = await supabase.from('follows').upsert(
+        { follower_id: user.id, following_id: athleteUserId },
+        { onConflict: 'follower_id,following_id' }
+      ));
     }
     if (error) {
       Alert.alert('Connection not updated', error.message);
@@ -99,13 +103,13 @@ export default function Discover() {
     <View style={s.root}>
       <AppHeader title="Discover Athletes" />
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
-        <View style={s.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
           {FILTERS.map(f => (
             <TouchableOpacity key={f} style={[s.chip, f === activeFilter && s.chipActive]} onPress={() => setActiveFilter(f)}>
               <Text style={[s.chipTxt, f === activeFilter && s.chipTxtActive]}>{f}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         <View style={s.statsRow}>
           <View style={s.statBox}>
@@ -142,13 +146,6 @@ export default function Discover() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <MapPin color={Colors.textDisabled} size={11} />
                     <Text style={s.loc}>{a.loc}</Text>
-                  </View>
-                  <View style={s.tagsRow}>
-                    {a.tags.map(tag => (
-                      <View key={tag} style={s.tag}>
-                        <Text style={s.tagTxt}>{tag}</Text>
-                      </View>
-                    ))}
                   </View>
                 </View>
                 <View style={s.right}>
@@ -207,9 +204,6 @@ const s = StyleSheet.create({
   pos: { fontFamily: Typography.family.medium, fontSize: Typography.size.xs, color: Colors.primary },
   club: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted },
   loc: { fontFamily: Typography.family.regular, fontSize: 10, color: Colors.textDisabled },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
-  tag: { backgroundColor: `${Colors.accent}18`, borderRadius: Radii.full, paddingHorizontal: 7, paddingVertical: 2 },
-  tagTxt: { fontFamily: Typography.family.bold, fontSize: 9, color: Colors.accent },
   right: { alignItems: 'flex-end', gap: Spacing.sm },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${Colors.accent}15`, borderRadius: Radii.full, paddingHorizontal: 8, paddingVertical: 3 },
   ratingTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.accent },

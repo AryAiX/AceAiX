@@ -15,38 +15,71 @@ import {
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Save, UserRound } from 'lucide-react-native';
+import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Country, City } from 'country-state-city';
+import { POSITIONS_BY_SPORT } from '@/constants/positions';
+import { LEVEL_OPTIONS } from '@/constants/levels';
+import SelectModal from '@/components/SelectModal';
 
 type ProfileForm = {
-  fullName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   bio: string;
-  sport: string;
+  sportKey: string;
+  sportOther: string;
   position: string;
   currentClub: string;
   level: string;
+  league: string;
   nationality: string;
+  countryIsoCode: string;
   city: string;
-  country: string;
   phone: string;
   birthdate: string;
 };
 
 const EMPTY_FORM: ProfileForm = {
-  fullName: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
   bio: '',
-  sport: '',
+  sportKey: '',
+  sportOther: '',
   position: '',
   currentClub: '',
   level: '',
+  league: '',
   nationality: '',
+  countryIsoCode: '',
   city: '',
-  country: '',
   phone: '',
   birthdate: '',
 };
+
+const ALL_COUNTRIES = Country.getAllCountries()
+  .slice()
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+type LegacyProfileNames = {
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  level?: string | null;
+};
+
+function legacyName(source: unknown, key: keyof LegacyProfileNames): string {
+  const record = source as LegacyProfileNames | null | undefined;
+  return record?.[key] ?? '';
+}
 
 function optional(value: string): string | null {
   return value.trim() || null;
@@ -95,19 +128,51 @@ export default function EditProfile() {
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false });
+  const [positionModalOpen, setPositionModalOpen] = useState(false);
+  const [levelModalOpen, setLevelModalOpen] = useState(false);
+  const [countryModalOpen, setCountryModalOpen] = useState(false);
+  const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
-    const [city = '', country = ''] = (profile?.current_location ?? '').split(',').map((part) => part.trim());
+    const normalizedSport = normalizeSportKey(profile?.sport);
+    const isKnownSport = normalizedSport
+      ? Object.prototype.hasOwnProperty.call(SPORTS_CONFIG, normalizedSport)
+      : false;
+
+    let firstName = legacyName(profile, 'first_name');
+    let middleName = legacyName(profile, 'middle_name');
+    let lastName = legacyName(profile, 'last_name');
+    if (!firstName && profile?.full_name) {
+      const parts = profile.full_name.trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        firstName = parts[0];
+      } else if (parts.length > 1) {
+        firstName = parts[0];
+        lastName = parts[parts.length - 1];
+        middleName = parts.slice(1, -1).join(' ');
+      }
+    }
+
+    const matchedCountry = profile?.country
+      ? ALL_COUNTRIES.find((c) => c.name === profile.country)
+      : undefined;
+
     setForm({
-      fullName: profile?.full_name ?? '',
+      firstName,
+      middleName,
+      lastName,
       bio: profile?.bio ?? '',
-      sport: profile?.sport ?? '',
+      sportKey: isKnownSport ? normalizedSport! : (profile?.sport ? 'other' : ''),
+      sportOther: isKnownSport ? '' : (profile?.sport ?? ''),
       position: profile?.position ?? '',
       currentClub: profile?.current_club ?? '',
-      level: profile?.league ?? '',
+      level: legacyName(profile, 'level') || 'amateur',
+      league: profile?.league ?? '',
       nationality: profile?.nationality ?? '',
-      city: profile?.hometown ?? city,
-      country,
+      countryIsoCode: matchedCountry?.isoCode ?? '',
+      city: profile?.hometown ?? '',
       phone: profile?.phone ?? '',
       birthdate: profile?.birthdate ?? '',
     });
@@ -115,11 +180,15 @@ export default function EditProfile() {
     profile?.bio,
     profile?.birthdate,
     profile?.current_club,
-    profile?.current_location,
+    profile?.country,
     profile?.full_name,
+    legacyName(profile, 'first_name'),
+    legacyName(profile, 'middle_name'),
+    legacyName(profile, 'last_name'),
     profile?.hometown,
     profile?.id,
     profile?.league,
+    legacyName(profile, 'level'),
     profile?.nationality,
     profile?.phone,
     profile?.position,
@@ -150,17 +219,22 @@ export default function EditProfile() {
           : 'jpg';
       const contentType = asset.mimeType ?? 'image/jpeg';
       const path = `${user.id}/avatar.${extension}`;
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
+
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const fileData = decode(base64);
+
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, blob, { contentType, upsert: true });
+        .upload(path, fileData, { contentType, upsert: true });
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const cacheBustedUrl = `${data.publicUrl}?t=${Date.now()}`;
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({ avatar_url: data.publicUrl })
+        .update({ avatar_url: cacheBustedUrl })
         .eq('id', user.id);
       if (profileError) throw profileError;
 
@@ -178,47 +252,46 @@ export default function EditProfile() {
     }
   }
 
+  const sportValid = form.sportKey !== '' && (form.sportKey !== 'other' || form.sportOther.trim() !== '');
+  const countryValid = form.countryIsoCode !== '';
+  const birthdateValid = form.birthdate !== '';
+  const positionRequired = !!POSITIONS_BY_SPORT[form.sportKey];
+  const positionValid = !positionRequired || form.position !== '';
+
   async function saveProfile() {
     if (!user || saving) return;
-    if (!form.fullName.trim()) {
-      Alert.alert('Full name required', 'Enter your full name before saving.');
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      Alert.alert('Name required', 'Enter your first and last name before saving.');
       return;
     }
+    setTouched({ sport: true, country: true, birthdate: true, position: true });
+    if (!sportValid || !countryValid || !birthdateValid || !positionValid) {
+      return;
+    }
+    const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
+    const countryName = form.countryIsoCode
+      ? ALL_COUNTRIES.find((c) => c.isoCode === form.countryIsoCode)?.name ?? ''
+      : '';
 
     setSaving(true);
-    const [publicResult, athleteResult, privateResult] = await Promise.all([
-      supabase
-        .from('user_profiles')
-        .update({
-          full_name: form.fullName.trim(),
-          bio: optional(form.bio),
-          city: optional(form.city),
-          country: optional(form.country),
-        })
-        .eq('id', user.id),
-      supabase
-        .from('athlete_profiles')
-        .update({
-          sport: optional(form.sport),
-          position: optional(form.position),
-          position_primary: optional(form.position),
-          current_club: optional(form.currentClub),
-          level: optional(form.level) ?? 'amateur',
-          nationality: optional(form.nationality),
-          bio: optional(form.bio),
-        })
-        .eq('user_id', user.id),
-      supabase
-        .from('user_private')
-        .upsert({
-          user_id: user.id,
-          phone: optional(form.phone),
-          date_of_birth: optional(form.birthdate),
-        }),
-    ]);
+    const { error } = await supabase.rpc('update_own_profile', {
+      p_first_name: form.firstName.trim(),
+      p_middle_name: optional(form.middleName),
+      p_last_name: form.lastName.trim(),
+      p_bio: optional(form.bio),
+      p_city: optional(form.city),
+      p_country: optional(countryName),
+      p_sport: optional(finalSport),
+      p_position: optional(form.position),
+      p_current_club: optional(form.currentClub),
+      p_level: optional(form.level),
+      p_league: optional(form.league),
+      p_nationality: optional(form.nationality),
+      p_phone: optional(form.phone),
+      p_date_of_birth: optional(form.birthdate),
+    });
     setSaving(false);
 
-    const error = publicResult.error ?? athleteResult.error ?? privateResult.error;
     if (error) {
       Alert.alert('Unable to save profile', error.message);
       return;
@@ -229,6 +302,10 @@ export default function EditProfile() {
       { text: 'Done', onPress: () => router.back() },
     ]);
   }
+
+  const citiesForCountry = form.countryIsoCode
+    ? (City.getCitiesOfCountry(form.countryIsoCode) ?? [])
+    : [];
 
   return (
     <View style={s.root}>
@@ -281,10 +358,24 @@ export default function EditProfile() {
 
           <View style={s.card}>
             <Field
-              label="Full name"
-              value={form.fullName}
-              onChangeText={(value) => update('fullName', value)}
-              placeholder="Your full name"
+              label="First name"
+              value={form.firstName}
+              onChangeText={(value) => update('firstName', value)}
+              placeholder="First name"
+              autoCapitalize="words"
+            />
+            <Field
+              label="Middle name (optional)"
+              value={form.middleName}
+              onChangeText={(value) => update('middleName', value)}
+              placeholder="Middle name"
+              autoCapitalize="words"
+            />
+            <Field
+              label="Last name"
+              value={form.lastName}
+              onChangeText={(value) => update('lastName', value)}
+              placeholder="Last name"
               autoCapitalize="words"
             />
             <Field
@@ -294,20 +385,82 @@ export default function EditProfile() {
               placeholder="Tell scouts about your background and goals"
               multiline
             />
-            <Field
-              label="Sport"
-              value={form.sport}
-              onChangeText={(value) => update('sport', value)}
-              placeholder="e.g. Football"
-              autoCapitalize="words"
-            />
-            <Field
-              label="Primary position"
-              value={form.position}
-              onChangeText={(value) => update('position', value)}
-              placeholder="e.g. Goalkeeper"
-              autoCapitalize="words"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Sport</Text>
+              <View style={s.sportChipsRow}>
+                {Object.values(SPORTS_CONFIG).map((config) => (
+                  <TouchableOpacity
+                    key={config.sport}
+                    style={[s.sportChip, form.sportKey === config.sport && s.sportChipActive]}
+                    onPress={() => {
+                      setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }));
+                      setTouched((t) => ({ ...t, sport: true }));
+                    }}
+                  >
+                    <Text style={[s.sportChipTxt, form.sportKey === config.sport && s.sportChipTxtActive]}>
+                      {config.displayName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  style={[s.sportChip, form.sportKey === 'other' && s.sportChipActive]}
+                  onPress={() => {
+                    setForm((current) => ({ ...current, sportKey: 'other' }));
+                    setTouched((t) => ({ ...t, sport: true }));
+                  }}
+                >
+                  <Text style={[s.sportChipTxt, form.sportKey === 'other' && s.sportChipTxtActive]}>
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {form.sportKey === 'other' && (
+                <TextInput
+                  accessibilityLabel="Sport (other)"
+                  style={s.input}
+                  value={form.sportOther}
+                  onChangeText={(value) => update('sportOther', value)}
+                  placeholder="Enter your sport"
+                  placeholderTextColor={Colors.textDisabled}
+                  autoCapitalize="words"
+                />
+              )}
+              {touched.sport && !sportValid && <Text style={s.errorText}>Sport is required</Text>}
+            </View>
+            {POSITIONS_BY_SPORT[form.sportKey] ? (
+              <View style={s.field}>
+                <Text style={s.label}>Primary position</Text>
+                <TouchableOpacity style={s.input} onPress={() => setPositionModalOpen(true)}>
+                  <Text style={{
+                    fontFamily: Typography.family.regular,
+                    fontSize: Typography.size.sm,
+                    color: form.position ? Colors.textPrimary : Colors.textDisabled,
+                  }}>
+                    {form.position || 'Select position'}
+                  </Text>
+                </TouchableOpacity>
+                <SelectModal
+                  visible={positionModalOpen}
+                  title="Select position"
+                  options={POSITIONS_BY_SPORT[form.sportKey].map((pos) => ({ label: pos, value: pos }))}
+                  selectedValue={form.position}
+                  onSelect={(value) => update('position', value)}
+                  onClose={() => {
+                    setPositionModalOpen(false);
+                    setTouched((t) => ({ ...t, position: true }));
+                  }}
+                />
+                {touched.position && !positionValid && <Text style={s.errorText}>Position is required</Text>}
+              </View>
+            ) : (
+              <Field
+                label="Primary position"
+                value={form.position}
+                onChangeText={(value) => update('position', value)}
+                placeholder="e.g. Goalkeeper"
+                autoCapitalize="words"
+              />
+            )}
             <Field
               label="Current club"
               value={form.currentClub}
@@ -315,38 +468,104 @@ export default function EditProfile() {
               placeholder="Your current club"
               autoCapitalize="words"
             />
+            <View style={s.field}>
+              <Text style={s.label}>Level</Text>
+              <TouchableOpacity style={s.input} onPress={() => setLevelModalOpen(true)}>
+                <Text style={{
+                  fontFamily: Typography.family.regular,
+                  fontSize: Typography.size.sm,
+                  color: Colors.textPrimary,
+                }}>
+                  {LEVEL_OPTIONS.find((opt) => opt.key === form.level)?.label || 'Select level'}
+                </Text>
+              </TouchableOpacity>
+              <SelectModal
+                visible={levelModalOpen}
+                title="Select level"
+                options={LEVEL_OPTIONS.map((opt) => ({ label: opt.label, value: opt.key }))}
+                selectedValue={form.level}
+                onSelect={(value) => update('level', value)}
+                onClose={() => setLevelModalOpen(false)}
+              />
+            </View>
             <Field
-              label="Level or league"
-              value={form.level}
-              onChangeText={(value) => update('level', value)}
-              placeholder="e.g. Amateur or UAE Pro League"
+              label="League name (optional)"
+              value={form.league}
+              onChangeText={(value) => update('league', value)}
+              placeholder="e.g. UAE Pro League"
               autoCapitalize="words"
             />
-            <Field
-              label="Nationality"
-              value={form.nationality}
-              onChangeText={(value) => update('nationality', value)}
-              placeholder="Your nationality"
-              autoCapitalize="words"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Nationality</Text>
+              <View style={s.input}>
+                <Picker
+                  selectedValue={form.nationality}
+                  onValueChange={(value) => update('nationality', value)}
+                  style={{ color: Colors.textPrimary }}
+                  dropdownIconColor={Colors.textPrimary}
+                >
+                  <Picker.Item label="Select nationality" value="" />
+                  {ALL_COUNTRIES.map((c) => (
+                    <Picker.Item key={c.isoCode} label={c.name} value={c.name} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
             <View style={s.twoColumns}>
               <View style={s.column}>
-                <Field
-                  label="City"
-                  value={form.city}
-                  onChangeText={(value) => update('city', value)}
-                  placeholder="City"
-                  autoCapitalize="words"
-                />
+                <View style={s.field}>
+                  <Text style={s.label}>Country</Text>
+                  <TouchableOpacity style={s.input} onPress={() => setCountryModalOpen(true)}>
+                    <Text style={{
+                      fontFamily: Typography.family.regular,
+                      fontSize: Typography.size.sm,
+                      color: form.countryIsoCode ? Colors.textPrimary : Colors.textDisabled,
+                    }}>
+                      {ALL_COUNTRIES.find((c) => c.isoCode === form.countryIsoCode)?.name || 'Select country'}
+                    </Text>
+                  </TouchableOpacity>
+                  <SelectModal
+                    visible={countryModalOpen}
+                    title="Select country"
+                    options={ALL_COUNTRIES.map((c) => ({ label: c.name, value: c.isoCode }))}
+                    selectedValue={form.countryIsoCode}
+                    onSelect={(value) => setForm((current) => ({ ...current, countryIsoCode: value, city: '' }))}
+                    onClose={() => {
+                      setCountryModalOpen(false);
+                      setTouched((t) => ({ ...t, country: true }));
+                    }}
+                    searchable
+                  />
+                  {touched.country && !countryValid && <Text style={s.errorText}>Country is required</Text>}
+                </View>
               </View>
               <View style={s.column}>
-                <Field
-                  label="Country"
-                  value={form.country}
-                  onChangeText={(value) => update('country', value)}
-                  placeholder="Country"
-                  autoCapitalize="words"
-                />
+                <View style={s.field}>
+                  <Text style={s.label}>City</Text>
+                  <TouchableOpacity
+                    style={[s.input, !form.countryIsoCode && { opacity: 0.5 }]}
+                    disabled={!form.countryIsoCode}
+                    onPress={() => setCityModalOpen(true)}
+                  >
+                    <Text style={{
+                      fontFamily: Typography.family.regular,
+                      fontSize: Typography.size.sm,
+                      color: form.city ? Colors.textPrimary : Colors.textDisabled,
+                    }}>
+                      {form.city || (form.countryIsoCode ? 'Select city' : 'Select country first')}
+                    </Text>
+                  </TouchableOpacity>
+                  <SelectModal
+                    visible={cityModalOpen}
+                    title="Select city"
+                    options={citiesForCountry.map((city) => ({ label: city.name, value: city.name }))}
+                    selectedValue={form.city}
+                    onSelect={(value) => update('city', value)}
+                    onClose={() => setCityModalOpen(false)}
+                    searchable
+                    emptyMessage="No cities found for this country"
+                  />
+                </View>
               </View>
             </View>
             <Field
@@ -357,14 +576,23 @@ export default function EditProfile() {
               keyboardType="phone-pad"
               autoCapitalize="none"
             />
-            <Field
-              label="Date of birth"
-              value={form.birthdate}
-              onChangeText={(value) => update('birthdate', value)}
-              placeholder="YYYY-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              autoCapitalize="none"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Date of birth</Text>
+              <TouchableOpacity
+                accessibilityLabel="Date of birth"
+                style={s.input}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{
+                  fontFamily: Typography.family.regular,
+                  fontSize: Typography.size.sm,
+                  color: form.birthdate ? Colors.textPrimary : Colors.textDisabled,
+                }}>
+                  {form.birthdate || 'Select date of birth'}
+                </Text>
+              </TouchableOpacity>
+              {touched.birthdate && !birthdateValid && <Text style={s.errorText}>Date of birth is required</Text>}
+            </View>
           </View>
 
           <TouchableOpacity
@@ -382,6 +610,53 @@ export default function EditProfile() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showDatePicker && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 10,
+          }}
+        >
+          <View style={[s.card, { width: '85%' }]}>
+            <DateTimePicker
+              value={form.birthdate ? new Date(`${form.birthdate}T00:00:00Z`) : new Date(2005, 0, 1)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={new Date()}
+              onChange={(_event, selectedDate) => {
+                if (Platform.OS === 'android') {
+                  setShowDatePicker(false);
+                  setTouched((t) => ({ ...t, birthdate: true }));
+                }
+                if (selectedDate) {
+                  update('birthdate', selectedDate.toISOString().slice(0, 10));
+                }
+              }}
+            />
+            {Platform.OS === 'ios' && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Confirm date of birth"
+                style={s.saveButton}
+                onPress={() => {
+                  setShowDatePicker(false);
+                  setTouched((t) => ({ ...t, birthdate: true }));
+                }}
+              >
+                <Text style={s.saveText}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -452,10 +727,21 @@ const s = StyleSheet.create({
     gap: Spacing.md,
   },
   field: { gap: 7 },
+  sportChipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  sportChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.full, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
+  sportChipActive: { backgroundColor: `${Colors.primary}20`, borderColor: `${Colors.primary}50` },
+  sportChipTxt: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted },
+  sportChipTxtActive: { color: Colors.primary, fontFamily: Typography.family.bold },
   label: {
     fontFamily: Typography.family.semiBold,
     fontSize: Typography.size.xs,
     color: Colors.textMuted,
+  },
+  errorText: {
+    marginTop: 2,
+    fontFamily: Typography.family.regular,
+    fontSize: Typography.size.xs,
+    color: Colors.error,
   },
   input: {
     minHeight: 46,

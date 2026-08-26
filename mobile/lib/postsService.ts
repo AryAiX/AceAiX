@@ -1,4 +1,7 @@
 import { supabase } from '@/lib/supabase';
+import { normalizeSportKey } from '@/constants/sportsConfig';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
 
 export type PostType = 'post' | 'reel';
 export type PostAudience = 'public' | 'followers' | 'connections';
@@ -110,10 +113,11 @@ export async function fetchFeedPosts(
   currentUserId: string,
   cursor?: string,
   limit = 20,
-  followingOnly = false,
+  mode: 'for_you' | 'following' | 'latest' = 'latest',
+  viewerSport?: string | null,
 ): Promise<FeedPost[]> {
   let authorIds: string[] | null = null;
-  if (followingOnly) {
+  if (mode === 'following') {
     const { data: follows, error: followsError } = await supabase
       .from('follows')
       .select('following_id')
@@ -122,15 +126,21 @@ export async function fetchFeedPosts(
     authorIds = [currentUserId, ...(follows ?? []).map((follow) => follow.following_id)];
   }
 
+  const sportKey = mode === 'for_you' ? normalizeSportKey(viewerSport) : null;
+  const athleteSelect = sportKey
+    ? 'athlete:athlete_profiles!inner(sport, position, position_primary)'
+    : 'athlete:athlete_profiles(sport, position, position_primary)';
+
   let query = supabase
     .from('posts')
-    .select('*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), athlete:athlete_profiles(sport, position, position_primary)')
+    .select(`*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), ${athleteSelect}`)
     .in('type', ['post', 'standard'])
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
+  if (sportKey) query = query.ilike('athlete.sport', `%${sportKey}%`);
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
@@ -228,9 +238,17 @@ export async function uploadPostMedia(
     const ext = mediaType === 'video' ? 'mp4' : 'jpg';
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    const { error } = await supabase.storage.from('posts').upload(path, blob, { contentType });
+
+    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    if (!base64) {
+      return { path: null, error: 'Captured file could not be read. Please try again.' };
+    }
+    const arrayBuffer = decode(base64);
+    if (arrayBuffer.byteLength === 0) {
+      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
+    }
+
+    const { error } = await supabase.storage.from('posts').upload(path, arrayBuffer, { contentType });
     if (error) return { path: null, error: error.message };
     return { path, error: null };
   } catch (e) {
@@ -313,13 +331,13 @@ export async function toggleLike(
   postId: string,
   userId: string,
   currently_liked: boolean
-): Promise<boolean> {
+): Promise<{ liked: boolean; error: string | null }> {
   if (currently_liked) {
-    await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
-    return false;
+    const { error } = await supabase.from('post_likes').delete().eq('post_id', postId).eq('user_id', userId);
+    return { liked: error ? currently_liked : false, error: error?.message ?? null };
   } else {
-    await supabase.from('post_likes').upsert({ post_id: postId, user_id: userId });
-    return true;
+    const { error } = await supabase.from('post_likes').upsert({ post_id: postId, user_id: userId });
+    return { liked: error ? currently_liked : true, error: error?.message ?? null };
   }
 }
 
@@ -327,13 +345,13 @@ export async function toggleSave(
   postId: string,
   userId: string,
   currently_saved: boolean
-): Promise<boolean> {
+): Promise<{ saved: boolean; error: string | null }> {
   if (currently_saved) {
-    await supabase.from('post_saves').delete().eq('post_id', postId).eq('user_id', userId);
-    return false;
+    const { error } = await supabase.from('post_saves').delete().eq('post_id', postId).eq('user_id', userId);
+    return { saved: error ? currently_saved : false, error: error?.message ?? null };
   } else {
-    await supabase.from('post_saves').upsert({ post_id: postId, user_id: userId });
-    return true;
+    const { error } = await supabase.from('post_saves').upsert({ post_id: postId, user_id: userId });
+    return { saved: error ? currently_saved : true, error: error?.message ?? null };
   }
 }
 
@@ -345,8 +363,9 @@ export async function markPostViewed(postId: string, viewerId: string): Promise<
   try { await supabase.rpc('increment_post_view', { p_id: postId }); } catch (_) {}
 }
 
-export async function toggleFeatureReel(postId: string, featured: boolean): Promise<void> {
-  await supabase.from('posts').update({ is_featured: featured }).eq('id', postId);
+export async function toggleFeatureReel(postId: string, featured: boolean): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('posts').update({ is_featured: featured }).eq('id', postId);
+  return { error: error?.message ?? null };
 }
 
 // ── Comments ─────────────────────────────────────────────────────────────────
@@ -404,26 +423,29 @@ export async function addComment(
   authorId: string,
   body: string,
   parentId?: string
-): Promise<PostComment | null> {
+): Promise<{ comment: PostComment | null; error: string | null }> {
   const { data, error } = await supabase
     .from('post_comments')
     .insert({ post_id: postId, author_id: authorId, body, parent_id: parentId ?? null })
     .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) return { comment: null, error: error?.message ?? 'Unknown error' };
   return {
-    id: data.id,
-    post_id: data.post_id,
-    author_id: data.author_id,
-    body: data.body,
-    parent_id: data.parent_id,
-    like_count: data.like_count,
-    created_at: data.created_at,
-    author_name: (data.author as any)?.full_name ?? null,
-    author_avatar: (data.author as any)?.avatar_url ?? null,
-    liked: false,
-    replies: [],
+    comment: {
+      id: data.id,
+      post_id: data.post_id,
+      author_id: data.author_id,
+      body: data.body,
+      parent_id: data.parent_id,
+      like_count: data.like_count,
+      created_at: data.created_at,
+      author_name: (data.author as any)?.full_name ?? null,
+      author_avatar: (data.author as any)?.avatar_url ?? null,
+      liked: false,
+      replies: [],
+    },
+    error: null,
   };
 }
 
@@ -431,11 +453,13 @@ export async function toggleCommentLike(
   commentId: string,
   userId: string,
   liked: boolean
-): Promise<void> {
+): Promise<{ error: string | null }> {
   if (liked) {
-    await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+    const { error } = await supabase.from('comment_likes').delete().eq('comment_id', commentId).eq('user_id', userId);
+    return { error: error?.message ?? null };
   } else {
-    await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
+    const { error } = await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
+    return { error: error?.message ?? null };
   }
 }
 

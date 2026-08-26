@@ -61,12 +61,14 @@ function RootNavigator() {
       router.replace('/');
     } else if (role !== null && role !== 'athlete') {
       router.replace('/athletes-only');
+    } else if (session && role === null) {
+      router.replace({ pathname: '/athletes-only', params: { reason: 'no-profile' } });
     }
   }, [session, role, loading, pathname]);
 
   useEffect(() => {
-    if (user) registerPushToken(user.id);
-  }, [user]);
+    if (user && role === 'athlete') registerPushToken(user.id);
+  }, [user, role]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

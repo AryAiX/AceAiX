@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   X,
   MoreHorizontal,
@@ -81,6 +82,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [replyStatus, setReplyStatus] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
   const progressAnims = useRef<Animated.Value[]>([]);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,6 +102,11 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     if (!currentStory || !user) return;
     if (!currentStory.seen) markSeen(currentStory.id);
   }, [currentStory?.id, user]);
+
+  // Reset video duration when the current story changes
+  useEffect(() => {
+    setVideoDuration(null);
+  }, [currentStory?.id]);
 
   // Progress timer
   useEffect(() => {
@@ -121,7 +128,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
 
     const anim = Animated.timing(bar, {
       toValue: 1,
-      duration: STORY_DURATION,
+      duration: currentStory.media_type === 'video' && videoDuration ? videoDuration : STORY_DURATION,
       useNativeDriver: false,
     });
     anim.start(({ finished }) => {
@@ -129,7 +136,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     });
 
     return () => { anim.stop(); };
-  }, [storyIdx, groupIdx, paused, visible]);
+  }, [storyIdx, groupIdx, paused, visible, videoDuration]);
 
   const advanceStory = useCallback(() => {
     if (!currentGroup) return;
@@ -268,11 +275,19 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
         {/* ── MEDIA ─────────────────────────────────────────────────────────── */}
         <View style={s.mediaWrap}>
           {currentStory.signed_url ? (
-            <Image
-              source={{ uri: currentStory.signed_url }}
-              style={s.media}
-              resizeMode="cover"
-            />
+            currentStory.media_type === 'video' ? (
+              <StoryVideoPlayer
+                uri={currentStory.signed_url}
+                paused={paused}
+                onDuration={(seconds) => setVideoDuration(seconds * 1000)}
+              />
+            ) : (
+              <Image
+                source={{ uri: currentStory.signed_url }}
+                style={s.media}
+                resizeMode="cover"
+              />
+            )
           ) : (
             <LinearGradient
               colors={['#0A1628', Colors.primary, '#061020']}
@@ -518,6 +533,34 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
       </View>
     </Modal>
   );
+}
+
+function StoryVideoPlayer({
+  uri, paused, onDuration,
+}: {
+  uri: string;
+  paused: boolean;
+  onDuration: (seconds: number) => void;
+}) {
+  const player = useVideoPlayer(uri, (instance) => {
+    instance.loop = false;
+  });
+
+  useEffect(() => {
+    const sub = player.addListener('statusChange', (status) => {
+      if (status.status === 'readyToPlay' && player.duration > 0) {
+        onDuration(player.duration);
+      }
+    });
+    return () => sub.remove();
+  }, [player, onDuration]);
+
+  useEffect(() => {
+    if (paused) player.pause();
+    else player.play();
+  }, [paused, player]);
+
+  return <VideoView player={player} style={s.media} contentFit="cover" nativeControls={false} />;
 }
 
 const s = StyleSheet.create({
