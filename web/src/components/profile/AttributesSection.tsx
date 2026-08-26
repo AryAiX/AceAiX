@@ -145,16 +145,20 @@ function SkillBar({ attr, index }: { attr: AthleteProfileData['attributes'][0]; 
 export default function AttributesSection({ athlete, isOwner }: AttributesSectionProps) {
   return (
     <SectionCard title="Attributes &amp; Skills" icon={<Zap size={15} />} isOwner={isOwner}>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="flex justify-center">
-          <RadarChart attrs={athlete.attributes} />
+      {athlete.attributes.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted">No verified attributes have been added yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="flex justify-center">
+            <RadarChart attrs={athlete.attributes} />
+          </div>
+          <div className="space-y-3">
+            {athlete.attributes.map((attr, i) => (
+              <SkillBar key={attr.label} attr={attr} index={i} />
+            ))}
+          </div>
         </div>
-        <div className="space-y-3">
-          {athlete.attributes.map((attr, i) => (
-            <SkillBar key={attr.label} attr={attr} index={i} />
-          ))}
-        </div>
-      </div>
+      )}
     </SectionCard>
   );
 }
