@@ -8,7 +8,7 @@ import {
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { normalizeAttributes } from '../../lib/profileData';
 import { listMatches, createMatch } from '../../api/portfolio';
-import type { MatchRecord, AttributeData } from '../../types';
+import type { MatchRecord } from '../../types';
 
 /* ── display shapes & derivations ──────────────────────────── */
 interface MatchView {

@@ -37,7 +37,7 @@ test.describe('accessibility and access-control regressions', () => {
   test('athlete account menu links to the athlete profile id', async ({ page }) => {
     await login(page, 'athlete1');
     await page.getByRole('button', { name: /account menu/i }).click();
-    const profileLink = page.getByRole('link', { name: /view public profile/i });
+    const profileLink = page.getByRole('banner').getByRole('link', { name: /view public profile/i });
     await expect(profileLink).toHaveAttribute('href', /^\/athletes\/[0-9a-f-]{36}$/i);
     await profileLink.click();
     await expect(page).toHaveURL(/\/athletes\/[0-9a-f-]{36}$/i);
