@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { useAuth } from '../../context/AuthContext';
-import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent, deleteMedicalRecord, createMedicalRecord } from '../../api/medical';
+import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent, deleteMedicalRecord, createMedicalRecord, getMedicalDocumentUrl } from '../../api/medical';
 import { getUserProfilesByIds } from '../../api/profiles';
 import GrantConsentModal from '../../components/athlete/GrantConsentModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -284,6 +284,7 @@ function RecordDetailModal({ record, athleteId, queryClient, onClose }: { record
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [openingDoc, setOpeningDoc] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
@@ -295,6 +296,20 @@ function RecordDetailModal({ record, athleteId, queryClient, onClose }: { record
     } catch (e) {
       setDeleting(false);
       setError(e instanceof Error ? e.message : 'Failed to delete record.');
+    }
+  }
+
+  async function handleViewDocument() {
+    if (!record.file_url) return;
+    setOpeningDoc(true);
+    setError('');
+    try {
+      const url = await getMedicalDocumentUrl(record.file_url);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to open document.');
+    } finally {
+      setOpeningDoc(false);
     }
   }
 
@@ -348,10 +363,11 @@ function RecordDetailModal({ record, athleteId, queryClient, onClose }: { record
               </div>
             )}
             {record.file_url && (
-              <a href={record.file_url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
-                <FileText size={12} /> View Document
-              </a>
+              <button onClick={handleViewDocument} disabled={openingDoc}
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors disabled:opacity-50">
+                {openingDoc ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                {openingDoc ? 'Opening…' : 'View Document'}
+              </button>
             )}
             {error && <p className="text-xs text-coral">{error}</p>}
           </div>
