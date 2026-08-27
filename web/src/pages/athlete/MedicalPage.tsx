@@ -312,22 +312,24 @@ export default function MedicalPage() {
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
-  const { data: clearanceRows = [] } = useQuery({
+  const { data: clearanceRows = [], isLoading: clearancesLoading, isError: clearancesError } = useQuery({
     queryKey: ['clearances', athleteId],
     queryFn: () => listClearances(athleteId!),
     enabled: !!athleteId,
   });
-  const { data: recordRows = [] } = useQuery({
+  const { data: recordRows = [], isLoading: recordsLoading, isError: recordsError } = useQuery({
     queryKey: ['med-records', athleteId],
     queryFn: () => listMedicalRecords(athleteId!),
     enabled: !!athleteId,
   });
-  const { data: injuries = [] } = useQuery({
+  const { data: injuries = [], isLoading: injuriesLoading, isError: injuriesError } = useQuery({
     queryKey: ['injuries', athleteId],
     queryFn: () => listInjuries(athleteId!),
     enabled: !!athleteId,
   });
-  const { data: rawConsents = [] } = useQuery({
+  const coreLoading = clearancesLoading || recordsLoading || injuriesLoading;
+  const coreError = clearancesError || recordsError || injuriesError;
+  const { data: rawConsents = [], isLoading: consentsLoading, isError: consentsError } = useQuery({
     queryKey: ['med-consents', athleteId],
     queryFn: () => listConsents(athleteId!),
     enabled: !!athleteId,
@@ -473,7 +475,11 @@ export default function MedicalPage() {
               <UserPlus size={12} /> Grant Access
             </button>
           </div>
-          {consentsWithNames.length === 0 ? (
+          {consentsLoading ? (
+            <p className="text-[11px] text-white/25 pl-12">Loading…</p>
+          ) : consentsError ? (
+            <p className="text-[11px] text-coral pl-12">Couldn't load your access list — please try refreshing.</p>
+          ) : consentsWithNames.length === 0 ? (
             <p className="text-[11px] text-white/25 pl-12">No one currently has access to your medical data.</p>
           ) : (
             <div className="space-y-1.5 pl-12">
@@ -491,6 +497,20 @@ export default function MedicalPage() {
         </div>
 
         {/* ── MAIN 2-COL ──────────────────────────────────── */}
+        {coreLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-azure/10 border border-azure/20 flex items-center justify-center">
+                <Loader2 size={18} className="text-azure animate-spin" />
+              </div>
+              <p className="text-xs text-white/30 uppercase tracking-widest">Loading medical data…</p>
+            </div>
+          </div>
+        ) : coreError ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-sm text-white/40 text-center">Couldn't load your medical data — please try refreshing the page.</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
           {/* LEFT: clearance + risk — 2 cols */}
@@ -676,6 +696,7 @@ export default function MedicalPage() {
             </div>
           </div>
         </div>
+        )}
 
       </div>
     </>
