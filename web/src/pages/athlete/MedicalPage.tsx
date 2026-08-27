@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck, AlertCircle, Clock, FileText, Plus, Lock,
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { useAuth } from '../../context/AuthContext';
-import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent, deleteMedicalRecord } from '../../api/medical';
+import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent, deleteMedicalRecord, createMedicalRecord } from '../../api/medical';
 import { getUserProfilesByIds } from '../../api/profiles';
 import GrantConsentModal from '../../components/athlete/GrantConsentModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -167,16 +167,44 @@ function ExpiryBar({ pct }: { pct: number }) {
   );
 }
 
-/* ── upload modal (UI-only — record creation deferred) ──────── */
-function UploadModal({ onClose }: { onClose: () => void }) {
+/* ── upload modal ───────────────────────────────────────────── */
+function UploadModal({ athleteId, queryClient, onClose }: { athleteId: string; queryClient: QueryClient; onClose: () => void }) {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const [recordType, setRecordType] = useState('Physical Assessment');
+  const [title, setTitle] = useState('');
+  const [providerName, setProviderName] = useState('');
+  const [summary, setSummary] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   async function submit() {
+    setError('');
+    if (!recordType.trim() || !title.trim()) {
+      setError('Please provide a record type and title.');
+      return;
+    }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 900));
-    setSaving(false); setDone(true);
-    setTimeout(onClose, 900);
+    try {
+      await createMedicalRecord({
+        athlete_id: athleteId,
+        record_type: recordType,
+        title,
+        provider_name: providerName,
+        summary,
+        file: file ?? undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: ['med-records', athleteId] });
+      setSaving(false); setDone(true);
+      setTimeout(onClose, 900);
+    } catch (e) {
+      setSaving(false);
+      setError(e instanceof Error ? e.message : 'Failed to upload record.');
+    }
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
       style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}>
@@ -194,7 +222,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
         <div className="p-6 space-y-4">
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Record Type</label>
-            <select className="input-field">
+            <select className="input-field" value={recordType} onChange={e => setRecordType(e.target.value)}>
               <option>Physical Assessment</option>
               <option>Injury Report</option>
               <option>Blood Test</option>
@@ -204,17 +232,28 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Title</label>
-            <input className="input-field" placeholder="e.g. Annual Fitness Test 2026" />
+            <input className="input-field" placeholder="e.g. Annual Fitness Test 2026" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Provider / Issuer</label>
-            <input className="input-field" placeholder="Clinic or hospital name" />
+            <input className="input-field" placeholder="Clinic or hospital name" value={providerName} onChange={e => setProviderName(e.target.value)} />
           </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/30 mb-1.5">Summary / Notes</label>
+            <textarea className="input-field" rows={3} placeholder="Optional notes about this record" value={summary} onChange={e => setSummary(e.target.value)} />
+          </div>
+          <input ref={fileInputRef} type="file" accept="application/pdf,image/*" className="hidden"
+            onChange={e => setFile(e.target.files?.[0] ?? null)} />
           <div className="rounded-xl p-4 text-center cursor-pointer"
-            style={{ border: '2px dashed rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.02)' }}>
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={e => { e.preventDefault(); setDragOver(false); setFile(e.dataTransfer.files?.[0] ?? null); }}
+            style={{ border: `2px dashed ${dragOver ? 'rgba(47,128,237,0.45)' : 'rgba(255,255,255,0.12)'}`, background: dragOver ? 'rgba(47,128,237,0.06)' : 'rgba(255,255,255,0.02)' }}>
             <Upload size={20} className="text-white/20 mx-auto mb-2" />
-            <p className="text-xs text-white/40">Drag PDF or image here</p>
+            <p className="text-xs text-white/40">{file ? file.name : 'Drag PDF or image here'}</p>
           </div>
+          {error && <p className="text-xs text-coral">{error}</p>}
         </div>
         <div className="px-6 pb-6">
           <button onClick={submit} disabled={saving || done}
@@ -401,7 +440,9 @@ export default function MedicalPage() {
 
   return (
     <>
-      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+      {showUpload && athleteId && (
+        <UploadModal athleteId={athleteId} queryClient={queryClient} onClose={() => setShowUpload(false)} />
+      )}
       {selectedRecord && athleteId && (
         <RecordDetailModal record={selectedRecord} athleteId={athleteId} queryClient={queryClient} onClose={() => setSelectedRecord(null)} />
       )}
