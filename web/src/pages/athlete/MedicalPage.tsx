@@ -336,14 +336,14 @@ export default function MedicalPage() {
   });
   const activeConsents = rawConsents.filter(c => c.status === 'granted');
   const granteeIds = [...new Set(activeConsents.map(c => c.grantee_user_id).filter((id): id is string => !!id))];
-  const { data: granteeProfiles = [] } = useQuery({
+  const { data: granteeProfiles = [], isLoading: granteesLoading } = useQuery({
     queryKey: ['med-consent-grantees', granteeIds.join(',')],
     queryFn: () => getUserProfilesByIds(granteeIds),
     enabled: granteeIds.length > 0,
   });
   const consentsWithNames = activeConsents.map(c => ({
     ...c,
-    granteeName: granteeProfiles.find(p => p.id === c.grantee_user_id)?.full_name ?? 'Unknown',
+    granteeName: granteeProfiles.find(p => p.id === c.grantee_user_id)?.full_name ?? (granteesLoading ? 'Loading…' : 'Unknown'),
   }));
 
   async function handleRevoke(consentId: string) {
