@@ -1,0 +1,1 @@
+alter table medical_records add column if not exists provider_name character varying;
