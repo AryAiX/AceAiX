@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   ShieldCheck, AlertCircle, Clock, FileText, Plus, Lock,
   CheckCircle2, Heart, X, Loader2, Check, Activity,
   ChevronRight, Upload, UserPlus, Sparkles,
-  Stethoscope, Syringe, FlaskConical,
+  Stethoscope, Syringe, FlaskConical, Trash2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { useAuth } from '../../context/AuthContext';
-import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent } from '../../api/medical';
+import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent, deleteMedicalRecord } from '../../api/medical';
 import { getUserProfilesByIds } from '../../api/profiles';
 import GrantConsentModal from '../../components/athlete/GrantConsentModal';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -239,60 +239,96 @@ function RiskRing({ color, score }: { color: string; score: string }) {
   );
 }
 
-function RecordDetailModal({ record, onClose }: { record: MedicalRecord; onClose: () => void }) {
+function RecordDetailModal({ record, athleteId, queryClient, onClose }: { record: MedicalRecord; athleteId: string; queryClient: QueryClient; onClose: () => void }) {
   const color = TYPE_COLORS[record.record_type] ?? '#7C8DA6';
   const Icon = RECORD_ICONS[record.record_type] ?? FileText;
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleDelete() {
+    setDeleting(true);
+    setError('');
+    try {
+      await deleteMedicalRecord(record.id);
+      queryClient.invalidateQueries({ queryKey: ['med-records', athleteId] });
+      onClose();
+    } catch (e) {
+      setDeleting(false);
+      setError(e instanceof Error ? e.message : 'Failed to delete record.');
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-      style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}
-      onClick={onClose}>
-      <div className="w-full max-w-md rounded-3xl overflow-hidden"
-        style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)', animation: 'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}
-        onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-              <Icon size={14} style={{ color }} />
+    <>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+        style={{ background: 'rgba(12,26,43,0.85)', backdropFilter: 'blur(8px)', animation: 'fadeIn 0.2s ease both' }}
+        onClick={onClose}>
+        <div className="w-full max-w-md rounded-3xl overflow-hidden"
+          style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 32px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06)', animation: 'slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }}
+          onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-6 pt-5 pb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+                <Icon size={14} style={{ color }} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white">{record.title ?? record.record_type}</h3>
+                <p className="text-[10px] uppercase tracking-wider" style={{ color }}>{record.record_type}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-white">{record.title ?? record.record_type}</h3>
-              <p className="text-[10px] uppercase tracking-wider" style={{ color }}>{record.record_type}</p>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setConfirmingDelete(true)} disabled={deleting}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-coral hover:bg-coral/10 transition-colors disabled:opacity-50">
+                {deleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              </button>
+              <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors"><X size={13} /></button>
             </div>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/30 hover:text-white/60 hover:bg-white/08 transition-colors"><X size={13} /></button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            {record.is_verified ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(31,181,122,0.12)', border: '1px solid rgba(31,181,122,0.25)', color: '#1FB57A' }}>
-                <ShieldCheck size={9} /> Verified
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(245,166,35,0.10)', border: '1px solid rgba(245,166,35,0.22)', color: '#F5A623' }}>
-                <Clock size={9} /> Pending
-              </span>
+          <div className="p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              {record.is_verified ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(31,181,122,0.12)', border: '1px solid rgba(31,181,122,0.25)', color: '#1FB57A' }}>
+                  <ShieldCheck size={9} /> Verified
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold" style={{ background: 'rgba(245,166,35,0.10)', border: '1px solid rgba(245,166,35,0.22)', color: '#F5A623' }}>
+                  <Clock size={9} /> Pending
+                </span>
+              )}
+              <span className="text-[11px] text-white/40">{record.partner_id ? 'Verified Partner' : 'Personal Upload'}</span>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Issued</p>
+              <p className="text-xs text-white/70">{fmtDate(record.issued_at)}</p>
+            </div>
+            {record.summary && (
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Summary</p>
+                <p className="text-xs text-white/70 leading-relaxed">{record.summary}</p>
+              </div>
             )}
-            <span className="text-[11px] text-white/40">{record.partner_id ? 'Verified Partner' : 'Personal Upload'}</span>
+            {record.file_url && (
+              <a href={record.file_url} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
+                <FileText size={12} /> View Document
+              </a>
+            )}
+            {error && <p className="text-xs text-coral">{error}</p>}
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1">Issued</p>
-            <p className="text-xs text-white/70">{fmtDate(record.issued_at)}</p>
-          </div>
-          {record.summary && (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Summary</p>
-              <p className="text-xs text-white/70 leading-relaxed">{record.summary}</p>
-            </div>
-          )}
-          {record.file_url && (
-            <a href={record.file_url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
-              <FileText size={12} /> View Document
-            </a>
-          )}
         </div>
       </div>
-    </div>
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete record?"
+          message={`Delete "${record.title ?? record.record_type}"? This can't be undone.`}
+          confirmLabel="Delete"
+          danger
+          onCancel={() => setConfirmingDelete(false)}
+          onConfirm={() => { setConfirmingDelete(false); handleDelete(); }}
+        />
+      )}
+    </>
   );
 }
 
@@ -366,7 +402,9 @@ export default function MedicalPage() {
   return (
     <>
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
-      {selectedRecord && <RecordDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />}
+      {selectedRecord && athleteId && (
+        <RecordDetailModal record={selectedRecord} athleteId={athleteId} queryClient={queryClient} onClose={() => setSelectedRecord(null)} />
+      )}
       {revokeTarget && (
         <ConfirmDialog
           title="Revoke access?"
