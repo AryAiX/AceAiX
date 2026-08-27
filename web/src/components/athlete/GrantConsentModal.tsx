@@ -4,8 +4,8 @@ import { searchUsers } from '../../api/network';
 import { grantConsent } from '../../api/medical';
 import type { UserProfile } from '../../types';
 
-export default function GrantConsentModal({ athleteId, currentUserId, onClose, onGranted }: {
-  athleteId: string; currentUserId: string; onClose: () => void; onGranted: () => void; alreadyGrantedIds: string[];
+export default function GrantConsentModal({ athleteId, currentUserId, onClose, onGranted, alreadyGrantedIds = [] }: {
+  athleteId: string; currentUserId: string; onClose: () => void; onGranted: () => void; alreadyGrantedIds?: string[];
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
@@ -18,7 +18,8 @@ export default function GrantConsentModal({ athleteId, currentUserId, onClose, o
     if (q.trim().length < 2) { setResults([]); return; }
     setSearching(true);
     try {
-      setResults(await searchUsers(q.trim(), currentUserId, 8, ['medical_partner', 'coach', 'club', 'guardian']));
+      const found = await searchUsers(q.trim(), currentUserId, 8, ['medical_partner', 'coach', 'club', 'guardian']);
+      setResults(found.filter(u => !alreadyGrantedIds.includes(u.id)));
     } catch {
       setResults([]);
     } finally {
