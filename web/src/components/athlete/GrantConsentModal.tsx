@@ -5,7 +5,7 @@ import { grantConsent } from '../../api/medical';
 import type { UserProfile } from '../../types';
 
 export default function GrantConsentModal({ athleteId, currentUserId, onClose, onGranted }: {
-  athleteId: string; currentUserId: string; onClose: () => void; onGranted: () => void;
+  athleteId: string; currentUserId: string; onClose: () => void; onGranted: () => void; alreadyGrantedIds: string[];
 }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);

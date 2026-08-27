@@ -440,6 +440,7 @@ export default function MedicalPage() {
           <GrantConsentModal
             athleteId={athleteId}
             currentUserId={user.id}
+            alreadyGrantedIds={activeConsents.map(c => c.grantee_user_id).filter((id): id is string => !!id)}
             onClose={() => setShowGrant(false)}
             onGranted={() => queryClient.invalidateQueries({ queryKey: ['med-consents', athleteId] })}
           />
