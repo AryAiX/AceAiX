@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { listClearances, listMedicalRecords, listInjuries, listConsents, revokeConsent } from '../../api/medical';
 import { getUserProfilesByIds } from '../../api/profiles';
 import GrantConsentModal from '../../components/athlete/GrantConsentModal';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import type { MedicalClearance, MedicalRecord, Injury } from '../../types';
 
 /* ── display shapes ────────────────────────────────────────── */
@@ -305,6 +306,7 @@ export default function MedicalPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [showGrant, setShowGrant] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
   const [hoveredRec, setHoveredRec] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecord | null>(null);
 
@@ -363,6 +365,16 @@ export default function MedicalPage() {
     <>
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
       {selectedRecord && <RecordDetailModal record={selectedRecord} onClose={() => setSelectedRecord(null)} />}
+      {revokeTarget && (
+        <ConfirmDialog
+          title="Revoke access?"
+          message={`Revoke ${revokeTarget.name}'s access to your medical data?`}
+          confirmLabel="Revoke"
+          danger
+          onCancel={() => setRevokeTarget(null)}
+          onConfirm={() => { handleRevoke(revokeTarget.id); setRevokeTarget(null); }}
+        />
+      )}
 
       <div className="max-w-4xl space-y-5 pb-10">
 
@@ -468,7 +480,7 @@ export default function MedicalPage() {
               {consentsWithNames.map(c => (
                 <div key={c.id} className="flex items-center justify-between gap-3 py-1.5">
                   <span className="text-[11px] text-white/60">{c.granteeName}</span>
-                  <button onClick={() => handleRevoke(c.id)} disabled={revokingId === c.id}
+                  <button onClick={() => setRevokeTarget({ id: c.id, name: c.granteeName })} disabled={revokingId === c.id}
                     className="text-[10px] font-semibold text-coral hover:text-coral/70 transition-colors disabled:opacity-50">
                     {revokingId === c.id ? 'Revoking…' : 'Revoke'}
                   </button>
