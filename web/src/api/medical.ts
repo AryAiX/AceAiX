@@ -15,6 +15,40 @@ export async function deleteMedicalRecord(id: string): Promise<void> {
   unwrap(await supabase.from('medical_records').update({ is_deleted: true }).eq('id', id).select('id'));
 }
 
+export async function createMedicalRecord(input: {
+  athlete_id: string;
+  record_type: string;
+  title: string;
+  provider_name?: string;
+  summary?: string;
+  file?: File;
+}): Promise<MedicalRecord> {
+  let file_url: string | null = null;
+  if (input.file) {
+    const path = `${input.athlete_id}/${crypto.randomUUID()}-${input.file.name}`;
+    unwrap(
+      await supabase.storage.from('medical-documents').upload(path, input.file, { contentType: input.file.type }),
+    );
+    file_url = path;
+  }
+  return unwrap(
+    await supabase.from('medical_records').insert({
+      athlete_id: input.athlete_id,
+      record_type: input.record_type,
+      title: input.title,
+      provider_name: input.provider_name || null,
+      summary: input.summary || null,
+      file_url,
+    }).select('*').single(),
+  ) as MedicalRecord;
+}
+
+export async function getMedicalDocumentUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from('medical-documents').createSignedUrl(path, 60);
+  if (error || !data) throw new Error(error?.message ?? 'Failed to get document URL.');
+  return data.signedUrl;
+}
+
 export async function listClearances(athleteId: string): Promise<MedicalClearance[]> {
   return unwrap(
     await supabase.from('medical_clearances').select('*').eq('athlete_id', athleteId).order('created_at', { ascending: false }),
