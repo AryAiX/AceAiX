@@ -11,6 +11,10 @@ export async function listMedicalRecords(athleteId: string): Promise<MedicalReco
   ) as MedicalRecord[];
 }
 
+export async function deleteMedicalRecord(id: string): Promise<void> {
+  unwrap(await supabase.from('medical_records').update({ is_deleted: true }).eq('id', id).select('id'));
+}
+
 export async function listClearances(athleteId: string): Promise<MedicalClearance[]> {
   return unwrap(
     await supabase.from('medical_clearances').select('*').eq('athlete_id', athleteId).order('created_at', { ascending: false }),
