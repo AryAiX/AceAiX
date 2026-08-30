@@ -65,6 +65,18 @@ async function deletePerformanceSeason(season: string) {
   if (error) throw error;
 }
 
+async function primaryDatabase() {
+  const env = mobileEnv();
+  const db = createClient(
+    env.EXPO_PUBLIC_SUPABASE_URL,
+    env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    { auth: { persistSession: false } },
+  );
+  const { error } = await db.auth.signInWithPassword(PRIMARY);
+  if (error) throw error;
+  return db;
+}
+
 function postCard(page: Page, caption: string) {
   return page
     // The caption is nested beneath a bold author-name Text element, so React
@@ -383,6 +395,56 @@ test.describe.serial('deep mobile functional workflows', () => {
       }
       await expect(restoreCard.getByText(original, { exact: true })).toBeVisible();
     }
+  });
+
+  test('notification deep links reach opportunity and message destinations', async ({ page }) => {
+    const ids = [
+      'e0000000-0000-4000-8000-000000000001',
+      'e0000000-0000-4000-8000-000000000002',
+    ];
+    const db = await primaryDatabase();
+    const { data: originalRows, error } = await db
+      .from('notifications')
+      .select('id,is_read,read')
+      .in('id', ids);
+    if (error) throw error;
+
+    try {
+      await login(page);
+      await page.goto('/notifications');
+      await page.getByText('New opportunity match', { exact: true }).click();
+      await expect(page).toHaveURL(/\/opportunities$/);
+      await expect(page.getByText('Opportunities', { exact: true })).toBeVisible();
+
+      await page.goto('/notifications');
+      await page.getByText('New message from Sergio', { exact: true }).click();
+      await expect(page).toHaveURL(/\/messages$/);
+      await expect(
+        page.getByRole('button', { name: 'Open conversation with Sergio Mendes' }),
+      ).toBeVisible();
+    } finally {
+      for (const row of originalRows ?? []) {
+        const { error: restoreError } = await db
+          .from('notifications')
+          .update({ is_read: row.is_read, read: row.read })
+          .eq('id', row.id);
+        if (restoreError) throw restoreError;
+      }
+    }
+  });
+
+  test('logout survives browser back and reload', async ({ page }) => {
+    await login(page);
+    await page.goto('/settings');
+    await page.getByText('Log Out', { exact: true }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByText('Welcome back')).toBeVisible();
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/login$/);
+    await page.reload();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByText('Welcome back')).toBeVisible();
   });
 
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
