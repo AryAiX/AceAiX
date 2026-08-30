@@ -62,6 +62,7 @@ export default function Settings() {
 
   // Notification prefs
   const [prefs, setPrefs] = useState<NotificationPrefs>({ ...DEFAULT_PREFS });
+  const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [prefsSaved, setPrefsSaved] = useState(false);
 
@@ -78,11 +79,21 @@ export default function Settings() {
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
-    fetchNotifPrefs(user.id).then((p) => {
-      setPrefs({ ...DEFAULT_PREFS, ...p });
-    });
+    if (!user) {
+      setPrefsLoading(true);
+      return;
+    }
+    let active = true;
+    setPrefsLoading(true);
+    fetchNotifPrefs(user.id)
+      .then((p) => {
+        if (active) setPrefs({ ...DEFAULT_PREFS, ...p });
+      })
+      .finally(() => {
+        if (active) setPrefsLoading(false);
+      });
     fetchConsent(user.id).then(setSportifyConsent);
+    return () => { active = false; };
   }, [user]);
 
   useEffect(() => {
@@ -349,6 +360,7 @@ export default function Settings() {
               <Switch
                 value={prefs.push_enabled !== false}
                 onValueChange={(v) => setPref('push_enabled', v)}
+                disabled={prefsLoading}
                 trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
                 thumbColor={prefs.push_enabled !== false ? Colors.primary : Colors.textDisabled}
               />
@@ -364,6 +376,7 @@ export default function Settings() {
                 <Switch
                   value={prefs[cat.key] !== false}
                   onValueChange={(v) => setPref(cat.key, v)}
+                  disabled={prefsLoading}
                   trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
                   thumbColor={prefs[cat.key] !== false ? Colors.primary : Colors.textDisabled}
                 />
@@ -391,6 +404,7 @@ export default function Settings() {
                       placeholder="22:00"
                       placeholderTextColor={Colors.textDisabled}
                       keyboardType="numbers-and-punctuation"
+                      editable={!prefsLoading && !savingPrefs}
                     />
                   </View>
                   <View style={s.quietField}>
@@ -403,6 +417,7 @@ export default function Settings() {
                       placeholder="07:00"
                       placeholderTextColor={Colors.textDisabled}
                       keyboardType="numbers-and-punctuation"
+                      editable={!prefsLoading && !savingPrefs}
                     />
                   </View>
                 </View>
@@ -412,9 +427,9 @@ export default function Settings() {
             {/* Save prefs */}
             <View style={[s.row, s.rowBorder]}>
               <TouchableOpacity
-                style={[s.connSaveBtn, savingPrefs && { opacity: 0.6 }]}
+                style={[s.connSaveBtn, (prefsLoading || savingPrefs) && { opacity: 0.6 }]}
                 onPress={handleSavePrefs}
-                disabled={savingPrefs}
+                disabled={prefsLoading || savingPrefs}
               >
                 {savingPrefs
                   ? <ActivityIndicator size="small" color={Colors.white} />
