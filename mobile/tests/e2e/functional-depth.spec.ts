@@ -470,6 +470,68 @@ test.describe.serial('deep mobile functional workflows', () => {
     await expect(page.getByText('Welcome back')).toBeVisible();
   });
 
+  test('new athlete can complete signup and permanently delete the account', async ({ page }) => {
+    test.setTimeout(180_000);
+    const stamp = Date.now();
+    const account = {
+      email: `functional-mobile-${stamp}@aryaix.com`,
+      password: 'Functional123!',
+    };
+
+    try {
+      await clearSession(page);
+      await page.goto('/signup');
+      await page.getByLabel('Full name').fill(`Functional Athlete ${stamp}`);
+      await page.getByLabel('Email').fill(account.email);
+      await page.getByLabel('Password', { exact: true }).fill(account.password);
+      await page.getByText('Continue', { exact: true }).click();
+
+      await page.getByLabel('Select your sport').click();
+      await page.getByRole('button', { name: 'Football', exact: true }).click();
+      await page.getByLabel('Day').click();
+      await page.getByRole('button', { name: '1', exact: true }).click();
+      await page.getByLabel('Month').click();
+      await page.getByRole('button', { name: 'January', exact: true }).click();
+      await page.getByLabel('Year').click();
+      await page.getByRole('button', { name: '2000', exact: true }).click();
+      await page.getByLabel('Hometown').fill('Dubai');
+      await page.getByLabel('Current location').fill('Dubai');
+      await page.getByLabel('Select nationality').click();
+      await page.getByLabel('Search Select Nationality').fill('United Arab Emirates');
+      await page.getByRole('button', { name: 'United Arab Emirates', exact: true }).click();
+      await page.getByText('Create Account', { exact: true }).last().click();
+
+      await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
+      await expect(page.locator('body')).toContainText(/Dashboard|Welcome|Good /i);
+
+      await page.goto('/settings');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByText('Delete My Account', { exact: true }).click();
+      await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+
+      await page.getByLabel('Email').fill(account.email);
+      await page.getByLabel('Password', { exact: true }).fill(account.password);
+      await page.getByText('Sign In', { exact: true }).click();
+      await expect(page.locator('body')).toContainText(/invalid|credential|deleted/i, {
+        timeout: 20_000,
+      });
+    } finally {
+      // If the UI deletion assertion fails, remove the disposable account
+      // through the same owner-only RPC so the audit cannot leave users behind.
+      const env = mobileEnv();
+      const db = createClient(
+        env.EXPO_PUBLIC_SUPABASE_URL,
+        env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+        { auth: { persistSession: false } },
+      );
+      const { error: signInError } = await db.auth.signInWithPassword(account);
+      if (!signInError) {
+        const { error: cleanupError } = await db.rpc('delete_own_account');
+        if (cleanupError) throw cleanupError;
+      }
+    }
+  });
+
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
     test.setTimeout(120_000);
     const caption = `Functional social ${Date.now()}`;
