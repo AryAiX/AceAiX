@@ -310,13 +310,13 @@ test.describe.serial('deep mobile functional workflows', () => {
 
     try {
       if (!initiallySaved) await initialToggle.click();
-      await page.getByText('Saved', { exact: true }).click();
+      await page.getByText('Saved', { exact: true }).last().click();
       await expect(
         page.getByRole('button', { name: `Unsave opportunity ${club}` }),
       ).toBeVisible();
 
       await page.reload();
-      await page.getByText('Saved', { exact: true }).click();
+      await page.getByText('Saved', { exact: true }).last().click();
       const savedToggle = page.getByRole('button', { name: `Unsave opportunity ${club}` });
       await expect(savedToggle).toBeVisible();
       await savedToggle.click();
