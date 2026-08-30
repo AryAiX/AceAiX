@@ -181,7 +181,10 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
         <SelfReportForm
           config={config}
           athlete_id={userId}
+          initialStats={record?.stats}
+          initialSeason={record?.season_or_period}
           onSaved={() => { setShowForm(false); refresh(); }}
+          onCancel={() => setShowForm(false)}
         />
       )}
 

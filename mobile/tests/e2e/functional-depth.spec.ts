@@ -172,6 +172,8 @@ test.describe.serial('deep mobile functional workflows', () => {
     await expect(page.getByLabel('Goals')).toHaveValue('7');
     await expect(page.getByLabel('Assists')).toHaveValue('11');
     await expect(page.getByLabel('Appearances')).toHaveValue('18');
+    await page.getByRole('button', { name: 'Cancel editing stats' }).click();
+    await expect(page.getByText('Edit Stats', { exact: true })).toBeVisible();
   });
 
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
