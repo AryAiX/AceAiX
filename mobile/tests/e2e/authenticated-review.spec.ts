@@ -19,6 +19,20 @@ async function loginAsReviewer(page: Page) {
   });
 }
 
+async function cleanupReleaseReels(page: Page) {
+  await page.goto('/media');
+  await page.getByText('Reels', { exact: true }).click();
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const caption = page.getByText(/^Release reel \d+$/, { exact: true }).first();
+    if (!(await caption.isVisible().catch(() => false))) return;
+    const card = caption.locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
+    page.once('dialog', (dialog) => dialog.accept());
+    await card.getByRole('button', { name: 'Delete reel' }).click();
+    await expect(caption).not.toBeVisible();
+  }
+  throw new Error('More than ten stale Release reel fixtures require cleanup');
+}
+
 const reviewRoutes: { path: string; expected: RegExp }[] = [
   { path: '/', expected: /Good |Dashboard|Welcome/i },
   { path: '/feed', expected: /Feed|Stories|post/i },
@@ -198,6 +212,7 @@ test.describe('App Store authenticated release gate', () => {
 
 test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await loginAsReviewer(page);
+  await cleanupReleaseReels(page);
   await page.goto('/media');
   await page.getByText('Reels', { exact: true }).click();
   await page.getByRole('button', { name: 'Create new reel' }).click();
@@ -214,18 +229,38 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
 
+  const likeSaved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_likes')
+    && response.request().method() === 'POST'
+  );
   await page.getByRole('button', { name: 'Like reel' }).click();
   await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
+  await likeSaved;
+  const reelSaved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_saves')
+    && response.request().method() === 'POST'
+  );
   await page.getByRole('button', { name: 'Save reel' }).click();
   await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+  await reelSaved;
 
   await page.reload();
   await page.getByText('Reels', { exact: true }).click();
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+  const likeRemoved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_likes')
+    && response.request().method() === 'DELETE'
+  );
   await page.getByRole('button', { name: 'Unlike reel' }).click();
+  await likeRemoved;
+  const saveRemoved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_saves')
+    && response.request().method() === 'DELETE'
+  );
   await page.getByRole('button', { name: 'Remove saved reel' }).click();
+  await saveRemoved;
 
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete reel' }).click();
