@@ -52,7 +52,14 @@ test.describe.serial('deep mobile functional workflows', () => {
 
   test('profile edits persist through navigation and reload, then restore', async ({ page }) => {
     await login(page);
-    await page.goto('/edit-profile');
+
+    async function openEditorThroughUi() {
+      await page.goto('/settings');
+      await page.getByText('Edit your personal and athlete information').click();
+      await expect(page).toHaveURL(/\/edit-profile$/);
+    }
+
+    await openEditorThroughUi();
 
     const bio = page.getByLabel('Bio');
     const club = page.getByLabel('Current club');
@@ -80,10 +87,10 @@ test.describe.serial('deep mobile functional workflows', () => {
       await expect(page.getByLabel('Bio')).toHaveValue(`${originalBio} ${marker}`.trim());
       await expect(page.getByLabel('Current club')).toHaveValue(marker);
     } finally {
-      await page.goto('/edit-profile');
+      await openEditorThroughUi();
       await page.getByLabel('Bio').fill(originalBio);
       await page.getByLabel('Current club').fill(originalClub);
-      await saveAndAccept(false);
+      await saveAndAccept();
       await page.goto('/edit-profile');
       await expect(page.getByLabel('Bio')).toHaveValue(originalBio);
       await expect(page.getByLabel('Current club')).toHaveValue(originalClub);
