@@ -164,8 +164,9 @@ test.describe.serial('deep mobile functional workflows', () => {
   test('editing performance stats preserves the current record values', async ({ page }) => {
     await login(page);
     await page.goto('/performance');
-    await expect(page.getByText('2025/26')).toBeVisible();
-    await page.getByText('Edit Stats', { exact: true }).click();
+    const edit = page.getByText('Edit Stats', { exact: true });
+    await expect(edit).toBeVisible();
+    await edit.click();
 
     await expect(page.getByLabel('Season or period')).toHaveValue('2025/26');
     await expect(page.getByLabel('Goals')).toHaveValue('7');
