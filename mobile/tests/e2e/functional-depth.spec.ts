@@ -194,6 +194,29 @@ test.describe.serial('deep mobile functional workflows', () => {
     }
   });
 
+  test('event form rejects impossible calendar dates', async ({ page }) => {
+    await login(page);
+    await page.goto('/events');
+    const title = `Invalid Date Event ${Date.now()}`;
+
+    try {
+      await page.getByText('Create an Event', { exact: true }).click();
+      await page.getByLabel('Event title').fill(title);
+      await page.getByLabel('Event date').fill('2026-02-31');
+      await page.getByLabel('Event location').fill('Functional QA Arena');
+      await page.getByRole('button', { name: 'Create event' }).click();
+      await expect(page.getByText('Enter a valid calendar date.')).toBeVisible();
+      await expect(page.getByText('Create Event', { exact: true })).toBeVisible();
+    } finally {
+      await page.goto('/events');
+      if (await page.getByText(title, { exact: true }).isVisible().catch(() => false)) {
+        page.once('dialog', (dialog) => dialog.accept());
+        await page.getByRole('button', { name: `Delete event ${title}` }).click();
+        await expect(page.getByText(title, { exact: true })).not.toBeVisible();
+      }
+    }
+  });
+
   test('editing performance stats preserves the current record values', async ({ page }) => {
     await login(page);
     await page.goto('/performance');
