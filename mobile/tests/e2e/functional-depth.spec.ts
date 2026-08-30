@@ -6,8 +6,10 @@ const PRIMARY = {
 };
 
 const SECONDARY = {
-  email: process.env.MOBILE_E2E_SECONDARY_EMAIL ?? 'athele1@aryaix.com',
-  password: process.env.MOBILE_E2E_SECONDARY_PASSWORD ?? '1234567!',
+  // The seeded neutral athlete is reset to a known clean social graph. The
+  // legacy athele1 account can contain blocks/follows from manual QA sessions.
+  email: process.env.MOBILE_E2E_SECONDARY_EMAIL ?? 'athlete@aceaix.demo',
+  password: process.env.MOBILE_E2E_SECONDARY_PASSWORD ?? 'demo123456',
 };
 
 async function clearSession(page: Page) {
