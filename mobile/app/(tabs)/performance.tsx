@@ -110,7 +110,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
 
       {!loading && error && (
         <View style={s.emptyState}>
-          <Text style={s.emptyTitle}>Couldn't load performance data</Text>
+          <Text style={s.emptyTitle}>Couldn’t load performance data</Text>
           <Text style={s.emptyBody}>Pull to refresh or try again later.</Text>
         </View>
       )}
@@ -300,7 +300,7 @@ export default function Performance() {
         {galleryLoading && <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />}
         {!galleryLoading && galleryError && (
           <View style={s.card}>
-            <Text style={s.emptyTitle}>Couldn't load gallery</Text>
+            <Text style={s.emptyTitle}>Couldn’t load gallery</Text>
             <Text style={s.emptyBody}>Pull to refresh or try again later.</Text>
           </View>
         )}

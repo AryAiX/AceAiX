@@ -104,7 +104,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
     setProgress(0);
   }, []);
 
-  const handleClose = useCallback(() => { reset(); onClose(); }, [reset, onClose]);
+  // An in-flight publish owns the uploaded media, so block dismissal until it settles.
+  const handleClose = useCallback(() => {
+    if (posting) return;
+    reset();
+    onClose();
+  }, [onClose, posting, reset]);
 
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -114,7 +119,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
         setMedia((prev) => [...prev, { uri: photo.uri, type: 'photo' }]);
         setStep('compose');
       }
-    } catch (_) {}
+    } catch (error) {
+      Alert.alert(
+        'Photo not captured',
+        error instanceof Error ? error.message : 'The camera could not capture a photo.',
+      );
+    }
   }, []);
 
   const openCamera = useCallback(async () => {
@@ -193,6 +203,10 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
       const m = media[i];
       const { path, error } = await uploadPostMedia(user.id, m.uri, m.type);
       if (error || !path) {
+        const completedPaths = uploadedMedia.map((item) => item.path);
+        if (completedPaths.length > 0) {
+          await supabase.storage.from('posts').remove(completedPaths);
+        }
         Alert.alert('Upload failed', error ?? 'Could not upload photo');
         setPosting(false);
         return;
@@ -232,7 +246,14 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
   const isReel = postType === 'reel';
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      onRequestClose={handleClose}
+      accessibilityViewIsModal
+    >
       <View style={[s.root, { paddingTop: insets.top }]}>
 
         {/* ── CAMERA VIEW ──────────────────────────────────────────────────── */}
@@ -259,14 +280,30 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
             ) : (
               <>
                 <CameraView ref={cameraRef} style={s.fill} facing={facing} />
-                <TouchableOpacity style={s.camClose} onPress={() => setStep('compose')}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Close camera"
+                  style={s.camClose}
+                  onPress={() => setStep('compose')}
+                >
                   <X color={Colors.white} size={24} />
                 </TouchableOpacity>
                 <View style={[s.camControls, { paddingBottom: insets.bottom + Spacing.xl }]}>
-                  <TouchableOpacity style={s.flipBtn} onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Switch camera"
+                    style={s.flipBtn}
+                    onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
+                  >
                     <FlipHorizontal color={Colors.white} size={24} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.captureBtn} onPress={handleCapture} activeOpacity={0.8} />
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Capture photo"
+                    style={s.captureBtn}
+                    onPress={handleCapture}
+                    activeOpacity={0.8}
+                  />
                   <View style={{ width: 56 }} />
                 </View>
               </>
@@ -411,6 +448,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
               />
               <View style={s.locationRow}>
                 <TextInput
+                  accessibilityLabel="Venue or area"
                   style={s.locationInput}
                   value={venueText}
                   onChangeText={setVenueText}

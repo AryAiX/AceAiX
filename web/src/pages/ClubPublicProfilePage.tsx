@@ -42,7 +42,7 @@ function staffAvatar(name: string) {
 function useCountUp(target: number) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!ref.current || started.current) return;
     const obs = new IntersectionObserver(([e]) => {
@@ -297,9 +297,20 @@ export default function ClubPublicProfilePage() {
   // Load follow state
   useEffect(() => {
     async function load() {
-      if (!user || !id) return;
-      const { data } = await supabase.from('follows').select('id').eq('follower_id', user.id).eq('following_id', id).maybeSingle();
-      setIsFollowing(!!data);
+      if (!id) return;
+      const { count } = await supabase
+        .from('organization_follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('organization_id', id);
+      if (count !== null) setFollowerCount(count);
+      if (!user) return;
+      const { data } = await supabase
+        .from('organization_follows')
+        .select('organization_id')
+        .eq('follower_id', user.id)
+        .eq('organization_id', id)
+        .maybeSingle();
+      setIsFollowing(Boolean(data));
     }
     load();
   }, [id, user]);
@@ -308,11 +319,23 @@ export default function ClubPublicProfilePage() {
     if (!user) { navigate('/auth/login'); return; }
     setFollowLoading(true);
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', id);
-      setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+      const { error } = await supabase
+        .from('organization_follows')
+        .delete()
+        .eq('follower_id', user.id)
+        .eq('organization_id', id);
+      if (!error) {
+        setIsFollowing(false);
+        setFollowerCount(c => Math.max(0, c - 1));
+      }
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: id });
-      setIsFollowing(true); setFollowerCount(c => c + 1);
+      const { error } = await supabase
+        .from('organization_follows')
+        .insert({ follower_id: user.id, organization_id: id });
+      if (!error) {
+        setIsFollowing(true);
+        setFollowerCount(c => c + 1);
+      }
     }
     setFollowLoading(false);
   }
@@ -422,12 +445,12 @@ export default function ClubPublicProfilePage() {
               <div className="flex items-center gap-4 mt-3">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-azure">
                   <Users size={12} />
-                  <span ref={followerRef as any} className="tabular">{followerDisplay.toLocaleString()}</span>
+                  <span ref={followerRef} className="tabular">{followerDisplay.toLocaleString()}</span>
                   <span className="text-muted font-normal">followers</span>
                 </span>
                 <span className="text-white/10">·</span>
                 <span className="flex items-center gap-1 text-xs text-muted">
-                  <span ref={playerRef as any} className="font-semibold text-white tabular">{playerDisplay}</span> squad members
+                  <span ref={playerRef} className="font-semibold text-white tabular">{playerDisplay}</span> squad members
                 </span>
                 <span className="text-white/10 hidden sm:inline">·</span>
                 <span className="text-xs text-muted hidden sm:inline">{club.staffCount} staff</span>

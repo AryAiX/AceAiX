@@ -162,7 +162,14 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
     : Colors.accent;
 
   return (
-    <Modal visible={!!opportunity} animationType="slide" transparent={false} statusBarTranslucent>
+    <Modal
+      visible={!!opportunity}
+      animationType="slide"
+      transparent={false}
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={[s.root, { paddingTop: insets.top }]}>
 
         {/* Top bar */}
@@ -178,10 +185,20 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
           </TouchableOpacity>
           <Text style={s.topTitle} numberOfLines={1}>{opportunity.position}</Text>
           <View style={s.topActions}>
-            <TouchableOpacity style={s.iconBtn} onPress={handleShare}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Share opportunity"
+              style={s.iconBtn}
+              onPress={handleShare}
+            >
               <Share2 color={Colors.textMuted} size={18} />
             </TouchableOpacity>
-            <TouchableOpacity style={s.iconBtn} onPress={handleSave}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={opportunity.saved ? 'Remove saved opportunity' : 'Save opportunity'}
+              style={s.iconBtn}
+              onPress={handleSave}
+            >
               <Bookmark
                 color={opportunity.saved ? Colors.accent : Colors.textMuted}
                 fill={opportunity.saved ? Colors.accent : 'transparent'}

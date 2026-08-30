@@ -54,6 +54,7 @@ export default function ForgotPasswordScreen() {
               <View style={styles.field}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
+                  accessibilityLabel="Email"
                   style={styles.input}
                   value={email}
                   onChangeText={setEmail}
@@ -62,6 +63,7 @@ export default function ForgotPasswordScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
+                  textContentType="emailAddress"
                   returnKeyType="done"
                   onSubmitEditing={handleSubmit}
                   editable={!loading}

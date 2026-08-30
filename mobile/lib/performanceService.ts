@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+export { sourceLabel } from './formatting';
 
 export interface PerformanceRecord {
   id: string;
@@ -13,7 +14,7 @@ export interface PerformanceRecord {
 export async function fetchLatestRecord(
   athlete_id: string,
   sport: string
-): Promise<PerformanceRecord | null> {
+): Promise<{ data: PerformanceRecord | null; error: string | null }> {
   const { data, error } = await supabase
     .from('performance_records')
     .select('*')
@@ -22,8 +23,8 @@ export async function fetchLatestRecord(
     .order('last_synced_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error || !data) return null;
-  return data as PerformanceRecord;
+  if (error) return { data: null, error: error.message };
+  return { data: data as PerformanceRecord | null, error: null };
 }
 
 export async function upsertRecord(
@@ -53,19 +54,6 @@ export async function triggerChessSync(
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true, error: null, stats: data?.stats };
-}
-
-export function sourceLabel(source: string): string {
-  const MAP: Record<string, string> = {
-    self_reported: 'Self-reported',
-    chesscom: 'via Chess.com',
-    lichess: 'via Lichess',
-    'chesscom,lichess': 'via Chess.com + Lichess',
-    'lichess,chesscom': 'via Chess.com + Lichess',
-    api_sports: 'via API-Sports',
-    imported_result: 'Imported result',
-  };
-  return MAP[source] ?? source;
 }
 
 export function isVerifiedSource(source: string): boolean {

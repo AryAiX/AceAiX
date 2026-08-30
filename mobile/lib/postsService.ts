@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeSportKey } from '@/constants/sportsConfig';
-import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
+import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
+export { formatCount, postTimeAgo } from './formatting';
 
 export type PostType = 'post' | 'reel';
 export type PostAudience = 'public' | 'followers' | 'connections';
@@ -127,9 +128,17 @@ export async function fetchFeedPosts(
   }
 
   const sportKey = mode === 'for_you' ? normalizeSportKey(viewerSport) : null;
-  const athleteSelect = sportKey
-    ? 'athlete:athlete_profiles!inner(sport, position, position_primary)'
-    : 'athlete:athlete_profiles(sport, position, position_primary)';
+  const athleteSelect = 'athlete:athlete_profiles(sport, position, position_primary)';
+  let sportAuthorIds: string[] | null = null;
+  if (sportKey) {
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athlete_profiles')
+      .select('user_id')
+      .ilike('sport', `%${sportKey}%`);
+    if (athletesError) return [];
+    sportAuthorIds = (athletes ?? []).map((athlete) => athlete.user_id);
+    if (sportAuthorIds.length === 0) return [];
+  }
 
   let query = supabase
     .from('posts')
@@ -140,15 +149,17 @@ export async function fetchFeedPosts(
 
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
-  if (sportKey) query = query.ilike('athlete.sport', `%${sportKey}%`);
+  if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
   if (error || !data) return [];
 
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
@@ -183,11 +194,13 @@ export async function fetchReels(
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
   if (error || !data) return [];
 
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
@@ -214,7 +227,8 @@ export async function fetchMyPosts(
     .eq('author_id', authorId)
     .order('created_at', { ascending: false });
 
-  if (type) query = query.eq('type', type);
+  if (type === 'post') query = query.in('type', ['post', 'standard']);
+  else if (type) query = query.eq('type', type);
 
   const { data, error } = await query;
   if (error || !data) return [];
@@ -239,13 +253,25 @@ export async function uploadPostMedia(
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    if (!base64) {
-      return { path: null, error: 'Captured file could not be read. Please try again.' };
+    let arrayBuffer: ArrayBuffer;
+    let fileSize: number;
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      if (!response.ok) {
+        return { path: null, error: 'Selected file could not be read. Please try again.' };
+      }
+      arrayBuffer = await response.arrayBuffer();
+      fileSize = arrayBuffer.byteLength;
+    } else {
+      const file = new File(uri);
+      if (!file.exists || file.size === 0) {
+        return { path: null, error: 'Captured file could not be read. Please try again.' };
+      }
+      fileSize = file.size;
+      arrayBuffer = await file.arrayBuffer();
     }
-    const arrayBuffer = decode(base64);
-    if (arrayBuffer.byteLength === 0) {
-      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
+    if (mediaType === 'video' && fileSize > 50 * 1024 * 1024) {
+      return { path: null, error: 'Videos must be 50 MB or smaller.' };
     }
 
     const { error } = await supabase.storage.from('posts').upload(path, arrayBuffer, { contentType });
@@ -301,13 +327,17 @@ export async function deletePost(postId: string): Promise<{ error: string | null
   const mediaPaths = ((post?.media ?? []) as Array<{ path?: string; url?: string }>)
     .map((item) => item.path ?? item.url)
     .filter((path): path is string => Boolean(path && !path.startsWith('http')));
-  if (mediaPaths.length > 0) {
-    const { error: mediaError } = await supabase.storage.from('posts').remove(mediaPaths);
-    if (mediaError) return { error: mediaError.message };
-  }
 
   const { error } = await supabase.from('posts').delete().eq('id', postId);
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+
+  if (mediaPaths.length > 0) {
+    const { error: mediaError } = await supabase.storage.from('posts').remove(mediaPaths);
+    if (mediaError) {
+      console.warn(`[postsService] post ${postId} deleted but media cleanup failed: ${mediaError.message}`);
+    }
+  }
+  return { error: null };
 }
 
 export async function updatePostCaption(
@@ -360,7 +390,6 @@ export async function markPostViewed(postId: string, viewerId: string): Promise<
     { post_id: postId, viewer_id: viewerId, viewed_at: new Date().toISOString() },
     { onConflict: 'post_id,viewer_id' }
   );
-  try { await supabase.rpc('increment_post_view', { p_id: postId }); } catch (_) {}
 }
 
 export async function toggleFeatureReel(postId: string, featured: boolean): Promise<{ error: string | null }> {
@@ -461,22 +490,4 @@ export async function toggleCommentLike(
     const { error } = await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
     return { error: error?.message ?? null };
   }
-}
-
-export function postTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'Just now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-export function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
 }

@@ -102,7 +102,12 @@ export default function SportifyTalentScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          style={s.backBtn}
+          onPress={() => router.back()}
+        >
           <ChevronLeft color={Colors.textPrimary} size={22} />
         </TouchableOpacity>
         <View style={s.headerCenter}>
@@ -112,7 +117,14 @@ export default function SportifyTalentScreen() {
           </View>
           <Text style={s.headerTitle}>Talent Profile</Text>
         </View>
-        <TouchableOpacity style={s.syncIconBtn} onPress={handleSync} disabled={syncing}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={syncing ? 'Syncing talent data' : 'Sync talent data'}
+          accessibilityState={{ busy: syncing, disabled: syncing }}
+          style={s.syncIconBtn}
+          onPress={handleSync}
+          disabled={syncing}
+        >
           <RefreshCw color={syncing ? Colors.textDisabled : Colors.primary} size={18} />
         </TouchableOpacity>
       </View>

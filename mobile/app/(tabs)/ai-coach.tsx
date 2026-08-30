@@ -14,6 +14,7 @@ import { ShieldCheck, Send, Sparkles, Zap } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useTrackedTimeout } from '@/hooks/useTrackedTimeout';
 
 interface CoachMessage {
   id: string;
@@ -29,6 +30,7 @@ const STARTERS = [
 
 export default function AICoach() {
   const { profile } = useAuth();
+  const scheduleTimeout = useTrackedTimeout();
   const scrollRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [thinking, setThinking] = useState(false);
@@ -93,14 +95,14 @@ export default function AICoach() {
     setDraft('');
     setThinking(true);
 
-    setTimeout(() => {
+    scheduleTimeout(() => {
       setMessages((current) => [...current, {
         id: `coach-${sentAt}`,
         sender: 'coach',
         content: buildResponse(content),
       }]);
       setThinking(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+      scheduleTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     }, 350);
   }
 

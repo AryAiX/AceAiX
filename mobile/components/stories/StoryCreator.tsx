@@ -35,6 +35,7 @@ import {
   StoryOverlay,
   uploadStoryMedia,
 } from '@/lib/storiesService';
+import { supabase } from '@/lib/supabase';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -120,10 +121,12 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
     setUploadProgress(0);
   }, []);
 
+  // An in-flight upload owns the captured media, so block dismissal until it settles.
   const handleClose = useCallback(() => {
+    if (uploading) return;
     reset();
     onClose();
-  }, [reset, onClose]);
+  }, [onClose, reset, uploading]);
 
   const handleCapture = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -133,8 +136,11 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
         setCapturedUri(photo.uri);
         setStep('preview');
       }
-    } catch (e) {
-      // camera error — silently fail on web
+    } catch (error) {
+      Alert.alert(
+        'Story not captured',
+        error instanceof Error ? error.message : 'The camera could not capture a photo.',
+      );
     }
   }, []);
 
@@ -181,6 +187,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
     setUploading(false);
 
     if (createError) {
+      await supabase.storage.from('stories').remove([path]);
       Alert.alert('Error', createError);
       return;
     }
@@ -192,7 +199,14 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      onRequestClose={handleClose}
+      accessibilityViewIsModal
+    >
       <View style={[s.root, { paddingTop: insets.top }]}>
 
         {/* ── STEP: CAMERA ───────────────────────────────────────────────────── */}
@@ -226,11 +240,24 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
                 <CameraView ref={cameraRef} style={s.fill} facing={facing} />
                 {/* Controls */}
                 <View style={[s.camControls, { paddingBottom: insets.bottom + Spacing.xl }]}>
-                  <TouchableOpacity style={s.camClose} onPress={handleClose}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Close camera"
+                    style={s.camClose}
+                    onPress={handleClose}
+                  >
                     <X color={Colors.white} size={24} />
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.captureBtn} onPress={handleCapture} activeOpacity={0.8} />
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Capture photo"
+                    style={s.captureBtn}
+                    onPress={handleCapture}
+                    activeOpacity={0.8}
+                  />
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel="Switch camera"
                     style={s.flipBtn}
                     onPress={() => setFacing((f) => (f === 'back' ? 'front' : 'back'))}
                   >
@@ -303,6 +330,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
                 </View>
                 <View style={s.textInputRow}>
                   <TextInput
+                    accessibilityLabel="Story text overlay"
                     style={[s.textInputField, { color: textColor }]}
                     value={textInput}
                     onChangeText={setTextInput}
@@ -348,6 +376,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
               keyboardVerticalOffset={insets.top}
             >
               <TextInput
+                accessibilityLabel="Story caption"
                 style={s.captionInput}
                 value={caption}
                 onChangeText={setCaption}

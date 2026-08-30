@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheck, Bookmark, Play, Star, BarChart3, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -10,17 +10,27 @@ const AVATAR_IMAGE = 'https://images.pexels.com/photos/1681010/pexels-photo-1681
 function useCountUp(target: number, duration = 1100) {
   const [value, setValue] = useState(0);
   const started = useRef(false);
-  function start() {
+  const frame = useRef<number | null>(null);
+
+  useEffect(() => {
+    started.current = false;
+    return () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+    };
+  }, [target]);
+
+  const start = useCallback(() => {
     if (started.current) return;
     started.current = true;
     const t0 = Date.now();
     const tick = () => {
       const p = Math.min((Date.now() - t0) / duration, 1);
       setValue(Math.round((1 - Math.pow(1 - p, 3)) * target));
-      if (p < 1) requestAnimationFrame(tick);
+      if (p < 1) frame.current = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
-  }
+    frame.current = requestAnimationFrame(tick);
+  }, [duration, target]);
+
   return { value, start };
 }
 
@@ -35,7 +45,7 @@ function StatItem({ number, label }: { number: number; label: string }) {
     }, { threshold: 0.4 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [start]);
   return (
     <div ref={divRef} className="text-center">
       <div className="font-display text-xl font-bold text-ink tabular">{value.toLocaleString()}</div>

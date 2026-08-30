@@ -54,11 +54,13 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
       `)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: true }),
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
 
   if (error || !data) return [];
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleRows = (data as any[]).filter((story) => !blockedIds.has(story.author_id));
 
   // Fetch seen state for current user
@@ -210,12 +212,16 @@ export async function deleteStory(
   storyId: string,
   mediaPath: string,
 ): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('stories').delete().eq('id', storyId);
+  if (error) return { error: error.message };
+
   if (mediaPath && !mediaPath.startsWith('http')) {
     const { error: mediaError } = await supabase.storage.from('stories').remove([mediaPath]);
-    if (mediaError) return { error: mediaError.message };
+    if (mediaError) {
+      console.warn(`[storiesService] story ${storyId} deleted but media cleanup failed: ${mediaError.message}`);
+    }
   }
-  const { error } = await supabase.from('stories').delete().eq('id', storyId);
-  return { error: error?.message ?? null };
+  return { error: null };
 }
 
 export async function markStorySeen(storyId: string, viewerId: string): Promise<void> {

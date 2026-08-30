@@ -24,16 +24,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const profileRequest = useRef(0);
 
-  async function fetchProfile(userId: string) {
+  async function fetchProfile(userId: string, controlsLoading = false) {
     const requestId = ++profileRequest.current;
-    setProfile(null);
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-    if (requestId !== profileRequest.current) return;
-    setProfile(!error && data ? (data as UserProfile) : null);
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (requestId !== profileRequest.current) return;
+      setProfile(!error && data ? (data as UserProfile) : null);
+    } catch {
+      if (requestId === profileRequest.current) setProfile(null);
+    } finally {
+      if (controlsLoading && requestId === profileRequest.current) setLoading(false);
+    }
   }
 
   async function refreshProfile() {
@@ -45,8 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
+        void fetchProfile(session.user.id, true);
       } else {
+        profileRequest.current += 1;
         setLoading(false);
       }
     });
@@ -56,7 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         setLoading(true);
-        fetchProfile(session.user.id).finally(() => setLoading(false));
+        setProfile(null);
+        void fetchProfile(session.user.id, true);
       } else {
         profileRequest.current += 1;
         setProfile(null);

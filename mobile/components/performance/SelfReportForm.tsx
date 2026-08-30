@@ -51,6 +51,7 @@ export function SelfReportForm({ config, athlete_id, onSaved }: Props) {
       <View style={s.field}>
         <Text style={s.label}>Season / Period</Text>
         <TextInput
+          accessibilityLabel="Season or period"
           style={s.input}
           value={season}
           onChangeText={setSeason}
@@ -67,6 +68,7 @@ export function SelfReportForm({ config, athlete_id, onSaved }: Props) {
             <Text style={s.typeHint}>{m.type === 'time' ? 'mm:ss.ss or ss.ss' : m.type}</Text>
           </View>
           <TextInput
+            accessibilityLabel={m.unit ? `${m.label} in ${m.unit}` : m.label}
             style={s.input}
             value={values[m.key] ?? ''}
             onChangeText={v => set(m.key, v)}

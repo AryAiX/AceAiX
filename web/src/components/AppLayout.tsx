@@ -10,6 +10,8 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useMyAthlete } from '../hooks/useAthlete';
+import { safeInternalPath } from '../lib/navigation';
 import { listNotifications, unreadCount as fetchUnreadCount, markNotificationRead } from '../api/notifications';
 import type { Notification } from '../types';
 
@@ -105,6 +107,7 @@ export default function AppLayout() {
   const basePath = getBasePath(role);
   const navItems = getNav(role, basePath);
   const isDemoSession = user?.email?.endsWith('@aceaix.demo') ?? false;
+  const { data: ownAthlete } = useMyAthlete(role === 'athlete');
 
   useEffect(() => {
     if (isDemoSession) void refreshProfile();
@@ -135,7 +138,8 @@ export default function AppLayout() {
   function handleNotificationClick(n: Notification) {
     if (!n.is_read) markRead.mutate(n.id);
     setNotifOpen(false);
-    if (n.action_url) navigate(n.action_url);
+    const destination = safeInternalPath(n.action_url);
+    if (destination) navigate(destination);
   }
 
   async function handleSignOut() {
@@ -264,7 +268,7 @@ export default function AppLayout() {
         {/* Top bar */}
         <header className="flex items-center gap-3 px-4 lg:px-6 py-3.5 border-b border-white/[0.09] z-20 flex-shrink-0"
           style={{ background: 'rgba(10,20,38,0.95)', backdropFilter: 'blur(16px)' }}>
-          <button onClick={() => setMobileOpen(true)} className="lg:hidden text-muted hover:text-white transition-colors">
+          <button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="lg:hidden text-muted hover:text-white transition-colors">
             <Menu size={20} />
           </button>
 
@@ -281,6 +285,7 @@ export default function AppLayout() {
 
           <div className="ml-auto flex items-center gap-1.5">
             <button
+              aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
               onClick={toggle}
               className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white hover:bg-white/[0.07] transition-colors"
             >
@@ -290,6 +295,7 @@ export default function AppLayout() {
             {/* Notifications */}
             <div className="relative" data-dropdown>
               <button
+                aria-label="Notifications"
                 onClick={() => { setNotifOpen(!notifOpen); setUserOpen(false); }}
                 className="w-8 h-8 flex items-center justify-center rounded-lg text-muted hover:text-white hover:bg-white/[0.07] transition-colors relative"
               >
@@ -336,6 +342,7 @@ export default function AppLayout() {
             {/* User menu */}
             <div className="relative" data-dropdown>
               <button
+                aria-label="Account menu"
                 onClick={() => { setUserOpen(!userOpen); setNotifOpen(false); }}
                 className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl hover:bg-white/[0.07] transition-colors"
               >
@@ -355,8 +362,8 @@ export default function AppLayout() {
                     className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted hover:text-white hover:bg-white/[0.05] transition-colors">
                     <Settings size={14} /> Settings
                   </Link>
-                  {role === 'athlete' && user?.id && (
-                    <Link to={`/athletes/${user.id}`} onClick={() => setUserOpen(false)}
+                  {role === 'athlete' && ownAthlete?.id && (
+                    <Link to={`/athletes/${ownAthlete.id}`} onClick={() => setUserOpen(false)}
                       className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted hover:text-white hover:bg-white/[0.05] transition-colors">
                       <ExternalLink size={14} className="text-azure" /> View Public Profile
                     </Link>

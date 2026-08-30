@@ -34,11 +34,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
 
-    const timeout = new Promise<{ error: string }>((resolve) =>
-      setTimeout(() => resolve({ error: 'Request timed out. Check your connection and try again.' }), 5000)
-    );
-
-    const result = await Promise.race([signIn(email.trim(), password), timeout]);
+    const result = await signIn(email.trim(), password);
     setLoading(false);
     if (result.error) setError(result.error);
   }
@@ -73,6 +69,7 @@ export default function LoginScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
             <TextInput
+              accessibilityLabel="Email"
               style={styles.input}
               value={email}
               onChangeText={setEmail}
@@ -81,6 +78,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              textContentType="emailAddress"
               returnKeyType="next"
               editable={!loading}
             />
@@ -90,18 +88,24 @@ export default function LoginScreen() {
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordWrap}>
               <TextInput
+                accessibilityLabel="Password"
                 style={[styles.input, styles.passwordInput]}
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Your password"
                 placeholderTextColor={Colors.textDisabled}
                 secureTextEntry={!showPassword}
+                autoCapitalize="none"
                 autoComplete="password"
+                textContentType="password"
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
                 editable={!loading}
               />
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityState={{ selected: showPassword }}
                 style={styles.eyeBtn}
                 onPress={() => setShowPassword(v => !v)}
                 hitSlop={8}

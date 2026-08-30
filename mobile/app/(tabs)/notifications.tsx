@@ -7,7 +7,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -29,6 +28,7 @@ import {
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useNotifications } from '@/hooks/useNotifications';
 import { AppNotification, NotifType, timeAgo } from '@/lib/notificationService';
+import { safeAppPath } from '@/lib/navigation';
 
 // ── Type → icon / color map ────────────────────────────────────────────────────
 const TYPE_META: Record<NotifType, { icon: React.ComponentType<any>; color: string; label: string }> = {
@@ -50,9 +50,39 @@ function getMeta(type: string) {
 
 // ── Deep-link resolver ─────────────────────────────────────────────────────────
 function resolveDeepLink(notif: AppNotification): string | null {
-  const d = notif.data as Record<string, string>;
-  if (d?.route) return d.route;
-  if (notif.action_url?.startsWith('/')) return notif.action_url;
+  const d = notif.data as Record<string, unknown>;
+  const dataRoute = safeAppPath(d?.route);
+  if (dataRoute) return dataRoute;
+  const actionPath = safeAppPath(notif.action_url);
+  const legacyRoutes: Record<string, string> = {
+    '/messages': '/(tabs)/messages',
+    '/opportunities': '/(tabs)/opportunities',
+    '/network': '/(tabs)/network',
+    '/profile': '/(tabs)/profile',
+    '/performance': '/(tabs)/performance',
+  };
+  const normalizedAction = actionPath
+    ? Object.entries(legacyRoutes).reduce(
+        (path, [legacy, current]) => (
+          path === legacy || path.startsWith(`${legacy}?`)
+            ? `${current}${path.slice(legacy.length)}`
+            : path
+        ),
+        actionPath,
+      )
+    : null;
+
+  if (notif.type === 'message') {
+    const memberId = d.memberId ?? d.member_id ?? d.sender_id;
+    if (typeof memberId === 'string' && memberId) {
+      return `/(tabs)/messages?memberId=${encodeURIComponent(memberId)}`;
+    }
+    const conversationId = d.conversationId ?? d.conversation_id;
+    if (typeof conversationId === 'string' && conversationId) {
+      return `/(tabs)/messages?conversationId=${encodeURIComponent(conversationId)}`;
+    }
+  }
+  if (normalizedAction) return normalizedAction;
   switch (notif.type) {
     case 'message': return '/(tabs)/messages';
     case 'opportunity': return '/(tabs)/opportunities';
@@ -92,7 +122,13 @@ function NotifRow({
           <Text style={s.rowTime}>{timeAgo(notif.created_at)}</Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={s.dismissBtn} onPress={onDismiss} hitSlop={8}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Dismiss notification: ${notif.title}`}
+        style={s.dismissBtn}
+        onPress={onDismiss}
+        hitSlop={8}
+      >
         <Trash2 color={Colors.textFaint} size={15} />
       </TouchableOpacity>
     </View>

@@ -15,6 +15,7 @@ import { useMyAthlete } from '../../hooks/useAthlete';
 import { listMatches, listMedia } from '../../api/portfolio';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
 import { listOpportunities } from '../../api/opportunities';
+import { normalizeAttributes } from '../../lib/profileData';
 import { latestClearance, listMedicalRecords } from '../../api/medical';
 import { listEndorsements } from '../../api/network';
 import type { AttributeData, TrajectoryPoint, MatchRecord } from '../../types';
@@ -205,7 +206,7 @@ export default function AthleteDashboard() {
   const position = athlete?.position ?? athlete?.position_primary ?? 'Position not set';
   const club = athlete?.current_club ?? 'Club not set';
   const level = athlete?.level ?? 'Level not set';
-  const attrs = (athlete?.attributes ?? []) as AttributeData[];
+  const attrs = normalizeAttributes(athlete?.attributes);
   const trajectory = (athlete?.trajectory ?? []) as TrajectoryPoint[];
   const completePct = athlete?.profile_completeness ?? 0;
   const visibility = (athlete?.visibility_score ?? 0) / 10;

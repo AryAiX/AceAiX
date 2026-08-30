@@ -150,7 +150,14 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   if (!post) return null;
 
   return (
-    <Modal visible={!!post} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={!!post}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
         <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
         <KeyboardAvoidingView
@@ -166,7 +173,12 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
                 <Text style={s.commentCount}> · {comments.length}</Text>
               )}
             </Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close comments"
+              onPress={onClose}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={20} />
             </TouchableOpacity>
           </View>
@@ -215,6 +227,7 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
               <Text style={s.inputAvatarTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
             </View>
             <TextInput
+              accessibilityLabel="Comment text"
               style={s.input}
               value={text}
               onChangeText={setText}
@@ -225,6 +238,8 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
               multiline
             />
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Post comment"
               onPress={handleSubmit}
               disabled={!text.trim() || submitting}
               style={[s.sendBtn, !text.trim() && { opacity: 0.4 }]}
@@ -270,7 +285,13 @@ function CommentRow({
           <TouchableOpacity onPress={onReply} style={cr.actionBtn}>
             <Text style={cr.actionTxt}>Reply</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onLike} style={cr.likeBtn}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={comment.liked ? 'Unlike comment' : 'Like comment'}
+            accessibilityState={{ selected: comment.liked }}
+            onPress={onLike}
+            style={cr.likeBtn}
+          >
             <Heart
               color={comment.liked ? Colors.error : Colors.textDisabled}
               fill={comment.liked ? Colors.error : 'transparent'}

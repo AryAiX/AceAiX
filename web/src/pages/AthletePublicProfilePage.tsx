@@ -37,7 +37,8 @@ import { listMedia, listMatches } from '../api/portfolio';
 import { listEndorsements, listRecommendations } from '../api/network';
 import { latestClearance, listMedicalRecords } from '../api/medical';
 import { listPosts } from '../api/content';
-import type { UserProfile, AttributeData } from '../types';
+import { normalizeAttributes } from '../lib/profileData';
+import type { UserProfile } from '../types';
 
 const DEFAULT_COVER = 'https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=1400';
 
@@ -131,8 +132,10 @@ function FollowersModal({ profileUserId, count, currentUserId, onClose }: {
         supabase.from('follows').select('follower:user_profiles!follows_follower_id_fkey(id,full_name,avatar_url,role,is_verified,city,country)').eq('following_id', profileUserId).order('created_at', { ascending: false }),
         currentUserId ? supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId) : Promise.resolve({ data: [] }),
       ]);
-      setFollowers(((fr.data ?? []) as any[]).map(r => r.follower).filter(Boolean));
-      setBlockedIds(new Set(((br.data ?? []) as any[]).map(r => r.blocked_id)));
+      const followerRows = (fr.data ?? []) as unknown as Array<{ follower: UserProfile | null }>;
+      const blockedRows = (br.data ?? []) as Array<{ blocked_id: string }>;
+      setFollowers(followerRows.map(r => r.follower).filter((value): value is UserProfile => value !== null));
+      setBlockedIds(new Set(blockedRows.map(r => r.blocked_id)));
       setLoading(false);
     }
     load();
@@ -232,7 +235,7 @@ function MessageModal({ athleteName, onClose, onSend, sending, isAuth }: {
 function useCountUp(target: number, duration = 1200) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!ref.current || started.current) return;
     const obs = new IntersectionObserver(([e]) => {
@@ -320,7 +323,7 @@ export default function AthletePublicProfilePage() {
       acc[e.skill_or_trait] = (acc[e.skill_or_trait] ?? 0) + 1;
       return acc;
     }, {});
-    const attributes = ((athleteRow?.attributes ?? []) as AttributeData[]).map(a => ({
+    const attributes = normalizeAttributes(athleteRow?.attributes).map(a => ({
       ...a,
       endorsements: endorsementCounts[a.label] ?? a.endorsements ?? 0,
     }));
@@ -672,12 +675,12 @@ export default function AthletePublicProfilePage() {
                 <button onClick={() => setFollowersOpen(true)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-azure hover:text-azure/80 transition-colors">
                   <Users size={12} />
-                  <span ref={followerRef as any} className="tabular">{followerDisplayCount.toLocaleString()}</span>
+                  <span ref={followerRef} className="tabular">{followerDisplayCount.toLocaleString()}</span>
                   <span className="text-muted font-normal">followers</span>
                 </button>
                 <span className="text-white/10">·</span>
                 <span className="flex items-center gap-1 text-xs text-muted">
-                  <span ref={connRef as any} className="tabular font-semibold text-white">{connCount.toLocaleString()}</span>
+                  <span ref={connRef} className="tabular font-semibold text-white">{connCount.toLocaleString()}</span>
                   connections
                 </span>
               </div>

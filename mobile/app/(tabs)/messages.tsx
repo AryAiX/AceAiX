@@ -60,10 +60,66 @@ interface MemberRow {
   is_verified: boolean;
 }
 
+interface ConversationRecord {
+  id: string;
+  participant_1_id: string;
+  participant_2_id: string;
+  subject: string | null;
+  last_message_at: string | null;
+  last_message_preview: string | null;
+}
+
+interface BlockedUserRow {
+  blocked_user_id: string;
+}
+
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
 const ALLOWED_MESSAGE_ROLES = ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'];
 const FILTERS = ['All', 'Scouts', 'Clubs', 'Athletes', 'Coaches'] as const;
 type MessageFilter = (typeof FILTERS)[number];
+const CONVERSATION_COLUMNS =
+  'id,participant_1_id,participant_2_id,subject,last_message_at,last_message_preview';
+
+async function findOrCreateConversation(
+  userId: string,
+  member: MemberRow,
+): Promise<{ data: ConversationRecord | null; error: string | null }> {
+  const pairFilter = [
+    `and(participant_1_id.eq.${userId},participant_2_id.eq.${member.id})`,
+    `and(participant_1_id.eq.${member.id},participant_2_id.eq.${userId})`,
+  ].join(',');
+  const existing = await supabase
+    .from('conversations')
+    .select(CONVERSATION_COLUMNS)
+    .or(pairFilter)
+    .maybeSingle();
+  if (existing.error) return { data: null, error: existing.error.message };
+  if (existing.data) return { data: existing.data as ConversationRecord, error: null };
+
+  const created = await supabase
+    .from('conversations')
+    .insert({
+      participant_1_id: userId,
+      participant_2_id: member.id,
+      subject: member.full_name ?? roleLabel(member.role),
+    })
+    .select(CONVERSATION_COLUMNS)
+    .single();
+  if (!created.error && created.data) {
+    return { data: created.data as ConversationRecord, error: null };
+  }
+
+  // A concurrent message/story action may have created the same unique pair.
+  if (created.error?.code === '23505') {
+    const raced = await supabase
+      .from('conversations')
+      .select(CONVERSATION_COLUMNS)
+      .or(pairFilter)
+      .maybeSingle();
+    if (raced.data) return { data: raced.data as ConversationRecord, error: null };
+  }
+  return { data: null, error: created.error?.message ?? 'Please try again.' };
+}
 
 function roleLabel(role: string | null | undefined): string {
   const labels: Record<string, string> = {
@@ -393,7 +449,9 @@ function NewConversationModal({
           );
           setMembers([]);
         } else {
-          const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
+          const blockedIds = new Set(
+            ((blocksResult.data ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+          );
           setMembers(((membersResult.data ?? []) as MemberRow[])
             .filter((member) => !blockedIds.has(member.id)));
         }
@@ -420,19 +478,11 @@ function NewConversationModal({
     }
 
     setCreatingId(member.id);
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({
-        participant_1_id: userId,
-        participant_2_id: member.id,
-        subject: member.full_name ?? roleLabel(member.role),
-      })
-      .select('id,participant_1_id,participant_2_id,subject,last_message_at,last_message_preview')
-      .single();
+    const { data, error } = await findOrCreateConversation(userId, member);
     setCreatingId(null);
 
     if (error || !data) {
-      Alert.alert('Unable to start conversation', error?.message ?? 'Please try again.');
+      Alert.alert('Unable to start conversation', error ?? 'Please try again.');
       return;
     }
 
@@ -525,7 +575,11 @@ function NewConversationModal({
 
 export default function Messages() {
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ memberId?: string; query?: string }>();
+  const params = useLocalSearchParams<{
+    conversationId?: string;
+    memberId?: string;
+    query?: string;
+  }>();
   const autoOpenAttempted = useRef<string | null>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<MessageFilter>('All');
@@ -582,7 +636,9 @@ export default function Messages() {
       ((profilesResult.data ?? []) as MemberRow[]).map((profile) => [profile.id, profile]),
     );
     const unreadMap = new Map<string, number>();
-    const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
+    const blockedIds = new Set(
+      ((blocksResult.data ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+    );
     for (const message of unreadResult.data ?? []) {
       unreadMap.set(message.conversation_id, (unreadMap.get(message.conversation_id) ?? 0) + 1);
     }
@@ -616,6 +672,18 @@ export default function Messages() {
   }, [params.query]);
 
   useEffect(() => {
+    const conversationId = typeof params.conversationId === 'string'
+      ? params.conversationId
+      : null;
+    const attemptKey = conversationId ? `conversation:${conversationId}` : null;
+    if (!conversationId || loading || autoOpenAttempted.current === attemptKey) return;
+    autoOpenAttempted.current = attemptKey;
+    const existing = convos.find((conversation) => conversation.id === conversationId);
+    if (existing) setSelected(existing);
+    else Alert.alert('Conversation unavailable', 'This conversation could not be found.');
+  }, [convos, loading, params.conversationId]);
+
+  useEffect(() => {
     const memberId = typeof params.memberId === 'string' ? params.memberId : null;
     if (!memberId || !user || loading || autoOpenAttempted.current === memberId) return;
     autoOpenAttempted.current = memberId;
@@ -647,23 +715,17 @@ export default function Messages() {
         Alert.alert('Unable to start conversation', 'Please try again.');
         return;
       }
-      const blockedIds = new Set((blockedRows ?? []).map((row) => row.blocked_user_id));
+      const blockedIds = new Set(
+        ((blockedRows ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+      );
       if (blockedIds.has(memberId)) {
         Alert.alert('Unable to start conversation', 'You cannot message this person.');
         return;
       }
 
-      const { data, error: createError } = await supabase
-        .from('conversations')
-        .insert({
-          participant_1_id: user.id,
-          participant_2_id: member.id,
-          subject: member.full_name ?? roleLabel(member.role),
-        })
-        .select('id,participant_1_id,participant_2_id,subject,last_message_at,last_message_preview')
-        .single();
+      const { data, error: createError } = await findOrCreateConversation(user.id, member);
       if (createError || !data) {
-        Alert.alert('Unable to start conversation', createError?.message ?? 'Please try again.');
+        Alert.alert('Unable to start conversation', createError ?? 'Please try again.');
         return;
       }
 

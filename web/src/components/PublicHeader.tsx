@@ -7,7 +7,9 @@ import {
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { useMyAthlete } from '../hooks/useAthlete';
 import { listNotifications } from '../api/notifications';
+import { safeInternalPath } from '../lib/navigation';
 
 type NavItem = { label: string; path: string; Icon: React.ElementType };
 
@@ -77,9 +79,9 @@ function profilePath(role: string | null) {
   return null;
 }
 
-function publicProfilePath(role: string | null, userId: string | null | undefined) {
-  if (!userId) return null;
-  if (role === 'athlete') return `/athletes/${userId}`;
+function publicProfilePath(role: string | null, athleteId: string | null | undefined) {
+  if (!athleteId) return null;
+  if (role === 'athlete') return `/athletes/${athleteId}`;
   return null;
 }
 
@@ -118,6 +120,7 @@ const itemCls = 'flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-w
 
 export default function PublicHeader() {
   const { user, profile, role, signOut } = useAuth();
+  const { data: ownAthlete } = useMyAthlete(role === 'athlete');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -257,7 +260,11 @@ export default function PublicHeader() {
                           borderBottom: '1px solid rgba(255,255,255,0.07)',
                           background: !n.is_read ? 'rgba(47,128,237,0.08)' : undefined,
                         }}
-                        onClick={() => { setNotifOpen(false); if (n.action_url) navigate(n.action_url); }}
+                        onClick={() => {
+                          setNotifOpen(false);
+                          const destination = safeInternalPath(n.action_url);
+                          if (destination) navigate(destination);
+                        }}
                       >
                         <div className="flex items-start gap-2.5">
                           {!n.is_read && <div className="w-1.5 h-1.5 rounded-full bg-azure mt-1.5 flex-shrink-0" />}
@@ -282,6 +289,7 @@ export default function PublicHeader() {
           {profile ? (
             <div ref={meRef} className="relative">
               <button
+                aria-label="Account menu"
                 onClick={() => { setMeOpen(o => !o); setNotifOpen(false); }}
                 className="flex items-center gap-1.5 pl-2 pr-1.5 py-1 rounded-xl hover:bg-white/[0.07] transition-colors"
               >
@@ -315,8 +323,8 @@ export default function PublicHeader() {
                     </div>
                   </div>
                   <div className="p-1">
-                    {publicProfilePath(role, user?.id) && (
-                      <Link to={publicProfilePath(role, user?.id)!} onClick={() => setMeOpen(false)} className={itemCls}>
+                    {publicProfilePath(role, ownAthlete?.id) && (
+                      <Link to={publicProfilePath(role, ownAthlete?.id)!} onClick={() => setMeOpen(false)} className={itemCls}>
                         <User size={13} className="text-azure" /> View Public Profile
                       </Link>
                     )}
@@ -412,8 +420,8 @@ export default function PublicHeader() {
             </div>
           ) : (
             <div className="pt-3 mt-2 space-y-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-              {publicProfilePath(role, user?.id) && (
-                <Link to={publicProfilePath(role, user?.id)!} className={itemCls}>
+              {publicProfilePath(role, ownAthlete?.id) && (
+                <Link to={publicProfilePath(role, ownAthlete?.id)!} className={itemCls}>
                   <User size={15} className="text-azure" /> View Public Profile
                 </Link>
               )}

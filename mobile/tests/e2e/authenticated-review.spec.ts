@@ -10,6 +10,13 @@ async function loginAsReviewer(page: Page) {
   await page.getByPlaceholder('Your password').fill(REVIEW_PASSWORD);
   await page.getByText('Sign In', { exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
+  await expect(page).not.toHaveURL(/\/athletes-only/, { timeout: 15_000 });
+  await expect(page.locator('body')).not.toContainText(
+    /Profile Not Found|Profile Unavailable/i,
+  );
+  await expect(page.locator('body')).toContainText(/Dashboard|Welcome|Good /i, {
+    timeout: 15_000,
+  });
 }
 
 const reviewRoutes: { path: string; expected: RegExp }[] = [
@@ -77,10 +84,11 @@ test.describe('App Store authenticated release gate', () => {
     await page.goto('/edit-profile');
 
     await expect(page.getByText('Edit Profile', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Full name')).toBeEditable();
+    await expect(page.getByLabel('First name')).toBeEditable();
+    await expect(page.getByLabel('Last name')).toBeEditable();
     await expect(page.getByLabel('Bio')).toBeEditable();
-    await expect(page.getByLabel('Sport')).toBeEditable();
-    await expect(page.getByLabel('Primary position')).toBeEditable();
+    await expect(page.getByRole('button', { name: /Select sport / }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Select primary position' })).toBeVisible();
     await expect(page.getByLabel('Current club')).toBeEditable();
     await expect(page.getByLabel('Phone number (optional)')).toBeEditable();
     await expect(page.getByRole('button', { name: 'Save profile changes' })).toBeVisible();
@@ -120,17 +128,23 @@ test.describe('App Store authenticated release gate', () => {
     await expect(page.getByText(/About the opportunity|Requirements|Match analysis/i).first()).toBeVisible();
     await page.getByRole('button', { name: 'Close opportunity details' }).click();
 
-    const save = page.getByRole('button', { name: /^Save opportunity /i }).first();
-    if (await save.isVisible().catch(() => false)) {
-      const label = await save.getAttribute('aria-label');
-      await save.click();
-      const unsaveLabel = label?.replace(/^Save /, 'Unsave ');
-      if (unsaveLabel) {
-        const unsave = page.getByRole('button', { name: unsaveLabel });
-        await expect(unsave).toBeVisible();
-        await unsave.click();
-      }
-    }
+    // Start from whichever state the account is already in, so the test does not
+    // depend on a previous run leaving an opportunity unsaved.
+    const toggle = page.getByRole('button', { name: /^(Save|Unsave) opportunity /i }).first();
+    await expect(toggle).toBeVisible();
+    const label = await toggle.getAttribute('aria-label');
+    if (!label) throw new Error('Opportunity save control has no accessible label');
+
+    const flipped = label.startsWith('Save')
+      ? label.replace(/^Save /, 'Unsave ')
+      : label.replace(/^Unsave /, 'Save ');
+
+    await toggle.click();
+    await expect(page.getByRole('button', { name: flipped })).toBeVisible();
+
+    // Restore the original state so reruns start from a clean slate.
+    await page.getByRole('button', { name: flipped }).click();
+    await expect(page.getByRole('button', { name: label })).toBeVisible();
   });
 
   test('athlete can create and remove an event', async ({ page }) => {
@@ -176,9 +190,9 @@ test.describe('App Store authenticated release gate', () => {
     const postCaption = page.getByText(caption);
     await expect(postCaption).toBeVisible();
     const postCard = postCaption.locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
-    await postCard.getByRole('button', { name: 'Open post menu' }).click();
+    await postCard.getByRole('button', { name: 'Open post menu' }).click({ force: true });
     page.once('dialog', (dialog) => dialog.accept());
-    await postCard.getByRole('button', { name: 'Delete post' }).click();
+    await postCard.getByRole('button', { name: 'Delete post' }).click({ force: true });
     await expect(page.getByText(caption)).not.toBeVisible();
   });
 
@@ -197,6 +211,7 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await expect(page.getByText('Video', { exact: true })).toBeVisible();
   await page.getByLabel('Post caption').fill(caption);
   await page.getByRole('button', { name: 'Share reel' }).click();
+  await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
 
   page.once('dialog', (dialog) => dialog.accept());
@@ -223,7 +238,7 @@ test('athlete can add and remove a career milestone', async ({ page }) => {
 
   const club = `Release Audit Club ${Date.now()}`;
   await page.getByRole('button', { name: 'Add career entry' }).click();
-  await page.getByLabel('Career milestone type').fill('Signed');
+  await page.getByRole('button', { name: 'Select milestone type Signed' }).click();
   await page.getByLabel('Career club or event').fill(club);
   await page.getByLabel('Career milestone date').fill('2026-07-19');
   await page.getByLabel('Career entry notes').fill('Temporary release verification entry');
@@ -242,15 +257,29 @@ test('athlete can add and remove a career milestone', async ({ page }) => {
     const visibility = page.getByRole('switch', { name: 'Profile visible to scouts' });
     await expect(visibility).toBeVisible();
     const originallyEnabled = await visibility.isChecked();
-    await visibility.click();
-    await expect(visibility).toBeChecked({ checked: !originallyEnabled });
-    await expect(visibility).toBeEnabled();
+    try {
+      await visibility.click();
+      await expect(visibility).toBeChecked({ checked: !originallyEnabled });
+      await expect(visibility).toBeEnabled();
 
-    await page.reload();
-    const persisted = page.getByRole('switch', { name: 'Profile visible to scouts' });
-    await expect(persisted).toBeChecked({ checked: !originallyEnabled });
-    await persisted.click();
-    await expect(persisted).toBeChecked({ checked: originallyEnabled });
-    await expect(persisted).toBeEnabled();
+      await page.reload();
+      const persisted = page.getByRole('switch', { name: 'Profile visible to scouts' });
+      await expect(persisted).toBeChecked({ checked: !originallyEnabled });
+    } finally {
+      await page.goto('/settings');
+      const current = page.getByRole('switch', { name: 'Profile visible to scouts' });
+      await expect(current).toBeVisible();
+      if (await current.isChecked() !== originallyEnabled) await current.click();
+      await expect(current).toBeChecked({ checked: originallyEnabled });
+    }
+  });
+
+  test('verified football identity cannot be edited by an athlete', async ({ page }) => {
+    await loginAsReviewer(page);
+    await page.goto('/settings');
+
+    await expect(
+      page.getByLabel('API-Football Player ID assigned by an administrator'),
+    ).not.toBeEditable();
   });
 });
