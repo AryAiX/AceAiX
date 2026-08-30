@@ -128,9 +128,17 @@ export async function fetchFeedPosts(
   }
 
   const sportKey = mode === 'for_you' ? normalizeSportKey(viewerSport) : null;
-  const athleteSelect = sportKey
-    ? 'athlete:athlete_profiles!inner(sport, position, position_primary)'
-    : 'athlete:athlete_profiles(sport, position, position_primary)';
+  const athleteSelect = 'athlete:athlete_profiles(sport, position, position_primary)';
+  let sportAuthorIds: string[] | null = null;
+  if (sportKey) {
+    const { data: athletes, error: athletesError } = await supabase
+      .from('athlete_profiles')
+      .select('user_id')
+      .ilike('sport', `%${sportKey}%`);
+    if (athletesError) return [];
+    sportAuthorIds = (athletes ?? []).map((athlete) => athlete.user_id);
+    if (sportAuthorIds.length === 0) return [];
+  }
 
   let query = supabase
     .from('posts')
@@ -141,7 +149,7 @@ export async function fetchFeedPosts(
 
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
-  if (sportKey) query = query.ilike('athlete.sport', `%${sportKey}%`);
+  if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
