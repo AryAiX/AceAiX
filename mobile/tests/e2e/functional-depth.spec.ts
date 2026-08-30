@@ -206,7 +206,7 @@ test.describe.serial('deep mobile functional workflows', () => {
       await page.getByLabel('Event location').fill('Functional QA Arena');
       await page.getByRole('button', { name: 'Create event' }).click();
       await expect(page.getByText('Enter a valid calendar date.')).toBeVisible();
-      await expect(page.getByText('Create Event', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Create event' })).toBeVisible();
     } finally {
       await page.goto('/events');
       if (await page.getByText(title, { exact: true }).isVisible().catch(() => false)) {
