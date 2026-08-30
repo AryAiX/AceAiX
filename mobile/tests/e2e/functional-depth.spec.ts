@@ -51,6 +51,21 @@ async function deleteOwnPost(page: Page, caption: string) {
   await expect(captionNode).not.toBeVisible();
 }
 
+async function cleanupFunctionalPosts(page: Page) {
+  await page.goto('/feed');
+  await page.getByRole('button', { name: 'Show Latest posts' }).click();
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const caption = page.getByText(/Functional social \d+/).first();
+    if (!(await caption.isVisible().catch(() => false))) return;
+    const card = caption.locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
+    await card.getByRole('button', { name: 'Open post menu' }).click({ force: true });
+    page.once('dialog', (dialog) => dialog.accept());
+    await card.getByRole('button', { name: 'Delete post' }).click({ force: true });
+    await expect(caption).not.toBeVisible();
+  }
+  throw new Error('More than ten stale Functional social posts require cleanup');
+}
+
 test.describe.serial('deep mobile functional workflows', () => {
   test.setTimeout(120_000);
 
@@ -157,6 +172,7 @@ test.describe.serial('deep mobile functional workflows', () => {
 
     try {
       await login(primary, PRIMARY);
+      await cleanupFunctionalPosts(primary);
       await primary.goto('/media');
       await primary.getByRole('button', { name: 'Create new post' }).click();
       await primary.getByLabel('Post caption').fill(caption);
