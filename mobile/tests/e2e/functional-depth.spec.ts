@@ -217,6 +217,53 @@ test.describe.serial('deep mobile functional workflows', () => {
     }
   });
 
+  test('career milestone can be validated, created, edited, reloaded, and deleted', async ({ page }) => {
+    await login(page);
+    await page.goto('/career');
+    const stamp = Date.now();
+    const club = `Functional Career ${stamp}`;
+    const editedClub = `${club} Updated`;
+
+    try {
+      await page.getByRole('button', { name: 'Add career entry' }).click();
+      await page.getByRole('button', { name: 'Select milestone type Signed' }).click();
+      await page.getByLabel('Career club or event').fill(club);
+      await page.getByLabel('Career milestone date').fill('2026-02-31');
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.getByRole('button', { name: 'Save career entry' }).click();
+      await expect(page.getByText('Add Career Entry', { exact: true })).toBeVisible();
+
+      await page.getByLabel('Career milestone date').fill('2026-02-28');
+      await page.getByLabel('Career entry notes').fill('Created by functional UI audit');
+      await page.getByRole('button', { name: 'Save career entry' }).click();
+      await expect(page.getByText(club, { exact: true })).toBeVisible();
+
+      await page.getByRole('button', { name: `Edit career entry ${club}` }).click();
+      await expect(page.getByText('Edit Career Entry', { exact: true })).toBeVisible();
+      await expect(page.getByLabel('Career entry notes')).toHaveValue('Created by functional UI audit');
+      await page.getByLabel('Career club or event').fill(editedClub);
+      await page.getByLabel('Career entry notes').fill('Updated by functional UI audit');
+      await page.getByRole('button', { name: 'Save career entry' }).click();
+      await expect(page.getByText(editedClub, { exact: true })).toBeVisible();
+
+      await page.reload();
+      await expect(page.getByText(editedClub, { exact: true })).toBeVisible();
+      await page.getByRole('button', { name: `Edit career entry ${editedClub}` }).click();
+      await expect(page.getByLabel('Career entry notes')).toHaveValue('Updated by functional UI audit');
+      await page.getByRole('button', { name: 'Close career entry' }).click();
+    } finally {
+      await page.goto('/career');
+      const updated = page.getByText(editedClub, { exact: true });
+      const original = page.getByText(club, { exact: true });
+      const finalClub = await updated.isVisible().catch(() => false) ? editedClub : club;
+      if (await updated.or(original).first().isVisible().catch(() => false)) {
+        page.once('dialog', (dialog) => dialog.accept());
+        await page.getByRole('button', { name: `Delete career entry ${finalClub}` }).click();
+        await expect(page.getByText(finalClub, { exact: true })).not.toBeVisible();
+      }
+    }
+  });
+
   test('editing performance stats preserves the current record values', async ({ page }) => {
     await login(page);
     await page.goto('/performance');
