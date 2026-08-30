@@ -90,19 +90,17 @@ function postCard(page: Page, caption: string) {
     .locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
 }
 
-async function cleanupFunctionalPosts(page: Page) {
-  await page.goto('/feed');
-  await page.getByRole('button', { name: 'Show Latest posts' }).click();
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const caption = page.getByText(/Functional social \d+/).first();
-    if (!(await caption.isVisible().catch(() => false))) return;
-    const card = caption.locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
-    await card.getByRole('button', { name: 'Open post menu' }).click({ force: true });
-    page.once('dialog', (dialog) => dialog.accept());
-    await card.getByRole('button', { name: 'Delete post' }).click({ force: true });
-    await expect(caption).not.toBeVisible();
-  }
-  throw new Error('More than ten stale Functional social posts require cleanup');
+async function cleanupFunctionalPosts() {
+  const db = await primaryDatabase();
+  const { data, error } = await db
+    .from('posts')
+    .select('id')
+    .ilike('caption', 'Functional social%');
+  if (error) throw error;
+  const ids = (data ?? []).map((post) => post.id);
+  if (ids.length === 0) return;
+  const { error: cleanupError } = await db.from('posts').delete().in('id', ids);
+  if (cleanupError) throw cleanupError;
 }
 
 test.describe.serial('deep mobile functional workflows', () => {
@@ -549,7 +547,7 @@ test.describe.serial('deep mobile functional workflows', () => {
 
     try {
       await login(primary, PRIMARY);
-      await cleanupFunctionalPosts(primary);
+      await cleanupFunctionalPosts();
       await primary.goto('/media');
       await primary.getByRole('button', { name: 'Create new post' }).click();
       await primary.getByLabel('Post caption').fill(caption);
@@ -644,7 +642,7 @@ test.describe.serial('deep mobile functional workflows', () => {
           .delete()
           .eq('blocked_id', primaryUser.user.id);
       }
-      await cleanupFunctionalPosts(primary).catch(() => {});
+      await cleanupFunctionalPosts().catch(() => {});
       await Promise.all([primaryContext.close(), secondaryContext.close()]);
     }
   });
