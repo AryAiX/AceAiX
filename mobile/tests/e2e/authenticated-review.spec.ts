@@ -228,42 +228,48 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Share reel' }).click();
   await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
+  const reelCard = page
+    .getByText(caption, { exact: true })
+    .locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
 
   const likeSaved = page.waitForResponse((response) =>
     response.url().includes('/rest/v1/post_likes')
     && response.request().method() === 'POST'
   );
-  await page.getByRole('button', { name: 'Like reel' }).click();
-  await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
+  await reelCard.getByRole('button', { name: 'Like reel', exact: true }).click();
+  await expect(reelCard.getByRole('button', { name: 'Unlike reel', exact: true })).toBeVisible();
   await likeSaved;
   const reelSaved = page.waitForResponse((response) =>
     response.url().includes('/rest/v1/post_saves')
     && response.request().method() === 'POST'
   );
-  await page.getByRole('button', { name: 'Save reel' }).click();
-  await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+  await reelCard.getByRole('button', { name: 'Save reel', exact: true }).click();
+  await expect(reelCard.getByRole('button', { name: 'Remove saved reel', exact: true })).toBeVisible();
   await reelSaved;
 
   await page.reload();
   await page.getByText('Reels', { exact: true }).click();
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+  const reloadedCard = page
+    .getByText(caption, { exact: true })
+    .locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
+  await expect(reloadedCard.getByRole('button', { name: 'Unlike reel', exact: true })).toBeVisible();
+  await expect(reloadedCard.getByRole('button', { name: 'Remove saved reel', exact: true })).toBeVisible();
   const likeRemoved = page.waitForResponse((response) =>
     response.url().includes('/rest/v1/post_likes')
     && response.request().method() === 'DELETE'
   );
-  await page.getByRole('button', { name: 'Unlike reel' }).click();
+  await reloadedCard.getByRole('button', { name: 'Unlike reel', exact: true }).click();
   await likeRemoved;
   const saveRemoved = page.waitForResponse((response) =>
     response.url().includes('/rest/v1/post_saves')
     && response.request().method() === 'DELETE'
   );
-  await page.getByRole('button', { name: 'Remove saved reel' }).click();
+  await reloadedCard.getByRole('button', { name: 'Remove saved reel', exact: true }).click();
   await saveRemoved;
 
   page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Delete reel' }).click();
+  await reloadedCard.getByRole('button', { name: 'Delete reel' }).click();
   await expect(page.getByText(caption, { exact: true })).not.toBeVisible();
 });
 
