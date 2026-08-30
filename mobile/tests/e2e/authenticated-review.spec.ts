@@ -225,7 +225,7 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   const caption = `Release reel ${Date.now()}`;
   await expect(page.getByText('Video', { exact: true })).toBeVisible();
   await page.getByLabel('Post caption').fill(caption);
-  await page.getByRole('button', { name: 'Share reel' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Share reel' }).click();
   await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
 
