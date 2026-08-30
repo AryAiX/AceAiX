@@ -294,6 +294,104 @@ test.describe.serial('deep mobile functional workflows', () => {
     }
   });
 
+  test('saved opportunity survives tab changes and reload, then restores', async ({ page }) => {
+    await login(page);
+    await page.goto('/opportunities');
+    await page.getByText('All', { exact: true }).click();
+
+    const initialToggle = page
+      .getByRole('button', { name: /^(Save|Unsave) opportunity / })
+      .first();
+    await expect(initialToggle).toBeVisible();
+    const initialLabel = await initialToggle.getAttribute('aria-label');
+    if (!initialLabel) throw new Error('Opportunity save control is missing a label');
+    const club = initialLabel.replace(/^(Save|Unsave) opportunity /, '');
+    const initiallySaved = initialLabel.startsWith('Unsave');
+
+    try {
+      if (!initiallySaved) await initialToggle.click();
+      await page.getByText('Saved', { exact: true }).click();
+      await expect(
+        page.getByRole('button', { name: `Unsave opportunity ${club}` }),
+      ).toBeVisible();
+
+      await page.reload();
+      await page.getByText('Saved', { exact: true }).click();
+      const savedToggle = page.getByRole('button', { name: `Unsave opportunity ${club}` });
+      await expect(savedToggle).toBeVisible();
+      await savedToggle.click();
+      await expect(savedToggle).not.toBeVisible();
+    } finally {
+      if (initiallySaved) {
+        await page.getByText('All', { exact: true }).click();
+        const restore = page.getByRole('button', { name: `Save opportunity ${club}` });
+        if (await restore.isVisible().catch(() => false)) await restore.click();
+      }
+    }
+  });
+
+  test('notification quiet hours persist and can be restored', async ({ page }) => {
+    await login(page);
+    await page.goto('/settings');
+    const start = page.getByLabel('Quiet hours start time');
+    const end = page.getByLabel('Quiet hours end time');
+    const originalStart = await start.inputValue();
+    const originalEnd = await end.inputValue();
+    const nextStart = originalStart === '23:10' ? '22:15' : '23:10';
+    const nextEnd = originalEnd === '06:20' ? '07:25' : '06:20';
+
+    async function savePreferences() {
+      await page.getByText('Save Preferences', { exact: true }).click();
+      await expect(page.getByText('Saved!', { exact: true })).toBeVisible();
+    }
+
+    try {
+      await start.fill(nextStart);
+      await end.fill(nextEnd);
+      await savePreferences();
+      await page.reload();
+      await expect(page.getByLabel('Quiet hours start time')).toHaveValue(nextStart);
+      await expect(page.getByLabel('Quiet hours end time')).toHaveValue(nextEnd);
+    } finally {
+      await page.goto('/settings');
+      await page.getByLabel('Quiet hours start time').fill(originalStart);
+      await page.getByLabel('Quiet hours end time').fill(originalEnd);
+      await savePreferences();
+    }
+  });
+
+  test('discover connection persists across reload and returns to its original state', async ({ page }) => {
+    await login(page);
+    await page.goto('/discover?query=Noura');
+    const athlete = page.getByText('Noura Saeed', { exact: true });
+    await expect(athlete).toBeVisible();
+    const card = athlete.locator('xpath=ancestor::div[.//*[text()="Connect" or text()="Connected"]][1]');
+    const toggle = card.getByText(/^(Connect|Connected)$/, { exact: true });
+    const original = (await toggle.textContent())?.trim();
+    if (original !== 'Connect' && original !== 'Connected') {
+      throw new Error('Could not determine initial connection state');
+    }
+    const flipped = original === 'Connect' ? 'Connected' : 'Connect';
+
+    try {
+      await toggle.click();
+      await expect(card.getByText(flipped, { exact: true })).toBeVisible();
+      await page.reload();
+      const reloadedCard = page
+        .getByText('Noura Saeed', { exact: true })
+        .locator('xpath=ancestor::div[.//*[text()="Connect" or text()="Connected"]][1]');
+      await expect(reloadedCard.getByText(flipped, { exact: true })).toBeVisible();
+    } finally {
+      await page.goto('/discover?query=Noura');
+      const restoreCard = page
+        .getByText('Noura Saeed', { exact: true })
+        .locator('xpath=ancestor::div[.//*[text()="Connect" or text()="Connected"]][1]');
+      const current = restoreCard.getByText(flipped, { exact: true });
+      if (await current.isVisible().catch(() => false)) await current.click();
+      await expect(restoreCard.getByText(original, { exact: true })).toBeVisible();
+    }
+  });
+
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
     test.setTimeout(120_000);
     const caption = `Functional social ${Date.now()}`;
