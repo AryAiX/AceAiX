@@ -382,6 +382,11 @@ export default function SignUpScreen() {
   const { signUp } = useAuth();
   const screenWidth = Dimensions.get('window').width;
 
+  const exitSignup = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/login');
+  };
+
   // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [currentStep, setCurrentStep] = useState(1);
@@ -560,7 +565,7 @@ export default function SignUpScreen() {
           accessibilityRole="button"
           accessibilityLabel={currentStep === 1 ? 'Go back' : 'Back to previous step'}
           style={s.headerBtn}
-          onPress={currentStep === 1 ? () => router.back() : goToStep1}
+          onPress={currentStep === 1 ? exitSignup : goToStep1}
           hitSlop={8}
         >
           <ArrowLeft color={Colors.textMuted} size={20} />
@@ -578,7 +583,7 @@ export default function SignUpScreen() {
           accessibilityRole="button"
           accessibilityLabel="Cancel signup"
           style={s.headerBtn}
-          onPress={() => router.back()}
+          onPress={exitSignup}
           hitSlop={8}
         >
           <X color={Colors.textMuted} size={20} />

@@ -472,6 +472,40 @@ test.describe.serial('deep mobile functional workflows', () => {
     await expect(page.getByText('Welcome back')).toBeVisible();
   });
 
+  test('direct signup deep links have a safe exit to login', async ({ browser }) => {
+    for (const control of ['Cancel signup', 'Go back']) {
+      const context = await browser.newContext();
+      const page = await context.newPage();
+      try {
+        await page.goto('/signup');
+        await page.getByLabel(control).click();
+        await expect(page).toHaveURL(/\/login$/);
+        await expect(page.getByText('Welcome back')).toBeVisible();
+      } finally {
+        await context.close();
+      }
+    }
+  });
+
+  test('informational settings and profile-preview actions give feedback', async ({ page }) => {
+    await login(page);
+    await page.goto('/settings');
+    const languageDialog = page.waitForEvent('dialog');
+    await page.getByText('Language', { exact: true }).click();
+    const language = await languageDialog;
+    expect(language.message()).toContain('English is the supported language');
+    await language.accept();
+
+    await page.goto('/public-profile');
+    for (const action of ['Endorse', 'Connect']) {
+      const feedbackPromise = page.waitForEvent('dialog');
+      await page.getByText(action, { exact: true }).click();
+      const feedback = await feedbackPromise;
+      expect(feedback.message()).toContain('Public profile preview');
+      await feedback.accept();
+    }
+  });
+
   test('new athlete can complete signup and permanently delete the account', async ({ page }) => {
     test.setTimeout(180_000);
     const stamp = Date.now();

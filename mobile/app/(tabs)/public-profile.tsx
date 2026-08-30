@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
+  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -31,9 +31,14 @@ export default function PublicProfile() {
   };
 
   const explainPreviewAction = (action: string) => {
+    const message = `${action} is available to other AceAiX members when they view your public profile.`;
+    if (Platform.OS === 'web') {
+      globalThis.alert(`Public profile preview\n\n${message}`);
+      return;
+    }
     Alert.alert(
       'Public profile preview',
-      `${action} is available to other AceAiX members when they view your public profile.`,
+      message,
     );
   };
 

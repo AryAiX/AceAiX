@@ -257,6 +257,11 @@ export default function Settings() {
     router.replace('/login');
   }
 
+  function showInfo(title: string, message: string) {
+    if (Platform.OS === 'web') globalThis.alert(`${title}\n\n${message}`);
+    else Alert.alert(title, message);
+  }
+
   function confirmDeleteAccount() {
     if (deletingAccount) return;
     if (Platform.OS === 'web') {
@@ -327,7 +332,7 @@ export default function Settings() {
                 label: 'Language',
                 Icon: Globe,
                 value: 'English',
-                onPress: () => Alert.alert('Language', 'English is the supported language in this release.'),
+                onPress: () => showInfo('Language', 'English is the supported language in this release.'),
               },
             ].map((item, i) => (
               <TouchableOpacity key={item.label} style={[s.row, i > 0 && s.rowBorder]} onPress={item.onPress}>
@@ -691,7 +696,7 @@ export default function Settings() {
               {
                 label: 'About AceAiX',
                 Icon: Info,
-                onPress: () => Alert.alert(
+                onPress: () => showInfo(
                   'About AceAiX',
                   'AceAiX helps athletes build verified profiles, track performance, connect with sports professionals, and discover opportunities.\n\nVersion 1.0.0',
                 ),
