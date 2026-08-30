@@ -137,6 +137,10 @@ export default function EditProfile() {
   const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!profile) {
+      setFormReady(false);
+      return;
+    }
     const normalizedSport = normalizeSportKey(profile?.sport);
     const isKnownSport = normalizedSport
       ? Object.prototype.hasOwnProperty.call(SPORTS_CONFIG, normalizedSport)
