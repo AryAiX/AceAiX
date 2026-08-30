@@ -214,6 +214,19 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
 
+  await page.getByRole('button', { name: 'Like reel' }).click();
+  await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save reel' }).click();
+  await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+
+  await page.reload();
+  await page.getByText('Reels', { exact: true }).click();
+  await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: 'Unlike reel' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove saved reel' })).toBeVisible();
+  await page.getByRole('button', { name: 'Unlike reel' }).click();
+  await page.getByRole('button', { name: 'Remove saved reel' }).click();
+
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete reel' }).click();
   await expect(page.getByText(caption, { exact: true })).not.toBeVisible();
