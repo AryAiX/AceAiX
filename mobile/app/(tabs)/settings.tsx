@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator, Linking } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator, Linking, Platform } from 'react-native';
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -248,6 +248,14 @@ export default function Settings() {
 
   function confirmDeleteAccount() {
     if (deletingAccount) return;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(
+        'Delete your AceAiX account? This permanently deletes your profile, posts, messages, imported performance data, and sign-in access. This action cannot be undone.',
+      )) {
+        void handleDeleteAccount();
+      }
+      return;
+    }
     Alert.alert(
       'Delete AceAiX account?',
       'This permanently deletes your AceAiX account, profile, posts, messages, imported performance data, and sign-in access. This action cannot be undone.',
