@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -398,38 +399,60 @@ test.describe.serial('deep mobile functional workflows', () => {
   });
 
   test('notification deep links reach opportunity and message destinations', async ({ page }) => {
-    const ids = [
-      'e0000000-0000-4000-8000-000000000001',
-      'e0000000-0000-4000-8000-000000000002',
-    ];
     const db = await primaryDatabase();
-    const { data: originalRows, error } = await db
+    const { data: userData, error: userError } = await db.auth.getUser();
+    if (userError || !userData.user) throw userError ?? new Error('No authenticated user');
+    const stamp = Date.now();
+    const opportunityTitle = `Functional opportunity ${stamp}`;
+    const messageTitle = `Functional message ${stamp}`;
+    const rows = [
+      {
+        id: randomUUID(),
+        user_id: userData.user.id,
+        type: 'opportunity',
+        title: opportunityTitle,
+        body: 'Open the matching opportunities screen.',
+        action_url: '/opportunities',
+        data: {},
+        is_read: false,
+        read: false,
+      },
+      {
+        id: randomUUID(),
+        user_id: userData.user.id,
+        type: 'message',
+        title: messageTitle,
+        body: 'Open the conversations screen.',
+        action_url: '/messages',
+        data: {},
+        is_read: false,
+        read: false,
+      },
+    ];
+    const { error } = await db
       .from('notifications')
-      .select('id,is_read,read')
-      .in('id', ids);
+      .insert(rows);
     if (error) throw error;
 
     try {
       await login(page);
       await page.goto('/notifications');
-      await page.getByText('New opportunity match', { exact: true }).click();
+      await page.getByText(opportunityTitle, { exact: true }).click();
       await expect(page).toHaveURL(/\/opportunities$/);
       await expect(page.getByText('Opportunities', { exact: true })).toBeVisible();
 
       await page.goto('/notifications');
-      await page.getByText('New message from Sergio', { exact: true }).click();
+      await page.getByText(messageTitle, { exact: true }).click();
       await expect(page).toHaveURL(/\/messages$/);
       await expect(
         page.getByRole('button', { name: 'Open conversation with Sergio Mendes' }),
       ).toBeVisible();
     } finally {
-      for (const row of originalRows ?? []) {
-        const { error: restoreError } = await db
-          .from('notifications')
-          .update({ is_read: row.is_read, read: row.read })
-          .eq('id', row.id);
-        if (restoreError) throw restoreError;
-      }
+      const { error: cleanupError } = await db
+        .from('notifications')
+        .delete()
+        .in('id', rows.map((row) => row.id));
+      if (cleanupError) throw cleanupError;
     }
   });
 
