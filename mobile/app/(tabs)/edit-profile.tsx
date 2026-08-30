@@ -298,9 +298,16 @@ export default function EditProfile() {
     }
 
     await refreshProfile();
-    Alert.alert('Profile updated', 'Your changes have been saved.', [
-      { text: 'Done', onPress: () => router.back() },
-    ]);
+    if (Platform.OS === 'web') {
+      // React Native Web maps Alert.alert to window.alert and does not invoke
+      // native alert-button callbacks. Navigate explicitly after dismissal.
+      Alert.alert('Profile updated', 'Your changes have been saved.');
+      router.back();
+    } else {
+      Alert.alert('Profile updated', 'Your changes have been saved.', [
+        { text: 'Done', onPress: () => router.back() },
+      ]);
+    }
   }
 
   const citiesForCountry = form.countryIsoCode
