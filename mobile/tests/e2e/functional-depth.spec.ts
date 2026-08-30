@@ -564,8 +564,13 @@ test.describe.serial('deep mobile functional workflows', () => {
       await originalCard.getByRole('button', { name: 'Open post menu' }).click({ force: true });
       await originalCard.getByRole('button', { name: 'Edit post' }).click();
       await originalCard.getByLabel('Edit post caption').fill(editedCaption);
+      const editSaved = primary.waitForResponse((response) =>
+        response.url().includes('/rest/v1/posts')
+        && response.request().method() === 'PATCH'
+      );
       await originalCard.getByText('Save', { exact: true }).click();
       await expect(primary.getByText(editedCaption)).toBeVisible();
+      await editSaved;
       await primary.reload();
       await expect(primary.getByText(editedCaption)).toBeVisible();
 
