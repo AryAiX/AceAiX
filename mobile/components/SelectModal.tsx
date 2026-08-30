@@ -63,6 +63,7 @@ export default function SelectModal({
         </View>
         {searchable && (
           <TextInput
+            accessibilityLabel={`Search ${title}`}
             style={m.search}
             value={query}
             onChangeText={setQuery}

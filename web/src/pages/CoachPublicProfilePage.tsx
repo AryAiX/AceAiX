@@ -30,7 +30,7 @@ function initialsOf(name?: string | null) {
 function useCountUp(target: number, duration = 1200) {
   const [val, setVal] = useState(0);
   const started = useRef(false);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!ref.current || started.current) return;
     const obs = new IntersectionObserver(([e]) => {
@@ -555,12 +555,12 @@ export default function CoachPublicProfilePage() {
               <div className="flex items-center gap-4 mt-3">
                 <button className="flex items-center gap-1.5 text-xs font-semibold text-azure hover:text-azure/80 transition-colors">
                   <Users size={12} />
-                  <span ref={followerRef as any} className="tabular">{followerDisplay.toLocaleString()}</span>
+                  <span ref={followerRef} className="tabular">{followerDisplay.toLocaleString()}</span>
                   <span className="text-muted font-normal">followers</span>
                 </button>
                 <span className="text-white/10">·</span>
                 <span className="flex items-center gap-1 text-xs text-muted">
-                  <span ref={connRef as any} className="font-semibold text-white tabular">{connDisplay.toLocaleString()}</span> connections
+                  <span ref={connRef} className="font-semibold text-white tabular">{connDisplay.toLocaleString()}</span> connections
                 </span>
               </div>
             </div>
@@ -694,7 +694,12 @@ export default function CoachPublicProfilePage() {
                         {spell.clubInitials}
                       </div>
                       <div className="border border-white/[0.06] rounded-2xl p-4 bg-white/[0.02] cursor-pointer hover:bg-white/[0.04] transition-colors"
-                        onClick={() => setExpandedSpells(s => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
+                        onClick={() => setExpandedSpells(s => {
+                          const n = new Set(s);
+                          if (n.has(i)) n.delete(i);
+                          else n.add(i);
+                          return n;
+                        })}>
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <div className="flex items-center gap-2">
@@ -772,7 +777,12 @@ export default function CoachPublicProfilePage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted">{attr.endorsements + (isEndorsed ? 1 : 0)}</span>
-                          <button onClick={() => setEndorsedAttrs(s => { const n = new Set(s); n.has(attr.label) ? n.delete(attr.label) : n.add(attr.label); return n; })}
+                          <button onClick={() => setEndorsedAttrs(s => {
+                            const n = new Set(s);
+                            if (n.has(attr.label)) n.delete(attr.label);
+                            else n.add(attr.label);
+                            return n;
+                          })}
                             className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${isEndorsed ? 'border-azure/40 bg-azure/15 text-azure' : 'border-white/15 bg-white/[0.04] text-muted hover:border-azure/30 hover:text-azure'}`}>
                             <Plus size={9} /> {isEndorsed ? 'Endorsed' : 'Endorse'}
                           </button>

@@ -14,7 +14,8 @@ export default function FollowingSection({ athlete, isOwner }: FollowingSectionP
   function toggle(name: string) {
     setFollowing(s => {
       const n = new Set(s);
-      n.has(name) ? n.delete(name) : n.add(name);
+      if (n.has(name)) n.delete(name);
+      else n.add(name);
       return n;
     });
   }

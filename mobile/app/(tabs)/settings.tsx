@@ -10,6 +10,7 @@ import { normalizeSportKey } from '@/constants/sportsConfig';
 import { supabase } from '@/lib/supabase';
 import { triggerChessSyncFull, isSyncStale } from '@/lib/chessService';
 import { useChessStats } from '@/hooks/useChessStats';
+import { useTrackedTimeout } from '@/hooks/useTrackedTimeout';
 import {
   DEFAULT_PREFS,
   fetchNotifPrefs,
@@ -46,13 +47,13 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
 export default function Settings() {
   const { profile, signOut, deleteAccount, user, refreshProfile } = useAuth();
   const router = useRouter();
+  const scheduleTimeout = useTrackedTimeout();
   const [publicProfile, setPublicProfile] = useState(profile?.is_open_to_offers ?? true);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [showcaseOptIn, setShowcaseOptIn] = useState(profile?.showcase_opt_in ?? false);
   const [savingShowcase, setSavingShowcase] = useState(false);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
   const [lichess, setLichess] = useState(profile?.lichess_username ?? '');
-  const [footballPlayerId, setFootballPlayerId] = useState(profile?.football_api_player_id ?? '');
   const [savingConn, setSavingConn] = useState(false);
   const [connSaved, setConnSaved] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
@@ -99,10 +100,6 @@ export default function Settings() {
   useEffect(() => {
     setLichess(profile?.lichess_username ?? '');
   }, [profile?.lichess_username]);
-
-  useEffect(() => {
-    setFootballPlayerId(profile?.football_api_player_id ?? '');
-  }, [profile?.football_api_player_id]);
 
   useEffect(() => {
     setSportifyId(profile?.sportify_athlete_id ?? '');
@@ -165,7 +162,7 @@ export default function Settings() {
       return;
     }
     setPrefsSaved(true);
-    setTimeout(() => setPrefsSaved(false), 2000);
+    scheduleTimeout(() => setPrefsSaved(false), 2000);
   }
 
   async function handleSaveConnections() {
@@ -177,7 +174,6 @@ export default function Settings() {
       .update({
         chesscom_username: chesscom || null,
         lichess_username: lichess || null,
-        football_api_player_id: footballPlayerId || null,
       })
       .eq('user_id', user.id);
     if (error) {
@@ -185,7 +181,7 @@ export default function Settings() {
     } else {
       await refreshProfile();
       setConnSaved(true);
-      setTimeout(() => setConnSaved(false), 2000);
+      scheduleTimeout(() => setConnSaved(false), 2000);
     }
     setSavingConn(false);
   }
@@ -197,7 +193,7 @@ export default function Settings() {
     const { ok, error } = await triggerChessSyncFull(user.id, chesscom || null, lichess || null);
     setSyncMsg(ok ? 'Chess data synced!' : (error ?? 'Sync failed'));
     setSyncing(false);
-    setTimeout(() => setSyncMsg(null), 4000);
+    scheduleTimeout(() => setSyncMsg(null), 4000);
   }
 
   async function handleSportifyLink() {
@@ -225,7 +221,7 @@ export default function Settings() {
       setSportifyMsg('Sportify account linked!');
     }
     setSportifyLinking(false);
-    setTimeout(() => setSportifyMsg(null), 3000);
+    scheduleTimeout(() => setSportifyMsg(null), 3000);
   }
 
   async function handleSportifyDisconnect() {
@@ -242,7 +238,7 @@ export default function Settings() {
     setSportifyId('');
     setDisconnecting(false);
     setSportifyMsg('Disconnected and data deleted.');
-    setTimeout(() => setSportifyMsg(null), 3000);
+    scheduleTimeout(() => setSportifyMsg(null), 3000);
   }
 
   async function handleSignOut() {
@@ -380,6 +376,7 @@ export default function Settings() {
                   <View style={s.quietField}>
                     <Text style={s.quietLbl}>From</Text>
                     <TextInput
+                      accessibilityLabel="Quiet hours start time"
                       style={s.quietInput}
                       value={prefs.quiet_start ?? DEFAULT_PREFS.quiet_start}
                       onChangeText={(v) => setPref('quiet_start', v)}
@@ -391,6 +388,7 @@ export default function Settings() {
                   <View style={s.quietField}>
                     <Text style={s.quietLbl}>Until</Text>
                     <TextInput
+                      accessibilityLabel="Quiet hours end time"
                       style={s.quietInput}
                       value={prefs.quiet_end ?? DEFAULT_PREFS.quiet_end}
                       onChangeText={(v) => setPref('quiet_end', v)}
@@ -473,6 +471,7 @@ export default function Settings() {
                     </View>
                   </View>
                   <TextInput
+                    accessibilityLabel="Chess.com username"
                     style={s.connInput}
                     value={chesscom}
                     onChangeText={setChesscom}
@@ -492,6 +491,7 @@ export default function Settings() {
                     </View>
                   </View>
                   <TextInput
+                    accessibilityLabel="Lichess username"
                     style={s.connInput}
                     value={lichess}
                     onChangeText={setLichess}
@@ -513,12 +513,13 @@ export default function Settings() {
                   </View>
                 </View>
                 <TextInput
-                  style={s.connInput}
-                  value={footballPlayerId}
-                  onChangeText={setFootballPlayerId}
-                  placeholder="e.g. 276"
+                  style={[s.connInput, { opacity: 0.65 }]}
+                  value={profile?.football_api_player_id ?? ''}
+                  placeholder="Not assigned"
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="numeric"
+                  editable={false}
+                  accessibilityLabel="API-Football Player ID assigned by an administrator"
                 />
               </View>
             )}
@@ -594,6 +595,7 @@ export default function Settings() {
                   </View>
                 </View>
                 <TextInput
+                  accessibilityLabel="Sportify athlete ID"
                   style={s.connInput}
                   value={sportifyId}
                   onChangeText={setSportifyId}

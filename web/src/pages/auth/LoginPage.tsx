@@ -88,7 +88,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const formRef  = useRef<HTMLFormElement>(null);
 
-  useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     if (!redirecting || !user || !profile) return;
@@ -231,6 +234,8 @@ export default function LoginPage() {
                   const isActive = activeId === group.id;
                   return (
                     <button key={group.id}
+                      type="button"
+                      aria-pressed={isActive}
                       onClick={() => pickGroup(group.id)}
                       className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all duration-200"
                       style={{
@@ -265,7 +270,7 @@ export default function LoginPage() {
                 })}
               </div>
 
-              <button onClick={() => setRoleStep(false)}
+              <button type="button" onClick={() => setRoleStep(false)}
                 className="w-full mt-5 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
                 style={{ background: accent, color: activeGroup.textDark ? '#0C1A2B' : '#fff', boxShadow: `0 4px 20px ${accent}40` }}>
                 Continue <ArrowRight size={15} />
@@ -306,12 +311,12 @@ export default function LoginPage() {
                 style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', backdropFilter: 'blur(12px)' }}>
                 <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-[11px] font-semibold text-white/35 mb-1.5 uppercase tracking-wider">Email address</label>
+                    <label htmlFor="login-email" className="block text-[11px] font-semibold text-white/35 mb-1.5 uppercase tracking-wider">Email address</label>
                     <div className="relative rounded-xl transition-all duration-200"
                       style={{ boxShadow: focusedField === 'email' ? `0 0 0 2px ${accent}50` : '0 0 0 1px rgba(255,255,255,0.09)' }}>
                       <Mail size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200"
                         style={{ color: focusedField === 'email' ? accent : 'rgba(255,255,255,0.25)' }} />
-                      <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      <input id="login-email" name="email" type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)}
                         onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)}
                         placeholder="you@example.com"
                         className="w-full bg-white/[0.03] rounded-xl px-4 pl-10 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.06] transition-all"
@@ -321,20 +326,21 @@ export default function LoginPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">Password</label>
-                      <button type="button" className="text-[11px] transition-colors"
+                      <label htmlFor="login-password" className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">Password</label>
+                      <button type="button" disabled title="Password recovery is coming soon."
+                        className="text-[11px] cursor-not-allowed opacity-60"
                         style={{ color: `${accent}90` }}>Forgot password?</button>
                     </div>
                     <div className="relative rounded-xl transition-all duration-200"
                       style={{ boxShadow: focusedField === 'password' ? `0 0 0 2px ${accent}50` : '0 0 0 1px rgba(255,255,255,0.09)' }}>
                       <Lock size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200"
                         style={{ color: focusedField === 'password' ? accent : 'rgba(255,255,255,0.25)' }} />
-                      <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
+                      <input id="login-password" name="password" type={showPass ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)}
                         onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)}
                         placeholder="••••••••"
                         className="w-full bg-white/[0.03] rounded-xl px-4 pl-10 pr-11 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.06] transition-all"
                         required />
-                      <button type="button" onClick={() => setShowPass(!showPass)}
+                      <button type="button" aria-label={showPass ? 'Hide password' : 'Show password'} onClick={() => setShowPass(!showPass)}
                         className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition-colors">
                         {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>

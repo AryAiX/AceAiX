@@ -49,25 +49,29 @@ async function registerPushToken(userId: string) {
 }
 
 function RootNavigator() {
-  const { session, role, loading, user } = useAuth();
+  const { session, role, profileError, loading, user } = useAuth();
   const pathname = usePathname();
 
   useEffect(() => {
     if (loading) return;
-    const isPublicAuthRoute = pathname === '/login' || pathname === '/signup';
-    const onAthletesOnly = pathname === '/athletes-only';
+    const isEntryRoute = pathname === '/login' || pathname === '/signup';
+    const isRecoveryRoute = pathname === '/forgot-password' || pathname === '/reset-password';
+    const isPublicAuthRoute = isEntryRoute || isRecoveryRoute;
     if (!session && !isPublicAuthRoute) {
       router.replace('/login');
-    } else if (role === 'athlete' && (isPublicAuthRoute || onAthletesOnly)) {
+    } else if (role === 'athlete' && isEntryRoute) {
       router.replace('/');
-    } else if (role !== null && role !== 'athlete') {
-      if (!onAthletesOnly) router.replace('/athletes-only');
-    } else if (session && role === null) {
-      if (!onAthletesOnly) {
-        router.replace({ pathname: '/athletes-only', params: { reason: 'no-profile' } });
-      }
+    } else if (role === 'athlete' && pathname === '/athletes-only') {
+      router.replace('/');
+    } else if (role !== null && role !== 'athlete' && pathname !== '/athletes-only') {
+      router.replace('/athletes-only');
+    } else if (session && role === null && !isRecoveryRoute) {
+      router.replace({
+        pathname: '/athletes-only',
+        params: { reason: profileError ? 'load-error' : 'no-profile' },
+      });
     }
-  }, [session, role, loading, pathname]);
+  }, [session, role, profileError, loading, pathname]);
 
   useEffect(() => {
     if (user && role === 'athlete') registerPushToken(user.id);
@@ -77,6 +81,8 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="reset-password" />
       <Stack.Screen name="athletes-only" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="+not-found" />

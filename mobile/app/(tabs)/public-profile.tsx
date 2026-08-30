@@ -151,7 +151,7 @@ export default function PublicProfile() {
             {performanceLoading ? (
               <Text style={s.cardBody}>Loading performance data...</Text>
             ) : performanceError ? (
-              <Text style={s.cardBody}>Couldn't load performance data — pull to refresh or try again later.</Text>
+              <Text style={s.cardBody}>Couldn’t load performance data — pull to refresh or try again later.</Text>
             ) : seasonHighlights.length > 0 ? (
               <View style={s.grid}>
                 {seasonHighlights.map(h => (

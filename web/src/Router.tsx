@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { UserRole } from './types';
+import { canAccessRole } from './lib/accessControl';
 
 import AppLayout from './components/AppLayout';
 
@@ -93,7 +94,7 @@ function RequireAuth({ children, allowedRoles }: { children: React.ReactNode; al
   }
 
   if (!user) return <Navigate to="/auth/login" state={{ from: location }} replace />;
-  if (allowedRoles && role && !allowedRoles.includes(role)) return <Navigate to="/dashboard" replace />;
+  if (allowedRoles && !canAccessRole(role, allowedRoles)) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
 }

@@ -1,10 +1,22 @@
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { login } from './helpers';
 
 const DIR = 'screenshots';
 
 async function shoot(page: import('@playwright/test').Page, path: string, name: string) {
-  await page.goto(path, { waitUntil: 'domcontentloaded' }).catch(() => {});
+  const runtimeErrors: string[] = [];
+  const serverErrors: string[] = [];
+  const onPageError = (error: Error) => runtimeErrors.push(error.message);
+  const onResponse = (response: import('@playwright/test').Response) => {
+    if (new URL(response.url()).origin === new URL(page.url()).origin && response.status() >= 500) {
+      serverErrors.push(`${response.status()} ${response.url()}`);
+    }
+  };
+  page.on('pageerror', onPageError);
+  page.on('response', onResponse);
+
+  const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
+  expect(response?.status(), `${path} should load without a server error`).toBeLessThan(500);
   await page.waitForLoadState('networkidle', { timeout: 4000 }).catch(() => {});
   await page.waitForTimeout(800);
   // Scroll through the page so IntersectionObserver scroll-reveal animations fire.
@@ -18,6 +30,10 @@ async function shoot(page: import('@playwright/test').Page, path: string, name: 
   });
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${DIR}/${name}.png`, fullPage: true });
+  page.off('pageerror', onPageError);
+  page.off('response', onResponse);
+  expect(runtimeErrors, `${path} emitted uncaught browser errors`).toEqual([]);
+  expect(serverErrors, `${path} received server errors`).toEqual([]);
 }
 
 test('capture public pages', async ({ page }) => {

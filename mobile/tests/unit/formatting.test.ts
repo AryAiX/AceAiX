@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/supabase', () => ({ supabase: {} }));
-
-import { deadlineLabel, formatSalary } from '@/lib/opportunitiesService';
-import { formatCount, postTimeAgo } from '@/lib/postsService';
-import { sourceLabel } from '@/lib/performanceService';
+import {
+  deadlineLabel,
+  formatCount,
+  formatSalary,
+  postTimeAgo,
+  sourceLabel,
+} from '@/lib/formatting';
 
 describe('opportunity formatting', () => {
   it('formats salary ranges', () => {

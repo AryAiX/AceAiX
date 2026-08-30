@@ -287,7 +287,13 @@ export function AppDrawer() {
                 <Text style={d.liveText}>LIVE</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={close} style={d.closeBtn} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close navigation menu"
+              onPress={close}
+              style={d.closeBtn}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={18} />
             </TouchableOpacity>
           </Animated.View>

@@ -196,7 +196,12 @@ function PickerModal({
           <View style={pm.handle} />
           <View style={pm.header}>
             <Text style={pm.title}>{title}</Text>
-            <TouchableOpacity onPress={handleClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Close ${title} picker`}
+              onPress={handleClose}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={20} />
             </TouchableOpacity>
           </View>
@@ -204,6 +209,7 @@ function PickerModal({
             <View style={pm.searchRow}>
               <Search color={Colors.textMuted} size={15} />
               <TextInput
+                accessibilityLabel={`Search ${title}`}
                 style={pm.searchInput}
                 value={query}
                 onChangeText={setQuery}
@@ -224,6 +230,9 @@ function PickerModal({
               const active = item.value === selected;
               return (
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
                   style={[pm.item, active && pm.itemActive]}
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.7}
@@ -348,6 +357,9 @@ function SelectButton({
 }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${placeholder}, currently ${value}` : placeholder}
+      accessibilityState={{ selected: Boolean(value) }}
       style={[s.selectBtn, style, error ? s.inputError : null]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -545,6 +557,8 @@ export default function SignUpScreen() {
       {/* Header */}
       <View style={s.header}>
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={currentStep === 1 ? 'Go back' : 'Back to previous step'}
           style={s.headerBtn}
           onPress={currentStep === 1 ? () => router.back() : goToStep1}
           hitSlop={8}
@@ -560,7 +574,13 @@ export default function SignUpScreen() {
           </View>
         </View>
 
-        <TouchableOpacity style={s.headerBtn} onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Cancel signup"
+          style={s.headerBtn}
+          onPress={() => router.back()}
+          hitSlop={8}
+        >
           <X color={Colors.textMuted} size={20} />
         </TouchableOpacity>
       </View>
@@ -591,12 +611,15 @@ export default function SignUpScreen() {
               <View style={s.field}>
                 <FieldLabel label="Full Name" />
                 <TextInput
+                  accessibilityLabel="Full name"
                   style={[s.input, errors.fullName ? s.inputError : null]}
                   value={fullName}
                   onChangeText={t => { setFullName(t); setErrors(e => ({ ...e, fullName: '' })); }}
                   placeholder="Your full name"
                   placeholderTextColor={Colors.textDisabled}
                   autoCapitalize="words"
+                  autoComplete="name"
+                  textContentType="name"
                   returnKeyType="next"
                 />
                 {errors.fullName ? <Text style={s.errorHint}>{errors.fullName}</Text> : null}
@@ -606,6 +629,7 @@ export default function SignUpScreen() {
               <View style={s.field}>
                 <FieldLabel label="Email" />
                 <TextInput
+                  accessibilityLabel="Email"
                   style={[s.input, errors.email ? s.inputError : null]}
                   value={email}
                   onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: '' })); }}
@@ -613,6 +637,8 @@ export default function SignUpScreen() {
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
                   returnKeyType="next"
                 />
                 {errors.email ? <Text style={s.errorHint}>{errors.email}</Text> : null}
@@ -623,15 +649,26 @@ export default function SignUpScreen() {
                 <FieldLabel label="Password" />
                 <View style={s.passwordWrap}>
                   <TextInput
+                    accessibilityLabel="Password"
                     style={[s.input, s.passwordInput, errors.password ? s.inputError : null]}
                     value={password}
                     onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: '' })); }}
                     placeholder="Min. 8 characters"
                     placeholderTextColor={Colors.textDisabled}
                     secureTextEntry={!showPwd}
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
                     returnKeyType="next"
                   />
-                  <TouchableOpacity style={s.eyeBtn} onPress={() => setShowPwd(v => !v)} hitSlop={8}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={showPwd ? 'Hide password' : 'Show password'}
+                    accessibilityState={{ selected: showPwd }}
+                    style={s.eyeBtn}
+                    onPress={() => setShowPwd(v => !v)}
+                    hitSlop={8}
+                  >
                     {showPwd
                       ? <EyeOff color={Colors.textMuted} size={18} />
                       : <Eye color={Colors.textMuted} size={18} />}
@@ -653,6 +690,8 @@ export default function SignUpScreen() {
                 <FieldLabel label="Phone Number" optional />
                 <View style={s.phoneRow}>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Country calling code, currently ${phoneCode.dial}`}
                     style={[s.codeBtn, errors.phone ? s.inputError : null]}
                     onPress={() => setPickerTarget('phoneCode')}
                     activeOpacity={0.7}
@@ -662,12 +701,15 @@ export default function SignUpScreen() {
                     <ChevronDown color={Colors.textMuted} size={14} />
                   </TouchableOpacity>
                   <TextInput
+                    accessibilityLabel="Phone number"
                     style={[s.input, s.phoneInput, errors.phone ? s.inputError : null]}
                     value={phone}
                     onChangeText={t => { setPhone(t); setErrors(e => ({ ...e, phone: '' })); }}
                     placeholder="50 123 4567"
                     placeholderTextColor={Colors.textDisabled}
                     keyboardType="phone-pad"
+                    autoComplete="tel"
+                    textContentType="telephoneNumber"
                     returnKeyType="done"
                   />
                 </View>
@@ -755,6 +797,7 @@ export default function SignUpScreen() {
               <View style={s.field}>
                 <FieldLabel label="Hometown" />
                 <TextInput
+                  accessibilityLabel="Hometown"
                   style={[s.input, errors.hometown ? s.inputError : null]}
                   value={hometown}
                   onChangeText={t => { setHometown(t); setErrors(e => ({ ...e, hometown: '' })); }}
@@ -769,6 +812,7 @@ export default function SignUpScreen() {
               <View style={s.field}>
                 <FieldLabel label="Current Location" />
                 <TextInput
+                  accessibilityLabel="Current location"
                   style={[s.input, errors.currentLocation ? s.inputError : null]}
                   value={currentLocation}
                   onChangeText={t => { setCurrentLocation(t); setErrors(e => ({ ...e, currentLocation: '' })); }}
@@ -795,6 +839,7 @@ export default function SignUpScreen() {
               <View style={s.field}>
                 <FieldLabel label="League / Club" optional />
                 <TextInput
+                  accessibilityLabel="League or club"
                   style={s.input}
                   value={league}
                   onChangeText={setLeague}

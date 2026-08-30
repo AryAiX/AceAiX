@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { getPositionGroup } from '@/constants/positions';
+export { deadlineLabel, formatSalary } from './formatting';
 
 export type OpportunityType = 'Trial' | 'Contract' | 'Academy' | 'Loan' | 'Tryout';
 export type AppStatus =
@@ -351,38 +352,6 @@ export async function toggleOpportunitySave(
       .upsert({ opportunity_id: opportunityId, athlete_id: athleteId });
     return { error: error?.message ?? null };
   }
-}
-
-// ── Formatting ────────────────────────────────────────────────────────────────
-
-export function formatSalary(opp: Opportunity): string | null {
-  const { salary_min, salary_max, currency } = opp;
-  if (!salary_min && !salary_max) return null;
-  const fmt = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
-    if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-    return String(n);
-  };
-  const sym = CURRENCY_SYMBOLS[currency] ?? currency;
-  if (salary_min && salary_max) return `${sym}${fmt(salary_min)} – ${sym}${fmt(salary_max)}/yr`;
-  if (salary_max) return `Up to ${sym}${fmt(salary_max)}/yr`;
-  return `${sym}${fmt(salary_min!)}/yr`;
-}
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  USD: '$', EUR: '€', GBP: '£', AED: 'AED ', SAR: '﷼',
-};
-
-export function deadlineLabel(deadline: string | null): string {
-  if (!deadline) return 'Open';
-  const d = new Date(deadline);
-  const now = new Date();
-  const diff = Math.ceil((d.getTime() - now.getTime()) / 86400000);
-  if (diff < 0) return 'Closed';
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff <= 7) return `${diff}d left`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export function oppTimeAgo(iso: string): string {

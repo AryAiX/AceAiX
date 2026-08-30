@@ -111,10 +111,15 @@ export default function ResetPasswordScreen() {
               <View style={styles.field}>
                 <Text style={styles.label}>New password</Text>
                 <TextInput
+                  accessibilityLabel="New password"
                   style={styles.input}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="next"
                   editable={!loading}
                   placeholder="At least 8 characters"
                   placeholderTextColor={Colors.textDisabled}
@@ -123,10 +128,15 @@ export default function ResetPasswordScreen() {
               <View style={styles.field}>
                 <Text style={styles.label}>Confirm password</Text>
                 <TextInput
+                  accessibilityLabel="Confirm password"
                   style={styles.input}
                   value={confirm}
                   onChangeText={setConfirm}
                   secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="done"
                   editable={!loading}
                   onSubmitEditing={handleSubmit}
                   placeholderTextColor={Colors.textDisabled}

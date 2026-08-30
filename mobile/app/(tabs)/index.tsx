@@ -14,6 +14,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { normalizeMatchResult } from '@/lib/matchResults';
+import { canPlotTrend, pointSpan } from '@/lib/chartScale';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 
@@ -29,22 +30,32 @@ type OppCard = { title: string; club: string; loc: string; salary: string; tag: 
 function useCountUp(to: number, duration = 1200, delay = 400): number {
   const [value, setValue] = useState(0);
   useEffect(() => {
+    setValue(0);
     const anim = new Animated.Value(0);
     const id = anim.addListener(({ value: v }) => setValue(Math.round(v)));
-    Animated.timing(anim, { toValue: to, duration, delay, useNativeDriver: false }).start();
-    return () => anim.removeListener(id);
-  }, [to]);
+    const timing = Animated.timing(anim, { toValue: to, duration, delay, useNativeDriver: false });
+    timing.start();
+    return () => {
+      timing.stop();
+      anim.removeListener(id);
+    };
+  }, [delay, duration, to]);
   return value;
 }
 
 function useArcProgress(to: number, duration = 1400, delay = 500): number {
   const [p, setP] = useState(0);
   useEffect(() => {
+    setP(0);
     const anim = new Animated.Value(0);
     const id = anim.addListener(({ value: v }) => setP(v));
-    Animated.timing(anim, { toValue: to, duration, delay, useNativeDriver: false }).start();
-    return () => anim.removeListener(id);
-  }, [to]);
+    const timing = Animated.timing(anim, { toValue: to, duration, delay, useNativeDriver: false });
+    timing.start();
+    return () => {
+      timing.stop();
+      anim.removeListener(id);
+    };
+  }, [delay, duration, to]);
   return p;
 }
 
@@ -53,13 +64,15 @@ function LiveDot({ reduced }: { reduced: boolean }) {
   const anim = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     if (reduced) return;
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: 0.2, duration: 600, useNativeDriver: true }),
         Animated.timing(anim, { toValue: 1,   duration: 600, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim, reduced]);
   return <Animated.View style={[s.liveDot, { opacity: anim }]} />;
 }
 
@@ -68,13 +81,15 @@ function PulseRing({ color, size, reduced }: { color: string; size: number; redu
   const opacity = useRef(new Animated.Value(0.6)).current;
   useEffect(() => {
     if (reduced) return;
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.parallel([
         Animated.timing(scale,   { toValue: 2.0, duration: 1800, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0,   duration: 1800, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity, reduced, scale]);
   return (
     <Animated.View
       pointerEvents="none"
@@ -91,14 +106,16 @@ function ScanLine({ cardHeight, reduced }: { cardHeight: number; reduced: boolea
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (reduced) return;
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: cardHeight, duration: 2800, useNativeDriver: true }),
         Animated.delay(1200),
         Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
       ])
-    ).start();
-  }, [cardHeight]);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim, cardHeight, reduced]);
   return (
     <Animated.View
       pointerEvents="none"
@@ -200,8 +217,10 @@ function LineAreaChart({ actual, forecast, w, h }: { actual: (number | null)[]; 
   const pad = { t: 8, r: 8, b: 8, l: 8 };
   const cw = w - pad.l - pad.r, ch = h - pad.t - pad.b;
   const all = [...actual, ...forecast].filter((v): v is number => v !== null);
+  if (all.length === 0) return null;
   const minV = Math.min(...all) - 0.3, maxV = Math.max(...all) + 0.3;
-  const xS = (i: number) => pad.l + (i / (actual.length - 1)) * cw;
+  const span = pointSpan(actual.length);
+  const xS = (i: number) => pad.l + (i / span) * cw;
   const yS = (v: number) => pad.t + ch - ((v - minV) / (maxV - minV)) * ch;
   const buildPath = (values: (number | null)[]) => {
     let path = '';
@@ -665,7 +684,7 @@ export default function Dashboard() {
               <Text style={s.top15Txt}>Live</Text>
             </View>
           </View>
-          {career.actual.some(v => v !== null) ? (
+          {canPlotTrend(career.actual) ? (
             <>
               <LineAreaChart actual={career.actual} forecast={career.forecast} w={SW - 64} h={110} />
               <View style={s.yearRow}>
@@ -684,7 +703,9 @@ export default function Dashboard() {
               </View>
             </>
           ) : (
-            <Text style={s.emptySectionText}>No career trajectory data yet.</Text>
+            <Text style={s.emptySectionText}>
+              More performance history is needed to chart a trajectory.
+            </Text>
           )}
         </RevealCard>
 

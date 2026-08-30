@@ -31,6 +31,12 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
 
   if (!opportunity) return null;
 
+  // Dismissing mid-submit would strand the application without feedback.
+  const handleDismiss = () => {
+    if (submitting) return;
+    onClose();
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
     setSubmitting(true);
@@ -47,9 +53,16 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
   };
 
   return (
-    <Modal visible={!!opportunity} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={!!opportunity}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
-        <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={s.backdropTap} onPress={handleDismiss} activeOpacity={1} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[s.sheet, { paddingBottom: insets.bottom + Spacing.md }]}
@@ -62,7 +75,12 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
                 {opportunity.position} · {opportunity.club}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close application form"
+              onPress={handleDismiss}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={20} />
             </TouchableOpacity>
           </View>
@@ -87,7 +105,7 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
           </View>
 
           <View style={s.footer}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+            <TouchableOpacity style={s.cancelBtn} onPress={handleDismiss} disabled={submitting}>
               <Text style={s.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity

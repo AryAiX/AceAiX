@@ -50,7 +50,14 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
   }, [visible, athleteId]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
         <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
         <View style={[s.sheet, { paddingBottom: insets.bottom + Spacing.md }]}>
@@ -72,13 +79,13 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
             {loading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
             ) : error ? (
-              <Text style={s.stateTxt}>Couldn't load partner data — pull to refresh or try again.</Text>
+              <Text style={s.stateTxt}>Couldn’t load partner data — pull to refresh or try again.</Text>
             ) : partners.length === 0 ? (
               <Text style={s.stateTxt}>No medical partners are currently connected to your account.</Text>
             ) : (
               partners.map((partner) => {
                 const pill = consentLabel(partner.consentStatus);
-                const accreditation = partner.accreditationStatus === 'accredited'
+                const accreditation = partner.accreditationStatus === 'approved'
                   ? 'Accredited partner'
                   : partner.accreditationStatus;
                 const meta = partner.consentScope

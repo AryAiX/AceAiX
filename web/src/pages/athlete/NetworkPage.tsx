@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Users, UserPlus, UserCheck, UserMinus, ShieldCheck,
@@ -46,6 +46,7 @@ const RELATIONSHIP_OPTIONS: { value: RecommendationRelationship; label: string }
 ];
 
 type Tab = 'followers' | 'following' | 'recommendations';
+type FollowRow = { follower?: UserProfile | null; following?: UserProfile | null };
 
 /* ── write recommendation modal ─────────────────────────────── */
 function WriteRecommendationModal({ recipientId, recipientName, onClose, onSaved }: {
@@ -304,43 +305,53 @@ export default function NetworkPage() {
   const [writeRecModal, setWriteRecModal]   = useState<{ id: string; name: string } | null>(null);
   const [mounted, setMounted]               = useState(false);
 
-  useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
-  useEffect(() => { if (user) loadAll(); }, [user]);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
-  async function loadAll() {
-    if (!user) return;
-    setLoading(true);
-    await Promise.all([loadFollowers(), loadFollowing(), loadRecommendations()]);
-    setLoading(false);
-  }
-
-  async function loadFollowers() {
+  const loadFollowers = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('follows')
       .select('follower_id, follower:user_profiles!follows_follower_id_fkey(*)')
       .eq('following_id', user.id);
-    if (data) setFollowers(data.map((r: any) => r.follower as UserProfile).filter(Boolean));
-  }
+    if (data) {
+      const rows = data as unknown as FollowRow[];
+      setFollowers(rows.map(r => r.follower).filter((value): value is UserProfile => Boolean(value)));
+    }
+  }, [user]);
 
-  async function loadFollowing() {
+  const loadFollowing = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('follows')
       .select('following_id, following:user_profiles!follows_following_id_fkey(*)')
       .eq('follower_id', user.id);
     if (data) {
-      const users = data.map((r: any) => r.following as UserProfile).filter(Boolean);
+      const rows = data as unknown as FollowRow[];
+      const users = rows.map(r => r.following).filter((value): value is UserProfile => Boolean(value));
       setFollowing(users);
-      setMyFollowingIds(new Set(users.map((u: UserProfile) => u.id)));
+      setMyFollowingIds(new Set(users.map(u => u.id)));
     }
-  }
+  }, [user]);
 
-  async function loadRecommendations() {
+  const loadRecommendations = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('recommendations')
       .select('*, author:user_profiles!recommendations_author_id_fkey(*)')
       .eq('recipient_id', user.id).order('created_at', { ascending: false });
     if (data) setRecommendations(data as Recommendation[]);
-  }
+  }, [user]);
+
+  const loadAll = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    await Promise.all([loadFollowers(), loadFollowing(), loadRecommendations()]);
+    setLoading(false);
+  }, [user, loadFollowers, loadFollowing, loadRecommendations]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   async function toggleFollow(targetId: string) {
     if (!user) return;

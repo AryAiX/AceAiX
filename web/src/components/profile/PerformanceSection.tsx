@@ -155,8 +155,14 @@ export default function PerformanceSection({ athlete, isOwner }: PerformanceSect
               <span className="flex items-center gap-1 text-[10px] text-muted"><span className="w-4 h-0.5 bg-azure inline-block rounded border-dashed" style={{ borderTop: '2px dashed #2F80ED', background: 'none' }} /> AI Forecast</span>
             </div>
           </div>
-          <TrajectoryChart data={athlete.trajectory} />
-          <p className="text-[10px] text-muted mt-2">AI projection based on form trend, age curve, and competition level.</p>
+          {athlete.trajectory.length < 2 ? (
+            <p className="py-8 text-center text-sm text-muted">More performance history is needed to chart a trajectory.</p>
+          ) : (
+            <>
+              <TrajectoryChart data={athlete.trajectory} />
+              <p className="text-[10px] text-muted mt-2">AI projection based on form trend, age curve, and competition level.</p>
+            </>
+          )}
         </div>
       </div>
     </SectionCard>

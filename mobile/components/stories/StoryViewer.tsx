@@ -85,7 +85,6 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
   const progressAnims = useRef<Animated.Value[]>([]);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentGroup: StoryAuthorGroup | undefined = groups[groupIdx];
   const currentStory: Story | undefined = currentGroup?.stories[storyIdx];
@@ -107,6 +106,18 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   useEffect(() => {
     setVideoDuration(null);
   }, [currentStory?.id]);
+
+  const advanceStory = useCallback(() => {
+    if (!currentGroup) return;
+    if (storyIdx < currentGroup.stories.length - 1) {
+      setStoryIdx((i) => i + 1);
+    } else if (groupIdx < groups.length - 1) {
+      setGroupIdx((g) => g + 1);
+      setStoryIdx(0);
+    } else {
+      onClose();
+    }
+  }, [storyIdx, groupIdx, currentGroup, groups.length, onClose]);
 
   // Progress timer
   useEffect(() => {
@@ -136,22 +147,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     });
 
     return () => { anim.stop(); };
-  }, [storyIdx, groupIdx, paused, visible, videoDuration]);
-
-  const advanceStory = useCallback(() => {
-    if (!currentGroup) return;
-    if (storyIdx < currentGroup.stories.length - 1) {
-      setStoryIdx((i) => i + 1);
-    } else {
-      // Move to next group
-      if (groupIdx < groups.length - 1) {
-        setGroupIdx((g) => g + 1);
-        setStoryIdx(0);
-      } else {
-        onClose();
-      }
-    }
-  }, [storyIdx, groupIdx, currentGroup, groups.length, onClose]);
+  }, [advanceStory, currentStory, paused, storyIdx, visible, videoDuration]);
 
   const goBack = useCallback(() => {
     if (storyIdx > 0) {
@@ -270,7 +266,14 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   if (!visible || !currentGroup || !currentStory) return null;
 
   return (
-    <Modal visible={visible} animationType="fade" presentationStyle="fullScreen" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={s.root} {...panResponder.panHandlers}>
         {/* ── MEDIA ─────────────────────────────────────────────────────────── */}
         <View style={s.mediaWrap}>
@@ -361,10 +364,20 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
             </View>
           </View>
           <View style={s.headerRight}>
-            <TouchableOpacity onPress={() => setMenuOpen((p) => !p)} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Story options"
+              onPress={() => setMenuOpen((p) => !p)}
+              hitSlop={8}
+            >
               <MoreHorizontal color={Colors.white} size={22} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close story"
+              onPress={onClose}
+              hitSlop={8}
+            >
               <X color={Colors.white} size={22} />
             </TouchableOpacity>
           </View>
@@ -421,6 +434,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
             </View>
             <View style={s.replyInputRow}>
               <TextInput
+                accessibilityLabel="Reply to story"
                 style={s.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}
@@ -504,7 +518,11 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
               <Text style={s.viewersTitle}>
                 {viewers.length} viewer{viewers.length !== 1 ? 's' : ''}
               </Text>
-              <TouchableOpacity onPress={() => setShowViewers(false)}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Hide viewer list"
+                onPress={() => setShowViewers(false)}
+              >
                 <ChevronDown color={Colors.textMuted} size={22} />
               </TouchableOpacity>
             </View>

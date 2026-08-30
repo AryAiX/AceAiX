@@ -69,13 +69,17 @@ function attrColor(v: number) {
 function useCountUp(to: number, duration = 1000, delay = 0) {
   const [val, setVal] = useState(0);
   useEffect(() => {
+    setVal(0);
     const anim = new Animated.Value(0);
     anim.addListener(({ value: v }) => setVal(Math.round(v)));
-    const t = setTimeout(() =>
-      Animated.timing(anim, { toValue: to, duration, useNativeDriver: false }).start()
-    , delay);
-    return () => { clearTimeout(t); anim.removeAllListeners(); };
-  }, [to]);
+    const timing = Animated.timing(anim, { toValue: to, duration, useNativeDriver: false });
+    const t = setTimeout(() => timing.start(), delay);
+    return () => {
+      clearTimeout(t);
+      timing.stop();
+      anim.removeAllListeners();
+    };
+  }, [delay, duration, to]);
   return val;
 }
 
@@ -748,7 +752,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile
           </View>
         ) : highlightsError ? (
           <View style={s.activityEmpty}>
-            <Text style={s.activityEmptyTxt}>Couldn't load this right now. Pull down to refresh and try again.</Text>
+            <Text style={s.activityEmptyTxt}>Couldn’t load this right now. Pull down to refresh and try again.</Text>
           </View>
         ) : highlightTab === 'Highlights' ? (
           highlights.length > 0 ? (
@@ -839,7 +843,14 @@ function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile
                 <Zap color={Colors.bg} size={9} fill={Colors.bg} />
                 <Text style={s.aiScoreChipTxt}>{a.score}</Text>
               </View>
-              <TouchableOpacity style={s.followBtn} disabled={followPending.has(a.userId)} onPress={() => handleFollowSimilar(a.userId)}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Follow ${a.name}`}
+                accessibilityState={{ disabled: followPending.has(a.userId) }}
+                style={s.followBtn}
+                disabled={followPending.has(a.userId)}
+                onPress={() => handleFollowSimilar(a.userId)}
+              >
                 <Plus color={Colors.primary} size={14} />
               </TouchableOpacity>
             </View>
