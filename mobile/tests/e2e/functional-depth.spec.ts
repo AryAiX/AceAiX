@@ -66,16 +66,20 @@ async function deletePerformanceSeason(season: string) {
   if (error) throw error;
 }
 
-async function primaryDatabase() {
+async function databaseFor(account: { email: string; password: string }) {
   const env = mobileEnv();
   const db = createClient(
     env.EXPO_PUBLIC_SUPABASE_URL,
     env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     { auth: { persistSession: false } },
   );
-  const { error } = await db.auth.signInWithPassword(PRIMARY);
+  const { error } = await db.auth.signInWithPassword(account);
   if (error) throw error;
   return db;
+}
+
+async function primaryDatabase() {
+  return databaseFor(PRIMARY);
 }
 
 function postCard(page: Page, caption: string) {
@@ -603,10 +607,33 @@ test.describe.serial('deep mobile functional workflows', () => {
       await primary.getByRole('button', { name: 'Close comments' }).click();
 
       await secondary.reload();
-      await postCard(secondary, editedCaption).getByRole('button', { name: 'View comments' }).click();
+      const secondaryAfterReplyCard = postCard(secondary, editedCaption);
+      await secondaryAfterReplyCard.getByRole('button', { name: 'View comments' }).click();
       await expect(secondary.getByText(authorReply, { exact: true })).toBeVisible();
       await secondary.getByRole('button', { name: 'Close comments' }).click();
+
+      await secondaryAfterReplyCard.getByRole('button', { name: 'Open post menu' }).click();
+      secondary.once('dialog', (dialog) => dialog.accept());
+      await secondaryAfterReplyCard.getByRole('button', { name: 'Block member' }).click();
+      await expect(secondary.getByText(editedCaption)).not.toBeVisible();
+
+      await secondary.goto('/network');
+      await secondary.getByText('Blocked', { exact: true }).click();
+      await expect(secondary.getByText('Rudy Fuller', { exact: true })).toBeVisible();
+      await secondary.getByRole('button', { name: 'Unblock Rudy Fuller' }).click();
+      await secondary.goto('/feed');
+      await secondary.getByRole('button', { name: 'Show Latest posts' }).click();
+      await expect(secondary.getByText(editedCaption)).toBeVisible();
     } finally {
+      const primaryDb = await databaseFor(PRIMARY);
+      const secondaryDb = await databaseFor(SECONDARY);
+      const { data: primaryUser } = await primaryDb.auth.getUser();
+      if (primaryUser.user) {
+        await secondaryDb
+          .from('user_blocks')
+          .delete()
+          .eq('blocked_id', primaryUser.user.id);
+      }
       await cleanupFunctionalPosts(primary).catch(() => {});
       await Promise.all([primaryContext.close(), secondaryContext.close()]);
     }
