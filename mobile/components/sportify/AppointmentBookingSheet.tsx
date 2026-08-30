@@ -53,6 +53,12 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
     );
   };
 
+  // Dismissing mid-booking would hide whether the slot was reserved.
+  const handleDismiss = () => {
+    if (submitting) return;
+    onClose();
+  };
+
   const handleBook = async () => {
     if (!user || preferredTimes.length === 0) return;
     setSubmitting(true);
@@ -71,9 +77,16 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
-        <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={s.backdropTap} onPress={handleDismiss} activeOpacity={1} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[s.sheet, { paddingBottom: insets.bottom + Spacing.md }]}
@@ -81,7 +94,14 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
           <View style={s.handle} />
           <View style={s.header}>
             <Text style={s.title}>Book Academy Visit</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}><X color={Colors.textMuted} size={20} /></TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close booking form"
+              onPress={handleDismiss}
+              hitSlop={8}
+            >
+              <X color={Colors.textMuted} size={20} />
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
@@ -173,7 +193,7 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
           </ScrollView>
 
           <View style={s.footer}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+            <TouchableOpacity style={s.cancelBtn} onPress={handleDismiss} disabled={submitting}>
               <Text style={s.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity

@@ -288,13 +288,15 @@ function SkeletonCard() {
   const shimmer = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
         Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [shimmer]);
 
   const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.8] });
 
@@ -341,9 +343,15 @@ function EmptyFeed() {
           Animated.timing(v, { toValue: 1,   duration: 0,    useNativeDriver: true }),
         ])
       );
-    anim(ring1, 0).start();
-    anim(ring2, 800).start();
-  }, []);
+    const loop1 = anim(ring1, 0);
+    const loop2 = anim(ring2, 800);
+    loop1.start();
+    loop2.start();
+    return () => {
+      loop1.stop();
+      loop2.stop();
+    };
+  }, [ring1, ring2]);
 
   const ring1Opacity = ring1.interpolate({ inputRange: [1, 2.2], outputRange: [0.5, 0] });
   const ring2Opacity = ring2.interpolate({ inputRange: [1, 2.2], outputRange: [0.35, 0] });

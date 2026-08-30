@@ -75,12 +75,17 @@ function normalizeType(type: string): string {
 function useCountUp(to: number, delay = 300): number {
   const [val, setVal] = useState(0);
   useEffect(() => {
+    setVal(0);
     if (to === 0) return;
     const anim = new Animated.Value(0);
     const id = anim.addListener(({ value: v }) => setVal(Math.round(v)));
-    Animated.timing(anim, { toValue: to, duration: 900, delay, useNativeDriver: false }).start();
-    return () => anim.removeListener(id);
-  }, [to]);
+    const timing = Animated.timing(anim, { toValue: to, duration: 900, delay, useNativeDriver: false });
+    timing.start();
+    return () => {
+      timing.stop();
+      anim.removeListener(id);
+    };
+  }, [delay, to]);
   return val;
 }
 
@@ -134,13 +139,15 @@ const hb = StyleSheet.create({
 function HotBadge() {
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1.12, duration: 550, useNativeDriver: true }),
         Animated.timing(pulse, { toValue: 1,    duration: 550, useNativeDriver: true }),
       ])
-    ).start();
-  }, []);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
   return (
     <Animated.View style={[hot.wrap, { transform: [{ scale: pulse }] }]}>
       <Zap color={Colors.error} size={10} fill={Colors.error} />
@@ -336,13 +343,15 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
 
   useEffect(() => {
     if (app.status !== 'applied') return;
-    Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 0.35, duration: 700, useNativeDriver: true }),
         Animated.timing(pulse, { toValue: 1,    duration: 700, useNativeDriver: true }),
       ])
-    ).start();
-  }, [app.status]);
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [app.status, pulse]);
 
   const typeColor = opp?.type ? (TYPE_COLORS[normalizeType(opp.type)] ?? Colors.primary) : Colors.primary;
 
@@ -388,9 +397,15 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
           Animated.timing(v, { toValue: 1,   duration: 0,    useNativeDriver: true }),
         ])
       );
-    anim(ring1, 0).start();
-    anim(ring2, 800).start();
-  }, []);
+    const loop1 = anim(ring1, 0);
+    const loop2 = anim(ring2, 800);
+    loop1.start();
+    loop2.start();
+    return () => {
+      loop1.stop();
+      loop2.stop();
+    };
+  }, [ring1, ring2]);
 
   const r1o = ring1.interpolate({ inputRange: [1, 2.4], outputRange: [0.55, 0] });
   const r2o = ring2.interpolate({ inputRange: [1, 2.4], outputRange: [0.35, 0] });

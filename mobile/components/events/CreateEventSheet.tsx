@@ -60,6 +60,7 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
   }, [visible, editingEvent]);
 
   function handleClose() {
+    if (loading) return;
     reset();
     onClose();
   }
@@ -102,14 +103,25 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleClose}
+      accessibilityViewIsModal
+    >
       <View style={s.overlay}>
         <View style={s.sheet}>
           <View style={s.handle} />
 
           <View style={s.header}>
             <Text style={s.heading}>{editingEvent ? 'Edit Event' : 'Create Event'}</Text>
-            <TouchableOpacity onPress={handleClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close event form"
+              onPress={handleClose}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={22} />
             </TouchableOpacity>
           </View>

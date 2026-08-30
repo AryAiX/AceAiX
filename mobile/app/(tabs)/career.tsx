@@ -84,6 +84,13 @@ export default function Career() {
     void loadEntries();
   }, [loadEntries]);
 
+  // Dismissing mid-save would hide whether the milestone was stored.
+  function closeEditor() {
+    if (saving) return;
+    setEditingId(null);
+    setEditorOpen(false);
+  }
+
   async function saveEntry() {
     if (!profile?.athlete_profile_id || !type.trim() || !clubOrEvent.trim()) {
       Alert.alert('Complete the entry', 'Add a milestone type and club or event.');
@@ -290,12 +297,18 @@ export default function Career() {
         <View style={{ height: 24 }} />
       </ScrollView>
 
-      <Modal visible={editorOpen} transparent animationType="slide" onRequestClose={() => { setEditingId(null); setEditorOpen(false); }}>
+      <Modal
+        visible={editorOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={closeEditor}
+        accessibilityViewIsModal
+      >
         <View style={s.modalBackdrop}>
           <View style={s.editor}>
             <View style={s.editorHeader}>
               <Text style={s.editorTitle}>{editingId ? 'Edit Career Entry' : 'Add Career Entry'}</Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={() => { setEditingId(null); setEditorOpen(false); }}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={closeEditor}>
                 <X color={Colors.textMuted} size={22} />
               </TouchableOpacity>
             </View>

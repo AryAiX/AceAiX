@@ -10,6 +10,7 @@ import { normalizeSportKey } from '@/constants/sportsConfig';
 import { supabase } from '@/lib/supabase';
 import { triggerChessSyncFull, isSyncStale } from '@/lib/chessService';
 import { useChessStats } from '@/hooks/useChessStats';
+import { useTrackedTimeout } from '@/hooks/useTrackedTimeout';
 import {
   DEFAULT_PREFS,
   fetchNotifPrefs,
@@ -46,6 +47,7 @@ const NOTIF_CATEGORIES: NotifCategory[] = [
 export default function Settings() {
   const { profile, signOut, deleteAccount, user, refreshProfile } = useAuth();
   const router = useRouter();
+  const scheduleTimeout = useTrackedTimeout();
   const [publicProfile, setPublicProfile] = useState(profile?.is_open_to_offers ?? true);
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [showcaseOptIn, setShowcaseOptIn] = useState(profile?.showcase_opt_in ?? false);
@@ -160,7 +162,7 @@ export default function Settings() {
       return;
     }
     setPrefsSaved(true);
-    setTimeout(() => setPrefsSaved(false), 2000);
+    scheduleTimeout(() => setPrefsSaved(false), 2000);
   }
 
   async function handleSaveConnections() {
@@ -179,7 +181,7 @@ export default function Settings() {
     } else {
       await refreshProfile();
       setConnSaved(true);
-      setTimeout(() => setConnSaved(false), 2000);
+      scheduleTimeout(() => setConnSaved(false), 2000);
     }
     setSavingConn(false);
   }
@@ -191,7 +193,7 @@ export default function Settings() {
     const { ok, error } = await triggerChessSyncFull(user.id, chesscom || null, lichess || null);
     setSyncMsg(ok ? 'Chess data synced!' : (error ?? 'Sync failed'));
     setSyncing(false);
-    setTimeout(() => setSyncMsg(null), 4000);
+    scheduleTimeout(() => setSyncMsg(null), 4000);
   }
 
   async function handleSportifyLink() {
@@ -219,7 +221,7 @@ export default function Settings() {
       setSportifyMsg('Sportify account linked!');
     }
     setSportifyLinking(false);
-    setTimeout(() => setSportifyMsg(null), 3000);
+    scheduleTimeout(() => setSportifyMsg(null), 3000);
   }
 
   async function handleSportifyDisconnect() {
@@ -236,7 +238,7 @@ export default function Settings() {
     setSportifyId('');
     setDisconnecting(false);
     setSportifyMsg('Disconnected and data deleted.');
-    setTimeout(() => setSportifyMsg(null), 3000);
+    scheduleTimeout(() => setSportifyMsg(null), 3000);
   }
 
   async function handleSignOut() {

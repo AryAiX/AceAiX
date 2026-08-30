@@ -69,13 +69,17 @@ function attrColor(v: number) {
 function useCountUp(to: number, duration = 1000, delay = 0) {
   const [val, setVal] = useState(0);
   useEffect(() => {
+    setVal(0);
     const anim = new Animated.Value(0);
     anim.addListener(({ value: v }) => setVal(Math.round(v)));
-    const t = setTimeout(() =>
-      Animated.timing(anim, { toValue: to, duration, useNativeDriver: false }).start()
-    , delay);
-    return () => { clearTimeout(t); anim.removeAllListeners(); };
-  }, [to]);
+    const timing = Animated.timing(anim, { toValue: to, duration, useNativeDriver: false });
+    const t = setTimeout(() => timing.start(), delay);
+    return () => {
+      clearTimeout(t);
+      timing.stop();
+      anim.removeAllListeners();
+    };
+  }, [delay, duration, to]);
   return val;
 }
 

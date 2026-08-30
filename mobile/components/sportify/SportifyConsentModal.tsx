@@ -49,6 +49,12 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
 
   const canSubmit = confirmed && (!isMinor || (guardianName.trim().length > 0 && guardianEmail.trim().length > 0));
 
+  // Dismissing mid-grant would leave the consent record ambiguous.
+  const handleDismiss = () => {
+    if (submitting) return;
+    onClose();
+  };
+
   const handleGrant = async () => {
     if (!user || !canSubmit) return;
     setSubmitting(true);
@@ -67,9 +73,16 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={handleDismiss}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
-        <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
+        <TouchableOpacity style={s.backdropTap} onPress={handleDismiss} activeOpacity={1} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[s.sheet, { paddingBottom: insets.bottom + Spacing.md }]}
@@ -83,7 +96,14 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
               <Text style={s.title}>Data Import Consent</Text>
               <Text style={s.sub}>Sportify Academy · AceAiX</Text>
             </View>
-            <TouchableOpacity onPress={onClose} hitSlop={8}><X color={Colors.textMuted} size={20} /></TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close consent form"
+              onPress={handleDismiss}
+              hitSlop={8}
+            >
+              <X color={Colors.textMuted} size={20} />
+            </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
@@ -169,10 +189,12 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
           </ScrollView>
 
           <View style={s.footer}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+            <TouchableOpacity style={s.cancelBtn} onPress={handleDismiss} disabled={submitting}>
               <Text style={s.cancelTxt}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Grant data import consent"
               style={[s.grantBtn, (!canSubmit || submitting) && { opacity: 0.4 }]}
               onPress={handleGrant}
               disabled={!canSubmit || submitting}

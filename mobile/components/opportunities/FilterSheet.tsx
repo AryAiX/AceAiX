@@ -44,7 +44,14 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
         <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
         <KeyboardAvoidingView
@@ -54,7 +61,12 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
           <View style={s.handle} />
           <View style={s.header}>
             <Text style={s.title}>Filter Opportunities</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={8}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Close filters"
+              onPress={onClose}
+              hitSlop={8}
+            >
               <X color={Colors.textMuted} size={20} />
             </TouchableOpacity>
           </View>

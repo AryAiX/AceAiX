@@ -50,7 +50,14 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
   }, [visible, athleteId]);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent
+      statusBarTranslucent
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
       <View style={s.backdrop}>
         <TouchableOpacity style={s.backdropTap} onPress={onClose} activeOpacity={1} />
         <View style={[s.sheet, { paddingBottom: insets.bottom + Spacing.md }]}>
