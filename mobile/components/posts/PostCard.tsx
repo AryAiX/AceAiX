@@ -65,6 +65,10 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(post.caption ?? '');
   const [savingEdit, setSavingEdit] = useState(false);
+  const [liked, setLiked] = useState(post.liked);
+  const [likeCount, setLikeCount] = useState(post.like_count);
+  const [saved, setSaved] = useState(post.saved);
+  const [saveCount, setSaveCount] = useState(post.save_count);
 
   // Entry animation
   const entryOpacity = useRef(new Animated.Value(0)).current;
@@ -89,12 +93,25 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
     void markPostViewed(post.id, user.id);
   }, [post.id, user]);
 
+  useEffect(() => {
+    setLiked(post.liked);
+    setLikeCount(post.like_count);
+  }, [post.like_count, post.liked]);
+
+  useEffect(() => {
+    setSaved(post.saved);
+    setSaveCount(post.save_count);
+  }, [post.save_count, post.saved]);
+
   const handleLike = useCallback(async () => {
     if (!user) return;
-    const newLiked = !post.liked;
+    const newLiked = !liked;
+    const newCount = likeCount + (newLiked ? 1 : -1);
+    setLiked(newLiked);
+    setLikeCount(newCount);
     onUpdate(post.id, {
       liked: newLiked,
-      like_count: post.like_count + (newLiked ? 1 : -1),
+      like_count: newCount,
     });
     if (newLiked) {
       Animated.sequence([
@@ -108,27 +125,34 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         ]),
       ]).start();
     }
-    const { error } = await toggleLike(post.id, user.id, post.liked);
+    const { error } = await toggleLike(post.id, user.id, liked);
     if (error) {
-      onUpdate(post.id, { liked: post.liked, like_count: post.like_count });
+      setLiked(liked);
+      setLikeCount(likeCount);
+      onUpdate(post.id, { liked, like_count: likeCount });
       Alert.alert('Could not update like', error);
     }
-  }, [post, user, heartScale, heartGlowAnim, onUpdate]);
+  }, [heartGlowAnim, heartScale, likeCount, liked, onUpdate, post.id, user]);
 
   const handleSave = useCallback(async () => {
     if (!user) return;
-    const newSaved = !post.saved;
-    onUpdate(post.id, { saved: newSaved, save_count: post.save_count + (newSaved ? 1 : -1) });
+    const newSaved = !saved;
+    const newCount = saveCount + (newSaved ? 1 : -1);
+    setSaved(newSaved);
+    setSaveCount(newCount);
+    onUpdate(post.id, { saved: newSaved, save_count: newCount });
     Animated.sequence([
       Animated.spring(saveScale, { toValue: 1.3, useNativeDriver: true }),
       Animated.spring(saveScale, { toValue: 1,   useNativeDriver: true }),
     ]).start();
-    const { error } = await toggleSave(post.id, user.id, post.saved);
+    const { error } = await toggleSave(post.id, user.id, saved);
     if (error) {
-      onUpdate(post.id, { saved: post.saved, save_count: post.save_count });
+      setSaved(saved);
+      setSaveCount(saveCount);
+      onUpdate(post.id, { saved, save_count: saveCount });
       Alert.alert('Could not update save', error);
     }
-  }, [post, user, saveScale, onUpdate]);
+  }, [onUpdate, post.id, saveCount, saveScale, saved, user]);
 
   const performDelete = useCallback(async () => {
     const { error } = await deletePost(post.id);
@@ -243,7 +267,7 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
   return (
     <Animated.View style={[
       s.card,
-      post.liked && s.cardLiked,
+      liked && s.cardLiked,
       { opacity: entryOpacity, transform: [{ translateY: entryY }] },
     ]}>
 
@@ -378,7 +402,7 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
           <View style={s.menuDiv} />
           <TouchableOpacity style={s.menuItem} onPress={() => { handleSave(); setMenuOpen(false); }}>
             <Bookmark color={Colors.textPrimary} size={15} />
-            <Text style={s.menuTxt}>{post.saved ? 'Unsave' : 'Save'}</Text>
+            <Text style={s.menuTxt}>{saved ? 'Unsave' : 'Save'}</Text>
           </TouchableOpacity>
           <View style={s.menuDiv} />
           <TouchableOpacity style={s.menuItem} onPress={() => setMenuOpen(false)}>
@@ -456,8 +480,8 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
           {/* Like */}
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel={post.liked ? 'Unlike post' : 'Like post'}
-            accessibilityState={{ selected: post.liked }}
+            accessibilityLabel={liked ? 'Unlike post' : 'Like post'}
+            accessibilityState={{ selected: liked }}
             style={s.actionBtn}
             onPress={handleLike}
             activeOpacity={0.75}
@@ -465,15 +489,15 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
             <Animated.View style={[s.heartGlowWrap, { backgroundColor: heartGlowBg }]}>
               <Animated.View style={{ transform: [{ scale: heartScale }] }}>
                 <Heart
-                  color={post.liked ? Colors.error : Colors.textMuted}
-                  fill={post.liked ? Colors.error : 'transparent'}
+                  color={liked ? Colors.error : Colors.textMuted}
+                  fill={liked ? Colors.error : 'transparent'}
                   size={22}
                 />
               </Animated.View>
             </Animated.View>
-            {post.like_count > 0 && (
-              <Text style={[s.actionCount, post.liked && s.countLiked]}>
-                {formatCount(post.like_count)}
+            {likeCount > 0 && (
+              <Text style={[s.actionCount, liked && s.countLiked]}>
+                {formatCount(likeCount)}
               </Text>
             )}
           </TouchableOpacity>
@@ -507,16 +531,16 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         {/* Bookmark */}
         <TouchableOpacity
           accessibilityRole="button"
-          accessibilityLabel={post.saved ? 'Remove saved post' : 'Save post'}
-          accessibilityState={{ selected: post.saved }}
+          accessibilityLabel={saved ? 'Remove saved post' : 'Save post'}
+          accessibilityState={{ selected: saved }}
           style={s.actionBtn}
           onPress={handleSave}
           activeOpacity={0.75}
         >
           <Animated.View style={{ transform: [{ scale: saveScale }] }}>
             <Bookmark
-              color={post.saved ? Colors.accent : Colors.textMuted}
-              fill={post.saved ? Colors.accent : 'transparent'}
+              color={saved ? Colors.accent : Colors.textMuted}
+              fill={saved ? Colors.accent : 'transparent'}
               size={22}
             />
           </Animated.View>

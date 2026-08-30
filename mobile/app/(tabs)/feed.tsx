@@ -217,10 +217,6 @@ export default function FeedScreen() {
       ) : (
         <FlatList
           data={posts}
-          // PostCard actions optimistically replace an item in `posts`. Expo's
-          // web FlatList can retain the existing rendered row unless explicit
-          // extra data changes, leaving like/save feedback stale until reload.
-          extraData={posts}
           keyExtractor={p => p.id}
           renderItem={({ item }) => (
             <PostCard
