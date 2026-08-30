@@ -1,4 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test';
+import { createClient } from '@supabase/supabase-js';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const PRIMARY = {
   email: process.env.MOBILE_E2E_EMAIL ?? 'athlete1@aryaix.com',
@@ -30,6 +33,36 @@ async function login(page: Page, account = PRIMARY) {
   await expect(page.locator('body')).toContainText(/Dashboard|Welcome|Good /i, {
     timeout: 20_000,
   });
+}
+
+function mobileEnv() {
+  const env = fs.readFileSync(path.join(process.cwd(), '.env'), 'utf8');
+  return Object.fromEntries(
+    env
+      .split(/\r?\n/)
+      .filter((line) => line && !line.startsWith('#'))
+      .map((line) => {
+        const separator = line.indexOf('=');
+        return [line.slice(0, separator), line.slice(separator + 1)];
+      }),
+  );
+}
+
+async function deletePerformanceSeason(season: string) {
+  const env = mobileEnv();
+  const db = createClient(
+    env.EXPO_PUBLIC_SUPABASE_URL,
+    env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    { auth: { persistSession: false } },
+  );
+  const { data, error: authError } = await db.auth.signInWithPassword(PRIMARY);
+  if (authError) throw authError;
+  const { error } = await db
+    .from('performance_records')
+    .delete()
+    .eq('athlete_id', data.user.id)
+    .eq('season_or_period', season);
+  if (error) throw error;
 }
 
 function postCard(page: Page, caption: string) {
@@ -164,16 +197,29 @@ test.describe.serial('deep mobile functional workflows', () => {
   test('editing performance stats preserves the current record values', async ({ page }) => {
     await login(page);
     await page.goto('/performance');
+    const season = `FUNCTIONAL-${Date.now()}`;
     const edit = page.getByText('Edit Stats', { exact: true });
     await expect(edit).toBeVisible();
-    await edit.click();
+    try {
+      await edit.click();
+      // Existing values must be present rather than a blank destructive form.
+      await expect(page.getByLabel('Season or period')).not.toHaveValue('');
+      await page.getByLabel('Season or period').fill(season);
+      await page.getByLabel('Goals').fill('13');
+      await page.getByLabel('Assists').fill('8');
+      await page.getByLabel('Appearances').fill('21');
+      await page.getByRole('button', { name: 'Save performance stats' }).click();
 
-    await expect(page.getByLabel('Season or period')).toHaveValue('2025/26');
-    await expect(page.getByLabel('Goals')).toHaveValue('7');
-    await expect(page.getByLabel('Assists')).toHaveValue('11');
-    await expect(page.getByLabel('Appearances')).toHaveValue('18');
-    await page.getByRole('button', { name: 'Cancel editing stats' }).click();
-    await expect(page.getByText('Edit Stats', { exact: true })).toBeVisible();
+      await expect(page.getByText('Edit Stats', { exact: true })).toBeVisible();
+      await page.getByText('Edit Stats', { exact: true }).click();
+      await expect(page.getByLabel('Season or period')).toHaveValue(season);
+      await expect(page.getByLabel('Goals')).toHaveValue('13');
+      await expect(page.getByLabel('Assists')).toHaveValue('8');
+      await expect(page.getByLabel('Appearances')).toHaveValue('21');
+      await page.getByRole('button', { name: 'Cancel editing stats' }).click();
+    } finally {
+      await deletePerformanceSeason(season);
+    }
   });
 
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
