@@ -90,7 +90,9 @@ test.describe.serial('deep mobile functional workflows', () => {
       await openEditorThroughUi();
       await page.getByLabel('Bio').fill(originalBio);
       await page.getByLabel('Current club').fill(originalClub);
-      await saveAndAccept();
+      // The first save above verifies user-facing back navigation. Cleanup only
+      // needs to prove the original data was restored.
+      await saveAndAccept(false);
       await page.goto('/edit-profile');
       await expect(page.getByLabel('Bio')).toHaveValue(originalBio);
       await expect(page.getByLabel('Current club')).toHaveValue(originalClub);
