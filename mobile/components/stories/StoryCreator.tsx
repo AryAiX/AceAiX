@@ -330,6 +330,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
                 </View>
                 <View style={s.textInputRow}>
                   <TextInput
+                    accessibilityLabel="Story text overlay"
                     style={[s.textInputField, { color: textColor }]}
                     value={textInput}
                     onChangeText={setTextInput}
@@ -375,6 +376,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
               keyboardVerticalOffset={insets.top}
             >
               <TextInput
+                accessibilityLabel="Story caption"
                 style={s.captionInput}
                 value={caption}
                 onChangeText={setCaption}

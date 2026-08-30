@@ -172,6 +172,7 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
             {/* Notes */}
             <Field label="Notes (optional)" icon={Calendar}>
               <TextInput
+                accessibilityLabel="Booking notes"
                 style={s.notesInput}
                 value={notes}
                 onChangeText={setNotes}

@@ -376,6 +376,7 @@ export default function Settings() {
                   <View style={s.quietField}>
                     <Text style={s.quietLbl}>From</Text>
                     <TextInput
+                      accessibilityLabel="Quiet hours start time"
                       style={s.quietInput}
                       value={prefs.quiet_start ?? DEFAULT_PREFS.quiet_start}
                       onChangeText={(v) => setPref('quiet_start', v)}
@@ -387,6 +388,7 @@ export default function Settings() {
                   <View style={s.quietField}>
                     <Text style={s.quietLbl}>Until</Text>
                     <TextInput
+                      accessibilityLabel="Quiet hours end time"
                       style={s.quietInput}
                       value={prefs.quiet_end ?? DEFAULT_PREFS.quiet_end}
                       onChangeText={(v) => setPref('quiet_end', v)}
@@ -469,6 +471,7 @@ export default function Settings() {
                     </View>
                   </View>
                   <TextInput
+                    accessibilityLabel="Chess.com username"
                     style={s.connInput}
                     value={chesscom}
                     onChangeText={setChesscom}
@@ -488,6 +491,7 @@ export default function Settings() {
                     </View>
                   </View>
                   <TextInput
+                    accessibilityLabel="Lichess username"
                     style={s.connInput}
                     value={lichess}
                     onChangeText={setLichess}
@@ -591,6 +595,7 @@ export default function Settings() {
                   </View>
                 </View>
                 <TextInput
+                  accessibilityLabel="Sportify athlete ID"
                   style={s.connInput}
                   value={sportifyId}
                   onChangeText={setSportifyId}

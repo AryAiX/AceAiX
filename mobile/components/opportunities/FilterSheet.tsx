@@ -103,6 +103,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
             {/* Location */}
             <Section label="Location">
               <TextInput
+                accessibilityLabel="Location filter"
                 style={s.textField}
                 value={local.location ?? ''}
                 onChangeText={(v) => set('location', v || undefined)}
@@ -115,6 +116,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
             <Section label="Salary Range (annual)">
               <View style={s.salaryRow}>
                 <TextInput
+                  accessibilityLabel="Minimum salary"
                   style={[s.textField, { flex: 1 }]}
                   value={local.salary_min != null ? String(local.salary_min) : ''}
                   onChangeText={(v) => set('salary_min', v ? Number(v) : undefined)}
@@ -124,6 +126,7 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                 />
                 <Text style={s.salaryDash}>–</Text>
                 <TextInput
+                  accessibilityLabel="Maximum salary"
                   style={[s.textField, { flex: 1 }]}
                   value={local.salary_max != null ? String(local.salary_max) : ''}
                   onChangeText={(v) => set('salary_max', v ? Number(v) : undefined)}

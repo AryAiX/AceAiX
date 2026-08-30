@@ -434,6 +434,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
             </View>
             <View style={s.replyInputRow}>
               <TextInput
+                accessibilityLabel="Reply to story"
                 style={s.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}

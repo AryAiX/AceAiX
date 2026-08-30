@@ -227,6 +227,7 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
               <Text style={s.inputAvatarTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
             </View>
             <TextInput
+              accessibilityLabel="Comment text"
               style={s.input}
               value={text}
               onChangeText={setText}

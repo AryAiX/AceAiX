@@ -448,6 +448,7 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
               />
               <View style={s.locationRow}>
                 <TextInput
+                  accessibilityLabel="Venue or area"
                   style={s.locationInput}
                   value={venueText}
                   onChangeText={setVenueText}

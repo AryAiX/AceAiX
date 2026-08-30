@@ -128,15 +128,23 @@ test.describe('App Store authenticated release gate', () => {
     await expect(page.getByText(/About the opportunity|Requirements|Match analysis/i).first()).toBeVisible();
     await page.getByRole('button', { name: 'Close opportunity details' }).click();
 
-    const save = page.getByRole('button', { name: /^Save opportunity /i }).first();
-    await expect(save).toBeVisible();
-    const label = await save.getAttribute('aria-label');
-    await save.click();
-    const unsaveLabel = label?.replace(/^Save /, 'Unsave ');
-    if (!unsaveLabel) throw new Error('Save opportunity control has no accessible label');
-    const unsave = page.getByRole('button', { name: unsaveLabel });
-    await expect(unsave).toBeVisible();
-    await unsave.click();
+    // Start from whichever state the account is already in, so the test does not
+    // depend on a previous run leaving an opportunity unsaved.
+    const toggle = page.getByRole('button', { name: /^(Save|Unsave) opportunity /i }).first();
+    await expect(toggle).toBeVisible();
+    const label = await toggle.getAttribute('aria-label');
+    if (!label) throw new Error('Opportunity save control has no accessible label');
+
+    const flipped = label.startsWith('Save')
+      ? label.replace(/^Save /, 'Unsave ')
+      : label.replace(/^Unsave /, 'Save ');
+
+    await toggle.click();
+    await expect(page.getByRole('button', { name: flipped })).toBeVisible();
+
+    // Restore the original state so reruns start from a clean slate.
+    await page.getByRole('button', { name: flipped }).click();
+    await expect(page.getByRole('button', { name: label })).toBeVisible();
   });
 
   test('athlete can create and remove an event', async ({ page }) => {
