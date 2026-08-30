@@ -34,13 +34,15 @@ async function login(page: Page, account = PRIMARY) {
 
 function postCard(page: Page, caption: string) {
   return page
-    .getByText(caption, { exact: true })
+    // The caption is nested beneath a bold author-name Text element, so React
+    // Native Web exposes one combined text node rather than an exact caption.
+    .getByText(caption)
     .locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
 }
 
 async function deleteOwnPost(page: Page, caption: string) {
   await page.goto('/feed');
-  const captionNode = page.getByText(caption, { exact: true });
+  const captionNode = page.getByText(caption);
   if (!(await captionNode.isVisible().catch(() => false))) return;
   const card = postCard(page, caption);
   await card.getByRole('button', { name: 'Open post menu' }).click({ force: true });
@@ -168,7 +170,7 @@ test.describe.serial('deep mobile functional workflows', () => {
       // "For You" is sport-personalized; Latest is the cross-sport discovery
       // surface where another athlete's new public post must appear.
       await secondary.getByRole('button', { name: 'Show Latest posts' }).click();
-      await expect(secondary.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
+      await expect(secondary.getByText(caption)).toBeVisible({ timeout: 20_000 });
       const secondaryCard = postCard(secondary, caption);
 
       await secondaryCard.getByRole('button', { name: 'Like post' }).click();
