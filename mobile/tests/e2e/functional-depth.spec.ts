@@ -156,6 +156,8 @@ test.describe.serial('deep mobile functional workflows', () => {
       await primary.goto('/media');
       await primary.getByRole('button', { name: 'Create new post' }).click();
       await primary.getByLabel('Post caption').fill(caption);
+      await primary.getByText('Followers', { exact: true }).click();
+      await primary.getByText('Public', { exact: true }).click();
       await primary.getByRole('button', { name: 'Publish post' }).click();
       await expect(primary.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
 
