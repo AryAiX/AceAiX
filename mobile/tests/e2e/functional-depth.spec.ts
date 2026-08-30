@@ -383,11 +383,15 @@ test.describe.serial('deep mobile functional workflows', () => {
       await expect(reloadedCard.getByText(flipped, { exact: true })).toBeVisible();
     } finally {
       await page.goto('/discover?query=Noura');
-      const restoreCard = page
-        .getByText('Noura Saeed', { exact: true })
+      const restoreAthlete = page.getByText('Noura Saeed', { exact: true });
+      await expect(restoreAthlete).toBeVisible();
+      const restoreCard = restoreAthlete
         .locator('xpath=ancestor::div[.//*[text()="Connect" or text()="Connected"]][1]');
-      const current = restoreCard.getByText(flipped, { exact: true });
-      if (await current.isVisible().catch(() => false)) await current.click();
+      const currentToggle = restoreCard.getByText(/^(Connect|Connected)$/, { exact: true });
+      await expect(currentToggle).toBeVisible();
+      if ((await currentToggle.textContent())?.trim() !== original) {
+        await currentToggle.click();
+      }
       await expect(restoreCard.getByText(original, { exact: true })).toBeVisible();
     }
   });
