@@ -205,9 +205,26 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
     setEditing(false);
   }, [editText, onUpdate, post.id, user]);
 
+  const performReport = useCallback(async () => {
+    if (!user) return;
+    const { error } = await reportContent(user.id, 'post', post.id);
+    Alert.alert(
+      error ? 'Report not sent' : 'Report received',
+      error ?? 'Thank you. Our safety team will review this post.',
+    );
+  }, [post.id, user]);
+
   const handleReport = useCallback(() => {
     if (!user) return;
     setMenuOpen(false);
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(
+        'Report this post? AceAiX administrators will review it for safety and policy violations.',
+      )) {
+        void performReport();
+      }
+      return;
+    }
     Alert.alert(
       'Report this post?',
       'AceAiX administrators will review it for safety and policy violations.',
@@ -216,21 +233,34 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         {
           text: 'Report',
           style: 'destructive',
-          onPress: async () => {
-            const { error } = await reportContent(user.id, 'post', post.id);
-            Alert.alert(
-              error ? 'Report not sent' : 'Report received',
-              error ?? 'Thank you. Our safety team will review this post.',
-            );
-          },
+          onPress: () => void performReport(),
         },
       ],
     );
-  }, [post.id, user]);
+  }, [performReport, user]);
+
+  const performBlock = useCallback(async () => {
+    if (!user || post.author_id === user.id) return;
+    const { error } = await blockUser(user.id, post.author_id);
+    if (error) {
+      Alert.alert('Member not blocked', error);
+      return;
+    }
+    onRemove(post.id);
+    Alert.alert('Member blocked', 'Their content has been removed from your feed.');
+  }, [onRemove, post.author_id, post.id, user]);
 
   const handleBlock = useCallback(() => {
     if (!user || post.author_id === user.id) return;
     setMenuOpen(false);
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(
+        `Block ${post.author_name ?? 'this member'}? Their stories and posts will be hidden.`,
+      )) {
+        void performBlock();
+      }
+      return;
+    }
     Alert.alert(
       `Block ${post.author_name ?? 'this member'}?`,
       'Their content will be hidden from your current feed. You can manage blocked members through support.',
@@ -239,19 +269,11 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         {
           text: 'Block',
           style: 'destructive',
-          onPress: async () => {
-            const { error } = await blockUser(user.id, post.author_id);
-            if (error) {
-              Alert.alert('Member not blocked', error);
-              return;
-            }
-            onRemove(post.id);
-            Alert.alert('Member blocked', 'Their content has been removed from your feed.');
-          },
+          onPress: () => void performBlock(),
         },
       ],
     );
-  }, [onRemove, post.author_id, post.author_name, post.id, user]);
+  }, [performBlock, post.author_id, post.author_name, user]);
 
   const isOwn = user?.id === post.author_id;
   const hasMedia = post.media.length > 0;

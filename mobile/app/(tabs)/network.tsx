@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, RefreshControl, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, Platform, RefreshControl, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
@@ -128,6 +128,30 @@ export default function Network() {
 
   async function blockUser(id: string, name: string) {
     if (!user) return;
+    const performBlock = async () => {
+      const { error } = await supabase.from('user_blocks').upsert({ blocker_id: user.id, blocked_id: id }, { onConflict: 'blocker_id,blocked_id' });
+      if (error) {
+        Alert.alert('Could not block', error.message);
+        return;
+      }
+      await supabase.from('follows').delete().or(`and(follower_id.eq.${user.id},following_id.eq.${id}),and(follower_id.eq.${id},following_id.eq.${user.id})`);
+      setConns(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setMyBlockedIds(prev => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    };
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Block ${name}? They won't be able to see your profile or message you.`)) {
+        void performBlock();
+      }
+      return;
+    }
     Alert.alert(
       'Block this person?',
       `${name} won't be able to see your profile or message you.`,
@@ -136,24 +160,7 @@ export default function Network() {
         {
           text: 'Block',
           style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase.from('user_blocks').upsert({ blocker_id: user.id, blocked_id: id }, { onConflict: 'blocker_id,blocked_id' });
-            if (error) {
-              Alert.alert('Could not block', error.message);
-              return;
-            }
-            await supabase.from('follows').delete().or(`and(follower_id.eq.${user.id},following_id.eq.${id}),and(follower_id.eq.${id},following_id.eq.${user.id})`);
-            setConns(prev => {
-              const next = new Set(prev);
-              next.delete(id);
-              return next;
-            });
-            setMyBlockedIds(prev => {
-              const next = new Set(prev);
-              next.add(id);
-              return next;
-            });
-          },
+          onPress: () => void performBlock(),
         },
       ],
     );
