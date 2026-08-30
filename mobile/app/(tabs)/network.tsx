@@ -190,7 +190,7 @@ export default function Network() {
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
         ) : loadError ? (
           <View style={s.emptyState}>
-            <Text style={s.emptyTitle}>Couldn't load your network</Text>
+            <Text style={s.emptyTitle}>Couldn’t load your network</Text>
             <Text style={s.emptyText}>Pull down to try again.</Text>
           </View>
         ) : (

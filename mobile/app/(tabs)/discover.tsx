@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { MapPin, BadgeCheck, Star, UserPlus } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -31,6 +31,8 @@ export default function Discover() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [athletes, setAthletes] = useState<AthleteRow[]>([]);
   const [connected, setConnected] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const searchQuery = typeof params.query === 'string' ? params.query.trim().toLowerCase() : '';
   const filteredAthletes = athletes.filter((athlete) => {
     const matchesSport = activeFilter === 'All'
@@ -45,10 +47,11 @@ export default function Discover() {
     return matchesSport && matchesSearch;
   });
 
-  useEffect(() => {
+  const loadAthletes = useCallback(async () => {
     if (!user) return;
-    let mounted = true;
-    Promise.all([
+    setLoading(true);
+    setLoadError(null);
+    const [athletesResult, followsResult, blocksResult] = await Promise.all([
       supabase
         .from('athlete_profiles')
         .select('id,user_id,sport,position,position_primary,current_club,performance_score,user:user_profiles!athlete_profiles_user_id_fkey(full_name,city,country,is_verified)')
@@ -56,8 +59,11 @@ export default function Discover() {
         .limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
       supabase.rpc('get_blocked_user_ids'),
-    ]).then(([athletesResult, followsResult, blocksResult]) => {
-      if (!mounted) return;
+    ]);
+    const error = athletesResult.error ?? followsResult.error ?? blocksResult.error;
+    if (error) {
+      setLoadError(error.message);
+    } else {
       const blockedIds = new Set(
         (blocksResult.data ?? []).map((row: { blocked_user_id: string }) => row.blocked_user_id),
       );
@@ -75,9 +81,13 @@ export default function Discover() {
         verified: row.user?.is_verified ?? false,
         })));
       setConnected(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
-    });
-    return () => { mounted = false; };
+    }
+    setLoading(false);
   }, [user]);
+
+  useEffect(() => {
+    void loadAthletes();
+  }, [loadAthletes]);
 
   async function toggleConnection(athleteUserId: string, isConnected: boolean) {
     if (!user) return;
@@ -132,7 +142,17 @@ export default function Discover() {
         </View>
 
         <View style={s.list}>
-          {filteredAthletes.map((a, i) => {
+          {loading ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.xl }} />
+          ) : loadError ? (
+            <View style={s.emptyState}>
+              <Text style={s.emptyTitle}>Athletes couldn’t be loaded</Text>
+              <Text style={s.emptyText}>{loadError}</Text>
+              <TouchableOpacity onPress={() => void loadAthletes()} accessibilityRole="button">
+                <Text style={s.connectTxtActive}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : filteredAthletes.map((a, i) => {
             const isConn = connected.has(a.user_id);
             return (
               <View key={a.id} style={s.card}>
@@ -169,7 +189,7 @@ export default function Discover() {
               </View>
             );
           })}
-          {filteredAthletes.length === 0 && (
+          {!loading && !loadError && filteredAthletes.length === 0 && (
             <View style={s.emptyState}>
               <Text style={s.emptyTitle}>No athletes found</Text>
               <Text style={s.emptyText}>

@@ -14,7 +14,7 @@ export interface PerformanceRecord {
 export async function fetchLatestRecord(
   athlete_id: string,
   sport: string
-): Promise<PerformanceRecord | null> {
+): Promise<{ data: PerformanceRecord | null; error: string | null }> {
   const { data, error } = await supabase
     .from('performance_records')
     .select('*')
@@ -23,8 +23,8 @@ export async function fetchLatestRecord(
     .order('last_synced_at', { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error || !data) return null;
-  return data as PerformanceRecord;
+  if (error) return { data: null, error: error.message };
+  return { data: data as PerformanceRecord | null, error: null };
 }
 
 export async function upsertRecord(

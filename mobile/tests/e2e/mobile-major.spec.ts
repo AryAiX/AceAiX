@@ -54,8 +54,13 @@ const protectedRoutes = [
 ];
 
 test.describe('AceAiX mobile major unauthenticated flow', () => {
-  test.beforeEach(async ({ context }) => {
+  test.beforeEach(async ({ context, page }) => {
     await context.clearCookies();
+    await page.goto('/login');
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
   });
 
   test('login screen renders the athlete-only sign-in page', async ({ page }) => {
@@ -83,6 +88,17 @@ test.describe('AceAiX mobile major unauthenticated flow', () => {
     await page.goto('/login');
     await page.getByText('Create Account').click();
     await expect(page).toHaveURL(/signup/);
+  });
+
+  test('password recovery routes remain reachable without a session', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByText('Forgot password?').click();
+    await expect(page).toHaveURL(/forgot-password/);
+    await expect(page.getByText('Reset your password')).toBeVisible();
+
+    await page.goto('/reset-password');
+    await expect(page).toHaveURL(/reset-password/);
+    await expect(page).not.toHaveURL(/\/login$/);
   });
 
   for (const route of protectedRoutes) {

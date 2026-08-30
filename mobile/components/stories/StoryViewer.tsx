@@ -108,6 +108,18 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     setVideoDuration(null);
   }, [currentStory?.id]);
 
+  const advanceStory = useCallback(() => {
+    if (!currentGroup) return;
+    if (storyIdx < currentGroup.stories.length - 1) {
+      setStoryIdx((i) => i + 1);
+    } else if (groupIdx < groups.length - 1) {
+      setGroupIdx((g) => g + 1);
+      setStoryIdx(0);
+    } else {
+      onClose();
+    }
+  }, [storyIdx, groupIdx, currentGroup, groups.length, onClose]);
+
   // Progress timer
   useEffect(() => {
     if (!visible || paused || !currentStory) return;
@@ -136,22 +148,7 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     });
 
     return () => { anim.stop(); };
-  }, [storyIdx, groupIdx, paused, visible, videoDuration]);
-
-  const advanceStory = useCallback(() => {
-    if (!currentGroup) return;
-    if (storyIdx < currentGroup.stories.length - 1) {
-      setStoryIdx((i) => i + 1);
-    } else {
-      // Move to next group
-      if (groupIdx < groups.length - 1) {
-        setGroupIdx((g) => g + 1);
-        setStoryIdx(0);
-      } else {
-        onClose();
-      }
-    }
-  }, [storyIdx, groupIdx, currentGroup, groups.length, onClose]);
+  }, [advanceStory, currentStory, paused, storyIdx, visible, videoDuration]);
 
   const goBack = useCallback(() => {
     if (storyIdx > 0) {

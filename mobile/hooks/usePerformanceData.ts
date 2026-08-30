@@ -10,9 +10,15 @@ export function usePerformanceData(athlete_id: string | null | undefined, sport:
     if (!athlete_id || !sport) return;
     setLoading(true);
     setError(null);
-    const r = await fetchLatestRecord(athlete_id, sport);
-    setRecord(r);
-    setLoading(false);
+    try {
+      const result = await fetchLatestRecord(athlete_id, sport);
+      setRecord(result.data);
+      setError(result.error);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'Performance data could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
   }, [athlete_id, sport]);
 
   useEffect(() => { load(); }, [load]);

@@ -50,11 +50,39 @@ function getMeta(type: string) {
 
 // ── Deep-link resolver ─────────────────────────────────────────────────────────
 function resolveDeepLink(notif: AppNotification): string | null {
-  const d = notif.data as Record<string, string>;
+  const d = notif.data as Record<string, unknown>;
   const dataRoute = safeAppPath(d?.route);
   if (dataRoute) return dataRoute;
   const actionPath = safeAppPath(notif.action_url);
-  if (actionPath) return actionPath;
+  const legacyRoutes: Record<string, string> = {
+    '/messages': '/(tabs)/messages',
+    '/opportunities': '/(tabs)/opportunities',
+    '/network': '/(tabs)/network',
+    '/profile': '/(tabs)/profile',
+    '/performance': '/(tabs)/performance',
+  };
+  const normalizedAction = actionPath
+    ? Object.entries(legacyRoutes).reduce(
+        (path, [legacy, current]) => (
+          path === legacy || path.startsWith(`${legacy}?`)
+            ? `${current}${path.slice(legacy.length)}`
+            : path
+        ),
+        actionPath,
+      )
+    : null;
+
+  if (notif.type === 'message') {
+    const memberId = d.memberId ?? d.member_id ?? d.sender_id;
+    if (typeof memberId === 'string' && memberId) {
+      return `/(tabs)/messages?memberId=${encodeURIComponent(memberId)}`;
+    }
+    const conversationId = d.conversationId ?? d.conversation_id;
+    if (typeof conversationId === 'string' && conversationId) {
+      return `/(tabs)/messages?conversationId=${encodeURIComponent(conversationId)}`;
+    }
+  }
+  if (normalizedAction) return normalizedAction;
   switch (notif.type) {
     case 'message': return '/(tabs)/messages';
     case 'opportunity': return '/(tabs)/opportunities';

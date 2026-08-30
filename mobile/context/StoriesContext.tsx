@@ -38,9 +38,17 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async (silent = false) => {
     if (!user) return;
     if (!silent) setLoading(true);
-    const data = await fetchActiveStories(user.id);
-    setGroups(data);
-    if (!silent) setLoading(false);
+    try {
+      const data = await fetchActiveStories(user.id);
+      setGroups(data);
+    } catch (refreshError) {
+      console.warn(
+        '[StoriesContext] stories could not be refreshed',
+        refreshError instanceof Error ? refreshError.message : refreshError,
+      );
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [user]);
 
   const markSeen = useCallback(

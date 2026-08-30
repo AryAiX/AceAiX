@@ -54,6 +54,15 @@ export default function Analytics() {
       supabase.from('applications').select('status').eq('athlete_id', user.id),
     ]).then(([viewsResult, followsResult, savesResult, applicationsResult]) => {
       if (!mounted) return;
+      if (
+        viewsResult.error
+        || followsResult.error
+        || savesResult.error
+        || applicationsResult.error
+      ) {
+        setLoadError(true);
+        return;
+      }
       const views = viewsResult.data ?? [];
       const currentYear = new Date().getFullYear();
       const months = Array(12).fill(0) as number[];
@@ -109,7 +118,7 @@ export default function Analytics() {
         {loading ? (
           <Text style={s.emptyText}>Loading analytics...</Text>
         ) : loadError ? (
-          <Text style={s.emptyText}>Couldn't load analytics data — pull to refresh or try again.</Text>
+          <Text style={s.emptyText}>Couldn’t load analytics data — pull to refresh or try again.</Text>
         ) : (
           <>
             <View style={s.insightsGrid}>

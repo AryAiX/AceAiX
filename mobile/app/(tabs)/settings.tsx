@@ -52,7 +52,6 @@ export default function Settings() {
   const [savingShowcase, setSavingShowcase] = useState(false);
   const [chesscom, setChesscom] = useState(profile?.chesscom_username ?? '');
   const [lichess, setLichess] = useState(profile?.lichess_username ?? '');
-  const [footballPlayerId, setFootballPlayerId] = useState(profile?.football_api_player_id ?? '');
   const [savingConn, setSavingConn] = useState(false);
   const [connSaved, setConnSaved] = useState(false);
   const [connError, setConnError] = useState<string | null>(null);
@@ -99,10 +98,6 @@ export default function Settings() {
   useEffect(() => {
     setLichess(profile?.lichess_username ?? '');
   }, [profile?.lichess_username]);
-
-  useEffect(() => {
-    setFootballPlayerId(profile?.football_api_player_id ?? '');
-  }, [profile?.football_api_player_id]);
 
   useEffect(() => {
     setSportifyId(profile?.sportify_athlete_id ?? '');
@@ -177,7 +172,6 @@ export default function Settings() {
       .update({
         chesscom_username: chesscom || null,
         lichess_username: lichess || null,
-        football_api_player_id: footballPlayerId || null,
       })
       .eq('user_id', user.id);
     if (error) {
@@ -513,12 +507,13 @@ export default function Settings() {
                   </View>
                 </View>
                 <TextInput
-                  style={s.connInput}
-                  value={footballPlayerId}
-                  onChangeText={setFootballPlayerId}
-                  placeholder="e.g. 276"
+                  style={[s.connInput, { opacity: 0.65 }]}
+                  value={profile?.football_api_player_id ?? ''}
+                  placeholder="Not assigned"
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="numeric"
+                  editable={false}
+                  accessibilityLabel="API-Football Player ID assigned by an administrator"
                 />
               </View>
             )}

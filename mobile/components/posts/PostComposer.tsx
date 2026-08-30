@@ -114,7 +114,12 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
         setMedia((prev) => [...prev, { uri: photo.uri, type: 'photo' }]);
         setStep('compose');
       }
-    } catch (_) {}
+    } catch (error) {
+      Alert.alert(
+        'Photo not captured',
+        error instanceof Error ? error.message : 'The camera could not capture a photo.',
+      );
+    }
   }, []);
 
   const openCamera = useCallback(async () => {

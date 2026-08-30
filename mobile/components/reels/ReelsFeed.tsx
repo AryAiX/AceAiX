@@ -156,6 +156,20 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
 
   const media = reel.media[0];
 
+  const handleLike = useCallback(async () => {
+    if (!user) return;
+    const newLiked = !reel.liked;
+    onUpdate(reel.id, {
+      liked: newLiked,
+      like_count: Math.max(0, reel.like_count + (newLiked ? 1 : -1)),
+    });
+    const { error } = await toggleLike(reel.id, user.id, reel.liked);
+    if (error) {
+      onUpdate(reel.id, { liked: reel.liked, like_count: reel.like_count });
+      Alert.alert('Could not update like', error);
+    }
+  }, [reel, user, onUpdate]);
+
   const handleDoubleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
@@ -176,18 +190,7 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
       setPaused((p) => !p);
     }
     lastTap.current = now;
-  }, [reel]);
-
-  const handleLike = useCallback(async () => {
-    if (!user) return;
-    const newLiked = !reel.liked;
-    onUpdate(reel.id, { liked: newLiked, like_count: reel.like_count + (newLiked ? 1 : -1) });
-    const { error } = await toggleLike(reel.id, user.id, reel.liked);
-    if (error) {
-      onUpdate(reel.id, { liked: reel.liked, like_count: reel.like_count });
-      Alert.alert('Could not update like', error);
-    }
-  }, [reel, user, onUpdate]);
+  }, [handleLike, heartAnim, heartOpacity]);
 
   const handleSave = useCallback(async () => {
     if (!user) return;

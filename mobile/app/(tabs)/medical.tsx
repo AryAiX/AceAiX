@@ -17,12 +17,18 @@ export default function Medical() {
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
+    let mounted = true;
     setLoading(true);
     setLoadError(false);
     Promise.all([
       supabase.from('medical_clearances').select('status,effective_to,created_at').eq('athlete_id', profile.athlete_profile_id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       supabase.from('medical_records').select('id,record_type,title,summary,issued_at,is_verified').eq('athlete_id', profile.athlete_profile_id).eq('is_deleted', false).order('issued_at', { ascending: false }),
     ]).then(([clearanceResult, recordsResult]) => {
+      if (!mounted) return;
+      if (clearanceResult.error || recordsResult.error) {
+        setLoadError(true);
+        return;
+      }
       setClearance(clearanceResult.data as any ?? null);
       setRecords((recordsResult.data ?? []).map((row: any) => ({
         id: row.id,
@@ -31,8 +37,12 @@ export default function Medical() {
         status: row.is_verified ? 'Verified' : 'Pending',
         notes: row.summary ?? 'No summary provided.',
       })));
-    }).catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
+    }).catch(() => {
+      if (mounted) setLoadError(true);
+    }).finally(() => {
+      if (mounted) setLoading(false);
+    });
+    return () => { mounted = false; };
   }, [profile?.athlete_profile_id]);
 
   const CLEARANCE_META: Record<string, { label: string; color: string; subtitle: string }> = {
@@ -77,7 +87,7 @@ export default function Medical() {
               {loading ? (
                 <Text style={s.clearanceSub}>Loading medical data...</Text>
               ) : loadError ? (
-                <Text style={s.clearanceSub}>Couldn't load medical data — pull to refresh or try again.</Text>
+                <Text style={s.clearanceSub}>Couldn’t load medical data — pull to refresh or try again.</Text>
               ) : (
                 <>
                   <Text style={[s.clearanceStatus, { color: clearanceMeta.color }]}>
@@ -141,7 +151,7 @@ export default function Medical() {
           {loading ? (
             <Text style={s.aiSummary}>Loading medical records...</Text>
           ) : loadError ? (
-            <Text style={s.aiSummary}>Couldn't load medical records — pull to refresh or try again.</Text>
+            <Text style={s.aiSummary}>Couldn’t load medical records — pull to refresh or try again.</Text>
           ) : records.length === 0 ? (
             <Text style={s.aiSummary}>No medical records have been issued yet.</Text>
           ) : null}

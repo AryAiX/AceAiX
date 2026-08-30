@@ -3,12 +3,25 @@ import { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseAnonKey } from '@/lib/supabase';
 import { normalizeAttributes } from '@/lib/profileData';
 
-export type UserRole = 'athlete' | 'scout' | 'club' | 'coach' | 'medical_partner' | 'admin' | null;
+export type UserRole =
+  | 'athlete'
+  | 'scout'
+  | 'club'
+  | 'coach'
+  | 'medical_partner'
+  | 'org_admin'
+  | 'federation'
+  | 'admin'
+  | 'super_admin'
+  | null;
 
 export interface Profile {
   id: string;
   role: UserRole;
   full_name: string | null;
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
   avatar_url: string | null;
   bio: string | null;
   sport: string | null;
@@ -64,6 +77,7 @@ interface AuthState {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  profileError: string | null;
   role: UserRole;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -79,6 +93,7 @@ const AuthContext = createContext<AuthState>({
   session: null,
   user: null,
   profile: null,
+  profileError: null,
   role: null,
   loading: true,
   signIn: async () => ({ error: null }),
@@ -94,15 +109,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
   const profileRequest = useRef(0);
+  const signupInProgress = useRef(false);
 
-  async function fetchProfile(userId: string): Promise<Profile | null> {
+  async function fetchProfile(
+    userId: string,
+  ): Promise<{ profile: Profile | null; error: string | null }> {
     const [{ data: publicProfile, error: publicError }, { data: privateProfile, error: privateError }, { data: athleteProfile, error: athleteError }] = await Promise.all([
       supabase
         .from('user_profiles')
-        .select('id, role, full_name, avatar_url, bio, city, country, locale, is_verified, subscription_tier')
+        .select('id, role, full_name, first_name, middle_name, last_name, avatar_url, bio, city, country, locale, is_verified, subscription_tier')
         .eq('id', userId)
         .maybeSingle(),
       supabase
@@ -117,19 +136,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .maybeSingle(),
     ]);
 
-    if (publicError || !publicProfile) return null;
+    if (publicError) return { profile: null, error: publicError.message };
+    if (!publicProfile) return { profile: null, error: null };
 
     if (privateError) {
       console.warn(`[AuthContext] user_private fetch failed for ${userId}: ${privateError.message}`);
     }
     if (athleteError) {
-      console.warn(`[AuthContext] athlete_profiles fetch failed for ${userId}: ${athleteError.message}`);
+      return { profile: null, error: athleteError.message };
+    }
+    if (publicProfile.role === 'athlete' && !athleteProfile) {
+      return { profile: null, error: null };
     }
 
-    return {
+    return { profile: {
       id: publicProfile.id,
       role: publicProfile.role as UserRole,
       full_name: publicProfile.full_name ?? null,
+      first_name: publicProfile.first_name ?? null,
+      middle_name: publicProfile.middle_name ?? null,
+      last_name: publicProfile.last_name ?? null,
       avatar_url: publicProfile.avatar_url ?? null,
       bio: publicProfile.bio ?? athleteProfile?.bio ?? null,
       sport: athleteProfile?.sport ?? null,
@@ -170,15 +196,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       trajectory: Array.isArray(athleteProfile?.trajectory)
         ? athleteProfile.trajectory as { season: string; score?: number; forecast?: number }[]
         : [],
-    };
+    }, error: null };
   }
 
   async function loadProfile(userId: string): Promise<boolean> {
     const requestId = ++profileRequest.current;
-    const p = await fetchProfile(userId);
+    const result = await fetchProfile(userId);
     if (requestId !== profileRequest.current) return false;
-    setProfile(p);
-    setRole((p?.role as UserRole) ?? null);
+    if (result.error) {
+      setProfileError(result.error);
+      return true;
+    }
+    setProfile(result.profile);
+    setProfileError(null);
+    setRole((result.profile?.role as UserRole) ?? null);
     return true;
   }
 
@@ -187,12 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // getSession and onAuthStateChange can start overlapping requests during
     // startup. A stale request must not expose a transient null role to the
     // router while the current profile request is still in flight.
-    if (isCurrent) setLoading(false);
+    if (isCurrent && !signupInProgress.current) setLoading(false);
   }
 
-  async function updateSignupProfile(userId: string, data: SignUpData) {
+  async function updateSignupProfile(userId: string, data: SignUpData): Promise<string | null> {
     const [city, country] = data.current_location.split(',').map((part) => part.trim());
-    await Promise.all([
+    const results = await Promise.all([
       supabase
         .from('user_profiles')
         .update({
@@ -200,14 +231,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           city: data.hometown || city || null,
           country: country || null,
         })
-        .eq('id', userId),
+        .eq('id', userId)
+        .select('id')
+        .maybeSingle(),
       supabase
         .from('user_private')
         .update({
           phone: data.phone || null,
           date_of_birth: data.birthdate || null,
         })
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .select('user_id')
+        .maybeSingle(),
       supabase
         .from('athlete_profiles')
         .update({
@@ -216,8 +251,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           league: data.league || null,
           nationality: data.nationality || null,
         })
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .select('user_id')
+        .maybeSingle(),
     ]);
+    const failed = results.find((result) => result.error);
+    if (failed?.error) return failed.error.message;
+    if (results.some((result) => !result.data)) {
+      return 'A required profile record was not created';
+    }
+    return null;
   }
 
   async function refreshProfile() {
@@ -237,15 +280,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      if (event === 'TOKEN_REFRESHED') return;
       if (s?.user) {
         setLoading(true);
         void loadProfileAndFinishAuth(s.user.id);
       } else {
         profileRequest.current += 1;
         setProfile(null);
+        setProfileError(null);
         setRole(null);
         setLoading(false);
       }
@@ -264,17 +309,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signUp(data: SignUpData) {
+    signupInProgress.current = true;
     if (session) {
       profileRequest.current += 1;
       setSession(null);
       setUser(null);
       setProfile(null);
+      setProfileError(null);
       setRole(null);
       await supabase.auth.signOut();
     }
 
     const normalizedEmail = data.email.trim().toLowerCase();
     if (!supabaseAnonKey) {
+      signupInProgress.current = false;
       return { error: 'Signup is not configured for this build. Please install the latest app version.' };
     }
 
@@ -297,16 +345,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const body = (await context.json().catch(() => null)) as { error?: string } | null;
         message = body?.error ?? message;
       }
+      signupInProgress.current = false;
       return { error: message };
     }
 
     const { data: authData, error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password: data.password });
-    if (error) return { error: error.message };
+    if (error) {
+      signupInProgress.current = false;
+      return { error: error.message };
+    }
     if (authData.user) {
-      await updateSignupProfile(authData.user.id, data);
+      const profileError = await updateSignupProfile(authData.user.id, data);
+      if (profileError) {
+        signupInProgress.current = false;
+        profileRequest.current += 1;
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setProfileError(null);
+        setRole(null);
+        setLoading(false);
+        return {
+          error: `Your account was created, but profile setup failed: ${profileError}. Sign in and complete your profile.`,
+        };
+      }
       await loadProfileAndFinishAuth(authData.user.id);
     }
 
+    signupInProgress.current = false;
+    setLoading(false);
     return { error: null };
   }
 
@@ -314,6 +382,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profileRequest.current += 1;
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileError(null);
     setRole(null);
   }
 
@@ -374,13 +443,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setUser(null);
     setProfile(null);
+    setProfileError(null);
     setRole(null);
     return { error: null };
   }
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile, requestPasswordReset, updatePassword }}
+      value={{ session, user, profile, profileError, role, loading, signIn, signUp, signOut, deleteAccount, refreshProfile, requestPasswordReset, updatePassword }}
     >
       {children}
     </AuthContext.Provider>

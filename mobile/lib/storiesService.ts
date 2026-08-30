@@ -54,11 +54,13 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
       `)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: true }),
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
 
   if (error || !data) return [];
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleRows = (data as any[]).filter((story) => !blockedIds.has(story.author_id));
 
   // Fetch seen state for current user

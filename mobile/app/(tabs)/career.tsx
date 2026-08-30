@@ -251,7 +251,7 @@ export default function Career() {
           ))}
           {loading && <ActivityIndicator color={Colors.primary} />}
           {!loading && loadError && (
-            <Text style={s.emptyText}>Couldn't load your career history. Pull to refresh or try again.</Text>
+            <Text style={s.emptyText}>Couldn’t load your career history. Pull to refresh or try again.</Text>
           )}
           {!loading && !loadError && milestones.length === 0 && (
             <Text style={s.emptyText}>No career entries yet. Add a verified milestone to start building your timeline.</Text>

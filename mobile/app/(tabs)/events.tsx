@@ -132,7 +132,7 @@ export default function Events() {
             {loading ? (
               <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
             ) : loadError ? (
-              <Text style={s.summaryLbl}>Couldn't load your events. Pull to refresh or try again.</Text>
+              <Text style={s.summaryLbl}>Couldn’t load your events. Pull to refresh or try again.</Text>
             ) : (
               myEvents.map(ev => {
                 const col = ev.color;
@@ -212,7 +212,7 @@ export default function Events() {
         {platformLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
         ) : platformError ? (
-          <Text style={s.summaryLbl}>Couldn't load platform events. Pull to refresh or try again.</Text>
+          <Text style={s.summaryLbl}>Couldn’t load platform events. Pull to refresh or try again.</Text>
         ) : (
           platformEvents.map(ev => {
             const isAttending = ev.is_attending;

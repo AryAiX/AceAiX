@@ -65,7 +65,7 @@ export default function FeedScreen() {
     if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
     hasMoreRef.current = data.length === 20;
     setPosts(prev => reset ? data : [...prev, ...data]);
-  }, [activeFilter, user]);
+  }, [activeFilter, profile?.sport, user]);
 
   useEffect(() => {
     if (!user) return;

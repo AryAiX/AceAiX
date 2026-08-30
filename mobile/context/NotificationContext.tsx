@@ -46,45 +46,48 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const refresh = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data, error: fetchError } = await fetchNotifications(user.id);
-    setNotifications(data);
-    setError(fetchError);
-    setLoading(false);
+    try {
+      const { data, error: fetchError } = await fetchNotifications(user.id);
+      setNotifications(data);
+      setError(fetchError);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'Notifications could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   const markRead = useCallback(async (id: string) => {
-    const prev = notifications;
-    setNotifications((cur) => cur.map((n) => (n.id === id ? { ...n, read: true } : n)));
     const { error: reqError } = await svcMarkRead(id);
-    if (reqError) setNotifications(prev);
+    if (!reqError) {
+      setNotifications((cur) => cur.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    }
     return { error: reqError };
-  }, [notifications]);
+  }, []);
 
   const markAllRead = useCallback(async () => {
     if (!user) return { error: null };
-    const prev = notifications;
-    setNotifications((cur) => cur.map((n) => ({ ...n, read: true })));
     const { error: reqError } = await svcMarkAllRead(user.id);
-    if (reqError) setNotifications(prev);
+    if (!reqError) {
+      setNotifications((cur) => cur.map((n) => ({ ...n, read: true })));
+    }
     return { error: reqError };
-  }, [notifications, user]);
+  }, [user]);
 
   const dismissNotification = useCallback(async (id: string) => {
-    const prev = notifications;
-    setNotifications((cur) => cur.filter((n) => n.id !== id));
     const { error: reqError } = await svcDismissNotif(id);
-    if (reqError) setNotifications(prev);
+    if (!reqError) {
+      setNotifications((cur) => cur.filter((n) => n.id !== id));
+    }
     return { error: reqError };
-  }, [notifications]);
+  }, []);
 
   const clearAll = useCallback(async () => {
     if (!user) return { error: null };
-    const prev = notifications;
-    setNotifications([]);
     const { error: reqError } = await svcClearAllNotifs(user.id);
-    if (reqError) setNotifications(prev);
+    if (!reqError) setNotifications([]);
     return { error: reqError };
-  }, [notifications, user]);
+  }, [user]);
 
   useEffect(() => {
     if (user) refresh();

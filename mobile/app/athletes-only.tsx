@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   View,
   Text,
   TouchableOpacity,
@@ -13,9 +14,11 @@ import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { ShieldOff, Globe, LogOut, AlertCircle } from 'lucide-react-native';
 
 export default function AthletesOnlyScreen() {
-  const { signOut } = useAuth();
+  const { signOut, refreshProfile } = useAuth();
   const { reason } = useLocalSearchParams<{ reason?: string }>();
   const isMissingProfile = reason === 'no-profile';
+  const isLoadError = reason === 'load-error';
+  const [retrying, setRetrying] = React.useState(false);
 
   async function openWebPlatform() {
     await WebBrowser.openBrowserAsync('https://app.aceaix.com');
@@ -23,6 +26,13 @@ export default function AthletesOnlyScreen() {
 
   async function handleSignOut() {
     await signOut();
+  }
+
+  async function handleRetry() {
+    if (retrying) return;
+    setRetrying(true);
+    await refreshProfile();
+    setRetrying(false);
   }
 
   return (
@@ -35,21 +45,42 @@ export default function AthletesOnlyScreen() {
 
       <View style={styles.content}>
         <View style={styles.iconWrap}>
-          {isMissingProfile ? (
+          {isMissingProfile || isLoadError ? (
             <AlertCircle color={Colors.warning} size={44} strokeWidth={1.5} />
           ) : (
             <ShieldOff color={Colors.warning} size={44} strokeWidth={1.5} />
           )}
         </View>
 
-        <Text style={styles.title}>{isMissingProfile ? 'Profile Not Found' : 'Athletes Only'}</Text>
+        <Text style={styles.title}>
+          {isLoadError ? 'Profile Unavailable' : isMissingProfile ? 'Profile Not Found' : 'Athletes Only'}
+        </Text>
         <Text style={styles.body}>
-          {isMissingProfile
+          {isLoadError
+            ? 'We couldn’t load your profile. Check your connection and try again.'
+            : isMissingProfile
             ? "We couldn't find a profile for your account. Please contact support or try signing in again."
             : 'The AceAiX mobile app is built for athletes. Please continue on our web platform.'}
         </Text>
 
-        {!isMissingProfile && (
+        {isLoadError ? (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={handleRetry}
+            disabled={retrying}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading profile"
+          >
+            <LinearGradient
+              colors={[Colors.primary, '#1A6AD4']}
+              style={styles.btnGradient}
+            >
+              {retrying
+                ? <ActivityIndicator color={Colors.white} />
+                : <Text style={styles.btnText}>Try Again</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : !isMissingProfile && (
           <TouchableOpacity
             style={styles.primaryBtn}
             onPress={openWebPlatform}

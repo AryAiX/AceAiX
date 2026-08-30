@@ -498,31 +498,21 @@ export default function OpportunitiesScreen() {
 
   useEffect(() => {
     if (!user) return;
-    setLoading('For You', true);
-    loadForYou().finally(() => setLoading('For You', false));
-    fetchedTabs.current = new Set(['For You']);
-  }, [user]);
-
-  useEffect(() => {
-    if (!user || fetchedTabs.current.has(tab)) return;
-    fetchedTabs.current.add(tab);
-    setLoading(tab, true);
-    const loader = tab === 'All' ? loadAll(true) : tab === 'Saved' ? loadSaved() : loadApplied();
-    loader.finally(() => setLoading(tab, false));
-  }, [tab, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    if (tab === 'For You') {
-      setLoading('For You', true);
-      loadForYou().finally(() => setLoading('For You', false));
-    } else if (tab === 'All') {
+    if (tab === 'All') {
       allCursorRef.current = undefined;
       allHasMoreRef.current = true;
-      setLoading('All', true);
-      loadAll(true).finally(() => setLoading('All', false));
     }
-  }, [filters, searchText]);
+    setLoading(tab, true);
+    const loader = tab === 'For You'
+      ? loadForYou()
+      : tab === 'All'
+        ? loadAll(true)
+        : tab === 'Saved'
+          ? loadSaved()
+          : loadApplied();
+    loader.finally(() => setLoading(tab, false));
+    fetchedTabs.current.add(tab);
+  }, [loadAll, loadApplied, loadForYou, loadSaved, tab, user]);
 
   useEffect(() => {
     if (!user) return;

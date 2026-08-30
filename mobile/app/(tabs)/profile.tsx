@@ -748,7 +748,7 @@ function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile
           </View>
         ) : highlightsError ? (
           <View style={s.activityEmpty}>
-            <Text style={s.activityEmptyTxt}>Couldn't load this right now. Pull down to refresh and try again.</Text>
+            <Text style={s.activityEmptyTxt}>Couldn’t load this right now. Pull down to refresh and try again.</Text>
           </View>
         ) : highlightTab === 'Highlights' ? (
           highlights.length > 0 ? (

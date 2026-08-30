@@ -391,6 +391,8 @@ export default function EditProfile() {
                 {Object.values(SPORTS_CONFIG).map((config) => (
                   <TouchableOpacity
                     key={config.sport}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select sport ${config.displayName}`}
                     style={[s.sportChip, form.sportKey === config.sport && s.sportChipActive]}
                     onPress={() => {
                       setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }));
@@ -403,6 +405,8 @@ export default function EditProfile() {
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Select sport Other"
                   style={[s.sportChip, form.sportKey === 'other' && s.sportChipActive]}
                   onPress={() => {
                     setForm((current) => ({ ...current, sportKey: 'other' }));
@@ -430,7 +434,12 @@ export default function EditProfile() {
             {POSITIONS_BY_SPORT[form.sportKey] ? (
               <View style={s.field}>
                 <Text style={s.label}>Primary position</Text>
-                <TouchableOpacity style={s.input} onPress={() => setPositionModalOpen(true)}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Select primary position"
+                  style={s.input}
+                  onPress={() => setPositionModalOpen(true)}
+                >
                   <Text style={{
                     fontFamily: Typography.family.regular,
                     fontSize: Typography.size.sm,

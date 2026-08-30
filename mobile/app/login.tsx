@@ -34,16 +34,7 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
 
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<{ error: string }>((resolve) => {
-      timeoutId = setTimeout(
-        () => resolve({ error: 'Request timed out. Check your connection and try again.' }),
-        15_000,
-      );
-    });
-
-    const result = await Promise.race([signIn(email.trim(), password), timeout]);
-    if (timeoutId) clearTimeout(timeoutId);
+    const result = await signIn(email.trim(), password);
     setLoading(false);
     if (result.error) setError(result.error);
   }

@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeSportKey } from '@/constants/sportsConfig';
-import * as FileSystem from 'expo-file-system/legacy';
-import { decode } from 'base64-arraybuffer';
+import { File } from 'expo-file-system';
 export { formatCount, postTimeAgo } from './formatting';
 
 export type PostType = 'post' | 'reel';
@@ -219,7 +218,8 @@ export async function fetchMyPosts(
     .eq('author_id', authorId)
     .order('created_at', { ascending: false });
 
-  if (type) query = query.eq('type', type);
+  if (type === 'post') query = query.in('type', ['post', 'standard']);
+  else if (type) query = query.eq('type', type);
 
   const { data, error } = await query;
   if (error || !data) return [];
@@ -244,14 +244,14 @@ export async function uploadPostMedia(
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-    const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
-    if (!base64) {
+    const file = new File(uri);
+    if (!file.exists || file.size === 0) {
       return { path: null, error: 'Captured file could not be read. Please try again.' };
     }
-    const arrayBuffer = decode(base64);
-    if (arrayBuffer.byteLength === 0) {
-      return { path: null, error: 'Captured file is empty. Please try taking the photo again.' };
+    if (mediaType === 'video' && file.size > 50 * 1024 * 1024) {
+      return { path: null, error: 'Videos must be 50 MB or smaller.' };
     }
+    const arrayBuffer = await file.arrayBuffer();
 
     const { error } = await supabase.storage.from('posts').upload(path, arrayBuffer, { contentType });
     if (error) return { path: null, error: error.message };
@@ -369,7 +369,6 @@ export async function markPostViewed(postId: string, viewerId: string): Promise<
     { post_id: postId, viewer_id: viewerId, viewed_at: new Date().toISOString() },
     { onConflict: 'post_id,viewer_id' }
   );
-  try { await supabase.rpc('increment_post_view', { p_id: postId }); } catch (_) {}
 }
 
 export async function toggleFeatureReel(postId: string, featured: boolean): Promise<{ error: string | null }> {

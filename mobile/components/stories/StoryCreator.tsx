@@ -134,8 +134,11 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
         setCapturedUri(photo.uri);
         setStep('preview');
       }
-    } catch (e) {
-      // camera error — silently fail on web
+    } catch (error) {
+      Alert.alert(
+        'Story not captured',
+        error instanceof Error ? error.message : 'The camera could not capture a photo.',
+      );
     }
   }, []);
 
