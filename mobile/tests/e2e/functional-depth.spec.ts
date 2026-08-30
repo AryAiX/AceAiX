@@ -490,19 +490,23 @@ test.describe.serial('deep mobile functional workflows', () => {
   test('informational settings and profile-preview actions give feedback', async ({ page }) => {
     await login(page);
     await page.goto('/settings');
-    const languageDialog = page.waitForEvent('dialog');
+    let languageMessage = '';
+    page.once('dialog', async (dialog) => {
+      languageMessage = dialog.message();
+      await dialog.accept();
+    });
     await page.getByText('Language', { exact: true }).click();
-    const language = await languageDialog;
-    expect(language.message()).toContain('English is the supported language');
-    await language.accept();
+    expect(languageMessage).toContain('English is the supported language');
 
     await page.goto('/public-profile');
     for (const action of ['Endorse', 'Connect']) {
-      const feedbackPromise = page.waitForEvent('dialog');
+      let feedbackMessage = '';
+      page.once('dialog', async (dialog) => {
+        feedbackMessage = dialog.message();
+        await dialog.accept();
+      });
       await page.getByText(action, { exact: true }).click();
-      const feedback = await feedbackPromise;
-      expect(feedback.message()).toContain('Public profile preview');
-      await feedback.accept();
+      expect(feedbackMessage).toContain('Public profile preview');
     }
   });
 
