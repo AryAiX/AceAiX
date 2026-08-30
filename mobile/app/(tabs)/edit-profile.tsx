@@ -137,7 +137,7 @@ export default function EditProfile() {
   const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!profile) {
+    if (!profile?.id) {
       setFormReady(false);
       return;
     }
