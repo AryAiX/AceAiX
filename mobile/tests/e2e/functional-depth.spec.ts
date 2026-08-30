@@ -161,6 +161,9 @@ test.describe.serial('deep mobile functional workflows', () => {
 
       await login(secondary, SECONDARY);
       await secondary.goto('/feed');
+      // "For You" is sport-personalized; Latest is the cross-sport discovery
+      // surface where another athlete's new public post must appear.
+      await secondary.getByRole('button', { name: 'Show Latest posts' }).click();
       await expect(secondary.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
       const secondaryCard = postCard(secondary, caption);
 
