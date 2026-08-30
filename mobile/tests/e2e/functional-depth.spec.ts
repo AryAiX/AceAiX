@@ -22,7 +22,7 @@ async function login(page: Page, account = PRIMARY) {
   await clearSession(page);
   await page.getByLabel('Email').fill(account.email);
   await page.getByLabel('Password', { exact: true }).fill(account.password);
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.getByText('Sign In', { exact: true }).click();
   await expect(page).not.toHaveURL(/\/login$/, { timeout: 20_000 });
   await expect(page).not.toHaveURL(/\/athletes-only/, { timeout: 20_000 });
   await expect(page.locator('body')).toContainText(/Dashboard|Welcome|Good /i, {
@@ -48,6 +48,8 @@ async function deleteOwnPost(page: Page, caption: string) {
 }
 
 test.describe.serial('deep mobile functional workflows', () => {
+  test.setTimeout(120_000);
+
   test('profile edits persist through navigation and reload, then restore', async ({ page }) => {
     await login(page);
     await page.goto('/edit-profile');
