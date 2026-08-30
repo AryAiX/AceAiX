@@ -73,17 +73,6 @@ function postCard(page: Page, caption: string) {
     .locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
 }
 
-async function deleteOwnPost(page: Page, caption: string) {
-  await page.goto('/feed');
-  const captionNode = page.getByText(caption);
-  if (!(await captionNode.isVisible().catch(() => false))) return;
-  const card = postCard(page, caption);
-  await card.getByRole('button', { name: 'Open post menu' }).click({ force: true });
-  page.once('dialog', (dialog) => dialog.accept());
-  await card.getByRole('button', { name: 'Delete post' }).click({ force: true });
-  await expect(captionNode).not.toBeVisible();
-}
-
 async function cleanupFunctionalPosts(page: Page) {
   await page.goto('/feed');
   await page.getByRole('button', { name: 'Show Latest posts' }).click();
@@ -399,7 +388,9 @@ test.describe.serial('deep mobile functional workflows', () => {
   test('second athlete can discover, engage with, and comment on a new post', async ({ browser }) => {
     test.setTimeout(120_000);
     const caption = `Functional social ${Date.now()}`;
+    const editedCaption = `${caption} edited`;
     const comment = `Second-user reply ${Date.now()}`;
+    const authorReply = `Author reply ${Date.now()}`;
     const primaryContext = await browser.newContext();
     const secondaryContext = await browser.newContext();
     const primary = await primaryContext.newPage();
@@ -416,13 +407,24 @@ test.describe.serial('deep mobile functional workflows', () => {
       await primary.getByRole('button', { name: 'Publish post' }).click();
       await expect(primary.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
 
+      await primary.goto('/feed');
+      await primary.getByRole('button', { name: 'Show Latest posts' }).click();
+      const originalCard = postCard(primary, caption);
+      await originalCard.getByRole('button', { name: 'Open post menu' }).click({ force: true });
+      await originalCard.getByRole('button', { name: 'Edit post' }).click();
+      await originalCard.getByLabel('Edit post caption').fill(editedCaption);
+      await originalCard.getByText('Save', { exact: true }).click();
+      await expect(primary.getByText(editedCaption)).toBeVisible();
+      await primary.reload();
+      await expect(primary.getByText(editedCaption)).toBeVisible();
+
       await login(secondary, SECONDARY);
       await secondary.goto('/feed');
       // "For You" is sport-personalized; Latest is the cross-sport discovery
       // surface where another athlete's new public post must appear.
       await secondary.getByRole('button', { name: 'Show Latest posts' }).click();
-      await expect(secondary.getByText(caption)).toBeVisible({ timeout: 20_000 });
-      const secondaryCard = postCard(secondary, caption);
+      await expect(secondary.getByText(editedCaption)).toBeVisible({ timeout: 20_000 });
+      const secondaryCard = postCard(secondary, editedCaption);
 
       await secondaryCard.getByRole('button', { name: 'Like post' }).click();
       await expect(secondaryCard.getByRole('button', { name: 'Unlike post' })).toBeVisible();
@@ -436,7 +438,7 @@ test.describe.serial('deep mobile functional workflows', () => {
       await secondary.getByRole('button', { name: 'Close comments' }).click();
 
       await secondary.reload();
-      const reloadedCard = postCard(secondary, caption);
+      const reloadedCard = postCard(secondary, editedCaption);
       await expect(reloadedCard.getByRole('button', { name: 'Unlike post' })).toBeVisible();
       await expect(reloadedCard.getByRole('button', { name: 'Remove saved post' })).toBeVisible();
       await reloadedCard.getByRole('button', { name: 'View comments' }).click();
@@ -444,15 +446,21 @@ test.describe.serial('deep mobile functional workflows', () => {
       await secondary.getByRole('button', { name: 'Close comments' }).click();
 
       await primary.goto('/feed');
-      const primaryCard = postCard(primary, caption);
+      const primaryCard = postCard(primary, editedCaption);
       await primaryCard.getByRole('button', { name: 'View comments' }).click();
       await expect(primary.getByText(comment, { exact: true })).toBeVisible();
+      await primary.getByText('Reply', { exact: true }).first().click();
+      await primary.getByLabel('Comment text').fill(authorReply);
+      await primary.getByRole('button', { name: 'Post comment' }).click();
+      await expect(primary.getByText(authorReply, { exact: true })).toBeVisible();
       await primary.getByRole('button', { name: 'Close comments' }).click();
 
-      await secondaryCard.getByRole('button', { name: 'Unlike post' }).click().catch(() => {});
-      await secondaryCard.getByRole('button', { name: 'Remove saved post' }).click().catch(() => {});
+      await secondary.reload();
+      await postCard(secondary, editedCaption).getByRole('button', { name: 'View comments' }).click();
+      await expect(secondary.getByText(authorReply, { exact: true })).toBeVisible();
+      await secondary.getByRole('button', { name: 'Close comments' }).click();
     } finally {
-      await deleteOwnPost(primary, caption).catch(() => {});
+      await cleanupFunctionalPosts(primary).catch(() => {});
       await Promise.all([primaryContext.close(), secondaryContext.close()]);
     }
   });
