@@ -1,0 +1,16 @@
+{
+  "name": "AceAiX",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "cd web && npm run dev -- --port 5179 --host"
+    },
+    {
+      "name": "mobile",
+      "command": "cd mobile && EXPO_NO_TELEMETRY=1 npx expo start --web --port 8081"
+    }
+  ],
+  "ports": [5179, 8081, 54321, 54323]
+}
