@@ -489,7 +489,7 @@ test.describe.serial('deep mobile functional workflows', () => {
       await page.getByLabel('Select your sport').click();
       await page.getByRole('button', { name: 'Football (Soccer)', exact: true }).click();
       await page.getByLabel('Day').click();
-      await page.getByRole('button', { name: '1', exact: true }).click();
+      await page.getByRole('button', { name: '01', exact: true }).click();
       await page.getByLabel('Month').click();
       await page.getByRole('button', { name: 'January', exact: true }).click();
       await page.getByLabel('Year').click();
