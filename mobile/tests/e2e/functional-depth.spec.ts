@@ -231,7 +231,9 @@ test.describe.serial('deep mobile functional workflows', () => {
       await page.getByLabel('Career milestone date').fill('2026-02-31');
       page.once('dialog', (dialog) => dialog.accept());
       await page.getByRole('button', { name: 'Save career entry' }).click();
-      await expect(page.getByText('Add Career Entry', { exact: true })).toBeVisible();
+      await expect(
+        page.getByRole('dialog').getByText('Add Career Entry', { exact: true }),
+      ).toBeVisible();
 
       await page.getByLabel('Career milestone date').fill('2026-02-28');
       await page.getByLabel('Career entry notes').fill('Created by functional UI audit');
