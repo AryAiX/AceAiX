@@ -60,17 +60,18 @@ test.describe.serial('deep mobile functional workflows', () => {
     const originalClub = await club.inputValue();
     const marker = `Functional QA ${Date.now()}`;
 
-    async function saveAndAccept() {
+    async function saveAndAccept(expectNavigation = true) {
       page.once('dialog', (dialog) => dialog.accept());
       await page.getByRole('button', { name: 'Save profile changes' }).click();
-      await expect(page).not.toHaveURL(/\/edit-profile$/, { timeout: 20_000 });
+      if (expectNavigation) {
+        await expect(page).not.toHaveURL(/\/edit-profile$/, { timeout: 20_000 });
+      }
     }
 
     try {
       await bio.fill(`${originalBio} ${marker}`.trim());
       await club.fill(marker);
       await saveAndAccept();
-
       await page.goto('/edit-profile');
       await expect(page.getByLabel('Bio')).toHaveValue(`${originalBio} ${marker}`.trim());
       await expect(page.getByLabel('Current club')).toHaveValue(marker);
@@ -82,7 +83,10 @@ test.describe.serial('deep mobile functional workflows', () => {
       await page.goto('/edit-profile');
       await page.getByLabel('Bio').fill(originalBio);
       await page.getByLabel('Current club').fill(originalClub);
-      await saveAndAccept();
+      await saveAndAccept(false);
+      await page.goto('/edit-profile');
+      await expect(page.getByLabel('Bio')).toHaveValue(originalBio);
+      await expect(page.getByLabel('Current club')).toHaveValue(originalClub);
     }
   });
 
