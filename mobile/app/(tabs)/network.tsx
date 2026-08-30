@@ -106,7 +106,8 @@ export default function Network() {
     }
     setConns(prev => {
       const next = new Set(prev);
-      connected ? next.delete(id) : next.add(id);
+      if (connected) next.delete(id);
+      else next.add(id);
       return next;
     });
   }

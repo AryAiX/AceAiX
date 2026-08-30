@@ -60,6 +60,10 @@ interface MemberRow {
   is_verified: boolean;
 }
 
+interface BlockedUserRow {
+  blocked_user_id: string;
+}
+
 const COLORS = [Colors.primary, Colors.accent, Colors.success, Colors.warning, '#9B59B6', '#E67E22'];
 const ALLOWED_MESSAGE_ROLES = ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation'];
 const FILTERS = ['All', 'Scouts', 'Clubs', 'Athletes', 'Coaches'] as const;
@@ -393,7 +397,9 @@ function NewConversationModal({
           );
           setMembers([]);
         } else {
-          const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
+          const blockedIds = new Set(
+            ((blocksResult.data ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+          );
           setMembers(((membersResult.data ?? []) as MemberRow[])
             .filter((member) => !blockedIds.has(member.id)));
         }
@@ -582,7 +588,9 @@ export default function Messages() {
       ((profilesResult.data ?? []) as MemberRow[]).map((profile) => [profile.id, profile]),
     );
     const unreadMap = new Map<string, number>();
-    const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
+    const blockedIds = new Set(
+      ((blocksResult.data ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+    );
     for (const message of unreadResult.data ?? []) {
       unreadMap.set(message.conversation_id, (unreadMap.get(message.conversation_id) ?? 0) + 1);
     }
@@ -647,7 +655,9 @@ export default function Messages() {
         Alert.alert('Unable to start conversation', 'Please try again.');
         return;
       }
-      const blockedIds = new Set((blockedRows ?? []).map((row) => row.blocked_user_id));
+      const blockedIds = new Set(
+        ((blockedRows ?? []) as BlockedUserRow[]).map((row) => row.blocked_user_id),
+      );
       if (blockedIds.has(memberId)) {
         Alert.alert('Unable to start conversation', 'You cannot message this person.');
         return;

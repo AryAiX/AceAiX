@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { normalizeSportKey } from '@/constants/sportsConfig';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
+export { formatCount, postTimeAgo } from './formatting';
 
 export type PostType = 'post' | 'reel';
 export type PostAudience = 'public' | 'followers' | 'connections';
@@ -144,11 +145,13 @@ export async function fetchFeedPosts(
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
   if (error || !data) return [];
 
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
@@ -183,11 +186,13 @@ export async function fetchReels(
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
     query,
-    supabase.from('user_blocks').select('blocked_id').eq('blocker_id', currentUserId),
+    supabase.rpc('get_blocked_user_ids'),
   ]);
   if (error || !data) return [];
 
-  const blockedIds = new Set((blocks ?? []).map((block) => block.blocked_id));
+  const blockedIds = new Set(
+    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
+  );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
@@ -301,13 +306,17 @@ export async function deletePost(postId: string): Promise<{ error: string | null
   const mediaPaths = ((post?.media ?? []) as Array<{ path?: string; url?: string }>)
     .map((item) => item.path ?? item.url)
     .filter((path): path is string => Boolean(path && !path.startsWith('http')));
-  if (mediaPaths.length > 0) {
-    const { error: mediaError } = await supabase.storage.from('posts').remove(mediaPaths);
-    if (mediaError) return { error: mediaError.message };
-  }
 
   const { error } = await supabase.from('posts').delete().eq('id', postId);
-  return { error: error?.message ?? null };
+  if (error) return { error: error.message };
+
+  if (mediaPaths.length > 0) {
+    const { error: mediaError } = await supabase.storage.from('posts').remove(mediaPaths);
+    if (mediaError) {
+      console.warn(`[postsService] post ${postId} deleted but media cleanup failed: ${mediaError.message}`);
+    }
+  }
+  return { error: null };
 }
 
 export async function updatePostCaption(
@@ -461,22 +470,4 @@ export async function toggleCommentLike(
     const { error } = await supabase.from('comment_likes').upsert({ comment_id: commentId, user_id: userId });
     return { error: error?.message ?? null };
   }
-}
-
-export function postTimeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'Just now';
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d}d`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-}
-
-export function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
-  return String(n);
 }

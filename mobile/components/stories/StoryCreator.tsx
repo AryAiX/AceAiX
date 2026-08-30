@@ -35,6 +35,7 @@ import {
   StoryOverlay,
   uploadStoryMedia,
 } from '@/lib/storiesService';
+import { supabase } from '@/lib/supabase';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -181,6 +182,7 @@ export function StoryCreator({ visible, onClose, onPosted }: Props) {
     setUploading(false);
 
     if (createError) {
+      await supabase.storage.from('stories').remove([path]);
       Alert.alert('Error', createError);
       return;
     }

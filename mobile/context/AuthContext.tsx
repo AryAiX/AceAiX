@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, supabaseAnonKey } from '@/lib/supabase';
+import { normalizeAttributes } from '@/lib/profileData';
 
 export type UserRole = 'athlete' | 'scout' | 'club' | 'coach' | 'medical_partner' | 'admin' | null;
 
@@ -162,9 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       followers_count: athleteProfile?.followers_count ?? 0,
       connections_count: athleteProfile?.connections_count ?? 0,
       highlighted_stats: (athleteProfile?.highlighted_stats as Record<string, number>) ?? {},
-      attributes: Array.isArray(athleteProfile?.attributes)
-        ? (athleteProfile.attributes as { label: string; value: number }[])
-        : [],
+      attributes: normalizeAttributes(athleteProfile?.attributes),
       languages: Array.isArray(athleteProfile?.languages)
         ? athleteProfile.languages as { language: string; proficiency: string }[]
         : [],
@@ -174,12 +173,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }
 
-  async function loadProfile(userId: string) {
+  async function loadProfile(userId: string): Promise<boolean> {
     const requestId = ++profileRequest.current;
     const p = await fetchProfile(userId);
-    if (requestId !== profileRequest.current) return;
+    if (requestId !== profileRequest.current) return false;
     setProfile(p);
     setRole((p?.role as UserRole) ?? null);
+    return true;
+  }
+
+  async function loadProfileAndFinishAuth(userId: string) {
+    const isCurrent = await loadProfile(userId);
+    // getSession and onAuthStateChange can start overlapping requests during
+    // startup. A stale request must not expose a transient null role to the
+    // router while the current profile request is still in flight.
+    if (isCurrent) setLoading(false);
   }
 
   async function updateSignupProfile(userId: string, data: SignUpData) {
@@ -222,8 +230,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        loadProfile(s.user.id).finally(() => setLoading(false));
+        void loadProfileAndFinishAuth(s.user.id);
       } else {
+        profileRequest.current += 1;
         setLoading(false);
       }
     });
@@ -233,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(s?.user ?? null);
       if (s?.user) {
         setLoading(true);
-        loadProfile(s.user.id).finally(() => setLoading(false));
+        void loadProfileAndFinishAuth(s.user.id);
       } else {
         profileRequest.current += 1;
         setProfile(null);
@@ -249,7 +258,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     if (error) return { error: error.message };
     if (data.user) {
-      await loadProfile(data.user.id);
+      await loadProfileAndFinishAuth(data.user.id);
     }
     return { error: null };
   }
@@ -295,7 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) return { error: error.message };
     if (authData.user) {
       await updateSignupProfile(authData.user.id, data);
-      await loadProfile(authData.user.id);
+      await loadProfileAndFinishAuth(authData.user.id);
     }
 
     return { error: null };

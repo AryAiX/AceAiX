@@ -193,6 +193,10 @@ export function PostComposer({ visible, postType, onClose, onPosted }: Props) {
       const m = media[i];
       const { path, error } = await uploadPostMedia(user.id, m.uri, m.type);
       if (error || !path) {
+        const completedPaths = uploadedMedia.map((item) => item.path);
+        if (completedPaths.length > 0) {
+          await supabase.storage.from('posts').remove(completedPaths);
+        }
         Alert.alert('Upload failed', error ?? 'Could not upload photo');
         setPosting(false);
         return;

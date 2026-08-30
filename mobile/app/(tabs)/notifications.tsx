@@ -7,7 +7,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -29,6 +28,7 @@ import {
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useNotifications } from '@/hooks/useNotifications';
 import { AppNotification, NotifType, timeAgo } from '@/lib/notificationService';
+import { safeAppPath } from '@/lib/navigation';
 
 // ── Type → icon / color map ────────────────────────────────────────────────────
 const TYPE_META: Record<NotifType, { icon: React.ComponentType<any>; color: string; label: string }> = {
@@ -51,8 +51,10 @@ function getMeta(type: string) {
 // ── Deep-link resolver ─────────────────────────────────────────────────────────
 function resolveDeepLink(notif: AppNotification): string | null {
   const d = notif.data as Record<string, string>;
-  if (d?.route) return d.route;
-  if (notif.action_url?.startsWith('/')) return notif.action_url;
+  const dataRoute = safeAppPath(d?.route);
+  if (dataRoute) return dataRoute;
+  const actionPath = safeAppPath(notif.action_url);
+  if (actionPath) return actionPath;
   switch (notif.type) {
     case 'message': return '/(tabs)/messages';
     case 'opportunity': return '/(tabs)/opportunities';

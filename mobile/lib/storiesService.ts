@@ -210,12 +210,16 @@ export async function deleteStory(
   storyId: string,
   mediaPath: string,
 ): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('stories').delete().eq('id', storyId);
+  if (error) return { error: error.message };
+
   if (mediaPath && !mediaPath.startsWith('http')) {
     const { error: mediaError } = await supabase.storage.from('stories').remove([mediaPath]);
-    if (mediaError) return { error: mediaError.message };
+    if (mediaError) {
+      console.warn(`[storiesService] story ${storyId} deleted but media cleanup failed: ${mediaError.message}`);
+    }
   }
-  const { error } = await supabase.from('stories').delete().eq('id', storyId);
-  return { error: error?.message ?? null };
+  return { error: null };
 }
 
 export async function markStorySeen(storyId: string, viewerId: string): Promise<void> {

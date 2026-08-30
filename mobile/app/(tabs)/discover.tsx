@@ -58,7 +58,9 @@ export default function Discover() {
       supabase.rpc('get_blocked_user_ids'),
     ]).then(([athletesResult, followsResult, blocksResult]) => {
       if (!mounted) return;
-      const blockedIds = new Set((blocksResult.data ?? []).map((row) => row.blocked_user_id));
+      const blockedIds = new Set(
+        (blocksResult.data ?? []).map((row: { blocked_user_id: string }) => row.blocked_user_id),
+      );
       setAthletes((athletesResult.data ?? [])
         .filter((row: any) => !blockedIds.has(row.user_id))
         .map((row: any) => ({
@@ -94,7 +96,8 @@ export default function Discover() {
     }
     setConnected((prev) => {
       const next = new Set(prev);
-      isConnected ? next.delete(athleteUserId) : next.add(athleteUserId);
+      if (isConnected) next.delete(athleteUserId);
+      else next.add(athleteUserId);
       return next;
     });
   }
