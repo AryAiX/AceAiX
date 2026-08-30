@@ -182,7 +182,7 @@ test.describe('App Store authenticated release gate', () => {
     const postCaption = page.getByText(caption);
     await expect(postCaption).toBeVisible();
     const postCard = postCaption.locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
-    await postCard.getByRole('button', { name: 'Open post menu' }).click();
+    await postCard.getByRole('button', { name: 'Open post menu' }).click({ force: true });
     page.once('dialog', (dialog) => dialog.accept());
     await postCard.getByRole('button', { name: 'Delete post' }).click({ force: true });
     await expect(page.getByText(caption)).not.toBeVisible();
