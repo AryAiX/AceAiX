@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeSportKey } from '@/constants/sportsConfig';
 import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
 export { formatCount, postTimeAgo } from './formatting';
 
 export type PostType = 'post' | 'reel';
@@ -244,14 +245,26 @@ export async function uploadPostMedia(
     const path = `${userId}/${Date.now()}.${ext}`;
     const contentType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
 
-    const file = new File(uri);
-    if (!file.exists || file.size === 0) {
-      return { path: null, error: 'Captured file could not be read. Please try again.' };
+    let arrayBuffer: ArrayBuffer;
+    let fileSize: number;
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      if (!response.ok) {
+        return { path: null, error: 'Selected file could not be read. Please try again.' };
+      }
+      arrayBuffer = await response.arrayBuffer();
+      fileSize = arrayBuffer.byteLength;
+    } else {
+      const file = new File(uri);
+      if (!file.exists || file.size === 0) {
+        return { path: null, error: 'Captured file could not be read. Please try again.' };
+      }
+      fileSize = file.size;
+      arrayBuffer = await file.arrayBuffer();
     }
-    if (mediaType === 'video' && file.size > 50 * 1024 * 1024) {
+    if (mediaType === 'video' && fileSize > 50 * 1024 * 1024) {
       return { path: null, error: 'Videos must be 50 MB or smaller.' };
     }
-    const arrayBuffer = await file.arrayBuffer();
 
     const { error } = await supabase.storage.from('posts').upload(path, arrayBuffer, { contentType });
     if (error) return { path: null, error: error.message };

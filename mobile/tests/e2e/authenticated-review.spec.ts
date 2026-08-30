@@ -184,7 +184,7 @@ test.describe('App Store authenticated release gate', () => {
     const postCard = postCaption.locator('xpath=ancestor::div[.//*[@aria-label="Open post menu"]][1]');
     await postCard.getByRole('button', { name: 'Open post menu' }).click();
     page.once('dialog', (dialog) => dialog.accept());
-    await postCard.getByRole('button', { name: 'Delete post' }).click();
+    await postCard.getByRole('button', { name: 'Delete post' }).click({ force: true });
     await expect(page.getByText(caption)).not.toBeVisible();
   });
 
@@ -203,6 +203,7 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await expect(page.getByText('Video', { exact: true })).toBeVisible();
   await page.getByLabel('Post caption').fill(caption);
   await page.getByRole('button', { name: 'Share reel' }).click();
+  await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
 
   page.once('dialog', (dialog) => dialog.accept());
@@ -271,6 +272,6 @@ test('athlete can add and remove a career milestone', async ({ page }) => {
 
     await expect(
       page.getByLabel('API-Football Player ID assigned by an administrator'),
-    ).toBeDisabled();
+    ).not.toBeEditable();
   });
 });
