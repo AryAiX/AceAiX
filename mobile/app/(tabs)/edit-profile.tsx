@@ -126,6 +126,7 @@ export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
+  const [formReady, setFormReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -176,6 +177,7 @@ export default function EditProfile() {
       phone: profile?.phone ?? '',
       birthdate: profile?.birthdate ?? '',
     });
+    setFormReady(true);
   }, [
     profile?.bio,
     profile?.birthdate,
@@ -313,6 +315,14 @@ export default function EditProfile() {
   const citiesForCountry = form.countryIsoCode
     ? (City.getCitiesOfCountry(form.countryIsoCode) ?? [])
     : [];
+
+  if (!formReady) {
+    return (
+      <View style={[s.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={Colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={s.root}>
