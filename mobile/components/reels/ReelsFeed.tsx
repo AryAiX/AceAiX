@@ -293,7 +293,12 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
           <Play color={Colors.white} size={12} fill={Colors.white} />
           <Text style={s.viewCountTxt}>{formatCount(reel.view_count)}</Text>
         </View>
-        <TouchableOpacity onPress={onToggleMute} style={s.muteBtn}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={muted ? 'Unmute reel' : 'Mute reel'}
+          onPress={onToggleMute}
+          style={s.muteBtn}
+        >
           {muted ? (
             <VolumeX color={Colors.white} size={20} />
           ) : (
@@ -310,7 +315,13 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
         </View>
 
         {/* Like */}
-        <TouchableOpacity style={s.railAction} onPress={handleLike}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={reel.liked ? 'Unlike reel' : 'Like reel'}
+          accessibilityState={{ selected: reel.liked }}
+          style={s.railAction}
+          onPress={handleLike}
+        >
           <Heart
             color={reel.liked ? Colors.error : Colors.white}
             fill={reel.liked ? Colors.error : 'transparent'}
@@ -320,13 +331,24 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity style={s.railAction} onPress={() => onComments(reel)}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="View reel comments"
+          style={s.railAction}
+          onPress={() => onComments(reel)}
+        >
           <MessageCircle color={Colors.white} size={28} />
           <Text style={s.railCount}>{formatCount(reel.comment_count)}</Text>
         </TouchableOpacity>
 
         {/* Save */}
-        <TouchableOpacity style={s.railAction} onPress={handleSave}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={reel.saved ? 'Remove saved reel' : 'Save reel'}
+          accessibilityState={{ selected: reel.saved }}
+          style={s.railAction}
+          onPress={handleSave}
+        >
           <Bookmark
             color={reel.saved ? Colors.accent : Colors.white}
             fill={reel.saved ? Colors.accent : 'transparent'}

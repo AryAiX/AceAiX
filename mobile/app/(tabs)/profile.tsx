@@ -843,7 +843,14 @@ function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile
                 <Zap color={Colors.bg} size={9} fill={Colors.bg} />
                 <Text style={s.aiScoreChipTxt}>{a.score}</Text>
               </View>
-              <TouchableOpacity style={s.followBtn} disabled={followPending.has(a.userId)} onPress={() => handleFollowSimilar(a.userId)}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`Follow ${a.name}`}
+                accessibilityState={{ disabled: followPending.has(a.userId) }}
+                style={s.followBtn}
+                disabled={followPending.has(a.userId)}
+                onPress={() => handleFollowSimilar(a.userId)}
+              >
                 <Plus color={Colors.primary} size={14} />
               </TouchableOpacity>
             </View>

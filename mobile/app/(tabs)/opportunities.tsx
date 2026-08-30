@@ -624,6 +624,7 @@ export default function OpportunitiesScreen() {
         <View style={s.searchField}>
           <Search color={Colors.textDisabled} size={14} />
           <TextInput
+            accessibilityLabel="Search opportunities"
             style={s.searchInput}
             value={searchText}
             onChangeText={setSearchText}
@@ -633,6 +634,12 @@ export default function OpportunitiesScreen() {
           />
         </View>
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={
+            activeFiltersCount > 0
+              ? `Filters, ${activeFiltersCount} active`
+              : 'Filter opportunities'
+          }
           style={[s.filterBtn, activeFiltersCount > 0 && s.filterBtnActive]}
           onPress={() => setFilterVisible(true)}
         >

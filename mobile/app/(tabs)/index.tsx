@@ -14,6 +14,7 @@ import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { normalizeMatchResult } from '@/lib/matchResults';
+import { canPlotTrend, pointSpan } from '@/lib/chartScale';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 
@@ -218,8 +219,7 @@ function LineAreaChart({ actual, forecast, w, h }: { actual: (number | null)[]; 
   const all = [...actual, ...forecast].filter((v): v is number => v !== null);
   if (all.length === 0) return null;
   const minV = Math.min(...all) - 0.3, maxV = Math.max(...all) + 0.3;
-  // A single column would divide by zero, so anchor it at the left edge instead.
-  const span = Math.max(1, actual.length - 1);
+  const span = pointSpan(actual.length);
   const xS = (i: number) => pad.l + (i / span) * cw;
   const yS = (v: number) => pad.t + ch - ((v - minV) / (maxV - minV)) * ch;
   const buildPath = (values: (number | null)[]) => {
@@ -684,7 +684,7 @@ export default function Dashboard() {
               <Text style={s.top15Txt}>Live</Text>
             </View>
           </View>
-          {career.actual.filter(v => v !== null).length >= 2 ? (
+          {canPlotTrend(career.actual) ? (
             <>
               <LineAreaChart actual={career.actual} forecast={career.forecast} w={SW - 64} h={110} />
               <View style={s.yearRow}>

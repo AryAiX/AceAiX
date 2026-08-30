@@ -284,7 +284,13 @@ function CommentRow({
           <TouchableOpacity onPress={onReply} style={cr.actionBtn}>
             <Text style={cr.actionTxt}>Reply</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onLike} style={cr.likeBtn}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={comment.liked ? 'Unlike comment' : 'Like comment'}
+            accessibilityState={{ selected: comment.liked }}
+            onPress={onLike}
+            style={cr.likeBtn}
+          >
             <Heart
               color={comment.liked ? Colors.error : Colors.textDisabled}
               fill={comment.liked ? Colors.error : 'transparent'}

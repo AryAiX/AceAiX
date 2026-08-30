@@ -122,7 +122,13 @@ function NotifRow({
           <Text style={s.rowTime}>{timeAgo(notif.created_at)}</Text>
         </View>
       </TouchableOpacity>
-      <TouchableOpacity style={s.dismissBtn} onPress={onDismiss} hitSlop={8}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Dismiss notification: ${notif.title}`}
+        style={s.dismissBtn}
+        onPress={onDismiss}
+        hitSlop={8}
+      >
         <Trash2 color={Colors.textFaint} size={15} />
       </TouchableOpacity>
     </View>

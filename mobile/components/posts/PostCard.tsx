@@ -454,7 +454,14 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         <View style={s.actionLeft}>
 
           {/* Like */}
-          <TouchableOpacity style={s.actionBtn} onPress={handleLike} activeOpacity={0.75}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={post.liked ? 'Unlike post' : 'Like post'}
+            accessibilityState={{ selected: post.liked }}
+            style={s.actionBtn}
+            onPress={handleLike}
+            activeOpacity={0.75}
+          >
             <Animated.View style={[s.heartGlowWrap, { backgroundColor: heartGlowBg }]}>
               <Animated.View style={{ transform: [{ scale: heartScale }] }}>
                 <Heart
@@ -472,7 +479,13 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
           </TouchableOpacity>
 
           {/* Comment */}
-          <TouchableOpacity style={s.actionBtn} onPress={() => onComments(post)} activeOpacity={0.75}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="View comments"
+            style={s.actionBtn}
+            onPress={() => onComments(post)}
+            activeOpacity={0.75}
+          >
             <MessageCircle color={Colors.textMuted} size={22} />
             {post.comment_count > 0 && (
               <Text style={s.actionCount}>{formatCount(post.comment_count)}</Text>
@@ -492,7 +505,14 @@ export function PostCard({ post, onUpdate, onRemove, onComments }: Props) {
         </View>
 
         {/* Bookmark */}
-        <TouchableOpacity style={s.actionBtn} onPress={handleSave} activeOpacity={0.75}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={post.saved ? 'Remove saved post' : 'Save post'}
+          accessibilityState={{ selected: post.saved }}
+          style={s.actionBtn}
+          onPress={handleSave}
+          activeOpacity={0.75}
+        >
           <Animated.View style={{ transform: [{ scale: saveScale }] }}>
             <Bookmark
               color={post.saved ? Colors.accent : Colors.textMuted}
@@ -539,12 +559,22 @@ function MediaCarousel({
       {items.length > 1 && (
         <>
           {currentIdx > 0 && (
-            <TouchableOpacity style={mc.prev} onPress={() => onChangeIdx(currentIdx - 1)}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Previous media"
+              style={mc.prev}
+              onPress={() => onChangeIdx(currentIdx - 1)}
+            >
               <ChevronLeft color={Colors.white} size={20} />
             </TouchableOpacity>
           )}
           {currentIdx < items.length - 1 && (
-            <TouchableOpacity style={mc.next} onPress={() => onChangeIdx(currentIdx + 1)}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Next media"
+              style={mc.next}
+              onPress={() => onChangeIdx(currentIdx + 1)}
+            >
               <ChevronRight color={Colors.white} size={20} />
             </TouchableOpacity>
           )}

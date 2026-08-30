@@ -153,13 +153,17 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
                   As this athlete is under 18, their parent or legal guardian must confirm consent below.
                 </Text>
                 <TextInput
+                  accessibilityLabel="Guardian full name"
                   style={s.input}
                   value={guardianName}
                   onChangeText={setGuardianName}
                   placeholder="Guardian full name"
                   placeholderTextColor={Colors.textDisabled}
+                  autoComplete="name"
+                  textContentType="name"
                 />
                 <TextInput
+                  accessibilityLabel="Guardian email address"
                   style={s.input}
                   value={guardianEmail}
                   onChangeText={setGuardianEmail}
@@ -167,6 +171,8 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  autoComplete="email"
+                  textContentType="emailAddress"
                 />
               </Section>
             )}
