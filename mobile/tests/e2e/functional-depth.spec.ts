@@ -497,8 +497,8 @@ test.describe.serial('deep mobile functional workflows', () => {
       await page.getByLabel('Hometown').fill('Dubai');
       await page.getByLabel('Current location').fill('Dubai');
       await page.getByLabel('Select nationality').click();
-      await page.getByLabel('Search Select Nationality').fill('United Arab Emirates');
-      await page.getByRole('button', { name: 'United Arab Emirates', exact: true }).click();
+      await page.getByLabel('Search Select Nationality').fill('Emirati');
+      await page.getByRole('button', { name: 'Emirati', exact: true }).click();
       await page.getByText('Create Account', { exact: true }).last().click();
 
       await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
