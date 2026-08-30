@@ -625,7 +625,12 @@ test.describe.serial('deep mobile functional workflows', () => {
       await secondary.goto('/network');
       await secondary.getByText('Blocked', { exact: true }).click();
       await expect(secondary.getByText('Rudy Fuller', { exact: true })).toBeVisible();
+      const unblocked = secondary.waitForResponse((response) =>
+        response.url().includes('/rest/v1/user_blocks')
+        && response.request().method() === 'DELETE'
+      );
       await secondary.getByRole('button', { name: 'Unblock Rudy Fuller' }).click();
+      await unblocked;
       await secondary.goto('/feed');
       await secondary.getByRole('button', { name: 'Show Latest posts' }).click();
       await expect(secondary.getByText(editedCaption)).toBeVisible();
