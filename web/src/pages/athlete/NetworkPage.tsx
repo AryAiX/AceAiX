@@ -364,7 +364,7 @@ export default function NetworkPage() {
   const queryClient = useQueryClient();
   const [tab, setTab]                       = useState<Tab>('followers');
   const [search, setSearch]                 = useState('');
-  const [suggFollowingIds, setSuggFollowingIds] = useState<Set<string>>(new Set());
+  const [actionError, setActionError]       = useState('');
   const [writeRecModal, setWriteRecModal]   = useState<{ id: string; name: string } | null>(null);
   const [pickerOpen, setPickerOpen]         = useState(false);
   const [mounted, setMounted]               = useState(false);
@@ -394,22 +394,16 @@ export default function NetworkPage() {
 
   async function toggleFollow(targetId: string) {
     if (!user) return;
-    if (myFollowingIds.has(targetId)) {
-      await unfollow(user.id, targetId);
-    } else {
-      await follow(user.id, targetId);
-    }
-    queryClient.invalidateQueries({ queryKey: ['network-following', user.id] });
-  }
-
-  async function toggleSuggFollow(targetId: string) {
-    if (!user) return;
-    if (suggFollowingIds.has(targetId)) {
-      await unfollow(user.id, targetId);
-      setSuggFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
-    } else {
-      await follow(user.id, targetId);
-      setSuggFollowingIds(s => new Set([...s, targetId]));
+    try {
+      if (myFollowingIds.has(targetId)) {
+        await unfollow(user.id, targetId);
+      } else {
+        await follow(user.id, targetId);
+      }
+      queryClient.invalidateQueries({ queryKey: ['network-following', user.id] });
+    } catch {
+      setActionError('Something went wrong — please try again.');
+      setTimeout(() => setActionError(''), 3000);
     }
   }
 
@@ -533,6 +527,7 @@ export default function NetworkPage() {
         </div>
 
         {/* ── BODY: sidebar + main ─────────────────────────── */}
+        {actionError && <p className="text-xs text-coral">{actionError}</p>}
         <div className="flex gap-5 items-start">
 
           {/* ── SIDEBAR ─────────────────────────────────────── */}
@@ -558,8 +553,8 @@ export default function NetworkPage() {
                 )}
                 {suggestions.map((u, i) => (
                   <SuggestionCard key={u.id} user={u}
-                    isFollowing={suggFollowingIds.has(u.id ?? '')}
-                    onFollow={() => toggleSuggFollow(u.id ?? '')}
+                    isFollowing={myFollowingIds.has(u.id ?? '')}
+                    onFollow={() => toggleFollow(u.id ?? '')}
                     onRecommend={() => setWriteRecModal({ id: u.id ?? '', name: u.full_name ?? '' })}
                     delay={i * 50}
                   />
