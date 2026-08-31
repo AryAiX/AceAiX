@@ -107,6 +107,7 @@ export default function MessagesPage() {
   const [msgLoading, setMsgLoading]       = useState(false);
   const [sending, setSending]             = useState(false);
   const [sendError, setSendError]         = useState(false);
+  const [convError, setConvError]         = useState('');
   const [showNew, setShowNew]             = useState(false);
   const [mobileView, setMobileView]       = useState<'list' | 'chat'>('list');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -117,9 +118,15 @@ export default function MessagesPage() {
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
-    const data = await listConversations(user.id);
-    setConversations(data);
-    setLoading(false);
+    try {
+      const data = await listConversations(user.id);
+      setConversations(data);
+      setConvError('');
+    } catch {
+      setConvError("Couldn't load conversations — please try refreshing.");
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
@@ -211,7 +218,15 @@ export default function MessagesPage() {
                 <Loader2 size={18} className="text-azure animate-spin" />
               </div>
             )}
-            {!loading && filtered.length === 0 && (
+            {!loading && convError && (
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-azure/10 flex items-center justify-center mb-3">
+                  <MessageSquare size={22} className="text-azure" />
+                </div>
+                <p className="text-sm font-semibold text-white mb-1">{convError}</p>
+              </div>
+            )}
+            {!loading && !convError && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
                 <div className="w-14 h-14 rounded-2xl bg-azure/10 flex items-center justify-center mb-3">
                   <MessageSquare size={22} className="text-azure" />
