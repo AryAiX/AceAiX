@@ -110,13 +110,13 @@ export default function OpportunitiesPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [sortOpen]);
 
-  const { data: rawOpps = [], isLoading } = useQuery({
+  const { data: rawOpps = [], isLoading, isError } = useQuery({
     queryKey: ['opportunities'],
     queryFn: () => listOpportunities({}),
   });
 
   const athleteId = athlete?.id;
-  const { data: savedIds = [] } = useQuery({
+  const { data: savedIds = [], isLoading: savedLoading, isError: savedError } = useQuery({
     queryKey: ['saved-opportunities', athleteId],
     queryFn: () => listSavedOpportunityIds(athleteId!),
     enabled: !!athleteId,
@@ -289,6 +289,7 @@ export default function OpportunitiesPage() {
                     {activeApplications.has(featured.id) ? <><CheckCircle size={14} /> Applied</> : <>Apply Now <ArrowRight size={14} /></>}
                   </button>
                   <button onClick={() => toggleSave(featured.id)}
+                    disabled={savedLoading || savedError}
                     className={`p-2.5 rounded-xl border transition-all ${saved.has(featured.id) ? 'border-azure/30 text-azure bg-azure/10' : 'border-white/10 text-muted hover:border-white/25 hover:text-white'}`}>
                     {saved.has(featured.id) ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
                   </button>
@@ -363,6 +364,7 @@ export default function OpportunitiesPage() {
                   {activeApplications.has(opp.id) ? <><CheckCircle size={13} /> Applied</> : <>Apply Now <ArrowRight size={13} /></>}
                 </button>
                 <button onClick={() => toggleSave(opp.id)}
+                  disabled={savedLoading || savedError}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
                     saved.has(opp.id) ? 'border-azure/30 text-azure bg-azure/5' : 'border-white/10 text-muted hover:text-white hover:border-white/20'
                   }`}>
@@ -380,7 +382,16 @@ export default function OpportunitiesPage() {
         </div>
       )}
 
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && isError && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
+            <Briefcase size={28} className="text-muted" />
+          </div>
+          <p className="text-base font-semibold text-white mb-1">Couldn't load opportunities — please try refreshing the page.</p>
+        </div>
+      )}
+
+      {!isLoading && !isError && filtered.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-4">
             <Briefcase size={28} className="text-muted" />
