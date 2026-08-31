@@ -41,11 +41,10 @@ function trajectoryTrend(data: TrajView[]): { first: TrajView; last: TrajView; d
 }
 
 function comparableSimilarity(self: AthleteProfile | null | undefined, other: AthleteWithUser): number {
-  let s = 70;
-  if (self?.sport && other.sport && self.sport.toLowerCase() === other.sport.toLowerCase()) s += 10;
-  if (self?.position_primary && other.position_primary && self.position_primary.toLowerCase() === other.position_primary.toLowerCase()) s += 10;
+  let s = 40;
+  if (self?.position_primary && other.position_primary && self.position_primary.toLowerCase() === other.position_primary.toLowerCase()) s += 20;
   const diff = Math.abs((self?.visibility_score ?? 0) - other.visibility_score);
-  s += Math.max(0, 9 - Math.round(diff / 5));
+  s += Math.max(0, 20 - Math.round(diff / 3));
   return Math.min(99, s);
 }
 function Bar({ pct, color, delay = 0 }: { pct: number; color: string; delay?: number }) {
@@ -217,6 +216,7 @@ export default function CareerPage() {
   const trend = trajectoryTrend(trajectory);
 
   const comparables: ComparableView[] = comparableAthletes
+    .filter(a => a.sport?.toLowerCase() === athlete?.sport?.toLowerCase())
     .filter(a => a.id !== athlete?.id)
     .slice(0, 3)
     .map(a => ({
