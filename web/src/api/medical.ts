@@ -1,5 +1,5 @@
 import { supabase, unwrap, USER_FIELDS } from './_helpers';
-import type { MedicalRecord, MedicalClearance, Injury, MedicalPartner, AthleteProfile, UserProfile, MedicalConsent } from '../types';
+import type { MedicalRecord, MedicalClearance, Injury, MedicalPartner, AthleteProfile, UserProfile, MedicalConsent, ClearanceStatus } from '../types';
 
 export type PartnerClearance = MedicalClearance & {
   athlete?: AthleteProfile & { user?: UserProfile };
@@ -18,6 +18,7 @@ export async function deleteMedicalRecord(id: string): Promise<void> {
 export async function createMedicalRecord(input: {
   athlete_id: string;
   partner_id: string;
+  clearance_id?: string;
   record_type: string;
   title: string;
   provider_name?: string;
@@ -36,6 +37,7 @@ export async function createMedicalRecord(input: {
     await supabase.from('medical_records').insert({
       athlete_id: input.athlete_id,
       partner_id: input.partner_id,
+      clearance_id: input.clearance_id || null,
       record_type: input.record_type,
       title: input.title,
       provider_name: input.provider_name || null,
@@ -84,6 +86,38 @@ export async function listPartnerClearances(partnerId: string): Promise<PartnerC
       .eq('partner_id', partnerId)
       .order('created_at', { ascending: false }),
   ) as PartnerClearance[];
+}
+
+export async function createClearanceRequest(input: {
+  athlete_id: string;
+  partner_id: string;
+  request_type: string;
+  notes?: string;
+}): Promise<MedicalClearance> {
+  return unwrap(
+    await supabase.from('medical_clearances').insert({
+      athlete_id: input.athlete_id,
+      partner_id: input.partner_id,
+      request_type: input.request_type,
+      status: 'pending',
+      notes: input.notes || null,
+    }).select('*').single(),
+  ) as MedicalClearance;
+}
+
+export async function updateClearanceStatus(
+  clearanceId: string,
+  status: ClearanceStatus,
+  notes?: string,
+): Promise<MedicalClearance> {
+  return unwrap(
+    await supabase
+      .from('medical_clearances')
+      .update({ status, ...(notes !== undefined ? { notes } : {}) })
+      .eq('id', clearanceId)
+      .select('*')
+      .single(),
+  ) as MedicalClearance;
 }
 
 export async function listConsents(athleteId: string): Promise<MedicalConsent[]> {
