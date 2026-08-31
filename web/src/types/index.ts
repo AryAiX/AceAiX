@@ -149,6 +149,7 @@ export interface MedicalRecord {
   id: string;
   athlete_id: string;
   partner_id: string | null;
+  clearance_id: string | null;
   record_type: string;
   title: string | null;
   summary: string | null;
@@ -166,6 +167,7 @@ export interface MedicalClearance {
   athlete_id: string;
   partner_id: string | null;
   status: ClearanceStatus;
+  request_type: string | null;
   issued_by: string | null;
   effective_from: string | null;
   effective_to: string | null;
