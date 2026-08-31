@@ -17,6 +17,7 @@ export async function deleteMedicalRecord(id: string): Promise<void> {
 
 export async function createMedicalRecord(input: {
   athlete_id: string;
+  partner_id: string;
   record_type: string;
   title: string;
   provider_name?: string;
@@ -34,6 +35,7 @@ export async function createMedicalRecord(input: {
   return unwrap(
     await supabase.from('medical_records').insert({
       athlete_id: input.athlete_id,
+      partner_id: input.partner_id,
       record_type: input.record_type,
       title: input.title,
       provider_name: input.provider_name || null,
@@ -88,6 +90,23 @@ export async function listConsents(athleteId: string): Promise<MedicalConsent[]>
   return unwrap(
     await supabase.from('medical_consents').select('*').eq('athlete_id', athleteId).order('granted_at', { ascending: false }),
   ) as MedicalConsent[];
+}
+
+export type ConsentedAthlete = MedicalConsent & {
+  athlete?: AthleteProfile & { user?: UserProfile };
+};
+
+export async function listMyConsentedAthletes(): Promise<ConsentedAthlete[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  return unwrap(
+    await supabase
+      .from('medical_consents')
+      .select(`*, athlete:athlete_profiles(id, user_id, sport, user:user_profiles(${USER_FIELDS}))`)
+      .eq('grantee_user_id', user.id)
+      .eq('status', 'granted')
+      .order('granted_at', { ascending: false }),
+  ) as ConsentedAthlete[];
 }
 
 export async function grantConsent(athleteId: string, granteeUserId: string): Promise<MedicalConsent> {
