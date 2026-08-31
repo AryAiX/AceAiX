@@ -96,7 +96,13 @@ export default function PartnerDashboard() {
                 </div>
                 <span className={`${st.badgeClass} text-xs capitalize`}>{req.status.replace('_', ' ')}</span>
                 {req.status !== 'cleared' && (
-                  <button className="btn-primary text-xs py-1.5 px-3 ml-2 flex-shrink-0">Process</button>
+                  <button
+                    className="btn-primary text-xs py-1.5 px-3 ml-2 flex-shrink-0 opacity-50 cursor-not-allowed"
+                    disabled
+                    title="Clearance decisions are managed from the Requests page"
+                  >
+                    Process
+                  </button>
                 )}
               </div>
             );
