@@ -9,7 +9,7 @@ import type { ClearanceStatus, VerificationStatus } from '../../types';
 const STATUS_STYLE: Record<ClearanceStatus, { bg: string; icon: React.ReactNode; badgeClass: string }> = {
   cleared:     { bg: 'rgba(31,181,122,0.08)',  icon: <CheckCircle size={18} className="text-emerald" />,  badgeClass: 'badge-emerald' },
   restricted:  { bg: 'rgba(47,128,237,0.08)',  icon: <Clock size={18} className="text-azure" />,          badgeClass: 'badge-azure'   },
-  not_cleared: { bg: 'rgba(245,166,35,0.08)',  icon: <AlertCircle size={18} className="text-amber" />,    badgeClass: 'badge-amber'   },
+  not_cleared: { bg: 'rgba(235,87,87,0.08)',  icon: <AlertCircle size={18} className="text-red-400" />,    badgeClass: 'text-red-400'   },
   pending:     { bg: 'rgba(245,166,35,0.08)',  icon: <AlertCircle size={18} className="text-amber" />,    badgeClass: 'badge-amber'   },
 };
 
