@@ -21,7 +21,9 @@ const ACCREDITATION_BADGE: Record<VerificationStatus, { wrapClass: string; textC
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
+  const date = new Date(iso);
+  if (isNaN(date.getTime())) return '—';
+  return date.toISOString().slice(0, 10);
 }
 
 export default function PartnerDashboard() {
