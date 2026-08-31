@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Users, UserPlus, UserCheck, UserMinus, ShieldCheck,
   Search, MessageSquare, Quote, Award, Eye,
@@ -13,7 +13,7 @@ import { listAthletes } from '../../api/athletes';
 import { searchUsers, listFollowers, listFollowing, follow, unfollow, listRecommendations, upsertRecommendation } from '../../api/network';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
 import RecommendationCard from '../../components/ui/RecommendationCard';
-import type { Recommendation, UserProfile, RecommendationRelationship } from '../../types';
+import type { UserProfile, RecommendationRelationship } from '../../types';
 
 /* ── constants ──────────────────────────────────────────────── */
 const ACTIVITY_COLORS = ['#F5A623', '#B8F135', '#2F80ED', '#1FB57A'];
@@ -361,57 +361,45 @@ export default function NetworkPage() {
   const { user } = useAuth();
   const { data: athlete } = useMyAthlete();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab]                       = useState<Tab>('followers');
   const [search, setSearch]                 = useState('');
-  const [followers, setFollowers]           = useState<UserProfile[]>([]);
-  const [following, setFollowing]           = useState<UserProfile[]>([]);
-  const [myFollowingIds, setMyFollowingIds] = useState<Set<string>>(new Set());
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [loading, setLoading]               = useState(false);
   const [suggFollowingIds, setSuggFollowingIds] = useState<Set<string>>(new Set());
   const [writeRecModal, setWriteRecModal]   = useState<{ id: string; name: string } | null>(null);
   const [pickerOpen, setPickerOpen]         = useState(false);
   const [mounted, setMounted]               = useState(false);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
-  useEffect(() => { if (user) loadAll(); }, [user]);
 
-  async function loadAll() {
-    if (!user) return;
-    setLoading(true);
-    await Promise.all([loadFollowers(), loadFollowing(), loadRecommendations()]);
-    setLoading(false);
-  }
+  const { data: followersData = [], isLoading: followersLoading, isError: followersError } = useQuery({
+    queryKey: ['network-followers', user?.id],
+    queryFn: () => listFollowers(user!.id),
+    enabled: !!user,
+  });
+  const followers = followersData.map(r => r.follower).filter((u): u is UserProfile => !!u);
 
-  async function loadFollowers() {
-    if (!user) return;
-    const data = await listFollowers(user.id);
-    setFollowers(data.map(r => r.follower).filter((u): u is UserProfile => !!u));
-  }
+  const { data: followingData = [], isLoading: followingLoading, isError: followingError } = useQuery({
+    queryKey: ['network-following', user?.id],
+    queryFn: () => listFollowing(user!.id),
+    enabled: !!user,
+  });
+  const following = followingData.map(r => r.following).filter((u): u is UserProfile => !!u);
+  const myFollowingIds = new Set(following.map(u => u.id));
 
-  async function loadFollowing() {
-    if (!user) return;
-    const data = await listFollowing(user.id);
-    const users = data.map(r => r.following).filter((u): u is UserProfile => !!u);
-    setFollowing(users);
-    setMyFollowingIds(new Set(users.map(u => u.id)));
-  }
-
-  async function loadRecommendations() {
-    if (!user) return;
-    setRecommendations(await listRecommendations(user.id));
-  }
+  const { data: recommendations = [], isLoading: recsLoading, isError: recsError } = useQuery({
+    queryKey: ['network-recommendations', user?.id],
+    queryFn: () => listRecommendations(user!.id),
+    enabled: !!user,
+  });
 
   async function toggleFollow(targetId: string) {
     if (!user) return;
     if (myFollowingIds.has(targetId)) {
       await unfollow(user.id, targetId);
-      setMyFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
-      setFollowing(f => f.filter(u => u.id !== targetId));
     } else {
       await follow(user.id, targetId);
-      setMyFollowingIds(s => new Set([...s, targetId]));
     }
+    queryClient.invalidateQueries({ queryKey: ['network-following', user.id] });
   }
 
   async function toggleSuggFollow(targetId: string) {
@@ -466,12 +454,15 @@ export default function NetworkPage() {
     { id: 'recommendations', label: 'Recommendations',  count: recommendations.length, color: '#B8F135' },
   ];
 
+  const activeLoading = tab === 'followers' ? followersLoading : tab === 'following' ? followingLoading : recsLoading;
+  const activeError = tab === 'followers' ? followersError : tab === 'following' ? followingError : recsError;
+
   return (
     <>
       {writeRecModal && (
         <WriteRecommendationModal
           recipientId={writeRecModal.id} recipientName={writeRecModal.name}
-          onClose={() => setWriteRecModal(null)} onSaved={loadRecommendations}
+          onClose={() => setWriteRecModal(null)} onSaved={() => queryClient.invalidateQueries({ queryKey: ['network-recommendations', user?.id] })}
         />
       )}
 
@@ -665,9 +656,13 @@ export default function NetworkPage() {
 
             {/* content area */}
             <div className="min-h-72">
-              {loading ? (
+              {activeLoading ? (
                 <div className="flex items-center justify-center h-48">
                   <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'rgba(47,128,237,0.3)', borderTopColor: '#2F80ED' }} />
+                </div>
+              ) : activeError ? (
+                <div className="flex items-center justify-center h-48">
+                  <p className="text-xs text-white/35">Couldn't load — please try refreshing.</p>
                 </div>
               ) : (
                 <>
