@@ -209,7 +209,7 @@ function UserRow({ user, isFollowing, onToggle, onMessage, delay = 0 }: {
 
 /* ── suggestion card ────────────────────────────────────────── */
 function SuggestionCard({ user, isFollowing, onFollow, onRecommend, delay = 0 }: {
-  user: Partial<UserProfile & { mutualCount?: number }>; isFollowing: boolean;
+  user: Partial<UserProfile>; isFollowing: boolean;
   onFollow: () => void; onRecommend: () => void; delay?: number;
 }) {
   const [mounted, setMounted] = useState(false);
@@ -230,9 +230,6 @@ function SuggestionCard({ user, isFollowing, onFollow, onRecommend, delay = 0 }:
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">{user.full_name}</p>
           <p className="text-[11px] font-semibold" style={{ color }}>{ROLE_LABEL[user.role ?? ''] ?? user.role}</p>
-          {user.mutualCount && (
-            <p className="text-[10px] mt-0.5" style={{ color: '#2F80ED' }}>{user.mutualCount} mutual connections</p>
-          )}
         </div>
       </div>
       <div className="flex gap-2">
