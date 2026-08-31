@@ -151,8 +151,13 @@ export default function MessagesPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeConvId}` },
         async (payload) => {
           const newMsg = payload.new as Message;
-          const sender = await getUserProfile(newMsg.sender_id);
-          setMessages(prev => [...prev, { ...newMsg, sender: sender ?? undefined }]);
+          let sender: UserProfile | null = null;
+          try {
+            sender = await getUserProfile(newMsg.sender_id);
+          } catch {
+            // fall back to sender: undefined — Avatar renders gracefully without it
+          }
+          setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, { ...newMsg, sender: sender ?? undefined }]);
           loadConversations();
         }).subscribe();
     return () => { supabase.removeChannel(sub); };
@@ -180,7 +185,8 @@ export default function MessagesPage() {
     setSending(true);
     setSendError(false);
     try {
-      await sendMessageApi(activeConvId, user.id, text);
+      const sentMsg = await sendMessageApi(activeConvId, user.id, text);
+      setMessages(prev => [...prev, sentMsg]);
       setInput('');
       loadConversations();
     } catch {
