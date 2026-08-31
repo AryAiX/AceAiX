@@ -3,13 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import { ShieldCheck, FileText, TrendingUp, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getMyMedicalPartner, listPartnerClearances } from '../../api/medical';
-import type { ClearanceStatus } from '../../types';
+import type { ClearanceStatus, VerificationStatus } from '../../types';
 
 const STATUS_STYLE: Record<ClearanceStatus, { bg: string; icon: React.ReactNode; badgeClass: string }> = {
   cleared:     { bg: 'rgba(31,181,122,0.08)',  icon: <CheckCircle size={18} className="text-emerald" />,  badgeClass: 'badge-emerald' },
   restricted:  { bg: 'rgba(47,128,237,0.08)',  icon: <Clock size={18} className="text-azure" />,          badgeClass: 'badge-azure'   },
   not_cleared: { bg: 'rgba(245,166,35,0.08)',  icon: <AlertCircle size={18} className="text-amber" />,    badgeClass: 'badge-amber'   },
   pending:     { bg: 'rgba(245,166,35,0.08)',  icon: <AlertCircle size={18} className="text-amber" />,    badgeClass: 'badge-amber'   },
+};
+
+const ACCREDITATION_BADGE: Record<VerificationStatus, { wrapClass: string; textClass: string; icon: React.ReactNode; label: string }> = {
+  approved:  { wrapClass: 'bg-emerald/8 border-emerald/20',   textClass: 'text-emerald',   icon: <ShieldCheck size={13} className="text-emerald" />,  label: 'Verified Partner' },
+  pending:   { wrapClass: 'bg-amber/8 border-amber/20',       textClass: 'text-amber',     icon: <Clock size={13} className="text-amber" />,          label: 'Verification Pending' },
+  more_info: { wrapClass: 'bg-amber/8 border-amber/20',       textClass: 'text-amber',     icon: <Clock size={13} className="text-amber" />,          label: 'Verification Pending' },
+  rejected:  { wrapClass: 'bg-red-500/8 border-red-500/20',   textClass: 'text-red-400',   icon: <AlertCircle size={13} className="text-red-400" />,  label: 'Not Verified' },
+  expired:   { wrapClass: 'bg-red-500/8 border-red-500/20',   textClass: 'text-red-400',   icon: <AlertCircle size={13} className="text-red-400" />,  label: 'Verification Expired' },
 };
 
 function formatDate(iso: string): string {
@@ -34,6 +42,7 @@ export default function PartnerDashboard() {
   });
 
   const clinicName = partner?.name ?? profile?.full_name ?? 'Medical Partner';
+  const accreditationBadge = ACCREDITATION_BADGE[partner?.accreditation_status ?? 'pending'];
 
   const pendingCount = clearances.filter((c) => c.status === 'pending').length;
   const clearedCount = clearances.filter((c) => c.status === 'cleared').length;
@@ -53,9 +62,9 @@ export default function PartnerDashboard() {
           <h1 className="text-2xl font-bold text-ink font-display">Medical Partner Dashboard</h1>
           <p className="text-sm text-slate mt-0.5">{clinicName} · Verified Partner</p>
         </div>
-        <div className="flex items-center gap-2 bg-emerald/8 border border-emerald/20 rounded-full px-3 py-1.5">
-          <ShieldCheck size={13} className="text-emerald" />
-          <span className="text-xs text-emerald font-semibold">Verified Partner</span>
+        <div className={`flex items-center gap-2 border rounded-full px-3 py-1.5 ${accreditationBadge.wrapClass}`}>
+          {accreditationBadge.icon}
+          <span className={`text-xs font-semibold ${accreditationBadge.textClass}`}>{accreditationBadge.label}</span>
         </div>
       </div>
 
