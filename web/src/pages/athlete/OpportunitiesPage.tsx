@@ -6,9 +6,13 @@ import {
   CheckCircle, ChevronDown, Loader2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { listOpportunities, listSavedOpportunityIds, saveOpportunity, unsaveOpportunity } from '../../api/opportunities';
+import {
+  listOpportunities, listSavedOpportunityIds, saveOpportunity, unsaveOpportunity,
+  listMyApplications, applyToOpportunity, withdrawApplication,
+} from '../../api/opportunities';
 import type { AthleteProfile, Opportunity } from '../../types';
 import { computeOpportunityMatch } from '../../lib/athleteRecommendations';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 interface OppView {
   id: string;
@@ -92,8 +96,8 @@ export default function OpportunitiesPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter]   = useState('all');
   const [sort, setSort]       = useState<'match' | 'deadline'>('match');
-  const [applied, setApplied] = useState<Set<string>>(new Set());
   const [sortOpen, setSortOpen] = useState(false);
+  const [withdrawTarget, setWithdrawTarget] = useState<{ id: string; title: string } | null>(null);
   const sortRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!sortOpen) return;
@@ -119,6 +123,15 @@ export default function OpportunitiesPage() {
   });
   const saved = new Set(savedIds);
 
+  const { data: myApplications = [] } = useQuery({
+    queryKey: ['my-applications', athleteId],
+    queryFn: () => listMyApplications(athleteId!),
+    enabled: !!athleteId,
+  });
+  const activeApplications = new Map(
+    myApplications.filter(a => a.status === 'applied').map(a => [a.opportunity_id, a]),
+  );
+
   async function toggleSave(opportunityId: string) {
     if (!athleteId) return;
     try {
@@ -131,6 +144,17 @@ export default function OpportunitiesPage() {
     } catch {
       // low-stakes action, safe to retry — no error UI needed
     }
+  }
+
+  async function handleApply(opportunityId: string) {
+    if (!athleteId) return;
+    await applyToOpportunity(athleteId, opportunityId);
+    queryClient.invalidateQueries({ queryKey: ['my-applications', athleteId] });
+  }
+
+  async function handleWithdraw(applicationId: string) {
+    await withdrawApplication(applicationId);
+    queryClient.invalidateQueries({ queryKey: ['my-applications', athleteId] });
   }
 
   const opportunities: OppView[] = rawOpps.map(o => toOppView(o, athlete));
@@ -171,7 +195,7 @@ export default function OpportunitiesPage() {
       {/* Stats strip */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Applied', value: applied.size, icon: <CheckCircle size={14} />, color: 'text-emerald', bg: 'bg-emerald/10' },
+          { label: 'Applied', value: activeApplications.size, icon: <CheckCircle size={14} />, color: 'text-emerald', bg: 'bg-emerald/10' },
           { label: 'Saved',   value: saved.size,   icon: <Bookmark size={14} />,    color: 'text-azure',   bg: 'bg-azure/10'   },
           { label: 'Available', value: filtered.length, icon: <TrendingUp size={14} />, color: 'text-amber', bg: 'bg-amber/10' },
         ].map(s => (
@@ -250,14 +274,19 @@ export default function OpportunitiesPage() {
                   {featured.salary !== 'TBD' && <span className="text-emerald font-medium">{featured.salary}</span>}
                 </div>
                 <div className="flex items-center gap-2 mt-4">
-                  <button onClick={() => setApplied(s => new Set([...s, featured.id]))}
-                    disabled={applied.has(featured.id)}
+                  <button onClick={() => {
+                      if (activeApplications.has(featured.id)) {
+                        setWithdrawTarget({ id: activeApplications.get(featured.id)!.id, title: featured.title });
+                      } else {
+                        handleApply(featured.id);
+                      }
+                    }}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                      applied.has(featured.id)
-                        ? 'bg-emerald/15 border border-emerald/30 text-emerald cursor-default'
+                      activeApplications.has(featured.id)
+                        ? 'bg-emerald/15 border border-emerald/30 text-emerald'
                         : 'bg-volt text-ink hover:bg-volt/90'
                     }`}>
-                    {applied.has(featured.id) ? <><CheckCircle size={14} /> Applied</> : <>Apply Now <ArrowRight size={14} /></>}
+                    {activeApplications.has(featured.id) ? <><CheckCircle size={14} /> Applied</> : <>Apply Now <ArrowRight size={14} /></>}
                   </button>
                   <button onClick={() => toggleSave(featured.id)}
                     className={`p-2.5 rounded-xl border transition-all ${saved.has(featured.id) ? 'border-azure/30 text-azure bg-azure/10' : 'border-white/10 text-muted hover:border-white/25 hover:text-white'}`}>
@@ -319,14 +348,19 @@ export default function OpportunitiesPage() {
               </div>
 
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/[0.05]">
-                <button onClick={() => setApplied(s => new Set([...s, opp.id]))}
-                  disabled={applied.has(opp.id)}
+                <button onClick={() => {
+                    if (activeApplications.has(opp.id)) {
+                      setWithdrawTarget({ id: activeApplications.get(opp.id)!.id, title: opp.title });
+                    } else {
+                      handleApply(opp.id);
+                    }
+                  }}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    applied.has(opp.id)
-                      ? 'bg-emerald/10 border border-emerald/20 text-emerald cursor-default'
+                    activeApplications.has(opp.id)
+                      ? 'bg-emerald/10 border border-emerald/20 text-emerald'
                       : 'btn-primary'
                   }`}>
-                  {applied.has(opp.id) ? <><CheckCircle size={13} /> Applied</> : <>Apply Now <ArrowRight size={13} /></>}
+                  {activeApplications.has(opp.id) ? <><CheckCircle size={13} /> Applied</> : <>Apply Now <ArrowRight size={13} /></>}
                 </button>
                 <button onClick={() => toggleSave(opp.id)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
@@ -354,6 +388,17 @@ export default function OpportunitiesPage() {
           <p className="text-base font-semibold text-white mb-1">No opportunities found</p>
           <p className="text-sm text-muted">Try a different filter or check back soon</p>
         </div>
+      )}
+
+      {withdrawTarget && (
+        <ConfirmDialog
+          title="Withdraw application?"
+          message={`Withdraw your application to "${withdrawTarget.title}"?`}
+          confirmLabel="Withdraw"
+          danger
+          onCancel={() => setWithdrawTarget(null)}
+          onConfirm={() => { handleWithdraw(withdrawTarget.id); setWithdrawTarget(null); }}
+        />
       )}
     </div>
   );
