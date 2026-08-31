@@ -69,7 +69,7 @@ export default function PartnerDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink font-display">Medical Partner Dashboard</h1>
-          <p className="text-sm text-slate mt-0.5">{clinicName} · Verified Partner</p>
+          <p className="text-sm text-slate mt-0.5">{clinicName} · {accreditationBadge.label}</p>
         </div>
         <div className={`flex items-center gap-2 border rounded-full px-3 py-1.5 ${accreditationBadge.wrapClass}`}>
           {accreditationBadge.icon}
