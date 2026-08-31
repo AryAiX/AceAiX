@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, FileText, TrendingUp, Plus, CheckCircle, Clock, AlertCircle, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ShieldCheck, FileText, TrendingUp, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getMyMedicalPartner, listPartnerClearances, listMyConsentedAthletes, createMedicalRecord } from '../../api/medical';
+import { getMyMedicalPartner, listPartnerClearances } from '../../api/medical';
+import UploadRecordModal from '../../components/partner/UploadRecordModal';
 import type { ClearanceStatus, VerificationStatus } from '../../types';
 
 const STATUS_STYLE: Record<ClearanceStatus, { bg: string; icon: React.ReactNode; badgeClass: string }> = {
@@ -47,41 +48,7 @@ export default function PartnerDashboard() {
   const hasError = partnerError || clearancesError;
   const isUnlinkedPartner = !partnerLoading && !partnerError && !partner;
 
-  const queryClient = useQueryClient();
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [selectedAthleteId, setSelectedAthleteId] = useState('');
-  const [recordType, setRecordType] = useState('');
-  const [title, setTitle] = useState('');
-  const [summary, setSummary] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const { data: consentedAthletes = [], isLoading: athletesLoading } = useQuery({
-    queryKey: ['my-consented-athletes'],
-    queryFn: listMyConsentedAthletes,
-    enabled: showUploadModal,
-  });
-
-  const uploadMutation = useMutation({
-    mutationFn: () => createMedicalRecord({
-      athlete_id: selectedAthleteId,
-      partner_id: partnerId!,
-      record_type: recordType,
-      title,
-      summary: summary || undefined,
-      file: file ?? undefined,
-    }),
-    onSuccess: () => {
-      setShowUploadModal(false);
-      setSelectedAthleteId('');
-      setRecordType('');
-      setTitle('');
-      setSummary('');
-      setFile(null);
-      setUploadError(null);
-    },
-    onError: (err: Error) => setUploadError(err.message),
-  });
 
   const clinicName = partner?.name ?? profile?.full_name ?? 'Medical Partner';
   const accreditationBadge = ACCREDITATION_BADGE[partner?.accreditation_status ?? 'pending'];
@@ -180,91 +147,11 @@ export default function PartnerDashboard() {
       </>
       )}
 
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="card p-6 max-w-md w-full space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-ink">Upload Medical Record</h3>
-              <button onClick={() => setShowUploadModal(false)} className="text-slate hover:text-ink">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-slate">Athlete</label>
-                <select
-                  className="w-full mt-1 p-2 rounded-lg border border-white/10 bg-transparent text-sm"
-                  value={selectedAthleteId}
-                  onChange={(e) => setSelectedAthleteId(e.target.value)}
-                >
-                  <option value="">Select an athlete…</option>
-                  {athletesLoading && <option disabled>Loading…</option>}
-                  {consentedAthletes.map((c) => (
-                    <option key={c.id} value={c.athlete_id}>
-                      {c.athlete?.user?.full_name ?? 'Athlete'}
-                    </option>
-                  ))}
-                </select>
-                {!athletesLoading && consentedAthletes.length === 0 && (
-                  <p className="text-xs text-slate mt-1">No athletes have granted you consent yet.</p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs text-slate">Record Type</label>
-                <input
-                  className="w-full mt-1 p-2 rounded-lg border border-white/10 bg-transparent text-sm"
-                  placeholder="e.g. Lab Result, Imaging, Clearance Letter"
-                  value={recordType}
-                  onChange={(e) => setRecordType(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate">Title</label>
-                <input
-                  className="w-full mt-1 p-2 rounded-lg border border-white/10 bg-transparent text-sm"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate">Summary (optional)</label>
-                <textarea
-                  className="w-full mt-1 p-2 rounded-lg border border-white/10 bg-transparent text-sm"
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate">File (optional)</label>
-                <input
-                  type="file"
-                  className="w-full mt-1 text-sm"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
-              </div>
-
-              {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button className="text-sm text-slate px-3 py-1.5" onClick={() => setShowUploadModal(false)}>
-                Cancel
-              </button>
-              <button
-                className="btn-primary text-sm py-1.5 px-3 disabled:opacity-50"
-                disabled={!selectedAthleteId || !recordType || !title || uploadMutation.isPending}
-                onClick={() => uploadMutation.mutate()}
-              >
-                {uploadMutation.isPending ? 'Uploading…' : 'Upload'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {showUploadModal && partnerId && (
+        <UploadRecordModal
+          partnerId={partnerId}
+          onClose={() => setShowUploadModal(false)}
+        />
       )}
     </div>
   );
