@@ -315,6 +315,16 @@ export interface Opportunity {
   organization?: Organization;
 }
 
+export interface Application {
+  id: string;
+  opportunity_id: string;
+  athlete_id: string;
+  status: string;
+  message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Notification {
   id: string;
   user_id: string;

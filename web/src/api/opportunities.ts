@@ -1,5 +1,5 @@
 import { supabase, unwrap } from './_helpers';
-import type { Opportunity } from '../types';
+import type { Application, Opportunity } from '../types';
 
 export interface OpportunityFilters {
   sport?: string;
@@ -38,4 +38,22 @@ export async function unsaveOpportunity(athleteId: string, opportunityId: string
   unwrap(
     await supabase.from('saved_opportunities').delete().eq('athlete_id', athleteId).eq('opportunity_id', opportunityId).select('id'),
   );
+}
+
+export async function listMyApplications(athleteId: string): Promise<Application[]> {
+  return unwrap(
+    await supabase.from('applications').select('*').eq('athlete_id', athleteId).order('created_at', { ascending: false }),
+  ) as Application[];
+}
+
+export async function applyToOpportunity(athleteId: string, opportunityId: string, message?: string): Promise<Application> {
+  return unwrap(
+    await supabase.from('applications').insert({ athlete_id: athleteId, opportunity_id: opportunityId, message: message || null }).select('*').single(),
+  ) as Application;
+}
+
+export async function withdrawApplication(applicationId: string): Promise<Application> {
+  return unwrap(
+    await supabase.from('applications').update({ status: 'withdrawn' }).eq('id', applicationId).select('*').single(),
+  ) as Application;
 }
