@@ -103,6 +103,24 @@ async function cleanupFunctionalPosts() {
   if (cleanupError) throw cleanupError;
 }
 
+async function cleanupFunctionalEvents() {
+  const db = await primaryDatabase();
+  const { error } = await db
+    .from('athlete_events')
+    .delete()
+    .ilike('title', 'Functional%');
+  if (error) throw error;
+}
+
+async function cleanupFunctionalCareer() {
+  const db = await primaryDatabase();
+  const { error } = await db
+    .from('career_milestones')
+    .delete()
+    .ilike('club_or_event', 'Functional%');
+  if (error) throw error;
+}
+
 test.describe.serial('deep mobile functional workflows', () => {
   test.setTimeout(120_000);
 
@@ -157,6 +175,7 @@ test.describe.serial('deep mobile functional workflows', () => {
 
   test('event can be created, edited, reloaded, and deleted', async ({ page }) => {
     await login(page);
+    await cleanupFunctionalEvents();
     await page.goto('/events');
     const stamp = Date.now();
     const title = `Functional Event ${stamp}`;
@@ -191,10 +210,16 @@ test.describe.serial('deep mobile functional workflows', () => {
       const fallback = page.getByText(title, { exact: true });
       const finalTitle = await candidate.isVisible().catch(() => false) ? editedTitle : title;
       if (await fallback.or(candidate).first().isVisible().catch(() => false)) {
+        const deleted = page.waitForResponse((response) =>
+          response.url().includes('/rest/v1/athlete_events')
+          && response.request().method() === 'DELETE'
+        );
         page.once('dialog', (dialog) => dialog.accept());
         await page.getByRole('button', { name: `Delete event ${finalTitle}` }).click();
+        await deleted;
         await expect(page.getByText(finalTitle, { exact: true })).not.toBeVisible();
       }
+      await cleanupFunctionalEvents();
     }
   });
 
@@ -223,6 +248,7 @@ test.describe.serial('deep mobile functional workflows', () => {
 
   test('career milestone can be validated, created, edited, reloaded, and deleted', async ({ page }) => {
     await login(page);
+    await cleanupFunctionalCareer();
     await page.goto('/career');
     const stamp = Date.now();
     const club = `Functional Career ${stamp}`;
@@ -263,10 +289,16 @@ test.describe.serial('deep mobile functional workflows', () => {
       const original = page.getByText(club, { exact: true });
       const finalClub = await updated.isVisible().catch(() => false) ? editedClub : club;
       if (await updated.or(original).first().isVisible().catch(() => false)) {
+        const deleted = page.waitForResponse((response) =>
+          response.url().includes('/rest/v1/career_milestones')
+          && response.request().method() === 'DELETE'
+        );
         page.once('dialog', (dialog) => dialog.accept());
         await page.getByRole('button', { name: `Delete career entry ${finalClub}` }).click();
+        await deleted;
         await expect(page.getByText(finalClub, { exact: true })).not.toBeVisible();
       }
+      await cleanupFunctionalCareer();
     }
   });
 
