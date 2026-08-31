@@ -108,6 +108,7 @@ export default function MessagesPage() {
   const [sending, setSending]             = useState(false);
   const [sendError, setSendError]         = useState(false);
   const [convError, setConvError]         = useState('');
+  const [msgError, setMsgError]           = useState('');
   const [showNew, setShowNew]             = useState(false);
   const [mobileView, setMobileView]       = useState<'list' | 'chat'>('list');
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -133,8 +134,14 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!activeConvId || !user) return;
+    setMsgError('');
     setMsgLoading(true);
-    listMessages(activeConvId).then((data) => { setMessages(data); setMsgLoading(false); });
+    listMessages(activeConvId)
+      .then((data) => { setMessages(data); setMsgLoading(false); })
+      .catch(() => {
+        setMsgError("Couldn't load messages — please try refreshing.");
+        setMsgLoading(false);
+      });
     markMessagesRead(activeConvId, user.id).then(() => loadConversations());
   }, [activeConvId, user, loadConversations]);
 
@@ -322,7 +329,15 @@ export default function MessagesPage() {
                     <Loader2 size={16} className="text-azure animate-spin" />
                   </div>
                 )}
-                {!msgLoading && messages.length === 0 && (
+                {!msgLoading && msgError && (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                    <div className="w-12 h-12 rounded-2xl bg-azure/10 flex items-center justify-center mb-3">
+                      <MessageSquare size={20} className="text-azure" />
+                    </div>
+                    <p className="text-sm font-semibold text-white mb-1">{msgError}</p>
+                  </div>
+                )}
+                {!msgLoading && !msgError && messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center py-12">
                     <div className="w-12 h-12 rounded-2xl bg-azure/10 flex items-center justify-center mb-3">
                       <MessageSquare size={20} className="text-azure" />
@@ -331,7 +346,7 @@ export default function MessagesPage() {
                     <p className="text-xs text-muted">Say hello to {activeConv?.other_user?.full_name?.split(' ')[0] ?? 'them'}!</p>
                   </div>
                 )}
-                {messages.map((msg, i) => {
+                {!msgError && messages.map((msg, i) => {
                   const isMe = msg.sender_id === user?.id;
                   const prevMsg = messages[i - 1];
                   const showAvatar = !isMe && prevMsg?.sender_id !== msg.sender_id;
