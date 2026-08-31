@@ -202,12 +202,12 @@ export default function CareerPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
-  const { data: comparableAthletes = [] } = useQuery({
+  const { data: comparableAthletes = [], isLoading: comparablesLoading, isError: comparablesError } = useQuery({
     queryKey: ['career-comparables', athlete?.sport],
     queryFn: () => listAthletes({ sport: athlete?.sport ?? undefined, limit: 8 }),
     enabled: !!athlete,
   });
-  const { data: rawOpps = [] } = useQuery({
+  const { data: rawOpps = [], isLoading: oppsLoading, isError: oppsError } = useQuery({
     queryKey: ['career-opps'],
     queryFn: () => listOpportunities({ limit: 6 }),
   });
@@ -379,10 +379,16 @@ export default function CareerPage() {
             <h2 className="text-sm font-bold text-white">Comparable Players</h2>
           </div>
           <div className="space-y-2.5">
-            {!comparables.length && (
+            {comparablesLoading && (
+              <p className="text-xs text-white/30 py-4 text-center">Loading…</p>
+            )}
+            {!comparablesLoading && comparablesError && (
+              <p className="text-xs text-white/30 py-4 text-center">Couldn't load comparable players.</p>
+            )}
+            {!comparablesLoading && !comparablesError && !comparables.length && (
               <p className="text-xs text-white/30 py-4 text-center">No comparable players yet.</p>
             )}
-            {comparables.map((c, i) => <ComparableCard key={c.name} c={c} delay={300 + i * 80} />)}
+            {!comparablesLoading && !comparablesError && comparables.map((c, i) => <ComparableCard key={c.name} c={c} delay={300 + i * 80} />)}
           </div>
           <p className="text-[10px] text-white/20 mt-4">AI-matched on sport, position &amp; visibility score.</p>
         </div>
@@ -410,10 +416,16 @@ export default function CareerPage() {
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {!opportunities.length && (
+          {oppsLoading && (
+            <p className="text-xs text-white/30 py-4 text-center col-span-full">Loading…</p>
+          )}
+          {!oppsLoading && oppsError && (
+            <p className="text-xs text-white/30 py-4 text-center col-span-full">Couldn't load opportunities.</p>
+          )}
+          {!oppsLoading && !oppsError && !opportunities.length && (
             <p className="text-xs text-white/30 py-4 text-center col-span-full">No active opportunities.</p>
           )}
-          {opportunities.map((opp, i) => <OppCard key={opp.title} opp={opp} delay={400 + i * 80} />)}
+          {!oppsLoading && !oppsError && opportunities.map((opp, i) => <OppCard key={opp.title} opp={opp} delay={400 + i * 80} />)}
         </div>
       </div>
 
