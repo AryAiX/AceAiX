@@ -28,18 +28,22 @@ export default function PartnerDashboard() {
   const { profile } = useAuth();
   const userId = profile?.id;
 
-  const { data: partner } = useQuery({
+  const { data: partner, isLoading: partnerLoading, isError: partnerError } = useQuery({
     queryKey: ['my-medical-partner', userId],
     queryFn: () => getMyMedicalPartner(userId!),
     enabled: !!userId,
   });
   const partnerId = partner?.id;
 
-  const { data: clearances = [], isLoading } = useQuery({
+  const { data: clearances = [], isLoading: clearancesLoading, isError: clearancesError } = useQuery({
     queryKey: ['partner-clearances', partnerId],
     queryFn: () => listPartnerClearances(partnerId!),
     enabled: !!partnerId,
   });
+
+  const isLoading = partnerLoading || clearancesLoading;
+  const hasError = partnerError || clearancesError;
+  const isUnlinkedPartner = !partnerLoading && !partnerError && !partner;
 
   const clinicName = partner?.name ?? profile?.full_name ?? 'Medical Partner';
   const accreditationBadge = ACCREDITATION_BADGE[partner?.accreditation_status ?? 'pending'];
@@ -68,6 +72,20 @@ export default function PartnerDashboard() {
         </div>
       </div>
 
+      {hasError && (
+        <div className="card p-4 border border-red-500/30 bg-red-500/5 text-sm text-red-400">
+          Something went wrong loading your dashboard. Please refresh the page or try again shortly.
+        </div>
+      )}
+
+      {!hasError && isUnlinkedPartner && (
+        <div className="card p-6 text-center text-sm text-slate">
+          No medical partner profile is linked to your account yet. Please contact support to complete setup.
+        </div>
+      )}
+
+      {!hasError && !isUnlinkedPartner && (
+      <>
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {statItems.map(s => (
@@ -121,6 +139,8 @@ export default function PartnerDashboard() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
