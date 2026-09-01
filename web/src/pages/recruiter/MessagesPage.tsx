@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Send, Search, ShieldCheck, MessageSquare, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
 import { listConversations, listMessages, sendMessage, markMessagesRead } from '../../api/messaging';
 import type { UserProfile } from '../../types';
 
@@ -64,6 +65,18 @@ export default function RecruiterMessagesPage() {
       queryClient.invalidateQueries({ queryKey: ['conversations', user.id] }),
     );
   }, [activeId, user, queryClient]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    const channel = supabase
+      .channel(`messages:${activeId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${activeId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
+        queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeId, queryClient, user?.id]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
