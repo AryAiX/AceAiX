@@ -17,7 +17,7 @@ import { listConversations, getOrCreateConversation } from '../../api/messaging'
 interface StatItem { label: string; value: number; delta: string; color: string; icon: LucideIcon; }
 interface RecAthlete { id: string; userId: string; name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
 interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; }
-interface WatchPreview { name: string; position: string; score: number; image: string; }
+interface WatchPreview { id: string; name: string; position: string; score: number; image: string; }
 interface PipelineStage { stage: string; count: number; color: string; }
 
 function ageFromBirth(birth: string | null): number | null {
