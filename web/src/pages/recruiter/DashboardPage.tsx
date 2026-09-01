@@ -17,7 +17,7 @@ import { listConversations, getOrCreateConversation } from '../../api/messaging'
 interface StatItem { label: string; value: number; delta: string; up: boolean; color: string; icon: LucideIcon; }
 interface RecAthlete { id: string; userId: string; name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
 interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; }
-interface WatchPreview { name: string; position: string; score: number; trend: string; up: boolean; image: string; }
+interface WatchPreview { name: string; position: string; score: number; image: string; }
 interface PipelineStage { stage: string; count: number; color: string; }
 
 function ageFromBirth(birth: string | null): number | null {
@@ -286,11 +286,10 @@ export default function RecruiterDashboard() {
     return (first?.athletes ?? []).slice(0, 4).map((wa) => {
       const a = wa.athlete;
       return {
+        id: wa.id,
         name: a?.user?.full_name ?? 'Unnamed athlete',
         position: a?.position ?? a?.position_primary ?? '—',
         score: Math.round((a?.visibility_score ?? 0) / 10 * 10) / 10,
-        trend: '—',
-        up: true,
         image: a?.user?.avatar_url ?? '',
       };
     });
@@ -492,13 +491,12 @@ export default function RecruiterDashboard() {
           </div>
           <div className="space-y-2">
             {WATCHLIST.map((w, i) => {
-              const tc = w.up ? '#1FB57A' : '#EF5350';
               return (
-                <div key={w.name}
+                <Link to="/recruiter/watchlists" key={w.id}
                   className="flex items-center gap-4 px-4 py-3 rounded-2xl cursor-pointer transition-all"
                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animation: `slideUp 0.35s ease ${0.48 + i * 0.07}s both` }}
-                  onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = 'rgba(255,255,255,0.045)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; }}
-                  onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.06)'; }}>
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(255,255,255,0.045)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.06)'; }}>
                   <img src={w.image} alt={w.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
                     style={{ border: '1.5px solid rgba(255,255,255,0.10)' }} />
                   <div className="flex-1 min-w-0">
@@ -506,20 +504,13 @@ export default function RecruiterDashboard() {
                     <p className="text-[11px] text-white/35">{w.position}</p>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className="text-[11px] font-bold flex items-center gap-1" style={{ color: tc }}>
-                      <TrendingUp size={9} style={{ transform: w.up ? 'none' : 'rotate(180deg)' }} />
-                      {w.trend}
-                    </span>
                     <div className="text-right">
                       <p className="text-base font-display font-bold text-white tabular">{w.score}</p>
                       <p className="text-[9px] text-white/25">score</p>
                     </div>
-                    <button className="w-7 h-7 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70"
-                      style={{ background: 'rgba(47,128,237,0.09)', border: '1px solid rgba(47,128,237,0.22)', color: '#2F80ED' }}>
-                      <ArrowUpRight size={11} />
-                    </button>
+                    <ArrowUpRight size={11} aria-hidden="true" style={{ color: '#2F80ED' }} />
                   </div>
-                </div>
+                </Link>
               );
             })}
             {WATCHLIST.length === 0 && (
