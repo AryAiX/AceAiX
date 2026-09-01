@@ -10,7 +10,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { listAthletes, type AthleteWithUser } from '../../api/athletes';
 import { listWatchlists, addAthleteToWatchlist } from '../../api/watchlists';
-import { listNotifications } from '../../api/notifications';
+import { listNotifications, unreadCount } from '../../api/notifications';
 import { listConversations, getOrCreateConversation } from '../../api/messaging';
 
 /* ── view models ──────────────────────────────────────────── */
@@ -253,6 +253,7 @@ export default function RecruiterDashboard() {
     queryFn: () => listConversations(user!.id),
     enabled: !!user,
   });
+  const { data: unread = 0 } = useQuery({ queryKey: ['unread-count', user?.id], queryFn: () => unreadCount(user!.id), enabled: !!user });
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -347,11 +348,13 @@ export default function RecruiterDashboard() {
             </div>
           </div>
           <div className="flex gap-2.5 flex-shrink-0">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            <button aria-label="Notifications" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)' }}>
               <Bell size={14} />
               Alerts
-              <span className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: '#EF5350', color: '#fff' }}>3</span>
+              {unread > 0 && (
+                <span className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: '#EF5350', color: '#fff' }}>{unread}</span>
+              )}
             </button>
             <Link to="/recruiter/search"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.97]"
