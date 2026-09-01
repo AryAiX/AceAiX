@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Star, Trash2, ShieldCheck, Search, Flame, X, BarChart2, ArrowUpRight, Pencil, Check, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -107,7 +108,7 @@ function AthleteRow({ a, idx, accent, onRemove, disabled }:
         <img src={a.image} alt={a.name} className="w-11 h-11 rounded-xl object-cover object-top"
           style={{ border: '1.5px solid rgba(255,255,255,0.10)' }} />
         {a.verified && (
-          <div className="absolute -bottom-1 -right-1 w-4.5 h-4.5 w-[18px] h-[18px] rounded-full flex items-center justify-center"
+          <div className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center"
             style={{ background: '#1FB57A', boxShadow: '0 0 5px rgba(31,181,122,0.55)' }}>
             <ShieldCheck size={8} className="text-white" />
           </div>
@@ -210,6 +211,7 @@ function ListCard({ wl, active, onClick, idx }:
 export default function WatchlistsPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showNew,   setShowNew]   = useState(false);
   const [newName,   setNewName]   = useState('');
@@ -526,7 +528,8 @@ export default function WatchlistsPage() {
                   <p className="text-white/35 text-sm">
                     {current.athletes.length === 0 ? 'No athletes yet' : 'No athletes match your search'}
                   </p>
-                  <button className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl transition-all"
+                  <button onClick={() => navigate('/recruiter/search')}
+                    className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl transition-all"
                     style={{ background: `${current.color}10`, border: `1px solid ${current.color}28`, color: current.color }}>
                     <Plus size={11} /> Add from Search
                   </button>
@@ -542,7 +545,8 @@ export default function WatchlistsPage() {
             {/* footer add */}
             {current.athletes.length > 0 && (
               <div className="px-5 pb-4">
-                <button className="flex items-center gap-2 text-xs font-semibold transition-all"
+                <button onClick={() => navigate('/recruiter/search')}
+                  className="flex items-center gap-2 text-xs font-semibold transition-all"
                   style={{ color: current.color }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>
