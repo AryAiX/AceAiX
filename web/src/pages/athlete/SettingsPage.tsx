@@ -34,7 +34,7 @@ export default function SettingsPage() {
   const [pwError, setPwError] = useState('');
   const [pwSaved, setPwSaved] = useState(false);
 
-  const { data: priv } = useQuery({
+  const { data: priv, isLoading: privLoading, isError: privError } = useQuery({
     queryKey: ['user-private', user?.id],
     queryFn: () => getUserPrivate(user!.id),
     enabled: !!user?.id,
@@ -159,11 +159,23 @@ export default function SettingsPage() {
             </div>
             <div>
               <label className="label">Email</label>
-              <input value={form.email} onChange={e => set('email', e.target.value)} className="input-field" type="email" />
+              {privLoading ? (
+                <p className="text-sm text-slate-500 py-2">Loading…</p>
+              ) : privError ? (
+                <p className="text-sm text-rose-400 py-2">Couldn't load — please refresh the page.</p>
+              ) : (
+                <input value={form.email} onChange={e => set('email', e.target.value)} className="input-field" type="email" />
+              )}
             </div>
             <div>
               <label className="label">Phone</label>
-              <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+971 50 000 0000" className="input-field" />
+              {privLoading ? (
+                <p className="text-sm text-slate-500 py-2">Loading…</p>
+              ) : privError ? (
+                <p className="text-sm text-rose-400 py-2">Couldn't load — please refresh the page.</p>
+              ) : (
+                <input value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="+971 50 000 0000" className="input-field" />
+              )}
             </div>
             <div>
               <label className="label">City</label>
