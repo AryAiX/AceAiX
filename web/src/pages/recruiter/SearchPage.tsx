@@ -1,16 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, SlidersHorizontal, ShieldCheck, Plus, Star,
   MessageSquare, Eye, Zap, X, ChevronDown, LayoutGrid,
   List, Flame, MapPin, Loader2,
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { listAthletes } from '../../api/athletes';
+import { listWatchlists, addAthleteToWatchlist, removeAthleteFromWatchlist } from '../../api/watchlists';
+import { getOrCreateConversation } from '../../api/messaging';
 import type { AthleteProfile, UserProfile } from '../../types';
 
 /* ── card view model (mapped from athlete_profiles + user) ──── */
 interface CardAthlete {
   id: string;
+  userId: string;
   name: string;
   sport: string;
   position: string;
@@ -40,6 +45,7 @@ function toCard(a: AthleteProfile & { user?: UserProfile }): CardAthlete {
   const score = Math.round((a.visibility_score ?? 0) / 10 * 10) / 10;
   return {
     id: a.id,
+    userId: a.user?.id ?? '',
     name: a.user?.full_name ?? 'Unnamed athlete',
     sport: a.sport ?? 'Football',
     position: a.position ?? a.position_primary ?? '—',
@@ -119,8 +125,8 @@ function MatchBar({ pct, color }: { pct: number; color: string }) {
 }
 
 /* ── grid card ────────────────────────────────────────────── */
-function GridCard({ a, idx, watchlisted, onWatchlist }:
-  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void }) {
+function GridCard({ a, idx, watchlisted, onWatchlist, onMessage, hasWatchlist }:
+  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void; onMessage: () => void; hasWatchlist: boolean }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 60 + idx * 70); return () => clearTimeout(t); }, [idx]);
@@ -213,8 +219,8 @@ function GridCard({ a, idx, watchlisted, onWatchlist }:
             onMouseLeave={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.05)'; el.style.color = 'rgba(255,255,255,0.60)'; }}>
             <Eye size={11} /> View
           </button>
-          <button onClick={onWatchlist}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.94]"
+          <button onClick={onWatchlist} disabled={!hasWatchlist}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.94] disabled:opacity-30 disabled:cursor-not-allowed"
             style={{
               background: watchlisted ? 'rgba(245,166,35,0.15)' : 'rgba(47,128,237,0.12)',
               border: `1px solid ${watchlisted ? 'rgba(245,166,35,0.38)' : 'rgba(47,128,237,0.32)'}`,
@@ -223,7 +229,8 @@ function GridCard({ a, idx, watchlisted, onWatchlist }:
             {watchlisted ? <Star size={11} fill="currentColor" /> : <Plus size={11} />}
             {watchlisted ? 'Saved' : 'Watchlist'}
           </button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all active:scale-[0.94]"
+          <button onClick={onMessage} aria-label="Message this athlete"
+            className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all active:scale-[0.94]"
             style={{ background: 'rgba(31,181,122,0.10)', border: '1px solid rgba(31,181,122,0.25)', color: '#1FB57A' }}>
             <MessageSquare size={12} />
           </button>
@@ -234,8 +241,8 @@ function GridCard({ a, idx, watchlisted, onWatchlist }:
 }
 
 /* ── list row ─────────────────────────────────────────────── */
-function ListRow({ a, idx, watchlisted, onWatchlist }:
-  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void }) {
+function ListRow({ a, idx, watchlisted, onWatchlist, onMessage, hasWatchlist }:
+  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void; onMessage: () => void; hasWatchlist: boolean }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 40 + idx * 55); return () => clearTimeout(t); }, [idx]);
@@ -292,12 +299,13 @@ function ListRow({ a, idx, watchlisted, onWatchlist }:
           <p className="text-[9px] text-white/25">score</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={onWatchlist}
-            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
+          <button onClick={onWatchlist} disabled={!hasWatchlist} aria-label="Add to watchlist"
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90] disabled:opacity-30 disabled:cursor-not-allowed"
             style={{ background: watchlisted ? 'rgba(245,166,35,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${watchlisted ? 'rgba(245,166,35,0.38)' : 'rgba(255,255,255,0.10)'}`, color: watchlisted ? '#F5A623' : 'rgba(255,255,255,0.40)' }}>
             <Star size={12} fill={watchlisted ? 'currentColor' : 'none'} />
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
+          <button onClick={onMessage} aria-label="Message this athlete"
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
             style={{ background: 'rgba(31,181,122,0.10)', border: '1px solid rgba(31,181,122,0.22)', color: '#1FB57A' }}>
             <MessageSquare size={12} />
           </button>
@@ -347,10 +355,44 @@ export default function SearchPage() {
   const [aiDone,       setAiDone]       = useState(false);
   const [aiTyping,     setAiTyping]     = useState(false);
   const [view,         setView]         = useState<'grid' | 'list'>('grid');
-  const [watchlisted,  setWatchlisted]  = useState<Set<string>>(new Set());
   const [filtersOpen,  setFiltersOpen]  = useState(true);
   const [mounted,      setMounted]      = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const { data: watchlists = [] } = useQuery({
+    queryKey: ['watchlists', user?.id],
+    queryFn: () => listWatchlists(user!.id),
+    enabled: !!user,
+  });
+
+  const watchlistedMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const wa of watchlists[0]?.athletes ?? []) map.set(wa.athlete_id, wa.id);
+    return map;
+  }, [watchlists]);
+
+  const addToWatchlist = useMutation({
+    mutationFn: (athleteId: string) => addAthleteToWatchlist(watchlists[0]?.id ?? '', athleteId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlists', user?.id] }),
+  });
+  const removeFromWatchlist = useMutation({
+    mutationFn: (watchlistAthleteId: string) => removeAthleteFromWatchlist(watchlistAthleteId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlists', user?.id] }),
+  });
+  function toggleWatchlist(athleteId: string) {
+    const existingId = watchlistedMap.get(athleteId);
+    if (existingId) removeFromWatchlist.mutate(existingId);
+    else addToWatchlist.mutate(athleteId);
+  }
+
+  const startConversation = useMutation({
+    mutationFn: (otherUserId: string) => getOrCreateConversation(user!.id, otherUserId),
+    onSuccess: () => navigate('/recruiter/messages'),
+  });
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['recruiter-athletes', sport, level, query],
@@ -390,14 +432,6 @@ export default function SearchPage() {
     setAiDone(false);
     setAiTyping(true);
     setTimeout(() => { setAiTyping(false); setAiDone(true); }, 1300);
-  }
-
-  function toggleWatchlist(id: string) {
-    setWatchlisted(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   }
 
   return (
@@ -633,16 +667,20 @@ export default function SearchPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((a, i) => (
             <GridCard key={a.id} a={a} idx={i}
-              watchlisted={watchlisted.has(a.id)}
-              onWatchlist={() => toggleWatchlist(a.id)} />
+              watchlisted={watchlistedMap.has(a.id)}
+              onWatchlist={() => toggleWatchlist(a.id)}
+              onMessage={() => startConversation.mutate(a.userId)}
+              hasWatchlist={watchlists.length > 0} />
           ))}
         </div>
       ) : (
         <div className="space-y-2.5">
           {filtered.map((a, i) => (
             <ListRow key={a.id} a={a} idx={i}
-              watchlisted={watchlisted.has(a.id)}
-              onWatchlist={() => toggleWatchlist(a.id)} />
+              watchlisted={watchlistedMap.has(a.id)}
+              onWatchlist={() => toggleWatchlist(a.id)}
+              onMessage={() => startConversation.mutate(a.userId)}
+              hasWatchlist={watchlists.length > 0} />
           ))}
         </div>
       )}
