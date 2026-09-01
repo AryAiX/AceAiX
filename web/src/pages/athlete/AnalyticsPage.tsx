@@ -23,12 +23,12 @@ export default function AthleteAnalyticsPage() {
     queryFn: () => weeklyViews(athleteId!, 7),
     enabled: !!athleteId,
   });
-  const { data: viewCount = 0 } = useQuery({
+  const { data: viewCount = 0, isLoading: viewCountLoading, isError: viewCountError } = useQuery({
     queryKey: ['analytics-view-count', athleteId],
     queryFn: () => profileViewCount(athleteId!),
     enabled: !!athleteId,
   });
-  const { data: recentViews = [] } = useQuery({
+  const { data: recentViews = [], isLoading: recentViewsLoading, isError: recentViewsError } = useQuery({
     queryKey: ['analytics-recent-views', athleteId],
     queryFn: () => listProfileViews(athleteId!, 100),
     enabled: !!athleteId,
@@ -46,10 +46,10 @@ export default function AthleteAnalyticsPage() {
   const topLocations = ((athlete?.analytics as { topLocations?: TopLocation[] } | undefined)?.topLocations ?? []);
 
   const stats = [
-    { label: 'Profile Views (total)', value: viewCount.toLocaleString(), change: 'all time', positive: true },
+    { label: 'Profile Views (total)', value: viewCountError ? '—' : viewCount.toLocaleString(), change: viewCountError ? "couldn't load" : 'all time', positive: true },
     { label: 'Views This Week', value: String(weekTotal), change: 'last 7 days', positive: true },
-    { label: 'Verified Viewers', value: String(verifiedViewers), change: 'last 100 views', positive: true },
-    { label: 'Unique Viewers', value: String(uniqueViewers), change: 'last 100 views', positive: true },
+    { label: 'Verified Viewers', value: recentViewsError ? '—' : String(verifiedViewers), change: recentViewsError ? "couldn't load" : 'last 100 views', positive: true },
+    { label: 'Unique Viewers', value: recentViewsError ? '—' : String(uniqueViewers), change: recentViewsError ? "couldn't load" : 'last 100 views', positive: true },
   ];
 
   return (
@@ -130,7 +130,13 @@ export default function AthleteAnalyticsPage() {
           <Eye size={18} className="text-blue-400" />
           <h2 className="text-base font-semibold text-white">Recent Profile Views</h2>
         </div>
-        {recentViews.length === 0 ? (
+        {recentViewsLoading ? (
+          <div className="flex items-center justify-center h-36">
+            <Loader2 size={20} className="text-blue-400 animate-spin" />
+          </div>
+        ) : recentViewsError ? (
+          <p className="text-sm text-slate-500">Couldn't load recent views — please try refreshing.</p>
+        ) : recentViews.length === 0 ? (
           <p className="text-sm text-slate-500">No profile views yet.</p>
         ) : (
           <div className="space-y-3">
