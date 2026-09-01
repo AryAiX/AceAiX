@@ -257,6 +257,7 @@ export default function WatchlistsPage() {
   const [mounted,   setMounted]   = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
   const { data: rawLists = [], isLoading } = useQuery({
@@ -438,7 +439,7 @@ export default function WatchlistsPage() {
         <div className="space-y-3">
           {lists.map((wl, i) => (
             <ListCard key={wl.id} wl={wl} idx={i} active={current?.id === wl.id}
-              onClick={() => { setSelectedId(wl.id); setSearch(''); setRenaming(false); }} />
+              onClick={() => { setSelectedId(wl.id); setSearch(''); setRenaming(false); setConfirmDelete(false); }} />
           ))}
 
           {/* quick add CTA */}
@@ -517,11 +518,19 @@ export default function WatchlistsPage() {
                       <Pencil size={12} />
                     </button>
                   )}
-                  <button onClick={removeList} disabled={busy} aria-label="Delete watchlist"
-                    className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
-                    style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.22)', color: '#EF5350' }}>
-                    <Trash2 size={12} />
-                  </button>
+                  {confirmDelete ? (
+                    <button onClick={removeList} disabled={busy}
+                      className="px-3 h-8 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50"
+                      style={{ background: 'rgba(239,83,80,0.18)', border: '1px solid rgba(239,83,80,0.45)', color: '#EF5350' }}>
+                      <Trash2 size={12} /> Confirm delete
+                    </button>
+                  ) : (
+                    <button onClick={() => setConfirmDelete(true)} disabled={busy} aria-label="Delete watchlist"
+                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
+                      style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.22)', color: '#EF5350' }}>
+                      <Trash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
 
