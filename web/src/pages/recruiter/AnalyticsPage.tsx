@@ -88,7 +88,7 @@ export default function RecruiterAnalyticsPage() {
       <div className="card">
         <div className="flex items-center gap-2 mb-6">
           <BarChart3 size={18} className="text-blue-400" />
-          <h2 className="text-base font-semibold text-white">Conversation Activity — Last 7 Days</h2>
+          <h2 className="text-base font-semibold text-white">Conversations by Last Message — Last 7 Days</h2>
         </div>
         <div className="flex items-end gap-3 h-32">
           {weeklyActivity.map((d) => (
