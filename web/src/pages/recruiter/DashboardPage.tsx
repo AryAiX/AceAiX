@@ -232,29 +232,21 @@ export default function RecruiterDashboard() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
-  const { data: watchlists = [] } = useQuery({
-    queryKey: ['watchlists', user?.id],
-    queryFn: () => listWatchlists(user!.id),
-    enabled: !!user,
-  });
-  const { data: recommendedRaw = [] } = useQuery({
-    queryKey: ['rec-athletes'],
-    queryFn: () => listAthletes({ limit: 3, minScore: 85 }),
-  });
-  const { data: allAthletes = [] } = useQuery({
-    queryKey: ['all-athletes'],
-    queryFn: () => listAthletes({}),
-  });
-  const { data: notifications = [] } = useQuery({
-    queryKey: ['notifications', user?.id],
-    queryFn: () => listNotifications(user!.id, 4),
-    enabled: !!user,
-  });
-  const { data: conversations = [] } = useQuery({
-    queryKey: ['conversations', user?.id],
-    queryFn: () => listConversations(user!.id),
-    enabled: !!user,
-  });
+  const watchlistsQ = useQuery({ queryKey: ['watchlists', user?.id], queryFn: () => listWatchlists(user!.id), enabled: !!user });
+  const recommendedQ = useQuery({ queryKey: ['rec-athletes'], queryFn: () => listAthletes({ limit: 3, minScore: 85 }) });
+  const allAthletesQ = useQuery({ queryKey: ['all-athletes'], queryFn: () => listAthletes({}) });
+  const notificationsQ = useQuery({ queryKey: ['notifications', user?.id], queryFn: () => listNotifications(user!.id, 4), enabled: !!user });
+  const conversationsQ = useQuery({ queryKey: ['conversations', user?.id], queryFn: () => listConversations(user!.id), enabled: !!user });
+
+  const watchlists = watchlistsQ.data ?? [];
+  const recommendedRaw = recommendedQ.data ?? [];
+  const allAthletes = allAthletesQ.data ?? [];
+  const notifications = notificationsQ.data ?? [];
+  const conversations = conversationsQ.data ?? [];
+
+  const isLoading = watchlistsQ.isLoading || recommendedQ.isLoading || allAthletesQ.isLoading || notificationsQ.isLoading || conversationsQ.isLoading;
+  const isError = watchlistsQ.isError || recommendedQ.isError || allAthletesQ.isError || notificationsQ.isError || conversationsQ.isError;
+  const refetchAll = () => { watchlistsQ.refetch(); recommendedQ.refetch(); allAthletesQ.refetch(); notificationsQ.refetch(); conversationsQ.refetch(); };
   const { data: unread = 0 } = useQuery({ queryKey: ['unread-count', user?.id], queryFn: () => unreadCount(user!.id), enabled: !!user });
 
   const queryClient = useQueryClient();
@@ -317,6 +309,14 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="max-w-7xl space-y-5 pb-10">
+
+      {isError && (
+        <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.28)' }}>
+          <p className="text-sm text-white/70">Some dashboard data failed to load.</p>
+          <button onClick={refetchAll} className="text-sm font-semibold" style={{ color: '#EF5350' }}>Retry</button>
+        </div>
+      )}
+      {isLoading && <p className="text-xs text-white/30 px-1">Loading your dashboard…</p>}
 
       {/* HERO */}
       <div className="relative rounded-3xl overflow-hidden"
