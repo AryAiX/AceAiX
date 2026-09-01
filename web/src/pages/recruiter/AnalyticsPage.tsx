@@ -6,7 +6,7 @@ import { listWatchlists } from '../../api/watchlists';
 import { listConversations } from '../../api/messaging';
 
 interface AnStat { label: string; value: string; change: string; positive: boolean; }
-interface TopAthlete { name: string; position: string; views: number; score: number; image: string; }
+interface TopAthlete { id: string; name: string; position: string; followers: number; score: number; image: string; }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -45,9 +45,10 @@ export default function RecruiterAnalyticsPage() {
   ];
 
   const TOP_ATHLETES: TopAthlete[] = topRaw.map((a) => ({
+    id: a.id,
     name: a.user?.full_name ?? 'Unnamed athlete',
     position: a.position ?? a.position_primary ?? '—',
-    views: a.followers_count ?? 0,
+    followers: a.followers_count ?? 0,
     score: Math.round((a.visibility_score ?? 0) / 10 * 10) / 10,
     image: a.user?.avatar_url ?? '',
   }));
@@ -100,15 +101,15 @@ export default function RecruiterAnalyticsPage() {
         </div>
       </div>
 
-      {/* Top viewed */}
+      {/* Top scored */}
       <div className="card">
         <div className="flex items-center gap-2 mb-5">
           <Star size={18} className="text-amber-400" />
-          <h2 className="text-base font-semibold text-white">Most Viewed Athletes</h2>
+          <h2 className="text-base font-semibold text-white">Top Scored Athletes</h2>
         </div>
         <div className="space-y-3">
           {TOP_ATHLETES.map((a, i) => (
-            <div key={a.name} className="flex items-center gap-4 p-3 bg-navy-800 rounded-xl">
+            <div key={a.id} className="flex items-center gap-4 p-3 bg-navy-800 rounded-xl">
               <span className="text-sm font-bold text-slate-500 w-5">#{i + 1}</span>
               <img src={a.image} alt={a.name} className="w-10 h-10 rounded-lg object-cover" />
               <div className="flex-1 min-w-0">
@@ -120,7 +121,7 @@ export default function RecruiterAnalyticsPage() {
                 <p className="text-xs text-slate-500">AI Score</p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-bold text-blue-400">{a.views}</p>
+                <p className="text-sm font-bold text-blue-400">{a.followers}</p>
                 <p className="text-xs text-slate-500">followers</p>
               </div>
             </div>
