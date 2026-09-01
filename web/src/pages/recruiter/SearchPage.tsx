@@ -390,7 +390,7 @@ export default function SearchPage() {
 
   const startConversation = useMutation({
     mutationFn: (otherUserId: string) => getOrCreateConversation(user!.id, otherUserId),
-    onSuccess: () => navigate('/recruiter/messages'),
+    onSuccess: (conversation) => navigate('/recruiter/messages', { state: { conversationId: conversation.id } }),
   });
 
   const { data: rows = [], isLoading, isError, refetch } = useQuery({

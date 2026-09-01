@@ -252,7 +252,7 @@ export default function RecruiterDashboard() {
   });
   const startConversation = useMutation({
     mutationFn: (otherUserId: string) => getOrCreateConversation(user!.id, otherUserId),
-    onSuccess: () => navigate('/recruiter/messages'),
+    onSuccess: (conversation) => navigate('/recruiter/messages', { state: { conversationId: conversation.id } }),
   });
 
   const totalWatchlistAthletes = watchlists.reduce((s, w) => s + (w.athletes?.length ?? 0), 0);

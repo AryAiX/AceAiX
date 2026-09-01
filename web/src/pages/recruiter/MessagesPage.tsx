@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Send, Search, ShieldCheck, MessageSquare, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -30,8 +31,11 @@ function Avatar({ user, size }: { user: UserProfile | undefined; size: number })
 
 export default function RecruiterMessagesPage() {
   const { user } = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(
+    (location.state as { conversationId?: string } | null)?.conversationId ?? null
+  );
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(false);
