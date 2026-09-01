@@ -393,12 +393,13 @@ export default function SearchPage() {
     onSuccess: () => navigate('/recruiter/messages'),
   });
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['recruiter-athletes', sport, level, query],
     queryFn: () => listAthletes({
       sport: sport !== 'All' ? sport : undefined,
       level: level !== 'All' ? level : undefined,
       q: query.trim() || undefined,
+      limit: 200,
     }),
   });
 
@@ -634,7 +635,16 @@ export default function SearchPage() {
       </div>
 
       {/* RESULTS */}
-      {isLoading ? (
+      {isError ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <p className="text-white/40 text-sm">Couldn't load athletes.</p>
+          <button onClick={() => refetch()}
+            className="text-xs px-4 py-2 rounded-xl transition-all"
+            style={{ background: 'rgba(47,128,237,0.12)', border: '1px solid rgba(47,128,237,0.28)', color: '#2F80ED' }}>
+            Retry
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 size={26} className="animate-spin" style={{ color: '#2F80ED' }} />
           <p className="text-white/40 text-sm">Loading athletes…</p>
