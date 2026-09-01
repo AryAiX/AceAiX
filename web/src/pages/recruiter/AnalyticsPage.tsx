@@ -1,11 +1,11 @@
-import { BarChart3, Star, ArrowUp, ArrowDown } from 'lucide-react';
+import { BarChart3, Star } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { listAthletes } from '../../api/athletes';
 import { listWatchlists } from '../../api/watchlists';
 import { listConversations } from '../../api/messaging';
 
-interface AnStat { label: string; value: string; change: string; positive: boolean; }
+interface AnStat { label: string; value: string; change: string; }
 interface TopAthlete { id: string; name: string; position: string; followers: number; score: number; image: string; }
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -38,10 +38,10 @@ export default function RecruiterAnalyticsPage() {
     : 0;
 
   const STATS: AnStat[] = [
-    { label: 'Athletes Available', value: allAthletes.length.toLocaleString(), change: 'indexed',                 positive: true },
-    { label: 'Athletes Contacted', value: conversations.length.toString(),     change: 'conversations',           positive: true },
-    { label: 'Watchlist Athletes', value: totalWatchlistAthletes.toString(),   change: `${watchlists.length} lists`, positive: true },
-    { label: 'Avg AI Score',       value: avgScore.toFixed(1),                 change: 'all athletes',            positive: true },
+    { label: 'Athletes Available', value: allAthletes.length.toLocaleString(), change: 'indexed' },
+    { label: 'Athletes Contacted', value: conversations.length.toString(),     change: 'conversations' },
+    { label: 'Watchlist Athletes', value: totalWatchlistAthletes.toString(),   change: `${watchlists.length} lists` },
+    { label: 'Avg AI Score',       value: avgScore.toFixed(1),                 change: 'all athletes' },
   ];
 
   const TOP_ATHLETES: TopAthlete[] = topRaw.map((a) => ({
@@ -76,10 +76,7 @@ export default function RecruiterAnalyticsPage() {
           <div key={s.label} className="stat-card">
             <p className="text-2xl font-bold text-white">{s.value}</p>
             <p className="text-sm text-slate-400 mt-0.5">{s.label}</p>
-            <p className={`text-xs mt-2 flex items-center gap-1 ${s.positive ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {s.positive ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
-              {s.change}
-            </p>
+            <p className="text-xs mt-2 text-slate-500">{s.change}</p>
           </div>
         ))}
       </div>
