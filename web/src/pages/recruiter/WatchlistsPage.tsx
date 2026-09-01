@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Star, Trash2, ShieldCheck, Search, TrendingUp, Flame, X, BarChart2, ArrowUpRight, Pencil, Check, Loader2 } from 'lucide-react';
+import { Plus, Star, Trash2, ShieldCheck, Search, Flame, X, BarChart2, ArrowUpRight, Pencil, Check, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -14,7 +14,6 @@ interface Athlete {
   position: string;
   club: string;
   score: number;
-  trend: number;
   verified: boolean;
   hot: boolean;
   match: number;
@@ -44,7 +43,6 @@ function mapWatchlist(wl: Watchlist, i: number): WL {
         position: a?.position ?? a?.position_primary ?? '—',
         club: a?.current_club ?? 'Free agent',
         score: Math.round((a?.visibility_score ?? 0) / 10 * 10) / 10,
-        trend: 0,
         verified: a?.user?.is_verified ?? false,
         hot: (a?.visibility_score ?? 0) >= 90,
         match: Math.min(99, Math.round(a?.visibility_score ?? 0)),
@@ -91,7 +89,6 @@ function AthleteRow({ a, idx, accent, onRemove, disabled }:
   const [hov, setHov]   = useState(false);
   const [conf, setConf] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 60 + idx * 65); return () => clearTimeout(t); }, [idx]);
-  const tc = a.trend > 0 ? '#1FB57A' : '#EF5350';
   return (
     <div
       onMouseEnter={() => setHov(true)}
@@ -130,13 +127,6 @@ function AthleteRow({ a, idx, accent, onRemove, disabled }:
       <div className="hidden sm:block text-right flex-shrink-0 w-14">
         <p className="text-[9px] text-white/25 mb-0.5">AI MATCH</p>
         <p className="text-xs font-bold tabular" style={{ color: a.match >= 95 ? '#B8F135' : a.match >= 90 ? '#1FB57A' : '#2F80ED' }}>{a.match}%</p>
-      </div>
-
-      {/* trend */}
-      <div className="flex-shrink-0 flex items-center gap-1 text-[11px] font-bold w-12 justify-end"
-        style={{ color: tc }}>
-        <TrendingUp size={10} style={{ transform: a.trend < 0 ? 'rotate(180deg)' : 'none' }} />
-        {a.trend > 0 ? '+' : ''}{a.trend}
       </div>
 
       {/* score */}
