@@ -193,9 +193,26 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
     setReplyStatus('Reply sent to Messages');
   }, [currentStory, replyText, sendingReply, user]);
 
+  const performReport = useCallback(async () => {
+    if (!currentStory || !user) return;
+    const { error } = await reportContent(user.id, 'story', currentStory.id);
+    Alert.alert(
+      error ? 'Report not sent' : 'Report received',
+      error ?? 'Thank you. Our safety team will review this story.',
+    );
+  }, [currentStory, user]);
+
   const handleReport = useCallback(() => {
     if (!currentStory || !user) return;
     setMenuOpen(false);
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(
+        'Report this story? AceAiX administrators will review it for safety and policy violations.',
+      )) {
+        void performReport();
+      }
+      return;
+    }
     Alert.alert(
       'Report this story?',
       'AceAiX administrators will review it for safety and policy violations.',
@@ -204,21 +221,35 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
         {
           text: 'Report',
           style: 'destructive',
-          onPress: async () => {
-            const { error } = await reportContent(user.id, 'story', currentStory.id);
-            Alert.alert(
-              error ? 'Report not sent' : 'Report received',
-              error ?? 'Thank you. Our safety team will review this story.',
-            );
-          },
+          onPress: () => void performReport(),
         },
       ],
     );
-  }, [currentStory, user]);
+  }, [currentStory, performReport, user]);
+
+  const performBlock = useCallback(async () => {
+    if (!currentStory || !currentGroup || !user || currentStory.author_id === user.id) return;
+    const { error } = await blockUser(user.id, currentStory.author_id);
+    if (error) {
+      Alert.alert('Member not blocked', error);
+      return;
+    }
+    await refresh();
+    onClose();
+    Alert.alert('Member blocked', 'Their content has been hidden.');
+  }, [currentGroup, currentStory, onClose, refresh, user]);
 
   const handleBlock = useCallback(() => {
     if (!currentStory || !currentGroup || !user || currentStory.author_id === user.id) return;
     setMenuOpen(false);
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(
+        `Block ${currentGroup.author_name ?? 'this member'}? Their stories and posts will be hidden.`,
+      )) {
+        void performBlock();
+      }
+      return;
+    }
     Alert.alert(
       `Block ${currentGroup.author_name ?? 'this member'}?`,
       'Their stories and posts will no longer appear in your feed.',
@@ -227,20 +258,11 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
         {
           text: 'Block',
           style: 'destructive',
-          onPress: async () => {
-            const { error } = await blockUser(user.id, currentStory.author_id);
-            if (error) {
-              Alert.alert('Member not blocked', error);
-              return;
-            }
-            await refresh();
-            onClose();
-            Alert.alert('Member blocked', 'Their content has been hidden.');
-          },
+          onPress: () => void performBlock(),
         },
       ],
     );
-  }, [currentGroup, currentStory, onClose, refresh, user]);
+  }, [currentGroup, currentStory, performBlock, user]);
 
   // Swipe down to close + horizontal to change group
   const panResponder = useRef(

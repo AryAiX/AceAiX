@@ -126,6 +126,7 @@ export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
+  const [formReady, setFormReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -136,6 +137,10 @@ export default function EditProfile() {
   const [cityModalOpen, setCityModalOpen] = useState(false);
 
   useEffect(() => {
+    if (!profile?.id) {
+      setFormReady(false);
+      return;
+    }
     const normalizedSport = normalizeSportKey(profile?.sport);
     const isKnownSport = normalizedSport
       ? Object.prototype.hasOwnProperty.call(SPORTS_CONFIG, normalizedSport)
@@ -176,6 +181,7 @@ export default function EditProfile() {
       phone: profile?.phone ?? '',
       birthdate: profile?.birthdate ?? '',
     });
+    setFormReady(true);
   }, [
     profile?.bio,
     profile?.birthdate,
@@ -298,14 +304,29 @@ export default function EditProfile() {
     }
 
     await refreshProfile();
-    Alert.alert('Profile updated', 'Your changes have been saved.', [
-      { text: 'Done', onPress: () => router.back() },
-    ]);
+    if (Platform.OS === 'web') {
+      // React Native Web maps Alert.alert to window.alert and does not invoke
+      // native alert-button callbacks. Navigate explicitly after dismissal.
+      Alert.alert('Profile updated', 'Your changes have been saved.');
+      router.back();
+    } else {
+      Alert.alert('Profile updated', 'Your changes have been saved.', [
+        { text: 'Done', onPress: () => router.back() },
+      ]);
+    }
   }
 
   const citiesForCountry = form.countryIsoCode
     ? (City.getCitiesOfCountry(form.countryIsoCode) ?? [])
     : [];
+
+  if (!formReady) {
+    return (
+      <View style={[s.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={Colors.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={s.root}>

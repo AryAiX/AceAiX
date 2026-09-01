@@ -19,6 +19,20 @@ async function loginAsReviewer(page: Page) {
   });
 }
 
+async function cleanupReleaseReels(page: Page) {
+  await page.goto('/media');
+  await page.getByText('Reels', { exact: true }).click();
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const caption = page.getByText(/^Release reel \d+$/, { exact: true }).first();
+    if (!(await caption.isVisible().catch(() => false))) return;
+    const card = caption.locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
+    page.once('dialog', (dialog) => dialog.accept());
+    await card.getByRole('button', { name: 'Delete reel' }).click();
+    await expect(caption).not.toBeVisible();
+  }
+  throw new Error('More than ten stale Release reel fixtures require cleanup');
+}
+
 const reviewRoutes: { path: string; expected: RegExp }[] = [
   { path: '/', expected: /Good |Dashboard|Welcome/i },
   { path: '/feed', expected: /Feed|Stories|post/i },
@@ -198,6 +212,7 @@ test.describe('App Store authenticated release gate', () => {
 
 test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   await loginAsReviewer(page);
+  await cleanupReleaseReels(page);
   await page.goto('/media');
   await page.getByText('Reels', { exact: true }).click();
   await page.getByRole('button', { name: 'Create new reel' }).click();
@@ -210,12 +225,51 @@ test('athlete can publish, play, and remove a video reel', async ({ page }) => {
   const caption = `Release reel ${Date.now()}`;
   await expect(page.getByText('Video', { exact: true })).toBeVisible();
   await page.getByLabel('Post caption').fill(caption);
-  await page.getByRole('button', { name: 'Share reel' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Share reel' }).click();
   await expect(page.getByLabel('Post caption')).not.toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
+  const reelCard = page
+    .getByText(caption, { exact: true })
+    .locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
+
+  const likeSaved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_likes')
+    && response.request().method() === 'POST'
+  );
+  await reelCard.getByRole('button', { name: 'Like reel', exact: true }).click();
+  await expect(reelCard.getByRole('button', { name: 'Unlike reel', exact: true })).toBeVisible();
+  await likeSaved;
+  const reelSaved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_saves')
+    && response.request().method() === 'POST'
+  );
+  await reelCard.getByRole('button', { name: 'Save reel', exact: true }).click();
+  await expect(reelCard.getByRole('button', { name: 'Remove saved reel', exact: true })).toBeVisible();
+  await reelSaved;
+
+  await page.reload();
+  await page.getByText('Reels', { exact: true }).click();
+  await expect(page.getByText(caption, { exact: true })).toBeVisible({ timeout: 20_000 });
+  const reloadedCard = page
+    .getByText(caption, { exact: true })
+    .locator('xpath=ancestor::div[.//*[@aria-label="Delete reel"]][1]');
+  await expect(reloadedCard.getByRole('button', { name: 'Unlike reel', exact: true })).toBeVisible();
+  await expect(reloadedCard.getByRole('button', { name: 'Remove saved reel', exact: true })).toBeVisible();
+  const likeRemoved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_likes')
+    && response.request().method() === 'DELETE'
+  );
+  await reloadedCard.getByRole('button', { name: 'Unlike reel', exact: true }).click();
+  await likeRemoved;
+  const saveRemoved = page.waitForResponse((response) =>
+    response.url().includes('/rest/v1/post_saves')
+    && response.request().method() === 'DELETE'
+  );
+  await reloadedCard.getByRole('button', { name: 'Remove saved reel', exact: true }).click();
+  await saveRemoved;
 
   page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Delete reel' }).click();
+  await reloadedCard.getByRole('button', { name: 'Delete reel' }).click();
   await expect(page.getByText(caption, { exact: true })).not.toBeVisible();
 });
 

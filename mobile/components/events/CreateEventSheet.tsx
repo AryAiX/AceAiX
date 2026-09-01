@@ -72,8 +72,12 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
       setError('Enter the date as YYYY-MM-DD.');
       return;
     }
-    const parsedDate = new Date(date.trim() + 'T00:00:00');
-    if (Number.isNaN(parsedDate.getTime())) {
+    const normalizedDate = date.trim();
+    const parsedDate = new Date(`${normalizedDate}T00:00:00Z`);
+    if (
+      Number.isNaN(parsedDate.getTime())
+      || parsedDate.toISOString().slice(0, 10) !== normalizedDate
+    ) {
       setError('Enter a valid calendar date.');
       return;
     }

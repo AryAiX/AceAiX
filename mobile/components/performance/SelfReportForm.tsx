@@ -7,12 +7,31 @@ import { upsertRecord } from '@/lib/performanceService';
 interface Props {
   config: SportConfig;
   athlete_id: string;
+  initialStats?: Record<string, unknown>;
+  initialSeason?: string | null;
   onSaved: () => void;
+  onCancel?: () => void;
 }
 
-export function SelfReportForm({ config, athlete_id, onSaved }: Props) {
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [season, setSeason] = useState(new Date().getFullYear().toString());
+export function SelfReportForm({
+  config,
+  athlete_id,
+  initialStats,
+  initialSeason,
+  onSaved,
+  onCancel,
+}: Props) {
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      config.metrics.map((metric) => {
+        const value = initialStats?.[metric.key];
+        return [metric.key, value == null ? '' : String(value)];
+      }),
+    ),
+  );
+  const [season, setSeason] = useState(
+    initialSeason ?? new Date().getFullYear().toString(),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,13 +100,32 @@ export function SelfReportForm({ config, athlete_id, onSaved }: Props) {
 
       {error && <Text style={s.error}>{error}</Text>}
 
-      <TouchableOpacity style={[s.saveBtn, saving && s.saveBtnDisabled]} onPress={handleSave} disabled={saving}>
-        {saving ? (
-          <ActivityIndicator size="small" color={Colors.bg} />
-        ) : (
-          <Text style={s.saveBtnTxt}>Save Stats</Text>
+      <View style={s.actions}>
+        {onCancel && (
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Cancel editing stats"
+            style={s.cancelBtn}
+            onPress={onCancel}
+            disabled={saving}
+          >
+            <Text style={s.cancelBtnTxt}>Cancel</Text>
+          </TouchableOpacity>
         )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Save performance stats"
+          style={[s.saveBtn, saving && s.saveBtnDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={Colors.bg} />
+          ) : (
+            <Text style={s.saveBtnTxt}>Save Stats</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -110,7 +148,10 @@ const s = StyleSheet.create({
   typeHint: { fontFamily: Typography.family.mono, fontSize: 9, color: Colors.textDisabled, marginLeft: 'auto' as any },
   input: { backgroundColor: Colors.elevated, borderRadius: Radii.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2, fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textPrimary, borderWidth: 1, borderColor: Colors.border, marginTop: 2 },
   error: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.error, marginBottom: Spacing.sm },
-  saveBtn: { backgroundColor: Colors.primary, borderRadius: Radii.md, paddingVertical: Spacing.md, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.sm },
+  actions: { flexDirection: 'row', gap: Spacing.sm, marginTop: Spacing.sm },
+  cancelBtn: { flex: 1, backgroundColor: Colors.elevated, borderRadius: Radii.md, paddingVertical: Spacing.md, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
+  cancelBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.textMuted },
+  saveBtn: { flex: 1, backgroundColor: Colors.primary, borderRadius: Radii.md, paddingVertical: Spacing.md, alignItems: 'center', justifyContent: 'center' },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.white },
 });
