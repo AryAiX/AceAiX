@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Star, Eye, MessageSquare, ChevronRight, Zap,
   ShieldCheck, TrendingUp, BrainCircuit, Bell, ArrowUpRight,
-  Flame, Clock,
+  Flame, Clock, Stethoscope,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -56,14 +56,16 @@ function mapRec(a: AthleteWithUser): RecAthlete {
 }
 
 const ACTIVITY_ICONS: Record<string, { icon: LucideIcon; color: string }> = {
-  message:   { icon: MessageSquare, color: '#1FB57A' },
-  watchlist: { icon: Star,          color: '#F5A623' },
-  view:      { icon: Eye,           color: '#2F80ED' },
-  match:     { icon: Zap,           color: '#B8F135' },
+  match:        { icon: Zap,           color: '#B8F135' },
+  medical:      { icon: Stethoscope,   color: '#EF5350' },
+  message:      { icon: MessageSquare, color: '#1FB57A' },
+  opportunity:  { icon: TrendingUp,    color: '#F5A623' },
+  profile:      { icon: Eye,           color: '#2F80ED' },
+  scout_view:   { icon: Eye,           color: '#2F80ED' },
+  verification: { icon: ShieldCheck,   color: '#1FB57A' },
 };
 function activityStyle(type: string) {
-  const key = Object.keys(ACTIVITY_ICONS).find(k => type.toLowerCase().includes(k));
-  return key ? ACTIVITY_ICONS[key] : { icon: Bell, color: '#2F80ED' };
+  return ACTIVITY_ICONS[type.toLowerCase()] ?? { icon: Bell, color: '#2F80ED' };
 }
 
 /* ── counter ──────────────────────────────────────────────── */
