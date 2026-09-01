@@ -1,4 +1,4 @@
-import { BarChart3, Star } from 'lucide-react';
+import { BarChart3, Star, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { listAthletes } from '../../api/athletes';
@@ -13,24 +13,19 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export default function RecruiterAnalyticsPage() {
   const { user } = useAuth();
 
-  const { data: allAthletes = [] } = useQuery({
-    queryKey: ['all-athletes'],
-    queryFn: () => listAthletes({}),
-  });
-  const { data: topRaw = [] } = useQuery({
-    queryKey: ['top-athletes', 5],
-    queryFn: () => listAthletes({ limit: 5 }),
-  });
-  const { data: watchlists = [] } = useQuery({
-    queryKey: ['watchlists', user?.id],
-    queryFn: () => listWatchlists(user!.id),
-    enabled: !!user,
-  });
-  const { data: conversations = [] } = useQuery({
-    queryKey: ['conversations', user?.id],
-    queryFn: () => listConversations(user!.id),
-    enabled: !!user,
-  });
+  const allAthletesQ = useQuery({ queryKey: ['all-athletes'], queryFn: () => listAthletes({}) });
+  const topRawQ = useQuery({ queryKey: ['top-athletes', 5], queryFn: () => listAthletes({ limit: 5 }) });
+  const watchlistsQ = useQuery({ queryKey: ['watchlists', user?.id], queryFn: () => listWatchlists(user!.id), enabled: !!user });
+  const conversationsQ = useQuery({ queryKey: ['conversations', user?.id], queryFn: () => listConversations(user!.id), enabled: !!user });
+
+  const allAthletes = allAthletesQ.data ?? [];
+  const topRaw = topRawQ.data ?? [];
+  const watchlists = watchlistsQ.data ?? [];
+  const conversations = conversationsQ.data ?? [];
+
+  const isLoading = allAthletesQ.isLoading || topRawQ.isLoading || watchlistsQ.isLoading || conversationsQ.isLoading;
+  const isError = allAthletesQ.isError || topRawQ.isError || watchlistsQ.isError || conversationsQ.isError;
+  const refetchAll = () => { allAthletesQ.refetch(); topRawQ.refetch(); watchlistsQ.refetch(); conversationsQ.refetch(); };
 
   const totalWatchlistAthletes = watchlists.reduce((s, w) => s + (w.athletes?.length ?? 0), 0);
   const avgScore = allAthletes.length
@@ -70,6 +65,19 @@ export default function RecruiterAnalyticsPage() {
         <h1 className="section-title">Recruitment Analytics</h1>
         <p className="section-subtitle">Track your scouting activity and pipeline performance</p>
       </div>
+
+      {isError && (
+        <div className="card flex items-center justify-between">
+          <p className="text-sm text-slate-400">Some analytics data failed to load.</p>
+          <button onClick={refetchAll} className="text-sm font-semibold text-blue-400">Retry</button>
+        </div>
+      )}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-16 gap-3">
+          <Loader2 size={20} className="animate-spin text-blue-400" />
+          <p className="text-slate-400 text-sm">Loading analytics…</p>
+        </div>
+      ) : (<>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {STATS.map((s) => (
@@ -128,6 +136,7 @@ export default function RecruiterAnalyticsPage() {
           )}
         </div>
       </div>
+      </>)}
     </div>
   );
 }
