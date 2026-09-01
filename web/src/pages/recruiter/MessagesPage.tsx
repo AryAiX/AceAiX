@@ -39,6 +39,7 @@ export default function RecruiterMessagesPage() {
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: conversations = [], isLoading } = useQuery({
@@ -77,10 +78,17 @@ export default function RecruiterMessagesPage() {
     const text = input.trim();
     setInput('');
     setSending(true);
-    await sendMessage(activeId, user.id, text);
-    await queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
-    await queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
-    setSending(false);
+    setSendError(false);
+    try {
+      await sendMessage(activeId, user.id, text);
+      await queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
+      await queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+    } catch (err) {
+      setInput(text);
+      setSendError(true);
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -191,17 +199,22 @@ export default function RecruiterMessagesPage() {
                 <div ref={bottomRef} />
               </div>
 
-              <div className="p-4 border-t border-slate-700/50 flex gap-3">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && send()}
-                  placeholder="Write a message..."
-                  className="input-field flex-1 text-sm"
-                />
-                <button onClick={send} disabled={!input.trim() || sending} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0">
-                  {sending ? <Loader2 size={15} className="text-white animate-spin" /> : <Send size={15} className="text-white" />}
-                </button>
+              <div className="border-t border-slate-700/50">
+                {sendError && (
+                  <p className="text-xs text-red-400 px-4 pt-2">Message failed to send. Try again.</p>
+                )}
+                <div className="p-4 flex gap-3">
+                  <input
+                    value={input}
+                    onChange={(e) => { setInput(e.target.value); setSendError(false); }}
+                    onKeyDown={(e) => e.key === 'Enter' && send()}
+                    placeholder="Write a message..."
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button onClick={send} disabled={!input.trim() || sending} aria-label="Send message" className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0">
+                    {sending ? <Loader2 size={15} className="text-white animate-spin" /> : <Send size={15} className="text-white" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
