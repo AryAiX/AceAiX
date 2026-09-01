@@ -1,11 +1,11 @@
 # AceAiX Weekly Report
 
 **Week Ending:** August 31, 2026  
-**Focus:** Store distribution of version 1.0.0, quality hardening across web and mobile, backend authorization, and deep mobile functional coverage
+**Focus:** Store distribution of version 1.0.1, quality hardening across web and mobile, backend authorization, and deep mobile functional coverage
 
 ## Executive Summary
 
-A new AceAiX athlete app version (**1.0.0**) was submitted to the Apple App Store and Google Play and **successfully distributed** on both stores. Engineering work this cycle concentrated on making that release trustworthy: production data handling, authorization, and persistence were hardened on the shared Supabase backend; the web SPA and the Expo mobile app were repaired independently (they do not share UI code); and mobile product flows were re-audited through UI-driven Playwright against Expo web, not static review alone.
+A new AceAiX athlete app version (**1.0.1**) was submitted to the Apple App Store and Google Play and **successfully distributed** on both stores. Engineering work this cycle concentrated on making that release trustworthy: production data handling, authorization, and persistence were hardened on the shared Supabase backend; the web SPA and the Expo mobile app were repaired independently (they do not share UI code); and mobile product flows were re-audited through UI-driven Playwright against Expo web, not static review alone.
 
 This report summarizes **what landed** (merged PRs #4, #5, and #6) and **what is ready to land** (open PR #7, mobile functional audit). Counts below are from git history for this delivery cycle (from 18 August) plus the functional-audit branch.
 
@@ -13,8 +13,8 @@ This report summarizes **what landed** (merged PRs #4, #5, and #6) and **what is
 
 | Store | Package | Version | Outcome |
 | --- | --- | --- | --- |
-| Apple App Store | `com.aryaix.aceaix.athlete` | 1.0.0 | Submitted and **successfully distributed** |
-| Google Play | `com.aryaix.aceaix.athlete` | 1.0.0 | Submitted and **successfully distributed** |
+| Apple App Store | `com.aryaix.aceaix.athlete` | 1.0.1 | Submitted and **successfully distributed** |
+| Google Play | `com.aryaix.aceaix.athlete` | 1.0.1 | Submitted and **successfully distributed** |
 
 The listing remains iPhone-focused (`supportsTablet: false`). Closed-testing opt-in for Android continues at:
 
@@ -262,7 +262,7 @@ Native runtime on physical iOS/Android devices was not part of this cycle; cover
 - Web and mobile will keep drifting until a shared package owns path sanitisation, profile normalisation, block filtering, and service-layer queries. UI must stay separate; the platform-agnostic third of the logic should not.
 - Physical-device, two-real-client, VoiceOver/TalkBack, and network-chaos coverage is still outside the automated gate.
 - `sync-chess` / `sync-football` remain client-invoked without checked-in Edge Functions; those controls need a real implementation or a release-safe unavailable state.
-- Store distribution of 1.0.0 does not freeze the functional-audit branch; PR #7 should merge so store binaries and `main` stay aligned.
+- Store distribution of 1.0.1 does not freeze the functional-audit branch; PR #7 should merge so store binaries and `main` stay aligned.
 
 ## Recommended next focus
 
