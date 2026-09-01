@@ -42,13 +42,13 @@ export default function RecruiterMessagesPage() {
   const [sendError, setSendError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: conversations = [], isLoading } = useQuery({
+  const { data: conversations = [], isLoading, isError: convError, refetch: refetchConversations } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: () => listConversations(user!.id),
     enabled: !!user,
   });
 
-  const { data: messages = [], isLoading: msgLoading } = useQuery({
+  const { data: messages = [], isLoading: msgLoading, isError: msgError, refetch: refetchMessages } = useQuery({
     queryKey: ['messages', activeId],
     queryFn: () => listMessages(activeId!),
     enabled: !!activeId,
@@ -112,7 +112,13 @@ export default function RecruiterMessagesPage() {
                 <Loader2 size={18} className="text-blue-400 animate-spin" />
               </div>
             )}
-            {!isLoading && filtered.length === 0 && (
+            {!isLoading && convError && (
+              <div className="flex flex-col items-center justify-center py-16 px-4 text-center gap-2">
+                <p className="text-sm text-slate-400">Couldn't load conversations.</p>
+                <button onClick={() => refetchConversations()} className="text-xs text-blue-400 font-semibold">Retry</button>
+              </div>
+            )}
+            {!isLoading && !convError && filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                 <MessageSquare size={22} className="text-slate-600 mb-2" />
                 <p className="text-sm text-slate-400">No conversations yet</p>
@@ -178,7 +184,13 @@ export default function RecruiterMessagesPage() {
                     <Loader2 size={16} className="text-blue-400 animate-spin" />
                   </div>
                 )}
-                {!msgLoading && messages.length === 0 && (
+                {!msgLoading && msgError && (
+                  <div className="flex flex-col items-center justify-center h-full text-center gap-2">
+                    <p className="text-sm text-slate-400">Couldn't load messages.</p>
+                    <button onClick={() => refetchMessages()} className="text-xs text-blue-400 font-semibold">Retry</button>
+                  </div>
+                )}
+                {!msgLoading && !msgError && messages.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-full text-center">
                     <p className="text-sm text-slate-400">No messages yet. Say hello!</p>
                   </div>
