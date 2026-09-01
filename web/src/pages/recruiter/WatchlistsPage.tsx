@@ -92,14 +92,15 @@ function AthleteRow({ a, idx, accent, onRemove, onUpdate, disabled }:
   { a: Athlete; idx: number; accent: string; onRemove: () => void; onUpdate: (patch: { rating?: number; notes?: string }) => void; disabled?: boolean }) {
   const [vis, setVis]   = useState(false);
   const [hov, setHov]   = useState(false);
-  const [conf, setConf] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
   const [noteEditing, setNoteEditing] = useState(false);
   const [noteDraft, setNoteDraft] = useState(a.notes ?? '');
   useEffect(() => { const t = setTimeout(() => setVis(true), 60 + idx * 65); return () => clearTimeout(t); }, [idx]);
   return (
+    <>
     <div
       onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => { setHov(false); setConf(false); }}
+      onMouseLeave={() => setHov(false)}
       className="flex items-center gap-4 px-4 py-3.5 rounded-2xl"
       style={{
         background: hov ? `${accent}08` : 'rgba(255,255,255,0.025)',
@@ -174,21 +175,21 @@ function AthleteRow({ a, idx, accent, onRemove, onUpdate, disabled }:
           style={{ background: 'rgba(47,128,237,0.09)', border: '1px solid rgba(47,128,237,0.22)', color: '#2F80ED' }}>
           <ArrowUpRight size={11} />
         </button>
-        {!conf ? (
-          <button onClick={() => setConf(true)} disabled={disabled} aria-label="Remove from watchlist"
-            className="w-7 h-7 flex items-center justify-center rounded-lg transition-all disabled:opacity-40"
-            style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.20)', color: '#EF5350' }}>
-            <Trash2 size={11} />
-          </button>
-        ) : (
-          <button onClick={onRemove} disabled={disabled}
-            className="px-2 h-7 text-[10px] font-bold rounded-lg flex items-center gap-1 transition-all active:scale-[0.94] disabled:opacity-40"
-            style={{ background: 'rgba(239,83,80,0.15)', border: '1px solid rgba(239,83,80,0.40)', color: '#EF5350' }}>
-            <X size={9} /> Remove
-          </button>
-        )}
+        <button onClick={() => setRemoveConfirmOpen(true)} disabled={disabled} aria-label="Remove from watchlist"
+          className="w-7 h-7 flex items-center justify-center rounded-lg transition-all disabled:opacity-40"
+          style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.20)', color: '#EF5350' }}>
+          <Trash2 size={11} />
+        </button>
       </div>
     </div>
+    <ConfirmModal open={removeConfirmOpen}
+      title="Remove athlete from watchlist"
+      message={`Remove ${a.name} from this watchlist? This can't be undone.`}
+      confirmLabel="Remove"
+      onConfirm={() => { onRemove(); setRemoveConfirmOpen(false); }}
+      onCancel={() => setRemoveConfirmOpen(false)}
+      busy={disabled} />
+    </>
   );
 }
 
@@ -242,6 +243,36 @@ function ListCard({ wl, active, onClick, idx }:
   );
 }
 
+/* ── confirmation modal ───────────────────────────────────── */
+function ConfirmModal({ open, title, message, confirmLabel, onConfirm, onCancel, busy }:
+  { open: boolean; title: string; message: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void; busy?: boolean }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(6,14,24,0.72)' }}
+      onClick={onCancel}>
+      <div onClick={e => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl p-5"
+        style={{ background: '#12233A', border: '1px solid rgba(239,83,80,0.30)', animation: 'slideUp 0.2s ease both' }}>
+        <p className="text-sm font-bold text-white mb-1.5">{title}</p>
+        <p className="text-xs text-white/50 mb-5">{message}</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onCancel} disabled={busy}
+            className="px-4 py-2 rounded-xl text-xs font-semibold transition-all disabled:opacity-50"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.60)' }}>
+            Cancel
+          </button>
+          <button onClick={onConfirm} disabled={busy}
+            className="px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.97] disabled:opacity-50"
+            style={{ background: 'rgba(239,83,80,0.85)', color: '#fff' }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── main ─────────────────────────────────────────────────── */
 export default function WatchlistsPage() {
   const { user } = useAuth();
@@ -257,7 +288,7 @@ export default function WatchlistsPage() {
   const [mounted,   setMounted]   = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
   const { data: rawLists = [], isLoading } = useQuery({
@@ -439,7 +470,7 @@ export default function WatchlistsPage() {
         <div className="space-y-3">
           {lists.map((wl, i) => (
             <ListCard key={wl.id} wl={wl} idx={i} active={current?.id === wl.id}
-              onClick={() => { setSelectedId(wl.id); setSearch(''); setRenaming(false); setConfirmDelete(false); }} />
+              onClick={() => { setSelectedId(wl.id); setSearch(''); setRenaming(false); setDeleteConfirmOpen(false); }} />
           ))}
 
           {/* quick add CTA */}
@@ -518,19 +549,11 @@ export default function WatchlistsPage() {
                       <Pencil size={12} />
                     </button>
                   )}
-                  {confirmDelete ? (
-                    <button onClick={removeList} disabled={busy}
-                      className="px-3 h-8 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-all active:scale-[0.97] disabled:opacity-50"
-                      style={{ background: 'rgba(239,83,80,0.18)', border: '1px solid rgba(239,83,80,0.45)', color: '#EF5350' }}>
-                      <Trash2 size={12} /> Confirm delete
-                    </button>
-                  ) : (
-                    <button onClick={() => setConfirmDelete(true)} disabled={busy} aria-label="Delete watchlist"
-                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
-                      style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.22)', color: '#EF5350' }}>
-                      <Trash2 size={12} />
-                    </button>
-                  )}
+                  <button onClick={() => setDeleteConfirmOpen(true)} disabled={busy} aria-label="Delete watchlist"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
+                    style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.22)', color: '#EF5350' }}>
+                    <Trash2 size={12} />
+                  </button>
                 </div>
               </div>
 
@@ -634,6 +657,13 @@ export default function WatchlistsPage() {
           </>)}
         </div>
       </div>
+      <ConfirmModal open={deleteConfirmOpen}
+        title="Delete watchlist"
+        message={current ? `Delete "${current.name}" and remove all ${current.athletes.length} athlete${current.athletes.length !== 1 ? 's' : ''} from it? This can't be undone.` : ''}
+        confirmLabel="Delete"
+        onConfirm={() => { removeList(); setDeleteConfirmOpen(false); }}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        busy={busy} />
     </div>
   );
 }
