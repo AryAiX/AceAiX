@@ -14,7 +14,7 @@ import { listNotifications, unreadCount } from '../../api/notifications';
 import { listConversations, getOrCreateConversation } from '../../api/messaging';
 
 /* ── view models ──────────────────────────────────────────── */
-interface StatItem { label: string; value: number; delta: string; up: boolean; color: string; icon: LucideIcon; }
+interface StatItem { label: string; value: number; delta: string; color: string; icon: LucideIcon; }
 interface RecAthlete { id: string; userId: string; name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
 interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; }
 interface WatchPreview { name: string; position: string; score: number; image: string; }
@@ -125,13 +125,8 @@ function StatCard({ s, idx }: { s: StatItem; idx: number }) {
           style={{ background: `${s.color}15`, border: `1px solid ${s.color}28` }}>
           <s.icon size={17} style={{ color: s.color }} />
         </div>
-        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
-          style={{
-            background: s.up ? 'rgba(31,181,122,0.12)' : 'rgba(239,83,80,0.12)',
-            color: s.up ? '#1FB57A' : '#EF5350',
-            border: `1px solid ${s.up ? 'rgba(31,181,122,0.28)' : 'rgba(239,83,80,0.28)'}`,
-          }}>
-          <TrendingUp size={9} style={{ transform: s.up ? 'none' : 'rotate(180deg)' }} />
+        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.12)' }}>
           {s.delta}
         </span>
       </div>
@@ -263,10 +258,10 @@ export default function RecruiterDashboard() {
   const totalWatchlistAthletes = watchlists.reduce((s, w) => s + (w.athletes?.length ?? 0), 0);
 
   const STATS: StatItem[] = [
-    { label: 'Watchlists',         value: watchlists.length,       delta: 'lists',   up: true, color: '#2F80ED', icon: Search        },
-    { label: 'Watchlist Athletes', value: totalWatchlistAthletes,  delta: 'tracked', up: true, color: '#F5A623', icon: Star          },
-    { label: 'Active Outreach',    value: conversations.length,    delta: 'chats',   up: true, color: '#1FB57A', icon: MessageSquare },
-    { label: 'Athletes Available', value: allAthletes.length,      delta: 'indexed', up: true, color: '#B8F135', icon: Eye           },
+    { label: 'Watchlists',         value: watchlists.length,       delta: 'lists',   color: '#2F80ED', icon: Search        },
+    { label: 'Watchlist Athletes', value: totalWatchlistAthletes,  delta: 'tracked', color: '#F5A623', icon: Star          },
+    { label: 'Active Outreach',    value: conversations.length,    delta: 'chats',   color: '#1FB57A', icon: MessageSquare },
+    { label: 'Athletes Available', value: allAthletes.length,      delta: 'indexed', color: '#B8F135', icon: Eye           },
   ];
 
   const RECOMMENDED: RecAthlete[] = useMemo(() => recommendedRaw.map(mapRec), [recommendedRaw]);
@@ -299,10 +294,10 @@ export default function RecruiterDashboard() {
         return s >= min && s < max;
       }).length;
     return [
-      { stage: 'Scouted',    count: tier(0, 8.0),   color: '#2F80ED' },
-      { stage: 'Contacted',  count: tier(8.0, 8.5), color: '#1FB57A' },
-      { stage: 'In Trial',   count: tier(8.5, 9.0), color: '#F5A623' },
-      { stage: 'Offer Sent', count: tier(9.0, 11),  color: '#B8F135' },
+      { stage: 'Under 8.0', count: tier(0, 8.0),   color: '#2F80ED' },
+      { stage: '8.0–8.5',   count: tier(8.0, 8.5), color: '#1FB57A' },
+      { stage: '8.5–9.0',   count: tier(8.5, 9.0), color: '#F5A623' },
+      { stage: '9.0+',      count: tier(9.0, 11),  color: '#B8F135' },
     ];
   }, [watchlists]);
   const PIPE_TOTAL = PIPELINE.reduce((s, p) => s + p.count, 0) || 1;
@@ -371,7 +366,7 @@ export default function RecruiterDashboard() {
 
         <div className="relative px-6 sm:px-8 py-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/35">Recruitment Pipeline</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-white/35">Watchlist Score Distribution</p>
             <p className="text-[11px] text-white/25">{PIPE_TOTAL} athletes total</p>
           </div>
           <div className="flex gap-1 h-2 rounded-full overflow-hidden">
