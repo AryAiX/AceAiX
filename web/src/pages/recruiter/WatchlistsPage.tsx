@@ -85,8 +85,8 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 }
 
 /* ── athlete row ──────────────────────────────────────────── */
-function AthleteRow({ a, idx, accent, onRemove }:
-  { a: Athlete; idx: number; accent: string; onRemove: () => void }) {
+function AthleteRow({ a, idx, accent, onRemove, disabled }:
+  { a: Athlete; idx: number; accent: string; onRemove: () => void; disabled?: boolean }) {
   const [vis, setVis]   = useState(false);
   const [hov, setHov]   = useState(false);
   const [conf, setConf] = useState(false);
@@ -144,19 +144,19 @@ function AthleteRow({ a, idx, accent, onRemove }:
 
       {/* actions */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+        <button aria-label="View athlete" className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
           style={{ background: 'rgba(47,128,237,0.09)', border: '1px solid rgba(47,128,237,0.22)', color: '#2F80ED' }}>
           <ArrowUpRight size={11} />
         </button>
         {!conf ? (
-          <button onClick={() => setConf(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+          <button onClick={() => setConf(true)} disabled={disabled} aria-label="Remove from watchlist"
+            className="w-7 h-7 flex items-center justify-center rounded-lg transition-all disabled:opacity-40"
             style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.20)', color: '#EF5350' }}>
             <Trash2 size={11} />
           </button>
         ) : (
-          <button onClick={onRemove}
-            className="px-2 h-7 text-[10px] font-bold rounded-lg flex items-center gap-1 transition-all active:scale-[0.94]"
+          <button onClick={onRemove} disabled={disabled}
+            className="px-2 h-7 text-[10px] font-bold rounded-lg flex items-center gap-1 transition-all active:scale-[0.94] disabled:opacity-40"
             style={{ background: 'rgba(239,83,80,0.15)', border: '1px solid rgba(239,83,80,0.40)', color: '#EF5350' }}>
             <X size={9} /> Remove
           </button>
@@ -228,6 +228,8 @@ export default function WatchlistsPage() {
   const [renaming,  setRenaming]  = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [mounted,   setMounted]   = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
   const { data: rawLists = [], isLoading } = useQuery({
@@ -249,30 +251,60 @@ export default function WatchlistsPage() {
   }
 
   async function createList() {
-    if (!newName.trim() || !user) return;
-    const created = await createWatchlist(user.id, newName.trim(), newDesc.trim() || undefined);
-    await invalidate();
-    setSelectedId(created.id);
-    setNewName(''); setNewDesc(''); setShowNew(false);
+    if (!newName.trim() || !user || busy) return;
+    setBusy(true); setActionError(null);
+    try {
+      const created = await createWatchlist(user.id, newName.trim(), newDesc.trim() || undefined);
+      await invalidate();
+      setSelectedId(created.id);
+      setNewName(''); setNewDesc(''); setShowNew(false);
+    } catch (err) {
+      setActionError('Could not create watchlist. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveRename() {
     if (!current || !renameValue.trim()) { setRenaming(false); return; }
-    await renameWatchlist(current.id, renameValue.trim());
-    await invalidate();
-    setRenaming(false);
+    if (busy) return;
+    setBusy(true); setActionError(null);
+    try {
+      await renameWatchlist(current.id, renameValue.trim());
+      await invalidate();
+      setRenaming(false);
+    } catch (err) {
+      setActionError('Could not rename watchlist. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function removeList() {
-    if (!current) return;
-    await deleteWatchlist(current.id);
-    setSelectedId(null);
-    await invalidate();
+    if (!current || busy) return;
+    setBusy(true); setActionError(null);
+    try {
+      await deleteWatchlist(current.id);
+      setSelectedId(null);
+      await invalidate();
+    } catch (err) {
+      setActionError('Could not delete watchlist. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function removeAthlete(watchlistAthleteId: string) {
-    await removeAthleteFromWatchlist(watchlistAthleteId);
-    await invalidate();
+    if (busy) return;
+    setBusy(true); setActionError(null);
+    try {
+      await removeAthleteFromWatchlist(watchlistAthleteId);
+      await invalidate();
+    } catch (err) {
+      setActionError('Could not remove athlete. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   const avgScore = athletesList.length
@@ -321,13 +353,20 @@ export default function WatchlistsPage() {
           style={{ background: 'linear-gradient(90deg,transparent,rgba(245,166,35,0.55) 35%,rgba(47,128,237,0.38) 65%,transparent)' }} />
       </div>
 
+      {actionError && (
+        <div className="rounded-2xl p-4 flex items-center justify-between" style={{ background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.28)' }}>
+          <p className="text-sm text-white/70">{actionError}</p>
+          <button onClick={() => setActionError(null)} className="text-sm font-semibold" style={{ color: '#EF5350' }}>Dismiss</button>
+        </div>
+      )}
+
       {/* NEW WATCHLIST FORM */}
       {showNew && (
         <div className="rounded-2xl p-5"
           style={{ background: 'rgba(245,166,35,0.06)', border: '1px solid rgba(245,166,35,0.28)', animation: 'slideUp 0.3s ease both' }}>
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm font-bold text-white">Create New Watchlist</p>
-            <button onClick={() => setShowNew(false)}
+            <button onClick={() => setShowNew(false)} aria-label="Close"
               className="w-7 h-7 flex items-center justify-center rounded-lg"
               style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.40)' }}>
               <X size={13} />
@@ -345,8 +384,8 @@ export default function WatchlistsPage() {
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }} />
           </div>
           <div className="flex gap-2">
-            <button onClick={createList}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.97]"
+            <button onClick={createList} disabled={busy}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.97] disabled:opacity-50"
               style={{ background: '#F5A623', color: '#0C1A2B' }}>
               <Plus size={13} /> Create
             </button>
@@ -433,20 +472,20 @@ export default function WatchlistsPage() {
                     <BarChart2 size={11} /> Compare
                   </button>
                   {renaming ? (
-                    <button onClick={saveRename}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                    <button onClick={saveRename} disabled={busy} aria-label="Save name"
+                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
                       style={{ background: 'rgba(31,181,122,0.12)', border: '1px solid rgba(31,181,122,0.30)', color: '#1FB57A' }}>
                       <Check size={13} />
                     </button>
                   ) : (
-                    <button onClick={() => { setRenameValue(current.name); setRenaming(true); }}
+                    <button onClick={() => { setRenameValue(current.name); setRenaming(true); }} aria-label="Rename watchlist"
                       className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
                       style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.50)' }}>
                       <Pencil size={12} />
                     </button>
                   )}
-                  <button onClick={removeList}
-                    className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                  <button onClick={removeList} disabled={busy} aria-label="Delete watchlist"
+                    className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-50"
                     style={{ background: 'rgba(239,83,80,0.09)', border: '1px solid rgba(239,83,80,0.22)', color: '#EF5350' }}>
                     <Trash2 size={12} />
                   </button>
@@ -505,7 +544,7 @@ export default function WatchlistsPage() {
               ) : (
                 filteredAthletes.map((a, i) => (
                   <AthleteRow key={a.id} a={a} idx={i} accent={current.color}
-                    onRemove={() => removeAthlete(a.id)} />
+                    onRemove={() => removeAthlete(a.id)} disabled={busy} />
                 ))
               )}
             </div>
