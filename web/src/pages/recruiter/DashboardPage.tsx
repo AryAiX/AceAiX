@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search, Star, Eye, MessageSquare, ChevronRight, Zap,
   ShieldCheck, TrendingUp, BrainCircuit, Bell, ArrowUpRight,
@@ -9,13 +9,13 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { listAthletes, type AthleteWithUser } from '../../api/athletes';
-import { listWatchlists } from '../../api/watchlists';
+import { listWatchlists, addAthleteToWatchlist } from '../../api/watchlists';
 import { listNotifications } from '../../api/notifications';
-import { listConversations } from '../../api/messaging';
+import { listConversations, getOrCreateConversation } from '../../api/messaging';
 
 /* ── view models ──────────────────────────────────────────── */
 interface StatItem { label: string; value: number; delta: string; up: boolean; color: string; icon: LucideIcon; }
-interface RecAthlete { name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
+interface RecAthlete { id: string; userId: string; name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
 interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; }
 interface WatchPreview { name: string; position: string; score: number; trend: string; up: boolean; image: string; }
 interface PipelineStage { stage: string; count: number; color: string; }
@@ -39,6 +39,8 @@ function timeAgo(iso: string): string {
 function mapRec(a: AthleteWithUser): RecAthlete {
   const stats = (a.highlighted_stats ?? {}) as Record<string, number>;
   return {
+    id: a.id,
+    userId: a.user?.id ?? '',
     name: a.user?.full_name ?? 'Unnamed athlete',
     position: a.position ?? a.position_primary ?? '—',
     club: a.current_club ?? 'Free agent',
@@ -140,7 +142,7 @@ function StatCard({ s, idx }: { s: StatItem; idx: number }) {
 }
 
 /* ── athlete card ─────────────────────────────────────────── */
-function AthleteCard({ a, delay }: { a: RecAthlete; delay: number }) {
+function AthleteCard({ a, delay, onWatchlist, onMessage, hasWatchlist }: { a: RecAthlete; delay: number; onWatchlist: (athleteId: string) => void; onMessage: (userId: string) => void; hasWatchlist: boolean }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
@@ -203,13 +205,18 @@ function AthleteCard({ a, delay }: { a: RecAthlete; delay: number }) {
             ))}
           </div>
           <div className="flex gap-1.5">
-            {[{ c: '#F5A623', I: Star }, { c: '#2F80ED', I: MessageSquare }].map(({ c, I }) => (
-              <button key={c} onClick={e => e.preventDefault()}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                style={{ background: `${c}12`, border: `1px solid ${c}25`, color: c }}>
-                <I size={11} />
-              </button>
-            ))}
+            <button aria-label="Add to watchlist" disabled={!hasWatchlist}
+              onClick={e => { e.preventDefault(); if (hasWatchlist) onWatchlist(a.id); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{ background: '#F5A62312', border: '1px solid #F5A62325', color: '#F5A623' }}>
+              <Star size={11} />
+            </button>
+            <button aria-label="Message this athlete"
+              onClick={e => { e.preventDefault(); onMessage(a.userId); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+              style={{ background: '#2F80ED12', border: '1px solid #2F80ED25', color: '#2F80ED' }}>
+              <MessageSquare size={11} />
+            </button>
           </div>
         </div>
       </div>
@@ -245,6 +252,17 @@ export default function RecruiterDashboard() {
     queryKey: ['conversations', user?.id],
     queryFn: () => listConversations(user!.id),
     enabled: !!user,
+  });
+
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const addToWatchlist = useMutation({
+    mutationFn: (athleteId: string) => addAthleteToWatchlist(watchlists[0]?.id ?? '', athleteId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['watchlists', user?.id] }),
+  });
+  const startConversation = useMutation({
+    mutationFn: (otherUserId: string) => getOrCreateConversation(user!.id, otherUserId),
+    onSuccess: () => navigate('/recruiter/messages'),
   });
 
   const totalWatchlistAthletes = watchlists.reduce((s, w) => s + (w.athletes?.length ?? 0), 0);
@@ -404,7 +422,12 @@ export default function RecruiterDashboard() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {RECOMMENDED.map((a, i) => <AthleteCard key={a.name} a={a} delay={380 + i * 90} />)}
+          {RECOMMENDED.map((a, i) => (
+            <AthleteCard key={a.name} a={a} delay={380 + i * 90}
+              onWatchlist={id => addToWatchlist.mutate(id)}
+              onMessage={userId => startConversation.mutate(userId)}
+              hasWatchlist={watchlists.length > 0} />
+          ))}
           {RECOMMENDED.length === 0 && (
             <p className="text-white/30 text-sm py-6 text-center md:col-span-3">No recommendations yet.</p>
           )}
