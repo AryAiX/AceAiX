@@ -417,9 +417,9 @@ export default function SearchPage() {
     return true;
   });
 
-  const verifiedCount = athletes.filter(a => a.verified).length;
+  const verifiedCount = filtered.filter(a => a.verified).length;
 
-  const activeFilters = [sport !== 'All', position !== 'All', level !== 'All', ageRange !== 'All', verifiedOnly].filter(Boolean).length;
+  const activeFilters = [sport !== 'All', position !== 'All', level !== 'All', ageRange !== 'All', verifiedOnly, query.trim() !== ''].filter(Boolean).length;
 
   function clearFilters() {
     setSport('All'); setPosition('All'); setLevel('All');
