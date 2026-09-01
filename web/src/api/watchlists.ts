@@ -28,3 +28,7 @@ export async function addAthleteToWatchlist(watchlistId: string, athleteId: stri
 export async function removeAthleteFromWatchlist(id: string): Promise<void> {
   unwrap(await supabase.from('watchlist_athletes').delete().eq('id', id).select('id'));
 }
+
+export async function updateWatchlistAthlete(id: string, patch: { rating?: number | null; notes?: string | null }): Promise<void> {
+  unwrap(await supabase.from('watchlist_athletes').update(patch).eq('id', id).select('id'));
+}

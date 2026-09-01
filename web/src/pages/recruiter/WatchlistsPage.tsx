@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Star, Trash2, ShieldCheck, Search, Flame, X, BarChart2, ArrowUpRight, Pencil, Check, Loader2 } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import {
-  listWatchlists, createWatchlist, renameWatchlist, deleteWatchlist, removeAthleteFromWatchlist,
+  listWatchlists, createWatchlist, renameWatchlist, deleteWatchlist, removeAthleteFromWatchlist, updateWatchlistAthlete,
 } from '../../api/watchlists';
 import type { Watchlist } from '../../types';
 
@@ -19,6 +19,8 @@ interface Athlete {
   hot: boolean;
   match: number;
   image: string;
+  rating: number | null;
+  notes: string | null;
 }
 interface WL {
   id: string;
@@ -48,6 +50,8 @@ function mapWatchlist(wl: Watchlist, i: number): WL {
         hot: (a?.visibility_score ?? 0) >= 90,
         match: Math.min(99, Math.round(a?.visibility_score ?? 0)),
         image: a?.user?.avatar_url ?? '',
+        rating: wa.rating,
+        notes: wa.notes,
       };
     }),
   };
@@ -84,11 +88,13 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 }
 
 /* ── athlete row ──────────────────────────────────────────── */
-function AthleteRow({ a, idx, accent, onRemove, disabled }:
-  { a: Athlete; idx: number; accent: string; onRemove: () => void; disabled?: boolean }) {
+function AthleteRow({ a, idx, accent, onRemove, onUpdate, disabled }:
+  { a: Athlete; idx: number; accent: string; onRemove: () => void; onUpdate: (patch: { rating?: number; notes?: string }) => void; disabled?: boolean }) {
   const [vis, setVis]   = useState(false);
   const [hov, setHov]   = useState(false);
   const [conf, setConf] = useState(false);
+  const [noteEditing, setNoteEditing] = useState(false);
+  const [noteDraft, setNoteDraft] = useState(a.notes ?? '');
   useEffect(() => { const t = setTimeout(() => setVis(true), 60 + idx * 65); return () => clearTimeout(t); }, [idx]);
   return (
     <div
@@ -122,12 +128,41 @@ function AthleteRow({ a, idx, accent, onRemove, disabled }:
           {a.hot && <Flame size={10} style={{ color: '#F5A623', flexShrink: 0 }} />}
         </div>
         <p className="text-[11px] text-white/38">{a.position} · {a.club}</p>
+        {noteEditing ? (
+          <div className="flex items-center gap-1.5 mt-1">
+            <input autoFocus value={noteDraft} onChange={e => setNoteDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { onUpdate({ notes: noteDraft }); setNoteEditing(false); } if (e.key === 'Escape') setNoteEditing(false); }}
+              placeholder="Add a note…"
+              className="text-[11px] px-2 py-1 rounded-lg flex-1 min-w-0 focus:outline-none"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', color: '#fff' }} />
+            <button onClick={() => { onUpdate({ notes: noteDraft }); setNoteEditing(false); }} aria-label="Save note"
+              className="flex-shrink-0" style={{ color: '#1FB57A' }}>
+              <Check size={12} />
+            </button>
+          </div>
+        ) : (
+          <button onClick={() => { setNoteDraft(a.notes ?? ''); setNoteEditing(true); }}
+            className="text-[11px] mt-0.5 text-left truncate max-w-full block"
+            style={{ color: a.notes ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.22)' }}>
+            {a.notes || '+ Add note'}
+          </button>
+        )}
       </div>
 
       {/* match */}
       <div className="hidden sm:block text-right flex-shrink-0 w-14">
         <p className="text-[9px] text-white/25 mb-0.5">AI MATCH</p>
         <p className="text-xs font-bold tabular" style={{ color: a.match >= 95 ? '#B8F135' : a.match >= 90 ? '#1FB57A' : '#2F80ED' }}>{a.match}%</p>
+      </div>
+
+      {/* rating */}
+      <div className="hidden md:flex items-center gap-0.5 flex-shrink-0">
+        {[1, 2, 3, 4, 5].map(n => (
+          <button key={n} onClick={() => onUpdate({ rating: n })} aria-label={`Rate ${n} stars`}
+            className="transition-transform active:scale-90">
+            <Star size={11} fill={(a.rating ?? 0) >= n ? '#F5A623' : 'none'} style={{ color: (a.rating ?? 0) >= n ? '#F5A623' : 'rgba(255,255,255,0.20)' }} />
+          </button>
+        ))}
       </div>
 
       {/* score */}
@@ -306,6 +341,12 @@ export default function WatchlistsPage() {
   const topScore = athletesList.length
     ? Math.max(...athletesList.map(a => a.score))
     : 0;
+
+  const updateAthleteMeta = useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: { rating?: number; notes?: string } }) =>
+      updateWatchlistAthlete(id, patch),
+    onSuccess: () => invalidate(),
+  });
 
   return (
     <div className="max-w-7xl space-y-5 pb-10">
@@ -537,7 +578,8 @@ export default function WatchlistsPage() {
               ) : (
                 filteredAthletes.map((a, i) => (
                   <AthleteRow key={a.id} a={a} idx={i} accent={current.color}
-                    onRemove={() => removeAthlete(a.id)} disabled={busy} />
+                    onRemove={() => removeAthlete(a.id)} disabled={busy}
+                    onUpdate={patch => updateAthleteMeta.mutate({ id: a.id, patch })} />
                 ))
               )}
             </div>
