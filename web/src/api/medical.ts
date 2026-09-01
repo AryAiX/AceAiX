@@ -15,6 +15,13 @@ export async function deleteMedicalRecord(id: string): Promise<void> {
   unwrap(await supabase.from('medical_records').update({ is_deleted: true }).eq('id', id).select('id'));
 }
 
+function sanitizeFileName(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
 export async function createMedicalRecord(input: {
   athlete_id: string;
   partner_id: string;
@@ -27,7 +34,7 @@ export async function createMedicalRecord(input: {
 }): Promise<MedicalRecord> {
   let file_url: string | null = null;
   if (input.file) {
-    const path = `${input.athlete_id}/${crypto.randomUUID()}-${input.file.name}`;
+    const path = `${input.athlete_id}/${crypto.randomUUID()}-${sanitizeFileName(input.file.name)}`;
     unwrap(
       await supabase.storage.from('medical-documents').upload(path, input.file, { contentType: input.file.type }),
     );
