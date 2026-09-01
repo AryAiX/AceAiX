@@ -353,7 +353,6 @@ export default function SearchPage() {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [aiQuery,      setAiQuery]      = useState('');
   const [aiDone,       setAiDone]       = useState(false);
-  const [aiTyping,     setAiTyping]     = useState(false);
   const [view,         setView]         = useState<'grid' | 'list'>('grid');
   const [filtersOpen,  setFiltersOpen]  = useState(true);
   const [mounted,      setMounted]      = useState(false);
@@ -429,9 +428,8 @@ export default function SearchPage() {
 
   function handleAiSearch() {
     if (!aiQuery.trim()) return;
-    setAiDone(false);
-    setAiTyping(true);
-    setTimeout(() => { setAiTyping(false); setAiDone(true); }, 1300);
+    setQuery(aiQuery.trim());
+    setAiDone(true);
   }
 
   return (
@@ -529,19 +527,10 @@ export default function SearchPage() {
             </button>
           </div>
 
-          {aiTyping && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-white/35">
-              {[0, 1, 2].map(i => (
-                <span key={i} className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#2F80ED', animation: `pulse ${0.8 + i * 0.15}s ease-in-out ${i * 0.15}s infinite` }} />
-              ))}
-              Analyzing query…
-            </div>
-          )}
-          {aiDone && !aiTyping && aiQuery && (
+          {aiDone && aiQuery && (
             <div className="mt-3 flex items-center gap-2 text-xs font-semibold" style={{ color: '#1FB57A', animation: 'slideUp 0.3s ease both' }}>
               <ShieldCheck size={12} />
-              AI found {filtered.length} matching athletes for your criteria
+              {filtered.length} athletes match "{aiQuery}"
             </div>
           )}
         </div>
