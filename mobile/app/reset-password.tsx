@@ -23,7 +23,7 @@ function parseTokensFromUrl(url: string) {
 }
 
 export default function ResetPasswordScreen() {
-  const { updatePassword } = useAuth();
+  const { updatePassword, signOut } = useAuth();
   const [ready, setReady] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -73,6 +73,7 @@ export default function ResetPasswordScreen() {
       setError(result.error);
       return;
     }
+    await signOut();
     setDone(true);
   }
 
