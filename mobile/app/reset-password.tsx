@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 function parseTokensFromUrl(url: string) {
   const fragment = url.split('#')[1];
@@ -27,6 +28,8 @@ export default function ResetPasswordScreen() {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -110,37 +113,65 @@ export default function ResetPasswordScreen() {
               )}
               <View style={styles.field}>
                 <Text style={styles.label}>New password</Text>
-                <TextInput
-                  accessibilityLabel="New password"
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  returnKeyType="next"
-                  editable={!loading}
-                  placeholder="At least 8 characters"
-                  placeholderTextColor={Colors.textDisabled}
-                />
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    accessibilityLabel="New password"
+                    style={[styles.input, styles.passwordInput]}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    returnKeyType="next"
+                    editable={!loading}
+                    placeholder="At least 8 characters"
+                    placeholderTextColor={Colors.textDisabled}
+                  />
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                    accessibilityState={{ selected: showPassword }}
+                    style={styles.eyeBtn}
+                    onPress={() => setShowPassword(v => !v)}
+                    hitSlop={8}
+                  >
+                    {showPassword
+                      ? <EyeOff color={Colors.textMuted} size={18} />
+                      : <Eye color={Colors.textMuted} size={18} />}
+                  </TouchableOpacity>
+                </View>
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>Confirm password</Text>
-                <TextInput
-                  accessibilityLabel="Confirm password"
-                  style={styles.input}
-                  value={confirm}
-                  onChangeText={setConfirm}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="new-password"
-                  textContentType="newPassword"
-                  returnKeyType="done"
-                  editable={!loading}
-                  onSubmitEditing={handleSubmit}
-                  placeholderTextColor={Colors.textDisabled}
-                />
+                <View style={styles.passwordWrap}>
+                  <TextInput
+                    accessibilityLabel="Confirm password"
+                    style={[styles.input, styles.passwordInput]}
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    secureTextEntry={!showConfirm}
+                    autoCapitalize="none"
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    returnKeyType="done"
+                    editable={!loading}
+                    onSubmitEditing={handleSubmit}
+                    placeholderTextColor={Colors.textDisabled}
+                  />
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={showConfirm ? 'Hide password' : 'Show password'}
+                    accessibilityState={{ selected: showConfirm }}
+                    style={styles.eyeBtn}
+                    onPress={() => setShowConfirm(v => !v)}
+                    hitSlop={8}
+                  >
+                    {showConfirm
+                      ? <EyeOff color={Colors.textMuted} size={18} />
+                      : <Eye color={Colors.textMuted} size={18} />}
+                  </TouchableOpacity>
+                </View>
               </View>
               <TouchableOpacity style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={handleSubmit} disabled={loading}>
                 <LinearGradient colors={[Colors.primary, '#1A6AD4']} style={styles.btnGradient}>
@@ -166,6 +197,9 @@ const styles = StyleSheet.create({
   field: { marginBottom: Spacing.lg },
   label: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted, marginBottom: Spacing.sm },
   input: { backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border, borderRadius: Radii.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, fontFamily: Typography.family.regular, fontSize: Typography.size.md, color: Colors.textPrimary },
+  passwordWrap: { position: 'relative' },
+  passwordInput: { paddingRight: 48 },
+  eyeBtn: { position: 'absolute', right: 14, top: 0, bottom: 0, justifyContent: 'center' },
   primaryBtn: { borderRadius: Radii.md, overflow: 'hidden', marginTop: Spacing.sm, marginBottom: Spacing.lg },
   btnDisabled: { opacity: 0.6 },
   btnGradient: { paddingVertical: Spacing.lg, alignItems: 'center', justifyContent: 'center' },
