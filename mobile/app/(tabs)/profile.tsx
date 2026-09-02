@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
-  Animated, AccessibilityInfo, Image, Share,
+  Animated, AccessibilityInfo, Image, Share, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
@@ -1252,6 +1252,7 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('Overview');
   const [reduced, setReduced] = useState(false);
   const [medicallyCleared, setMedicallyCleared] = useState(false);
+  const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
   const [scoutViewCount, setScoutViewCount] = useState<number | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const tabOffsetY = useRef(0);
@@ -1405,7 +1406,7 @@ export default function Profile() {
             </Animated.View>
             <View style={s.aiScoreInner}>
               <Text style={s.aiScoreNum}>{performanceScore}</Text>
-              <Text style={s.aiScoreLbl}>PERFORMANCE</Text>
+              <Text style={s.aiScoreLbl} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>PERFORMANCE</Text>
               {performanceScore > 0 && (
                 <View style={s.elitePill}>
                   <Zap color={Colors.bg} size={8} fill={Colors.bg} />
@@ -1440,7 +1441,14 @@ export default function Profile() {
 
           {/* Avatar + availability */}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.md, marginBottom: Spacing.md }}>
-            <View style={s.athletePhotoWrap}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="View profile photo"
+              activeOpacity={profile?.avatar_url ? 0.85 : 1}
+              disabled={!profile?.avatar_url}
+              onPress={() => setAvatarViewerOpen(true)}
+              style={s.athletePhotoWrap}
+            >
               <LinearGradient
                 colors={[Colors.accent, Colors.primary]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1454,7 +1462,7 @@ export default function Profile() {
                   )}
                 </View>
               </LinearGradient>
-            </View>
+            </TouchableOpacity>
             <View style={{ flex: 1 }}>
               {profile.is_open_to_offers && (
                 <View style={s.availPill}>
@@ -1594,6 +1602,25 @@ export default function Profile() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <Modal
+        visible={avatarViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarViewerOpen(false)}
+      >
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Close profile photo"
+          style={s.avatarViewerBackdrop}
+          activeOpacity={1}
+          onPress={() => setAvatarViewerOpen(false)}
+        >
+          {profile?.avatar_url && (
+            <Image source={{ uri: profile.avatar_url }} style={s.avatarViewerImage} resizeMode="contain" />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -1622,12 +1649,12 @@ const s = StyleSheet.create({
   scoreRingDash:  { position: 'absolute', width: 3, height: 3, borderRadius: 1.5, backgroundColor: Colors.accent, opacity: 0.7 },
   aiScoreInner:   { alignItems: 'center', backgroundColor: 'rgba(10,14,20,0.82)', borderRadius: 40, padding: 12, borderWidth: 1.5, borderColor: `${Colors.accent}60` },
   aiScoreNum:     { fontFamily: Typography.family.display, fontSize: 26, color: Colors.accent, lineHeight: 30 },
-  aiScoreLbl:     { fontFamily: Typography.family.mono, fontSize: 8, color: Colors.textMuted, letterSpacing: 1 },
+  aiScoreLbl:     { fontFamily: Typography.family.mono, fontSize: 8, color: Colors.textMuted, letterSpacing: 0.4, textAlign: 'center' },
   elitePill:      { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: Colors.accent, borderRadius: Radii.full, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
   eliteTxt:       { fontFamily: Typography.family.display, fontSize: 8, color: Colors.bg, letterSpacing: 0.8 },
 
   // Scout count (live)
-  scoutCountBadge: { position: 'absolute', bottom: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10,14,20,0.75)', borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: `${Colors.error}40` },
+  scoutCountBadge: { position: 'absolute', bottom: Spacing.xxl + Spacing.sm, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10,14,20,0.75)', borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: `${Colors.error}40` },
   scoutCountDot:   { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.error },
   scoutCountTxt:   { fontFamily: Typography.family.bold, fontSize: 11, color: Colors.textPrimary },
 
@@ -1636,6 +1663,8 @@ const s = StyleSheet.create({
   heroStripe:     { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, borderTopLeftRadius: Radii.xl, borderBottomLeftRadius: Radii.xl },
   avatarRing:     { width: 88, height: 88, borderRadius: 44, padding: 2.5, alignItems: 'center', justifyContent: 'center' },
   athletePhotoWrap:{ position: 'relative' },
+  avatarViewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
+  avatarViewerImage:    { width: '100%', height: '80%' },
   athletePhoto:   { width: 82, height: 82, borderRadius: 41, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarImg:      { width: 82, height: 82 },
   athletePhotoTxt:{ fontFamily: Typography.family.display, fontSize: 28, color: Colors.white },
