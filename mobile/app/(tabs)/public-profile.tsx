@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
+  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share, Modal, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -16,6 +16,7 @@ import { usePerformanceData } from '@/hooks/usePerformanceData';
 export default function PublicProfile() {
   const { profile, user } = useAuth();
   const router = useRouter();
+  const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
   const { record, loading: performanceLoading, error: performanceError } = usePerformanceData(user?.id, profile?.sport);
   const performanceScore = Math.round(profile?.performance_score ?? 0);
   const stats = record?.stats ?? {};
@@ -68,13 +69,20 @@ export default function PublicProfile() {
 
         <View style={s.heroCard}>
           <View style={s.avatarWrap}>
-            <View style={s.avatar}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="View profile photo"
+              activeOpacity={profile?.avatar_url ? 0.85 : 1}
+              disabled={!profile?.avatar_url}
+              onPress={() => setAvatarViewerOpen(true)}
+              style={s.avatar}
+            >
               <Avatar
                 uri={profile?.avatar_url}
                 initial={profile?.full_name?.[0]?.toUpperCase() ?? 'A'}
                 size={76}
               />
-            </View>
+            </TouchableOpacity>
           </View>
 
           <View style={s.nameRow}>
@@ -177,6 +185,25 @@ export default function PublicProfile() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      <Modal
+        visible={avatarViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvatarViewerOpen(false)}
+      >
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Close profile photo"
+          style={s.avatarViewerBackdrop}
+          activeOpacity={1}
+          onPress={() => setAvatarViewerOpen(false)}
+        >
+          {profile?.avatar_url && (
+            <Image source={{ uri: profile.avatar_url }} style={s.avatarViewerImage} resizeMode="contain" />
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -194,6 +221,8 @@ const s = StyleSheet.create({
   avatarWrap: { marginBottom: Spacing.md },
   avatar: { width: 76, height: 76, borderRadius: 38, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: Colors.bg, overflow: 'hidden' },
   avatarTxt: { fontFamily: Typography.family.display, fontSize: 28, color: Colors.white },
+  avatarViewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', alignItems: 'center', justifyContent: 'center' },
+  avatarViewerImage:    { width: '100%', height: '80%' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   name: { fontFamily: Typography.family.display, fontSize: 24, color: Colors.textPrimary, flex: 1 },
   pos: { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted, marginBottom: 2 },
