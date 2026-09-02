@@ -28,6 +28,7 @@ import { Country, City } from 'country-state-city';
 import { POSITIONS_BY_SPORT } from '@/constants/positions';
 import { LEVEL_OPTIONS } from '@/constants/levels';
 import SelectModal from '@/components/SelectModal';
+import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js';
 
 type ProfileForm = {
   firstName: string;
@@ -44,6 +45,7 @@ type ProfileForm = {
   countryIsoCode: string;
   city: string;
   phone: string;
+  phoneCountryIso: string;
   birthdate: string;
 };
 
@@ -62,12 +64,18 @@ const EMPTY_FORM: ProfileForm = {
   countryIsoCode: '',
   city: '',
   phone: '',
+  phoneCountryIso: 'AE',
   birthdate: '',
 };
 
 const ALL_COUNTRIES = Country.getAllCountries()
   .slice()
   .sort((a, b) => a.name.localeCompare(b.name));
+
+const PHONE_COUNTRIES = ALL_COUNTRIES.filter((c) => !!c.phonecode).map((c) => ({
+  label: `${c.flag ?? ''} ${c.name} (+${c.phonecode})`.trim(),
+  value: c.isoCode,
+}));
 
 type LegacyProfileNames = {
   first_name?: string | null;
@@ -130,11 +138,12 @@ export default function EditProfile() {
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false });
+  const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false, phone: false });
   const [positionModalOpen, setPositionModalOpen] = useState(false);
   const [levelModalOpen, setLevelModalOpen] = useState(false);
   const [countryModalOpen, setCountryModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) {
@@ -164,6 +173,11 @@ export default function EditProfile() {
       ? ALL_COUNTRIES.find((c) => c.name === profile.country)
       : undefined;
 
+    const rawPhone = profile?.phone ?? '';
+    const parsedPhone = rawPhone ? parsePhoneNumberFromString(rawPhone) : undefined;
+    const phoneCountryIso = parsedPhone?.country ?? 'AE';
+    const phoneLocalNumber = parsedPhone ? String(parsedPhone.nationalNumber) : rawPhone;
+
     setForm({
       firstName,
       middleName,
@@ -178,7 +192,8 @@ export default function EditProfile() {
       nationality: profile?.nationality ?? '',
       countryIsoCode: matchedCountry?.isoCode ?? '',
       city: profile?.hometown ?? '',
-      phone: profile?.phone ?? '',
+      phone: phoneLocalNumber,
+      phoneCountryIso,
       birthdate: profile?.birthdate ?? '',
     });
     setFormReady(true);
@@ -263,6 +278,7 @@ export default function EditProfile() {
   const birthdateValid = form.birthdate !== '';
   const positionRequired = !!POSITIONS_BY_SPORT[form.sportKey];
   const positionValid = !positionRequired || form.position !== '';
+  const phoneValid = form.phone.trim() === '' || isValidPhoneNumber(form.phone.trim(), form.phoneCountryIso as any);
 
   async function saveProfile() {
     if (!user || saving) return;
@@ -270,13 +286,17 @@ export default function EditProfile() {
       Alert.alert('Name required', 'Enter your first and last name before saving.');
       return;
     }
-    setTouched({ sport: true, country: true, birthdate: true, position: true });
-    if (!sportValid || !countryValid || !birthdateValid || !positionValid) {
+    setTouched({ sport: true, country: true, birthdate: true, position: true, phone: true });
+    if (!sportValid || !countryValid || !birthdateValid || !positionValid || !phoneValid) {
       return;
     }
     const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
     const countryName = form.countryIsoCode
       ? ALL_COUNTRIES.find((c) => c.isoCode === form.countryIsoCode)?.name ?? ''
+      : '';
+
+    const finalPhone = form.phone.trim()
+      ? parsePhoneNumberFromString(form.phone.trim(), form.phoneCountryIso as any)?.number ?? form.phone.trim()
       : '';
 
     setSaving(true);
@@ -293,7 +313,7 @@ export default function EditProfile() {
       p_level: optional(form.level),
       p_league: optional(form.league),
       p_nationality: optional(form.nationality),
-      p_phone: optional(form.phone),
+      p_phone: optional(finalPhone),
       p_date_of_birth: optional(form.birthdate),
     });
     setSaving(false);
@@ -598,14 +618,45 @@ export default function EditProfile() {
                 </View>
               </View>
             </View>
-            <Field
-              label="Phone number (optional)"
-              value={form.phone}
-              onChangeText={(value) => update('phone', value)}
-              placeholder="+971 50 123 4567"
-              keyboardType="phone-pad"
-              autoCapitalize="none"
-            />
+            <View style={s.field}>
+              <Text style={s.label}>Phone number (optional)</Text>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Select phone country code"
+                  style={[s.input, { width: 110, justifyContent: 'center' }]}
+                  onPress={() => setPhoneModalOpen(true)}
+                >
+                  <Text
+                    style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textPrimary }}
+                    numberOfLines={1}
+                  >
+                    {PHONE_COUNTRIES.find((c) => c.value === form.phoneCountryIso)?.label?.match(/\(\+\d+\)$/)?.[0] ?? 'Code'}
+                  </Text>
+                </TouchableOpacity>
+                <TextInput
+                  accessibilityLabel="Phone number"
+                  style={[s.input, { flex: 1 }]}
+                  value={form.phone}
+                  onChangeText={(value) => update('phone', value)}
+                  placeholder="50 123 4567"
+                  placeholderTextColor={Colors.textDisabled}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                />
+              </View>
+              <SelectModal
+                visible={phoneModalOpen}
+                title="Select country code"
+                options={PHONE_COUNTRIES}
+                selectedValue={form.phoneCountryIso}
+                onSelect={(value) => update('phoneCountryIso', value)}
+                onClose={() => setPhoneModalOpen(false)}
+                searchable
+              />
+              {touched.phone && !phoneValid && <Text style={s.errorText}>Enter a valid phone number for the selected country</Text>}
+            </View>
             <View style={s.field}>
               <Text style={s.label}>Date of birth</Text>
               <TouchableOpacity
