@@ -413,26 +413,26 @@ export default function Career() {
                 {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>{editingId ? 'Save Changes' : 'Save Entry'}</Text>}
               </TouchableOpacity>
             </View>
+            <InlineDatePickerSheet
+              visible={datePickerTarget !== null}
+              title={datePickerTarget === 'day' ? 'Day' : datePickerTarget === 'month' ? 'Month' : 'Year'}
+              items={
+                datePickerTarget === 'day' ? DAYS.map(d => ({ label: d, value: d })) :
+                datePickerTarget === 'month' ? MONTHS.map(m => ({ label: m, value: m })) :
+                YEARS.map(y => ({ label: y, value: y }))
+              }
+              selected={datePickerTarget === 'day' ? entryDay : datePickerTarget === 'month' ? entryMonth : entryYear}
+              onSelect={(item) => {
+                if (datePickerTarget === 'day') setEntryDay(item.value);
+                else if (datePickerTarget === 'month') setEntryMonth(item.value);
+                else if (datePickerTarget === 'year') setEntryYear(item.value);
+                setDatePickerTarget(null);
+              }}
+              onClose={() => setDatePickerTarget(null)}
+            />
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      <PickerModal
-        visible={datePickerTarget !== null}
-        title={datePickerTarget === 'day' ? 'Day' : datePickerTarget === 'month' ? 'Month' : 'Year'}
-        items={
-          datePickerTarget === 'day' ? DAYS.map(d => ({ label: d, value: d })) :
-          datePickerTarget === 'month' ? MONTHS.map(m => ({ label: m, value: m })) :
-          YEARS.map(y => ({ label: y, value: y }))
-        }
-        selected={datePickerTarget === 'day' ? entryDay : datePickerTarget === 'month' ? entryMonth : entryYear}
-        onSelect={(item) => {
-          if (datePickerTarget === 'day') setEntryDay(item.value);
-          else if (datePickerTarget === 'month') setEntryMonth(item.value);
-          else if (datePickerTarget === 'year') setEntryYear(item.value);
-        }}
-        onClose={() => setDatePickerTarget(null)}
-      />
     </View>
   );
 }
@@ -560,6 +560,63 @@ function PickerModal({
   );
 }
 
+function InlineDatePickerSheet({
+  visible, title, items, selected, onSelect, onClose,
+}: {
+  visible: boolean;
+  title: string;
+  items: PickerItem[];
+  selected: string;
+  onSelect: (item: PickerItem) => void;
+  onClose: () => void;
+}) {
+  if (!visible) return null;
+  return (
+    <View style={s.inlineOverlay}>
+      <TouchableOpacity style={s.inlineBackdrop} activeOpacity={1} onPress={onClose} />
+      <View style={s.inlineSheet}>
+        <View style={pm.handle} />
+        <View style={pm.header}>
+          <Text style={pm.title}>{title}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Close ${title} picker`}
+            onPress={onClose}
+            hitSlop={8}
+          >
+            <X color={Colors.textMuted} size={20} />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={items}
+          keyExtractor={(i) => i.value}
+          style={pm.list}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => {
+            const active = item.value === selected;
+            return (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                style={[pm.item, active && pm.itemActive]}
+                onPress={() => onSelect(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={[pm.itemText, active && pm.itemTextActive]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                {active && <CheckCircle2 color={Colors.primary} size={16} />}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flex: 1 },
@@ -634,6 +691,9 @@ const s = StyleSheet.create({
   dateSelectDay: { flex: 0.95, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
   dateSelectMonth: { flex: 1.35, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
   dateSelectYear: { flex: 1.05, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  inlineOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', zIndex: 999, elevation: 999 },
+  inlineBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.72)' },
+  inlineSheet: { backgroundColor: Colors.surface, borderTopLeftRadius: Radii.xl, borderTopRightRadius: Radii.xl, padding: Spacing.lg, paddingBottom: Spacing.xxxl, maxHeight: '60%', borderWidth: 1, borderColor: Colors.border, borderBottomWidth: 0 },
 });
 
 const pm = StyleSheet.create({
