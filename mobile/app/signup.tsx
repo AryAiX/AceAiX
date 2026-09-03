@@ -215,7 +215,6 @@ function PickerModal({
                 onChangeText={setQuery}
                 placeholder="Search…"
                 placeholderTextColor={Colors.textDisabled}
-                autoFocus
                 returnKeyType="search"
               />
             </View>
