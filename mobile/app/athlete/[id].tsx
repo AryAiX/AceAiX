@@ -142,7 +142,7 @@ export default function AthleteProfile() {
 
   return (
     <View style={s.root}>
-      <AppHeader title="Profile" />
+      <AppHeader title="Profile" showBackButton />
 
       {profileLoading ? (
         <View style={s.centerState}>
