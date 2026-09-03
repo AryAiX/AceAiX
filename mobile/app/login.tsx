@@ -18,6 +18,13 @@ import { Eye, EyeOff, Zap } from 'lucide-react-native';
 
 const LOGO = require('@/assets/images/AceAiX_logo_transparent_(1) copy.png');
 
+function getFriendlyErrorMessage(message: string): string {
+  if (/network request failed|network/i.test(message)) {
+    return 'No internet connection. Please check your network and try again.';
+  }
+  return message;
+}
+
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
@@ -36,7 +43,7 @@ export default function LoginScreen() {
 
     const result = await signIn(email.trim(), password);
     setLoading(false);
-    if (result.error) setError(result.error);
+    if (result.error) setError(getFriendlyErrorMessage(result.error));
   }
 
   return (
