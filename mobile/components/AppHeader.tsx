@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Menu, Bell, MessageSquare, Search, X } from 'lucide-react-native';
+import { Menu, Bell, MessageSquare, Search, X, ArrowLeft } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useDrawer } from '@/context/DrawerContext';
 import { useAuth } from '@/context/AuthContext';
@@ -13,9 +13,10 @@ import { useRouter } from 'expo-router';
 
 interface AppHeaderProps {
   title: string;
+  showBackButton?: boolean;
 }
 
-export function AppHeader({ title }: AppHeaderProps) {
+export function AppHeader({ title, showBackButton }: AppHeaderProps) {
   const { open, isOpen } = useDrawer();
   const { profile } = useAuth();
   const { unreadCount } = useNotificationContext();
@@ -149,14 +150,20 @@ export function AppHeader({ title }: AppHeaderProps) {
 
       {/* ── Top row ── */}
       <View style={h.row}>
-        {/* Animated burger / X */}
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open navigation menu" onPress={open} hitSlop={10} style={h.burgerBtn} activeOpacity={0.7}>
-          <View style={h.burgerWrap}>
-            <Animated.View style={[h.bar, { transform: [{ rotate: bar1Rotate }, { translateY: bar1TransY }] }]} />
-            <Animated.View style={[h.bar, h.barMid, { opacity: bar2Opacity }]} />
-            <Animated.View style={[h.bar, { transform: [{ rotate: bar3Rotate }, { translateY: bar3TransY }] }]} />
-          </View>
-        </TouchableOpacity>
+        {/* Animated burger / X, or back button when pushed outside the drawer's tab context */}
+        {showBackButton ? (
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} hitSlop={10} style={h.burgerBtn} activeOpacity={0.7}>
+            <ArrowLeft color={Colors.textPrimary} size={22} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Open navigation menu" onPress={open} hitSlop={10} style={h.burgerBtn} activeOpacity={0.7}>
+            <View style={h.burgerWrap}>
+              <Animated.View style={[h.bar, { transform: [{ rotate: bar1Rotate }, { translateY: bar1TransY }] }]} />
+              <Animated.View style={[h.bar, h.barMid, { opacity: bar2Opacity }]} />
+              <Animated.View style={[h.bar, { transform: [{ rotate: bar3Rotate }, { translateY: bar3TransY }] }]} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Title */}
         <Text style={h.title} numberOfLines={1}>{title}</Text>
