@@ -9,12 +9,18 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { Eye, EyeOff, Zap } from 'lucide-react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const LOGO = require('@/assets/images/AceAiX_logo_transparent_(1) copy.png');
 
@@ -35,15 +41,20 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setError('Please enter your email and password.');
       return;
     }
     setLoading(true);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setError(null);
 
     const result = await signIn(email.trim(), password);
     setLoading(false);
-    if (result.error) setError(getFriendlyErrorMessage(result.error));
+    if (result.error) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setError(getFriendlyErrorMessage(result.error));
+    }
   }
 
   return (
