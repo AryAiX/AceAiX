@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Platform, RefreshControl, View, Text, ScrollV
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
@@ -15,6 +16,7 @@ interface ConnectionRow {
   org: string;
   type: string;
   verified: boolean;
+  avatar: string | null;
 }
 
 const COLORS: Record<string, string> = {
@@ -56,7 +58,7 @@ export default function Network() {
     setLoadError(false);
     try {
       const [profilesResult, followsResult, myBlocksResult, reciprocalResult] = await Promise.all([
-        supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(500),
+        supabase.from('user_profiles').select('id, role, full_name, bio, city, country, is_verified, avatar_url').neq('id', user.id).in('role', ['athlete', 'scout', 'club', 'coach', 'org_admin', 'federation']).order('full_name', { ascending: true }).limit(500),
         supabase.from('follows').select('following_id').eq('follower_id', user.id),
         supabase.from('user_blocks').select('blocked_id').eq('blocker_id', user.id),
         supabase.rpc('get_blocked_user_ids'),
@@ -79,6 +81,7 @@ export default function Network() {
         org: [row.city, row.country].filter(Boolean).join(', ') || 'AceAiX',
         type: row.role === 'org_admin' ? 'agent' : row.role === 'federation' ? 'club' : row.role ?? 'athlete',
         verified: row.is_verified ?? false,
+        avatar: row.avatar_url ?? null,
         })));
       setConns(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     } finally {
@@ -223,7 +226,11 @@ export default function Network() {
                 onPress={() => router.push(`/athlete/${c.id}`)}
               >
                 <View style={[s.av, { backgroundColor: color }]}>
-                  <Text style={s.avTxt}>{c.name[0]}</Text>
+                  {c.avatar ? (
+                    <Avatar uri={c.avatar} initial={c.name[0]} size={46} />
+                  ) : (
+                    <Text style={s.avTxt}>{c.name[0]}</Text>
+                  )}
                 </View>
                 <View style={s.info}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
