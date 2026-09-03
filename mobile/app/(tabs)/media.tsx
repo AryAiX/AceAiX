@@ -58,7 +58,7 @@ export default function MediaScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : postsCursorRef.current;
-    const data = await fetchFeedPosts(user.id, cursor);
+    const data = await fetchFeedPosts(user.id, cursor, 20, 'latest', undefined, user.id);
     if (data.length > 0) postsCursorRef.current = data[data.length - 1].created_at;
     postsHasMoreRef.current = data.length === 20;
     setPosts((prev) => (reset ? data : [...prev, ...data]));
@@ -67,7 +67,7 @@ export default function MediaScreen() {
   const loadReels = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : reelsCursorRef.current;
-    const data = await fetchReels(user.id, cursor);
+    const data = await fetchReels(user.id, cursor, 10, user.id);
     if (data.length > 0) reelsCursorRef.current = data[data.length - 1].created_at;
     reelsHasMoreRef.current = data.length === 10;
     setReels((prev) => (reset ? data : [...prev, ...data]));

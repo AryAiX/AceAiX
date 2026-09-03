@@ -116,6 +116,7 @@ export async function fetchFeedPosts(
   limit = 20,
   mode: 'for_you' | 'following' | 'latest' = 'latest',
   viewerSport?: string | null,
+  authorId?: string,
 ): Promise<FeedPost[]> {
   let authorIds: string[] | null = null;
   if (mode === 'following') {
@@ -147,6 +148,7 @@ export async function fetchFeedPosts(
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  if (authorId) query = query.eq('author_id', authorId);
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
   if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
@@ -181,7 +183,8 @@ export async function fetchFeedPosts(
 export async function fetchReels(
   currentUserId: string,
   cursor?: string,
-  limit = 10
+  limit = 10,
+  authorId?: string
 ): Promise<FeedPost[]> {
   let query = supabase
     .from('posts')
@@ -190,6 +193,7 @@ export async function fetchReels(
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  if (authorId) query = query.eq('author_id', authorId);
   if (cursor) query = query.lt('created_at', cursor);
 
   const [{ data, error }, { data: blocks }] = await Promise.all([
