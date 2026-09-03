@@ -326,18 +326,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'Signup is not configured for this build. Please install the latest app version.' };
     }
 
-    const { error: signupError } = await supabase.functions.invoke('signup-user', {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-      },
-      body: {
-        email: normalizedEmail,
-        password: data.password,
-        role: 'athlete',
-        fullName: data.full_name,
-      },
-    });
+    let signupError: Awaited<ReturnType<typeof supabase.functions.invoke>>['error'];
+    try {
+      ({ error: signupError } = await supabase.functions.invoke('signup-user', {
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: {
+          email: normalizedEmail,
+          password: data.password,
+          role: 'athlete',
+          fullName: data.full_name,
+        },
+      }));
+    } catch {
+      signupInProgress.current = false;
+      return { error: 'Unable to reach the server. Please check your internet connection and try again.' };
+    }
     if (signupError) {
       let message = signupError.message;
       const context = (signupError as { context?: Response }).context;
