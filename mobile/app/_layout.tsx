@@ -85,6 +85,7 @@ function RootNavigator() {
       <Stack.Screen name="reset-password" />
       <Stack.Screen name="athletes-only" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="athlete/[id]" />
       <Stack.Screen name="+not-found" />
     </Stack>
   );
