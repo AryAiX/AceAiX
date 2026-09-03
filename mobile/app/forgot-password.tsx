@@ -8,6 +8,13 @@ import { router } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 
+function getFriendlyErrorMessage(message: string): string {
+  if (/network request failed|network/i.test(message)) {
+    return 'No internet connection. Please check your network and try again.';
+  }
+  return message;
+}
+
 export default function ForgotPasswordScreen() {
   const { requestPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
@@ -25,7 +32,7 @@ export default function ForgotPasswordScreen() {
     const result = await requestPasswordReset(email);
     setLoading(false);
     if (result.error) {
-      setError(result.error);
+      setError(getFriendlyErrorMessage(result.error));
       return;
     }
     setSent(true);
