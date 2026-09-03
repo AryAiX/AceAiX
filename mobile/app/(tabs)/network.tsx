@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, RefreshControl, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useRouter } from 'expo-router';
@@ -91,6 +92,12 @@ export default function Network() {
   }, []);
 
   useEffect(() => { void loadNetwork(); }, [loadNetwork]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadNetwork();
+    }, [loadNetwork])
+  );
 
   async function toggleConnection(id: string, connected: boolean) {
     if (!user) return;
