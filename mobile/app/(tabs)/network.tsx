@@ -260,6 +260,14 @@ export default function Network() {
                 ) : (
                 <View style={s.actions}>
                   <TouchableOpacity
+                    style={[s.connBtn, isConn && s.connBtnActive]}
+                    onPress={() => toggleConnection(c.id, isConn)}
+                  >
+                    <Text style={[s.connTxt, isConn && s.connTxtActive]}>
+                      {isConn ? 'Connected' : 'Connect'}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`Message ${c.name}`}
                     style={s.msgBtn}
@@ -269,14 +277,6 @@ export default function Network() {
                     } as any)}
                   >
                     <MessageSquare color={Colors.primary} size={16} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.connBtn, isConn && s.connBtnActive]}
-                    onPress={() => toggleConnection(c.id, isConn)}
-                  >
-                    <Text style={[s.connTxt, isConn && s.connTxtActive]}>
-                      {isConn ? 'Connected' : 'Connect'}
-                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     accessibilityRole="button"
@@ -331,7 +331,7 @@ const s = StyleSheet.create({
   cName: { fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textPrimary },
   cRole: { fontFamily: Typography.family.medium, fontSize: Typography.size.xs, color: Colors.textMuted },
   cOrg: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textDisabled },
-  actions: { gap: 8, alignItems: 'flex-end' },
+  actions: { flexDirection: 'row', gap: 8, alignItems: 'flex-end' },
   msgBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: `${Colors.primary}15`, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${Colors.primary}30` },
   blockBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.elevated, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border },
   connBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radii.md, backgroundColor: Colors.elevated, borderWidth: 1, borderColor: Colors.border },
