@@ -207,7 +207,14 @@ export default function Network() {
             const isConn = conns.has(c.id);
             const color = COLORS[c.type] ?? Colors.primary;
             return (
-              <View key={c.id} style={s.card}>
+              <TouchableOpacity
+                key={c.id}
+                style={s.card}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${c.name}'s profile`}
+                onPress={() => router.push(`/athlete/${c.id}`)}
+              >
                 <View style={[s.av, { backgroundColor: color }]}>
                   <Text style={s.avTxt}>{c.name[0]}</Text>
                 </View>
@@ -267,7 +274,7 @@ export default function Network() {
                   </TouchableOpacity>
                 </View>
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
