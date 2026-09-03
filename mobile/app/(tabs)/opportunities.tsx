@@ -466,6 +466,7 @@ export default function OpportunitiesScreen() {
 
   const allCursorRef  = useRef<{ createdAt: string; id: string } | undefined>(undefined);
   const allHasMoreRef = useRef(true);
+  const loadingMoreRef = useRef(false);
   const fetchedTabs   = useRef<Set<Tab>>(new Set());
 
   const [filterVisible, setFilterVisible] = useState(false);
@@ -555,9 +556,11 @@ export default function OpportunitiesScreen() {
   };
 
   const onLoadMoreAll = async () => {
-    if (loadingMore || !allHasMoreRef.current || tab !== 'All') return;
+    if (loadingMoreRef.current || !allHasMoreRef.current || tab !== 'All') return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     await loadAll(false);
+    loadingMoreRef.current = false;
     setLoadingMore(false);
   };
 
