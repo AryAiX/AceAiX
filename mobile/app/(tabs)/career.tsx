@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -12,11 +14,21 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Award, Edit, MapPin, Plus, Trash2, X } from 'lucide-react-native';
+import { Award, CheckCircle2, ChevronDown, Edit, MapPin, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
+
+type PickerItem = { label: string; value: string; prefix?: string };
 
 interface CareerMilestone {
   id: string;
@@ -38,7 +50,10 @@ export default function Career() {
   const [saving, setSaving] = useState(false);
   const [type, setType] = useState('');
   const [clubOrEvent, setClubOrEvent] = useState('');
-  const [date, setDate] = useState('');
+  const [entryDay, setEntryDay] = useState('');
+  const [entryMonth, setEntryMonth] = useState('');
+  const [entryYear, setEntryYear] = useState('');
+  const [datePickerTarget, setDatePickerTarget] = useState<'day' | 'month' | 'year' | null>(null);
   const [notes, setNotes] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -47,13 +62,24 @@ export default function Career() {
       setEditingId(entry.id);
       setType(entry.milestone_type ?? '');
       setClubOrEvent(entry.club_or_event ?? '');
-      setDate(entry.achieved_at ?? '');
+      if (!entry.achieved_at) {
+        setEntryDay('');
+        setEntryMonth('');
+        setEntryYear('');
+      } else {
+        const [year, monthNum, day] = entry.achieved_at.split('-');
+        setEntryDay(day);
+        setEntryMonth(MONTHS[parseInt(monthNum, 10) - 1]);
+        setEntryYear(year);
+      }
       setNotes(entry.notes ?? '');
     } else {
       setEditingId(null);
       setType('');
       setClubOrEvent('');
-      setDate('');
+      setEntryDay('');
+      setEntryMonth('');
+      setEntryYear('');
       setNotes('');
     }
     setEditorOpen(true);
@@ -92,17 +118,25 @@ export default function Career() {
     setEditorOpen(false);
   }
 
+  function buildEntryDate(day: string, month: string, year: string): string | null {
+    if (!day && !month && !year) return null;
+    if (!day || !month || !year) return 'incomplete';
+    const mIdx = MONTHS.indexOf(month) + 1;
+    return `${year}-${String(mIdx).padStart(2, '0')}-${day}`;
+  }
+
   async function saveEntry() {
     if (!profile?.athlete_profile_id || !type.trim() || !clubOrEvent.trim()) {
       Alert.alert('Complete the entry', 'Add a milestone type and club or event.');
       return;
     }
-    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      Alert.alert('Check the date', 'Use YYYY-MM-DD format.');
+    const builtDate = buildEntryDate(entryDay, entryMonth, entryYear);
+    if (builtDate === 'incomplete') {
+      Alert.alert('Check the date', 'Select a day, month, and year, or leave all three blank.');
       return;
     }
-    const parsed = new Date(date);
-    if (date && Number.isNaN(parsed.getTime()) || (date && parsed.toISOString().slice(0, 10) !== date)) {
+    const parsed = builtDate ? new Date(builtDate) : null;
+    if (builtDate && (Number.isNaN(parsed!.getTime()) || parsed!.toISOString().slice(0, 10) !== builtDate)) {
       Alert.alert('Check the date', 'Enter a valid calendar date.');
       return;
     }
@@ -110,7 +144,7 @@ export default function Career() {
     const payload = {
       milestone_type: type.trim(),
       club_or_event: clubOrEvent.trim(),
-      achieved_at: date || null,
+      achieved_at: builtDate,
       notes: notes.trim() || null,
     };
     const { error } = editingId
@@ -123,7 +157,9 @@ export default function Career() {
     }
     setType('');
     setClubOrEvent('');
-    setDate('');
+    setEntryDay('');
+    setEntryMonth('');
+    setEntryYear('');
     setNotes('');
     setEditingId(null);
     setEditorOpen(false);
@@ -338,15 +374,26 @@ export default function Career() {
                 placeholder="Club or event"
                 placeholderTextColor={Colors.textDisabled}
               />
-              <TextInput
-                accessibilityLabel="Career milestone date"
-                style={s.input}
-                value={date}
-                onChangeText={setDate}
-                placeholder="Date (YYYY-MM-DD)"
-                placeholderTextColor={Colors.textDisabled}
-                keyboardType="numbers-and-punctuation"
-              />
+              <View style={s.dateRow}>
+                <SelectButton
+                  value={entryDay}
+                  placeholder="Day"
+                  onPress={() => setDatePickerTarget('day')}
+                  style={s.dateSelectDay}
+                />
+                <SelectButton
+                  value={entryMonth}
+                  placeholder="Month"
+                  onPress={() => setDatePickerTarget('month')}
+                  style={s.dateSelectMonth}
+                />
+                <SelectButton
+                  value={entryYear}
+                  placeholder="Year"
+                  onPress={() => setDatePickerTarget('year')}
+                  style={s.dateSelectYear}
+                />
+              </View>
               <TextInput
                 accessibilityLabel="Career entry notes"
                 style={[s.input, s.notesInput]}
@@ -369,7 +416,147 @@ export default function Career() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <PickerModal
+        visible={datePickerTarget !== null}
+        title={datePickerTarget === 'day' ? 'Day' : datePickerTarget === 'month' ? 'Month' : 'Year'}
+        items={
+          datePickerTarget === 'day' ? DAYS.map(d => ({ label: d, value: d })) :
+          datePickerTarget === 'month' ? MONTHS.map(m => ({ label: m, value: m })) :
+          YEARS.map(y => ({ label: y, value: y }))
+        }
+        selected={datePickerTarget === 'day' ? entryDay : datePickerTarget === 'month' ? entryMonth : entryYear}
+        onSelect={(item) => {
+          if (datePickerTarget === 'day') setEntryDay(item.value);
+          else if (datePickerTarget === 'month') setEntryMonth(item.value);
+          else if (datePickerTarget === 'year') setEntryYear(item.value);
+        }}
+        onClose={() => setDatePickerTarget(null)}
+      />
     </View>
+  );
+}
+
+function SelectButton({
+  value, placeholder, onPress, error, style, textStyle,
+}: {
+  value: string;
+  placeholder: string;
+  onPress: () => void;
+  error?: string;
+  style?: any;
+  textStyle?: any;
+}) {
+  return (
+    <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={value ? `${placeholder}, currently ${value}` : placeholder}
+      accessibilityState={{ selected: Boolean(value) }}
+      style={[s.selectBtn, style, error ? s.inputError : null]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={[s.selectText, textStyle, !value && s.placeholderText]} numberOfLines={1}>
+        {value || placeholder}
+      </Text>
+      <ChevronDown color={Colors.textMuted} size={16} />
+    </TouchableOpacity>
+  );
+}
+
+function PickerModal({
+  visible, title, items, selected, onSelect, onClose, searchable = false,
+}: {
+  visible: boolean;
+  title: string;
+  items: PickerItem[];
+  selected: string;
+  onSelect: (item: PickerItem) => void;
+  onClose: () => void;
+  searchable?: boolean;
+}) {
+  const [query, setQuery] = useState('');
+  const filtered = searchable && query.trim()
+    ? items.filter(i => i.label.toLowerCase().includes(query.toLowerCase()))
+    : items;
+
+  function handleSelect(item: PickerItem) {
+    Keyboard.dismiss();
+    onSelect(item);
+    onClose();
+    setQuery('');
+  }
+
+  function handleClose() {
+    Keyboard.dismiss();
+    onClose();
+    setQuery('');
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      {/* KAV is the full-screen container so the sheet lifts above the keyboard */}
+      <KeyboardAvoidingView
+        style={pm.kavOverlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity style={pm.backdrop} activeOpacity={1} onPress={handleClose} />
+        <View style={pm.sheet}>
+          <View style={pm.handle} />
+          <View style={pm.header}>
+            <Text style={pm.title}>{title}</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Close ${title} picker`}
+              onPress={handleClose}
+              hitSlop={8}
+            >
+              <X color={Colors.textMuted} size={20} />
+            </TouchableOpacity>
+          </View>
+          {searchable && (
+            <View style={pm.searchRow}>
+              <Search color={Colors.textMuted} size={15} />
+              <TextInput
+                accessibilityLabel={`Search ${title}`}
+                style={pm.searchInput}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Search…"
+                placeholderTextColor={Colors.textDisabled}
+                returnKeyType="search"
+              />
+            </View>
+          )}
+          <FlatList
+            data={filtered}
+            keyExtractor={i => i.value}
+            style={pm.list}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => {
+              const active = item.value === selected;
+              return (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
+                  style={[pm.item, active && pm.itemActive]}
+                  onPress={() => handleSelect(item)}
+                  activeOpacity={0.7}
+                >
+                  {item.prefix ? <Text style={pm.prefix}>{item.prefix}</Text> : null}
+                  <Text style={[pm.itemText, active && pm.itemTextActive]} numberOfLines={1}>
+                    {item.label}
+                  </Text>
+                  {active && <CheckCircle2 color={Colors.primary} size={16} />}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -423,4 +610,106 @@ const s = StyleSheet.create({
   notesInput: { minHeight: 88, textAlignVertical: 'top' },
   saveBtn: { alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primary, borderRadius: Radii.md, minHeight: 48 },
   saveBtnText: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.white },
+  inputError: { borderColor: Colors.error },
+  selectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.elevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    minHeight: 48,
+  },
+  selectText: {
+    flex: 1,
+    fontFamily: Typography.family.regular,
+    fontSize: Typography.size.md,
+    color: Colors.textPrimary,
+  },
+  placeholderText: { color: Colors.textDisabled },
+  dateRow: { flexDirection: 'row', gap: Spacing.sm, alignItems: 'stretch' },
+  dateSelectDay: { flex: 0.95, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  dateSelectMonth: { flex: 1.35, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+  dateSelectYear: { flex: 1.05, minWidth: 0, paddingHorizontal: Spacing.md, minHeight: 54 },
+});
+
+const pm = StyleSheet.create({
+  kavOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  sheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
+    maxHeight: '75%',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingBottom: Spacing.xxxl,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    backgroundColor: Colors.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.xxl,
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  title: {
+    fontFamily: Typography.family.bold,
+    fontSize: Typography.size.md,
+    color: Colors.textPrimary,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.xxl,
+    marginVertical: Spacing.md,
+    backgroundColor: Colors.elevated,
+    borderRadius: Radii.md,
+    paddingHorizontal: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    fontFamily: Typography.family.regular,
+    fontSize: Typography.size.md,
+    color: Colors.textPrimary,
+  },
+  list: { flexShrink: 1, maxHeight: 340 },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xxl,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  itemActive: { backgroundColor: 'rgba(46, 139, 255, 0.08)' },
+  prefix: { fontSize: Typography.size.lg, width: 28 },
+  itemText: {
+    flex: 1,
+    fontFamily: Typography.family.regular,
+    fontSize: Typography.size.md,
+    color: Colors.textMuted,
+  },
+  itemTextActive: { color: Colors.textPrimary, fontFamily: Typography.family.medium },
 });
