@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -304,64 +305,69 @@ export default function Career() {
         onRequestClose={closeEditor}
         accessibilityViewIsModal
       >
-        <View style={s.modalBackdrop}>
-          <View style={s.editor}>
-            <View style={s.editorHeader}>
-              <Text style={s.editorTitle}>{editingId ? 'Edit Career Entry' : 'Add Career Entry'}</Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={closeEditor}>
-                <X color={Colors.textMuted} size={22} />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={s.modalBackdrop}>
+            <View style={s.editor}>
+              <View style={s.editorHeader}>
+                <Text style={s.editorTitle}>{editingId ? 'Edit Career Entry' : 'Add Career Entry'}</Text>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close career entry" onPress={closeEditor}>
+                  <X color={Colors.textMuted} size={22} />
+                </TouchableOpacity>
+              </View>
+              <View style={s.typeGrid}>
+                {MILESTONE_TYPES.map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select milestone type ${t}`}
+                    style={[s.typeChip, type === t && s.typeChipActive]}
+                    onPress={() => setType(t)}
+                  >
+                    <Text style={[s.typeChipTxt, type === t && s.typeChipTxtActive]}>{t}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                accessibilityLabel="Career club or event"
+                style={s.input}
+                value={clubOrEvent}
+                onChangeText={setClubOrEvent}
+                placeholder="Club or event"
+                placeholderTextColor={Colors.textDisabled}
+              />
+              <TextInput
+                accessibilityLabel="Career milestone date"
+                style={s.input}
+                value={date}
+                onChangeText={setDate}
+                placeholder="Date (YYYY-MM-DD)"
+                placeholderTextColor={Colors.textDisabled}
+                keyboardType="numbers-and-punctuation"
+              />
+              <TextInput
+                accessibilityLabel="Career entry notes"
+                style={[s.input, s.notesInput]}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Role, context, or notes"
+                placeholderTextColor={Colors.textDisabled}
+                multiline
+              />
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Save career entry"
+                style={[s.saveBtn, saving && { opacity: 0.6 }]}
+                disabled={saving}
+                onPress={() => void saveEntry()}
+              >
+                {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>{editingId ? 'Save Changes' : 'Save Entry'}</Text>}
               </TouchableOpacity>
             </View>
-            <View style={s.typeGrid}>
-              {MILESTONE_TYPES.map((t) => (
-                <TouchableOpacity
-                  key={t}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Select milestone type ${t}`}
-                  style={[s.typeChip, type === t && s.typeChipActive]}
-                  onPress={() => setType(t)}
-                >
-                  <Text style={[s.typeChipTxt, type === t && s.typeChipTxtActive]}>{t}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput
-              accessibilityLabel="Career club or event"
-              style={s.input}
-              value={clubOrEvent}
-              onChangeText={setClubOrEvent}
-              placeholder="Club or event"
-              placeholderTextColor={Colors.textDisabled}
-            />
-            <TextInput
-              accessibilityLabel="Career milestone date"
-              style={s.input}
-              value={date}
-              onChangeText={setDate}
-              placeholder="Date (YYYY-MM-DD)"
-              placeholderTextColor={Colors.textDisabled}
-              keyboardType="numbers-and-punctuation"
-            />
-            <TextInput
-              accessibilityLabel="Career entry notes"
-              style={[s.input, s.notesInput]}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Role, context, or notes"
-              placeholderTextColor={Colors.textDisabled}
-              multiline
-            />
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Save career entry"
-              style={[s.saveBtn, saving && { opacity: 0.6 }]}
-              disabled={saving}
-              onPress={() => void saveEntry()}
-            >
-              {saving ? <ActivityIndicator color={Colors.white} /> : <Text style={s.saveBtnText}>{editingId ? 'Save Changes' : 'Save Entry'}</Text>}
-            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
