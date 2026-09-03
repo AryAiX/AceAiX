@@ -495,3 +495,55 @@ export async function toggleCommentLike(
     return { error: error?.message ?? null };
   }
 }
+
+export interface PublicAthleteProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  is_verified: boolean;
+  sport: string | null;
+  position: string | null;
+  current_club: string | null;
+  current_location: string | null;
+  nationality: string | null;
+  visibility_score: number;
+  performance_score: number;
+  profile_completeness: number;
+}
+
+export async function fetchPublicAthleteProfile(
+  athleteId: string,
+): Promise<PublicAthleteProfile | null> {
+  const [{ data: publicProfile, error: publicError }, { data: athleteProfile, error: athleteError }] = await Promise.all([
+    supabase
+      .from('user_profiles')
+      .select('id, role, full_name, avatar_url, bio, city, country, is_verified')
+      .eq('id', athleteId)
+      .maybeSingle(),
+    supabase
+      .from('athlete_profiles')
+      .select('sport, position, position_primary, current_club, nationality, visibility_score, performance_score, profile_completeness')
+      .eq('user_id', athleteId)
+      .maybeSingle(),
+  ]);
+
+  if (publicError || athleteError) return null;
+  if (!publicProfile) return null;
+
+  return {
+    id: publicProfile.id,
+    full_name: publicProfile.full_name ?? null,
+    avatar_url: publicProfile.avatar_url ?? null,
+    bio: publicProfile.bio ?? null,
+    is_verified: publicProfile.is_verified ?? false,
+    sport: athleteProfile?.sport ?? null,
+    position: athleteProfile?.position ?? athleteProfile?.position_primary ?? null,
+    current_club: athleteProfile?.current_club ?? null,
+    current_location: [publicProfile.city, publicProfile.country].filter(Boolean).join(', ') || null,
+    nationality: athleteProfile?.nationality ?? null,
+    visibility_score: athleteProfile?.visibility_score ?? 0,
+    performance_score: athleteProfile?.performance_score ?? 0,
+    profile_completeness: athleteProfile?.profile_completeness ?? 0,
+  };
+}
