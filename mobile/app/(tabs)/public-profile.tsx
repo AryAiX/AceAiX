@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share, Modal, Image,
+  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share, Modal, Image, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -19,6 +19,24 @@ export default function PublicProfile() {
   const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
   const { record, loading: performanceLoading, error: performanceError } = usePerformanceData(user?.id, profile?.sport);
   const performanceScore = Math.round(profile?.performance_score ?? 0);
+  const [animScore, setAnimScore] = useState(0);
+  const [animVisibility, setAnimVisibility] = useState(0);
+  const [animCompleteness, setAnimCompleteness] = useState(0);
+
+  useEffect(() => {
+    const targets: [number, (v: number) => void][] = [
+      [performanceScore, setAnimScore],
+      [Math.round(profile?.visibility_score ?? 0), setAnimVisibility],
+      [Math.round(profile?.profile_completeness ?? 0), setAnimCompleteness],
+    ];
+    const animations = targets.map(([target, setter], i) => {
+      const anim = new Animated.Value(0);
+      anim.addListener(({ value }) => setter(Math.round(value)));
+      return Animated.timing(anim, { toValue: target, duration: 900, delay: i * 100, useNativeDriver: false });
+    });
+    Animated.parallel(animations).start();
+  }, [performanceScore, profile?.visibility_score, profile?.profile_completeness]);
+
   const stats = record?.stats ?? {};
   const seasonHighlights = [
     { label: 'Appearances', value: stats.appearances ?? stats.apps },
@@ -56,7 +74,7 @@ export default function PublicProfile() {
             end={{ x: 1, y: 1 }}
           />
           <View style={s.aiScoreBadge}>
-            <Text style={s.aiScoreNum}>{performanceScore}</Text>
+            <Text style={s.aiScoreNum}>{animScore}</Text>
             <Text style={s.aiScoreLbl}>Performance</Text>
             {performanceScore > 0 && (
               <View style={s.elitePill}>
@@ -113,9 +131,9 @@ export default function PublicProfile() {
 
           <View style={s.statsRow}>
             {[
-              { label: 'Visibility', value: String(Math.round(profile?.visibility_score ?? 0)), color: Colors.primary },
-              { label: 'Performance', value: String(performanceScore), color: Colors.accent },
-              { label: 'Complete', value: `${Math.round(profile?.profile_completeness ?? 0)}%`, color: Colors.success },
+              { label: 'Visibility', value: String(animVisibility), color: Colors.primary },
+              { label: 'Performance', value: String(animScore), color: Colors.accent },
+              { label: 'Complete', value: `${animCompleteness}%`, color: Colors.success },
             ].map((st, i) => (
               <View key={st.label} style={[s.statItem, i < 2 && { borderRightWidth: 1, borderRightColor: Colors.border }]}>
                 <Text style={[s.statVal, { color: st.color }]}>{st.value}</Text>
