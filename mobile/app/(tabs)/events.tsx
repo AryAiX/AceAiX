@@ -213,6 +213,8 @@ export default function Events() {
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: Spacing.lg }} />
         ) : platformError ? (
           <Text style={s.summaryLbl}>Couldn’t load platform events. Pull to refresh or try again.</Text>
+        ) : platformEvents.length === 0 ? (
+          <Text style={s.summaryLbl}>No platform events right now. Check back soon.</Text>
         ) : (
           platformEvents.map(ev => {
             const isAttending = ev.is_attending;
