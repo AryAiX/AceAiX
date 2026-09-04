@@ -10,7 +10,9 @@ export type NotifType =
   | 'performance'
   | 'milestone'
   | 'reminder'
-  | 'system';
+  | 'system'
+  | 'like'
+  | 'comment';
 
 export interface AppNotification {
   id: string;

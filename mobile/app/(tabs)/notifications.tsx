@@ -25,6 +25,8 @@ import {
   Trash2,
   Check,
   ChevronLeft,
+  Heart,
+  MessageSquare,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -43,6 +45,8 @@ const TYPE_META: Record<NotifType, { icon: React.ComponentType<any>; color: stri
   milestone: { icon: Trophy, color: '#F59E0B', label: 'Milestone' },
   reminder: { icon: Clock, color: Colors.textMuted, label: 'Reminder' },
   system: { icon: Zap, color: Colors.textMuted, label: 'System' },
+  like: { icon: Heart, color: '#F43F5E', label: 'Like' },
+  comment: { icon: MessageSquare, color: Colors.primary, label: 'Comment' },
 };
 
 function getMeta(type: string) {
@@ -92,6 +96,8 @@ function resolveDeepLink(notif: AppNotification): string | null {
     case 'endorsement': return '/(tabs)/profile';
     case 'performance':
     case 'milestone': return '/(tabs)/performance';
+    case 'like':
+    case 'comment': return '/(tabs)/media';
     default: return null;
   }
 }
