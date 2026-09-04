@@ -88,7 +88,6 @@ const PHONE_CODES = [
   { code: 'DK', name: 'Denmark', dial: '+45', flag: '🇩🇰' },
   { code: 'CH', name: 'Switzerland', dial: '+41', flag: '🇨🇭' },
   { code: 'PL', name: 'Poland', dial: '+48', flag: '🇵🇱' },
-  { code: 'NG', name: 'Nigeria', dial: '+234', flag: '🇳🇬' },
   { code: 'GR', name: 'Greece', dial: '+30', flag: '🇬🇷' },
 ];
 
