@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
 import { Eye, Star, Target, Users } from 'lucide-react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { AppHeader } from '@/components/AppHeader';
@@ -11,7 +11,9 @@ const { width: SW } = Dimensions.get('window');
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-function BarChartComponent({ data, w, h }: { data: number[]; w: number; h: number }) {
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+
+function BarChartComponent({ data, w, h, progress }: { data: number[]; w: number; h: number; progress: Animated.Value }) {
   const max = Math.max(...data, 1);
   const barW = (w - 20) / data.length - 4;
   return (
@@ -20,8 +22,18 @@ function BarChartComponent({ data, w, h }: { data: number[]; w: number; h: numbe
         const barH = (v / max) * (h - 24);
         const x = 10 + i * ((w - 20) / data.length);
         const y = h - 20 - barH;
+        const animatedHeight = progress.interpolate({ inputRange: [0, 1], outputRange: [0, barH] });
+        const animatedY = progress.interpolate({ inputRange: [0, 1], outputRange: [h - 20, y] });
         return (
-          <Rect key={i} x={x} y={y} width={barW} height={barH} rx={3} fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`} />
+          <AnimatedRect
+            key={i}
+            x={x}
+            y={animatedY}
+            width={barW}
+            height={animatedHeight}
+            rx={3}
+            fill={i === data.length - 1 ? Colors.primary : `${Colors.primary}50`}
+          />
         );
       })}
     </Svg>
@@ -110,6 +122,45 @@ export default function Analytics() {
   const maxEngagement = Math.max(...engagement.map((item) => item.value), 1);
   const maxRegionViews = Math.max(...regions.map((region) => region.views), 1);
 
+  // Entrance animations, triggered once when data successfully loads.
+  // Animated.Value instances are created lazily via refs so they stay
+  // stable across re-renders instead of being recreated every render.
+  const cardAnimsRef = useRef(insights.map(() => new Animated.Value(0)));
+  const barAnim = useRef(new Animated.Value(0)).current;
+  const engAnimsRef = useRef(engagement.map(() => new Animated.Value(0)));
+  // regions is always sliced to a max of 5 items, so size this ref accordingly.
+  const geoAnimsRef = useRef(Array.from({ length: 5 }, () => new Animated.Value(0)));
+  const [animatedValues, setAnimatedValues] = useState<number[]>(() => insights.map(() => 0));
+
+  useEffect(() => {
+    if (loading || loadError) return;
+    Animated.stagger(80, cardAnimsRef.current.map((anim) =>
+      Animated.spring(anim, { toValue: 1, useNativeDriver: true, friction: 8, tension: 60 })
+    )).start();
+    Animated.timing(barAnim, { toValue: 1, duration: 700, delay: 200, useNativeDriver: false }).start();
+    Animated.stagger(60, engAnimsRef.current.map((anim) =>
+      Animated.timing(anim, { toValue: 1, duration: 500, useNativeDriver: false })
+    )).start();
+    Animated.stagger(60, geoAnimsRef.current.slice(0, regions.length).map((anim) =>
+      Animated.timing(anim, { toValue: 1, duration: 500, useNativeDriver: false })
+    )).start();
+    // Number count-up for the 4 insight cards where value is a plain
+    // integer (skip the '%' and '—' cases to avoid parsing complexity)
+    const targets = [profileViews, Math.round(profile?.visibility_score ?? 0), null, networkSize];
+    targets.forEach((target, i) => {
+      if (target === null) return;
+      const anim = new Animated.Value(0);
+      anim.addListener(({ value }) => {
+        setAnimatedValues((prev) => {
+          const next = [...prev];
+          next[i] = Math.round(value);
+          return next;
+        });
+      });
+      Animated.timing(anim, { toValue: target, duration: 900, delay: i * 80, useNativeDriver: false }).start();
+    });
+  }, [loading, loadError, regions.length, profileViews, networkSize, profile?.visibility_score]);
+
   return (
     <View style={s.root}>
       <AppHeader title="Analytics" />
@@ -122,23 +173,39 @@ export default function Analytics() {
         ) : (
           <>
             <View style={s.insightsGrid}>
-              {insights.map(({ label, value, delta, Icon }) => (
-                <View key={label} style={s.insightCard}>
-                  <View style={s.insightTop}>
-                    <Icon color={Colors.primary} size={16} />
-                    <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
-                  </View>
-                  <Text style={s.insightVal}>{value}</Text>
-                  <Text style={s.insightLabel}>{label}</Text>
-                </View>
-              ))}
+              {insights.map(({ label, value, delta, Icon }, index) => {
+                const anim = cardAnimsRef.current[index];
+                // Progress Rate (index 2) can be '—' or 'N%', so it keeps its static value.
+                const displayValue = index === 2 ? value : String(animatedValues[index] ?? 0);
+                return (
+                  <Animated.View
+                    key={label}
+                    style={[
+                      s.insightCard,
+                      {
+                        opacity: anim,
+                        transform: [{
+                          translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }),
+                        }],
+                      },
+                    ]}
+                  >
+                    <View style={s.insightTop}>
+                      <Icon color={Colors.primary} size={16} />
+                      <Text style={[s.insightDelta, { color: Colors.success }]}>{delta}</Text>
+                    </View>
+                    <Text style={s.insightVal}>{displayValue}</Text>
+                    <Text style={s.insightLabel}>{label}</Text>
+                  </Animated.View>
+                );
+              })}
             </View>
 
             <View style={s.card}>
               <Text style={s.cardTitle}>Profile Views — {new Date().getFullYear()}</Text>
               {monthlyViews.some((v) => v > 0) ? (
                 <>
-                  <BarChartComponent data={monthlyViews} w={SW - 64} h={120} />
+                  <BarChartComponent data={monthlyViews} w={SW - 64} h={120} progress={barAnim} />
                   <View style={s.monthRow}>
                     {MONTHS.map((m, index) => <Text key={`${m}-${index}`} style={s.monthLabel}>{m}</Text>)}
                   </View>
@@ -150,30 +217,48 @@ export default function Analytics() {
 
             <View style={s.card}>
               <Text style={s.cardTitle}>Scout Engagement Breakdown</Text>
-              {engagement.map(row => (
-                <View key={row.label} style={s.engRow}>
-                  <View style={s.engLeft}>
-                    <Text style={s.engLabel}>{row.label}</Text>
-                    <View style={s.engBar}>
-                      <View style={[s.engFill, { width: `${(row.value / maxEngagement) * 100}%` }]} />
+              {engagement.map((row, index) => {
+                const pct = (row.value / maxEngagement) * 100;
+                const anim = engAnimsRef.current[index];
+                return (
+                  <View key={row.label} style={s.engRow}>
+                    <View style={s.engLeft}>
+                      <Text style={s.engLabel}>{row.label}</Text>
+                      <View style={s.engBar}>
+                        <Animated.View
+                          style={[
+                            s.engFill,
+                            { width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${pct}%`] }) },
+                          ]}
+                        />
+                      </View>
                     </View>
+                    <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
                   </View>
-                  <Text style={s.engVal}>{row.value.toLocaleString()}</Text>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             <View style={s.card}>
               <Text style={s.cardTitle}>Viewer Organizations</Text>
-              {regions.map(r => (
-                <View key={r.region} style={s.geoRow}>
-                  <Text style={s.geoRegion}>{r.region}</Text>
-                  <View style={s.geoBarWrap}>
-                    <View style={[s.geoBar, { width: `${(r.views / maxRegionViews) * 100}%` }]} />
+              {regions.map((r, index) => {
+                const pct = (r.views / maxRegionViews) * 100;
+                const anim = geoAnimsRef.current[index];
+                return (
+                  <View key={r.region} style={s.geoRow}>
+                    <Text style={s.geoRegion}>{r.region}</Text>
+                    <View style={s.geoBarWrap}>
+                      <Animated.View
+                        style={[
+                          s.geoBar,
+                          { width: anim.interpolate({ inputRange: [0, 1], outputRange: ['0%', `${pct}%`] }) },
+                        ]}
+                      />
+                    </View>
+                    <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
                   </View>
-                  <Text style={s.geoViews}>{r.views.toLocaleString()}</Text>
-                </View>
-              ))}
+                );
+              })}
               {regions.length === 0 && (
                 <Text style={s.emptyText}>No viewer organization data has been recorded yet.</Text>
               )}
