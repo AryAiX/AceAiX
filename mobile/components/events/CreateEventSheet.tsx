@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Modal, ScrollView, ActivityIndicator, Switch,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { X, Calendar, Clock, MapPin } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radii, Shadows } from '@/constants/theme';
@@ -114,159 +115,164 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
       onRequestClose={handleClose}
       accessibilityViewIsModal
     >
-      <View style={s.overlay}>
-        <View style={s.sheet}>
-          <View style={s.handle} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <View style={s.overlay}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
 
-          <View style={s.header}>
-            <Text style={s.heading}>{editingEvent ? 'Edit Event' : 'Create Event'}</Text>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Close event form"
-              onPress={handleClose}
-              hitSlop={8}
-            >
-              <X color={Colors.textMuted} size={22} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {error && (
-              <View style={s.errorBanner}>
-                <Text style={s.errorTxt}>{error}</Text>
-              </View>
-            )}
-
-            <View style={s.field}>
-              <Text style={s.label}>Title *</Text>
-              <TextInput
-                accessibilityLabel="Event title"
-                style={s.input}
-                value={title}
-                onChangeText={setTitle}
-                placeholder="e.g. Regional Training Session"
-                placeholderTextColor={Colors.textDisabled}
-                returnKeyType="next"
-              />
+            <View style={s.header}>
+              <Text style={s.heading}>{editingEvent ? 'Edit Event' : 'Create Event'}</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close event form"
+                onPress={handleClose}
+                hitSlop={8}
+              >
+                <X color={Colors.textMuted} size={22} />
+              </TouchableOpacity>
             </View>
 
-            <View style={s.field}>
-              <Text style={s.label}>Type</Text>
-              <View style={s.typeGrid}>
-                {EVENT_TYPES.map(t => {
-                  const active = type === t;
-                  const col = TYPE_COLORS[t];
-                  return (
-                    <TouchableOpacity
-                      key={t}
-                      style={[s.typeChip, active && { backgroundColor: `${col}22`, borderColor: col }]}
-                      onPress={() => setType(t)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[s.typeChipTxt, active && { color: col }]}>{t}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={s.row2}>
-              <View style={[s.field, { flex: 1 }]}>
-                <Text style={s.label}>Date *</Text>
-                <View style={s.iconInput}>
-                  <Calendar color={Colors.textMuted} size={14} />
-                  <TextInput
-                    accessibilityLabel="Event date"
-                    style={s.iconInputText}
-                    value={date}
-                    onChangeText={setDate}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={Colors.textDisabled}
-                  />
+            <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {error && (
+                <View style={s.errorBanner}>
+                  <Text style={s.errorTxt}>{error}</Text>
                 </View>
-              </View>
-              <View style={[s.field, { flex: 1 }]}>
-                <Text style={s.label}>Time</Text>
-                <View style={s.iconInput}>
-                  <Clock color={Colors.textMuted} size={14} />
-                  <TextInput
-                    accessibilityLabel="Event time"
-                    style={s.iconInputText}
-                    value={time}
-                    onChangeText={setTime}
-                    placeholder="7:30 PM"
-                    placeholderTextColor={Colors.textDisabled}
-                  />
-                </View>
-              </View>
-            </View>
+              )}
 
-            <View style={s.field}>
-              <Text style={s.label}>Location *</Text>
-              <View style={s.iconInput}>
-                <MapPin color={Colors.textMuted} size={14} />
+              <View style={s.field}>
+                <Text style={s.label}>Title *</Text>
                 <TextInput
-                  accessibilityLabel="Event location"
-                  style={s.iconInputText}
-                  value={location}
-                  onChangeText={setLocation}
-                  placeholder="Venue or city"
+                  accessibilityLabel="Event title"
+                  style={s.input}
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="e.g. Regional Training Session"
                   placeholderTextColor={Colors.textDisabled}
+                  returnKeyType="next"
                 />
               </View>
-            </View>
 
-            <View style={s.field}>
-              <Text style={s.label}>Description</Text>
-              <TextInput
-                accessibilityLabel="Event description"
-                style={[s.input, s.multiline]}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Optional details…"
-                placeholderTextColor={Colors.textDisabled}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={s.toggleRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.toggleLabel}>Make public</Text>
-                <Text style={s.toggleSub}>Visible to other athletes on the platform</Text>
+              <View style={s.field}>
+                <Text style={s.label}>Type</Text>
+                <View style={s.typeGrid}>
+                  {EVENT_TYPES.map(t => {
+                    const active = type === t;
+                    const col = TYPE_COLORS[t];
+                    return (
+                      <TouchableOpacity
+                        key={t}
+                        style={[s.typeChip, active && { backgroundColor: `${col}22`, borderColor: col }]}
+                        onPress={() => setType(t)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[s.typeChipTxt, active && { color: col }]}>{t}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-              <Switch
-                value={isPublic}
-                onValueChange={setIsPublic}
-                trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
-                thumbColor={isPublic ? Colors.primary : Colors.textMuted}
-              />
+
+              <View style={s.row2}>
+                <View style={[s.field, { flex: 1 }]}>
+                  <Text style={s.label}>Date *</Text>
+                  <View style={s.iconInput}>
+                    <Calendar color={Colors.textMuted} size={14} />
+                    <TextInput
+                      accessibilityLabel="Event date"
+                      style={s.iconInputText}
+                      value={date}
+                      onChangeText={setDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor={Colors.textDisabled}
+                    />
+                  </View>
+                </View>
+                <View style={[s.field, { flex: 1 }]}>
+                  <Text style={s.label}>Time</Text>
+                  <View style={s.iconInput}>
+                    <Clock color={Colors.textMuted} size={14} />
+                    <TextInput
+                      accessibilityLabel="Event time"
+                      style={s.iconInputText}
+                      value={time}
+                      onChangeText={setTime}
+                      placeholder="7:30 PM"
+                      placeholderTextColor={Colors.textDisabled}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.label}>Location *</Text>
+                <View style={s.iconInput}>
+                  <MapPin color={Colors.textMuted} size={14} />
+                  <TextInput
+                    accessibilityLabel="Event location"
+                    style={s.iconInputText}
+                    value={location}
+                    onChangeText={setLocation}
+                    placeholder="Venue or city"
+                    placeholderTextColor={Colors.textDisabled}
+                  />
+                </View>
+              </View>
+
+              <View style={s.field}>
+                <Text style={s.label}>Description</Text>
+                <TextInput
+                  accessibilityLabel="Event description"
+                  style={[s.input, s.multiline]}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholder="Optional details…"
+                  placeholderTextColor={Colors.textDisabled}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <View style={s.toggleRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.toggleLabel}>Make public</Text>
+                  <Text style={s.toggleSub}>Visible to other athletes on the platform</Text>
+                </View>
+                <Switch
+                  value={isPublic}
+                  onValueChange={setIsPublic}
+                  trackColor={{ false: Colors.elevated, true: `${Colors.primary}60` }}
+                  thumbColor={isPublic ? Colors.primary : Colors.textMuted}
+                />
+              </View>
+
+              <View style={{ height: 16 }} />
+            </ScrollView>
+
+            <View style={s.footer}>
+              <TouchableOpacity style={s.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
+                <Text style={s.cancelTxt}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={editingEvent ? 'Save changes' : 'Create event'}
+                style={[s.createBtn, loading && { opacity: 0.7 }]}
+                onPress={handleCreate}
+                activeOpacity={0.8}
+                disabled={loading}
+              >
+                {loading
+                  ? <ActivityIndicator color={Colors.white} size="small" />
+                  : <Text style={s.createTxt}>{editingEvent ? 'Save Changes' : 'Create Event'}</Text>
+                }
+              </TouchableOpacity>
             </View>
-
-            <View style={{ height: 16 }} />
-          </ScrollView>
-
-          <View style={s.footer}>
-            <TouchableOpacity style={s.cancelBtn} onPress={handleClose} activeOpacity={0.7}>
-              <Text style={s.cancelTxt}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel={editingEvent ? 'Save changes' : 'Create event'}
-              style={[s.createBtn, loading && { opacity: 0.7 }]}
-              onPress={handleCreate}
-              activeOpacity={0.8}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color={Colors.white} size="small" />
-                : <Text style={s.createTxt}>{editingEvent ? 'Save Changes' : 'Create Event'}</Text>
-              }
-            </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
