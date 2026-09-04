@@ -22,7 +22,6 @@ import { decode } from 'base64-arraybuffer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
-import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Country, City } from 'country-state-city';
 import { POSITIONS_BY_SPORT } from '@/constants/positions';
@@ -154,6 +153,7 @@ export default function EditProfile() {
   const [countryModalOpen, setCountryModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [nationalityModalOpen, setNationalityModalOpen] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) {
@@ -557,19 +557,24 @@ export default function EditProfile() {
             />
             <View style={s.field}>
               <Text style={s.label}>Nationality</Text>
-              <View style={s.input}>
-                <Picker
-                  selectedValue={form.nationality}
-                  onValueChange={(value) => update('nationality', value)}
-                  style={{ color: Colors.textPrimary }}
-                  dropdownIconColor={Colors.textPrimary}
-                >
-                  <Picker.Item label="Select nationality" value="" />
-                  {ALL_COUNTRIES.map((c) => (
-                    <Picker.Item key={c.isoCode} label={c.name} value={c.name} />
-                  ))}
-                </Picker>
-              </View>
+              <TouchableOpacity style={s.input} onPress={() => setNationalityModalOpen(true)}>
+                <Text style={{
+                  fontFamily: Typography.family.regular,
+                  fontSize: Typography.size.sm,
+                  color: form.nationality ? Colors.textPrimary : Colors.textDisabled,
+                }}>
+                  {form.nationality || 'Select nationality'}
+                </Text>
+              </TouchableOpacity>
+              <SelectModal
+                visible={nationalityModalOpen}
+                title="Select nationality"
+                options={ALL_COUNTRIES.map((c) => ({ label: c.name, value: c.name }))}
+                selectedValue={form.nationality}
+                onSelect={(value) => update('nationality', value)}
+                onClose={() => setNationalityModalOpen(false)}
+                searchable
+              />
             </View>
             <View style={s.twoColumns}>
               <View style={s.column}>
