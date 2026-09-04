@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -53,60 +55,64 @@ export default function SelectModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <Pressable style={m.backdrop} onPress={handleClose} />
-      <View style={m.sheet}>
-        <View style={m.header}>
-          <Text style={m.title}>{title}</Text>
-          <TouchableOpacity accessibilityLabel="Close" onPress={handleClose} hitSlop={8}>
-            <X color={Colors.textMuted} size={20} />
-          </TouchableOpacity>
-        </View>
-        {searchable && (
-          <TextInput
-            accessibilityLabel={`Search ${title}`}
-            style={m.search}
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search…"
-            placeholderTextColor={Colors.textDisabled}
-            autoCapitalize="none"
+      <KeyboardAvoidingView
+        style={m.kavWrap}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Pressable style={m.backdrop} onPress={handleClose} />
+        <View style={m.sheet}>
+          <View style={m.header}>
+            <Text style={m.title}>{title}</Text>
+            <TouchableOpacity accessibilityLabel="Close" onPress={handleClose} hitSlop={8}>
+              <X color={Colors.textMuted} size={20} />
+            </TouchableOpacity>
+          </View>
+          {searchable && (
+            <TextInput
+              accessibilityLabel={`Search ${title}`}
+              style={m.search}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search…"
+              placeholderTextColor={Colors.textDisabled}
+              autoCapitalize="none"
+            />
+          )}
+          <FlatList
+            data={filteredOptions}
+            keyExtractor={(item) => item.value}
+            style={m.list}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<Text style={m.empty}>{emptyMessage}</Text>}
+            renderItem={({ item }) => {
+              const active = item.value === selectedValue;
+              return (
+                <TouchableOpacity
+                  style={[m.row, active && m.rowActive]}
+                  onPress={() => {
+                    onSelect(item.value);
+                    handleClose();
+                  }}
+                >
+                  <Text style={[m.rowText, active && m.rowTextActive]}>{item.label}</Text>
+                </TouchableOpacity>
+              );
+            }}
           />
-        )}
-        <FlatList
-          data={filteredOptions}
-          keyExtractor={(item) => item.value}
-          style={m.list}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={<Text style={m.empty}>{emptyMessage}</Text>}
-          renderItem={({ item }) => {
-            const active = item.value === selectedValue;
-            return (
-              <TouchableOpacity
-                style={[m.row, active && m.rowActive]}
-                onPress={() => {
-                  onSelect(item.value);
-                  handleClose();
-                }}
-              >
-                <Text style={[m.rowText, active && m.rowTextActive]}>{item.label}</Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const m = StyleSheet.create({
+  kavWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   sheet: {
-    position: 'absolute',
-    left: 0, right: 0, bottom: 0,
     maxHeight: '65%',
     backgroundColor: Colors.surface,
     borderTopLeftRadius: Radii.lg,
