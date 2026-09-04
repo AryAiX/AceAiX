@@ -556,6 +556,12 @@ export default function Dashboard() {
               {[profile?.position, profile?.sport, profile?.league]
                 .filter(Boolean).join(' · ') || 'Professional Athlete'}
             </Text>
+            {profile?.hometown && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <MapPin color={Colors.textMuted} size={12} />
+                <Text style={s.heroLocation} numberOfLines={1}>{profile.hometown}</Text>
+              </View>
+            )}
 
             {/* score strip */}
             <View style={s.heroScoreStrip}>
@@ -898,6 +904,7 @@ const s = StyleSheet.create({
   heroGreeting: { fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, marginBottom: 2 },
   heroName:    { fontFamily: Typography.family.display, fontSize: 38, color: Colors.textPrimary, letterSpacing: -1, lineHeight: 40, marginBottom: 4 },
   heroBio:     { fontFamily: Typography.family.medium, fontSize: Typography.size.xs, color: Colors.textMuted, marginBottom: Spacing.md },
+  heroLocation: { fontFamily: Typography.family.medium, fontSize: 10, color: Colors.textMuted, marginBottom: Spacing.md },
   heroScoreStrip: { flexDirection: 'row', gap: 2, marginBottom: Spacing.md },
   heroScoreItem: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: Radii.sm, padding: Spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   heroScoreVal: { fontFamily: Typography.family.bold, fontSize: Typography.size.lg },
