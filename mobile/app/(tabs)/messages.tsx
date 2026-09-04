@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -576,6 +577,33 @@ function NewConversationModal({
   );
 }
 
+function SkeletonRow({ delay }: { delay: number }) {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, delay, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  return (
+    <Animated.View style={[s.convo, s.convoBorder, { opacity: pulse }]}>
+      <View style={[s.avatar, s.skeletonBlock]} />
+      <View style={s.convoBody}>
+        <View style={s.convoTop}>
+          <View style={[s.skeletonBlock, s.skeletonName]} />
+          <View style={[s.skeletonBlock, s.skeletonTime]} />
+        </View>
+        <View style={[s.skeletonBlock, s.skeletonRole]} />
+        <View style={[s.skeletonBlock, s.skeletonPreview]} />
+      </View>
+    </Animated.View>
+  );
+}
+
 export default function Messages() {
   const { user } = useAuth();
   const params = useLocalSearchParams<{
@@ -822,9 +850,8 @@ export default function Messages() {
       </View>
 
       {loading ? (
-        <View style={s.centerState}>
-          <ActivityIndicator color={Colors.primary} />
-          <Text style={s.stateText}>Loading conversations…</Text>
+        <View style={s.list}>
+          {[0, 1, 2, 3, 4].map((i) => <SkeletonRow key={i} delay={i * 100} />)}
         </View>
       ) : error ? (
         <View style={s.centerState}>
@@ -943,6 +970,11 @@ const s = StyleSheet.create({
   convoLastUnread: { color: Colors.textPrimary, fontFamily: Typography.family.medium },
   badge: { backgroundColor: Colors.primary, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   badgeTxt: { color: Colors.white, fontFamily: Typography.family.bold, fontSize: 11 },
+  skeletonBlock: { backgroundColor: Colors.elevated, borderRadius: Radii.sm },
+  skeletonName: { width: 120, height: 14 },
+  skeletonTime: { width: 36, height: 10 },
+  skeletonRole: { width: 80, height: 10, marginTop: 6, marginBottom: 6 },
+  skeletonPreview: { width: '90%', height: 12 },
   fab: { position: 'absolute', bottom: 24, right: 24, width: 54, height: 54, borderRadius: 27, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8 },
   emptyState: { margin: Spacing.lg, padding: Spacing.xl, borderRadius: Radii.lg, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, alignItems: 'center' },
   emptyTitle: { fontFamily: Typography.family.bold, fontSize: Typography.size.md, color: Colors.textPrimary, marginBottom: 6 },
