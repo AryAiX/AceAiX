@@ -1,33 +1,25 @@
-import { Link, Stack } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { useRouter } from 'expo-router';
+import { Compass } from 'lucide-react-native';
 
-export default function NotFoundScreen() {
+import { useTheme } from '@/theme/ThemeProvider';
+import { EmptyState, Screen } from '@/components/ui';
+import { useT } from '@/i18n';
+
+export default function NotFound() {
+  const theme = useTheme();
+  const router = useRouter();
+  const t = useT();
+
   return (
-    <>
-      <Stack.Screen options={{ title: 'Oops!' }} />
-      <View style={styles.container}>
-        <Text style={styles.text}>This screen doesn&apos;t exist.</Text>
-        <Link href="/" style={styles.link}>
-          <Text>Go to home screen!</Text>
-        </Link>
-      </View>
-    </>
+    <Screen>
+      <EmptyState
+        icon={<Compass size={28} color={theme.colors.textMuted} />}
+        title={t('feed.notFoundTitle')}
+        body={t('feed.notFoundBody')}
+        actionLabel={t('feed.notFoundAction')}
+        onAction={() => router.replace('/(tabs)')}
+      />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  text: {
-    fontSize: 20,
-    fontWeight: 600,
-  },
-  link: {
-    marginTop: 15,
-    paddingVertical: 15,
-  },
-});

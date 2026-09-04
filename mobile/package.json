@@ -1,10 +1,11 @@
 {
-  "name": "bolt-expo-starter",
+  "name": "aceaix-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
+    "dev:web": "EXPO_NO_TELEMETRY=1 expo start --web",
     "build:web": "expo export --platform web",
     "build:ios": "npx eas-cli build --platform ios --profile production",
     "build:android": "npx eas-cli build --platform android --profile production",
@@ -12,9 +13,11 @@
     "submit:android": "npx eas-cli submit --platform android --profile production",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run test:unit && npm run test:e2e",
+    "test": "npm run typecheck && npm run lint && npm run test:unit",
     "test:unit": "vitest run",
-    "test:e2e": "playwright test"
+    "test:walkthrough": "npm run build:web && node tests/e2e/walkthrough.mjs",
+    "backend:local": "../tools/local-supabase/start.sh",
+    "db:test": "../supabase/tests/run-all.sh"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
@@ -68,6 +71,7 @@
     "@types/react": "~19.1.10",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~10.0.0",
+    "playwright": "^1.61.1",
     "typescript": "~5.9.2",
     "vitest": "^4.1.9"
   }

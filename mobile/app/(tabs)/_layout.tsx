@@ -1,172 +1,278 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
-import { Tabs } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Home, Rss, Target, User } from 'lucide-react-native';
-import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
-import { DrawerProvider } from '@/context/DrawerContext';
-import { AppDrawer } from '@/components/AppDrawer';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { Compass, Home, Plus, Target, User } from 'lucide-react-native';
 
-// ── Tab icon with spring + indicator dot ──────────────────────────────────────
-const TAB_ACCENT: Record<string, string> = {
-  Dashboard:    Colors.primary,
-  Feed:         Colors.success,
-  Opportunities:Colors.warning,
-  Profile:      Colors.accent,
-};
+import { useTheme } from '@/theme/ThemeProvider';
+import { Text } from '@/components/ui';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
-function AnimTabIcon({
-  Icon, focused, label,
+/**
+ * Five destinations, and only five. Everything else in the app is reachable
+ * from one of them — the previous build had sixteen screens hidden behind a
+ * drawer, which is the main reason it felt complicated.
+ */
+
+function TabIcon({
+  Icon,
+  focused,
+  label,
+  bump = 0,
 }: {
-  Icon: React.ComponentType<any>;
+  Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
   focused: boolean;
   label: string;
+  /** Increments every time an already-open tab is tapped again. */
+  bump?: number;
 }) {
-  const scale    = useRef(new Animated.Value(focused ? 1.15 : 1)).current;
-  const dotScale = useRef(new Animated.Value(focused ? 1 : 0)).current;
-  const dotOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current;
-  const glowOpacity = useRef(new Animated.Value(focused ? 0.5 : 0)).current;
-
-  const color  = TAB_ACCENT[label] ?? Colors.primary;
+  const theme = useTheme();
+  const { colors } = theme;
+  const reduced = useReducedMotion();
+  const lift = useRef(new Animated.Value(focused ? 1 : 0)).current;
+  const bounce = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(scale,    { toValue: focused ? 1.18 : 1,   tension: 200, friction: 8, useNativeDriver: true } as any),
-      Animated.spring(dotScale, { toValue: focused ? 1 : 0,      tension: 200, friction: 8, useNativeDriver: true } as any),
-      Animated.timing(dotOpacity,  { toValue: focused ? 1 : 0,   duration: 200, useNativeDriver: true }),
-      Animated.timing(glowOpacity, { toValue: focused ? 0.35 : 0, duration: 250, useNativeDriver: true }),
+    if (reduced) {
+      lift.setValue(focused ? 1 : 0);
+      return;
+    }
+    Animated.timing(lift, {
+      toValue: focused ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [focused, lift, reduced]);
+
+  useEffect(() => {
+    if (bump === 0 || reduced) return;
+    Animated.sequence([
+      Animated.spring(bounce, { toValue: 1.18, useNativeDriver: true, speed: 70, bounciness: 0 }),
+      Animated.spring(bounce, { toValue: 1, useNativeDriver: true, speed: 34, bounciness: 12 }),
     ]).start();
-  }, [focused]);
+  }, [bump, bounce, reduced]);
+
+  const color = focused ? colors.primary : colors.textMuted;
 
   return (
-    <View style={ti.wrap}>
-      {/* Glow backdrop */}
-      <Animated.View style={[ti.glow, { backgroundColor: color, opacity: glowOpacity }]} />
-      {/* Icon */}
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Icon
-          color={focused ? color : Colors.textDisabled}
-          size={22}
-          strokeWidth={focused ? 2.5 : 1.8}
-          fill={focused ? `${color}20` : 'none'}
-        />
+    <View style={styles.tabItem}>
+      <Animated.View
+        style={{
+          transform: [
+            { translateY: lift.interpolate({ inputRange: [0, 1], outputRange: [0, -2] }) },
+            { scale: bounce },
+          ],
+        }}
+      >
+        <Icon size={24} color={color} strokeWidth={focused ? 2.4 : 1.9} />
       </Animated.View>
-      {/* Indicator dot */}
-      <Animated.View style={[ti.dot, { backgroundColor: color, transform: [{ scale: dotScale }], opacity: dotOpacity }]} />
+      <Text
+        variant="overline"
+        color={color}
+        style={{ fontSize: 9.5, letterSpacing: 0.4, marginTop: 3 }}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
-const ti = StyleSheet.create({
-  wrap: { alignItems: 'center', justifyContent: 'center', height: 38, width: 38 },
-  glow: { position: 'absolute', width: 42, height: 42, borderRadius: 21, top: -2, left: -2 },
-  dot:  { width: 4, height: 4, borderRadius: 2, marginTop: 3 },
-});
+/** Centre action. Not a route — it opens the composer as a modal. */
+function CreateButton() {
+  const theme = useTheme();
+  const router = useRouter();
+  const reduced = useReducedMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const breath = useRef(new Animated.Value(0)).current;
 
-// ── TabsLayout ─────────────────────────────────────────────────────────────────
-export default function TabsLayout() {
+  const press = (to: number) => {
+    if (reduced) {
+      scale.setValue(1);
+      return;
+    }
+    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 50, bounciness: 6 }).start();
+  };
+
+  /**
+   * A slow breath, 2.5% either side of resting. It is meant to be noticed only
+   * once — the button is alive, not asking for anything — so it stays well
+   * under the threshold where something in the corner of your eye starts to
+   * nag. Reduce-motion switches it off entirely.
+   */
+  useEffect(() => {
+    if (reduced) {
+      breath.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: 2600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: 2600,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breath, reduced]);
+
   return (
-    <DrawerProvider>
-      <View style={{ flex: 1 }}>
-        <Tabs
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: {
-              backgroundColor: Colors.surface,
-              borderTopWidth: 0,
-              height: 78,
-              paddingTop: Spacing.sm,
-              paddingBottom: Spacing.lg,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 16,
-              elevation: 16,
-            },
-            tabBarBackground: () => (
-              <View style={StyleSheet.absoluteFill}>
-                <LinearGradient
-                  colors={[`${Colors.surface}00`, Colors.surface]}
-                  start={{ x: 0, y: 0 }} end={{ x: 0, y: 0.3 }}
-                  style={StyleSheet.absoluteFill}
-                />
-                {/* Top gradient border */}
-                <LinearGradient
-                  colors={[Colors.primary, Colors.accent, Colors.warning, Colors.primary]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5 }}
-                />
-              </View>
-            ),
-            tabBarActiveTintColor: Colors.primary,
-            tabBarInactiveTintColor: Colors.textDisabled,
-            tabBarLabelStyle: {
-              fontFamily: Typography.family.medium,
-              fontSize: 10,
-              marginTop: 0,
-            },
-          }}
-        >
-          <Tabs.Screen
-            name="index"
-            options={{
-              title: 'Dashboard',
-              tabBarLabel: 'Dashboard',
-              tabBarIcon: ({ focused }) => (
-                <AnimTabIcon Icon={Home} focused={focused} label="Dashboard" />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="feed"
-            options={{
-              title: 'Social Feed',
-              tabBarLabel: 'Feed',
-              tabBarIcon: ({ focused }) => (
-                <AnimTabIcon Icon={Rss} focused={focused} label="Feed" />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="opportunities"
-            options={{
-              title: 'Opportunities',
-              tabBarLabel: 'Opps',
-              tabBarIcon: ({ focused }) => (
-                <AnimTabIcon Icon={Target} focused={focused} label="Opportunities" />
-              ),
-            }}
-          />
-          <Tabs.Screen
-            name="profile"
-            options={{
-              title: 'Profile',
-              tabBarLabel: 'Profile',
-              tabBarIcon: ({ focused }) => (
-                <AnimTabIcon Icon={User} focused={focused} label="Profile" />
-              ),
-            }}
-          />
-          {/* Hidden screens — accessible via header / drawer */}
-          <Tabs.Screen name="messages"         options={{ href: null }} />
-          <Tabs.Screen name="performance"      options={{ href: null }} />
-          <Tabs.Screen name="settings"         options={{ href: null }} />
-          <Tabs.Screen name="edit-profile"     options={{ href: null }} />
-          <Tabs.Screen name="notifications"    options={{ href: null }} />
-          <Tabs.Screen name="media"            options={{ href: null }} />
-          <Tabs.Screen name="medical"          options={{ href: null }} />
-          <Tabs.Screen name="network"          options={{ href: null }} />
-          <Tabs.Screen name="career"           options={{ href: null }} />
-          <Tabs.Screen name="events"           options={{ href: null }} />
-          <Tabs.Screen name="ai-coach"         options={{ href: null }} />
-          <Tabs.Screen name="analytics"        options={{ href: null }} />
-          <Tabs.Screen name="public-profile"   options={{ href: null }} />
-          <Tabs.Screen name="discover"         options={{ href: null }} />
-          <Tabs.Screen name="sportify-academy" options={{ href: null }} />
-          <Tabs.Screen name="sportify-talent"  options={{ href: null }} />
-        </Tabs>
-        <AppDrawer />
-      </View>
-    </DrawerProvider>
+    <Animated.View
+      style={{
+        transform: [
+          { scale },
+          { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.025] }) },
+        ],
+        marginTop: -18,
+      }}
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Create a post"
+        testID="tab-create"
+        onPressIn={() => press(0.92)}
+        onPressOut={() => press(1)}
+        onPress={() => {
+          if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+          }
+          router.push('/compose');
+        }}
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: theme.colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 4,
+          borderColor: theme.colors.tabBar,
+          ...theme.elevation(2),
+        }}
+      >
+        <Plus size={26} color={theme.colors.textOnBrand} strokeWidth={2.8} />
+      </Pressable>
+    </Animated.View>
   );
 }
+
+export default function TabsLayout() {
+  const theme = useTheme();
+  const { colors } = theme;
+  const insets = useSafeAreaInsets();
+
+  /* Which tab was last re-tapped, and how many times. Tapping the tab you are
+     already on has no navigation to show for itself, so the icon answers. */
+  const [rebump, setRebump] = useState({ route: '', count: 0 });
+
+  const onTabPress = useCallback((route: string, alreadyHere: boolean) => {
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync().catch(() => {});
+    }
+    if (alreadyHere) {
+      setRebump((prev) => ({ route, count: prev.count + 1 }));
+    }
+  }, []);
+
+  const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+        tabBarStyle: {
+          backgroundColor: colors.tabBar,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: colors.border,
+          height: 60 + insets.bottom,
+          paddingTop: 8,
+          paddingBottom: insets.bottom || 8,
+          elevation: 0,
+        },
+        tabBarItemStyle: { paddingTop: 2 },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Home} focused={focused} label="Home" bump={bumpFor('index')} />
+          ),
+          tabBarAccessibilityLabel: 'Home feed',
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('index', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: 'Discover',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={Compass} focused={focused} label="Discover" bump={bumpFor('discover')} />
+          ),
+          tabBarAccessibilityLabel: 'Discover talent',
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('discover', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="create"
+        options={{
+          title: 'Create',
+          tabBarButton: () => <CreateButton />,
+        }}
+        listeners={{ tabPress: (e) => e.preventDefault() }}
+      />
+      <Tabs.Screen
+        name="opportunities"
+        options={{
+          title: 'Trials',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Target}
+              focused={focused}
+              label="Trials"
+              bump={bumpFor('opportunities')}
+            />
+          ),
+          tabBarAccessibilityLabel: 'Trials and opportunities',
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('opportunities', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon Icon={User} focused={focused} label="You" bump={bumpFor('profile')} />
+          ),
+          tabBarAccessibilityLabel: 'Your profile',
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('profile', navigation.isFocused()),
+        })}
+      />
+    </Tabs>
+  );
+}
+
+const styles = StyleSheet.create({
+  tabItem: { alignItems: 'center', justifyContent: 'center', width: 72 },
+});
