@@ -9,7 +9,7 @@ import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useDrawer } from '@/context/DrawerContext';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationContext } from '@/context/NotificationContext';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 
 interface AppHeaderProps {
   title: string;
@@ -22,6 +22,7 @@ export function AppHeader({ title, showBackButton }: AppHeaderProps) {
   const { unreadCount } = useNotificationContext();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -188,7 +189,7 @@ export function AppHeader({ title, showBackButton }: AppHeaderProps) {
             accessibilityLabel="Open notifications"
             style={h.iconBtn}
             hitSlop={8}
-            onPress={() => router.push('/(tabs)/notifications' as any)}
+            onPress={() => router.push({ pathname: '/(tabs)/notifications', params: { from: pathname } } as any)}
             activeOpacity={0.75}
           >
             <Animated.View style={{ transform: [{ scale: bellPulse }] }}>

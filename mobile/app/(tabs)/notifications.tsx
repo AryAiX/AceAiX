@@ -9,7 +9,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
   Bell,
   Eye,
@@ -24,6 +24,7 @@ import {
   Zap,
   Trash2,
   Check,
+  ChevronLeft,
 } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -139,6 +140,11 @@ function NotifRow({
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  function goBack() {
+    if (from) router.replace(from as any);
+    else router.back();
+  }
   const { groups, unreadCount, loading, refresh, markRead, markAllRead, dismissNotification, clearAll } =
     useNotifications();
 
@@ -183,11 +189,22 @@ export default function NotificationsScreen() {
     <View style={[s.root, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={s.header}>
-        <View>
-          <Text style={s.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
-            <Text style={s.unreadLabel}>{unreadCount} unread</Text>
-          )}
+        <View style={s.headerLeft}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={s.backBtn}
+            onPress={goBack}
+            activeOpacity={0.75}
+          >
+            <ChevronLeft color={Colors.textPrimary} size={20} strokeWidth={2.5} />
+          </TouchableOpacity>
+          <View>
+            <Text style={s.headerTitle}>Notifications</Text>
+            {unreadCount > 0 && (
+              <Text style={s.unreadLabel}>{unreadCount} unread</Text>
+            )}
+          </View>
         </View>
         <View style={s.headerActions}>
           {unreadCount > 0 && (
@@ -267,6 +284,20 @@ const s = StyleSheet.create({
     paddingBottom: Spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  backBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     fontFamily: Typography.family.bold,
