@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { MapPin, BadgeCheck, Star, UserPlus } from 'lucide-react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
+import Avatar from '@/components/Avatar';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +24,7 @@ interface AthleteRow {
   loc: string;
   rating: string;
   verified: boolean;
+  avatar?: string | null;
 }
 
 export default function Discover() {
@@ -54,7 +56,7 @@ export default function Discover() {
     const [athletesResult, followsResult, blocksResult] = await Promise.all([
       supabase
         .from('athlete_profiles')
-        .select('id,user_id,sport,position,position_primary,current_club,performance_score,user:user_profiles!athlete_profiles_user_id_fkey(full_name,city,country,is_verified)')
+        .select('id,user_id,sport,position,position_primary,current_club,performance_score,user:user_profiles!athlete_profiles_user_id_fkey(full_name,city,country,is_verified,avatar_url)')
         .neq('user_id', user.id)
         .limit(50),
       supabase.from('follows').select('following_id').eq('follower_id', user.id),
@@ -79,6 +81,7 @@ export default function Discover() {
         loc: [row.user?.city, row.user?.country].filter(Boolean).join(', ') || 'Location not set',
         rating: row.performance_score != null ? (row.performance_score / 10).toFixed(1) : '—',
         verified: row.user?.is_verified ?? false,
+        avatar: row.user?.avatar_url ?? null,
         })));
       setConnected(new Set((followsResult.data ?? []).map((row: any) => row.following_id)));
     }
@@ -155,9 +158,20 @@ export default function Discover() {
           ) : filteredAthletes.map((a, i) => {
             const isConn = connected.has(a.user_id);
             return (
-              <View key={a.id} style={s.card}>
+              <TouchableOpacity
+                key={a.id}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${a.name}'s profile`}
+                activeOpacity={0.85}
+                style={s.card}
+                onPress={() => router.push(`/athlete/${a.user_id}`)}
+              >
                 <View style={[s.av, { backgroundColor: COLORS[i % COLORS.length] }]}>
-                  <Text style={s.avTxt}>{a.name[0]}</Text>
+                  {a.avatar ? (
+                    <Avatar uri={a.avatar} initial={a.name[0]} size={52} />
+                  ) : (
+                    <Text style={s.avTxt}>{a.name[0]}</Text>
+                  )}
                 </View>
                 <View style={s.info}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -186,7 +200,7 @@ export default function Discover() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
           {!loading && !loadError && filteredAthletes.length === 0 && (
