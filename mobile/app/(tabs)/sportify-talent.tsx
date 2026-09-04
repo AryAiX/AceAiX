@@ -10,11 +10,9 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   BadgeCheck,
-  ChevronLeft,
   MapPin,
   Calendar,
   Star,
@@ -30,6 +28,7 @@ import {
   ChevronRight,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { AppHeader } from '@/components/AppHeader';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import {
   fetchSportifyResults,
@@ -58,7 +57,6 @@ const ATHLETICISM_DIMENSIONS: { key: string; label: string; icon: any; color: st
 ];
 
 export default function SportifyTalentScreen() {
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -99,33 +97,29 @@ export default function SportifyTalentScreen() {
   const latestPhysical = physicalResults[0];
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={s.backBtn}
-          onPress={() => router.back()}
-        >
-          <ChevronLeft color={Colors.textPrimary} size={22} />
-        </TouchableOpacity>
-        <View style={s.headerCenter}>
-          <View style={s.verifiedBadge}>
-            <BadgeCheck color={Colors.primary} size={12} />
-            <Text style={s.verifiedTxt}>Sportify Academy</Text>
-          </View>
-          <Text style={s.headerTitle}>Talent Profile</Text>
+    <View style={s.root}>
+      <AppHeader title="Talent Profile" />
+      <View style={s.contextRow}>
+        <View style={s.verifiedBadge}>
+          <BadgeCheck color={Colors.primary} size={12} />
+          <Text style={s.verifiedTxt}>Sportify Academy</Text>
         </View>
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel={syncing ? 'Syncing talent data' : 'Sync talent data'}
           accessibilityState={{ busy: syncing, disabled: syncing }}
-          style={s.syncIconBtn}
+          style={s.syncBtn}
           onPress={handleSync}
           disabled={syncing}
         >
-          <RefreshCw color={syncing ? Colors.textDisabled : Colors.primary} size={18} />
+          {syncing ? (
+            <ActivityIndicator size="small" color={Colors.primary} />
+          ) : (
+            <>
+              <RefreshCw color={Colors.primary} size={14} />
+              <Text style={s.syncBtnTxt}>Sync</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -550,6 +544,9 @@ const s = StyleSheet.create({
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${Colors.primary}15`, borderRadius: Radii.full, paddingHorizontal: Spacing.sm, paddingVertical: 2, borderWidth: 1, borderColor: `${Colors.primary}40` },
   verifiedTxt: { fontFamily: Typography.family.bold, fontSize: 9, color: Colors.primary },
   syncIconBtn: { padding: Spacing.sm },
+  contextRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  syncBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: Spacing.sm, paddingVertical: 4 },
+  syncBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.primary },
   scrollContent: { paddingBottom: Spacing.giant },
 });
 
