@@ -111,6 +111,14 @@ const MONTHS = [
 ];
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+
+function daysInMonth(month: string, year: string): number {
+  const mIdx = MONTHS.indexOf(month);
+  if (mIdx === -1) return 31;
+  const y = year ? Number(year) : currentYear;
+  return new Date(y, mIdx + 1, 0).getDate();
+}
+
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
 
@@ -442,26 +450,37 @@ export default function SignUpScreen() {
             if (found) setPhoneCode(found);
           },
         };
-      case 'day':
+      case 'day': {
+        const maxDay = daysInMonth(birthMonth, birthYear);
+        const days = Array.from({ length: maxDay }, (_, i) => String(i + 1).padStart(2, '0'));
         return {
           title: 'Day', searchable: false,
-          items: DAYS.map(d => ({ label: d, value: d })),
+          items: days.map(d => ({ label: d, value: d })),
           selected: birthDay,
           onSelect: (item: PickerItem) => setBirthDay(item.value),
         };
+      }
       case 'month':
         return {
           title: 'Month', searchable: false,
           items: MONTHS.map(m => ({ label: m, value: m })),
           selected: birthMonth,
-          onSelect: (item: PickerItem) => setBirthMonth(item.value),
+          onSelect: (item: PickerItem) => {
+            setBirthMonth(item.value);
+            const maxDay = daysInMonth(item.value, birthYear);
+            if (birthDay && Number(birthDay) > maxDay) setBirthDay('');
+          },
         };
       case 'year':
         return {
           title: 'Year', searchable: false,
           items: YEARS.map(y => ({ label: y, value: y })),
           selected: birthYear,
-          onSelect: (item: PickerItem) => setBirthYear(item.value),
+          onSelect: (item: PickerItem) => {
+            setBirthYear(item.value);
+            const maxDay = daysInMonth(birthMonth, item.value);
+            if (birthDay && Number(birthDay) > maxDay) setBirthDay('');
+          },
         };
       default:
         return null;
