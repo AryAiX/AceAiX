@@ -1,3 +1,5 @@
+import type { Href } from 'expo-router';
+
 import type { AppNotification } from '@/types/models';
 
 /**
@@ -66,7 +68,7 @@ export const Routes = {
  * Returns null when there is nowhere sensible to go, so the caller can render
  * the row as non-tappable instead of navigating to a dead end.
  */
-export function notificationTarget(n: AppNotification): string | null {
+export function notificationTarget(n: AppNotification): Href | null {
   const id = n.entity_id;
 
   switch (n.entity_type) {

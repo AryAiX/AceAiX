@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
 import { registerPushToken } from '@/lib/api';
 import { notificationTarget } from '@/lib/routes';
@@ -152,7 +152,7 @@ export async function hasPushPermission(): Promise<boolean> {
  */
 export function targetFromPushData(
   data: Record<string, unknown> | null | undefined,
-): string | null {
+): Href | null {
   if (!data) return null;
 
   const asString = (value: unknown): string | null =>

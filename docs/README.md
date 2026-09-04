@@ -31,6 +31,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 15 | [`15-known-gaps.md`](./15-known-gaps.md) | One prioritised list of everything still open — before submission, before scale, accepted for now — each with an owner | Everyone |
 | 16 | [`16-internationalisation.md`](./16-internationalisation.md) | The seven languages: the first-launch gate, catalogue layout, plurals via `Intl.PluralRules`, the translator bridge, RTL and the restart, the English-only legal documents, and the strings SQL still composes in English | Mobile + Product |
 | 17 | [`17-engagement.md`](./17-engagement.md) | Streaks, the nineteen achievements and their exact conditions, how a celebration is queued and shown once, the animation and reduce-motion conventions, and the ethical line — no coins, no urgency, no loss-framing | Mobile + Product |
+| 18 | [`18-preview-build.md`](./18-preview-build.md) | The single-file preview: what it is and is not, how the recording and replay layer work, and the icon-barrel change that took 1.8 MB out of every build | Mobile |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–17 describe the product as it stands** after the September 2026

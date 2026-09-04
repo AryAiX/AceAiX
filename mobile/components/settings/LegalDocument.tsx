@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Text as RNText, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import * as Linking from 'expo-linking';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -112,7 +112,7 @@ export function parseDocument(markdown: string): Block[] {
  * A document that cites a sibling policy by its public URL should still open
  * the screen the reader already has, not a browser tab of the same words.
  */
-const IN_APP_LINKS: Record<string, string> = {
+const IN_APP_LINKS: Record<string, Href> = {
   'https://aceaix.com/terms': Routes.terms,
   'https://aceaix.com/privacy': Routes.privacy,
   'https://aceaix.com/guidelines': Routes.guidelines,

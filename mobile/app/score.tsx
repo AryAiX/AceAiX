@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import Svg, { Defs, LinearGradient, Polygon, Polyline, Stop } from 'react-native-svg';
 import { ChevronRight, Info, Sparkles, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 
@@ -36,7 +36,7 @@ import { useT } from '@/i18n';
 import type { ScoreTip } from '@/types/models';
 
 /** Where each tip actually takes you. Keys match private.build_score_tips. */
-function targetFor(tip: ScoreTip): string | { pathname: string; params: Record<string, string> } {
+function targetFor(tip: ScoreTip): Href {
   switch (tip.key) {
     case 'add_highlights':
       return { pathname: Routes.myProfile, params: { tab: 'highlights' } };

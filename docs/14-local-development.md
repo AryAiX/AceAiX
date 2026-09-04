@@ -95,9 +95,33 @@ you rarely need to re-copy it.
 
 `EXPO_PUBLIC_*` is inlined at bundle time, so **restart Metro after editing `.env`**.
 
-**From a phone**, replace `localhost` with your machine's LAN address in both `mobile/.env` and, if
-you want the QR to resolve, keep phone and laptop on the same network. The phone cannot reach your
-laptop's `localhost`.
+### On a phone, in Expo Go
+
+The phone cannot reach your laptop's `localhost`, so the one thing that has to change is the
+address the app is built with.
+
+1. Find the laptop's address on the Wi-Fi it shares with the phone — `ipconfig getifaddr en0` on
+   macOS, `hostname -I | awk '{print $1}'` on Linux. Say it is `192.168.1.24`.
+2. Put that address in `mobile/.env`, keeping the anon key `start.sh` printed:
+
+   ```
+   EXPO_PUBLIC_SUPABASE_URL=http://192.168.1.24:8790
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs…
+   ```
+
+3. Install **Expo Go** from the App Store or Play Store.
+4. `cd mobile && npm install && npm run dev`, then scan the QR code — the camera app on iOS, the
+   scanner inside Expo Go on Android.
+
+Both devices must be on the same network, and the laptop's firewall has to allow ports 8081
+(Metro) and 8790 (the API). If the phone loads the app but every screen is empty, it reached
+Metro and not the API: the address in `.env` is still `localhost`, or the firewall is blocking
+8790.
+
+`npm run dev -- --tunnel` routes Metro through Expo's servers when the two devices are on
+different networks — but it only tunnels Metro, not the API, so the backend still has to be
+reachable from the phone. For that case, point `mobile/.env` at the hosted Supabase project
+(§6) instead of the local harness.
 
 Override any of `PGHOST`, `PGPORT`, `DB`, `API_PORT`, `PGRST_PORT`, `JWT_SECRET`, `PGBIN`,
 `POSTGREST` in the environment if the defaults collide with something.

@@ -35,3 +35,8 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# preview build (regenerate: npm run preview)
+preview.html
+tests/e2e/preview-shots/
+stubs/lucide-pkg/
