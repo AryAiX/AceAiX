@@ -22,7 +22,6 @@ import { decode } from 'base64-arraybuffer';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { Country, City } from 'country-state-city';
 import { POSITIONS_BY_SPORT } from '@/constants/positions';
 import { LEVEL_OPTIONS } from '@/constants/levels';
@@ -76,6 +75,14 @@ const PHONE_COUNTRIES = ALL_COUNTRIES.filter((c) => !!c.phonecode).map((c) => ({
   value: c.isoCode,
 }));
 
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const currentYearForBirthdate = new Date().getFullYear();
+const BIRTH_YEARS = Array.from({ length: 70 }, (_, i) => String(currentYearForBirthdate - 10 - i));
+
 type LegacyProfileNames = {
   first_name?: string | null;
   middle_name?: string | null;
@@ -90,6 +97,12 @@ function legacyName(source: unknown, key: keyof LegacyProfileNames): string {
 
 function optional(value: string): string | null {
   return value.trim() || null;
+}
+
+function buildBirthdateFromParts(day: string, month: string, year: string): string {
+  if (!day || !month || !year) return '';
+  const mIdx = MONTHS.indexOf(month) + 1;
+  return `${year}-${String(mIdx).padStart(2, '0')}-${day}`;
 }
 
 function Field({
@@ -146,7 +159,6 @@ export default function EditProfile() {
   const [formReady, setFormReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false, phone: false });
   const [positionModalOpen, setPositionModalOpen] = useState(false);
   const [levelModalOpen, setLevelModalOpen] = useState(false);
@@ -154,6 +166,12 @@ export default function EditProfile() {
   const [cityModalOpen, setCityModalOpen] = useState(false);
   const [phoneModalOpen, setPhoneModalOpen] = useState(false);
   const [nationalityModalOpen, setNationalityModalOpen] = useState(false);
+  const [birthDay, setBirthDay] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [dayModalOpen, setDayModalOpen] = useState(false);
+  const [monthModalOpen, setMonthModalOpen] = useState(false);
+  const [yearModalOpen, setYearModalOpen] = useState(false);
 
   useEffect(() => {
     if (!profile?.id) {
@@ -206,6 +224,18 @@ export default function EditProfile() {
       phoneCountryIso,
       birthdate: profile?.birthdate ?? '',
     });
+
+    if (!profile?.birthdate) {
+      setBirthDay('');
+      setBirthMonth('');
+      setBirthYear('');
+    } else {
+      const [year, monthNum, day] = profile.birthdate.split('-');
+      setBirthDay(day);
+      setBirthMonth(MONTHS[parseInt(monthNum, 10) - 1] ?? '');
+      setBirthYear(year);
+    }
+
     setFormReady(true);
   }, [
     profile?.bio,
@@ -674,19 +704,56 @@ export default function EditProfile() {
             </View>
             <View style={s.field}>
               <Text style={s.label}>Date of birth</Text>
-              <TouchableOpacity
-                accessibilityLabel="Date of birth"
-                style={s.input}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={{
-                  fontFamily: Typography.family.regular,
-                  fontSize: Typography.size.sm,
-                  color: form.birthdate ? Colors.textPrimary : Colors.textDisabled,
-                }}>
-                  {form.birthdate || 'Select date of birth'}
-                </Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+                <TouchableOpacity style={[s.input, { flex: 0.8 }]} onPress={() => setDayModalOpen(true)}>
+                  <Text style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: birthDay ? Colors.textPrimary : Colors.textDisabled }}>
+                    {birthDay || 'Day'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.input, { flex: 1.4 }]} onPress={() => setMonthModalOpen(true)}>
+                  <Text style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: birthMonth ? Colors.textPrimary : Colors.textDisabled }} numberOfLines={1}>
+                    {birthMonth || 'Month'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.input, { flex: 1 }]} onPress={() => setYearModalOpen(true)}>
+                  <Text style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: birthYear ? Colors.textPrimary : Colors.textDisabled }}>
+                    {birthYear || 'Year'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <SelectModal
+                visible={dayModalOpen}
+                title="Day"
+                options={DAYS.map((d) => ({ label: d, value: d }))}
+                selectedValue={birthDay}
+                onSelect={(value) => {
+                  setBirthDay(value);
+                  update('birthdate', buildBirthdateFromParts(value, birthMonth, birthYear));
+                }}
+                onClose={() => { setDayModalOpen(false); setTouched((t) => ({ ...t, birthdate: true })); }}
+              />
+              <SelectModal
+                visible={monthModalOpen}
+                title="Month"
+                options={MONTHS.map((m) => ({ label: m, value: m }))}
+                selectedValue={birthMonth}
+                onSelect={(value) => {
+                  setBirthMonth(value);
+                  update('birthdate', buildBirthdateFromParts(birthDay, value, birthYear));
+                }}
+                onClose={() => { setMonthModalOpen(false); setTouched((t) => ({ ...t, birthdate: true })); }}
+              />
+              <SelectModal
+                visible={yearModalOpen}
+                title="Year"
+                options={BIRTH_YEARS.map((y) => ({ label: y, value: y }))}
+                selectedValue={birthYear}
+                onSelect={(value) => {
+                  setBirthYear(value);
+                  update('birthdate', buildBirthdateFromParts(birthDay, birthMonth, value));
+                }}
+                onClose={() => { setYearModalOpen(false); setTouched((t) => ({ ...t, birthdate: true })); }}
+              />
               {touched.birthdate && !birthdateValid && <Text style={s.errorText}>Date of birth is required</Text>}
             </View>
           </View>
@@ -706,53 +773,6 @@ export default function EditProfile() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {showDatePicker && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 10,
-          }}
-        >
-          <View style={[s.card, { width: '85%' }]}>
-            <DateTimePicker
-              value={form.birthdate ? new Date(`${form.birthdate}T00:00:00Z`) : new Date(2005, 0, 1)}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              maximumDate={new Date()}
-              onChange={(_event, selectedDate) => {
-                if (Platform.OS === 'android') {
-                  setShowDatePicker(false);
-                  setTouched((t) => ({ ...t, birthdate: true }));
-                }
-                if (selectedDate) {
-                  update('birthdate', selectedDate.toISOString().slice(0, 10));
-                }
-              }}
-            />
-            {Platform.OS === 'ios' && (
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel="Confirm date of birth"
-                style={s.saveButton}
-                onPress={() => {
-                  setShowDatePicker(false);
-                  setTouched((t) => ({ ...t, birthdate: true }));
-                }}
-              >
-                <Text style={s.saveText}>Done</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
     </View>
   );
 }
