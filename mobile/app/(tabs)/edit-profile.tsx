@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Save, UserRound } from 'lucide-react-native';
 import SPORTS_CONFIG, { normalizeSportKey } from '@/constants/sportsConfig';
@@ -131,6 +131,16 @@ function Field({
 
 export default function EditProfile() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  function goBackToOrigin() {
+    if (from === 'settings') {
+      router.replace('/(tabs)/settings' as any);
+    } else if (from === 'profile') {
+      router.replace('/(tabs)/profile' as any);
+    } else {
+      router.back();
+    }
+  }
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
@@ -328,10 +338,10 @@ export default function EditProfile() {
       // React Native Web maps Alert.alert to window.alert and does not invoke
       // native alert-button callbacks. Navigate explicitly after dismissal.
       Alert.alert('Profile updated', 'Your changes have been saved.');
-      router.back();
+      goBackToOrigin();
     } else {
       Alert.alert('Profile updated', 'Your changes have been saved.', [
-        { text: 'Done', onPress: () => router.back() },
+        { text: 'Done', onPress: () => goBackToOrigin() },
       ]);
     }
   }
@@ -354,7 +364,7 @@ export default function EditProfile() {
         <TouchableOpacity
           accessibilityLabel="Back"
           style={s.headerButton}
-          onPress={() => router.back()}
+          onPress={goBackToOrigin}
           hitSlop={8}
         >
           <ArrowLeft color={Colors.textPrimary} size={21} />

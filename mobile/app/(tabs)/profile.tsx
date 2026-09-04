@@ -1538,7 +1538,7 @@ export default function Profile() {
                 <TouchableOpacity style={s.dashBtn} onPress={() => router.push('/(tabs)/' as any)}>
                   <Text style={s.dashBtnTxt}>Dashboard</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.editBtn} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
+                <TouchableOpacity style={s.editBtn} onPress={() => router.push({ pathname: '/(tabs)/edit-profile', params: { from: 'profile' } } as any)}>
                   <Edit3 color={Colors.primary} size={12} />
                   <Text style={s.editBtnTxt}>Edit Profile</Text>
                 </TouchableOpacity>

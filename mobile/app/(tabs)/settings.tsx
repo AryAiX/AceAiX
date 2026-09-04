@@ -306,7 +306,7 @@ export default function Settings() {
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* Profile summary */}
-        <TouchableOpacity style={s.profileCard} onPress={() => router.push('/(tabs)/edit-profile' as any)}>
+        <TouchableOpacity style={s.profileCard} onPress={() => router.push({ pathname: '/(tabs)/edit-profile', params: { from: 'settings' } } as any)}>
           <View style={s.profileAv}>
             <Avatar
               uri={profile?.avatar_url}
@@ -326,7 +326,7 @@ export default function Settings() {
           <Text style={s.sectionTitle}>Account</Text>
           <View style={s.group}>
             {[
-              { label: 'Personal Information', Icon: User, onPress: () => router.push('/(tabs)/edit-profile' as any) },
+              { label: 'Personal Information', Icon: User, onPress: () => router.push({ pathname: '/(tabs)/edit-profile', params: { from: 'settings' } } as any) },
               { label: 'Privacy & Security', Icon: Shield, onPress: () => void Linking.openURL('https://aceaix.com/privacy') },
               {
                 label: 'Language',
