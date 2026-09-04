@@ -125,6 +125,11 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
       setError('Enter a valid calendar date.');
       return;
     }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (builtDate < todayStr) {
+      setError('Event date cannot be in the past. Please select a future date.');
+      return;
+    }
     const builtTime = buildEventTime(eventHour, eventMinute, eventPeriod);
     if (builtTime === 'incomplete') { setError('Select an hour, minute, and AM/PM, or leave time blank.'); return; }
     if (!location.trim()) { setError('Location is required.'); return; }
