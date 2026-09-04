@@ -193,17 +193,14 @@ function ChatThread({
     setLoading(false);
 
     const readAt = new Date().toISOString();
-    const { error: markReadError, data: markReadData, count } = await supabase
+    const { error: markReadError } = await supabase
       .from('messages')
       .update({ is_read: true, read_at: readAt })
       .eq('conversation_id', conversation.id)
       .neq('sender_id', userId)
-      .eq('is_read', false)
-      .select();
+      .eq('is_read', false);
     if (markReadError) {
-      console.error('[Messages] mark-as-read failed:', markReadError.message, markReadError);
-    } else {
-      console.log('[Messages] mark-as-read succeeded, rows updated:', markReadData?.length ?? 0);
+      console.warn('[Messages] Failed to mark messages as read:', markReadError.message);
     }
   }, [conversation.id, userId]);
 
