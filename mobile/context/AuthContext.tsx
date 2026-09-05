@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (athleteError) {
       return { profile: null, error: athleteError.message };
     }
-    if (publicProfile.role === 'athlete' && !athleteProfile) {
+    if (publicProfile.role === 'athlete' && (!athleteProfile || !athleteProfile.sport || !athleteProfile.nationality)) {
       return { profile: null, error: null };
     }
 
