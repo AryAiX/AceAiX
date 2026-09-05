@@ -28,6 +28,9 @@ function getFriendlyErrorMessage(message: string): string {
   if (/network request failed|network/i.test(message)) {
     return 'No internet connection. Please check your network and try again.';
   }
+  if (/invalid login credentials/i.test(message)) {
+    return 'Incorrect email or password. Please try again.';
+  }
   return message;
 }
 
