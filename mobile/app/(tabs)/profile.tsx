@@ -1351,6 +1351,7 @@ export default function Profile() {
 
   return (
     <View style={s.root}>
+      <AppHeader title="Profile" />
       {/* Sticky compact header */}
       {sticky && (
         <View style={s.stickyHeader}>
