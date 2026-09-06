@@ -144,7 +144,26 @@ function Field({
 export default function EditProfile() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
+  function hasUnsavedChanges(): boolean {
+    if (!initialForm) return false;
+    return JSON.stringify(form) !== JSON.stringify(initialForm);
+  }
   function goBackToOrigin() {
+    if (hasUnsavedChanges()) {
+      Alert.alert(
+        'Discard changes?',
+        'You have unsaved changes. If you leave now, they will be lost.',
+        [
+          { text: 'Keep Editing', style: 'cancel' },
+          { text: 'Discard', style: 'destructive', onPress: () => performGoBack() },
+        ]
+      );
+    } else {
+      performGoBack();
+    }
+  }
+
+  function performGoBack() {
     if (from === 'settings') {
       router.replace('/(tabs)/settings' as any);
     } else if (from === 'profile') {
@@ -156,6 +175,7 @@ export default function EditProfile() {
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
+  const [initialForm, setInitialForm] = useState<ProfileForm | null>(null);
   const [formReady, setFormReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -207,7 +227,7 @@ export default function EditProfile() {
     const phoneCountryIso = parsedPhone?.country ?? 'AE';
     const phoneLocalNumber = parsedPhone ? String(parsedPhone.nationalNumber) : rawPhone;
 
-    setForm({
+    const loadedForm: ProfileForm = {
       firstName,
       middleName,
       lastName,
@@ -224,7 +244,9 @@ export default function EditProfile() {
       phone: phoneLocalNumber,
       phoneCountryIso,
       birthdate: profile?.birthdate ?? '',
-    });
+    };
+    setForm(loadedForm);
+    setInitialForm({ ...loadedForm });
 
     if (!profile?.birthdate) {
       setBirthDay('');
