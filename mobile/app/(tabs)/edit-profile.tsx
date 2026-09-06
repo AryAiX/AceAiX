@@ -146,6 +146,7 @@ export default function EditProfile() {
   const router = useRouter();
   const { from } = useLocalSearchParams<{ from?: string }>();
   function hasUnsavedChanges(): boolean {
+    if (pendingAvatarAsset) return true;
     if (!initialForm) return false;
     return JSON.stringify(form) !== JSON.stringify(initialForm);
   }
@@ -178,6 +179,7 @@ export default function EditProfile() {
     if (initialForm) {
       setForm(initialForm);
     }
+    setPendingAvatarAsset(null);
   }
 
   function discardChanges() {
