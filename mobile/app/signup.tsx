@@ -122,6 +122,8 @@ function daysInMonth(month: string, year: string): number {
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
 
+const MIN_SIGNUP_AGE = 13;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function validateEmail(email: string) {
@@ -504,6 +506,12 @@ export default function SignUpScreen() {
     const e: Record<string, string> = {};
     if (!sport) e.sport = 'Please select your sport';
     if (!birthDay || !birthMonth || !birthYear) e.birthdate = 'Please complete your birthday';
+    else {
+      const age = calcAge(birthDay, birthMonth, birthYear);
+      if (age !== null && age < MIN_SIGNUP_AGE) {
+        e.birthdate = `You must be at least ${MIN_SIGNUP_AGE} years old to sign up`;
+      }
+    }
     if (!hometown.trim()) e.hometown = 'Hometown is required';
     if (!currentLocation.trim()) e.currentLocation = 'Current location is required';
     if (!nationality) e.nationality = 'Please select your nationality';
