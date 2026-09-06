@@ -159,6 +159,7 @@ export default function EditProfile() {
   const [formReady, setFormReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [pendingAvatarAsset, setPendingAvatarAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [touched, setTouched] = useState({ sport: false, country: false, birthdate: false, position: false, phone: false });
   const [positionModalOpen, setPositionModalOpen] = useState(false);
   const [levelModalOpen, setLevelModalOpen] = useState(false);
@@ -260,19 +261,59 @@ export default function EditProfile() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  async function updateAvatar() {
+  async function pickAvatar() {
     if (!user || avatarUploading) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets[0]) return;
 
+    const pickFromLibrary = async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setPendingAvatarAsset(result.assets[0]);
+      }
+    };
+
+    const pickFromCamera = async () => {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Camera access needed', 'Enable camera access in Settings to take a new profile photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setPendingAvatarAsset(result.assets[0]);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      await pickFromLibrary();
+      return;
+    }
+
+    Alert.alert(
+      'Update profile photo',
+      undefined,
+      [
+        { text: 'Take Photo', onPress: () => void pickFromCamera() },
+        { text: 'Choose from Library', onPress: () => void pickFromLibrary() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
+  }
+
+  async function uploadPendingAvatar(): Promise<boolean> {
+    if (!user || !pendingAvatarAsset) return true;
     setAvatarUploading(true);
     try {
-      const asset = result.assets[0];
+      const asset = pendingAvatarAsset;
       const extension = asset.mimeType === 'image/png'
         ? 'png'
         : asset.mimeType === 'image/webp'
@@ -305,9 +346,11 @@ export default function EditProfile() {
         .map((file) => `${user.id}/${file.name}`);
       if (stalePaths.length > 0) await supabase.storage.from('avatars').remove(stalePaths);
 
-      await refreshProfile();
+      setPendingAvatarAsset(null);
+      return true;
     } catch (error) {
       Alert.alert('Profile photo not updated', error instanceof Error ? error.message : String(error));
+      return false;
     } finally {
       setAvatarUploading(false);
     }
@@ -329,6 +372,11 @@ export default function EditProfile() {
     setTouched({ sport: true, country: true, birthdate: true, position: true, phone: true });
     if (!sportValid || !countryValid || !birthdateValid || !positionValid || !phoneValid) {
       return;
+    }
+    if (pendingAvatarAsset) {
+      const avatarUploaded = await uploadPendingAvatar();
+      if (!avatarUploaded) return;
+      await refreshProfile();
     }
     const finalSport = form.sportKey === 'other' ? form.sportOther.trim() : form.sportKey;
     const countryName = form.countryIsoCode
@@ -415,7 +463,9 @@ export default function EditProfile() {
         >
           <View style={s.intro}>
             <View style={s.avatar}>
-              {profile?.avatar_url ? (
+              {pendingAvatarAsset ? (
+                <Image source={{ uri: pendingAvatarAsset.uri }} style={s.avatarImage} />
+              ) : profile?.avatar_url ? (
                 <Image source={{ uri: profile.avatar_url }} style={s.avatarImage} />
               ) : (
                 <UserRound color={Colors.primary} size={24} />
@@ -428,10 +478,10 @@ export default function EditProfile() {
                 accessibilityRole="button"
                 accessibilityLabel="Update profile photo"
                 disabled={avatarUploading}
-                onPress={() => void updateAvatar()}
+                onPress={() => void pickAvatar()}
               >
                 <Text style={s.photoAction}>
-                  {avatarUploading ? 'Uploading photo…' : 'Update profile photo'}
+                  {avatarUploading ? 'Uploading photo…' : pendingAvatarAsset ? 'Photo selected — tap Save to apply' : 'Update profile photo'}
                 </Text>
               </TouchableOpacity>
             </View>
