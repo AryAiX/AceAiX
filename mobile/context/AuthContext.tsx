@@ -387,6 +387,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signOut() {
     profileRequest.current += 1;
     await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
     setProfile(null);
     setProfileError(null);
     setRole(null);
