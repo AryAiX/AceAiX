@@ -20,6 +20,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { useAuth } from '@/context/AuthContext';
+import { useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import { supabase } from '@/lib/supabase';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
 import { Country, City } from 'country-state-city';
@@ -173,14 +174,19 @@ export default function EditProfile() {
     }
   }
 
-  function discardChanges() {
+  function resetFormToInitial() {
     if (initialForm) {
       setForm(initialForm);
     }
+  }
+
+  function discardChanges() {
+    resetFormToInitial();
     performGoBack();
   }
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
+  const { setHasUnsavedChanges, registerDiscardHandler } = useUnsavedChanges();
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [initialForm, setInitialForm] = useState<ProfileForm | null>(null);
   const [formReady, setFormReady] = useState(false);
@@ -285,6 +291,15 @@ export default function EditProfile() {
     profile?.position,
     profile?.sport,
   ]);
+
+  useEffect(() => {
+    setHasUnsavedChanges(hasUnsavedChanges());
+  }, [form, initialForm]);
+
+  useEffect(() => {
+    registerDiscardHandler(resetFormToInitial);
+    return () => registerDiscardHandler(null);
+  }, [initialForm]);
 
   function update<K extends keyof ProfileForm>(key: K, value: ProfileForm[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -441,6 +456,7 @@ export default function EditProfile() {
     }
 
     await refreshProfile();
+    setInitialForm(form);
     if (Platform.OS === 'web') {
       // React Native Web maps Alert.alert to window.alert and does not invoke
       // native alert-button callbacks. Navigate explicitly after dismissal.

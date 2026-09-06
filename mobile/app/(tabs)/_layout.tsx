@@ -1,10 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { Alert, View, Animated, StyleSheet } from 'react-native';
 import { Tabs } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Home, Rss, Target, User } from 'lucide-react-native';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { DrawerProvider } from '@/context/DrawerContext';
+import { UnsavedChangesProvider, useUnsavedChanges } from '@/context/UnsavedChangesContext';
 import { AppDrawer } from '@/components/AppDrawer';
 
 // ── Tab icon with spring + indicator dot ──────────────────────────────────────
@@ -66,6 +67,37 @@ const ti = StyleSheet.create({
 // ── TabsLayout ─────────────────────────────────────────────────────────────────
 export default function TabsLayout() {
   return (
+    <UnsavedChangesProvider>
+      <TabsNavigator />
+    </UnsavedChangesProvider>
+  );
+}
+
+function TabsNavigator() {
+  const { hasUnsavedChanges, setHasUnsavedChanges, runDiscardHandler } = useUnsavedChanges();
+
+  function guardTabPress(e: any, navigation: any, targetName: string) {
+    if (!hasUnsavedChanges) return;
+    e.preventDefault();
+    Alert.alert(
+      'Discard changes?',
+      'You have unsaved changes. If you leave now, they will be lost.',
+      [
+        { text: 'Keep Editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            runDiscardHandler();
+            setHasUnsavedChanges(false);
+            navigation.navigate(targetName);
+          },
+        },
+      ]
+    );
+  }
+
+  return (
     <DrawerProvider>
       <View style={{ flex: 1 }}>
         <Tabs
@@ -116,6 +148,9 @@ export default function TabsLayout() {
                 <AnimTabIcon Icon={Home} focused={focused} label="Dashboard" />
               ),
             }}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => guardTabPress(e, navigation, 'index'),
+            })}
           />
           <Tabs.Screen
             name="feed"
@@ -126,6 +161,9 @@ export default function TabsLayout() {
                 <AnimTabIcon Icon={Rss} focused={focused} label="Feed" />
               ),
             }}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => guardTabPress(e, navigation, 'feed'),
+            })}
           />
           <Tabs.Screen
             name="opportunities"
@@ -136,6 +174,9 @@ export default function TabsLayout() {
                 <AnimTabIcon Icon={Target} focused={focused} label="Opportunities" />
               ),
             }}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => guardTabPress(e, navigation, 'opportunities'),
+            })}
           />
           <Tabs.Screen
             name="profile"
@@ -146,6 +187,9 @@ export default function TabsLayout() {
                 <AnimTabIcon Icon={User} focused={focused} label="Profile" />
               ),
             }}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => guardTabPress(e, navigation, 'profile'),
+            })}
           />
           {/* Hidden screens — accessible via header / drawer */}
           <Tabs.Screen name="messages"         options={{ href: null }} />
