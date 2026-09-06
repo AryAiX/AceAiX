@@ -463,10 +463,10 @@ export default function EditProfile() {
       // React Native Web maps Alert.alert to window.alert and does not invoke
       // native alert-button callbacks. Navigate explicitly after dismissal.
       Alert.alert('Profile updated', 'Your changes have been saved.');
-      goBackToOrigin();
+      performGoBack();
     } else {
       Alert.alert('Profile updated', 'Your changes have been saved.', [
-        { text: 'Done', onPress: () => goBackToOrigin() },
+        { text: 'Done', onPress: () => performGoBack() },
       ]);
     }
   }
