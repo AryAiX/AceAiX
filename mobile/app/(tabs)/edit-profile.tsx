@@ -296,7 +296,7 @@ export default function EditProfile() {
 
   useEffect(() => {
     setHasUnsavedChanges(hasUnsavedChanges());
-  }, [form, initialForm]);
+  }, [form, initialForm, pendingAvatarAsset]);
 
   useEffect(() => {
     registerDiscardHandler(resetFormToInitial);
