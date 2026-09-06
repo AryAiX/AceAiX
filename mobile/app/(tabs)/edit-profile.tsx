@@ -155,7 +155,7 @@ export default function EditProfile() {
         'You have unsaved changes. If you leave now, they will be lost.',
         [
           { text: 'Keep Editing', style: 'cancel' },
-          { text: 'Discard', style: 'destructive', onPress: () => performGoBack() },
+          { text: 'Discard', style: 'destructive', onPress: () => discardChanges() },
         ]
       );
     } else {
@@ -171,6 +171,13 @@ export default function EditProfile() {
     } else {
       router.back();
     }
+  }
+
+  function discardChanges() {
+    if (initialForm) {
+      setForm(initialForm);
+    }
+    performGoBack();
   }
   const insets = useSafeAreaInsets();
   const { profile, user, refreshProfile } = useAuth();
