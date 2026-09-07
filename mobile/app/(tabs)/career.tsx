@@ -28,6 +28,10 @@ const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
 
+function yearFromDateString(dateStr: string): string {
+  return dateStr.slice(0, 4);
+}
+
 type PickerItem = { label: string; value: string; prefix?: string };
 
 interface CareerMilestone {
@@ -200,7 +204,7 @@ export default function Career() {
     ...currentMilestone,
     ...entries.map((entry) => ({
       id: entry.id,
-      year: entry.achieved_at ? new Date(entry.achieved_at).getFullYear().toString() : 'Date not set',
+      year: entry.achieved_at ? yearFromDateString(entry.achieved_at) : 'Date not set',
       event: entry.milestone_type ?? 'Career milestone',
       club: entry.club_or_event ?? 'Club or event',
       role: entry.notes ?? '',
@@ -311,7 +315,7 @@ export default function Career() {
                 <Text style={s.achLabel}>{achievement.milestone_type}</Text>
                 <Text style={s.achOrg}>
                   {achievement.club_or_event}
-                  {achievement.achieved_at ? ` · ${new Date(achievement.achieved_at).getFullYear()}` : ''}
+                  {achievement.achieved_at ? ` · ${yearFromDateString(achievement.achieved_at)}` : ''}
                 </Text>
               </View>
             </View>
