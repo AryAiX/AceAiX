@@ -253,7 +253,7 @@ export function AppDrawer() {
   if (!visible) return null;
 
   const isActive = (route: string) =>
-    route === '/(tabs)' ? pathname === '/' : pathname.includes(route.replace('/(tabs)/', ''));
+    route === '/(tabs)' ? pathname === '/' : pathname === `/${route.replace('/(tabs)/', '')}`;
 
   // Compute global item index for stagger delay
   let globalIdx = 0;
