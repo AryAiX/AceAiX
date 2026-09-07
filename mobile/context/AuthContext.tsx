@@ -414,36 +414,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: 'You must be signed in to delete your account.' };
     }
 
-    for (const bucket of ['posts', 'stories', 'avatars']) {
-      const paths: string[] = [];
-      let offset = 0;
-      while (true) {
-        const { data, error: listError } = await supabase.storage
-          .from(bucket)
-          .list(user.id, { limit: 100, offset });
-        if (listError) {
-          if (listError.message.toLowerCase().includes('bucket not found')) break;
-          return { error: `Your ${bucket} media could not be deleted: ${listError.message}` };
-        }
-        const files = (data ?? []).filter((item) => item.id).map((item) => `${user.id}/${item.name}`);
-        paths.push(...files);
-        if ((data ?? []).length < 100) break;
-        offset += 100;
-      }
-      for (let index = 0; index < paths.length; index += 100) {
-        const { error: removeError } = await supabase.storage
-          .from(bucket)
-          .remove(paths.slice(index, index + 100));
-        if (removeError) {
-          return { error: `Your ${bucket} media could not be deleted: ${removeError.message}` };
-        }
-      }
-    }
-
     const { error } = await supabase.rpc('delete_own_account');
-
     if (error) {
       return { error: error.message };
+    }
+
+    for (const bucket of ['posts', 'stories', 'avatars']) {
+      try {
+        const paths: string[] = [];
+        let offset = 0;
+        while (true) {
+          const { data, error: listError } = await supabase.storage
+            .from(bucket)
+            .list(user.id, { limit: 100, offset });
+          if (listError) {
+            if (listError.message.toLowerCase().includes('bucket not found')) break;
+            console.warn(`[deleteAccount] Failed to list ${bucket} files after account deletion:`, listError.message);
+            break;
+          }
+          const files = (data ?? []).filter((item) => item.id).map((item) => `${user.id}/${item.name}`);
+          paths.push(...files);
+          if ((data ?? []).length < 100) break;
+          offset += 100;
+        }
+        for (let index = 0; index < paths.length; index += 100) {
+          const { error: removeError } = await supabase.storage
+            .from(bucket)
+            .remove(paths.slice(index, index + 100));
+          if (removeError) {
+            console.warn(`[deleteAccount] Failed to remove ${bucket} files after account deletion:`, removeError.message);
+          }
+        }
+      } catch (storageErr) {
+        console.warn(`[deleteAccount] Unexpected error cleaning up ${bucket} after account deletion:`, storageErr);
+      }
     }
 
     profileRequest.current += 1;
