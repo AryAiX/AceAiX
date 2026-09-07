@@ -61,7 +61,7 @@ export function TeamMatchRenderer({ sport, displayName, season, stats, metrics, 
   const radarMetrics = numericMetrics.slice(0, 6);
   const allValues = radarMetrics.map(m => {
     const v = parseFloat(stats[m.key] ?? 0);
-    const max = m.type === 'percent' ? 100 : getMax(m.key);
+    const max = m.type === 'percent' ? 100 : getMax(m);
     return Math.min((v / max) * 100, 100);
   });
 
@@ -123,13 +123,14 @@ export function TeamMatchRenderer({ sport, displayName, season, stats, metrics, 
   );
 }
 
-function getMax(key: string): number {
+function getMax(m: MetricDef): number {
+  if (m.max !== undefined) return m.max;
   const MAXES: Record<string, number> = {
     kills: 20, blocks: 10, digs: 20, aces: 5, assists: 50, points: 30,
     sets_played: 5, goals: 40, appearances: 40, shots_per_game: 8,
     avg_rating: 10, rebounds: 15, steals: 5, minutes: 40,
   };
-  return MAXES[key] ?? 20;
+  return MAXES[m.key] ?? 20;
 }
 
 const s = StyleSheet.create({

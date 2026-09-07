@@ -33,6 +33,14 @@ function validateMetricValue(m: MetricDef, raw: string): { value: any; error: st
   return { value: raw.trim(), error: null };
 }
 
+function validateSeason(raw: string): string | null {
+  const pattern = /^\d{4}(\/\d{2}|\/\d{4})?$/;
+  if (!pattern.test(raw.trim())) {
+    return 'Season must be a year (e.g. 2024) or a range (e.g. 2024/25).';
+  }
+  return null;
+}
+
 export function SelfReportForm({
   config,
   athlete_id,
@@ -60,6 +68,12 @@ export function SelfReportForm({
   async function handleSave() {
     setSaving(true);
     setError(null);
+    const seasonError = validateSeason(season);
+    if (seasonError) {
+      setError(seasonError);
+      setSaving(false);
+      return;
+    }
     const stats: Record<string, any> = {};
     for (const m of config.metrics) {
       const raw = values[m.key];
@@ -75,8 +89,26 @@ export function SelfReportForm({
     if (config.sport === 'football') {
       const goals = stats['goals'];
       const shotsPerGame = stats['shots_per_game'];
+      const appearances = stats['appearances'];
+      const assists = stats['assists'];
+      const passAcc = stats['pass_acc'];
+      const avgRating = stats['avg_rating'];
+
       if (typeof goals === 'number' && goals > 0 && typeof shotsPerGame === 'number' && shotsPerGame === 0) {
         setError('Shots/Game cannot be 0 if Goals is greater than 0 — you cannot score without taking a shot.');
+        setSaving(false);
+        return;
+      }
+
+      const otherStatsProvided =
+        (typeof goals === 'number' && goals > 0) ||
+        (typeof assists === 'number' && assists > 0) ||
+        (typeof passAcc === 'number' && passAcc > 0) ||
+        (typeof avgRating === 'number' && avgRating > 0) ||
+        (typeof shotsPerGame === 'number' && shotsPerGame > 0);
+
+      if (otherStatsProvided && (typeof appearances !== 'number' || appearances <= 0)) {
+        setError('Appearances must be entered and greater than 0 if you have Goals, Assists, Pass Acc., Shots/Game, or Avg Rating.');
         setSaving(false);
         return;
       }
