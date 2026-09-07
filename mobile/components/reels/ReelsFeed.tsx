@@ -174,7 +174,7 @@ function ReelCard({ reel, active, muted, onToggleMute, onUpdate, onRemove, onCom
     const now = Date.now();
     if (now - lastTap.current < 300) {
       // Double tap — like
-      setPaused(false);
+      setTimeout(() => setPaused(false), 50);
       handleLike();
       Animated.sequence([
         Animated.parallel([
