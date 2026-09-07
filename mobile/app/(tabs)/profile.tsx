@@ -1267,7 +1267,7 @@ export default function Profile() {
   const scoreRing  = useRef(new Animated.Value(0)).current;
 
   // Tab indicator
-  const tabW = 90;
+  const tabW = (SW - Spacing.lg * 2) / 4;
   const indicatorX = useRef(new Animated.Value(0)).current;
 
   // Followers / connections counters
@@ -1703,7 +1703,7 @@ const s = StyleSheet.create({
   shareBtnTxt:    { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.textMuted },
 
   // Tabs
-  tabsBar:      { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, position: 'relative', marginTop: Spacing.md },
+  tabsBar:      { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.border, position: 'relative', marginTop: Spacing.md, marginHorizontal: Spacing.lg },
   tabIndicator: { position: 'absolute', bottom: 0, left: 0, height: 2, borderRadius: 1 },
   tabBtn:       { alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing.md },
   tabBtnTxt:    { fontFamily: Typography.family.medium, fontSize: Typography.size.sm, color: Colors.textMuted },
