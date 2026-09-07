@@ -13,6 +13,26 @@ interface Props {
   onCancel?: () => void;
 }
 
+function validateMetricValue(m: MetricDef, raw: string): { value: any; error: string | null } {
+  if (m.type === 'number' || m.type === 'rating' || m.type === 'percent') {
+    const n = parseFloat(raw);
+    if (isNaN(n)) return { value: null, error: `${m.label} must be a number.` };
+    if (n < 0) return { value: null, error: `${m.label} cannot be negative.` };
+    if (m.type === 'percent' && n > 100) return { value: null, error: `${m.label} cannot exceed 100%.` };
+    if (m.wholeNumber && !Number.isInteger(n)) return { value: null, error: `${m.label} must be a whole number.` };
+    if (m.max !== undefined && n > m.max) return { value: null, error: `${m.label} cannot exceed ${m.max}.` };
+    return { value: n, error: null };
+  }
+  if (m.type === 'time') {
+    const timePattern = /^(\d{1,2}:)?\d{1,3}(\.\d{1,2})?$/;
+    if (!timePattern.test(raw.trim())) {
+      return { value: null, error: `${m.label} must be a valid time (e.g. 23.14 or 1:52.44).` };
+    }
+    return { value: raw.trim(), error: null };
+  }
+  return { value: raw.trim(), error: null };
+}
+
 export function SelfReportForm({
   config,
   athlete_id,
@@ -44,12 +64,13 @@ export function SelfReportForm({
     for (const m of config.metrics) {
       const raw = values[m.key];
       if (!raw || raw.trim() === '') continue;
-      if (m.type === 'number' || m.type === 'rating' || m.type === 'percent') {
-        const n = parseFloat(raw);
-        if (!isNaN(n)) stats[m.key] = n;
-      } else {
-        stats[m.key] = raw.trim();
+      const { value, error: validationError } = validateMetricValue(m, raw);
+      if (validationError) {
+        setError(validationError);
+        setSaving(false);
+        return;
       }
+      stats[m.key] = value;
     }
     const { error: err } = await upsertRecord(athlete_id, config.sport, stats, 'self_reported', season);
     if (err) {

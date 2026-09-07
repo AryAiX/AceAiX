@@ -14,6 +14,8 @@ export interface MetricDef {
   unit: string;
   type: MetricType;
   higherIsBetter: boolean;
+  wholeNumber?: boolean;
+  max?: number;
 }
 
 export interface SportConfig {
@@ -38,13 +40,13 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     archetype: 'team_match',
     supportsAutoSync: false,
     metrics: [
-      { key: 'kills', label: 'Kills', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'blocks', label: 'Blocks', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'digs', label: 'Digs', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'aces', label: 'Aces', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'points', label: 'Points', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'sets_played', label: 'Sets Played', unit: '', type: 'number', higherIsBetter: false },
+      { key: 'kills', label: 'Kills', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'blocks', label: 'Blocks', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'digs', label: 'Digs', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'aces', label: 'Aces', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'points', label: 'Points', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 1000 },
+      { key: 'sets_played', label: 'Sets Played', unit: '', type: 'number', higherIsBetter: false, wholeNumber: true, max: 200 },
       { key: 'attack_pct', label: 'Attack %', unit: '%', type: 'percent', higherIsBetter: true },
     ],
   },
@@ -121,12 +123,12 @@ const SPORTS_CONFIG: Record<string, SportConfig> = {
     syncNote: 'Auto-syncs from your linked football player ID. Link it in Settings.',
     syncButtonLabel: 'Sync from Linked Player ID',
     metrics: [
-      { key: 'goals', label: 'Goals', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'appearances', label: 'Appearances', unit: '', type: 'number', higherIsBetter: false },
+      { key: 'goals', label: 'Goals', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 100 },
+      { key: 'assists', label: 'Assists', unit: '', type: 'number', higherIsBetter: true, wholeNumber: true, max: 60 },
+      { key: 'appearances', label: 'Appearances', unit: '', type: 'number', higherIsBetter: false, wholeNumber: true, max: 80 },
       { key: 'pass_acc', label: 'Pass Acc.', unit: '%', type: 'percent', higherIsBetter: true },
-      { key: 'shots_per_game', label: 'Shots/Game', unit: '', type: 'number', higherIsBetter: true },
-      { key: 'avg_rating', label: 'Avg Rating', unit: '', type: 'number', higherIsBetter: true },
+      { key: 'shots_per_game', label: 'Shots/Game', unit: '', type: 'number', higherIsBetter: true, max: 15 },
+      { key: 'avg_rating', label: 'Avg Rating', unit: '', type: 'number', higherIsBetter: true, max: 10 },
     ],
   },
 };
