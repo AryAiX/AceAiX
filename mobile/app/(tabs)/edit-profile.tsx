@@ -573,7 +573,7 @@ export default function EditProfile() {
                     accessibilityLabel={`Select sport ${config.displayName}`}
                     style={[s.sportChip, form.sportKey === config.sport && s.sportChipActive]}
                     onPress={() => {
-                      setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '' }));
+                      setForm((current) => ({ ...current, sportKey: config.sport, sportOther: '', position: '' }));
                       setTouched((t) => ({ ...t, sport: true }));
                     }}
                   >
@@ -587,7 +587,7 @@ export default function EditProfile() {
                   accessibilityLabel="Select sport Other"
                   style={[s.sportChip, form.sportKey === 'other' && s.sportChipActive]}
                   onPress={() => {
-                    setForm((current) => ({ ...current, sportKey: 'other' }));
+                    setForm((current) => ({ ...current, sportKey: 'other', position: '' }));
                     setTouched((t) => ({ ...t, sport: true }));
                   }}
                 >
@@ -609,7 +609,7 @@ export default function EditProfile() {
               )}
               {touched.sport && !sportValid && <Text style={s.errorText}>Sport is required</Text>}
             </View>
-            {POSITIONS_BY_SPORT[form.sportKey] ? (
+            {form.sportKey === 'chess' || form.sportKey === 'swimming' ? null : POSITIONS_BY_SPORT[form.sportKey] ? (
               <View style={s.field}>
                 <Text style={s.label}>Primary position</Text>
                 <TouchableOpacity
@@ -644,7 +644,7 @@ export default function EditProfile() {
                 label="Primary position"
                 value={form.position}
                 onChangeText={(value) => update('position', value)}
-                placeholder="e.g. Goalkeeper"
+                placeholder="e.g. your role or position"
                 autoCapitalize="words"
               />
             )}
