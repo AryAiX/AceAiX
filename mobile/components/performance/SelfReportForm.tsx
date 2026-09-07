@@ -72,6 +72,15 @@ export function SelfReportForm({
       }
       stats[m.key] = value;
     }
+    if (config.sport === 'football') {
+      const goals = stats['goals'];
+      const shotsPerGame = stats['shots_per_game'];
+      if (typeof goals === 'number' && goals > 0 && typeof shotsPerGame === 'number' && shotsPerGame === 0) {
+        setError('Shots/Game cannot be 0 if Goals is greater than 0 — you cannot score without taking a shot.');
+        setSaving(false);
+        return;
+      }
+    }
     const { error: err } = await upsertRecord(athlete_id, config.sport, stats, 'self_reported', season);
     if (err) {
       setError(err);
