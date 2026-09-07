@@ -48,6 +48,7 @@ export default function FeedScreen() {
 
   const cursorRef  = useRef<{ created_at: string; id: string } | undefined>(undefined);
   const hasMoreRef = useRef(true);
+  const requestIdRef = useRef(0);
   const indicatorX = useRef(new Animated.Value(0)).current;
 
   // Modals
@@ -61,7 +62,9 @@ export default function FeedScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
+    const requestId = reset ? ++requestIdRef.current : requestIdRef.current;
     const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
+    if (requestId !== requestIdRef.current) return; // a newer filter switch has since started; discard this stale result
     if (data.length > 0) {
       const last = data[data.length - 1];
       cursorRef.current = { created_at: last.created_at, id: last.id };
