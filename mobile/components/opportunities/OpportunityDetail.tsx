@@ -8,6 +8,7 @@ import {
   ScrollView,
   Share,
   Animated,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -115,6 +116,7 @@ const ma = StyleSheet.create({
 export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled }: Props) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const [savingBookmark, setSavingBookmark] = useState(false);
 
   // Entry animation for the modal content
   const slideY = useRef(new Animated.Value(40)).current;
@@ -141,10 +143,19 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
   })();
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user || savingBookmark) return;
+    setSavingBookmark(true);
     const nowSaved = !opportunity.saved;
-    await toggleOpportunitySave(opportunity.id, user.id, opportunity.saved ?? false);
-    onSaveToggled(opportunity.id, nowSaved);
+    try {
+      const { error } = await toggleOpportunitySave(opportunity.id, user.id, opportunity.saved ?? false);
+      if (error) {
+        Alert.alert('Could not update saved opportunity', error);
+        return;
+      }
+      onSaveToggled(opportunity.id, nowSaved);
+    } finally {
+      setSavingBookmark(false);
+    }
   };
 
   const handleShare = async () => {
@@ -198,6 +209,8 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
               accessibilityLabel={opportunity.saved ? 'Remove saved opportunity' : 'Save opportunity'}
               style={s.iconBtn}
               onPress={handleSave}
+              disabled={savingBookmark}
+              accessibilityState={{ disabled: savingBookmark, busy: savingBookmark }}
             >
               <Bookmark
                 color={opportunity.saved ? Colors.accent : Colors.textMuted}

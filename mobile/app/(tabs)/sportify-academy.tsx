@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -104,7 +105,11 @@ export default function SportifyAcademyScreen() {
   };
 
   const handleCancelAppointment = async (id: string) => {
-    await cancelAppointment(id);
+    const { error } = await cancelAppointment(id);
+    if (error) {
+      Alert.alert('Could not cancel appointment', error);
+      return;
+    }
     setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelled' as AppointmentStatus } : a));
   };
 
@@ -140,7 +145,7 @@ export default function SportifyAcademyScreen() {
               <TouchableOpacity style={s.syncBtn} onPress={handleSync} disabled={syncing}>
                 <RefreshCw color={syncing ? Colors.textDisabled : Colors.primary} size={14} />
                 <Text style={[s.syncTxt, syncing && { color: Colors.textDisabled }]}>
-                  {syncing ? 'Syncing…' : 'Sync Results'}
+                  {syncing ? 'Checking…' : 'Check for Results'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.bookBtn} onPress={() => setBookingVisible(true)}>
@@ -305,7 +310,7 @@ function EmptyResults({ onSync, syncing }: { onSync: () => void; syncing: boolea
       <Dumbbell color={Colors.textFaint} size={44} strokeWidth={1.5} />
       <Text style={er.title}>No test results yet</Text>
       <Text style={er.sub}>
-        Sync your Sportify Academy account to import your verified physical test results and talent assessment.
+        Results are imported after Sportify Academy assigns them to your linked account. Check again for newly available results.
       </Text>
       <TouchableOpacity style={er.syncBtn} onPress={onSync} disabled={syncing}>
         {syncing ? (
@@ -313,7 +318,7 @@ function EmptyResults({ onSync, syncing }: { onSync: () => void; syncing: boolea
         ) : (
           <>
             <RefreshCw color={Colors.white} size={14} />
-            <Text style={er.syncTxt}>Sync Now</Text>
+            <Text style={er.syncTxt}>Check Again</Text>
           </>
         )}
       </TouchableOpacity>

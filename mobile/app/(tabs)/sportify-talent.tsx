@@ -119,7 +119,7 @@ export default function SportifyTalentScreen() {
         </View>
         <TouchableOpacity
           accessibilityRole="button"
-          accessibilityLabel={syncing ? 'Syncing talent data' : 'Sync talent data'}
+          accessibilityLabel={syncing ? 'Checking for talent results' : 'Check for talent results'}
           accessibilityState={{ busy: syncing, disabled: syncing }}
           style={s.syncIconBtn}
           onPress={handleSync}
@@ -488,7 +488,7 @@ function NoTalentState({ onSync, syncing }: { onSync: () => void; syncing: boole
       <Brain color={Colors.textFaint} size={52} strokeWidth={1.5} />
       <Text style={nt.title}>No Talent Assessment Yet</Text>
       <Text style={nt.sub}>
-        Sync your Sportify Academy account to import your talent potential assessment and sport recommendations.
+        Assessments appear after Sportify Academy assigns them to your linked account. Check again for newly available results.
       </Text>
       <TouchableOpacity style={nt.btn} onPress={onSync} disabled={syncing}>
         {syncing ? (
@@ -496,7 +496,7 @@ function NoTalentState({ onSync, syncing }: { onSync: () => void; syncing: boole
         ) : (
           <>
             <RefreshCw color={Colors.black} size={14} />
-            <Text style={nt.btnTxt}>Sync Now</Text>
+            <Text style={nt.btnTxt}>Check Again</Text>
           </>
         )}
       </TouchableOpacity>

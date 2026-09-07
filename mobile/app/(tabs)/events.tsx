@@ -89,6 +89,18 @@ export default function Events() {
     }
   }
 
+  function showPlatformEventDetails(event: PlatformEvent) {
+    Alert.alert(
+      event.title,
+      [
+        `${formatEventDate(event.event_date)}${event.event_time ? ` · ${event.event_time}` : ''}`,
+        event.location || 'Location to be confirmed',
+        event.description,
+        `${event.attendee_count} attending`,
+      ].filter(Boolean).join('\n\n'),
+    );
+  }
+
   const totalUpcoming = platformEvents.length + myEvents.length;
   const totalConfirmed = platformEvents.filter(e => e.is_attending).length + myEvents.length;
 
@@ -255,7 +267,12 @@ export default function Events() {
                       {isAttending ? 'Attending' : 'RSVP'}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={s.detailsBtn}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`View details for ${ev.title}`}
+                    style={s.detailsBtn}
+                    onPress={() => showPlatformEventDetails(ev)}
+                  >
                     <Text style={s.detailsTxt}>Details</Text>
                     <ChevronRight color={Colors.textMuted} size={14} />
                   </TouchableOpacity>

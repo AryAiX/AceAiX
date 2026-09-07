@@ -175,8 +175,9 @@ export async function bookAppointment(params: {
   return { id: data.id, error: null };
 }
 
-export async function cancelAppointment(appointmentId: string): Promise<void> {
-  await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appointmentId);
+export async function cancelAppointment(appointmentId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('appointments').update({ status: 'cancelled' }).eq('id', appointmentId);
+  return { error: error?.message ?? null };
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
