@@ -106,15 +106,45 @@ const runtime = `
   delete window.__ACEAIX_TAPE__;
 
   /* ---- history -------------------------------------------------------------
-     One file is hosted at one address. The router would happily push /discover
-     into the address bar, and a refresh there would land on a URL the host has
-     never heard of — so the address is pinned. Navigation still works (the
-     router keeps its own state); only the address bar stays put, which also
-     means a refresh always reloads the app rather than a dead link. */
+     The app routes on location.pathname, and a hosted page rarely lives at the
+     origin root. Booting at /code/artifact/<id> matched no route and dropped
+     straight onto the app's own "this page has moved on" screen the moment the
+     language gate handed over — which is exactly what a person saw.
+
+     So: boot the router at the root, put the real address back once it has read
+     it, and pin it there. The router gets a path it understands, the address
+     bar keeps a URL a refresh can actually load, and nothing afterwards moves
+     it.
+
+     popstate is swallowed for the same reason. With the address pinned, the
+     only thing the router could re-read on a back gesture is the host's own
+     path, which it cannot match — so back would land on the dead end this
+     fixes. */
+  var realPath = location.pathname + location.search;
+  var atRoot = location.pathname === '/';
+
+  if (!atRoot) {
+    try { history.replaceState(history.state, '', '/'); } catch (e) {}
+  }
+
   var push = history.pushState.bind(history);
   var replace = history.replaceState.bind(history);
   history.pushState = function (s, t) { return push(s, t, null); };
   history.replaceState = function (s, t) { return replace(s, t, null); };
+
+  if (!atRoot) {
+    /* After the first paint — by then react-navigation has taken its initial
+       URL and works from its own state. */
+    var restore = function () {
+      try { replace(history.state, '', realPath); } catch (e) {}
+    };
+    if (document.readyState === 'complete') setTimeout(restore, 0);
+    else window.addEventListener('load', function () { setTimeout(restore, 0); });
+
+    window.addEventListener('popstate', function (e) {
+      if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+    }, true);
+  }
 
   /* ---- realtime ------------------------------------------------------------
      Nothing is listening, and an unreachable socket would retry for ever. */

@@ -64,8 +64,26 @@ are missing, which is worse than an empty screen.
 **Sessions that do not expire.** The harness mints tokens on a real schedule. The replay stretches
 `expires_at` a year out, so the client never starts chasing a refresh it cannot complete.
 
-**The address bar.** One file is hosted at one address, so the router is allowed to navigate but not
-to rewrite the URL — otherwise a refresh on `/discover` lands on a path the host has never heard of.
+**The address bar, twice.** One file is hosted at one address, so the router is
+allowed to navigate but not to rewrite the URL — otherwise a refresh on
+`/discover` lands on a path the host has never heard of.
+
+The subtler half: the app routes on `location.pathname`, and a hosted page
+rarely lives at the origin root. Served at `/code/artifact/<id>`, the router
+booted at a path matching no route and dropped onto the app's own "this page has
+moved on" screen the instant the language gate handed over. So the runtime boots
+the router at `/`, restores the real address once it has been read, and pins it
+there. `popstate` is swallowed, because with the address pinned the only path a
+back gesture could make the router re-read is the host's own.
+
+`check-preview.mjs` never caught this, because it serves the page for every
+path — convenient, and wrong. `check-hosted.mjs` serves it at exactly one
+sub-path and 404s the rest, which is what a host actually does:
+
+```bash
+node tests/e2e/check-hosted.mjs preview.html --base /code/artifact/abc123
+node tests/e2e/check-hosted.mjs preview.html --base /        # the other shape
+```
 
 **Realtime.** `WebSocket` is stubbed closed. Nothing is listening, and an unreachable socket would
 retry for ever.

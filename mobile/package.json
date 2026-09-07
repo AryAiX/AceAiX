@@ -19,7 +19,8 @@
     "backend:local": "../tools/local-supabase/start.sh",
     "db:test": "../supabase/tests/run-all.sh",
     "preview": "npm run build:web && node tests/e2e/record-demo.mjs && node tests/e2e/build-preview.mjs",
-    "preview:check": "node tests/e2e/check-preview.mjs preview.html"
+    "preview:check": "node tests/e2e/check-preview.mjs preview.html",
+    "preview:hosted": "node tests/e2e/check-hosted.mjs preview.html"
   },
   "dependencies": {
     "@expo-google-fonts/hanken-grotesk": "^0.4.3",
