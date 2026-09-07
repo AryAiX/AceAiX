@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from './Text';
 
@@ -326,7 +328,17 @@ export function SectionHeader({
         style,
       ]}
     >
-      <Text variant="heading">{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        {/* A short coloured bar. Twelve of these down a screen is what stops a
+            list of sections reading as a list of grey headings. */}
+        <LinearGradient
+          colors={theme.gradients.action}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={{ width: 4, height: 20, borderRadius: 2 }}
+        />
+        <Text variant="heading">{title}</Text>
+      </View>
       {action && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button">
           <Text variant="captionStrong" tone="primary">

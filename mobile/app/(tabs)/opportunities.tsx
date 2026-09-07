@@ -14,6 +14,7 @@ import {
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
+  AnimatedGradient,
   Badge,
   Button,
   Card,
@@ -23,7 +24,9 @@ import {
   Header,
   Screen,
   SegmentedControl,
+  Shine,
   SkeletonList,
+  Tappable,
   Text,
   useToast,
 } from '@/components/ui';
@@ -541,18 +544,41 @@ function ChallengesLink() {
   const open = (data ?? []).filter((c) => c.status === 'open').length;
 
   return (
-    <Card padded onPress={() => router.push(Routes.challenges)} tone="alt">
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
-        <Flame size={20} color={theme.colors.primary} />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyStrong">{t('challenges.title')}</Text>
-          <Text variant="caption" tone="muted" numberOfLines={1}>
-            {open > 0 ? t('challenges.entries', { count: open }) : t('challenges.subtitle')}
-          </Text>
+    /* The one thing on this screen that is a game rather than an application
+       form, so it is the one thing on this screen wearing a colour. */
+    <Tappable onPress={() => router.push(Routes.challenges)} accessibilityLabel={t('challenges.title')}>
+      <AnimatedGradient
+        colors={theme.gradients.warm}
+        period={10}
+        radius={theme.radii.lg}
+        style={theme.elevation(1)}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.md,
+            padding: theme.spacing.lg,
+          }}
+        >
+          <View>
+            <Flame size={20} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text variant="bodyStrong" color="#FFFFFF">
+              {t('challenges.title')}
+            </Text>
+            <Text variant="caption" color="rgba(255,255,255,0.82)" numberOfLines={1}>
+              {open > 0 ? t('challenges.entries', { count: open }) : t('challenges.subtitle')}
+            </Text>
+          </View>
+          <View>
+            <ChevronRight size={18} color="#FFFFFF" />
+          </View>
         </View>
-        <ChevronRight size={18} color={theme.colors.textMuted} />
-      </View>
-    </Card>
+        <Shine every={9} radius={theme.radii.lg} />
+      </AnimatedGradient>
+    </Tappable>
   );
 }
 

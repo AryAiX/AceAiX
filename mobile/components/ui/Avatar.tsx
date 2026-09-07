@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Image, Pressable, View, ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, tierForScore } from '@/theme/tokens';
+import { huePair, tierForScore, tierGradient } from '@/theme/tokens';
 import { Text } from './Text';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
@@ -25,6 +26,12 @@ interface Props {
   score?: number | null;
   verified?: boolean;
   onPress?: () => void;
+  /**
+   * What the tap does, for a screen reader. Required in spirit whenever
+   * `onPress` is set — the default assumes it opens a profile, which stopped
+   * being true the moment the profile header started using it to open a photo.
+   */
+  pressLabel?: string;
   style?: ViewStyle;
   testID?: string;
 }
@@ -44,6 +51,7 @@ export function Avatar({
   score,
   verified,
   onPress,
+  pressLabel,
   style,
   testID,
 }: Props) {
@@ -53,9 +61,13 @@ export function Avatar({
 
   const px = SIZES[size];
   const ringWidth = score != null ? (px >= 60 ? 3 : 2) : 0;
-  const ringColor = score != null ? TierColors[tierForScore(score)] : 'transparent';
   const outer = px + ringWidth * 2 + (score != null ? 4 : 0);
   const showImage = !!uri && !failed;
+
+  /* The ring is a gradient rather than a stroke: a filled circle behind an
+     opaque, centred photo, so the margin between them *is* the ring. A tier is
+     two colours now, and a single-stop border could only ever show one. */
+  const ringStops = score != null ? tierGradient(tierForScore(score)) : null;
 
   const content = (
     <View
@@ -66,14 +78,22 @@ export function Avatar({
           borderRadius: outer / 2,
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: ringWidth,
-          borderColor: ringColor,
           backgroundColor: 'transparent',
         },
         style,
       ]}
       testID={testID}
     >
+      {ringStops ? (
+        <LinearGradient
+          colors={ringStops}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[StyleSheet.absoluteFill, { borderRadius: outer / 2 }]}
+          pointerEvents="none"
+        />
+      ) : null}
+
       {showImage ? (
         <Image
           source={{ uri }}
@@ -87,24 +107,37 @@ export function Avatar({
           accessibilityIgnoresInvertColors
         />
       ) : (
+        /*
+         * The fallback used to be grey initials in a grey circle, and most rows
+         * in a young network have no photo yet — so a feed, a search result or
+         * an inbox was a column of grey discs. The colour is derived from the
+         * name, so it is stable: the same person is the same colour on every
+         * screen, and two people in a list are almost never the same one.
+         */
         <View
           style={{
             width: px,
             height: px,
             borderRadius: px / 2,
-            backgroundColor: colors.surfaceAlt,
-            borderWidth: 1,
-            borderColor: colors.border,
+            overflow: 'hidden',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text
-            variant={px >= 60 ? 'title' : px >= 44 ? 'subheading' : 'captionStrong'}
-            tone="muted"
-          >
-            {initials(name)}
-          </Text>
+          <LinearGradient
+            colors={huePair(name)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View>
+            <Text
+              variant={px >= 60 ? 'title' : px >= 44 ? 'subheading' : 'captionStrong'}
+              color="#FFFFFF"
+            >
+              {initials(name)}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -134,7 +167,7 @@ export function Avatar({
     return (
       <Pressable
         accessibilityRole="imagebutton"
-        accessibilityLabel={name ? `Open ${name}'s profile` : 'Open profile'}
+        accessibilityLabel={pressLabel ?? name ?? undefined}
         onPress={onPress}
         hitSlop={8}
         style={({ pressed }) => (pressed ? { opacity: 0.75 } : undefined)}

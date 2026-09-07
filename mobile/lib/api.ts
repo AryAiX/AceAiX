@@ -72,6 +72,8 @@ export interface ProfileUpdate {
   city?: string | null;
   country?: string | null;
   avatar_url?: string | null;
+  /** The wallpaper behind the profile header. Null clears it. */
+  cover_url?: string | null;
 }
 
 export async function updateUserProfile(patch: ProfileUpdate): Promise<void> {

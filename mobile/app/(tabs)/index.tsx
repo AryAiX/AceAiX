@@ -9,10 +9,10 @@ import {
   ErrorState,
   IconButton,
   Loader,
+  Reveal,
   Screen,
   SegmentedControl,
   SkeletonList,
-  Text,
 } from '@/components/ui';
 import { PostCard } from '@/components/feed/PostCard';
 import { CommentSheet } from '@/components/feed/CommentSheet';
@@ -28,6 +28,7 @@ import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { Wordmark } from '@/components/common/Wordmark';
 import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { FeedPost } from '@/types/models';
@@ -198,16 +199,21 @@ export default function HomeScreen() {
   ).current;
 
   const renderItem = useCallback(
-    ({ item }: { item: FeedPost }) => (
-      <PostCard
-        post={item}
-        isActive={item.id === activeId}
-        onPatch={patchPost}
-        onOpenComments={setCommentsFor}
-        onOpenActions={openActions}
-        onOpenProfile={openProfile}
-        onOpenPost={openPost}
-      />
+    /* The stagger is keyed off the position in the list, and `Reveal` caps it
+       at six — so the first screenful arrives in sequence and everything the
+       person scrolls to afterwards is already in place. */
+    ({ item, index }: { item: FeedPost; index: number }) => (
+      <Reveal index={index}>
+        <PostCard
+          post={item}
+          isActive={item.id === activeId}
+          onPatch={patchPost}
+          onOpenComments={setCommentsFor}
+          onOpenActions={openActions}
+          onOpenProfile={openProfile}
+          onOpenPost={openPost}
+        />
+      </Reveal>
     ),
     [activeId, patchPost, openActions, openProfile, openPost],
   );
@@ -253,17 +259,7 @@ export default function HomeScreen() {
           paddingBottom: spacing.md,
         }}
       >
-        <Text
-          variant="title"
-          accessibilityRole="header"
-          style={{ flex: 1 }}
-          numberOfLines={1}
-        >
-          <Text variant="title" tone="primary">
-            Ace
-          </Text>
-          AiX
-        </Text>
+        <Wordmark />
 
         {/* The streak sits before the inbox icons: it is the one thing in the
             header that rewards opening the app rather than asking something

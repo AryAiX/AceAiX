@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, Search } from 'lucide-react-native';
+import { Camera, Check, ImagePlus, Search, Trash2 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
+  AnimatedGradient,
   Avatar,
   Button,
   Card,
@@ -14,6 +16,7 @@ import {
   ErrorState,
   Header,
   Input,
+  Lightbox,
   ListItem,
   Screen,
   SectionHeader,
@@ -30,7 +33,7 @@ import {
   updateAthleteProfile,
   updateUserProfile,
 } from '@/lib/api';
-import { syncFullName, uploadAvatar } from '@/lib/api.profile';
+import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
 import {
   DOMINANT_SIDE,
   LEVELS,
@@ -56,6 +59,7 @@ interface FormState {
   city: string;
   country: string;
   avatarUrl: string;
+  coverUrl: string;
   sport: string;
   position: string;
   level: string;
@@ -87,6 +91,8 @@ export default function EditProfileScreen() {
   const [initial, setInitial] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [sportSheet, setSportSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
@@ -102,6 +108,7 @@ export default function EditProfileScreen() {
       city: user.city ?? '',
       country: user.country ?? '',
       avatarUrl: user.avatar_url ?? '',
+      coverUrl: user.cover_url ?? '',
       sport: athlete?.sport ?? '',
       position: athlete?.position ?? '',
       level: athlete?.level ?? '',
@@ -125,30 +132,50 @@ export default function EditProfileScreen() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
-  const pickAvatar = useCallback(async () => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        toast.error(t('profile.photoPermission'));
-        return;
-      }
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.85,
-      });
-      if (result.canceled || result.assets.length === 0) return;
+  /**
+   * One picker for both pictures.
+   *
+   * The only differences are the crop ratio, the upload function and which
+   * field the URL lands in — writing it twice was how the cover ended up with
+   * no picker at all, so it is written once.
+   */
+  const pickImage = useCallback(
+    async (kind: 'avatar' | 'cover') => {
+      const isAvatar = kind === 'avatar';
+      try {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          toast.error(t('profile.photoPermission'));
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          /* A cover is a landscape band behind the avatar; cropping it square
+             and letting the header cut it is how you lose someone's head. */
+          aspect: isAvatar ? [1, 1] : [16, 9],
+          quality: 0.85,
+        });
+        if (result.canceled || result.assets.length === 0) return;
 
-      setUploadingAvatar(true);
-      const url = await uploadAvatar(result.assets[0].uri, result.assets[0].mimeType ?? 'image/jpeg');
-      set('avatarUrl', url);
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setUploadingAvatar(false);
-    }
-  }, [set, t, toast]);
+        const asset = result.assets[0];
+        const type = asset.mimeType ?? 'image/jpeg';
+        if (isAvatar) {
+          setUploadingAvatar(true);
+          set('avatarUrl', await uploadAvatar(asset.uri, type));
+        } else {
+          setUploadingCover(true);
+          set('coverUrl', await uploadCover(asset.uri, type));
+        }
+      } catch (err) {
+        toast.error(errorMessage(err));
+      } finally {
+        setUploadingAvatar(false);
+        setUploadingCover(false);
+      }
+    },
+    [set, t, toast],
+  );
 
   const onSave = useCallback(async () => {
     if (!form || !bundle.data) return;
@@ -168,6 +195,7 @@ export default function EditProfileScreen() {
         city: form.city.trim() || null,
         country: form.country.trim() || null,
         avatar_url: form.avatarUrl || null,
+        cover_url: form.coverUrl || null,
       });
       await syncFullName(form.firstName, form.lastName);
 
@@ -276,38 +304,146 @@ export default function EditProfileScreen() {
       <View style={{ marginTop: spacing.md }}>
         <SectionHeader title={t('profile.sectionYou')} />
 
-        <View style={{ alignItems: 'center', marginBottom: spacing.lg }}>
-          <Pressable
-            onPress={pickAvatar}
-            disabled={uploadingAvatar}
-            accessibilityRole="button"
-            accessibilityLabel={t('profile.changePhotoA11y')}
-            accessibilityState={{ busy: uploadingAvatar }}
-            style={({ pressed }) => ({ opacity: pressed || uploadingAvatar ? 0.7 : 1 })}
+        {/*
+          Both pictures, in the arrangement they appear in on the profile, so
+          what you are editing looks like what you will get. The wallpaper had
+          no editor at all before this — the column existed, the header used it,
+          and nothing in the app could set it.
+        */}
+        <Pressable
+          onPress={() => pickImage('cover')}
+          disabled={uploadingCover}
+          accessibilityRole="button"
+          accessibilityLabel={t('profile.changeCoverA11y')}
+          accessibilityState={{ busy: uploadingCover }}
+          testID="edit-cover"
+          style={({ pressed }) => ({
+            height: 132,
+            borderRadius: theme.radii.lg,
+            overflow: 'hidden',
+            opacity: pressed || uploadingCover ? 0.75 : 1,
+            borderWidth: 1,
+            borderColor: colors.border,
+          })}
+        >
+          {form.coverUrl ? (
+            <Image
+              source={{ uri: form.coverUrl }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <AnimatedGradient
+              colors={theme.gradients.hero}
+              period={12}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+          <LinearGradient
+            colors={['transparent', 'rgba(6,5,14,0.55)']}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.xs,
+              /* The avatar overlaps the bottom of this band, so the label sits
+                 above where it lands rather than behind it. */
+              paddingBottom: spacing.xxl,
+            }}
           >
-            <Avatar uri={form.avatarUrl || null} name={form.firstName} size="xl" />
-            <View
-              style={{
-                position: 'absolute',
-                right: -2,
-                bottom: -2,
-                width: 34,
-                height: 34,
-                borderRadius: 17,
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 3,
-                borderColor: colors.bg,
-              }}
-            >
-              <Camera size={16} color={colors.textOnBrand} />
+            <View>
+              <ImagePlus size={22} color="#FFFFFF" strokeWidth={2.2} />
             </View>
+            <Text variant="captionStrong" color="#FFFFFF">
+              {t(
+                uploadingCover
+                  ? 'profile.uploadingCover'
+                  : form.coverUrl
+                    ? 'profile.changeCover'
+                    : 'profile.addCover',
+              )}
+            </Text>
+          </View>
+        </Pressable>
+
+        {form.coverUrl ? (
+          <Pressable
+            onPress={() => set('coverUrl', '')}
+            accessibilityRole="button"
+            accessibilityLabel={t('profile.removeCover')}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              alignSelf: 'flex-end',
+              gap: spacing.xs,
+              minHeight: 40,
+              paddingHorizontal: spacing.xs,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Trash2 size={14} color={colors.textMuted} />
+            <Text variant="caption" tone="muted">
+              {t('profile.removeCover')}
+            </Text>
           </Pressable>
+        ) : null}
+
+        <View style={{ alignItems: 'center', marginTop: -44, marginBottom: spacing.lg }}>
+          <View style={{ borderRadius: 999, padding: 3, backgroundColor: colors.bg }}>
+            <Pressable
+              onPress={() => pickImage('avatar')}
+              onLongPress={form.avatarUrl ? () => setPhotoOpen(true) : undefined}
+              disabled={uploadingAvatar}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.changePhotoA11y')}
+              accessibilityState={{ busy: uploadingAvatar }}
+              testID="edit-avatar"
+              style={({ pressed }) => ({ opacity: pressed || uploadingAvatar ? 0.7 : 1 })}
+            >
+              <Avatar
+                uri={form.avatarUrl || null}
+                /* Both names: the initials here have to match the ones the feed
+                   and the profile draw, or the same person appears twice under
+                   two different monograms and two different colours. */
+                name={`${form.firstName} ${form.lastName}`.trim() || form.firstName}
+                size="xl"
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  right: -2,
+                  bottom: -2,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: colors.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 3,
+                  borderColor: colors.bg,
+                }}
+              >
+                <Camera size={16} color={colors.textOnBrand} />
+              </View>
+            </Pressable>
+          </View>
           <Text variant="caption" tone="muted" style={{ marginTop: spacing.sm }}>
             {t(uploadingAvatar ? 'profile.uploadingPhoto' : 'profile.tapToChangePhoto')}
           </Text>
         </View>
+
+        <Lightbox
+          visible={photoOpen}
+          uri={form.avatarUrl || null}
+          caption={`${form.firstName} ${form.lastName}`.trim() || null}
+          onClose={() => setPhotoOpen(false)}
+        />
 
         <View style={{ gap: spacing.md }}>
           <View style={{ flexDirection: 'row', gap: spacing.md }}>

@@ -40,7 +40,7 @@ export function EmptyState({
   compact,
 }: EmptyStateProps) {
   const theme = useTheme();
-  const { colors, spacing, radii } = theme;
+  const { spacing, radii } = theme;
 
   return (
     <View
@@ -56,18 +56,32 @@ export function EmptyState({
       ]}
     >
       {icon ? (
+        /* An empty screen is the one place with nothing else to look at, so the
+           bubble is the picture: a soft wash of the brand gradient rather than
+           a grey square. */
         <View
           style={{
-            width: 64,
-            height: 64,
+            width: 72,
+            height: 72,
             borderRadius: radii.xl,
-            backgroundColor: colors.surfaceAlt,
+            overflow: 'hidden',
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: spacing.xs,
           }}
         >
-          {icon}
+          <LinearGradient
+            colors={[
+              theme.alpha(theme.gradients.hero[0], 0.22),
+              theme.alpha(theme.gradients.hero[1], 0.22),
+              theme.alpha(theme.gradients.hero[2], 0.22),
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* Wrapped for the same reason the tab bar's plus is. */}
+          <View>{icon}</View>
         </View>
       ) : null}
       <Text variant="heading" align="center">

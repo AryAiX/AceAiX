@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useT } from '@/i18n';
 import { Text } from './Text';
 
 interface Props {
@@ -36,6 +37,7 @@ export function Header({
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const t = useT();
 
   const showBack = back ?? false;
 
@@ -68,7 +70,7 @@ export function Header({
           onPress={handleBack}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('common.back')}
           style={({ pressed }) => ({
             width: 40,
             height: 40,

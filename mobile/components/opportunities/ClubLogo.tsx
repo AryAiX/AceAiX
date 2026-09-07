@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { Image, View, ViewStyle } from 'react-native';
+import { Image, StyleSheet, View, ViewStyle } from 'react-native';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { huePair } from '@/theme/tokens';
 import { Text } from '@/components/ui';
 import { initialsOf } from '@/lib/format';
 
@@ -42,8 +45,6 @@ export function ClubLogo({
           height: px,
           borderRadius: radius,
           backgroundColor: colors.surfaceAlt,
-          borderWidth: 1,
-          borderColor: colors.border,
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
@@ -60,9 +61,22 @@ export function ClubLogo({
           accessibilityIgnoresInvertColors
         />
       ) : (
-        <Text variant={size === 'lg' ? 'title' : 'subheading'} tone="muted">
-          {initialsOf(name)}
-        </Text>
+        /* A crest with no badge uploaded is still a crest. Same trick as the
+           avatar: the colour comes from the club's name, so it is the same
+           colour on the trial card, the profile and the org page. */
+        <>
+          <LinearGradient
+            colors={huePair(name)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View>
+            <Text variant={size === 'lg' ? 'title' : 'subheading'} color="#FFFFFF">
+              {initialsOf(name)}
+            </Text>
+          </View>
+        </>
       )}
     </View>
   );

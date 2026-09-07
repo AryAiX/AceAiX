@@ -9,6 +9,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -96,6 +97,11 @@ export function Button({
 
   const skin = skins[variant];
 
+  /* The primary action is the one thing on most screens that has permission to
+     be loud, and a flat fill wastes it. Gradient underneath, transparent fill
+     on top; the pressed state stays a flat colour so the press still reads. */
+  const gradient = variant === 'primary' ? theme.gradients.action : null;
+
   const animate = (to: number) =>
     Animated.spring(scale, {
       toValue: to,
@@ -131,28 +137,44 @@ export function Button({
             height: heights[size],
             paddingHorizontal: paddings[size],
             borderRadius: radii.pill,
-            backgroundColor: pressed ? skin.pressedBg : skin.bg,
+            backgroundColor: gradient ? skin.pressedBg : pressed ? skin.pressedBg : skin.bg,
             borderColor: skin.border,
             borderWidth: skin.border === 'transparent' ? 0 : 1.5,
             opacity: isDisabled ? 0.45 : 1,
+            overflow: 'hidden',
           },
         ]}
         {...rest}
       >
-        {loading ? (
-          <ActivityIndicator color={skin.fg} size="small" />
-        ) : (
-          <View style={styles.content}>
-            {icon ? <View style={{ marginRight: spacing.sm }}>{icon}</View> : null}
-            <Text
-              variant={size === 'sm' ? 'captionStrong' : 'subheading'}
-              color={skin.fg}
-              numberOfLines={1}
-            >
-              {label}
-            </Text>
-            {iconRight ? <View style={{ marginLeft: spacing.sm }}>{iconRight}</View> : null}
-          </View>
+        {({ pressed }: { pressed: boolean }) => (
+          <>
+            {gradient ? (
+              /* Dimmed rather than swapped on press: a gradient that vanished
+                 for a flat colour would read as a different button. */
+              <LinearGradient
+                colors={gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[StyleSheet.absoluteFill, { opacity: pressed ? 0.82 : 1 }]}
+                pointerEvents="none"
+              />
+            ) : null}
+            {loading ? (
+              <ActivityIndicator color={skin.fg} size="small" />
+            ) : (
+              <View style={styles.content}>
+                {icon ? <View style={{ marginRight: spacing.sm }}>{icon}</View> : null}
+                <Text
+                  variant={size === 'sm' ? 'captionStrong' : 'subheading'}
+                  color={skin.fg}
+                  numberOfLines={1}
+                >
+                  {label}
+                </Text>
+                {iconRight ? <View style={{ marginLeft: spacing.sm }}>{iconRight}</View> : null}
+              </View>
+            )}
+          </>
         )}
       </Pressable>
     </Animated.View>

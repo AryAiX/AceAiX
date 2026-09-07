@@ -39,4 +39,5 @@ yarn-error.*
 # preview build (regenerate: npm run preview)
 preview.html
 tests/e2e/preview-shots/
+tests/e2e/look-shots/
 stubs/lucide-pkg/

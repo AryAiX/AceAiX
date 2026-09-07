@@ -204,6 +204,57 @@ await browser.close();
 server.close();
 
 const list = [...recordings.values()];
+
+/*
+ * A recording is also an audit. Every exchange here is one the real app made
+ * against the real schema, so a 4xx in the tape is the app being refused
+ * something it asked for in normal use — and it would be baked into the
+ * preview and replayed to whoever opens it.
+ *
+ * This is how a revoked RLS predicate surfaced: three screens started
+ * answering `permission denied for function is_admin`, in a tape that was
+ * otherwise perfectly green. A 401 on the sign-in probe is expected; nothing
+ * else is.
+ */
+function describe(r) {
+  try { return JSON.parse(r.response).message ?? r.response.slice(0, 120); }
+  catch { return r.response.slice(0, 120); }
+}
+
+const failures = list.filter((r) => {
+  if (r.status < 400) return false;
+  if (r.status === 401 && r.target.startsWith('/auth/v1')) return false;   // the sign-in probe
+  /* A grant that is missing, or a route PostgREST cannot reach, is a defect
+     wherever it appears. So is any 5xx. */
+  return r.status >= 500 || /permission denied|does not exist|PGRST/i.test(describe(r));
+});
+
+/* The tour is role-blind on purpose — it opens every route as every account —
+   so a coach being told a conversation is not theirs is the app working. Worth
+   printing, never worth failing. */
+const expected = list.filter(
+  (r) => r.status >= 400 && !failures.includes(r) &&
+    !(r.status === 401 && r.target.startsWith('/auth/v1')),
+);
+
 fs.writeFileSync(OUT, JSON.stringify(list));
 const bytes = fs.statSync(OUT).size;
-console.log(`\n  ${list.length} exchanges · ${(bytes / 1024).toFixed(0)} kB → ${path.relative(ROOT, OUT)}\n`);
+console.log(`\n  ${list.length} exchanges · ${(bytes / 1024).toFixed(0)} kB → ${path.relative(ROOT, OUT)}`);
+
+if (expected.length) {
+  console.log(`\n  ${expected.length} refusal(s) the app is supposed to make:`);
+  for (const r of expected.slice(0, 8)) {
+    console.log(`   ${r.status}  ${r.target.split('?')[0]}  —  ${describe(r)}`);
+  }
+}
+
+if (failures.length) {
+  console.error(`\n  ${failures.length} request(s) that should have worked:\n`);
+  for (const r of failures.slice(0, 12)) {
+    console.error(`   ${r.status}  ${r.method} ${r.target.split('?')[0]}`);
+    console.error(`         ${describe(r)}`);
+  }
+  console.error('');
+  process.exit(1);
+}
+console.log('\n  nothing the app asked for was wrongly refused\n');

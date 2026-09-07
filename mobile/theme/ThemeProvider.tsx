@@ -14,14 +14,18 @@ import {
   Duration,
   FontFamily,
   FontSize,
+  GradientSet,
   HitSize,
   LineHeight,
   Palette,
   Palettes,
+  Play,
   Radii,
   Spacing,
   alpha,
   elevation,
+  hueFor,
+  huePair,
 } from './tokens';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -40,6 +44,12 @@ export interface Theme {
   duration: typeof Duration;
   elevation: (level: 0 | 1 | 2 | 3) => ReturnType<typeof elevation>;
   alpha: typeof alpha;
+  /** Scheme-aware gradient stops. Same object as `colors.gradients`. */
+  gradients: GradientSet;
+  /** The eight play hues, and a stable pick from a string. */
+  play: typeof Play;
+  hueFor: typeof hueFor;
+  huePair: typeof huePair;
 }
 
 interface ThemeContextValue extends Theme {
@@ -100,6 +110,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       duration: Duration,
       elevation: (level) => elevation(colors, level),
       alpha,
+      gradients: colors.gradients,
+      play: Play,
+      hueFor,
+      huePair,
       preference,
       setPreference,
       hydrating,

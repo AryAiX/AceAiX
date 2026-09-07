@@ -1134,6 +1134,59 @@ end $$;
 
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a score for people who do not have one ──'; end $$;
+
+/*
+ * `refresh_my_talent_score` raised P0002 when the caller had no athlete row,
+ * which PostgREST turned into a 500 — a coach or a guardian reaching the score
+ * screen by a deep link produced a server error for behaving normally. The
+ * client has always been typed to expect null, so null is what it gets.
+ */
+do $$
+declare
+  v_row public.talent_scores;
+begin
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');  -- the coach
+  v_row := public.refresh_my_talent_score();
+  perform tests.ok(v_row.athlete_id is null,
+    'a coach asking for their score gets null, not an error');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');  -- the athlete
+  v_row := public.refresh_my_talent_score();
+  perform tests.ok(v_row.athlete_id is not null and v_row.overall between 0 and 100,
+    'and an athlete still gets a real one');
+exception when others then
+  perform tests.ok(false, 'refresh_my_talent_score raised: ' || sqlerrm);
+end $$;
+
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── the wallpaper ──'; end $$;
+
+do $$
+declare
+  v_bundle jsonb;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+
+  update public.user_profiles
+     set cover_url = 'https://example.test/cover.jpg'
+   where id = '11111111-1111-1111-1111-111111111111';
+
+  v_bundle := public.get_profile_bundle('11111111-1111-1111-1111-111111111111');
+  perform tests.ok(
+    v_bundle -> 'user' ->> 'cover_url' = 'https://example.test/cover.jpg',
+    'the profile bundle carries the cover the person set');
+
+  /* The column is writable by its owner and by nobody else — 0904/02 revoked
+     the table-wide grant, so a new column is unwritable until it is named. */
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.user_profiles', 'cover_url', 'UPDATE'),
+    'and a signed-in person may write their own');
+end $$;
+
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*
@@ -1192,15 +1245,89 @@ begin
   end if;
 end $$;
 
--- 3. Nothing in `private` is reachable from a client.
+-- 3. The mutators in `private` are not reachable from a client, and the
+--    predicates RLS depends on still are.
+--
+--    The first cut of this revoked EXECUTE on everything in `private`, which
+--    reads as strictly safer and is not: an RLS policy expression runs as the
+--    *querying* user, so revoking the predicates it names locks out the owner
+--    of the row rather than an attacker. Both halves are asserted.
 do $$
+declare
+  v_open text;
 begin
+  select string_agg(p.proname, ', ' order by p.proname)
+  into v_open
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'private'
+    and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+    and p.proname not in (
+      'is_admin', 'owns_athlete', 'owns_watchlist', 'owns_ai_session',
+      'owns_medical_partner', 'has_medical_consent', 'in_conversation',
+      'is_org_member', 'is_verified_partner'
+    );
+
   perform tests.ok(
-    not has_schema_privilege('authenticated', 'private', 'USAGE'),
-    'the private schema is not reachable by a signed-in client');
+    v_open is null,
+    coalesce('no private helper beyond the RLS predicates is callable by a client',
+             'callable but should not be: ' || v_open));
+  if v_open is not null then
+    raise exception 'private helpers callable by authenticated: %', v_open;
+  end if;
+
+  select string_agg(p.proname, ', ' order by p.proname)
+  into v_open
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'private'
+    and has_function_privilege('anon', p.oid, 'EXECUTE')
+    and p.proname not in ('is_admin', 'owns_athlete', 'owns_medical_partner',
+                          'has_medical_consent');
+
   perform tests.ok(
-    not has_schema_privilege('anon', 'private', 'USAGE'),
-    'nor by an anonymous one');
+    v_open is null,
+    coalesce('a signed-out visitor can call only the four predicates their policies evaluate',
+             'anon can call: ' || v_open));
+  if v_open is not null then
+    raise exception 'private helpers callable by anon: %', v_open;
+  end if;
+
+  perform tests.ok(
+    has_function_privilege('authenticated', 'private.owns_athlete(uuid)', 'EXECUTE'),
+    'and the predicates RLS names are still callable, or every read breaks');
+end $$;
+
+-- 4. The reads that broke when the predicates were revoked.
+--
+--    Every one of these goes through PostgREST as a plain table select with RLS
+--    applied — not through a SECURITY DEFINER RPC, which is why the RPC-shaped
+--    tests above sailed past the regression.
+do $$
+declare
+  v_athlete uuid;
+  v_count   integer;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  select id into v_athlete from public.athlete_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111';
+
+  select count(*) into v_count from public.applications
+    where athlete_id = '11111111-1111-1111-1111-111111111111';
+  perform tests.ok(true, 'an athlete can read their own applications');
+
+  select count(*) into v_count from public.opportunity_saves
+    where athlete_id = '11111111-1111-1111-1111-111111111111';
+  perform tests.ok(true, 'an athlete can read their own saved opportunities');
+
+  select count(*) into v_count from public.talent_score_history
+    where athlete_id = v_athlete;
+  perform tests.ok(true, 'an athlete can read their own score history');
+
+  select count(*) into v_count from public.conversations;
+  perform tests.ok(true, 'and their conversations');
+exception when insufficient_privilege then
+  raise exception 'FAILED: an RLS predicate is not callable — %', sqlerrm;
 end $$;
 
 -- ------------------------------------------------------------

@@ -173,6 +173,23 @@ export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Pro
 }
 
 /**
+ * Uploads a picked cover photo and returns the public URL.
+ *
+ * Same bucket as the avatar: both are the person's own public likeness, both
+ * are readable by anyone who can open the profile, and giving the wallpaper its
+ * own bucket would mean a second set of policies saying exactly the same thing.
+ * The `cover-` prefix keeps the two apart in storage.
+ */
+export async function uploadCover(uri: string, contentType = 'image/jpeg'): Promise<string> {
+  const uid = await currentUserId();
+  const path = `${uid}/cover-${Date.now()}.${extensionFor(uri, contentType)}`;
+  await upload(Buckets.avatars, path, uri, contentType);
+  const url = publicUrl(Buckets.avatars, path);
+  if (!url) throw new AppError('That image could not be saved. Try another one.');
+  return url;
+}
+
+/**
  * `user_profiles.full_name` is a real column with no trigger behind it, and it
  * is what every list, feed row and search result renders. Editing the split
  * names without it leaves the rest of the app showing a stale name.

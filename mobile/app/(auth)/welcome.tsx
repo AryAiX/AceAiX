@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Gauge, ShieldCheck, Telescope } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Text } from '@/components/ui';
+import { AnimatedGradient, Button, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { LegalLine } from '@/components/onboarding/Shared';
 import { Routes } from '@/lib/routes';
@@ -73,26 +73,42 @@ export default function WelcomeScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar style={colors.statusBar} />
 
-      {/* Warm wash from the brand colour down into the page background. */}
+      {/*
+        The first screen anybody sees.
+        It was one colour at three opacities — a brand wash over the page
+        background — which on the dark scheme came out the colour of weak tea.
+        It is now three flares in three different hues, drifting against each
+        other, over a wash that is itself a gradient of two.
+      */}
       <LinearGradient
-        colors={[alpha(colors.primary, 0.32), alpha(colors.primary, 0.08), colors.bg]}
-        locations={[0, 0.4, 0.82]}
+        colors={[
+          alpha(theme.gradients.hero[0], 0.34),
+          alpha(theme.gradients.hero[1], 0.16),
+          colors.bg,
+        ]}
+        locations={[0, 0.42, 0.84]}
         start={{ x: 0.05, y: 0 }}
         end={{ x: 0.95, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* A single soft flare, top right, to stop the gradient reading as flat. */}
-      <LinearGradient
-        colors={[alpha(colors.primary, 0.5), alpha(colors.primary, 0)]}
-        style={{
-          position: 'absolute',
-          top: -140,
-          right: -110,
-          width: 340,
-          height: 340,
-          borderRadius: radii.pill,
-        }}
+      <AnimatedGradient
+        colors={[alpha(theme.gradients.action[1], 0.55), alpha(theme.gradients.action[0], 0)]}
+        period={16}
+        radius={radii.pill}
+        style={{ position: 'absolute', top: -150, right: -120, width: 360, height: 360 }}
+      />
+      <AnimatedGradient
+        colors={[alpha(theme.gradients.cool[0], 0.4), alpha(theme.gradients.cool[2], 0)]}
+        period={21}
+        radius={radii.pill}
+        style={{ position: 'absolute', top: 190, left: -170, width: 320, height: 320 }}
+      />
+      <AnimatedGradient
+        colors={[alpha(theme.gradients.hero[2], 0.32), alpha(theme.gradients.hero[0], 0)]}
+        period={13}
+        radius={radii.pill}
+        style={{ position: 'absolute', bottom: -110, right: -90, width: 300, height: 300 }}
       />
 
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>

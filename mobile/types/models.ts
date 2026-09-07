@@ -35,6 +35,8 @@ export interface UserSummary {
   first_name?: string | null;
   last_name?: string | null;
   avatar_url: string | null;
+  /** The wallpaper behind the profile header. Null falls back to a gradient. */
+  cover_url?: string | null;
   bio: string | null;
   city: string | null;
   country: string | null;

@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Animated, Easing, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, TierLabels, tierForScore } from '@/theme/tokens';
+import { TierColors, TierLabels, tierForScore, tierGradient } from '@/theme/tokens';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { Text } from './Text';
 
@@ -47,6 +47,22 @@ export function ScoreRing({
   const target = Math.max(0, Math.min(100, score ?? 0));
   const tier = tierForScore(target);
   const tierColor = TierColors[tier];
+  const [ringStart, ringEnd] = tierGradient(tier);
+
+  /*
+   * The gradient's id used to be the literal "scoreGradient".
+   *
+   * One ring per screen made that look safe, and it was not: the router keeps
+   * the screen you came from mounted, so opening the score screen from the
+   * profile put two <svg> elements carrying the same id in one document. The
+   * browser resolved `url(#scoreGradient)` to the first — a gradient defined
+   * inside the *other* svg, in another coordinate space — and painted nothing.
+   * The arc simply vanished, on the one screen the app is built around.
+   *
+   * `useId` is per instance. The colons it contains are not legal in a URL
+   * fragment, so they come out.
+   */
+  const gradientId = `score-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
 
   const reduced = useReducedMotion();
   const progress = useRef(new Animated.Value(animate ? 0 : target)).current;
@@ -127,6 +143,29 @@ export function ScoreRing({
     ]).start();
   }, [target, score, reduced, glow, sheen, sheenFade]);
 
+  /* A highlight that walks the filled arc every few seconds, for ever. The
+     score is the object people come back to look at; a still ring reads as a
+     screenshot of one. It is one interpolated value on the JS thread, and
+     reduce-motion switches it off entirely. */
+  const orbit = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduced || score == null) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(orbit, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.delay(1800),
+        Animated.timing(orbit, { toValue: 0, duration: 0, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [orbit, reduced, score]);
+
   const dashOffset = progress.interpolate({
     inputRange: [0, 100],
     outputRange: [circumference, 0],
@@ -140,6 +179,12 @@ export function ScoreRing({
   const sheenOffset = sheen.interpolate({
     inputRange: [0, 1],
     outputRange: [0, -sheenTravel],
+  });
+
+  const orbitLength = Math.min(arcLength, circumference * 0.07);
+  const orbitOffset = orbit.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -Math.max(0, arcLength - orbitLength)],
   });
 
   return (
@@ -168,9 +213,13 @@ export function ScoreRing({
 
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
         <Defs>
-          <LinearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={tierColor} />
-            <Stop offset="1" stopColor={tier === 'elite' ? colors.accent : tierColor} />
+          {/* Two real stops. It used to be the tier colour to itself for every
+              tier but Elite, which is a gradient in name only — and for the two
+              grey tiers it made the app's hero object a grey circle. */}
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={ringStart} />
+            <Stop offset="0.55" stopColor={ringEnd} />
+            <Stop offset="1" stopColor={tier === 'elite' ? colors.accent : ringStart} />
           </LinearGradient>
         </Defs>
 
@@ -186,7 +235,7 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="url(#scoreGradient)"
+          stroke={`url(#${gradientId})`}
           strokeWidth={stroke}
           strokeLinecap="round"
           fill="none"
@@ -195,6 +244,26 @@ export function ScoreRing({
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
+
+      {/* The permanent orbit. */}
+      {score != null && !reduced ? (
+        <View pointerEvents="none" style={{ position: 'absolute' }}>
+          <Svg width={size} height={size}>
+            <AnimatedCircle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={theme.alpha(colors.textOnBrand, 0.55)}
+              strokeWidth={stroke * 0.42}
+              strokeLinecap="round"
+              fill="none"
+              strokeDasharray={`${orbitLength} ${circumference}`}
+              strokeDashoffset={orbitOffset}
+              transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            />
+          </Svg>
+        </View>
+      ) : null}
 
       <Animated.View
         pointerEvents="none"

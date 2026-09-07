@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, Share, View } from 'react-native';
+import { Image, Pressable, Share, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -15,16 +15,20 @@ import {
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, tierForScore } from '@/theme/tokens';
+import { TierColors, tierForScore, tierGradient } from '@/theme/tokens';
 import {
+  AnimatedGradient,
   Avatar,
   Badge,
   Button,
   ConfirmSheet,
   Divider,
   IconButton,
+  Lightbox,
   ListItem,
+  Reveal,
   Sheet,
+  Shine,
   Text,
   useToast,
 } from '@/components/ui';
@@ -107,8 +111,18 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
   const [blocking, setBlocking] = useState(false);
   const [messageBlock, setMessageBlock] = useState<MessageBlockReason | null>(null);
   const [messageBusy, setMessageBusy] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
-  const tierColor = score ? TierColors[tierForScore(score.overall)] : colors.textMuted;
+  const tier = score ? tierForScore(score.overall) : null;
+  const tierColor = tier ? TierColors[tier] : colors.play.azure;
+
+  /* Whatever the person set. Failing that, the tier's own two colours, and for
+     somebody with no score at all a stable pick from their id — so a coach's
+     header is still *a* colour and never the absence of one. */
+  const cover = user?.cover_url ?? null;
+  const coverStops: readonly [string, string, string] = tier
+    ? [tierGradient(tier)[0], tierGradient(tier)[1], theme.alpha(tierColor, 0.9)]
+    : [theme.hueFor(user?.id), theme.hueFor(`${user?.id}-b`), colors.play.violet];
 
   const name = displayName(user?.full_name);
 
@@ -222,41 +236,91 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
 
   return (
     <View>
-      {/* Cover band — a whisper of the tier colour, not a paint job. */}
-      <LinearGradient
-        colors={[
-          theme.alpha(tierColor, colors.scheme === 'dark' ? 0.34 : 0.26),
-          theme.alpha(tierColor, 0.06),
-          colors.bg,
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ height: 128, borderBottomLeftRadius: radii.xl, borderBottomRightRadius: radii.xl }}
-      />
+      {/*
+        The wallpaper. It used to be a 26%-opacity wash of the tier colour over
+        the page background — and since two of the five tiers were grey, most
+        people's profiles opened on a grey band. Now it is either the photo they
+        chose or a full-strength gradient that moves.
+      */}
+      <View
+        style={{
+          height: 168,
+          borderBottomLeftRadius: radii.xl,
+          borderBottomRightRadius: radii.xl,
+          overflow: 'hidden',
+          backgroundColor: colors.surfaceAlt,
+        }}
+      >
+        {cover ? (
+          <Image
+            source={{ uri: cover }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+            testID="profile-cover"
+          />
+        ) : (
+          <AnimatedGradient
+            colors={coverStops}
+            period={14}
+            style={StyleSheet.absoluteFill}
+            testID="profile-cover"
+          />
+        )}
+
+        {/* The avatar and the name sit over the bottom edge, so it darkens. */}
+        <LinearGradient
+          colors={['transparent', theme.alpha(colors.scheme === 'dark' ? '#06050E' : '#161327', 0.42)]}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <Shine every={7} />
+      </View>
 
       <View style={{ paddingHorizontal: spacing.lg, marginTop: -48 }}>
-        <Avatar
-          uri={user?.avatar_url}
-          name={name}
-          size="xl"
-          score={score?.overall ?? null}
-          verified={user?.is_verified}
-        />
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}>
-          <Text variant="title" numberOfLines={2} style={{ flexShrink: 1 }}>
-            {name}
-          </Text>
-          {user?.is_verified ? (
-            <BadgeCheck size={20} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
-          ) : null}
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            borderRadius: 999,
+            padding: 3,
+            backgroundColor: colors.bg,
+          }}
+        >
+          <Avatar
+            uri={user?.avatar_url}
+            name={name}
+            size="xl"
+            score={score?.overall ?? null}
+            verified={user?.is_verified}
+            /* Tapping it opens the photo full size — the picture is the
+               introduction on a network like this one, and an 88pt circle is
+               not enough of it to recognise anyone by. Always tappable: with no
+               photo uploaded the viewer enlarges the monogram, which is better
+               than a tap that silently does nothing. */
+            onPress={() => setPhotoOpen(true)}
+            pressLabel={t('profile.viewPhotoA11y', { name })}
+            testID="profile-avatar"
+          />
         </View>
 
-        {meta ? (
-          <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
-            {meta}
-          </Text>
-        ) : null}
+        <Reveal>
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}
+          >
+            <Text variant="title" numberOfLines={2} style={{ flexShrink: 1 }}>
+              {name}
+            </Text>
+            {user?.is_verified ? (
+              <BadgeCheck size={20} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
+            ) : null}
+          </View>
+
+          {meta ? (
+            <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
+              {meta}
+            </Text>
+          ) : null}
+        </Reveal>
 
         {location ? (
           <View
@@ -269,22 +333,24 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
           </View>
         ) : null}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: spacing.sm,
-            marginTop: spacing.md,
-          }}
-        >
-          {ageText ? <Badge label={ageText} tone="neutral" /> : null}
-          {athlete?.level ? (
-            <Badge label={levelLabelI18n(t, athlete.level)} tone="neutral" />
-          ) : null}
-          {athlete?.is_open_to_offers ? (
-            <Badge label={t('profile.openToOffers')} tone="success" />
-          ) : null}
-        </View>
+        <Reveal index={1}>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: spacing.sm,
+              marginTop: spacing.md,
+            }}
+          >
+            {ageText ? <Badge label={ageText} tone="neutral" /> : null}
+            {athlete?.level ? (
+              <Badge label={levelLabelI18n(t, athlete.level)} tone="neutral" />
+            ) : null}
+            {athlete?.is_open_to_offers ? (
+              <Badge label={t('profile.openToOffers')} tone="success" />
+            ) : null}
+          </View>
+        </Reveal>
 
         {user?.bio ? (
           <Text variant="caption" tone="secondary" style={{ marginTop: spacing.md }}>
@@ -375,6 +441,14 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
           />
         </View>
       </View>
+
+      {/* ── The photo, full size ── */}
+      <Lightbox
+        visible={photoOpen}
+        uri={user?.avatar_url ?? null}
+        caption={name}
+        onClose={() => setPhotoOpen(false)}
+      />
 
       {/* ── Overflow menu ── */}
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={name} scrollable={false}>
