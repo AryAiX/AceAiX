@@ -141,6 +141,9 @@ export async function fetchFeedPosts(
     if (sportAuthorIds.length === 0) return [];
   }
 
+  const { data: blocks } = await supabase.rpc('get_blocked_user_ids');
+  const blockedIds = (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id);
+
   let query = supabase
     .from('posts')
     .select(`*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), ${athleteSelect}`)
@@ -152,18 +155,14 @@ export async function fetchFeedPosts(
   if (cursor) query = query.lt('created_at', cursor);
   if (authorIds) query = query.in('author_id', authorIds);
   if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
+  if (blockedIds.length > 0) {
+    query = query.not('author_id', 'in', `(${blockedIds.join(',')})`);
+  }
 
-  const [{ data, error }, { data: blocks }] = await Promise.all([
-    query,
-    supabase.rpc('get_blocked_user_ids'),
-  ]);
+  const { data, error } = await query;
   if (error || !data) return [];
 
-  const blockedIds = new Set(
-    (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
-  );
-  const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
-  const ids = visibleData.map((r: any) => r.id);
+  const ids = data.map((r: any) => r.id);
   const [{ data: likes }, { data: saves }] = await Promise.all([
     ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
@@ -172,7 +171,7 @@ export async function fetchFeedPosts(
   const likedIds = new Set((likes ?? []).map((l: any) => l.post_id));
   const savedIds = new Set((saves ?? []).map((s: any) => s.post_id));
 
-  const posts = visibleData.map((r: any) => mapRow(r, likedIds, savedIds));
+  const posts = data.map((r: any) => mapRow(r, likedIds, savedIds));
 
   // Sign media URLs
   return Promise.all(
