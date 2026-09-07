@@ -904,6 +904,7 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
     (sport && sport !== 'chess') ? userId : null
   );
   const [refreshing, setRefreshing] = React.useState(false);
+  const [syncMessage, setSyncMessage] = React.useState<{ text: string; error: boolean } | null>(null);
   const [matchRecords, setMatchRecords] = useState<Array<{ opp: string; date: string; rating: number; result: 'W' | 'D' | 'L' }>>([]);
   const [matchRecordsLoading, setMatchRecordsLoading] = useState(true);
 
@@ -929,17 +930,25 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
   async function handleChessRefresh() {
     if (!userId || (!profile?.chesscom_username && !profile?.lichess_username)) return;
     setRefreshing(true);
-    await triggerChessSyncFull(userId, profile?.chesscom_username, profile?.lichess_username);
-    await chessRefresh();
-    setRefreshing(false);
+    setSyncMessage(null);
+    try {
+      const result = await triggerChessSyncFull(userId, profile?.chesscom_username, profile?.lichess_username);
+      if (!result.ok) { setSyncMessage({ text: result.error ?? 'Chess sync failed.', error: true }); return; }
+      await chessRefresh();
+      setSyncMessage({ text: 'Chess performance synced.', error: false });
+    } finally { setRefreshing(false); }
   }
 
   async function handleFootballRefresh() {
     if (!userId || !profile?.football_api_player_id) return;
     setRefreshing(true);
-    await triggerFootballSync(userId, profile.football_api_player_id, undefined, profile?.league);
-    await footballRefresh();
-    setRefreshing(false);
+    setSyncMessage(null);
+    try {
+      const result = await triggerFootballSync(userId, profile.football_api_player_id, undefined, profile?.league);
+      if (!result.ok) { setSyncMessage({ text: result.error ?? result.reason ?? 'Football sync failed.', error: true }); return; }
+      await footballRefresh();
+      setSyncMessage({ text: 'Football performance synced.', error: false });
+    } finally { setRefreshing(false); }
   }
 
   useEffect(() => {
@@ -998,6 +1007,7 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
               </TouchableOpacity>
             </View>
           )}
+          {syncMessage && <Text style={[s.emptyText, { color: syncMessage.error ? Colors.error : Colors.success }]}>{syncMessage.text}</Text>}
         </View>
         <AnalyticsCard router={router} />
       </>
@@ -1010,6 +1020,7 @@ function PerformanceTab({ router, sport, userId, profile }: { router: any; sport
         <View style={s.card}>
           <SH title={`${footballStats.season} Season Stats`} color={Colors.accent} action="Full History" onAction={() => router.push('/(tabs)/performance' as any)} />
           <FootballStatsCard stats={footballStats} onRefresh={handleFootballRefresh} refreshing={refreshing} />
+          {syncMessage && <Text style={[s.emptyText, { color: syncMessage.error ? Colors.error : Colors.success }]}>{syncMessage.text}</Text>}
         </View>
       ) : (
         <View style={s.card}>

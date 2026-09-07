@@ -62,26 +62,34 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
   const [showForm, setShowForm] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
   const { profile } = useAuth();
+  const missingFootballIdentity = config?.sport === 'football' && !profile?.football_api_player_id;
+  const missingChessIdentity = config?.sport === 'chess' && !profile?.chesscom_username && !profile?.lichess_username;
+  const syncUnavailable = missingFootballIdentity || missingChessIdentity;
+  const canEditRecord = !record || record.source === 'self' || record.source === 'self_reported';
 
   async function handleSync() {
     setSyncing(true);
     setSyncError(null);
-    if (config?.sport === 'football') {
-      if (!profile?.football_api_player_id) {
-        setSyncError('Link your football player ID in Settings to enable auto-sync.');
-        setSyncing(false);
-        return;
+    setSyncSuccess(null);
+    try {
+      if (config?.sport === 'football') {
+        if (!profile?.football_api_player_id) {
+          setSyncError('A verified football player ID must be assigned before syncing.');
+          return;
+        }
+        const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
+        if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
+        else { await refresh(); setSyncSuccess('Football performance synced.'); }
+      } else {
+        const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
+        if (!ok) setSyncError(error);
+        else { await refresh(); setSyncSuccess('Chess performance synced.'); }
       }
-      const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
-      if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
-      else await refresh();
-    } else {
-      const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
-      if (!ok) setSyncError(error);
-      else await refresh();
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   }
 
   if (!config) {
@@ -127,9 +135,9 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           <View style={s.actionRow}>
             {config.supportsAutoSync && (
               <TouchableOpacity
-                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                style={[s.syncBtn, (syncing || syncUnavailable) && s.syncBtnDisabled]}
                 onPress={handleSync}
-                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+                disabled={syncing || syncUnavailable}
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
@@ -137,13 +145,16 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
                 }
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={s.editBtn} onPress={() => setShowForm(true)}>
-              <Text style={s.editBtnTxt}>Edit Stats</Text>
-            </TouchableOpacity>
+            {canEditRecord ? (
+              <TouchableOpacity style={s.editBtn} onPress={() => setShowForm(true)}>
+                <Text style={s.editBtnTxt}>Edit Stats</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={s.editBtn}><Text style={s.editBtnTxt}>Verified data · read only</Text></View>
+            )}
           </View>
-          {config.supportsAutoSync && config.sport === 'football' && !profile?.football_api_player_id && (
-            <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
-          )}
+          {missingFootballIdentity && <Text style={s.dividerTxt}>A verified football player ID must be assigned before syncing.</Text>}
+          {missingChessIdentity && <Text style={s.dividerTxt}>Add a Chess.com or Lichess username in Settings to enable auto-sync.</Text>}
         </>
       )}
 
@@ -154,18 +165,17 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
             <>
               <Text style={s.noDataBody}>{config.syncNote}</Text>
               <TouchableOpacity
-                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                style={[s.syncBtn, (syncing || syncUnavailable) && s.syncBtnDisabled]}
                 onPress={handleSync}
-                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+                disabled={syncing || syncUnavailable}
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
                   : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>{config.syncButtonLabel ?? 'Sync Now'}</Text></>
                 }
               </TouchableOpacity>
-              {config.sport === 'football' && !profile?.football_api_player_id && (
-                <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
-              )}
+              {missingFootballIdentity && <Text style={s.dividerTxt}>A verified football player ID must be assigned before syncing.</Text>}
+              {missingChessIdentity && <Text style={s.dividerTxt}>Add a Chess.com or Lichess username in Settings to enable auto-sync.</Text>}
               <Text style={s.dividerTxt}>— or enter manually —</Text>
             </>
           ) : (
@@ -189,6 +199,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
       )}
 
       {syncError && <Text style={s.syncError}>{syncError}</Text>}
+      {syncSuccess && <Text style={[s.syncError, { color: Colors.success }]}>{syncSuccess}</Text>}
     </View>
   );
 }

@@ -27,6 +27,8 @@ import SupportPage from './pages/SupportPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Athlete
 import AthleteDashboard from './pages/athlete/DashboardPage';
@@ -123,6 +125,8 @@ export default function Router() {
         {/* Auth */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
 
         {/* Role-based redirect */}

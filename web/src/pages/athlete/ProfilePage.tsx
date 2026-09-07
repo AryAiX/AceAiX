@@ -315,10 +315,12 @@ export default function AthleteProfilePage() {
             />
           </div>
           <span className="text-[11px] font-bold tabular" style={{ color: completeness >= 80 ? '#B8F135' : '#2F80ED' }}>{completeness}%</span>
-          <a href={`/athletes/${profile?.id}`} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-[11px] text-azure/70 hover:text-azure transition-colors ml-2">
-            Preview <ArrowUpRight size={10} />
-          </a>
+          {athlete?.id && (
+            <a href={`/athletes/${athlete.id}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-azure/70 hover:text-azure transition-colors ml-2">
+              Preview <ArrowUpRight size={10} />
+            </a>
+          )}
         </div>
       </div>
 

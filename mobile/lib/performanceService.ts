@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { edgeFunctionErrorMessage } from './edgeFunctionError';
 export { sourceLabel } from './formatting';
 
 export interface PerformanceRecord {
@@ -52,7 +53,8 @@ export async function triggerChessSync(
   const { data, error } = await supabase.functions.invoke('sync-chess', {
     body: { athlete_id, chesscom_username, lichess_username },
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: await edgeFunctionErrorMessage(error, 'Chess sync failed. Try again later.') };
+  if (data?.ok === false || data?.error) return { ok: false, error: data.error ?? 'Chess sync failed. Try again later.' };
   return { ok: true, error: null, stats: data?.stats };
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ShieldCheck, AlertCircle, Clock, FileText, Plus, Lock,
-  CheckCircle2, Heart, X, Loader2, Check, Activity,
+  CheckCircle2, Heart, X, Activity,
   ChevronRight, Upload, Eye, EyeOff, Sparkles,
   Stethoscope, Syringe, FlaskConical,
 } from 'lucide-react';
@@ -165,13 +165,9 @@ function ExpiryBar({ pct }: { pct: number }) {
 
 /* ── upload modal (UI-only — record creation deferred) ──────── */
 function UploadModal({ onClose }: { onClose: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
   async function submit() {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 900));
-    setSaving(false); setDone(true);
-    setTimeout(onClose, 900);
+    setError('Medical records must be issued by a verified medical partner. Athlete self-uploads cannot be marked as verified.');
   }
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
@@ -213,11 +209,12 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="px-6 pb-6">
-          <button onClick={submit} disabled={saving || done}
+          {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
+          <button onClick={submit}
             className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            style={{ background: done ? '#1FB57A' : '#2F80ED', color: '#fff', boxShadow: done ? '0 4px 20px rgba(31,181,122,0.4)' : '0 4px 20px rgba(47,128,237,0.35)' }}>
-            {saving ? <Loader2 size={14} className="animate-spin" /> : done ? <Check size={14} /> : <Upload size={14} />}
-            {saving ? 'Uploading…' : done ? 'Uploaded!' : 'Upload Record'}
+            style={{ background: '#2F80ED', color: '#fff', boxShadow: '0 4px 20px rgba(47,128,237,0.35)' }}>
+            <Upload size={14} />
+            Partner upload required
           </button>
         </div>
       </div>
@@ -316,7 +313,7 @@ export default function MedicalPage() {
             <button onClick={() => setShowUpload(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
               style={{ background: '#1FB57A', color: '#fff', boxShadow: '0 4px 20px rgba(31,181,122,0.40)' }}>
-              <Plus size={15} /> Add Record
+              <Plus size={15} /> How to add records
             </button>
           </div>
 
@@ -469,7 +466,7 @@ export default function MedicalPage() {
                   <span className="text-[11px] text-white/25">{records.length} records</span>
                   <button onClick={() => setShowUpload(true)}
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
-                    <Plus size={11} /> Upload
+                    <Plus size={11} /> How records are added
                   </button>
                 </div>
               </div>

@@ -3,11 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, TrendingUp, BarChart3, Target, Zap, X,
   Flame, Award, Calendar, ChevronRight, Check,
-  Loader2, Swords, Clock, Star,
+  Loader2, Swords, Clock, Star, RefreshCw, Link2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { normalizeAttributes } from '../../lib/profileData';
 import { listMatches, createMatch } from '../../api/portfolio';
+import { latestSyncedPerformance, syncChess, syncFootball } from '../../api/performanceSync';
 import type { MatchRecord } from '../../types';
 
 /* ── display shapes & derivations ──────────────────────────── */
@@ -112,6 +113,16 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
   async function handleSave() {
+    const goals = form.goals ? Number(form.goals) : 0;
+    const assists = form.assists ? Number(form.assists) : 0;
+    const minutes = form.minutes ? Number(form.minutes) : 0;
+    const rating = form.rating ? Number(form.rating) : null;
+    if (!Number.isInteger(goals) || goals < 0 || !Number.isInteger(assists) || assists < 0 ||
+        !Number.isInteger(minutes) || minutes < 0 || minutes > 300 ||
+        (rating !== null && (!Number.isFinite(rating) || rating < 0 || rating > 10))) {
+      setError('Enter valid non-negative stats. Minutes must be 0–300 and rating must be 0–10.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -121,10 +132,10 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
         opponent: form.opponent.trim() || null,
         competition: form.competition.trim() || null,
         result: form.result,
-        minutes_played: form.minutes ? parseInt(form.minutes, 10) : null,
-        goals: form.goals ? parseInt(form.goals, 10) : 0,
-        assists: form.assists ? parseInt(form.assists, 10) : 0,
-        stats: form.rating ? { rating: parseFloat(form.rating) } : {},
+        minutes_played: minutes,
+        goals,
+        assists,
+        stats: rating === null ? {} : { rating },
       });
       setSaving(false);
       setSaved(true);
@@ -217,7 +228,7 @@ function AddMatchModal({ athleteId, onClose, onSaved }: { athleteId: string; onC
 
         {/* footer */}
         <div className="px-6 pb-6">
-          {error && <p className="text-xs text-coral mb-3">{error}</p>}
+          {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
           <button onClick={handleSave} disabled={saving || saved}
             className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
             style={{
@@ -320,13 +331,24 @@ export default function PerformancePage() {
   const [showAdd, setShowAdd] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hoveredRow, setHoveredRow] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+  const sport = athlete?.sport?.trim().toLowerCase() ?? '';
+  const isChess = sport === 'chess';
+  const isFootball = sport === 'football' || sport === 'football (soccer)' || sport === 'soccer';
+  const supportsSync = isChess || isFootball;
 
   const { data: rawMatches = [] } = useQuery({
     queryKey: ['matches', athleteId],
     queryFn: () => listMatches(athleteId!),
     enabled: !!athleteId,
+  });
+  const { data: syncedRecord, isLoading: syncedLoading } = useQuery({
+    queryKey: ['synced-performance', athlete?.user_id, sport],
+    queryFn: () => latestSyncedPerformance(athlete!.user_id, isChess ? 'Chess' : 'Football'),
+    enabled: !!athlete?.user_id && supportsSync,
   });
 
   const matches: MatchView[] = rawMatches.map(toMatchView);
@@ -358,6 +380,27 @@ export default function PerformancePage() {
       }));
 
   const winRate = matches.length ? Math.round((wins / matches.length) * 100) : 0;
+
+  async function handleSync() {
+    if (!athlete?.user_id) return;
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      if (isChess) {
+        await syncChess({ userId: athlete.user_id, chesscomUsername: athlete.chesscom_username, lichessUsername: athlete.lichess_username });
+      } else if (athlete.football_api_player_id) {
+        await syncFootball({ userId: athlete.user_id, playerId: athlete.football_api_player_id });
+      } else {
+        throw new Error('A verified football player ID must be assigned before syncing.');
+      }
+      await queryClient.invalidateQueries({ queryKey: ['synced-performance', athlete.user_id, sport] });
+      setSyncMessage({ text: 'Performance data synced.', error: false });
+    } catch (error) {
+      setSyncMessage({ text: error instanceof Error ? error.message : 'Performance sync failed.', error: true });
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   return (
     <>
@@ -438,6 +481,38 @@ export default function PerformancePage() {
             <span className="text-[11px] text-volt font-semibold ml-1">Avg {avgRating} rating · {winRate}% win rate</span>
           </div>
         </div>
+
+        {supportsSync && (
+          <section className="card p-5" aria-labelledby="connected-performance-title">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-azure/10 text-azure flex items-center justify-center"><Link2 size={17} /></div>
+                <div>
+                  <h2 id="connected-performance-title" className="text-sm font-bold text-white">
+                    {isChess ? 'Connected chess data' : 'Connected football data'}
+                  </h2>
+                  <p className="text-xs text-white/40 mt-0.5">
+                    {isChess
+                      ? athlete?.chesscom_username || athlete?.lichess_username
+                        ? 'Sync ratings from your saved Chess.com or Lichess account.'
+                        : 'Add a Chess.com or Lichess username in mobile Settings before syncing.'
+                      : athlete?.football_api_player_id
+                        ? `Verified player ID ${athlete.football_api_player_id}`
+                        : 'A verified API-Football player ID must be assigned before syncing.'}
+                  </p>
+                  {syncedRecord && <p className="text-[11px] text-emerald mt-1">Last synced {new Date(syncedRecord.last_synced_at).toLocaleString()}</p>}
+                </div>
+              </div>
+              <button type="button" onClick={handleSync}
+                disabled={syncing || syncedLoading || (isChess && !athlete?.chesscom_username && !athlete?.lichess_username) || (isFootball && !athlete?.football_api_player_id)}
+                className="btn-secondary justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                {syncing ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                {syncing ? 'Syncing…' : 'Sync now'}
+              </button>
+            </div>
+            {syncMessage && <p role={syncMessage.error ? 'alert' : 'status'} className={`text-xs mt-3 ${syncMessage.error ? 'text-coral' : 'text-emerald'}`}>{syncMessage.text}</p>}
+          </section>
+        )}
 
         {/* ── SEASON STAT TILES ───────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
