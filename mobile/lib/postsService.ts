@@ -112,7 +112,7 @@ function mapRow(row: any, likedIds: Set<string>, savedIds: Set<string>): FeedPos
 
 export async function fetchFeedPosts(
   currentUserId: string,
-  cursor?: string,
+  cursor?: { created_at: string; id: string },
   limit = 20,
   mode: 'for_you' | 'following' | 'latest' = 'latest',
   viewerSport?: string | null,
@@ -149,10 +149,13 @@ export async function fetchFeedPosts(
     .select(`*, author:user_profiles!posts_author_id_fkey(full_name, avatar_url, is_verified), ${athleteSelect}`)
     .in('type', ['post', 'standard'])
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit);
 
   if (authorId) query = query.eq('author_id', authorId);
-  if (cursor) query = query.lt('created_at', cursor);
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`);
+  }
   if (authorIds) query = query.in('author_id', authorIds);
   if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
   if (blockedIds.length > 0) {

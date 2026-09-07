@@ -46,7 +46,7 @@ export default function FeedScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterKey>('for_you');
 
-  const cursorRef  = useRef<string | undefined>(undefined);
+  const cursorRef  = useRef<{ created_at: string; id: string } | undefined>(undefined);
   const hasMoreRef = useRef(true);
   const indicatorX = useRef(new Animated.Value(0)).current;
 
@@ -62,7 +62,10 @@ export default function FeedScreen() {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
     const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
-    if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
+    if (data.length > 0) {
+      const last = data[data.length - 1];
+      cursorRef.current = { created_at: last.created_at, id: last.id };
+    }
     hasMoreRef.current = data.length === 20;
     setPosts(prev => reset ? data : [...prev, ...data]);
   }, [activeFilter, profile?.sport, user]);
