@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { RefreshCw, ChevronDown, Zap } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
@@ -63,6 +64,12 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const { profile } = useAuth();
+
+  useFocusEffect(
+    useCallback(() => {
+      setSyncError(null);
+    }, [])
+  );
 
   async function handleSync() {
     setSyncing(true);
@@ -183,7 +190,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           athlete_id={userId}
           initialStats={record?.stats}
           initialSeason={record?.season_or_period}
-          onSaved={() => { setShowForm(false); refresh(); }}
+          onSaved={() => { setShowForm(false); setSyncError(null); refresh(); }}
           onCancel={() => setShowForm(false)}
         />
       )}
