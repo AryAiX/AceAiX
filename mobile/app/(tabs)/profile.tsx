@@ -1641,7 +1641,7 @@ const s = StyleSheet.create({
   stickyTabTxt: { fontFamily: Typography.family.medium, fontSize: 11, color: Colors.textMuted },
 
   // Cover
-  coverWrap: { height: 240, position: 'relative', overflow: 'hidden' },
+  coverWrap: { height: 136, position: 'relative', overflow: 'hidden' },
   scanLine:  { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: `${Colors.primary}30` },
 
   // Performance score badge
