@@ -105,4 +105,36 @@ export const score = {
   tipsEmptyTitle: 'Plus rien sur la liste',
   tipsEmptyBody:
     'Tu as fait tout ce qu’on pouvait te conseiller. Continue à jouer et à poster.',
+
+  // ── Le simulateur (app/score.tsx) ──────────────────────────────────────────
+  simTitle: 'Qu’est-ce que ça demanderait ?',
+  simBody:
+    'Bouge un curseur pour voir où le nombre atterrirait. La projection fait le même calcul que ton vrai score, sur le serveur, donc elle ne peut pas être discrètement en désaccord avec lui.',
+  simProjected: 'Projeté',
+  simNow: 'Maintenant',
+  simNoChange: 'Bouge quelque chose pour voir la différence.',
+  simReset: 'Réinitialiser',
+  simUnlocksTier: 'Ça te mettrait dans le palier {{tier}}.',
+  simGain_one: '+{{count}} point',
+  simGain_many: '+{{count}} points',
+  simGain_other: '+{{count}} points',
+  simHonest: 'Une projection, pas une promesse — elle suppose que le travail est réel et que les résultats tiennent.',
+
+  simVideos: 'Highlights',
+  simMatches: 'Matchs notés cette année',
+  simVerified: 'Dont vérifiés',
+  simEndorsements: 'Recommandations',
+  simExpert: 'Dont de coachs ou de clubs',
+  simPosts: 'Publications ce mois-ci',
+  simFollowers: 'Abonnés',
+  simProfile: 'Champs du profil remplis',
+  simAccountVerified: 'Compte vérifié',
+  simClubLinked: 'Club relié',
+
+  // ── La lecture écrite (supabase/functions/talent-insights) ─────────────────
+  insightTitle: 'Lecture de ton profil',
+  insightLoading: 'Analyse de tes chiffres…',
+  insightUnavailable:
+    'Le résumé écrit n’est pas disponible pour l’instant. Les piliers ci-dessous disent la même chose en chiffres.',
+  insightRefresh: 'Le réécrire',
 };

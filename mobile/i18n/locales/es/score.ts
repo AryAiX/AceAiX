@@ -106,4 +106,37 @@ export const score = {
   tipsEmptyTitle: 'No queda nada en la lista',
   tipsEmptyBody:
     'Ya hiciste todo lo que te sugeriríamos ahora mismo. Sigue jugando y sigue publicando.',
+
+  // ── El simulador (app/score.tsx) ───────────────────────────────────────────
+  simTitle: '¿Qué haría falta?',
+  simBody:
+    'Mueve un control para ver dónde quedaría el número. La proyección hace el mismo cálculo que tu puntuación real, en el servidor, así que no puede contradecirla en silencio.',
+  simProjected: 'Proyectada',
+  simNow: 'Ahora',
+  simNoChange: 'Mueve algo para ver la diferencia.',
+  simReset: 'Restablecer',
+  simUnlocksTier: 'Eso te pondría en {{tier}}.',
+  simGain_one: '+{{count}} punto',
+  simGain_many: '+{{count}} puntos',
+  simGain_other: '+{{count}} puntos',
+  simHonest:
+    'Es una proyección, no una promesa: da por hecho que el trabajo es real y que los resultados se sostienen.',
+
+  simVideos: 'Clips destacados',
+  simMatches: 'Partidos registrados este año',
+  simVerified: 'De esos, verificados',
+  simEndorsements: 'Avales',
+  simExpert: 'De esos, de entrenadores o clubes',
+  simPosts: 'Publicaciones este mes',
+  simFollowers: 'Seguidores',
+  simProfile: 'Campos del perfil rellenados',
+  simAccountVerified: 'Cuenta verificada',
+  simClubLinked: 'Club vinculado',
+
+  // ── La lectura escrita (supabase/functions/talent-insights) ────────────────
+  insightTitle: 'Lectura de tu perfil',
+  insightLoading: 'Repasando tus números…',
+  insightUnavailable:
+    'El resumen escrito no está disponible ahora mismo. Los pilares de abajo dicen lo mismo con números.',
+  insightRefresh: 'Escribirlo otra vez',
 };

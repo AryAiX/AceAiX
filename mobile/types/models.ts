@@ -349,7 +349,7 @@ export interface AppNotification {
   body: string | null;
   is_read: boolean;
   actor_id: string | null;
-  entity_type: 'user' | 'post' | 'conversation' | 'opportunity' | 'score' | null;
+  entity_type: 'user' | 'post' | 'conversation' | 'opportunity' | 'score' | 'challenge' | null;
   entity_id: string | null;
   actor_count: number;
   data: Record<string, unknown>;
@@ -528,3 +528,150 @@ export const ACHIEVEMENT_KEYS = [
 ] as const;
 
 export type AchievementKey = (typeof ACHIEVEMENT_KEYS)[number];
+
+// ── Teams somebody supports ──────────────────────────────────────────────────
+/**
+ * Fandom, not employment. `Team` is a club or national side a person likes;
+ * where an athlete actually plays is `AthleteProfile.current_club`, and the two
+ * must never be shown in the same place.
+ */
+export interface Team {
+  id: string;
+  name: string;
+  short_name: string | null;
+  sport: string;
+  country: string | null;
+  city?: string | null;
+  crest_url: string | null;
+  is_curated?: boolean;
+  followers?: number;
+  rank?: number;
+}
+
+export interface TeamFan {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  sport: string | null;
+  position: string | null;
+  /** Null for anyone under 18 — read `age_band` instead. */
+  age: number | null;
+  age_band: string | null;
+  talent_score: number | null;
+  tier: Tier | null;
+  is_verified: boolean;
+}
+
+// ── Challenges ───────────────────────────────────────────────────────────────
+export type ChallengeStatus = 'open' | 'judging' | 'closed';
+export type EntryStatus = 'submitted' | 'verified' | 'rejected';
+
+export interface Challenge {
+  id: string;
+  title: string;
+  brief: string;
+  sport: string;
+  /** Null on a judged challenge, where the coach simply orders the entries. */
+  metric_label: string | null;
+  metric_unit: string | null;
+  metric_better: 'higher' | 'lower';
+  closes_at: string;
+  status: ChallengeStatus;
+  entry_count: number;
+  age_min: number | null;
+  age_max: number | null;
+  setter_id: string;
+  setter_name: string | null;
+  setter_avatar: string | null;
+  setter_verified: boolean;
+  org_id: string | null;
+  org_name: string | null;
+  my_entry_id: string | null;
+  my_entry_status: EntryStatus | null;
+}
+
+export interface ChallengeEntry {
+  entry_id: string;
+  rank: number;
+  athlete_id: string;
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  age: number | null;
+  age_band: string | null;
+  sport: string | null;
+  position: string | null;
+  talent_score: number | null;
+  tier: Tier | null;
+  media_id: string;
+  media_url: string | null;
+  thumbnail_url: string | null;
+  /** What the athlete says they did. */
+  claimed_value: number | null;
+  /** What a coach confirmed, or null while it is still just a claim. */
+  verified_value: number | null;
+  status: EntryStatus;
+  note: string | null;
+  created_at: string;
+}
+
+// ── Who has been looking ─────────────────────────────────────────────────────
+export interface ProfileViewer {
+  user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole;
+  organization: string | null;
+  views: number;
+  last_viewed_at: string;
+}
+
+export interface ViewDigest {
+  is_athlete: boolean;
+  days: number;
+  total: number;
+  /** Views from coaches, scouts and clubs — the ones worth telling them about. */
+  professional: number;
+  clubs: number;
+  new_since_seen: number;
+  /** Only verified professionals are named; everybody else is in `unnamed`. */
+  named: ProfileViewer[];
+  unnamed: number;
+}
+
+// ── "What would it take?" ────────────────────────────────────────────────────
+/** The inputs the simulator will move. Anything else is read from real rows. */
+export const SIMULATABLE = [
+  'profile_fields_filled',
+  'matches_last_year',
+  'matches_verified',
+  'goal_contributions',
+  'media_items',
+  'video_items',
+  'endorsements',
+  'endorsements_expert',
+  'posts_last_30_days',
+  'followers',
+  'account_verified',
+  'club_linked',
+] as const;
+
+export type SimulatableInput = (typeof SIMULATABLE)[number];
+
+export interface SimulatedScore {
+  overall: number;
+  tier: Tier;
+  profile_score: number;
+  performance_score: number;
+  media_score: number;
+  credibility_score: number;
+  engagement_score: number;
+  inputs: Record<string, number | boolean>;
+}
+
+export interface Simulation {
+  current: SimulatedScore;
+  projected: SimulatedScore;
+  limits: { profile_fields_total: number; keys: SimulatableInput[] };
+}

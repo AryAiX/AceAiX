@@ -95,4 +95,34 @@ export const score = {
   tipsEmptyTitle: '清单上没有剩下的了',
   tipsEmptyBody:
     '眼下我们能想到的你都做完了。继续练，继续发。',
+
+  // ── 试算器（app/score.tsx） ────────────────────────────────────────────────
+  simTitle: '要做到什么程度？',
+  simBody:
+    '拖动滑块，看看数字会落在哪里。这个预估在服务器上跑的是和你真实分数一模一样的算法，所以它不会悄悄给出不一样的说法。',
+  simProjected: '预估',
+  simNow: '现在',
+  simNoChange: '动一下滑块，就能看到差别。',
+  simReset: '重置',
+  simUnlocksTier: '这样你会进入{{tier}}段位。',
+  simGain_other: '+{{count}}分',
+  simHonest: '这是预估，不是承诺 —— 它假设这些练习是真做了的，成绩也站得住。',
+
+  simVideos: '集锦短片',
+  simMatches: '今年记录的比赛',
+  simVerified: '其中已核实的',
+  simEndorsements: '推荐',
+  simExpert: '其中来自教练或俱乐部的',
+  simPosts: '本月发的动态',
+  simFollowers: '粉丝',
+  simProfile: '已填写的资料项',
+  simAccountVerified: '账号已认证',
+  simClubLinked: '已关联俱乐部',
+
+  // ── 文字解读（supabase/functions/talent-insights） ─────────────────────────
+  insightTitle: '解读你的资料',
+  insightLoading: '正在梳理你的数据…',
+  insightUnavailable:
+    '文字总结现在拿不到。下面的几个维度，用数字说的是同一件事。',
+  insightRefresh: '重新写一遍',
 };

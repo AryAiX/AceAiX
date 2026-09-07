@@ -5,6 +5,9 @@ import { onboarding } from './onboarding';
 import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
+import { challenges } from './challenges';
+import { teams } from './teams';
+import { views } from './views';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -30,6 +33,9 @@ export const en = {
   feed,
   profile,
   score,
+  challenges,
+  teams,
+  views,
   progress,
   discover,
   opportunities,

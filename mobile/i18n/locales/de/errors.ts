@@ -32,4 +32,13 @@ export const errors = {
   emailInUse: 'Diese E-Mail wird schon genutzt. Versuch, dich anzumelden.',
   passwordTooShort: 'Wähle ein Passwort mit mindestens 8 Zeichen.',
   tooManyAttempts: 'Zu viele Versuche. Warte ein paar Minuten und versuch es noch einmal.',
+
+  // Challenges und Fansein
+  challengeClosed: 'Diese Aufgabe ist beendet.',
+  challengeNotAllowed: 'Nur geprüfte Trainer und Vereine können eine Aufgabe stellen.',
+  clipRequired: 'Wähl zuerst einen deiner eigenen öffentlichen Clips.',
+  ageOutOfRange: 'Diese Aufgabe ist für eine andere Altersgruppe.',
+  favoriteTeamsMax: 'Fünf Teams sind die Grenze — nimm eins weg, um ein anderes hinzuzufügen.',
+  profileIncomplete: 'Mach zuerst dein Sportlerprofil fertig.',
+  notAnAthlete: 'Nur Sportler haben einen Talent Score.',
 };

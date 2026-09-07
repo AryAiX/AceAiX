@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { en } from '@/i18n/locales/en';
 import { LANGUAGES } from '@/i18n/languages';
@@ -214,3 +217,64 @@ for (const lang of LANGUAGES.filter((l) => l.code !== 'en')) {
     });
   });
 }
+
+// ── Every key a screen asks for exists ───────────────────────────────────────
+/**
+ * The type system guarantees the seven catalogues agree with each other. It
+ * does not guarantee that `t('profile.tabMatches')` names a key any of them
+ * has — `t` takes a string, so a typo or a renamed key falls through and the
+ * raw path renders on screen, in production, in every language at once.
+ *
+ * This walks the source for literal `t('…')` calls and checks each against
+ * English. Composed keys (`t(someVariable)`, template literals) are outside
+ * what a regex can see and are skipped deliberately rather than guessed at.
+ */
+describe('keys the app actually asks for', () => {
+  const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+  const DIRS = ['app', 'components', 'hooks', 'lib', 'providers'];
+
+  function sources(dir: string, found: string[] = []): string[] {
+    if (!fs.existsSync(dir)) return found;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) sources(full, found);
+      else if (/\.tsx?$/.test(entry.name)) found.push(full);
+    }
+    return found;
+  }
+
+  const used = new Map<string, string>();
+  for (const dir of DIRS) {
+    for (const file of sources(path.join(ROOT, dir))) {
+      const src = fs.readFileSync(file, 'utf8');
+      for (const m of src.matchAll(/\bt\(\s*'([a-zA-Z0-9_]+\.[a-zA-Z0-9_.]+)'/g)) {
+        if (!used.has(m[1])) used.set(m[1], path.relative(ROOT, file));
+      }
+    }
+  }
+
+  it('finds the calls at all, so a silent regex failure is not a pass', () => {
+    expect(used.size).toBeGreaterThan(200);
+  });
+
+  it.each([...used.entries()])('%s exists in English (%s)', (key) => {
+    /* Plural calls name the stem; the catalogue holds the CLDR variants. */
+    const direct = key.split('.').reduce<unknown>(
+      (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),
+      en,
+    );
+    if (typeof direct === 'string') return;
+
+    const parts = key.split('.');
+    const stem = parts.pop()!;
+    const ns = parts.reduce<unknown>(
+      (node, part) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[part] : undefined),
+      en,
+    );
+    const plural =
+      ns && typeof ns === 'object' &&
+      Object.keys(ns as Record<string, unknown>).some((k) => k.startsWith(`${stem}_`));
+
+    expect(plural, `${key} is not in the English catalogue`).toBe(true);
+  });
+});

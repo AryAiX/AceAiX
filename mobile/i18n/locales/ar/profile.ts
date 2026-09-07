@@ -301,4 +301,14 @@ export const profile = {
   useTypedCountry: 'استخدام “{{country}}”',
   useTypedCountryHint: 'ليست في القائمة؟ أضفها بنفسك.',
   countryTypeToAdd: 'ابدأ الكتابة لإضافة دولتك.',
+
+  // ── بطاقة اللاعب ──────────────────────────────────────────────────────────
+  playerCard: 'بطاقة اللاعب',
+  playerCardHint: 'بطاقة يمكنك حفظها ونشرها.',
+  playerCardBody: 'كل ما يبحث عنه الكشّاف أولًا، في صورة واحدة.',
+  playerCardSaved: 'تم الحفظ.',
+  playerCardShared: 'البطاقة جاهزة للمشاركة.',
+  playerCardFailed: 'تعذّر إنشاء البطاقة. حاول بعد قليل.',
+  playerCardShare: 'مشاركة',
+  playerCardSave: 'حفظ الصورة',
 };

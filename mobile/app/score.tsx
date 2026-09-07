@@ -22,6 +22,8 @@ import {
   useToast,
 } from '@/components/ui';
 import { PillarList } from '@/components/profile/PillarList';
+import { ScoreInsight } from '@/components/score/ScoreInsight';
+import { ScoreSimulator } from '@/components/score/ScoreSimulator';
 import { tierLabel } from '@/components/profile/ScoreCard';
 import { TipList } from '@/components/profile/TipList';
 import { TierProgress } from '@/components/celebrate/TierProgress';
@@ -236,6 +238,11 @@ export default function ScoreScreen() {
           </Card>
         )}
       </View>
+
+      {/* ── The written read, then the what-if ── */}
+      <ScoreInsight />
+
+      <ScoreSimulator />
 
       {/* ── Pillars ── */}
       <View>

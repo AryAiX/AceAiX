@@ -32,4 +32,13 @@ export const errors = {
   emailInUse: 'Un compte utilise déjà cet e-mail. Essaie de te connecter.',
   passwordTooShort: 'Choisis un mot de passe d’au moins 8 caractères.',
   tooManyAttempts: 'Trop de tentatives. Attends quelques minutes et réessaie.',
+
+  // Défis et équipes supportées
+  challengeClosed: 'Ce défi est terminé.',
+  challengeNotAllowed: 'Seuls les coachs et les clubs vérifiés peuvent proposer un défi.',
+  clipRequired: 'Choisis d’abord un de tes clips publics.',
+  ageOutOfRange: 'Ce défi s’adresse à une autre catégorie d’âge.',
+  favoriteTeamsMax: 'Cinq équipes, c’est la limite — retires-en une pour en ajouter une autre.',
+  profileIncomplete: 'Complète d’abord ton profil d’athlète.',
+  notAnAthlete: 'Seuls les athlètes ont un Score Talent.',
 };

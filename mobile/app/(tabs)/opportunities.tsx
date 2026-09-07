@@ -3,6 +3,8 @@ import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Bookmark,
+  ChevronRight,
+  Flame,
   Inbox,
   Plus,
   Send,
@@ -37,7 +39,7 @@ import {
 } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { recommendedOpportunities, toggleSaveOpportunity } from '@/lib/api';
+import { openChallenges, recommendedOpportunities, toggleSaveOpportunity } from '@/lib/api';
 import {
   allApplicants,
   myApplicationsDetailed,
@@ -530,6 +532,30 @@ function RecruiterOpportunities() {
   );
 }
 
+/** One row into the challenge list, with this week's count. */
+function ChallengesLink() {
+  const t = useT();
+  const theme = useTheme();
+  const router = useRouter();
+  const { data } = useAsync(() => openChallenges(null, 5, 0), [], { refetchOnFocus: true });
+  const open = (data ?? []).filter((c) => c.status === 'open').length;
+
+  return (
+    <Card padded onPress={() => router.push(Routes.challenges)} tone="alt">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <Flame size={20} color={theme.colors.primary} />
+        <View style={{ flex: 1 }}>
+          <Text variant="bodyStrong">{t('challenges.title')}</Text>
+          <Text variant="caption" tone="muted" numberOfLines={1}>
+            {open > 0 ? t('challenges.entries', { count: open }) : t('challenges.subtitle')}
+          </Text>
+        </View>
+        <ChevronRight size={18} color={theme.colors.textMuted} />
+      </View>
+    </Card>
+  );
+}
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 export default function OpportunitiesScreen() {
   const t = useT();
@@ -558,6 +584,13 @@ export default function OpportunitiesScreen() {
         }
         large
       />
+      {/* Challenges live next to trials because they answer the same question
+          — "what can I do to get seen?" — and one of them is available to an
+          athlete with no contacts at all. */}
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.md }}>
+        <ChallengesLink />
+      </View>
+
       {isRecruiter ? <RecruiterOpportunities /> : <AthleteOpportunities />}
     </Screen>
   );

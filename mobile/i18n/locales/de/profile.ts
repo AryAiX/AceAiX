@@ -277,4 +277,14 @@ export const profile = {
   useTypedCountry: '„{{country}}“ nehmen',
   useTypedCountryHint: 'Nicht in der Liste? Trag es selbst ein.',
   countryTypeToAdd: 'Tipp los, um dein Land einzutragen.',
+
+  // ── Die Spielerkarte ───────────────────────────────────────────────────────
+  playerCard: 'Spielerkarte',
+  playerCardHint: 'Eine Karte zum Speichern und Posten.',
+  playerCardBody: 'Alles, worauf ein Scout zuerst schaut, in einem Bild.',
+  playerCardSaved: 'Gespeichert.',
+  playerCardShared: 'Karte ist bereit zum Teilen.',
+  playerCardFailed: 'Die Karte ließ sich nicht erstellen. Versuch es gleich noch einmal.',
+  playerCardShare: 'Teilen',
+  playerCardSave: 'Bild speichern',
 };

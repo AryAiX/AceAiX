@@ -381,6 +381,131 @@ on conflict (user_id) do update set
 -- ------------------------------------------------------------
 -- Recompute every score now that the evidence is in place
 -- ------------------------------------------------------------
+
+-- ============================================================
+-- Fandom, challenges and the people who have been looking
+-- ============================================================
+
+-- Two teams get fixed ids so demo deep links and the recorded preview have a
+-- team page to point at. Reference data normally lets the database choose.
+update public.teams set id = 'd1000000-0000-4000-8000-000000000001'
+  where name = 'Real Madrid' and sport = 'Football';
+update public.teams set id = 'd1000000-0000-4000-8000-000000000002'
+  where name = 'Al Ain FC' and sport = 'Football';
+
+-- Who they support. Layla's Real Madrid shirt is not her club; Al Jadaf is.
+insert into public.favorite_teams (user_id, team_id, rank)
+select u.user_id, t.id, u.rank
+from (values
+  ('a0000000-0000-4000-8000-000000000001'::uuid, 'Real Madrid',   1),
+  ('a0000000-0000-4000-8000-000000000001'::uuid, 'Al Ain FC',     2),
+  ('a0000000-0000-4000-8000-000000000002'::uuid, 'Al Hilal SFC',  1),
+  ('a0000000-0000-4000-8000-000000000002'::uuid, 'Liverpool FC',  2),
+  ('a0000000-0000-4000-8000-000000000003'::uuid, 'Persepolis FC', 1),
+  ('a0000000-0000-4000-8000-000000000004'::uuid, 'Iran',          1),
+  ('a0000000-0000-4000-8000-000000000005'::uuid, 'Los Angeles Lakers', 1),
+  ('a0000000-0000-4000-8000-000000000005'::uuid, 'Nigeria',       2),
+  ('a0000000-0000-4000-8000-000000000006'::uuid, 'Esteghlal FC',  1),
+  ('b0000000-0000-4000-8000-000000000001'::uuid, 'FC Porto',      1)
+) as u(user_id, team_name, rank)
+join public.teams t on t.name = u.team_name and t.is_curated
+on conflict do nothing;
+
+update public.user_profiles set favorite_venue = 'Santiago Bernabéu'
+  where id = 'a0000000-0000-4000-8000-000000000001';
+update public.user_profiles set favorite_venue = 'Kingdom Arena'
+  where id = 'a0000000-0000-4000-8000-000000000002';
+update public.user_profiles set favorite_venue = 'Azadi Stadium'
+  where id in ('a0000000-0000-4000-8000-000000000003',
+               'a0000000-0000-4000-8000-000000000004',
+               'a0000000-0000-4000-8000-000000000006');
+update public.user_profiles set favorite_venue = 'Crypto.com Arena'
+  where id = 'a0000000-0000-4000-8000-000000000005';
+
+
+-- A clip each for the athletes who enter a challenge below. Without footage
+-- there is nothing to enter with, and nothing for the media pillar to see.
+insert into public.athlete_media
+  (athlete_id, title, description, media_type, storage_url, thumbnail_url,
+   duration_seconds, transcode_status, is_public, views_count)
+select ap.id, v.title, v.description, 'highlight_reel',
+       'posts/demo/' || v.slug || '.mp4', 'posts/demo/' || v.slug || '.jpg',
+       v.seconds, 'ready', true, v.views
+from (values
+  ('a0000000-0000-4000-8000-000000000002'::uuid, 'Keep-ups on the roof pitch',
+   'One take, Thursday evening.', 'omar-keepups', 34, 41),
+  ('a0000000-0000-4000-8000-000000000003'::uuid, 'Ball control drill',
+   'Thirty seconds, feet only.', 'yusuf-control', 31, 18),
+  ('a0000000-0000-4000-8000-000000000005'::uuid, 'Pull-up jumper, both sides',
+   'Practice, no defender.', 'daniel-jumper', 46, 12)
+) as v(user_id, title, description, slug, seconds, views)
+join public.athlete_profiles ap on ap.user_id = v.user_id
+where not exists (select 1 from public.athlete_media m where m.athlete_id = ap.id);
+
+-- Two challenges: one measured, one judged.
+insert into public.challenges (
+  id, created_by, organization_id, sport, title, brief, rules,
+  metric_label, metric_unit, metric_better, age_min, age_max, closes_at
+) values
+  ('c1000000-0000-4000-8000-000000000001',
+   'b0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   'Football',
+   'Thirty seconds of keep-ups',
+   'One take, feet and thighs only, phone on the ground so we can see your whole body. Count out loud.',
+   'No cuts. If the ball touches the floor the attempt is over — send the best of three, not a montage.',
+   'Touches', 'touches', 'higher', 13, 19,
+   now() + interval '5 days'),
+  ('c1000000-0000-4000-8000-000000000002',
+   'b0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   'Football',
+   'First touch under pressure',
+   'Have someone throw or pass you five balls at pace. Kill each one and move it into space in two touches.',
+   'Judged, not measured: we are watching the second touch, not the first.',
+   null, null, 'higher', 13, 21,
+   now() + interval '12 days')
+on conflict (id) do nothing;
+
+-- Entries, using clips the athletes already have.
+insert into public.challenge_entries
+  (challenge_id, athlete_id, media_id, claimed_value, note, status, verified_value, verified_by, verified_at)
+select
+  'c1000000-0000-4000-8000-000000000001',
+  ap.id,
+  (select m.id from public.athlete_media m
+    where m.athlete_id = ap.id and m.is_public
+      and m.media_type in ('video','highlight_reel')
+    order by m.created_at limit 1),
+  v.claimed, v.note, v.status, v.verified,
+  case when v.status = 'verified' then 'b0000000-0000-4000-8000-000000000001'::uuid end,
+  case when v.status = 'verified' then now() - interval '1 day' end
+from (values
+  ('a0000000-0000-4000-8000-000000000001'::uuid, 214, 'Best of three. Left foot is still the weak one.', 'verified', 214),
+  ('a0000000-0000-4000-8000-000000000002'::uuid, 168, 'Windy on the roof pitch.',                        'verified', 161),
+  ('a0000000-0000-4000-8000-000000000003'::uuid, 141, null,                                              'submitted', null)
+) as v(user_id, claimed, note, status, verified)
+join public.athlete_profiles ap on ap.user_id = v.user_id
+where exists (
+  select 1 from public.athlete_media m
+  where m.athlete_id = ap.id and m.is_public and m.media_type in ('video','highlight_reel')
+)
+on conflict do nothing;
+
+-- Somebody has been reading Layla's profile. This is what the digest is for.
+insert into public.profile_views
+  (athlete_id, viewer_user_id, viewer_name, viewer_role, viewer_org, viewer_verified, created_at)
+select ap.id, v.viewer, v.name, v.role, v.org, v.verified, now() - v.ago
+from (values
+  ('b0000000-0000-4000-8000-000000000001'::uuid, 'Marco Silva',    'coach', 'Al Jadaf Academy',   true,  interval '2 hours'),
+  ('b0000000-0000-4000-8000-000000000001'::uuid, 'Marco Silva',    'coach', 'Al Jadaf Academy',   true,  interval '3 days'),
+  ('c0000000-0000-4000-8000-000000000001'::uuid, 'Al Jadaf Academy','club', 'Al Jadaf Academy',   true,  interval '1 day'),
+  ('b0000000-0000-4000-8000-000000000002'::uuid, 'Nadia Rahman',   'scout', 'Tehran Youth Academy', true, interval '4 days'),
+  (null,                                          'Someone',       'athlete', null,               false, interval '5 days'),
+  (null,                                          'Someone',       'athlete', null,               false, interval '6 days')
+) as v(viewer, name, role, org, verified, ago)
+join public.athlete_profiles ap on ap.user_id = 'a0000000-0000-4000-8000-000000000001';
+
 do $$
 declare r record;
 begin

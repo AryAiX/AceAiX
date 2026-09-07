@@ -268,4 +268,14 @@ export const profile = {
   useTypedCountry: '使用“{{country}}”',
   useTypedCountryHint: '列表里没有？自己添加一个。',
   countryTypeToAdd: '开始输入来添加你的国家。',
+
+  // ── 球员卡 ─────────────────────────────────────────────────────────────────
+  playerCard: '球员卡',
+  playerCardHint: '一张可以保存、也可以发出去的卡片。',
+  playerCardBody: '球探最先要看的东西，都在这一张图里。',
+  playerCardSaved: '已保存。',
+  playerCardShared: '卡片已备好，可以分享了。',
+  playerCardFailed: '卡片生成失败，过一会儿再试。',
+  playerCardShare: '分享',
+  playerCardSave: '保存图片',
 };

@@ -25,6 +25,8 @@ import {
   refreshMyTalentScore,
   requestGuardianConsent,
   saveMatchPreferences,
+  setFavoriteTeams as saveFavoriteTeams,
+  setFavoriteVenue as saveFavoriteVenue,
   updateAthleteProfile,
   updateUserProfile,
 } from '@/lib/api';
@@ -34,7 +36,7 @@ import {
   updateScoutProfile,
   uploadAvatar,
 } from '@/lib/api.auth';
-import type { FullTalentScore, GuardianConsent } from '@/types/models';
+import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
 import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
 import {
   HEIGHT_RANGE_CM,
@@ -51,6 +53,7 @@ import {
 } from '@/components/onboarding/GuardianConsentStep';
 import { GuardianIntroStep } from '@/components/onboarding/GuardianIntroStep';
 import { PhotoStep, type PickedPhoto } from '@/components/onboarding/PhotoStep';
+import { TeamsStep } from '@/components/onboarding/TeamsStep';
 import { AthleteFinishStep, SimpleFinishStep } from '@/components/onboarding/FinishStep';
 import {
   RECRUITER_AGE_BANDS,
@@ -81,6 +84,7 @@ type StepKey =
   | 'physical'
   | 'guardian'
   | 'photo'
+  | 'teams'
   | 'sports'
   | 'role'
   | 'target'
@@ -123,6 +127,8 @@ export default function OnboardingScreen() {
   const [weight, setWeight] = useState('');
   const [side, setSide] = useState<string | null>(null);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [favoriteTeams, setFavoriteTeams] = useState<Team[]>([]);
+  const [venue, setVenue] = useState('');
 
   const [guardianName, setGuardianName] = useState('');
   const [guardianEmail, setGuardianEmail] = useState('');
@@ -231,10 +237,14 @@ export default function OnboardingScreen() {
           // Only a minor without an approval already on file needs this.
           ...(isMinor && !guardianGranted ? (['guardian'] as StepKey[]) : []),
           'photo',
+          /* The easy question, last: after a wizard of measurements and
+             consent forms, "who do you support?" is the one a fourteen-year-old
+             answers without thinking, and it is what the feed uses on day one. */
+          'teams',
           'done',
         ];
       case 'recruiter':
-        return ['sports', 'role', 'place', 'target', 'done'];
+        return ['sports', 'role', 'place', 'target', 'teams', 'done'];
       case 'guardian':
         return ['intro', 'done'];
       default:
@@ -314,6 +324,12 @@ export default function OnboardingScreen() {
           setGuardianRequested(true);
           break;
         }
+        case 'teams':
+          /* Both are optional, and both are written even when empty so that
+             clearing a choice on a second pass through the wizard sticks. */
+          await saveFavoriteTeams(favoriteTeams.map((team) => team.id));
+          await saveFavoriteVenue(venue.trim() || null);
+          break;
         case 'sports':
           await saveMatchPreferences({ sports });
           break;
@@ -356,6 +372,8 @@ export default function OnboardingScreen() {
     height,
     weight,
     side,
+    favoriteTeams,
+    venue,
     guardianName,
     guardianEmail,
     guardianRelationship,
@@ -498,7 +516,7 @@ export default function OnboardingScreen() {
     );
   }
 
-  const skippable = step === 'physical' || step === 'photo';
+  const skippable = step === 'physical' || step === 'photo' || step === 'teams';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
   const knownName = profile.first_name ?? profile.full_name;
   const name = knownName ? firstNameOf(knownName) : '';
@@ -599,6 +617,16 @@ export default function OnboardingScreen() {
             onChangeHeight={setHeight}
             onChangeWeight={setWeight}
             onChangeSide={setSide}
+          />
+        ) : null}
+
+        {step === 'teams' ? (
+          <TeamsStep
+            sport={sport}
+            teams={favoriteTeams}
+            venue={venue}
+            onChangeTeams={setFavoriteTeams}
+            onChangeVenue={setVenue}
           />
         ) : null}
 

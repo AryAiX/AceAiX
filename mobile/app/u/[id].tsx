@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -169,6 +170,8 @@ export default function PublicProfileScreen() {
         }}
       >
         {athlete ? <ScoreCard score={data.score} /> : null}
+
+        <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
 
         <StatRow
           items={[

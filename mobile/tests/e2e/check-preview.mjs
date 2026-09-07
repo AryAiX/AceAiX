@@ -138,6 +138,12 @@ async function ensureHome() {
     }
     await tap(page.locator('a[href="/"]').first(), 1300);
     if (await page.getByTestId('home-feed').isVisible().catch(() => false)) return true;
+
+    /* A reload is a legitimate reset: the preview pins the address, so this
+       boots the app at home the same way a person reopening the tab would. */
+    await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'load' });
+    await page.waitForTimeout(2600);
+    if (await page.getByTestId('home-feed').isVisible().catch(() => false)) return true;
   }
   problems.push('STUCK — could not get back to the feed');
   return false;
@@ -164,11 +170,30 @@ await tap(page.locator('a[href="/opportunities"]').first(), 2400); await shot('o
 await tap(page.getByText(/open trial|Goalkeeper trial|recruitment/i).first(), 2400);
 await shot('opportunity'); await back();
 
+// Trials → challenges
+await tap(page.locator('a[href="/opportunities"]').first(), 2200);
+await tap(page.getByText(/Challenges|Retos|Défis|Испытания|挑战|التحديات|Aufgaben/).first(), 2400);
+await shot('challenges');
+await tap(page.getByText(/keep-ups|Keep-ups/i).first(), 2400);
+await shot('challenge-detail');
+await ensureHome();
+
 // You → the profile, the score, the achievements, the settings
 await tap(page.locator('a[href="/profile"]').first(), 2400); await shot('profile');
-await tap(page.getByText(/Talent Score|Your score/i).first(), 2200); await shot('score'); await back();
-await tap(page.locator('a[href="/profile"]').first(), 1600);
-await tap(page.getByText(/Achievement|Badges/i).first(), 2200); await shot('achievements'); await back();
+await tap(page.getByText(/Talent Score|Your score/i).first(), 2600); await shot('score');
+await ensureHome();
+await tap(page.locator('a[href="/profile"]').first(), 2000);
+await tap(page.getByText(/Achievement|Badges/i).first(), 2400); await shot('achievements');
+await ensureHome();
+await tap(page.locator('a[href="/profile"]').first(), 2000);
+await tap(page.getByText(/Player card/i).first(), 3000); await shot('player-card');
+await ensureHome();
+await tap(page.locator('a[href="/profile"]').first(), 2000);
+await tap(page.getByText(/Real Madrid/).first(), 2400); await shot('team');
+await ensureHome();
+await tap(page.getByText(/looked at your profile/i).first(), 2400); await shot('views');
+await ensureHome();
+await tap(page.getByTestId('home-theme'), 1400); await shot('theme-toggled');
 
 await browser.close();
 server.close();

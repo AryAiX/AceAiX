@@ -857,5 +857,351 @@ begin
     'an athlete cannot write their own streak');
 end $$;
 
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who you support ──'; end $$;
+
+do $$
+declare
+  v_team  uuid;
+  v_other uuid;
+  v_ids   uuid[];
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+
+  perform tests.ok(
+    (select count(*) from public.search_teams(null, null, 50)) > 0,
+    'the curated team catalogue ships with the migrations');
+
+  select id into v_team from public.search_teams('Real', null, 5) limit 1;
+  perform tests.ok(v_team is not null, 'searching by prefix finds a curated club');
+
+  perform public.set_favorite_teams(array[v_team]);
+  perform tests.ok(
+    (select count(*) from public.favorite_teams
+      where user_id = '11111111-1111-1111-1111-111111111111') = 1,
+    'a team can be chosen');
+
+  perform public.set_favorite_venue('Azadi Stadium');
+  perform tests.ok(
+    (select favorite_venue from public.user_profiles
+      where id = '11111111-1111-1111-1111-111111111111') = 'Azadi Stadium',
+    'a favourite ground is stored');
+
+  -- The whole set is replaced, so a second call with nothing clears it.
+  perform public.set_favorite_teams(array[]::uuid[]);
+  perform tests.ok(
+    (select count(*) from public.favorite_teams
+      where user_id = '11111111-1111-1111-1111-111111111111') = 0,
+    'clearing the set on a second pass sticks');
+
+  -- Six is one too many.
+  select array_agg(id) into v_ids from (select id from public.search_teams(null, null, 6)) t;
+  begin
+    perform public.set_favorite_teams(v_ids);
+    perform tests.ok(false, 'six teams should have been refused');
+  exception when others then
+    perform tests.ok(true, 'no more than five teams can be followed');
+  end;
+
+  -- Somebody else's private addition stays private.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_other := public.add_custom_team('Totally Made Up FC', 'Football', 'Nowhere');
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  perform tests.ok(
+    not exists (select 1 from public.search_teams('Totally', null, 20)),
+    'a club somebody added is invisible to everyone else until it is curated');
+end $$;
+
+-- A minor who is not discoverable stays out of a supporters list.
+do $$
+declare v_team uuid;
+begin
+  select id into v_team from public.search_teams('Real', null, 5) limit 1;
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  perform public.set_favorite_teams(array[v_team]);
+  update public.user_profiles set is_discoverable = false
+    where id = '22222222-2222-2222-2222-222222222222';
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform tests.ok(
+    not exists (select 1 from public.fans_of_team(v_team, 50, 0)
+                 where user_id = '22222222-2222-2222-2222-222222222222'),
+    'a minor without consent is not listed among a team''s supporters');
+
+  update public.user_profiles set is_discoverable = true
+    where id = '22222222-2222-2222-2222-222222222222';
+  perform tests.ok(
+    exists (select 1 from public.fans_of_team(v_team, 50, 0)
+             where user_id = '22222222-2222-2222-2222-222222222222'),
+    'and appears once discovery is on');
+  perform tests.ok(
+    (select age from public.fans_of_team(v_team, 50, 0)
+      where user_id = '22222222-2222-2222-2222-222222222222') is null,
+    'a minor''s exact age is never returned to a supporters list');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── challenges ──'; end $$;
+
+do $$
+declare
+  v_challenge uuid;
+  v_media     uuid;
+  v_athlete   uuid;
+  v_entry     uuid;
+begin
+  -- Only a verified coach or club may set one.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  begin
+    perform public.create_challenge('Football', 'Not allowed',
+      'An athlete should not be able to set a challenge.', now() + interval '5 days');
+    perform tests.ok(false, 'an athlete should not be able to set a challenge');
+  exception when others then
+    perform tests.ok(true, 'only verified coaches and clubs can set a challenge');
+  end;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  v_challenge := public.create_challenge(
+    'Football', 'Thirty seconds of keep-ups',
+    'One take, feet and thighs only, phone on the ground.',
+    now() + interval '5 days', null, 'Touches', 'touches', 'higher', 13, 30);
+  perform tests.ok(v_challenge is not null, 'a verified coach can set a challenge');
+
+  -- Entering needs a clip of your own.
+  select id into v_athlete from public.athlete_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111';
+  insert into public.athlete_media
+    (athlete_id, title, media_type, storage_url, is_public)
+  values (v_athlete, 'Keep-ups', 'highlight_reel', 'posts/test/keepups.mp4', true)
+  returning id into v_media;
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_entry := public.enter_challenge(v_challenge, v_media, 214, 'Best of three.');
+  perform tests.ok(v_entry is not null, 'an athlete can enter with their own clip');
+
+  perform tests.ok(
+    (select entry_count from public.challenges where id = v_challenge) = 1,
+    'the entry counter tracks entries');
+
+  perform tests.ok(
+    (select status from public.challenge_leaderboard(v_challenge, 10, 0)
+      where entry_id = v_entry) = 'submitted',
+    'a fresh entry is a claim, not a verified result');
+
+  -- Somebody else's clip is not yours to enter with.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  begin
+    perform public.enter_challenge(v_challenge, v_media, 300, null);
+    perform tests.ok(false, 'entering with another athlete''s clip should fail');
+  exception when others then
+    perform tests.ok(true, 'you can only enter with a clip of your own');
+  end;
+
+  -- Only the coach who set it can judge it.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  begin
+    perform public.judge_challenge_entry(v_entry, true, 999, null);
+    perform tests.ok(false, 'an athlete should not be able to confirm their own result');
+  exception when others then
+    perform tests.ok(true, 'an athlete cannot confirm their own result');
+  end;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform public.judge_challenge_entry(v_entry, true, 210, 'Counted 210, not 214.');
+  perform tests.ok(
+    (select verified_value from public.challenge_leaderboard(v_challenge, 10, 0)
+      where entry_id = v_entry) = 210,
+    'the coach''s number is what the leaderboard shows as verified');
+
+  -- Entering is publishing, so a minor needs the same consent as discovery.
+  update public.user_profiles set is_discoverable = false
+    where id = '22222222-2222-2222-2222-222222222222';
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  begin
+    perform public.enter_challenge(v_challenge, v_media, 100, null);
+    perform tests.ok(false, 'a minor without consent should not be able to enter');
+  exception when others then
+    perform tests.ok(true, 'a minor without guardian consent cannot enter a challenge');
+  end;
+  update public.user_profiles set is_discoverable = true
+    where id = '22222222-2222-2222-2222-222222222222';
+end $$;
+
+-- Nobody writes a challenge row by hand.
+do $$
+begin
+  perform tests.ok(
+    not has_table_privilege('authenticated', 'public.challenges', 'INSERT'),
+    'challenges are created through the function, never by insert');
+  perform tests.ok(
+    not has_table_privilege('authenticated', 'public.challenge_entries', 'UPDATE'),
+    'an entry cannot be edited around the judge');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── the score model, split in two ──'; end $$;
+
+do $$
+declare
+  v_athlete uuid;
+  v_direct  jsonb;
+  v_split   jsonb;
+  v_sim     jsonb;
+begin
+  select id into v_athlete from public.athlete_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111';
+
+  -- The refactor is only safe if the composition equals the old whole.
+  v_direct := private.compute_talent_score(v_athlete);
+  v_split  := private.score_from_inputs(private.collect_score_inputs(v_athlete));
+  perform tests.ok(v_direct = v_split,
+    'compute_talent_score is exactly its two halves');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_sim := public.simulate_talent_score('{}'::jsonb);
+  perform tests.ok(
+    (v_sim -> 'current' ->> 'overall') = (v_sim -> 'projected' ->> 'overall'),
+    'a simulation with no changes projects the score unchanged');
+
+  v_sim := public.simulate_talent_score('{"video_items": 6, "account_verified": true}'::jsonb);
+  perform tests.ok(
+    (v_sim -> 'projected' ->> 'overall')::int > (v_sim -> 'current' ->> 'overall')::int,
+    'clips and verification raise the projection');
+
+  -- The caps are what stop the screen promising a 98 for nothing.
+  v_sim := public.simulate_talent_score('{"followers": 9999999999}'::jsonb);
+  perform tests.ok(
+    (v_sim -> 'projected' ->> 'overall')::int <= 100,
+    'no input can push the projection past 100');
+
+  -- Inputs that depend on each other cannot be made incoherent.
+  v_sim := public.simulate_talent_score('{"video_items": 9, "media_items": 1}'::jsonb);
+  perform tests.ok(
+    (v_sim -> 'projected' -> 'inputs' ->> 'media_items')::int >= 9,
+    'a video is also a media item, whatever the caller sends');
+
+  -- Nothing about the simulation is written down.
+  perform tests.ok(
+    private.compute_talent_score(v_athlete) = v_direct,
+    'simulating never changes the real score');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who has been looking ──'; end $$;
+
+do $$
+declare
+  v_athlete uuid;
+  v_digest  jsonb;
+begin
+  select id into v_athlete from public.athlete_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111';
+
+  insert into public.profile_views
+    (athlete_id, viewer_user_id, viewer_name, viewer_role, viewer_org, viewer_verified)
+  values
+    (v_athlete, '33333333-3333-3333-3333-333333333333', 'Verified Coach', 'coach', 'Test FC', true),
+    (v_athlete, '44444444-4444-4444-4444-444444444444', 'Random Adult', 'athlete', null, false);
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_digest := public.profile_view_digest(7);
+
+  perform tests.ok((v_digest ->> 'total')::int >= 2, 'the digest counts every view');
+  perform tests.ok(
+    jsonb_array_length(v_digest -> 'named') = 1,
+    'only the verified professional is named');
+  perform tests.ok(
+    (v_digest -> 'named' -> 0 ->> 'user_id') = '33333333-3333-3333-3333-333333333333',
+    'and it is the coach, not the other athlete');
+  perform tests.ok((v_digest ->> 'unnamed')::int >= 1,
+    'the rest are counted but not named');
+
+  perform tests.ok((v_digest ->> 'new_since_seen')::int >= 2,
+    'everything is new before the screen has been opened');
+  perform public.mark_profile_views_seen();
+  perform tests.ok(
+    (public.profile_view_digest(7) ->> 'new_since_seen')::int = 0,
+    'and nothing is new once it has');
+
+  -- A coach has no Talent Score, so the digest says so rather than failing.
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform tests.ok(
+    (public.profile_view_digest(7) ->> 'is_athlete')::boolean = false,
+    'a coach opening the digest gets an answer, not an error');
+end $$;
+
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
+
+/*
+ * These two are the ones worth having. Every assertion above tests a rule
+ * somebody wrote down; these test the rules nobody remembered to write down
+ * when they added the next table.
+ */
+
+-- 1. Every table in `public` has row-level security on.
+do $$
+declare
+  v_missing text;
+begin
+  select string_agg(c.relname, ', ' order by c.relname)
+  into v_missing
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relkind = 'r'
+    and not c.relrowsecurity;
+
+  perform tests.ok(
+    v_missing is null,
+    coalesce('every public table has RLS enabled', 'tables without RLS: ' || v_missing));
+
+  if v_missing is not null then
+    raise exception 'tables without RLS: %', v_missing;
+  end if;
+end $$;
+
+-- 2. Every SECURITY DEFINER function pins its search_path.
+--    Without it, a caller can put their own schema in front of `public` and
+--    the function runs their table instead of ours, with our privileges.
+do $$
+declare
+  v_missing text;
+begin
+  select string_agg(n.nspname || '.' || p.proname, ', ' order by n.nspname || '.' || p.proname)
+  into v_missing
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname in ('public', 'private')
+    and p.prosecdef
+    and not exists (
+      select 1 from unnest(coalesce(p.proconfig, '{}')) cfg
+      where cfg like 'search_path=%'
+    );
+
+  perform tests.ok(
+    v_missing is null,
+    coalesce('every SECURITY DEFINER function pins search_path',
+             'unpinned: ' || v_missing));
+
+  if v_missing is not null then
+    raise exception 'SECURITY DEFINER without search_path: %', v_missing;
+  end if;
+end $$;
+
+-- 3. Nothing in `private` is reachable from a client.
+do $$
+begin
+  perform tests.ok(
+    not has_schema_privilege('authenticated', 'private', 'USAGE'),
+    'the private schema is not reachable by a signed-in client');
+  perform tests.ok(
+    not has_schema_privilege('anon', 'private', 'USAGE'),
+    'nor by an anonymous one');
+end $$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

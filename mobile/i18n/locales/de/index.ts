@@ -7,6 +7,9 @@ import { onboarding } from './onboarding';
 import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
+import { challenges } from './challenges';
+import { teams } from './teams';
+import { views } from './views';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -18,7 +21,10 @@ import { countries } from './countries';
 import { errors } from './errors';
 import { format } from './format';
 
+
 /** German. Typed against English, so a missing key is a compile error. */
-export const de: Translations = { common, language, auth, onboarding, feed, profile,
-  score, progress, discover, opportunities, messaging, settings, safety, sports, countries,
-  errors, format };
+const catalogue: Translations = { common, language, auth, onboarding, feed, profile,
+  score, challenges, teams, views, progress, discover, opportunities, messaging, settings,
+  safety, sports, countries, errors, format };
+
+export const de = catalogue as Translations;

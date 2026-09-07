@@ -7,6 +7,9 @@ import { onboarding } from './onboarding';
 import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
+import { challenges } from './challenges';
+import { teams } from './teams';
+import { views } from './views';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -42,7 +45,7 @@ type SingleFormPlurals<T> = {
 
 /** 简体中文。以英文为类型基准，少一个键就是编译错误。 */
 const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onboarding,
-  feed, profile, score, progress, discover, opportunities, messaging, settings, safety, sports,
-  countries, errors, format };
+  feed, profile, score, challenges, teams, views, progress, discover, opportunities, messaging,
+  settings, safety, sports, countries, errors, format };
 
 export const zh = catalogue as Translations;

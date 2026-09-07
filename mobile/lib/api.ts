@@ -25,6 +25,13 @@ import type {
   PostMedia,
   Progress,
   ProfileBundle,
+  Challenge,
+  ChallengeEntry,
+  SimulatableInput,
+  Simulation,
+  Team,
+  TeamFan,
+  ViewDigest,
   UnreadCounts,
   UserPost,
   UserSummary,
@@ -826,4 +833,240 @@ export async function getProgress(): Promise<Progress> {
 export async function markAchievementsSeen(keys?: AchievementKey[]): Promise<void> {
   const { error } = await supabase.rpc('mark_achievements_seen', { p_keys: keys ?? null });
   if (error) throw new AppError(error);
+}
+
+// ── Teams somebody supports ──────────────────────────────────────────────────
+/**
+ * The picker deliberately does not narrow by the athlete's own sport: a swimmer
+ * is allowed to support Liverpool, and forcing them to pick a swimming "team"
+ * would make the question feel like a form rather than a conversation.
+ */
+export async function searchTeams(query?: string, sport?: string, limit = 20): Promise<Team[]> {
+  const { data, error } = await supabase.rpc('search_teams', {
+    p_query: query?.trim() || null,
+    p_sport: sport ?? null,
+    p_limit: limit,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as Team[];
+}
+
+/** Adds a club we do not have. Stays private to this person until curated. */
+export async function addCustomTeam(
+  name: string,
+  sport: string,
+  country?: string | null,
+  city?: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('add_custom_team', {
+    p_name: name.trim(),
+    p_sport: sport,
+    p_country: country ?? null,
+    p_city: city ?? null,
+  });
+  if (error) throw new AppError(error);
+  return data as string;
+}
+
+/** Replaces the whole set, in the order given — rank 1 is the shirt they own. */
+export async function setFavoriteTeams(teamIds: string[]): Promise<void> {
+  const { error } = await supabase.rpc('set_favorite_teams', { p_team_ids: teamIds });
+  if (error) throw new AppError(error);
+}
+
+export async function setFavoriteVenue(venue: string | null): Promise<void> {
+  const { error } = await supabase.rpc('set_favorite_venue', { p_venue: venue ?? null });
+  if (error) throw new AppError(error);
+}
+
+export async function teamsOf(userId: string): Promise<Team[]> {
+  const { data, error } = await supabase.rpc('teams_of', { p_user: userId });
+  if (error) throw new AppError(error);
+  return (data ?? []) as Team[];
+}
+
+export async function teamDetail(teamId: string): Promise<Team | null> {
+  const { data, error } = await supabase.rpc('team_detail', { p_id: teamId });
+  if (error) throw new AppError(error);
+  const rows = (data ?? []) as Team[];
+  return rows[0] ?? null;
+}
+
+/** The teams and ground shown on a profile, in one round trip. */
+export interface Fandom {
+  venue: string | null;
+  teams: Team[];
+}
+
+export async function fandomOf(userId: string): Promise<Fandom> {
+  const { data, error } = await supabase.rpc('fandom_of', { p_user: userId });
+  if (error) throw new AppError(error);
+  return (data ?? { venue: null, teams: [] }) as Fandom;
+}
+
+export async function fansOfTeam(teamId: string, limit = 20, offset = 0): Promise<TeamFan[]> {
+  const { data, error } = await supabase.rpc('fans_of_team', {
+    p_team_id: teamId,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as TeamFan[];
+}
+
+// ── Challenges ───────────────────────────────────────────────────────────────
+export async function openChallenges(sport?: string | null, limit = 20, offset = 0): Promise<Challenge[]> {
+  const { data, error } = await supabase.rpc('open_challenges', {
+    p_sport: sport ?? null,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as Challenge[];
+}
+
+export async function challengeLeaderboard(
+  challengeId: string,
+  limit = 25,
+  offset = 0,
+): Promise<ChallengeEntry[]> {
+  const { data, error } = await supabase.rpc('challenge_leaderboard', {
+    p_challenge_id: challengeId,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as ChallengeEntry[];
+}
+
+/**
+ * Entering re-submits over any previous entry, so the athlete can send a better
+ * take without the app having to know whether one already exists.
+ */
+export async function enterChallenge(
+  challengeId: string,
+  mediaId: string,
+  claimedValue?: number | null,
+  note?: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('enter_challenge', {
+    p_challenge_id: challengeId,
+    p_media_id: mediaId,
+    p_claimed_value: claimedValue ?? null,
+    p_note: note?.trim() || null,
+  });
+  if (error) throw new AppError(error);
+  return data as string;
+}
+
+export async function withdrawChallengeEntry(challengeId: string): Promise<void> {
+  const { error } = await supabase.rpc('withdraw_challenge_entry', { p_challenge_id: challengeId });
+  if (error) throw new AppError(error);
+}
+
+export async function judgeChallengeEntry(
+  entryId: string,
+  accept: boolean,
+  value?: number | null,
+  note?: string | null,
+): Promise<void> {
+  const { error } = await supabase.rpc('judge_challenge_entry', {
+    p_entry_id: entryId,
+    p_accept: accept,
+    p_value: value ?? null,
+    p_note: note?.trim() || null,
+  });
+  if (error) throw new AppError(error);
+}
+
+export async function createChallenge(input: {
+  sport: string;
+  title: string;
+  brief: string;
+  closesAt: string;
+  rules?: string | null;
+  metricLabel?: string | null;
+  metricUnit?: string | null;
+  metricBetter?: 'higher' | 'lower';
+  ageMin?: number | null;
+  ageMax?: number | null;
+  organizationId?: string | null;
+}): Promise<string> {
+  const { data, error } = await supabase.rpc('create_challenge', {
+    p_sport: input.sport,
+    p_title: input.title.trim(),
+    p_brief: input.brief.trim(),
+    p_closes_at: input.closesAt,
+    p_rules: input.rules?.trim() || null,
+    p_metric_label: input.metricLabel?.trim() || null,
+    p_metric_unit: input.metricUnit?.trim() || null,
+    p_metric_better: input.metricBetter ?? 'higher',
+    p_age_min: input.ageMin ?? null,
+    p_age_max: input.ageMax ?? null,
+    p_organization: input.organizationId ?? null,
+  });
+  if (error) throw new AppError(error);
+  return data as string;
+}
+
+/** The caller's own videos, for the challenge entry picker. */
+export interface MyClip {
+  id: string;
+  title: string;
+  media_type: string;
+  storage_url: string;
+  thumbnail_url: string | null;
+  is_public: boolean;
+  created_at: string;
+}
+
+export async function myClips(): Promise<MyClip[]> {
+  const { data, error } = await supabase.rpc('my_clips');
+  if (error) throw new AppError(error);
+  return (data ?? []) as MyClip[];
+}
+
+// ── Who has been looking ─────────────────────────────────────────────────────
+export async function profileViewDigest(days = 7): Promise<ViewDigest> {
+  const { data, error } = await supabase.rpc('profile_view_digest', { p_days: days });
+  if (error) throw new AppError(error);
+  return data as ViewDigest;
+}
+
+/** Resets the "new since you last looked" count. Call it on opening the list. */
+export async function markProfileViewsSeen(): Promise<void> {
+  const { error } = await supabase.rpc('mark_profile_views_seen');
+  if (error) throw new AppError(error);
+}
+
+// ── "What would it take?" ────────────────────────────────────────────────────
+/**
+ * Runs the real scoring model against hypothetical inputs, server-side. The
+ * client never does this arithmetic itself — a second copy of the weights would
+ * drift, and the first time it disagreed with the score screen the number would
+ * stop being believable.
+ */
+export async function simulateScore(
+  changes: Partial<Record<SimulatableInput, number | boolean>> = {},
+): Promise<Simulation> {
+  const { data, error } = await supabase.rpc('simulate_talent_score', { p_changes: changes });
+  if (error) throw new AppError(error);
+  return data as Simulation;
+}
+
+/**
+ * A short written read on the profile, from the `talent-insights` function.
+ *
+ * The function answers with or without an Anthropic key configured — with one
+ * it writes; without one it fills a template from the same pillar numbers. So
+ * this never has to be feature-flagged in the UI, and it never blocks a screen:
+ * callers render the score first and let the words arrive late.
+ */
+export async function talentInsight(athleteId?: string): Promise<string | null> {
+  const { data, error } = await supabase.functions.invoke('talent-insights', {
+    body: { athlete_id: athleteId ?? null },
+  });
+  if (error) return null;
+  const summary = (data as { summary?: string } | null)?.summary;
+  return typeof summary === 'string' && summary.trim().length > 0 ? summary.trim() : null;
 }

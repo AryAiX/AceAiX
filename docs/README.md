@@ -32,12 +32,13 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 16 | [`16-internationalisation.md`](./16-internationalisation.md) | The seven languages: the first-launch gate, catalogue layout, plurals via `Intl.PluralRules`, the translator bridge, RTL and the restart, the English-only legal documents, and the strings SQL still composes in English | Mobile + Product |
 | 17 | [`17-engagement.md`](./17-engagement.md) | Streaks, the nineteen achievements and their exact conditions, how a celebration is queued and shown once, the animation and reduce-motion conventions, and the ethical line — no coins, no urgency, no loss-framing | Mobile + Product |
 | 18 | [`18-preview-build.md`](./18-preview-build.md) | The single-file preview: what it is and is not, how the recording and replay layer work, and the icon-barrel change that took 1.8 MB out of every build | Mobile |
+| 19 | [`19-discovery-features.md`](./19-discovery-features.md) | Fandom, weekly challenges, the profile-views digest, the score simulator and the player card — and why none of them moved the Talent Score | Mobile + Backend |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
-marketing and admin surface. **10–17 describe the product as it stands** after the September 2026
+marketing and admin surface. **10–19 describe the product as it stands** after the September 2026
 mobile rebuild: `mobile/` is the 1.0 app, and the Supabase schema it shares with `web/` was extended
-by migrations `20260825000000` and `20260904000001`–`…0011`. Where 01–09 and 10–17 disagree about
-the mobile client, 10–17 win; for schema and RLS baseline, 03 and 06 still apply.
+by migrations `20260825000000`, `20260904000001`–`…0011` and `20260907000001`–`…0006`. Where 01–09 and 10–19 disagree about
+the mobile client, 10–19 win; for schema and RLS baseline, 03 and 06 still apply.
 
 Two places where 01–09 are now specifically out of date on language: `01` says "Launch languages:
 English (default); Arabic + full RTL in Phase 2" and `08` plans `react-i18next` — the app ships
@@ -54,6 +55,8 @@ seven languages today, with no i18n library. See 16.
   strings are born in English and typechecking fails until the other six catalogues have them.
 - **Touching streaks, achievements or an animation?** [17](./17-engagement.md), and the header of
   `supabase/migrations/20260904000011_streaks_and_achievements.sql`.
+- **Touching challenges, fandom or the score simulator?** [19](./19-discovery-features.md) — and
+  note that none of them may move the Talent Score's weights.
 - **Starting fresh on the product itself?** Read 01 → 02 → 03 → 07 → 08.
 - **Building a web screen?** Read 04 → 05, then the relevant section of 01.
 - **Wiring data?** Read 03 → 06.

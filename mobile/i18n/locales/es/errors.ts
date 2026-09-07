@@ -32,4 +32,13 @@ export const errors = {
   emailInUse: 'Ya hay una cuenta con ese correo. Prueba a iniciar sesión.',
   passwordTooShort: 'Elige una contraseña de al menos 8 caracteres.',
   tooManyAttempts: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
+
+  // Retos y afición
+  challengeClosed: 'Ese reto ya está cerrado.',
+  challengeNotAllowed: 'Solo los entrenadores y clubes verificados pueden poner un reto.',
+  clipRequired: 'Elige antes uno de tus propios clips públicos.',
+  ageOutOfRange: 'Este reto es para otro grupo de edad.',
+  favoriteTeamsMax: 'Cinco equipos es el límite: quita uno para añadir otro.',
+  profileIncomplete: 'Completa antes tu perfil de deportista.',
+  notAnAthlete: 'Solo los deportistas tienen Puntuación de talento.',
 };

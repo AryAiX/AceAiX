@@ -305,6 +305,65 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(501, CORS);
       return res.end();
     }
+    if (url.pathname === '/functions/v1/talent-insights') {
+      /* The same written fallback the deployed function produces when no
+         ANTHROPIC_API_KEY is set, so the score screen reads the way it will in
+         production rather than showing its unavailable state on every run. */
+      const claims = verify(String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, ''));
+      if (!claims?.sub) return send(res, 401, { message: 'Not signed in' });
+
+      const row = await pgJson(
+        `select to_jsonb(x) from (
+           select ts.overall, ts.tier, ts.profile_score, ts.performance_score,
+                  ts.media_score, ts.credibility_score, ts.engagement_score, ap.sport
+             from public.talent_scores ts
+             join public.athlete_profiles ap on ap.id = ts.athlete_id
+            where ap.user_id = ${quote(claims.sub)}::uuid
+         ) x`,
+      );
+      if (!row) return send(res, 200, { ok: true, summary: null, generated_by: 'template' });
+
+      const pillars = {
+        profile: row.profile_score,
+        performance: row.performance_score,
+        media: row.media_score,
+        credibility: row.credibility_score,
+        engagement: row.engagement_score,
+      };
+      const names = {
+        profile: 'a filled-in profile',
+        performance: 'your match record',
+        media: 'your clips',
+        credibility: 'verification and endorsements',
+        engagement: 'how active you are',
+      };
+      const advice = {
+        profile: 'Filling in the empty fields is the quickest thing left to do.',
+        performance: 'Logging your recent matches is what moves it next.',
+        media: 'Three short clips is the sweet spot — scouts open footage first.',
+        credibility: 'An endorsement from a coach is worth more than anything you can type.',
+        engagement: 'Posting once a week keeps you in front of the people looking.',
+      };
+
+      const entries = Object.entries(pillars);
+      const strongest = entries.reduce((a, b) => (b[1] > a[1] ? b : a));
+      const weakest = entries.reduce((a, b) => (b[1] < a[1] ? b : a));
+      const overall = row.overall;
+      const tier = row.tier;
+
+      const opener =
+        overall >= 70
+          ? `A ${overall} puts you in the ${tier} band — a strong profile that a scout will stop on.`
+          : overall >= 40
+            ? `A ${overall} is a solid start. ${tier[0].toUpperCase()}${tier.slice(1)} tier means the foundations are there.`
+            : `A ${overall} means your profile is still young. That is normal — almost everyone starts here.`;
+
+      const summary =
+        `${opener} Your strongest area is ${names[strongest[0]]}` +
+        `${row.sport ? ` for ${String(row.sport).toLowerCase()}` : ''}. ${advice[weakest[0]]}`;
+
+      return send(res, 200, { ok: true, summary, generated_by: 'template' });
+    }
     if (url.pathname === '/functions/v1/guardian-consent') {
       return send(res, 200, { ok: true, sent: false, link: 'local-mode: e-mail not sent' });
     }

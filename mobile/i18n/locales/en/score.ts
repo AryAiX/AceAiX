@@ -101,4 +101,35 @@ export const score = {
   tipsEmptyTitle: 'Nothing left on the list',
   tipsEmptyBody:
     "You've done everything we'd suggest right now. Keep playing and keep posting.",
+
+  // ── The simulator (app/score.tsx) ──────────────────────────────────────────
+  simTitle: 'What would it take?',
+  simBody:
+    'Move a slider to see where the number would land. The projection runs the same calculation as your real score, on the server, so it cannot quietly disagree with it.',
+  simProjected: 'Projected',
+  simNow: 'Now',
+  simNoChange: 'Move something to see the difference.',
+  simReset: 'Reset',
+  simUnlocksTier: 'That would put you in {{tier}}.',
+  simGain_one: '+{{count}} point',
+  simGain_other: '+{{count}} points',
+  simHonest: 'A projection, not a promise — it assumes the work is real and the results hold up.',
+
+  simVideos: 'Highlight clips',
+  simMatches: 'Matches logged this year',
+  simVerified: 'Of those, verified',
+  simEndorsements: 'Endorsements',
+  simExpert: 'Of those, from coaches or clubs',
+  simPosts: 'Posts this month',
+  simFollowers: 'Followers',
+  simProfile: 'Profile fields filled',
+  simAccountVerified: 'Account verified',
+  simClubLinked: 'Club linked',
+
+  // ── The written read (supabase/functions/talent-insights) ──────────────────
+  insightTitle: 'Reading your profile',
+  insightLoading: 'Working through your numbers…',
+  insightUnavailable:
+    'The written summary is not available right now. The pillars below say the same thing in numbers.',
+  insightRefresh: 'Write it again',
 };

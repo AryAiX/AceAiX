@@ -292,4 +292,14 @@ export const profile = {
   useTypedCountry: 'Usar «{{country}}»',
   useTypedCountryHint: '¿No está en la lista? Añádelo tú.',
   countryTypeToAdd: 'Empieza a escribir para añadir tu país.',
+
+  // ── La tarjeta de jugador ──────────────────────────────────────────────────
+  playerCard: 'Tarjeta de jugador',
+  playerCardHint: 'Una tarjeta que puedes guardar y publicar.',
+  playerCardBody: 'Todo lo que un reclutador miraría primero, en una sola imagen.',
+  playerCardSaved: 'Guardada.',
+  playerCardShared: 'Tarjeta lista para compartir.',
+  playerCardFailed: 'No pudimos crear la tarjeta. Inténtalo de nuevo en un momento.',
+  playerCardShare: 'Compartir',
+  playerCardSave: 'Guardar imagen',
 };

@@ -277,4 +277,14 @@ export const profile = {
   useTypedCountry: 'Use “{{country}}”',
   useTypedCountryHint: 'Not in the list? Add it yourself.',
   countryTypeToAdd: 'Start typing to add your country.',
+
+  // ── The player card ────────────────────────────────────────────────────────
+  playerCard: 'Player card',
+  playerCardHint: 'A card you can save and post.',
+  playerCardBody: 'Everything a scout would look for first, in one image.',
+  playerCardSaved: 'Saved.',
+  playerCardShared: 'Card ready to share.',
+  playerCardFailed: 'Could not build the card. Try again in a moment.',
+  playerCardShare: 'Share',
+  playerCardSave: 'Save image',
 };

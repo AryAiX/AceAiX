@@ -8,6 +8,7 @@ import { Compass, Home, Plus, Target, User } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useT } from '@/i18n';
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
@@ -171,6 +172,7 @@ export default function TabsLayout() {
   const theme = useTheme();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
+  const t = useT();
 
   /* Which tab was last re-tapped, and how many times. Tapping the tab you are
      already on has no navigation to show for itself, so the icon answers. */
@@ -207,11 +209,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: t('common.tabHome'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Home} focused={focused} label="Home" bump={bumpFor('index')} />
+            <TabIcon Icon={Home} focused={focused} label={t('common.tabHome')} bump={bumpFor('index')} />
           ),
-          tabBarAccessibilityLabel: 'Home feed',
+          tabBarAccessibilityLabel: t('common.tabHome'),
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('index', navigation.isFocused()),
@@ -220,11 +222,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="discover"
         options={{
-          title: 'Discover',
+          title: t('common.tabDiscover'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Compass} focused={focused} label="Discover" bump={bumpFor('discover')} />
+            <TabIcon Icon={Compass} focused={focused} label={t('common.tabDiscover')} bump={bumpFor('discover')} />
           ),
-          tabBarAccessibilityLabel: 'Discover talent',
+          tabBarAccessibilityLabel: t('common.tabDiscover'),
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('discover', navigation.isFocused()),
@@ -233,7 +235,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: 'Create',
+          title: t('common.tabCreate'),
           tabBarButton: () => <CreateButton />,
         }}
         listeners={{ tabPress: (e) => e.preventDefault() }}
@@ -241,16 +243,16 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="opportunities"
         options={{
-          title: 'Trials',
+          title: t('common.tabTrials'),
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Target}
               focused={focused}
-              label="Trials"
+              label={t('common.tabTrials')}
               bump={bumpFor('opportunities')}
             />
           ),
-          tabBarAccessibilityLabel: 'Trials and opportunities',
+          tabBarAccessibilityLabel: t('common.tabTrials'),
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('opportunities', navigation.isFocused()),
@@ -259,11 +261,11 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('common.tabYou'),
           tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={User} focused={focused} label="You" bump={bumpFor('profile')} />
+            <TabIcon Icon={User} focused={focused} label={t('common.tabYou')} bump={bumpFor('profile')} />
           ),
-          tabBarAccessibilityLabel: 'Your profile',
+          tabBarAccessibilityLabel: t('common.tabYou'),
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('profile', navigation.isFocused()),

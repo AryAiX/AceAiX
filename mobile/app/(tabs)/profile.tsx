@@ -3,9 +3,10 @@ import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { ErrorState, Screen, SkeletonList } from '@/components/ui';
+import { Button, ErrorState, Screen, SkeletonList } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -100,6 +101,16 @@ export default function MyProfileScreen() {
       >
         {athlete ? (
           <ScoreCard score={liveScore} onPress={() => router.push(Routes.score)} />
+        ) : null}
+
+        <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
+
+        {athlete ? (
+          <Button
+            label={t('profile.playerCard')}
+            variant="secondary"
+            onPress={() => router.push(Routes.playerCard)}
+          />
         ) : null}
 
         <StatRow

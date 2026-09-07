@@ -34,6 +34,13 @@ export const Routes = {
   followers: (userId: string) => `/u/${userId}/followers` as const,
   following: (userId: string) => `/u/${userId}/following` as const,
 
+  challenges: '/challenges' as const,
+  challenge: (id: string) => `/challenge/${id}` as const,
+  newChallenge: '/challenge/new' as const,
+  playerCard: '/player-card' as const,
+  profileViews: '/views' as const,
+  team: (id: string) => `/team/${id}` as const,
+
   settings: '/settings' as const,
   settingsAccount: '/settings/account' as const,
   settingsPrivacy: '/settings/privacy' as const,
@@ -85,6 +92,8 @@ export function notificationTarget(n: AppNotification): Href | null {
       return n.type === 'application_received' ? Routes.applicants(id) : Routes.opportunity(id);
     case 'score':
       return Routes.score;
+    case 'challenge':
+      return id ? Routes.challenge(id) : Routes.challenges;
     default:
       break;
   }

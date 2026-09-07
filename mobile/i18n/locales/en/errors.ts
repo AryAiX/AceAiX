@@ -31,4 +31,13 @@ export const errors = {
   emailInUse: 'An account already uses that email. Try signing in.',
   passwordTooShort: 'Choose a password with at least 8 characters.',
   tooManyAttempts: 'Too many attempts. Wait a few minutes and try again.',
+
+  // Challenges and fandom
+  challengeClosed: 'That challenge has closed.',
+  challengeNotAllowed: 'Only verified coaches and clubs can set a challenge.',
+  clipRequired: 'Pick one of your own public clips first.',
+  ageOutOfRange: 'This challenge is for a different age group.',
+  favoriteTeamsMax: 'Five teams is the limit — remove one to add another.',
+  profileIncomplete: 'Finish your athlete profile first.',
+  notAnAthlete: 'Only athletes have a Talent Score.',
 };

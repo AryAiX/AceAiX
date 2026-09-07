@@ -111,4 +111,39 @@ export const score = {
   tipsEmptyTitle: 'لم يبقَ شيء في القائمة',
   tipsEmptyBody:
     'أنجزت كل ما كنا سنقترحه عليك الآن. واصل اللعب وواصل النشر.',
+
+  // ── المحاكي (app/score.tsx) ───────────────────────────────────────────────
+  simTitle: 'ماذا يلزم؟',
+  simBody:
+    'حرّك مؤشرًا لترى أين سيستقرّ الرقم. يجري التوقّع الحساب نفسه الذي تُحسب به درجتك الحقيقية، على الخادم، فلا يمكن أن يخالفها في الخفاء.',
+  simProjected: 'المتوقّع',
+  simNow: 'الآن',
+  simNoChange: 'حرّك شيئًا لترى الفرق.',
+  simReset: 'إعادة الضبط',
+  simUnlocksTier: 'هذا سيضعك في فئة {{tier}}.',
+  simGain_zero: '+{{count}} نقطة',
+  simGain_one: '+{{count}} نقطة',
+  simGain_two: '+{{count}} نقطتان',
+  simGain_few: '+{{count}} نقاط',
+  simGain_many: '+{{count}} نقطة',
+  simGain_other: '+{{count}} نقطة',
+  simHonest: 'توقّع لا وعد — يفترض أن العمل حقيقي وأن النتائج ستصمد.',
+
+  simVideos: 'اللقطات المختارة',
+  simMatches: 'المباريات المسجّلة هذا العام',
+  simVerified: 'الموثّق منها',
+  simEndorsements: 'التزكيات',
+  simExpert: 'ما جاء منها من مدرّبين أو أندية',
+  simPosts: 'المنشورات هذا الشهر',
+  simFollowers: 'المتابِعون',
+  simProfile: 'حقول الملف المكتملة',
+  simAccountVerified: 'الحساب موثّق',
+  simClubLinked: 'النادي مرتبط',
+
+  // ── القراءة المكتوبة (supabase/functions/talent-insights) ─────────────────
+  insightTitle: 'قراءة ملفك',
+  insightLoading: 'جارٍ العمل على أرقامك…',
+  insightUnavailable:
+    'الملخّص المكتوب غير متاح الآن. المحاور أدناه تقول الشيء نفسه بالأرقام.',
+  insightRefresh: 'اكتبه من جديد',
 };

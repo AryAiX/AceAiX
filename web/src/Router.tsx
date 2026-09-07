@@ -19,9 +19,15 @@ import HighlightsPage from './pages/HighlightsPage';
 import PlansPage from './pages/PlansPage';
 import ResourcesPage from './pages/ResourcesPage';
 import AboutPage from './pages/AboutPage';
-import PrivacyPage from './pages/PrivacyPage';
-import TermsPage from './pages/TermsPage';
 import SupportPage from './pages/SupportPage';
+/* The four documents render from the app's own source — see LegalPages. */
+import {
+  ChildSafetyPage,
+  GuidelinesPage,
+  PrivacyPage,
+  TermsPage,
+} from './pages/legal/LegalPages';
+import DeleteAccountPage from './pages/legal/DeleteAccountPage';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -119,6 +125,9 @@ export default function Router() {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/support" element={<SupportPage />} />
+        <Route path="/guidelines" element={<GuidelinesPage />} />
+        <Route path="/child-safety" element={<ChildSafetyPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
 
         {/* Auth */}
         <Route path="/auth/login" element={<LoginPage />} />

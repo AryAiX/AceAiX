@@ -26,6 +26,8 @@ import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
+import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { FeedPost } from '@/types/models';
@@ -268,6 +270,10 @@ export default function HomeScreen() {
             of you. */}
         <StreakChip testID="home-streak" />
 
+        {/* Light and dark are one tap apart, because nobody walks into the sun
+            and then goes looking through a settings tree. */}
+        <ThemeToggle testID="home-theme" />
+
         <IconButton
           icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
           label={
@@ -312,6 +318,7 @@ export default function HomeScreen() {
           gap: spacing.md,
           flexGrow: 1,
         }}
+        ListHeaderComponent={<HomeSpotlight />}
         showsVerticalScrollIndicator={false}
         initialNumToRender={5}
         maxToRenderPerBatch={5}

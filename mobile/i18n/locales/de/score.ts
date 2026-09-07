@@ -102,4 +102,36 @@ export const score = {
   tipsEmptyTitle: 'Nichts mehr auf der Liste',
   tipsEmptyBody:
     'Du hast alles getan, was wir gerade vorschlagen würden. Spiel weiter und poste weiter.',
+
+  // ── Die Hochrechnung (app/score.tsx) ───────────────────────────────────────
+  simTitle: 'Was wäre nötig?',
+  simBody:
+    'Zieh an einem Regler und sieh, wo die Zahl landen würde. Die Hochrechnung rechnet auf dem Server genau so wie dein echter Score, sie kann ihm also nicht heimlich widersprechen.',
+  simProjected: 'Hochgerechnet',
+  simNow: 'Jetzt',
+  simNoChange: 'Verschieb etwas, um den Unterschied zu sehen.',
+  simReset: 'Zurücksetzen',
+  simUnlocksTier: 'Damit wärst du in {{tier}}.',
+  simGain_one: '+{{count}} Punkt',
+  simGain_other: '+{{count}} Punkte',
+  simHonest:
+    'Eine Hochrechnung, kein Versprechen — sie setzt voraus, dass die Arbeit echt ist und die Ergebnisse halten.',
+
+  simVideos: 'Highlight-Clips',
+  simMatches: 'Dieses Jahr eingetragene Spiele',
+  simVerified: 'Davon bestätigt',
+  simEndorsements: 'Empfehlungen',
+  simExpert: 'Davon von Trainern oder Vereinen',
+  simPosts: 'Beiträge diesen Monat',
+  simFollowers: 'Follower',
+  simProfile: 'Ausgefüllte Profilfelder',
+  simAccountVerified: 'Konto geprüft',
+  simClubLinked: 'Verein verknüpft',
+
+  // ── Der geschriebene Blick (supabase/functions/talent-insights) ────────────
+  insightTitle: 'So lesen wir dein Profil',
+  insightLoading: 'Deine Zahlen werden durchgegangen…',
+  insightUnavailable:
+    'Die geschriebene Zusammenfassung ist gerade nicht verfügbar. Die Säulen unten sagen dasselbe in Zahlen.',
+  insightRefresh: 'Noch einmal schreiben',
 };

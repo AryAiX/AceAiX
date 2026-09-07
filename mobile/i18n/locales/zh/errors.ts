@@ -31,4 +31,13 @@ export const errors = {
   emailInUse: '这个邮箱已经注册过账号了，试试直接登录。',
   passwordTooShort: '密码至少要有8个字符。',
   tooManyAttempts: '尝试次数过多，等几分钟再试。',
+
+  // 挑战与球迷身份
+  challengeClosed: '这个挑战已经截止了。',
+  challengeNotAllowed: '只有经过认证的教练和俱乐部才能发布挑战。',
+  clipRequired: '请先选一段你自己的公开短片。',
+  ageOutOfRange: '这个挑战面向的是另一个年龄段。',
+  favoriteTeamsMax: '最多五支球队 —— 先移除一支，才能再加一支。',
+  profileIncomplete: '请先完善你的运动员资料。',
+  notAnAthlete: '只有运动员才有天赋分。',
 };

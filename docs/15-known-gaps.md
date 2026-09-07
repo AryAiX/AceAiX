@@ -17,22 +17,44 @@
 Each of these will fail a review, or make a claim we cannot support. They are ordered by what blocks
 what.
 
-| # | Item | Owner | Why it blocks |
-|---|------|-------|---------------|
-| 1 | **Publish `https://aceaix.com/child-safety`.** The text exists in the app (`mobile/lib/legal/childSafety.ts`); `web/src/Router.tsx` routes only `/privacy`, `/terms` and `/support`. | Web | Google Play's Child Safety Standards declaration requires a publicly accessible CSAE policy URL. Hard blocker for Play. |
-| 2 | **Publish an account-deletion web page**, e.g. `https://aceaix.com/delete-account`. | Web + legal | Play requires a URL where deletion can be requested without installing the app, on top of the in-app flow. |
-| 3 | **Publish `https://aceaix.com/guidelines`.** Same situation as #1. | Web | The in-app Child Safety Standards link to it; a dead link in a document a reviewer opens is a bad first impression, and Apple 1.2 expects published guidelines. |
-| 4 | **Fix the iOS privacy manifest.** `NSPrivacyCollectedDataTypeUserContent` is probably not a real Apple constant, and six declared-elsewhere types are missing. `docs/store/data-safety.md` §4 has the list. | Mobile | Apple cross-checks the manifest against the App Privacy answers; a mismatch costs a build. |
-| 5 | **Decide whether `talent-insights` ships with `ANTHROPIC_API_KEY` set**, then make the Data safety and App Privacy answers match. | Legal | The Privacy Policy now covers both cases honestly, so this is purely a choice — but the store answers have to agree with the choice. |
-| 6 | **Decide the Play "approximate location" and "Fitness info" answers**, and keep Play, Apple and the manifest consistent. | Legal + mobile | Under-declaring is the failure mode Google's automated checks catch. |
-| 7 | **Re-publish `https://aceaix.com/privacy`** from the current `mobile/lib/legal/privacy.ts`. | Web | The in-app text changed: Resend named, Anthropic named conditionally, guardian consent records described as deleted with the account. Two versions that disagree is worse than one that is late. |
-| 8 | **All screenshots.** Nothing in the repo; sizes and a suggested set of six are in `docs/13-store-submission.md` §3.2. | Design | Neither store will accept a listing without them. |
-| 9 | **`play-store-assets/icon-512.png` has no alpha channel** (PNG colour type 2). | Design | Play asks for a 32-bit PNG with alpha; re-export, or confirm the console accepts it at upload. |
-| 10 | **Store credentials and contacts**: the Play service account key for `eas submit`, an App Store Connect API key, a review contact name and phone number, and a listing phone number or a decision to leave it blank. | Whoever holds each account | Apple requires a contact and will call; without the keys, submission is a manual upload. |
-| 11 | **Decide whether AryAiX registers with NCMEC or an equivalent body.** Nothing in the code or the legal text names one; it says "the relevant authorities". | Legal | Play's Child Safety Standards form asks specifically how CSAM is reported. |
-| 12 | **Name who is on the moderation queue, and the response-time commitment.** | Operations | The Child Safety Standards document says child reports are the first thing the team looks at each day. Somebody has to actually be that person. |
-| 13 | **Decide email confirmations on or off** for the hosted Supabase project, and confirm which sign-up path production uses (`signup-user` or the client directly). | Product + backend | The two paths disagree about confirmation; the demo accounts must be able to sign in either way. |
-| 14 | **Populate `consent_ip` and `consent_user_agent`**, or correct the migration comment that calls them retained audit evidence. | Backend | Right now the comment describes something the code does not do — a documentation defect in a compliance-facing table. |
+| # | Item | Owner | Status |
+|---|------|-------|--------|
+| 1 | **Publish `https://aceaix.com/child-safety`.** | Web | **Code done, needs a deploy.** `web/src/pages/legal/LegalPages.tsx` renders it at `/child-safety` from the app's own `mobile/lib/legal/childSafety.ts`, through a Vite alias — so the page and the app can no longer disagree. Deploying `web/` publishes it. |
+| 2 | **Publish an account-deletion web page.** | Web + legal | **Code done, needs a deploy.** `/delete-account` names both routes (in-app, immediate; by email, 3 working days to confirm and 30 to complete), lists exactly what is deleted and what is kept, and says deletion cannot be undone. |
+| 3 | **Publish `https://aceaix.com/guidelines`.** | Web | **Code done, needs a deploy.** `/guidelines`, same shared source. |
+| 4 | **Fix the iOS privacy manifest.** | Mobile | **Done.** `NSPrivacyCollectedDataTypeUserContent` → `OtherUserContent`, and the six under-declared types added: CoarseLocation, UserID, DeviceID, ProductInteraction, Fitness, OtherDataTypes. Fitness is declared deliberately — minutes played and height/weight are fitness data, and under-declaring is the failure mode Google's automated checks catch. |
+| 5 | **Decide whether `talent-insights` ships with `ANTHROPIC_API_KEY` set**, then make the store answers match. | Legal | **OPEN — your decision.** The function works either way; without a key it writes from a template, and `tools/local-supabase/server.mjs` now serves the same template locally so the screen reads the same in development. If you set the key, Data safety and App Privacy must both say personal data goes to a third-party AI provider. |
+| 6 | **Decide the Play "approximate location" and "Fitness info" answers**, and keep Play, Apple and the manifest consistent. | Legal + mobile | **Half done.** The iOS manifest now declares both. Play's form still needs the same two answers ticked to match. |
+| 7 | **Re-publish `https://aceaix.com/privacy`** from the current app text. | Web | **Structurally fixed.** `/privacy` and `/terms` now render `mobile/lib/legal/` instead of a second hand-written copy, so this can never fall out of date again. Needs the same deploy as 1–3. |
+| 8 | **All screenshots.** | Design | **Done.** 36 images in `store-assets/screenshots/`, at every required size, in English and Arabic. `node mobile/tests/e2e/store-screenshots.mjs` regenerates them from the preview build — no simulator, no device, and repeatable when a screen changes. Every account shown is an adult. |
+| 9 | **A Play icon with an alpha channel.** | Design | **Done.** `store-assets/play/icon-512.png` (512×512 RGBA), plus `store-assets/app-store/icon-1024.png` (1024×1024, no alpha, as Apple requires) and the Play feature graphic at 1024×500. |
+| 10 | **Store credentials and contacts**: Play service account key, App Store Connect API key, review contact name and phone number. | Whoever holds each account | **OPEN — nothing in a repository can supply these.** Apple requires a contact and will call. |
+| 11 | **Decide whether AryAiX registers with NCMEC or an equivalent body.** | Legal | **OPEN — your decision.** The published text says "the relevant authorities"; Play's Child Safety Standards form asks specifically. |
+| 12 | **Name who is on the moderation queue, and the response-time commitment.** | Operations | **OPEN — your decision.** The Child Safety Standards document says child reports are the first thing the team looks at each day. Somebody has to actually be that person, and a reviewer may ask who. |
+| 13 | **Decide email confirmations on or off** for the hosted Supabase project. | Product + backend | **OPEN — your decision.** |
+| 14 | **Populate `consent_ip` and `consent_user_agent`**, or correct the migration comment. | Backend | **OPEN.** The comment still describes something the code does not do. |
+
+### Closed since the last revision
+
+**The `private` schema was reachable by every signed-in account.**
+`0001_init_extensions_enums.sql` created it with the comment "NOT exposed via
+Data API" and then granted `USAGE` on it to `anon` and `authenticated` on the
+next line; PostgreSQL's default `EXECUTE`-to-PUBLIC did the rest, leaving 62 of
+69 helpers — `private.notify`, `private.award`,
+`private.refresh_talent_score` — callable by anyone signed in. Nothing exploited
+it, because PostgREST is configured with `db-schemas = "public"` and will not
+route elsewhere. But one line of server configuration was the only thing
+standing between a teenager's account and a function that forges notifications.
+`20260907000006_close_the_private_schema.sql` revokes it, and
+`supabase/tests/functional.sql` now asserts the schema is unreachable, that every
+public table has RLS on, and that every SECURITY DEFINER function pins its
+`search_path`.
+
+**The tab bar was never translated.** Five hard-coded English labels and four
+hard-coded accessibility labels in `app/(tabs)/_layout.tsx`, in an app that
+ships seven languages. Found by looking at an Arabic store screenshot.
+`tests/unit/i18n.test.ts` now also checks that every `t('…')` key a screen asks
+for exists in English — 1,328 assertions, which is what caught a second one.
 
 ---
 

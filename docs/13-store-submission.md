@@ -287,40 +287,43 @@ eas submit --platform android --profile production   # track: alpha
   Store Connect reads it from the uploaded binary. No separate upload, and no alpha
   channel and no rounded corners — both already correct.
 
-### 3.2 Still to produce
+### 3.2 Screenshots — generated, not photographed
 
-**OPEN — all screenshots. Nothing in the repo. Owner: design, from a device or
-simulator running the production build with the demo seed loaded.**
+**DONE. `store-assets/screenshots/`, regenerate with:**
 
-App Store:
+```bash
+cd mobile
+npm run preview                                   # export → record → bake
+node tests/e2e/store-screenshots.mjs --langs en,ar
+```
 
-- [ ] iPhone 6.7" — **1290 × 2796** portrait (1284 × 2778 also accepted). 3 to 10 images.
-- [ ] iPhone 6.5" — **1242 × 2688** portrait (1284 × 2778 also accepted). 3 to 10 images.
-- [ ] Check App Store Connect at upload time for which display sizes it marks
-      mandatory for this submission — Apple has been adding a 6.9" slot
-      (**1320 × 2868**) and scaling the smaller ones from it. The page is the
-      authority, not this document.
-- [ ] Optional app preview video: 15–30 seconds, portrait, `.mov`, `.m4v` or `.mp4`,
-      matching the device slot it sits in (1080 × 1920 for the 6.5" slot). Only
-      captured app footage — no external footage, no device frames.
+It drives the same self-contained preview the artifact uses, at each store slot's
+exact viewport, and writes a numbered set per language. No simulator, no device,
+and repeatable the day a screen changes — which is why the repository had none
+before.
 
-Google Play:
+| Store | Slot | Size | Shipped |
+|-------|------|------|---------|
+| App Store | iPhone 6.7" | 1290 × 2796 | en, ar |
+| App Store | iPhone 6.5" | 1242 × 2688 | en, ar |
+| Play | Phone | 1080 × 1920 | en, ar |
 
-- [ ] Phone screenshots — minimum 2, maximum 8. PNG or JPEG, 16:9 or 9:16, each
-      side between 320 px and 3840 px. **1080 × 1920** is the safe choice.
-- [ ] Optional 7" and 10" tablet screenshots. `mobile/app.json` sets
-      `ios.supportsTablet: false`; Android tablets are not excluded, so supply tablet
-      shots only if you want the "designed for tablets" treatment.
+Six shots each, chosen because they show the machinery a reviewer is looking for:
+the feed, the athlete profile with the Talent Score, the score breakdown, the
+discovery list, trials, and notifications.
 
-Suggested set, same six shots for both stores, chosen because they show the
-safety machinery a reviewer is looking for:
+Check App Store Connect at upload time for which display sizes it marks mandatory
+for this submission — Apple has been adding a 6.9" slot (**1320 × 2868**). Add it
+to `SLOTS` in the script and re-run; that is the whole change.
 
-1. Athlete profile with the Talent Score visible
-2. The score breakdown screen — five pillars and the "what to do next" tips
-3. Feed with a highlight clip
-4. Discover / search results as a coach
-5. An opportunity (trial or scholarship) with its detail
-6. Settings → Privacy, showing "who can message you" and the guardian row
+Other assets, also generated:
+
+- `store-assets/app-store/icon-1024.png` — 1024 × 1024, **no alpha** (Apple rejects transparency)
+- `store-assets/play/icon-512.png` — 512 × 512, 32-bit with alpha
+- `store-assets/play/feature-graphic-1024x500.png` — required on every Play listing
+
+Still open: the optional app preview video (15–30 s, portrait), and screenshots in
+the other five languages if you declare them.
 
 Do not put a minor's face in a screenshot unless you hold a written release for it.
 Use the seeded adult accounts.

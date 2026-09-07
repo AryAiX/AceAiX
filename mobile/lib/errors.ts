@@ -48,6 +48,13 @@ const HINTS: Record<string, string> = {
   messaging_not_permitted: 'errors.messagingNotPermitted',
   rate_limited: 'errors.rateLimited',
   age_below_minimum: 'errors.ageBelowMinimum',
+  challenge_closed: 'errors.challengeClosed',
+  not_allowed: 'errors.challengeNotAllowed',
+  media_not_found: 'errors.clipRequired',
+  age_out_of_range: 'errors.ageOutOfRange',
+  favorite_teams_max: 'errors.favoriteTeamsMax',
+  profile_incomplete: 'errors.profileIncomplete',
+  not_an_athlete: 'errors.notAnAthlete',
 };
 
 const CODES: Record<string, string> = {

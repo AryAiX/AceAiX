@@ -7,6 +7,9 @@ import { onboarding } from './onboarding';
 import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
+import { challenges } from './challenges';
+import { teams } from './teams';
+import { views } from './views';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -20,5 +23,5 @@ import { format } from './format';
 
 /** Spanish. Typed against English, so a missing key is a compile error. */
 export const es: Translations = { common, language, auth, onboarding, feed, profile,
-  score, progress, discover, opportunities, messaging, settings, safety, sports, countries,
-  errors, format };
+  score, challenges, teams, views, progress, discover, opportunities, messaging, settings,
+  safety, sports, countries, errors, format };
