@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator, Linking, Platform } from 'react-native';
+import { Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, TextInput, ActivityIndicator, Linking, Platform, Modal } from 'react-native';
 import { User, Bell, Shield, Globe, ChevronRight, LogOut, HelpCircle, Info, RefreshCw, Link, Eye, Briefcase, Award, UserPlus, MessageCircle, BadgeCheck, TrendingUp, Trophy, Clock, Zap, Moon, Dumbbell, Trash2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
@@ -77,6 +77,8 @@ export default function Settings() {
   const [sportifyMsg, setSportifyMsg] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -262,13 +264,18 @@ export default function Settings() {
     else Alert.alert(title, message);
   }
 
+  function closeDeleteConfirm() {
+    setDeleteConfirmVisible(false);
+    setDeleteConfirmText('');
+  }
+
   function confirmDeleteAccount() {
     if (deletingAccount) return;
     if (Platform.OS === 'web') {
       if (globalThis.confirm(
         'Delete your AceAiX account? This permanently deletes your profile, posts, messages, imported performance data, and sign-in access. This action cannot be undone.',
       )) {
-        void handleDeleteAccount();
+        setDeleteConfirmVisible(true);
       }
       return;
     }
@@ -280,7 +287,7 @@ export default function Settings() {
         {
           text: 'Delete Account',
           style: 'destructive',
-          onPress: handleDeleteAccount,
+          onPress: () => setDeleteConfirmVisible(true),
         },
       ],
     );
@@ -791,6 +798,55 @@ export default function Settings() {
           }
         }}
       />
+
+      <Modal
+        visible={deleteConfirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeDeleteConfirm}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: Spacing.lg }}>
+          <View style={{ backgroundColor: Colors.surface, borderRadius: Radii.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border, gap: Spacing.md }}>
+            <Text style={{ fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary }}>
+              Type DELETE to confirm
+            </Text>
+            <Text style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, lineHeight: 20 }}>
+              This cannot be undone. Type DELETE to permanently delete your account.
+            </Text>
+            <TextInput
+              accessibilityLabel="Type DELETE to confirm account deletion"
+              style={s.connInput}
+              value={deleteConfirmText}
+              onChangeText={setDeleteConfirmText}
+              placeholder="DELETE"
+              placeholderTextColor={Colors.textDisabled}
+              autoCapitalize="characters"
+              autoCorrect={false}
+            />
+            <View style={{ flexDirection: 'row', gap: Spacing.sm }}>
+              <TouchableOpacity
+                onPress={closeDeleteConfirm}
+                style={{ flex: 1, paddingVertical: Spacing.md, alignItems: 'center', borderRadius: Radii.md, borderWidth: 1, borderColor: Colors.border }}
+              >
+                <Text style={{ fontFamily: Typography.family.bold, fontSize: Typography.size.sm, color: Colors.textMuted }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deletingAccount}
+                style={[s.deleteAccountBtn, { flex: 1 }, (deleteConfirmText.trim().toUpperCase() !== 'DELETE' || deletingAccount) && { opacity: 0.6 }]}
+                onPress={async () => {
+                  await handleDeleteAccount();
+                  closeDeleteConfirm();
+                }}
+              >
+                {deletingAccount
+                  ? <ActivityIndicator size="small" color={Colors.white} />
+                  : <Text style={s.deleteAccountTxt}>Delete Account</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
