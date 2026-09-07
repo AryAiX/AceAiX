@@ -86,6 +86,13 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
 
   const progressAnims = useRef<Animated.Value[]>([]);
 
+  useEffect(() => {
+    if (visible) {
+      setGroupIdx(startGroupIndex);
+      setStoryIdx(0);
+    }
+  }, [visible, startGroupIndex]);
+
   const currentGroup: StoryAuthorGroup | undefined = groups[groupIdx];
   const currentStory: Story | undefined = currentGroup?.stories[storyIdx];
   const isOwnStory = currentGroup?.is_own ?? false;
