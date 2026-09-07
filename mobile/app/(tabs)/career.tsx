@@ -26,7 +26,7 @@ const MONTHS = [
 ];
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
 const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - 10 - i));
+const YEARS = Array.from({ length: 70 }, (_, i) => String(currentYear - i));
 
 function yearFromDateString(dateStr: string): string {
   return dateStr.slice(0, 4);
