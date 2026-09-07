@@ -36,7 +36,7 @@ import {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SPORTS = [
-  'Athletics (Track & Field)', 'Basketball', 'Boxing', 'Cycling',
+  'Athletics (Track & Field)', 'Basketball', 'Boxing', 'Chess', 'Cycling',
   'Football (Soccer)', 'Golf', 'Gymnastics', 'Hockey (Field)',
   'Hockey (Ice)', 'Martial Arts', 'MMA', 'Rowing', 'Rugby',
   'Skiing', 'Surfing', 'Swimming', 'Table Tennis', 'Tennis',
