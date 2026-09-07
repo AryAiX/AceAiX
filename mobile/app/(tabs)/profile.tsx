@@ -3,6 +3,7 @@ import {
   Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
   Animated, AccessibilityInfo, Image, Share, Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
 import {
@@ -1260,6 +1261,7 @@ function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any;
 export default function Profile() {
   const { profile } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('Overview');
   const [reduced, setReduced] = useState(false);
   const [medicallyCleared, setMedicallyCleared] = useState(false);
@@ -1365,11 +1367,7 @@ export default function Profile() {
       <AppHeader title="Profile" />
       {/* Sticky compact header */}
       {sticky && (
-        <View style={s.stickyHeader}>
-          <LinearGradient
-            colors={[Colors.surface, `${Colors.surface}F0`]}
-            style={StyleSheet.absoluteFillObject}
-          />
+        <View style={[s.stickyHeader, { paddingTop: insets.top + 6 }]}>
           <View style={s.stickyAv}>
             <Text style={s.stickyAvTxt}>{profile?.full_name?.[0]?.toUpperCase() ?? 'A'}</Text>
           </View>
@@ -1643,7 +1641,7 @@ const s = StyleSheet.create({
   scroll: { flex: 1 },
 
   // Sticky
-  stickyHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.sm },
+  stickyHeader: { position: 'absolute', top: 0, left: 0, right: 0, minHeight: 96, zIndex: 100, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.lg, paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: Spacing.sm, backgroundColor: Colors.bg },
   stickyAv:     { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
   stickyAvTxt:  { fontFamily: Typography.family.bold, fontSize: 13, color: Colors.white },
   stickyName:   { fontFamily: Typography.family.bold, fontSize: 13, color: Colors.textPrimary },
