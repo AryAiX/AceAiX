@@ -131,7 +131,8 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
       return;
     }
     const builtTime = buildEventTime(eventHour, eventMinute, eventPeriod);
-    if (builtTime === 'incomplete') { setError('Select an hour, minute, and AM/PM, or leave time blank.'); return; }
+    if (builtTime === 'incomplete') { setError('Select an hour, minute, and AM/PM.'); return; }
+    if (builtTime === null) { setError('Time is required.'); return; }
     if (!location.trim()) { setError('Location is required.'); return; }
 
     setLoading(true);
@@ -243,7 +244,7 @@ export function CreateEventSheet({ visible, onClose, onCreated, editingEvent }: 
                 </View>
               </View>
               <View style={s.field}>
-                <Text style={s.label}>Time</Text>
+                <Text style={s.label}>Time *</Text>
                 <View style={s.pickerRow}>
                   <TouchableOpacity style={[s.pickerBtn, s.pickerBtnFlex]} onPress={() => setPickerTarget('hour')} activeOpacity={0.7}>
                     <Text style={[s.pickerBtnTxt, !eventHour && s.pickerPlaceholder]}>{eventHour || 'Hr'}</Text>
