@@ -467,6 +467,7 @@ function StatTile({ label, value, unit, delay, reduced }: {
 // ── Overview Tab ───────────────────────────────────────────────────────────────
 function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile | null; reduced: boolean; isOwn: boolean; router: any }) {
   const [aboutExpanded, setAboutExpanded] = useState(false);
+  const [bioNeedsTruncation, setBioNeedsTruncation] = useState(false);
   const [highlightTab, setHighlightTab] = useState<'Highlights' | 'Activity'>('Highlights');
   const [highlights, setHighlights] = useState<ProfileHighlight[]>([]);
   const [matchCount, setMatchCount] = useState(0);
@@ -720,10 +721,20 @@ function OverviewTab({ profile, reduced, isOwn, router }: { profile: AuthProfile
       {/* About */}
       <View style={s.card}>
         <SH title="About" color={Colors.primary} />
-        <Text style={s.bioTxt} numberOfLines={aboutExpanded ? undefined : 3}>{bio}</Text>
-        <TouchableOpacity onPress={() => setAboutExpanded(!aboutExpanded)} style={{ marginTop: 6 }}>
-          <Text style={s.moreBtn}>{aboutExpanded ? 'Show less' : '… show more'}</Text>
-        </TouchableOpacity>
+        <View>
+          <Text
+            style={[s.bioTxt, { position: 'absolute', opacity: 0, left: 0, right: 0 }]}
+            onTextLayout={(e) => setBioNeedsTruncation(e.nativeEvent.lines.length > 3)}
+          >
+            {bio}
+          </Text>
+          <Text style={s.bioTxt} numberOfLines={aboutExpanded ? undefined : 3}>{bio}</Text>
+        </View>
+        {bioNeedsTruncation && (
+          <TouchableOpacity onPress={() => setAboutExpanded(!aboutExpanded)} style={{ marginTop: 6 }}>
+            <Text style={s.moreBtn}>{aboutExpanded ? 'Show less' : '… show more'}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Highlights */}
