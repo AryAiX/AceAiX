@@ -347,14 +347,19 @@ export default function Dashboard() {
   const [opps, setOpps] = useState<OppCard[]>([]);
   const [attributes, setAttributes] = useState<AttributeCard[]>([]);
   const [form, setForm] = useState<MatchCard[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
   }, []);
 
-  useEffect(() => {
+  async function loadDashboardData() {
     if (!user) return;
-    Promise.all([
+    setDashboardLoading(true);
+    setDashboardError(null);
+    try {
+      const [views, matches, scoutRows, oppRows, attributeRows, matchRows] = await Promise.all([
       profile?.athlete_profile_id
         ? supabase
           .from('profile_views')
@@ -391,7 +396,7 @@ export default function Dashboard() {
           .order('match_date', { ascending: false })
           .limit(5)
         : Promise.resolve({ data: [] }),
-    ]).then(([views, matches, scoutRows, oppRows, attributeRows, matchRows]) => {
+    ]);
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
 
@@ -482,7 +487,15 @@ export default function Dashboard() {
         })
         .filter((c): c is MatchCard => c !== null);
       setForm(mappedForm);
-    });
+    } catch (err) {
+      setDashboardError(err instanceof Error ? err.message : 'Unable to load dashboard. Check your connection and try again.');
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDashboardData();
   }, [profile?.athlete_profile_id, user]);
 
   const career = useMemo(() => {
@@ -519,6 +532,19 @@ export default function Dashboard() {
   return (
     <View style={s.root}>
       <AppHeader title="Dashboard" />
+      {dashboardError ? (
+        <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
+          <Text style={{ fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary, marginBottom: Spacing.sm }}>
+            Unable to load dashboard
+          </Text>
+          <Text style={{ fontFamily: Typography.family.regular, fontSize: Typography.size.sm, color: Colors.textMuted, textAlign: 'center', marginBottom: Spacing.md }}>
+            {dashboardError}
+          </Text>
+          <TouchableOpacity onPress={loadDashboardData} style={{ backgroundColor: Colors.primary, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: Radii.md }}>
+            <Text style={{ fontFamily: Typography.family.bold, color: Colors.bg }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -876,6 +902,7 @@ export default function Dashboard() {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      )}
     </View>
   );
 }
