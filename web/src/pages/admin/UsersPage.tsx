@@ -109,7 +109,11 @@ export default function AdminUsersPage() {
                     <button
                       title={user.is_verified ? 'Mark unverified' : 'Mark verified'}
                       disabled={updateUser.isPending}
-                      onClick={() => updateUser.mutate({ user, patch: { is_verified: !user.is_verified } })}
+                      onClick={() => {
+                        const next = !user.is_verified;
+                        if (!window.confirm(`${next ? 'Verify' : 'Unverify'} ${user.full_name ?? 'this user'}?`)) return;
+                        updateUser.mutate({ user, patch: { is_verified: next } });
+                      }}
                       className="text-slate-400 hover:text-emerald-400 transition-colors disabled:opacity-50"
                     >
                       {user.is_verified ? <Clock size={15} /> : <CheckCircle size={15} />}
@@ -117,7 +121,10 @@ export default function AdminUsersPage() {
                     <button
                       title="Move to free tier"
                       disabled={updateUser.isPending || user.subscription_tier === 'free'}
-                      onClick={() => updateUser.mutate({ user, patch: { subscription_tier: 'free' } })}
+                      onClick={() => {
+                        if (!window.confirm(`Reset ${user.full_name ?? 'this user'} to the free tier?`)) return;
+                        updateUser.mutate({ user, patch: { subscription_tier: 'free' } });
+                      }}
                       className="text-slate-400 hover:text-amber transition-colors disabled:opacity-30"
                     >
                       <UserX size={15} />
@@ -126,7 +133,10 @@ export default function AdminUsersPage() {
                       <button
                         title="Make admin"
                         disabled={promoteUser.isPending}
-                        onClick={() => promoteUser.mutate(user)}
+                        onClick={() => {
+                          if (!window.confirm(`Promote ${user.full_name ?? 'this user'} to admin?`)) return;
+                          promoteUser.mutate(user);
+                        }}
                         className="text-slate-400 hover:text-rose-400 transition-colors disabled:opacity-50"
                       >
                         <ShieldCheck size={15} />

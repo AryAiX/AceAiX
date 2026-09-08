@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share,
+  Alert, Platform, View, Text, ScrollView, StyleSheet, TouchableOpacity, Share, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -16,7 +16,7 @@ import { usePerformanceData } from '@/hooks/usePerformanceData';
 export default function PublicProfile() {
   const { profile, user } = useAuth();
   const router = useRouter();
-  const { record, loading: performanceLoading, error: performanceError } = usePerformanceData(user?.id, profile?.sport);
+  const { record, loading: performanceLoading, error: performanceError, refresh } = usePerformanceData(user?.id, profile?.sport);
   const performanceScore = Math.round(profile?.performance_score ?? 0);
   const stats = record?.stats ?? {};
   const seasonHighlights = [
@@ -45,7 +45,11 @@ export default function PublicProfile() {
   return (
     <View style={s.root}>
       <AppHeader title="Public Profile" />
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={performanceLoading} onRefresh={() => void refresh()} tintColor={Colors.primary} />}
+      >
         {/* Cover */}
         <View style={s.coverWrap}>
           <LinearGradient

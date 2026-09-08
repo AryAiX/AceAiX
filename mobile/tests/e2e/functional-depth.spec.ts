@@ -610,6 +610,7 @@ test.describe.serial('deep mobile functional workflows', () => {
     const editedCaption = `${caption} edited`;
     const comment = `Second-user reply ${Date.now()}`;
     const authorReply = `Author reply ${Date.now()}`;
+    const replyToReply = `Flattened nested reply ${Date.now()}`;
     const primaryContext = await browser.newContext();
     const secondaryContext = await browser.newContext();
     const primary = await primaryContext.newPage();
@@ -683,7 +684,20 @@ test.describe.serial('deep mobile functional workflows', () => {
       const secondaryAfterReplyCard = postCard(secondary, editedCaption);
       await secondaryAfterReplyCard.getByRole('button', { name: 'View comments' }).click();
       await expect(secondary.getByText(authorReply, { exact: true })).toBeVisible();
+      const authorReplyRow = secondary
+        .getByText(authorReply, { exact: true })
+        .locator('xpath=ancestor::div[.//*[text()="Reply"]][1]');
+      await authorReplyRow.getByText('Reply', { exact: true }).click();
+      await secondary.getByLabel('Comment text').fill(replyToReply);
+      await secondary.getByRole('button', { name: 'Post comment' }).click();
+      await expect(secondary.getByText(replyToReply, { exact: true })).toBeVisible();
       await secondary.getByRole('button', { name: 'Close comments' }).click();
+
+      await primary.reload();
+      const primaryAfterNestedReplyCard = postCard(primary, editedCaption);
+      await primaryAfterNestedReplyCard.getByRole('button', { name: 'View comments' }).click();
+      await expect(primary.getByText(replyToReply, { exact: true })).toBeVisible();
+      await primary.getByRole('button', { name: 'Close comments' }).click();
 
       await secondaryAfterReplyCard.getByRole('button', { name: 'Open post menu' }).click();
       secondary.once('dialog', (dialog) => dialog.accept());

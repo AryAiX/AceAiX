@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,7 +27,7 @@ import {
   Brain,
   Star,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { SportifySection } from '@/components/sportify/SportifySection';
 import { AppointmentBookingSheet } from '@/components/sportify/AppointmentBookingSheet';
@@ -46,11 +47,16 @@ import {
 } from '@/lib/sportifyService';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import {
+  resolveSportifyAcademyTab,
+  type SportifyAcademyTab,
+} from '@/lib/deepLinkMappings';
 
 export default function SportifyAcademyScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
 
   const [results, setResults] = useState<SportifyResult[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -59,19 +65,30 @@ export default function SportifyAcademyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [bookingVisible, setBookingVisible] = useState(false);
-  const [tab, setTab] = useState<'results' | 'appointments'>('results');
+  const [tab, setTab] = useState<SportifyAcademyTab>('results');
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const requestedTab = resolveSportifyAcademyTab(params.tab);
+    if (requestedTab) setTab(requestedTab);
+  }, [params.tab]);
 
   const load = useCallback(async (showRefresh = false) => {
     if (!user) return;
     if (showRefresh) setRefreshing(true);
-    const [r, a, c] = await Promise.all([
-      fetchSportifyResults(user.id),
-      fetchAppointments(user.id),
-      fetchConsent(user.id),
-    ]);
-    setResults(r);
-    setAppointments(a);
-    setConsent(c);
+    try {
+      const [r, a, c] = await Promise.all([
+        fetchSportifyResults(user.id),
+        fetchAppointments(user.id),
+        fetchConsent(user.id),
+      ]);
+      setResults(r);
+      setAppointments(a);
+      setConsent(c);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load Sportify data.');
+    }
     if (showRefresh) setRefreshing(false);
   }, [user]);
 
@@ -104,7 +121,11 @@ export default function SportifyAcademyScreen() {
   };
 
   const handleCancelAppointment = async (id: string) => {
-    await cancelAppointment(id);
+    const { error } = await cancelAppointment(id);
+    if (error) {
+      Alert.alert('Could not cancel appointment', error);
+      return;
+    }
     setAppointments((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelled' as AppointmentStatus } : a));
   };
 
@@ -119,6 +140,13 @@ export default function SportifyAcademyScreen() {
 
       {loading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxxl }} />
+      ) : loadError ? (
+        <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
+          <Text style={{ color: Colors.error, textAlign: 'center' }}>{loadError}</Text>
+          <TouchableOpacity onPress={() => void load()} style={{ marginTop: Spacing.md }}>
+            <Text style={{ color: Colors.primary, fontFamily: Typography.family.bold }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : !consentActive ? (
         <NoConsentState onGoSettings={() => router.push('/(tabs)/settings' as any)} />
       ) : (
@@ -140,7 +168,7 @@ export default function SportifyAcademyScreen() {
               <TouchableOpacity style={s.syncBtn} onPress={handleSync} disabled={syncing}>
                 <RefreshCw color={syncing ? Colors.textDisabled : Colors.primary} size={14} />
                 <Text style={[s.syncTxt, syncing && { color: Colors.textDisabled }]}>
-                  {syncing ? 'Syncing…' : 'Sync Results'}
+                  {syncing ? 'Checking…' : 'Check for Results'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.bookBtn} onPress={() => setBookingVisible(true)}>
@@ -305,7 +333,7 @@ function EmptyResults({ onSync, syncing }: { onSync: () => void; syncing: boolea
       <Dumbbell color={Colors.textFaint} size={44} strokeWidth={1.5} />
       <Text style={er.title}>No test results yet</Text>
       <Text style={er.sub}>
-        Sync your Sportify Academy account to import your verified physical test results and talent assessment.
+        Results are imported after Sportify Academy assigns them to your linked account. Check again for newly available results.
       </Text>
       <TouchableOpacity style={er.syncBtn} onPress={onSync} disabled={syncing}>
         {syncing ? (
@@ -313,7 +341,7 @@ function EmptyResults({ onSync, syncing }: { onSync: () => void; syncing: boolea
         ) : (
           <>
             <RefreshCw color={Colors.white} size={14} />
-            <Text style={er.syncTxt}>Sync Now</Text>
+            <Text style={er.syncTxt}>Check Again</Text>
           </>
         )}
       </TouchableOpacity>

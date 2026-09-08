@@ -46,10 +46,25 @@ export function SelfReportForm({
       if (!raw || raw.trim() === '') continue;
       if (m.type === 'number' || m.type === 'rating' || m.type === 'percent') {
         const n = parseFloat(raw);
-        if (!isNaN(n)) stats[m.key] = n;
+        if (!Number.isFinite(n)) {
+          setError(`Enter a valid number for ${m.label}.`);
+          setSaving(false);
+          return;
+        }
+        stats[m.key] = n;
       } else {
         stats[m.key] = raw.trim();
       }
+    }
+    if (!season.trim()) {
+      setError('Enter a season or period.');
+      setSaving(false);
+      return;
+    }
+    if (Object.keys(stats).length === 0) {
+      setError('Enter at least one stat before saving.');
+      setSaving(false);
+      return;
     }
     const { error: err } = await upsertRecord(athlete_id, config.sport, stats, 'self_reported', season);
     if (err) {

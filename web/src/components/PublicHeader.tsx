@@ -5,11 +5,16 @@ import {
   ChevronDown, Settings, LogOut, X, ShieldCheck, Menu,
   Bookmark, FileText, BarChart3, Compass,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useMyAthlete } from '../hooks/useAthlete';
-import { listNotifications } from '../api/notifications';
+import { listNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notifications';
 import { safeInternalPath } from '../lib/navigation';
+import type { Notification } from '../types';
+import {
+  markAllNotificationsReadInState,
+  markNotificationReadInState,
+} from '../lib/notificationState';
 
 type NavItem = { label: string; path: string; Icon: React.ElementType };
 
@@ -123,11 +128,14 @@ export default function PublicHeader() {
   const { data: ownAthlete } = useMyAthlete(role === 'athlete');
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
   const [mobileOpen,  setMobileOpen]  = useState(false);
   const [notifOpen,   setNotifOpen]   = useState(false);
   const [meOpen,      setMeOpen]      = useState(false);
   const [searchOpen,  setSearchOpen]  = useState(false);
+  const [notifError,  setNotifError]  = useState('');
+  const [notifUpdating, setNotifUpdating] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const meRef    = useRef<HTMLDivElement>(null);
@@ -173,15 +181,24 @@ export default function PublicHeader() {
               AceAi<span className="text-azure">X</span>
             </span>
           </Link>
-          <div className="relative hidden md:flex items-center w-52">
+          <form
+            className="relative hidden md:flex items-center w-52"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = (new FormData(event.currentTarget).get('q') as string | null)?.trim();
+              if (value) navigate(`/athletes?q=${encodeURIComponent(value)}`);
+            }}
+          >
             <Search size={13} className="absolute left-3 text-white/40 pointer-events-none" />
             <input
+              name="q"
+              aria-label="Search athletes"
               placeholder="Search…"
               className="w-full rounded-xl pl-9 pr-3 py-1.5 text-sm text-white placeholder:text-white/30
                          focus:outline-none focus:ring-2 focus:ring-azure/30 transition-all"
               style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
             />
-          </div>
+          </form>
         </div>
 
         {/* ── Centered Nav tabs ─────────────────────── */}
@@ -260,10 +277,34 @@ export default function PublicHeader() {
                           borderBottom: '1px solid rgba(255,255,255,0.07)',
                           background: !n.is_read ? 'rgba(47,128,237,0.08)' : undefined,
                         }}
-                        onClick={() => {
-                          setNotifOpen(false);
+                        onClick={async () => {
+                          if (notifUpdating) return;
                           const destination = safeInternalPath(n.action_url);
-                          if (destination) navigate(destination);
+                          setNotifError('');
+                          if (destination) {
+                            setNotifOpen(false);
+                            navigate(destination);
+                          }
+                          if (n.is_read) {
+                            if (!destination) setNotifOpen(false);
+                            return;
+                          }
+                          setNotifUpdating(true);
+                          try {
+                            await markNotificationRead(n.id);
+                            queryClient.setQueryData<Notification[]>(
+                              ['notifications', user?.id],
+                              (current = []) => markNotificationReadInState(current, n.id),
+                            );
+                            if (!destination) setNotifOpen(false);
+                          } catch (error) {
+                            setNotifError(error instanceof Error ? error.message : 'Notification could not be updated.');
+                            // The cached item intentionally remains unread. Reopening the
+                            // menu and selecting it retries without blocking navigation.
+                            setNotifOpen(true);
+                          } finally {
+                            setNotifUpdating(false);
+                          }
                         }}
                       >
                         <div className="flex items-start gap-2.5">
@@ -277,8 +318,34 @@ export default function PublicHeader() {
                       </div>
                     ))
                   )}
+                  {notifError && (
+                    <p role="alert" className="px-4 py-2 text-xs text-coral">{notifError}</p>
+                  )}
                   <div className="px-4 py-2.5 text-center" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                    <button className="text-xs text-azure hover:underline font-medium">View all notifications</button>
+                    <button
+                      type="button"
+                      disabled={notifUpdating || unread === 0}
+                      className="text-xs text-azure hover:underline font-medium disabled:opacity-40 disabled:no-underline"
+                      onClick={async () => {
+                        if (!user || notifUpdating) return;
+                        setNotifError('');
+                        setNotifUpdating(true);
+                        try {
+                          await markAllNotificationsRead(user.id);
+                          queryClient.setQueryData<Notification[]>(
+                            ['notifications', user.id],
+                            (current = []) => markAllNotificationsReadInState(current),
+                          );
+                          setNotifOpen(false);
+                        } catch (error) {
+                          setNotifError(error instanceof Error ? error.message : 'Notifications could not be updated.');
+                        } finally {
+                          setNotifUpdating(false);
+                        }
+                      }}
+                    >
+                      {notifUpdating ? 'Updating…' : 'Mark all read'}
+                    </button>
                   </div>
                 </div>
               </Dropdown>
@@ -372,11 +439,25 @@ export default function PublicHeader() {
           style={{ opacity: searchOpen ? 1 : 0, pointerEvents: searchOpen ? 'auto' : 'none', transition: 'opacity 0.2s ease' }}
         >
           <Search size={15} className="text-white/40 flex-shrink-0" />
-          <input
-            autoFocus
-            placeholder="Search athletes, clubs, scouts…"
-            className="flex-1 bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
-          />
+          <form
+            className="flex-1"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = (new FormData(event.currentTarget).get('q') as string | null)?.trim();
+              if (value) {
+                setSearchOpen(false);
+                navigate(`/athletes?q=${encodeURIComponent(value)}`);
+              }
+            }}
+          >
+            <input
+              name="q"
+              autoFocus
+              aria-label="Search athletes"
+              placeholder="Search athletes, clubs, scouts…"
+              className="w-full bg-transparent text-sm text-white placeholder:text-white/30 outline-none"
+            />
+          </form>
           <button onClick={() => setSearchOpen(false)}><X size={18} className="text-white/40" /></button>
         </div>
       </div>

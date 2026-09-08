@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,15 @@ export function SportifyConsentModal({ visible, isMinor, onClose, onConsented }:
   const [guardianEmail, setGuardianEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) {
+      setConfirmed(false);
+      setGuardianName('');
+      setGuardianEmail('');
+      setError(null);
+    }
+  }, [visible]);
 
   const canSubmit = confirmed && (!isMinor || (guardianName.trim().length > 0 && guardianEmail.trim().length > 0));
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
-  Animated, AccessibilityInfo,
+  Animated, AccessibilityInfo, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
@@ -347,6 +347,9 @@ export default function Dashboard() {
   const [opps, setOpps] = useState<OppCard[]>([]);
   const [attributes, setAttributes] = useState<AttributeCard[]>([]);
   const [form, setForm] = useState<MatchCard[]>([]);
+  const [dashError, setDashError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
@@ -392,6 +395,12 @@ export default function Dashboard() {
           .limit(5)
         : Promise.resolve({ data: [] }),
     ]).then(([views, matches, scoutRows, oppRows, attributeRows, matchRows]) => {
+      const failed = [views, matches, scoutRows, oppRows, attributeRows, matchRows].find((result) => 'error' in result && result.error);
+      if (failed && 'error' in failed && failed.error) {
+        setDashError(failed.error.message);
+        return;
+      }
+      setDashError(null);
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
 
@@ -482,8 +491,8 @@ export default function Dashboard() {
         })
         .filter((c): c is MatchCard => c !== null);
       setForm(mappedForm);
-    });
-  }, [profile?.athlete_profile_id, user]);
+    }).finally(() => setRefreshing(false));
+  }, [profile?.athlete_profile_id, reloadKey, user]);
 
   const career = useMemo(() => {
     const trajectory = (profile?.trajectory ?? []) as Array<{ season: string; score?: number; forecast?: number }>;
@@ -519,7 +528,15 @@ export default function Dashboard() {
   return (
     <View style={s.root}>
       <AppHeader title="Dashboard" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setReloadKey((k) => k + 1); }} tintColor={Colors.primary} />}
+      >
+        {dashError ? (
+          <Text style={{ color: Colors.error, marginBottom: Spacing.md, textAlign: 'center' }}>{dashError}</Text>
+        ) : null}
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <Animated.View style={s.hero}>

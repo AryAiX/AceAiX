@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  RefreshControl,
 } from 'react-native';
 import { Award, Edit, MapPin, Plus, Trash2, X } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
@@ -183,7 +184,12 @@ export default function Career() {
   return (
     <View style={s.root}>
       <AppHeader title="Career" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void loadEntries()} tintColor={Colors.primary} />}
+      >
 
         <View style={s.summaryRow}>
           {[

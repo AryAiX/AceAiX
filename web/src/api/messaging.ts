@@ -1,5 +1,10 @@
 import { supabase, unwrap, USER_FIELDS } from './_helpers';
 import type { Conversation, Message, UserProfile } from '../types';
+import {
+  canonicalConversationParticipants,
+  conversationPairFilter,
+  isUniqueViolation,
+} from '../lib/conversationState';
 
 export async function listConversations(userId: string): Promise<Conversation[]> {
   const rows = unwrap(
@@ -14,20 +19,34 @@ export async function listConversations(userId: string): Promise<Conversation[]>
   return rows.map((c) => ({ ...c, other_user: c.participant_1_id === userId ? c.p2 : c.p1 }));
 }
 
-export async function getOrCreateConversation(userId: string, otherUserId: string): Promise<Conversation> {
-  const existing = unwrap(
-    await supabase
+export async function getOrCreateConversation(
+  userId: string,
+  otherUserId: string,
+): Promise<Conversation> {
+  const participants = canonicalConversationParticipants(userId, otherUserId);
+  const selectCanonical = () =>
+    supabase
       .from('conversations')
       .select('*')
-      .or(
-        `and(participant_1_id.eq.${userId},participant_2_id.eq.${otherUserId}),and(participant_1_id.eq.${otherUserId},participant_2_id.eq.${userId})`,
-      )
-      .maybeSingle(),
-  ) as Conversation | null;
+      .or(conversationPairFilter(userId, otherUserId))
+      .maybeSingle();
+
+  const existing = unwrap(await selectCanonical()) as Conversation | null;
   if (existing) return existing;
-  return unwrap(
-    await supabase.from('conversations').insert({ participant_1_id: userId, participant_2_id: otherUserId }).select('*').single(),
-  ) as Conversation;
+
+  const created = await supabase
+    .from('conversations')
+    .insert(participants)
+    .select('*')
+    .single();
+  if (!created.error) return created.data as Conversation;
+  if (!isUniqueViolation(created.error)) throw new Error(created.error.message);
+
+  const canonical = unwrap(await selectCanonical()) as Conversation | null;
+  if (!canonical) {
+    throw new Error('Conversation was created concurrently but could not be loaded.');
+  }
+  return canonical;
 }
 
 export async function listMessages(conversationId: string): Promise<Message[]> {
@@ -47,10 +66,16 @@ export async function sendMessage(conversationId: string, senderId: string, cont
   return msg;
 }
 
-export async function markMessagesRead(conversationId: string, userId: string): Promise<void> {
-  await supabase
-    .from('messages')
-    .update({ is_read: true, read_at: new Date().toISOString() })
-    .eq('conversation_id', conversationId)
-    .neq('sender_id', userId);
+export async function markMessagesRead(
+  conversationId: string,
+  userId: string,
+): Promise<void> {
+  unwrap(
+    await supabase
+      .from('messages')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .neq('sender_id', userId)
+      .select('id'),
+  );
 }

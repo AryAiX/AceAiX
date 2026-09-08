@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,13 @@ export function ApplySheet({ opportunity, onClose, onApplied }: Props) {
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!opportunity) {
+      setMessage('');
+      setError(null);
+    }
+  }, [opportunity]);
 
   if (!opportunity) return null;
 

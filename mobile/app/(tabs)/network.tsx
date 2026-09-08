@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, RefreshControl, View, Text, ScrollV
 import { Users, UserPlus, MessageSquare, BadgeCheck, Briefcase, Star, UserX } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 
@@ -26,6 +26,7 @@ const COLORS: Record<string, string> = {
 
 export default function Network() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ filter?: string }>();
   const { user } = useAuth();
   const [filter, setFilter] = useState('All');
   const [people, setPeople] = useState<ConnectionRow[]>([]);
@@ -35,6 +36,10 @@ export default function Network() {
   const [loadError, setLoadError] = useState(false);
   const mountedRef = useRef(true);
   const filters = ['All', 'Scouts', 'Clubs', 'Coaches', 'Agents', 'Athletes', 'Blocked'];
+  useEffect(() => {
+    const requested = String(params.filter ?? '');
+    if (filters.includes(requested)) setFilter(requested);
+  }, [params.filter]);
   const typeMap: Record<string, string> = {
     Scouts: 'scout',
     Clubs: 'club',

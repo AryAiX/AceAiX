@@ -67,7 +67,8 @@ export default function Settings() {
   const [prefsSaved, setPrefsSaved] = useState(false);
 
   const { stats: chessStats } = useChessStats(profile?.sport === 'chess' ? user?.id : null);
-  const canSyncChess = !chessStats || isSyncStale(chessStats.last_synced_at, 3600000);
+  const hasChessUsername = Boolean(chesscom.trim() || lichess.trim());
+  const canSyncChess = hasChessUsername && (!chessStats || isSyncStale(chessStats.last_synced_at, 3600000));
 
   // Sportify state
   const [sportifyConsent, setSportifyConsent] = useState<SportifyConsent | null>(null);
@@ -92,7 +93,15 @@ export default function Settings() {
       .finally(() => {
         if (active) setPrefsLoading(false);
       });
-    fetchConsent(user.id).then(setSportifyConsent);
+    fetchConsent(user.id)
+      .then((consent) => {
+        if (active) setSportifyConsent(consent);
+      })
+      .catch((error) => {
+        if (active) {
+          setSportifyMsg(error instanceof Error ? error.message : 'Could not load Sportify consent.');
+        }
+      });
     return () => { active = false; };
   }, [user]);
 
@@ -183,8 +192,8 @@ export default function Settings() {
     const { error } = await supabase
       .from('athlete_profiles')
       .update({
-        chesscom_username: chesscom || null,
-        lichess_username: lichess || null,
+        chesscom_username: chesscom.trim() || null,
+        lichess_username: lichess.trim() || null,
       })
       .eq('user_id', user.id);
     if (error) {
@@ -201,7 +210,7 @@ export default function Settings() {
     if (!user) return;
     setSyncing(true);
     setSyncMsg(null);
-    const { ok, error } = await triggerChessSyncFull(user.id, chesscom || null, lichess || null);
+    const { ok, error } = await triggerChessSyncFull(user.id, chesscom.trim() || null, lichess.trim() || null);
     setSyncMsg(ok ? 'Chess data synced!' : (error ?? 'Sync failed'));
     setSyncing(false);
     scheduleTimeout(() => setSyncMsg(null), 4000);
@@ -573,7 +582,7 @@ export default function Settings() {
                     : <>
                         <RefreshCw color={canSyncChess ? Colors.primary : Colors.textDisabled} size={14} />
                         <Text style={[s.connSyncTxt, !canSyncChess && { color: Colors.textDisabled }]}>
-                          {canSyncChess ? 'Sync Chess' : 'Synced recently'}
+                          {canSyncChess ? 'Sync Chess' : hasChessUsername ? 'Synced recently' : 'Add username first'}
                         </Text>
                       </>
                   }
@@ -785,9 +794,13 @@ export default function Settings() {
         onClose={() => setConsentModalVisible(false)}
         onConsented={async () => {
           if (user) {
-            await handleSportifyLink();
-            const c = await fetchConsent(user.id);
-            setSportifyConsent(c);
+            try {
+              await handleSportifyLink();
+              const c = await fetchConsent(user.id);
+              setSportifyConsent(c);
+            } catch (error) {
+              setSportifyMsg(error instanceof Error ? error.message : 'Could not refresh Sportify consent.');
+            }
           }
         }}
       />

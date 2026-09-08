@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search, Star, Eye, MessageSquare, ChevronRight, Zap,
@@ -12,12 +12,13 @@ import { listAthletes, type AthleteWithUser } from '../../api/athletes';
 import { listWatchlists } from '../../api/watchlists';
 import { listNotifications } from '../../api/notifications';
 import { listConversations } from '../../api/messaging';
+import { safeInternalPath } from '../../lib/navigation';
 
 /* ── view models ──────────────────────────────────────────── */
 interface StatItem { label: string; value: number; delta: string; up: boolean; color: string; icon: LucideIcon; }
-interface RecAthlete { name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
-interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; }
-interface WatchPreview { name: string; position: string; score: number; trend: string; up: boolean; image: string; }
+interface RecAthlete { id: string; userId: string; name: string; position: string; club: string; score: number; match: number; goals: number; assists: number; age: number | null; verified: boolean; hot: boolean; image: string; }
+interface ActivityItem { action: string; name: string; time: string; color: string; icon: LucideIcon; href: string | null; }
+interface WatchPreview { id: string; name: string; position: string; score: number; trend: string; up: boolean; image: string; }
 interface PipelineStage { stage: string; count: number; color: string; }
 
 function ageFromBirth(birth: string | null): number | null {
@@ -39,6 +40,8 @@ function timeAgo(iso: string): string {
 function mapRec(a: AthleteWithUser): RecAthlete {
   const stats = (a.highlighted_stats ?? {}) as Record<string, number>;
   return {
+    id: a.id,
+    userId: a.user_id,
     name: a.user?.full_name ?? 'Unnamed athlete',
     position: a.position ?? a.position_primary ?? '—',
     club: a.current_club ?? 'Free agent',
@@ -141,12 +144,13 @@ function StatCard({ s, idx }: { s: StatItem; idx: number }) {
 
 /* ── athlete card ─────────────────────────────────────────── */
 function AthleteCard({ a, delay }: { a: RecAthlete; delay: number }) {
+  const navigate = useNavigate();
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
   const mc = a.match >= 95 ? '#B8F135' : a.match >= 90 ? '#1FB57A' : '#2F80ED';
   return (
-    <Link to="/recruiter/search"
+    <Link to={`/athletes/${a.id}`}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       className="block rounded-2xl overflow-hidden"
@@ -203,13 +207,16 @@ function AthleteCard({ a, delay }: { a: RecAthlete; delay: number }) {
             ))}
           </div>
           <div className="flex gap-1.5">
-            {[{ c: '#F5A623', I: Star }, { c: '#2F80ED', I: MessageSquare }].map(({ c, I }) => (
-              <button key={c} onClick={e => e.preventDefault()}
-                className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
-                style={{ background: `${c}12`, border: `1px solid ${c}25`, color: c }}>
-                <I size={11} />
-              </button>
-            ))}
+            <button type="button" aria-label="Open watchlists" onClick={e => { e.preventDefault(); e.stopPropagation(); navigate('/recruiter/watchlists'); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+              style={{ background: '#F5A62312', border: '1px solid #F5A62325', color: '#F5A623' }}>
+              <Star size={11} />
+            </button>
+            <button type="button" aria-label="Message athlete" onClick={e => { e.preventDefault(); e.stopPropagation(); navigate(`/recruiter/messages?user=${a.userId}`); }}
+              className="w-7 h-7 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+              style={{ background: '#2F80ED12', border: '1px solid #2F80ED25', color: '#2F80ED' }}>
+              <MessageSquare size={11} />
+            </button>
           </div>
         </div>
       </div>
@@ -260,7 +267,14 @@ export default function RecruiterDashboard() {
 
   const ACTIVITY: ActivityItem[] = notifications.map((n) => {
     const style = activityStyle(n.type);
-    return { action: n.title, name: n.body ?? '', time: timeAgo(n.created_at), color: style.color, icon: style.icon };
+    return {
+      action: n.title,
+      name: n.body ?? '',
+      time: timeAgo(n.created_at),
+      color: style.color,
+      icon: style.icon,
+      href: safeInternalPath(n.action_url),
+    };
   });
 
   const WATCHLIST: WatchPreview[] = useMemo(() => {
@@ -268,6 +282,7 @@ export default function RecruiterDashboard() {
     return (first?.athletes ?? []).slice(0, 4).map((wa) => {
       const a = wa.athlete;
       return {
+        id: a?.id ?? wa.athlete_id,
         name: a?.user?.full_name ?? 'Unnamed athlete',
         position: a?.position ?? a?.position_primary ?? '—',
         score: Math.round((a?.visibility_score ?? 0) / 10 * 10) / 10,
@@ -287,13 +302,14 @@ export default function RecruiterDashboard() {
         return s >= min && s < max;
       }).length;
     return [
-      { stage: 'Scouted',    count: tier(0, 8.0),   color: '#2F80ED' },
-      { stage: 'Contacted',  count: tier(8.0, 8.5), color: '#1FB57A' },
-      { stage: 'In Trial',   count: tier(8.5, 9.0), color: '#F5A623' },
-      { stage: 'Offer Sent', count: tier(9.0, 11),  color: '#B8F135' },
+      { stage: 'Visibility < 80', count: tier(0, 8.0),   color: '#2F80ED' },
+      { stage: '80–85',            count: tier(8.0, 8.5), color: '#1FB57A' },
+      { stage: '85–90',            count: tier(8.5, 9.0), color: '#F5A623' },
+      { stage: '90+',              count: tier(9.0, 11),  color: '#B8F135' },
     ];
   }, [watchlists]);
   const PIPE_TOTAL = PIPELINE.reduce((s, p) => s + p.count, 0) || 1;
+  const unreadAlerts = notifications.filter((n) => !n.is_read).length;
 
   return (
     <div className="max-w-7xl space-y-5 pb-10">
@@ -330,12 +346,14 @@ export default function RecruiterDashboard() {
             </div>
           </div>
           <div className="flex gap-2.5 flex-shrink-0">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            <a href="#recent-activity" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.55)' }}>
               <Bell size={14} />
               Alerts
-              <span className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: '#EF5350', color: '#fff' }}>3</span>
-            </button>
+              {unreadAlerts > 0 && (
+              <span className="w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center" style={{ background: '#EF5350', color: '#fff' }}>{unreadAlerts > 9 ? '9+' : unreadAlerts}</span>
+              )}
+            </a>
             <Link to="/recruiter/search"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-[0.97]"
               style={{ background: '#2F80ED', color: '#fff', boxShadow: '0 4px 20px rgba(47,128,237,0.45)' }}>
@@ -349,7 +367,7 @@ export default function RecruiterDashboard() {
 
         <div className="relative px-6 sm:px-8 py-5">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/35">Recruitment Pipeline</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-white/35">Watchlist by visibility score</p>
             <p className="text-[11px] text-white/25">{PIPE_TOTAL} athletes total</p>
           </div>
           <div className="flex gap-1 h-2 rounded-full overflow-hidden">
@@ -404,7 +422,7 @@ export default function RecruiterDashboard() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {RECOMMENDED.map((a, i) => <AthleteCard key={a.name} a={a} delay={380 + i * 90} />)}
+          {RECOMMENDED.map((a, i) => <AthleteCard key={a.id} a={a} delay={380 + i * 90} />)}
           {RECOMMENDED.length === 0 && (
             <p className="text-white/30 text-sm py-6 text-center md:col-span-3">No recommendations yet.</p>
           )}
@@ -415,7 +433,7 @@ export default function RecruiterDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* activity */}
-        <div className="rounded-2xl p-5"
+        <div id="recent-activity" className="rounded-2xl p-5"
           style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', animation: 'slideUp 0.5s ease 0.4s both' }}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
@@ -431,10 +449,9 @@ export default function RecruiterDashboard() {
             </span>
           </div>
           <div className="space-y-0.5">
-            {ACTIVITY.map((item, i) => (
-              <div key={i}
-                className="flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl cursor-pointer transition-colors hover:bg-white/[0.03]"
-                style={{ animation: `slideUp 0.35s ease ${0.44 + i * 0.07}s both` }}>
+            {ACTIVITY.map((item, i) => {
+              const body = (
+                <>
                 <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: `${item.color}13`, border: `1px solid ${item.color}25` }}>
                   <item.icon size={11} style={{ color: item.color }} />
@@ -444,8 +461,16 @@ export default function RecruiterDashboard() {
                   <p className="text-xs font-semibold text-white truncate">{item.name}</p>
                 </div>
                 <span className="text-[10px] text-white/22 flex-shrink-0">{item.time}</span>
-              </div>
-            ))}
+                </>
+              );
+              const className = 'flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-xl transition-colors hover:bg-white/[0.03]';
+              const style = { animation: `slideUp 0.35s ease ${0.44 + i * 0.07}s both` };
+              return item.href ? (
+                <Link key={`${item.action}-${i}`} to={item.href} className={className} style={style}>{body}</Link>
+              ) : (
+                <div key={`${item.action}-${i}`} className={className} style={style}>{body}</div>
+              );
+            })}
             {ACTIVITY.length === 0 && (
               <p className="text-white/30 text-xs py-6 text-center">No recent activity.</p>
             )}
@@ -471,11 +496,11 @@ export default function RecruiterDashboard() {
             {WATCHLIST.map((w, i) => {
               const tc = w.up ? '#1FB57A' : '#EF5350';
               return (
-                <div key={w.name}
-                  className="flex items-center gap-4 px-4 py-3 rounded-2xl cursor-pointer transition-all"
+                <Link to={`/athletes/${w.id}`} key={w.id}
+                  className="flex items-center gap-4 px-4 py-3 rounded-2xl transition-all"
                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animation: `slideUp 0.35s ease ${0.48 + i * 0.07}s both` }}
-                  onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = 'rgba(255,255,255,0.045)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; }}
-                  onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.06)'; }}>
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(255,255,255,0.045)'; el.style.borderColor = 'rgba(255,255,255,0.12)'; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.background = 'rgba(255,255,255,0.02)'; el.style.borderColor = 'rgba(255,255,255,0.06)'; }}>
                   <img src={w.image} alt={w.name} className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
                     style={{ border: '1.5px solid rgba(255,255,255,0.10)' }} />
                   <div className="flex-1 min-w-0">
@@ -491,12 +516,12 @@ export default function RecruiterDashboard() {
                       <p className="text-base font-display font-bold text-white tabular">{w.score}</p>
                       <p className="text-[9px] text-white/25">score</p>
                     </div>
-                    <button className="w-7 h-7 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70"
+                    <span className="w-7 h-7 rounded-xl flex items-center justify-center"
                       style={{ background: 'rgba(47,128,237,0.09)', border: '1px solid rgba(47,128,237,0.22)', color: '#2F80ED' }}>
                       <ArrowUpRight size={11} />
-                    </button>
+                    </span>
                   </div>
-                </div>
+                </Link>
               );
             })}
             {WATCHLIST.length === 0 && (

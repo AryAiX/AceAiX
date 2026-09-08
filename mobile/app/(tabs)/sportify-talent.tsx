@@ -67,16 +67,22 @@ export default function SportifyTalentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (showRefresh = false) => {
     if (!user) return;
     if (showRefresh) setRefreshing(true);
-    const [r, c] = await Promise.all([
-      fetchSportifyResults(user.id),
-      fetchConsent(user.id),
-    ]);
-    setResults(r);
-    setConsent(c);
+    try {
+      const [r, c] = await Promise.all([
+        fetchSportifyResults(user.id),
+        fetchConsent(user.id),
+      ]);
+      setResults(r);
+      setConsent(c);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load Sportify data.');
+    }
     if (showRefresh) setRefreshing(false);
   }, [user]);
 
@@ -119,7 +125,7 @@ export default function SportifyTalentScreen() {
         </View>
         <TouchableOpacity
           accessibilityRole="button"
-          accessibilityLabel={syncing ? 'Syncing talent data' : 'Sync talent data'}
+          accessibilityLabel={syncing ? 'Checking for talent results' : 'Check for talent results'}
           accessibilityState={{ busy: syncing, disabled: syncing }}
           style={s.syncIconBtn}
           onPress={handleSync}
@@ -131,6 +137,13 @@ export default function SportifyTalentScreen() {
 
       {loading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxxl }} />
+      ) : loadError ? (
+        <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
+          <Text style={{ color: Colors.error, textAlign: 'center' }}>{loadError}</Text>
+          <TouchableOpacity onPress={() => void load()} style={{ marginTop: Spacing.md }}>
+            <Text style={{ color: Colors.primary }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : !consentActive ? (
         <NoConsentState onGoSettings={() => router.push('/(tabs)/settings' as any)} />
       ) : !talentResult ? (
@@ -488,7 +501,7 @@ function NoTalentState({ onSync, syncing }: { onSync: () => void; syncing: boole
       <Brain color={Colors.textFaint} size={52} strokeWidth={1.5} />
       <Text style={nt.title}>No Talent Assessment Yet</Text>
       <Text style={nt.sub}>
-        Sync your Sportify Academy account to import your talent potential assessment and sport recommendations.
+        Assessments appear after Sportify Academy assigns them to your linked account. Check again for newly available results.
       </Text>
       <TouchableOpacity style={nt.btn} onPress={onSync} disabled={syncing}>
         {syncing ? (
@@ -496,7 +509,7 @@ function NoTalentState({ onSync, syncing }: { onSync: () => void; syncing: boole
         ) : (
           <>
             <RefreshCw color={Colors.black} size={14} />
-            <Text style={nt.btnTxt}>Sync Now</Text>
+            <Text style={nt.btnTxt}>Check Again</Text>
           </>
         )}
       </TouchableOpacity>

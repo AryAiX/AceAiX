@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, ChevronDown } from 'lucide-react-native';
 import { Colors, Spacing, Radii, Typography } from '@/constants/theme';
 import { OpportunityFilters, OPP_SPORTS, OPP_TYPES, OpportunityType } from '@/lib/opportunitiesService';
+import { salaryRangeError } from '@/lib/opportunityFilters';
 
 interface Props {
   visible: boolean;
@@ -25,6 +26,17 @@ interface Props {
 export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
   const insets = useSafeAreaInsets();
   const [local, setLocal] = useState<OpportunityFilters>(filters);
+  const [salaryMin, setSalaryMin] = useState(filters.salary_min != null ? String(filters.salary_min) : '');
+  const [salaryMax, setSalaryMax] = useState(filters.salary_max != null ? String(filters.salary_max) : '');
+  const [salaryError, setSalaryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setLocal(filters);
+    setSalaryMin(filters.salary_min != null ? String(filters.salary_min) : '');
+    setSalaryMax(filters.salary_max != null ? String(filters.salary_max) : '');
+    setSalaryError(null);
+  }, [visible, filters]);
 
   const set = (k: keyof OpportunityFilters, v: any) =>
     setLocal((prev) => ({ ...prev, [k]: v }));
@@ -33,12 +45,31 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
     setLocal((prev) => ({ ...prev, [k]: prev[k] === v ? undefined : (v as any) }));
 
   const handleApply = () => {
-    onApply(local);
+    const parsedMin = salaryMin.trim() === '' ? undefined : Number(salaryMin);
+    const parsedMax = salaryMax.trim() === '' ? undefined : Number(salaryMax);
+    if ((parsedMin != null && !Number.isFinite(parsedMin)) || (parsedMax != null && !Number.isFinite(parsedMax))) {
+      setSalaryError('Enter valid salary numbers.');
+      return;
+    }
+    if (parsedMin != null && parsedMin < 0 || parsedMax != null && parsedMax < 0) {
+      setSalaryError('Salary cannot be negative.');
+      return;
+    }
+    const rangeError = salaryRangeError(parsedMin, parsedMax);
+    if (rangeError) {
+      setSalaryError(rangeError);
+      return;
+    }
+    setSalaryError(null);
+    onApply({ ...local, salary_min: parsedMin, salary_max: parsedMax });
     onClose();
   };
 
   const handleClear = () => {
     setLocal({});
+    setSalaryMin('');
+    setSalaryMax('');
+    setSalaryError(null);
     onApply({});
     onClose();
   };
@@ -118,8 +149,8 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                 <TextInput
                   accessibilityLabel="Minimum salary"
                   style={[s.textField, { flex: 1 }]}
-                  value={local.salary_min != null ? String(local.salary_min) : ''}
-                  onChangeText={(v) => set('salary_min', v ? Number(v) : undefined)}
+                  value={salaryMin}
+                  onChangeText={setSalaryMin}
                   placeholder="Min"
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="numeric"
@@ -128,13 +159,14 @@ export function FilterSheet({ visible, filters, onApply, onClose }: Props) {
                 <TextInput
                   accessibilityLabel="Maximum salary"
                   style={[s.textField, { flex: 1 }]}
-                  value={local.salary_max != null ? String(local.salary_max) : ''}
-                  onChangeText={(v) => set('salary_max', v ? Number(v) : undefined)}
+                  value={salaryMax}
+                  onChangeText={setSalaryMax}
                   placeholder="Max"
                   placeholderTextColor={Colors.textDisabled}
                   keyboardType="numeric"
                 />
               </View>
+              {salaryError ? <Text style={{ color: Colors.error, marginTop: 8, fontSize: 12 }}>{salaryError}</Text> : null}
             </Section>
           </ScrollView>
 

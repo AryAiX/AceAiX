@@ -1,5 +1,6 @@
 import { supabase, unwrap, USER_FIELDS } from './_helpers';
 import type { AthleteProfile, UserProfile } from '../types';
+import { athleteMatchesSearch } from '../lib/athleteSearch';
 
 export type AthleteWithUser = AthleteProfile & { user?: UserProfile };
 
@@ -20,21 +21,27 @@ export async function listAthletes(filters: AthleteFilters = {}): Promise<Athlet
   if (filters.level) query = query.eq('level', filters.level);
   if (filters.openToOffers) query = query.eq('is_open_to_offers', true);
   if (filters.minScore) query = query.gte('visibility_score', filters.minScore);
-  if (filters.limit) query = query.limit(filters.limit);
+  if (filters.limit && !filters.q) query = query.limit(filters.limit);
   const data = unwrap(await query);
   let rows = data as AthleteWithUser[];
   if (filters.q) {
-    const q = filters.q.toLowerCase();
-    rows = rows.filter(
-      (a) =>
-        a.user?.full_name?.toLowerCase().includes(q) ||
-        a.sport?.toLowerCase().includes(q) ||
-        a.position?.toLowerCase().includes(q) ||
-        a.position_primary?.toLowerCase().includes(q) ||
-        a.current_club?.toLowerCase().includes(q),
-    );
+    rows = rows.filter((athlete) => athleteMatchesSearch([
+      athlete.user?.full_name,
+      athlete.user?.city,
+      athlete.user?.country,
+      athlete.sport,
+      athlete.position,
+      athlete.position_primary,
+      athlete.position_secondary,
+      athlete.current_club,
+      athlete.nationality,
+      athlete.level,
+      athlete.dominant_foot,
+      athlete.user?.is_verified ? 'verified' : '',
+      JSON.stringify(athlete.highlighted_stats ?? {}),
+    ].filter(Boolean).join(' '), filters.q!));
   }
-  return rows;
+  return filters.limit ? rows.slice(0, filters.limit) : rows;
 }
 
 export async function getAthleteById(id: string): Promise<AthleteWithUser | null> {

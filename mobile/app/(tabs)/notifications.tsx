@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -139,7 +140,7 @@ function NotifRow({
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { groups, unreadCount, loading, refresh, markRead, markAllRead, dismissNotification, clearAll } =
+  const { groups, unreadCount, loading, error, refresh, markRead, markAllRead, dismissNotification, clearAll } =
     useNotifications();
 
   const handlePress = useCallback(
@@ -159,7 +160,16 @@ export default function NotificationsScreen() {
     [dismissNotification]
   );
 
+  const clearNotifications = useCallback(async () => {
+    const { error: clearError } = await clearAll();
+    if (clearError) Alert.alert('Could not clear notifications', clearError);
+  }, [clearAll]);
+
   const handleClearAll = useCallback(() => {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm('Clear all notifications? This cannot be undone.')) void clearNotifications();
+      return;
+    }
     Alert.alert(
       'Clear all notifications?',
       'This will permanently remove all your notifications. This cannot be undone.',
@@ -168,14 +178,16 @@ export default function NotificationsScreen() {
         {
           text: 'Clear All',
           style: 'destructive',
-          onPress: async () => {
-            const { error: clearError } = await clearAll();
-            if (clearError) Alert.alert('Could not clear notifications', clearError);
-          },
+          onPress: () => void clearNotifications(),
         },
       ]
     );
-  }, [clearAll]);
+  }, [clearNotifications]);
+
+  const handleMarkAllRead = useCallback(async () => {
+    const { error: markError } = await markAllRead();
+    if (markError) Alert.alert('Could not mark notifications read', markError);
+  }, [markAllRead]);
 
   const isEmpty = groups.length === 0;
 
@@ -191,7 +203,7 @@ export default function NotificationsScreen() {
         </View>
         <View style={s.headerActions}>
           {unreadCount > 0 && (
-            <TouchableOpacity style={s.markAllBtn} onPress={markAllRead} activeOpacity={0.75}>
+            <TouchableOpacity style={s.markAllBtn} onPress={handleMarkAllRead} activeOpacity={0.75}>
               <Check color={Colors.primary} size={13} strokeWidth={2.5} />
               <Text style={s.markAllTxt}>Mark all read</Text>
             </TouchableOpacity>
@@ -222,7 +234,18 @@ export default function NotificationsScreen() {
           />
         }
       >
-        {isEmpty ? (
+        {isEmpty && error ? (
+          <View style={s.emptyState}>
+            <View style={s.emptyIconWrap}>
+              <Bell color={Colors.error} size={40} strokeWidth={1.5} />
+            </View>
+            <Text style={s.emptyTitle}>Notifications unavailable</Text>
+            <Text style={s.emptyBody}>{error}</Text>
+            <TouchableOpacity style={s.markAllBtn} onPress={refresh}>
+              <Text style={s.markAllTxt}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isEmpty ? (
           <View style={s.emptyState}>
             <View style={s.emptyIconWrap}>
               <Bell color={Colors.textDisabled} size={40} strokeWidth={1.5} />

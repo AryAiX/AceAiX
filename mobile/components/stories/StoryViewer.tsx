@@ -84,6 +84,21 @@ export function StoryViewer({ visible, groups, startGroupIndex, onClose }: Props
   const [replyStatus, setReplyStatus] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!visible) {
+      setReplyText('');
+      setReplyStatus(null);
+      return;
+    }
+    setGroupIdx(startGroupIndex);
+    setStoryIdx(0);
+    setPaused(false);
+    setMenuOpen(false);
+    setShowViewers(false);
+    setReplyText('');
+    setReplyStatus(null);
+  }, [visible, startGroupIndex]);
+
   const progressAnims = useRef<Animated.Value[]>([]);
 
   const currentGroup: StoryAuthorGroup | undefined = groups[groupIdx];

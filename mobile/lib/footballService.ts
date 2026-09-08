@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { edgeFunctionErrorMessage } from './edgeFunctionError';
 
 export interface FootballStats {
   id: string;
@@ -81,9 +82,9 @@ export async function triggerFootballSync(
   const { data, error } = await supabase.functions.invoke('sync-football', {
     body: { athlete_id, player_id, season, league },
   });
-  if (error) return { ok: false, error: error.message };
-  if (data?.error) return { ok: false, error: data.error };
+  if (error) return { ok: false, error: await edgeFunctionErrorMessage(error, 'Football sync failed. You can add stats manually in the meantime.') };
   if (data?.fallback) return { ok: false, error: null, fallback: true, reason: data.reason };
+  if (data?.ok === false || data?.error) return { ok: false, error: data.error ?? 'Football sync failed.' };
   return { ok: true, error: null };
 }
 

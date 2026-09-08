@@ -29,7 +29,7 @@ import {
   Target,
   Star,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AppHeader } from '@/components/AppHeader';
 import { FilterSheet } from '@/components/opportunities/FilterSheet';
 import { OpportunityDetail } from '@/components/opportunities/OpportunityDetail';
@@ -43,6 +43,7 @@ import {
   fetchAllOpportunities,
   fetchSavedOpportunities,
   fetchMyApplications,
+  matchesOpportunityFilters,
   toggleOpportunitySave,
   formatSalary,
   deadlineLabel,
@@ -52,10 +53,14 @@ import {
 } from '@/lib/opportunitiesService';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import {
+  resolveOpportunityTab,
+  type OpportunityTab,
+} from '@/lib/deepLinkMappings';
 
 const { width: SW } = Dimensions.get('window');
 
-type Tab = 'For You' | 'All' | 'Saved' | 'Applied';
+type Tab = OpportunityTab;
 const TABS: Tab[] = ['For You', 'All', 'Saved', 'Applied'];
 
 // ── Type colors ───────────────────────────────────────────────────────────────
@@ -384,7 +389,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
 }
 
 // ── EmptyState ────────────────────────────────────────────────────────────────
-function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => void }) {
+function EmptyState({ tab, onProfilePress, error }: { tab: Tab; onProfilePress: () => void; error?: string | null }) {
   const ring1 = useRef(new Animated.Value(1)).current;
   const ring2 = useRef(new Animated.Value(1)).current;
 
@@ -427,9 +432,9 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
           <Trophy color={Colors.primary} size={26} strokeWidth={1.5} />
         </View>
       </View>
-      <Text style={es.title}>{m.title}</Text>
-      <Text style={es.body}>{m.body}</Text>
-      {m.cta && (
+      <Text style={es.title}>{error ? 'Couldn’t load opportunities' : m.title}</Text>
+      <Text style={es.body}>{error ?? m.body}</Text>
+      {m.cta && !error && (
         <TouchableOpacity style={es.ctaBtn} onPress={onProfilePress}>
           <LinearGradient
             colors={[Colors.primary, Colors.primaryGlow]}
@@ -448,6 +453,7 @@ export default function OpportunitiesScreen() {
   const insets = useSafeAreaInsets();
   const { user, profile } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string }>();
 
   const [tab, setTab]         = useState<Tab>('For You');
   const [filters, setFilters] = useState<OpportunityFilters>({});
@@ -463,6 +469,7 @@ export default function OpportunitiesScreen() {
   });
   const [refreshing,  setRefreshing]  = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const allCursorRef  = useRef<{ createdAt: string; id: string } | undefined>(undefined);
   const allHasMoreRef = useRef(true);
@@ -475,6 +482,11 @@ export default function OpportunitiesScreen() {
   const indicatorX = useRef(new Animated.Value(0)).current;
   const tabW = (SW - Spacing.lg * 2) / TABS.length;
 
+  useEffect(() => {
+    const requestedTab = resolveOpportunityTab(params.tab);
+    if (requestedTab) setTab(requestedTab);
+  }, [params.tab]);
+
   const setLoading = (t: Tab, v: boolean) =>
     setLoadingMap(prev => ({ ...prev, [t]: v }));
 
@@ -482,33 +494,53 @@ export default function OpportunitiesScreen() {
   const loadForYou = useCallback(async () => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
-    const data = await fetchForYouOpportunities(user.id, profile?.sport ?? null, profile?.position ?? null, f);
-    setForYou(data);
+    try {
+      const data = await fetchForYouOpportunities(user.id, profile?.sport ?? null, profile?.position ?? null, f);
+      setForYou(data);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load opportunities.');
+    }
   }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadAll = useCallback(async (reset = false) => {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
     const cursor = reset ? undefined : allCursorRef.current;
-    const data = await fetchAllOpportunities(user.id, cursor, f, 20, profile?.sport ?? null, profile?.position ?? null);
-    if (data.length > 0) {
-      const last = data[data.length - 1];
-      allCursorRef.current = { createdAt: last.created_at, id: last.id };
+    try {
+      const data = await fetchAllOpportunities(user.id, cursor, f, 20, profile?.sport ?? null, profile?.position ?? null);
+      if (data.length > 0) {
+        const last = data[data.length - 1];
+        allCursorRef.current = { createdAt: last.created_at, id: last.id };
+      }
+      allHasMoreRef.current = data.length === 20;
+      setAll(prev => reset ? data : [...prev, ...data]);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load opportunities.');
     }
-    allHasMoreRef.current = data.length === 20;
-    setAll(prev => reset ? data : [...prev, ...data]);
   }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadSaved   = useCallback(async () => {
     if (!user) return;
-    const data = await fetchSavedOpportunities(user.id);
-    setSaved(data);
+    try {
+      const data = await fetchSavedOpportunities(user.id);
+      setSaved(data);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load saved opportunities.');
+    }
   }, [user]);
 
   const loadApplied = useCallback(async () => {
     if (!user) return;
-    const data = await fetchMyApplications(user.id);
-    setApplied(data);
+    try {
+      const data = await fetchMyApplications(user.id);
+      setApplied(data);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load applications.');
+    }
   }, [user]);
 
   useEffect(() => {
@@ -600,7 +632,14 @@ export default function OpportunitiesScreen() {
   };
 
   const activeFiltersCount = Object.values(filters).filter(Boolean).length;
-  const currentData = tab === 'For You' ? forYou : tab === 'All' ? all : tab === 'Saved' ? saved : [];
+  const activeFilters = { ...filters, search: searchText || undefined };
+  const currentData = tab === 'For You'
+    ? forYou
+    : tab === 'All'
+      ? all
+      : tab === 'Saved'
+        ? saved.filter((opp) => matchesOpportunityFilters(opp, activeFilters))
+        : [];
   const isLoading   = loadingMap[tab];
 
   const matchCount = forYou.length;
@@ -686,14 +725,14 @@ export default function OpportunitiesScreen() {
           <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxxl }} />
         ) : (
           <FlatList
-            data={applied}
+            data={applied.filter((app) => !app.opportunity || matchesOpportunityFilters(app.opportunity, activeFilters))}
             keyExtractor={a => a.id}
             renderItem={({ item }) => (
               <ApplicationRow app={item} onPress={() => item.opportunity && setDetailOpp(item.opportunity)} />
             )}
             contentContainerStyle={s.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<EmptyState tab="Applied" onProfilePress={() => router.push('/(tabs)/profile' as any)} />}
+            ListEmptyComponent={<EmptyState tab="Applied" error={loadError} onProfilePress={() => router.push('/(tabs)/profile' as any)} />}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
           />
         )
@@ -714,7 +753,7 @@ export default function OpportunitiesScreen() {
             )}
             contentContainerStyle={s.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<EmptyState tab={tab} onProfilePress={() => router.push('/(tabs)/profile' as any)} />}
+            ListEmptyComponent={<EmptyState tab={tab} error={loadError} onProfilePress={() => router.push('/(tabs)/profile' as any)} />}
             ListFooterComponent={
               loadingMore ? <ActivityIndicator color={Colors.primary} style={{ paddingVertical: Spacing.xl }} /> : null
             }

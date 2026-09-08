@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { RefreshCw, ChevronDown, Zap } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
@@ -62,26 +62,34 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
   const [showForm, setShowForm] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncSuccess, setSyncSuccess] = useState<string | null>(null);
   const { profile } = useAuth();
+  const missingFootballIdentity = config?.sport === 'football' && !profile?.football_api_player_id;
+  const missingChessIdentity = config?.sport === 'chess' && !profile?.chesscom_username && !profile?.lichess_username;
+  const syncUnavailable = missingFootballIdentity || missingChessIdentity;
+  const canEditRecord = !record || record.source === 'self' || record.source === 'self_reported';
 
   async function handleSync() {
     setSyncing(true);
     setSyncError(null);
-    if (config?.sport === 'football') {
-      if (!profile?.football_api_player_id) {
-        setSyncError('Link your football player ID in Settings to enable auto-sync.');
-        setSyncing(false);
-        return;
+    setSyncSuccess(null);
+    try {
+      if (config?.sport === 'football') {
+        if (!profile?.football_api_player_id) {
+          setSyncError('A verified football player ID must be assigned before syncing.');
+          return;
+        }
+        const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
+        if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
+        else { await refresh(); setSyncSuccess('Football performance synced.'); }
+      } else {
+        const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
+        if (!ok) setSyncError(error);
+        else { await refresh(); setSyncSuccess('Chess performance synced.'); }
       }
-      const { ok, error, fallback, reason } = await triggerFootballSync(userId, profile.football_api_player_id);
-      if (!ok) setSyncError(error ?? (fallback ? reason ?? 'Could not sync right now.' : 'Sync failed.'));
-      else await refresh();
-    } else {
-      const { ok, error } = await triggerChessSync(userId, profile?.chesscom_username, profile?.lichess_username);
-      if (!ok) setSyncError(error);
-      else await refresh();
+    } finally {
+      setSyncing(false);
     }
-    setSyncing(false);
   }
 
   if (!config) {
@@ -127,9 +135,9 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
           <View style={s.actionRow}>
             {config.supportsAutoSync && (
               <TouchableOpacity
-                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                style={[s.syncBtn, (syncing || syncUnavailable) && s.syncBtnDisabled]}
                 onPress={handleSync}
-                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+                disabled={syncing || syncUnavailable}
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
@@ -137,13 +145,16 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
                 }
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={s.editBtn} onPress={() => setShowForm(true)}>
-              <Text style={s.editBtnTxt}>Edit Stats</Text>
-            </TouchableOpacity>
+            {canEditRecord ? (
+              <TouchableOpacity style={s.editBtn} onPress={() => setShowForm(true)}>
+                <Text style={s.editBtnTxt}>Edit Stats</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={s.editBtn}><Text style={s.editBtnTxt}>Verified data · read only</Text></View>
+            )}
           </View>
-          {config.supportsAutoSync && config.sport === 'football' && !profile?.football_api_player_id && (
-            <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
-          )}
+          {missingFootballIdentity && <Text style={s.dividerTxt}>A verified football player ID must be assigned before syncing.</Text>}
+          {missingChessIdentity && <Text style={s.dividerTxt}>Add a Chess.com or Lichess username in Settings to enable auto-sync.</Text>}
         </>
       )}
 
@@ -154,18 +165,17 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
             <>
               <Text style={s.noDataBody}>{config.syncNote}</Text>
               <TouchableOpacity
-                style={[s.syncBtn, (syncing || (config.sport === 'football' && !profile?.football_api_player_id)) && s.syncBtnDisabled]}
+                style={[s.syncBtn, (syncing || syncUnavailable) && s.syncBtnDisabled]}
                 onPress={handleSync}
-                disabled={syncing || (config.sport === 'football' && !profile?.football_api_player_id)}
+                disabled={syncing || syncUnavailable}
               >
                 {syncing
                   ? <ActivityIndicator size="small" color={Colors.primary} />
                   : <><RefreshCw color={Colors.primary} size={14} /><Text style={s.syncBtnTxt}>{config.syncButtonLabel ?? 'Sync Now'}</Text></>
                 }
               </TouchableOpacity>
-              {config.sport === 'football' && !profile?.football_api_player_id && (
-                <Text style={s.dividerTxt}>Link your football player ID in Settings to enable auto-sync.</Text>
-              )}
+              {missingFootballIdentity && <Text style={s.dividerTxt}>A verified football player ID must be assigned before syncing.</Text>}
+              {missingChessIdentity && <Text style={s.dividerTxt}>Add a Chess.com or Lichess username in Settings to enable auto-sync.</Text>}
               <Text style={s.dividerTxt}>— or enter manually —</Text>
             </>
           ) : (
@@ -189,6 +199,7 @@ function MyPerformance({ userId, sport }: { userId: string; sport: string | null
       )}
 
       {syncError && <Text style={s.syncError}>{syncError}</Text>}
+      {syncSuccess && <Text style={[s.syncError, { color: Colors.success }]}>{syncSuccess}</Text>}
     </View>
   );
 }
@@ -233,16 +244,19 @@ export default function Performance() {
   const [gallery, setGallery] = useState<GalleryAthlete[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(true);
   const [galleryError, setGalleryError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user) { setGalleryLoading(false); return; }
     let mounted = true;
-    supabase
+    setGalleryLoading(true);
+    setGalleryError(false);
+    Promise.resolve(supabase
       .from('performance_records')
       .select('athlete_id, sport, season_or_period, stats, source, last_synced_at, user_profiles(full_name)')
       .neq('athlete_id', user.id)
       .order('last_synced_at', { ascending: false })
-      .limit(20)
+      .limit(20))
       .then(({ data, error }) => {
         if (!mounted) return;
         if (error) {
@@ -269,15 +283,26 @@ export default function Performance() {
           if (unique.length >= 10) break;
         }
         setGallery(unique);
-        setGalleryLoading(false);
+        setGalleryError(false);
+      })
+      .catch(() => {
+        if (mounted) setGalleryError(true);
+      })
+      .finally(() => {
+        if (mounted) setGalleryLoading(false);
       });
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, reloadKey]);
 
   return (
     <View style={s.root}>
       <AppHeader title="Performance Engine" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={galleryLoading} onRefresh={() => setReloadKey((key) => key + 1)} tintColor={Colors.primary} />}
+      >
 
         {/* My Performance */}
         <View style={s.sectionHeader}>

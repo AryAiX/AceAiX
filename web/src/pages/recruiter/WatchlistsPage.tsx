@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Plus, Star, Trash2, ShieldCheck, Search, TrendingUp, Flame, X, BarChart2, ArrowUpRight, Pencil, Check, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   listWatchlists, createWatchlist, renameWatchlist, deleteWatchlist, removeAthleteFromWatchlist,
 } from '../../api/watchlists';
+import { watchlistMutationErrorMessage } from '../../lib/watchlistState';
 import type { Watchlist } from '../../types';
 
 /* ── view models (mapped from DB watchlists) ──────────────── */
 interface Athlete {
   id: string;        // watchlist_athletes row id (used for removal)
+  athleteId: string;
   name: string;
   position: string;
   club: string;
@@ -40,6 +43,7 @@ function mapWatchlist(wl: Watchlist, i: number): WL {
       const a = wa.athlete;
       return {
         id: wa.id,
+        athleteId: a?.id ?? wa.athlete_id,
         name: a?.user?.full_name ?? 'Unnamed athlete',
         position: a?.position ?? a?.position_primary ?? '—',
         club: a?.current_club ?? 'Free agent',
@@ -85,8 +89,8 @@ function ScoreRing({ score, size = 44 }: { score: number; size?: number }) {
 }
 
 /* ── athlete row ──────────────────────────────────────────── */
-function AthleteRow({ a, idx, accent, onRemove }:
-  { a: Athlete; idx: number; accent: string; onRemove: () => void }) {
+function AthleteRow({ a, idx, accent, onRemove, onOpen }:
+  { a: Athlete; idx: number; accent: string; onRemove: () => void; onOpen: () => void }) {
   const [vis, setVis]   = useState(false);
   const [hov, setHov]   = useState(false);
   const [conf, setConf] = useState(false);
@@ -144,7 +148,7 @@ function AthleteRow({ a, idx, accent, onRemove }:
 
       {/* actions */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
+        <button type="button" onClick={onOpen} className="w-7 h-7 flex items-center justify-center rounded-lg transition-all"
           style={{ background: 'rgba(47,128,237,0.09)', border: '1px solid rgba(47,128,237,0.22)', color: '#2F80ED' }}>
           <ArrowUpRight size={11} />
         </button>
@@ -218,6 +222,7 @@ function ListCard({ wl, active, onClick, idx }:
 
 /* ── main ─────────────────────────────────────────────────── */
 export default function WatchlistsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -227,6 +232,9 @@ export default function WatchlistsPage() {
   const [search,    setSearch]    = useState('');
   const [renaming,  setRenaming]  = useState(false);
   const [renameValue, setRenameValue] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [renamePending, setRenamePending] = useState(false);
+  const [mutationError, setMutationError] = useState('');
   const [mounted,   setMounted]   = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
 
@@ -249,22 +257,40 @@ export default function WatchlistsPage() {
   }
 
   async function createList() {
-    if (!newName.trim() || !user) return;
-    const created = await createWatchlist(user.id, newName.trim(), newDesc.trim() || undefined);
-    await invalidate();
-    setSelectedId(created.id);
-    setNewName(''); setNewDesc(''); setShowNew(false);
+    if (!newName.trim() || !user || creating) return;
+    setCreating(true);
+    setMutationError('');
+    try {
+      const created = await createWatchlist(user.id, newName.trim(), newDesc.trim() || undefined);
+      await invalidate();
+      setSelectedId(created.id);
+      setNewName(''); setNewDesc(''); setShowNew(false);
+    } catch (error) {
+      setMutationError(watchlistMutationErrorMessage(error, 'Watchlist could not be created.'));
+    } finally {
+      setCreating(false);
+    }
   }
 
   async function saveRename() {
-    if (!current || !renameValue.trim()) { setRenaming(false); return; }
-    await renameWatchlist(current.id, renameValue.trim());
-    await invalidate();
-    setRenaming(false);
+    if (!current || renamePending) return;
+    if (!renameValue.trim()) { setRenaming(false); return; }
+    setRenamePending(true);
+    setMutationError('');
+    try {
+      await renameWatchlist(current.id, renameValue.trim());
+      await invalidate();
+      setRenaming(false);
+    } catch (error) {
+      setMutationError(watchlistMutationErrorMessage(error, 'Watchlist could not be renamed.'));
+    } finally {
+      setRenamePending(false);
+    }
   }
 
   async function removeList() {
     if (!current) return;
+    if (!window.confirm(`Delete watchlist “${current.name}”? This cannot be undone.`)) return;
     await deleteWatchlist(current.id);
     setSelectedId(null);
     await invalidate();
@@ -321,6 +347,12 @@ export default function WatchlistsPage() {
           style={{ background: 'linear-gradient(90deg,transparent,rgba(245,166,35,0.55) 35%,rgba(47,128,237,0.38) 65%,transparent)' }} />
       </div>
 
+      {mutationError && (
+        <p role="alert" className="rounded-xl border border-coral/30 bg-coral/10 px-4 py-3 text-sm text-coral">
+          {mutationError}
+        </p>
+      )}
+
       {/* NEW WATCHLIST FORM */}
       {showNew && (
         <div className="rounded-2xl p-5"
@@ -334,8 +366,8 @@ export default function WatchlistsPage() {
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-            <input value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && createList()}
+            <input value={newName} onChange={e => { setNewName(e.target.value); setMutationError(''); }}
+              onKeyDown={e => e.key === 'Enter' && !creating && createList()}
               placeholder="Watchlist name…" autoFocus
               className="px-4 py-2.5 rounded-xl text-sm focus:outline-none"
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }} />
@@ -345,10 +377,11 @@ export default function WatchlistsPage() {
               style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff' }} />
           </div>
           <div className="flex gap-2">
-            <button onClick={createList}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.97]"
+            <button onClick={createList} disabled={creating}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all active:scale-[0.97] disabled:opacity-60 disabled:cursor-wait"
               style={{ background: '#F5A623', color: '#0C1A2B' }}>
-              <Plus size={13} /> Create
+              {creating ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+              {creating ? 'Creating…' : 'Create'}
             </button>
             <button onClick={() => setShowNew(false)}
               className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
@@ -417,8 +450,9 @@ export default function WatchlistsPage() {
                     </div>
                     {renaming ? (
                       <input autoFocus value={renameValue}
-                        onChange={e => setRenameValue(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setRenaming(false); }}
+                        disabled={renamePending}
+                        onChange={e => { setRenameValue(e.target.value); setMutationError(''); }}
+                        onKeyDown={e => { if (e.key === 'Enter' && !renamePending) saveRename(); if (e.key === 'Escape' && !renamePending) setRenaming(false); }}
                         className="text-lg font-display font-bold text-white bg-transparent rounded-lg px-2 py-0.5 focus:outline-none"
                         style={{ border: `1px solid ${current.color}40` }} />
                     ) : (
@@ -428,15 +462,15 @@ export default function WatchlistsPage() {
                   <p className="text-[12px] text-white/40 ml-11">{current.description}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
+                  <button type="button" onClick={() => navigate('/recruiter/search')} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all"
                     style={{ background: `${current.color}10`, border: `1px solid ${current.color}25`, color: current.color }}>
                     <BarChart2 size={11} /> Compare
                   </button>
                   {renaming ? (
-                    <button onClick={saveRename}
-                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all"
+                    <button onClick={saveRename} disabled={renamePending}
+                      className="w-8 h-8 flex items-center justify-center rounded-xl transition-all disabled:opacity-60 disabled:cursor-wait"
                       style={{ background: 'rgba(31,181,122,0.12)', border: '1px solid rgba(31,181,122,0.30)', color: '#1FB57A' }}>
-                      <Check size={13} />
+                      {renamePending ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
                     </button>
                   ) : (
                     <button onClick={() => { setRenameValue(current.name); setRenaming(true); }}
@@ -497,7 +531,7 @@ export default function WatchlistsPage() {
                   <p className="text-white/35 text-sm">
                     {current.athletes.length === 0 ? 'No athletes yet' : 'No athletes match your search'}
                   </p>
-                  <button className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl transition-all"
+                  <button type="button" onClick={() => navigate('/recruiter/search')} className="flex items-center gap-1.5 text-xs px-4 py-2 rounded-xl transition-all"
                     style={{ background: `${current.color}10`, border: `1px solid ${current.color}28`, color: current.color }}>
                     <Plus size={11} /> Add from Search
                   </button>
@@ -505,7 +539,8 @@ export default function WatchlistsPage() {
               ) : (
                 filteredAthletes.map((a, i) => (
                   <AthleteRow key={a.id} a={a} idx={i} accent={current.color}
-                    onRemove={() => removeAthlete(a.id)} />
+                    onRemove={() => removeAthlete(a.id)}
+                    onOpen={() => navigate(`/athletes/${a.athleteId}`)} />
                 ))
               )}
             </div>
@@ -513,7 +548,7 @@ export default function WatchlistsPage() {
             {/* footer add */}
             {current.athletes.length > 0 && (
               <div className="px-5 pb-4">
-                <button className="flex items-center gap-2 text-xs font-semibold transition-all"
+                <button type="button" onClick={() => navigate('/recruiter/search')} className="flex items-center gap-2 text-xs font-semibold transition-all"
                   style={{ color: current.color }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.7'; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}>

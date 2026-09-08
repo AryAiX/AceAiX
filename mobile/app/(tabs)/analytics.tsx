@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, RefreshControl } from 'react-native';
 import { Eye, Star, Target, Users } from 'lucide-react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { AppHeader } from '@/components/AppHeader';
@@ -38,6 +38,7 @@ export default function Analytics() {
   const [regions, setRegions] = useState<{ region: string; views: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user || !profile?.athlete_profile_id) return;
@@ -87,7 +88,7 @@ export default function Analytics() {
     }).catch(() => { if (mounted) setLoadError(true); })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [profile?.athlete_profile_id, user]);
+  }, [profile?.athlete_profile_id, user, reloadKey]);
 
   const progressedApplications = applications.filter((application) => (
     ['shortlisted', 'trial_offered', 'accepted'].includes(application.status)
@@ -113,7 +114,12 @@ export default function Analytics() {
   return (
     <View style={s.root}>
       <AppHeader title="Analytics" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setReloadKey((key) => key + 1)} tintColor={Colors.primary} />}
+      >
 
         {loading ? (
           <Text style={s.emptyText}>Loading analytics...</Text>
