@@ -25,20 +25,27 @@ export default function OnboardingPage() {
   const [club, setClub] = useState('');
   const [nationality, setNationality] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleComplete() {
     if (!profile) {
       navigate(user ? '/dashboard' : '/auth/login');
       return;
     }
+    if (!position) {
+      setError('Choose a position before finishing setup.');
+      return;
+    }
     setLoading(true);
-    const { error } = await supabase
+    setError('');
+    const { error: updateError } = await supabase
       .from('athlete_profiles')
       .update({ sport, position_primary: position, level, current_club: club, nationality })
       .eq('user_id', profile.id);
-    if (error) {
+    if (updateError) {
       setLoading(false);
-      throw new Error(error.message);
+      setError(updateError.message);
+      return;
     }
     await refreshProfile();
     setLoading(false);
@@ -152,9 +159,10 @@ export default function OnboardingPage() {
                 />
               </div>
 
+              {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
               <button
                 onClick={handleComplete}
-                disabled={loading}
+                disabled={loading || !position}
                 className="btn-primary w-full justify-center py-3 text-base"
               >
                 {loading ? (

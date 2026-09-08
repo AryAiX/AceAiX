@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   ShieldCheck, AlertCircle, Clock, FileText, Plus, Lock,
-  CheckCircle2, Heart, X, Loader2, Check, Activity,
+  CheckCircle2, Heart, X, Activity,
   ChevronRight, Upload, Eye, EyeOff, Sparkles,
   Stethoscope, Syringe, FlaskConical,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listClearances, listMedicalRecords, listInjuries } from '../../api/medical';
 import type { MedicalClearance, MedicalRecord, Injury } from '../../types';
@@ -165,13 +166,9 @@ function ExpiryBar({ pct }: { pct: number }) {
 
 /* ── upload modal (UI-only — record creation deferred) ──────── */
 function UploadModal({ onClose }: { onClose: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
   async function submit() {
-    setSaving(true);
-    await new Promise(r => setTimeout(r, 900));
-    setSaving(false); setDone(true);
-    setTimeout(onClose, 900);
+    setError('Medical records must be issued by a verified medical partner. Athlete self-uploads cannot be marked as verified.');
   }
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
@@ -213,11 +210,12 @@ function UploadModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div className="px-6 pb-6">
-          <button onClick={submit} disabled={saving || done}
+          {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
+          <button onClick={submit}
             className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-            style={{ background: done ? '#1FB57A' : '#2F80ED', color: '#fff', boxShadow: done ? '0 4px 20px rgba(31,181,122,0.4)' : '0 4px 20px rgba(47,128,237,0.35)' }}>
-            {saving ? <Loader2 size={14} className="animate-spin" /> : done ? <Check size={14} /> : <Upload size={14} />}
-            {saving ? 'Uploading…' : done ? 'Uploaded!' : 'Upload Record'}
+            style={{ background: '#2F80ED', color: '#fff', boxShadow: '0 4px 20px rgba(47,128,237,0.35)' }}>
+            <Upload size={14} />
+            Partner upload required
           </button>
         </div>
       </div>
@@ -237,11 +235,12 @@ function RiskRing({ color, score }: { color: string; score: string }) {
 
 /* ── main ───────────────────────────────────────────────────── */
 export default function MedicalPage() {
+  const navigate = useNavigate();
   const { data: athlete } = useMyAthlete();
   const athleteId = athlete?.id;
   const [mounted, setMounted] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [privacy, setPrivacy] = useState(true);
+  const privacy = true;
   const [hoveredRec, setHoveredRec] = useState<string | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -316,7 +315,7 @@ export default function MedicalPage() {
             <button onClick={() => setShowUpload(true)}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
               style={{ background: '#1FB57A', color: '#fff', boxShadow: '0 4px 20px rgba(31,181,122,0.40)' }}>
-              <Plus size={15} /> Add Record
+              <Plus size={15} /> How to add records
             </button>
           </div>
 
@@ -359,7 +358,7 @@ export default function MedicalPage() {
             <p className="text-xs font-semibold text-azure">Consent-First Privacy</p>
             <p className="text-[11px] text-white/35 mt-0.5">Medical data is only shared with scouts/clubs you explicitly authorize. Revoke anytime in Privacy Settings.</p>
           </div>
-          <button onClick={() => setPrivacy(v => !v)}
+          <button type="button" onClick={() => navigate('/athlete/settings')}
             className="flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0 transition-colors"
             style={{ color: privacy ? '#1FB57A' : '#7C8DA6' }}>
             {privacy ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -469,7 +468,7 @@ export default function MedicalPage() {
                   <span className="text-[11px] text-white/25">{records.length} records</span>
                   <button onClick={() => setShowUpload(true)}
                     className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-azure hover:text-azure/70 transition-colors">
-                    <Plus size={11} /> Upload
+                    <Plus size={11} /> How records are added
                   </button>
                 </div>
               </div>

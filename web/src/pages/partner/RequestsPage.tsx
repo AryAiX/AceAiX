@@ -14,8 +14,9 @@ export default function PartnerRequestsPage() {
   const { profile } = useAuth();
   const userId = profile?.id;
   const [showNew, setShowNew] = useState(false);
-  const [type, setType] = useState('');
   const [athlete, setAthlete] = useState('');
+  const [type, setType] = useState('');
+  const [formError, setFormError] = useState('');
 
   const { data: partner } = useQuery({
     queryKey: ['my-medical-partner', userId],
@@ -72,7 +73,8 @@ export default function PartnerRequestsPage() {
             <textarea rows={2} className="input-field resize-none" placeholder="Any specific requirements or context..." />
           </div>
           <div className="flex gap-3">
-            <button className="btn-primary" disabled={!athlete || !type}>Create Request</button>
+            {formError && <p role="alert" className="text-xs text-coral w-full">{formError}</p>}
+            <button type="button" className="btn-primary" disabled={!athlete || !type} onClick={() => setFormError('Requests must be created against a verified athlete record. Name-only requests are not stored.')}>Create Request</button>
             <button onClick={() => setShowNew(false)} className="btn-ghost">Cancel</button>
           </div>
         </div>
@@ -83,7 +85,7 @@ export default function PartnerRequestsPage() {
         <Upload size={28} className="text-slate-500 mx-auto mb-3" />
         <p className="text-sm font-medium text-white mb-1">Upload Medical Records</p>
         <p className="text-xs text-slate-500">PDF, JPG, PNG — up to 20MB per file</p>
-        <button className="btn-secondary mt-4 text-sm">Browse Files</button>
+        <button type="button" className="btn-secondary mt-4 text-sm" onClick={() => setFormError('Medical files must be attached to an existing athlete clearance. Browse is unavailable until a request is linked.')}>Browse Files</button>
       </div>
 
       {/* Active requests */}
@@ -103,7 +105,7 @@ export default function PartnerRequestsPage() {
                 <p className="text-xs text-slate-400">Medical Clearance · Issued {formatDate(req.created_at)}</p>
               </div>
               <span className={`badge text-xs capitalize ${inProgress ? 'badge-blue' : 'badge-amber'}`}>{req.status.replace('_', ' ')}</span>
-              <button className="btn-primary text-xs py-1.5 px-3 ml-2">
+              <button type="button" className="btn-primary text-xs py-1.5 px-3 ml-2" onClick={() => setFormError('Upload a verified record from the partner clinic workflow. This button does not store files by itself.')}>
                 <Upload size={12} /> Upload
               </button>
             </div>

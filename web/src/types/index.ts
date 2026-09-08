@@ -83,6 +83,10 @@ export interface AthleteProfile {
   following: Array<Record<string, unknown>>;
   trajectory: TrajectoryPoint[];
   analytics: Record<string, unknown>;
+  chesscom_username?: string | null;
+  lichess_username?: string | null;
+  football_api_player_id?: string | null;
+  league?: string | null;
   created_at: string;
   updated_at: string;
   user?: UserProfile;
@@ -388,6 +392,8 @@ export interface Post {
   comments_count: number;
   created_at: string;
   author?: UserProfile;
+  liked?: boolean;
+  saved?: boolean;
 }
 
 export interface CoachProfile {

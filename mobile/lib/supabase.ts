@@ -13,15 +13,30 @@ import { Platform } from 'react-native';
  * by one with an unhelpful network error.
  */
 
-function readConfig(key: 'supabaseUrl' | 'supabaseAnonKey', envKey: string): string {
-  const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.[key];
-  const fromEnv = process.env[envKey];
+/*
+ * The env reads are written out longhand, and they have to be.
+ *
+ * Expo does not hand `process.env` to the bundle at runtime — it *substitutes*
+ * `process.env.EXPO_PUBLIC_FOO` for its value at build time, by matching that
+ * exact text. `process.env[envKey]` matches nothing, so the fallback this
+ * function was built around resolved to undefined in every production build.
+ * It went unnoticed because `expo.extra` is populated by app.config.js and
+ * answers first, which is precisely the kind of bug that surfaces the one time
+ * `extra` is missing. `expo/no-dynamic-env-var` is the rule that catches it.
+ */
+function readConfig(fromExtraKey: 'supabaseUrl' | 'supabaseAnonKey', fromEnv: string | undefined): string {
+  const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.[
+    fromExtraKey
+  ];
   const value = (typeof fromExtra === 'string' && fromExtra) || fromEnv || '';
   return value.trim();
 }
 
-export const SUPABASE_URL = readConfig('supabaseUrl', 'EXPO_PUBLIC_SUPABASE_URL');
-export const SUPABASE_ANON_KEY = readConfig('supabaseAnonKey', 'EXPO_PUBLIC_SUPABASE_ANON_KEY');
+export const SUPABASE_URL = readConfig('supabaseUrl', process.env.EXPO_PUBLIC_SUPABASE_URL);
+export const SUPABASE_ANON_KEY = readConfig(
+  'supabaseAnonKey',
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+);
 
 export const isSupabaseConfigured =
   SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;

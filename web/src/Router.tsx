@@ -28,11 +28,14 @@ import {
   TermsPage,
 } from './pages/legal/LegalPages';
 import DeleteAccountPage from './pages/legal/DeleteAccountPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 
 // Athlete
 import AthleteDashboard from './pages/athlete/DashboardPage';
@@ -132,6 +135,8 @@ export default function Router() {
         {/* Auth */}
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
 
         {/* Role-based redirect */}
@@ -195,8 +200,7 @@ export default function Router() {
           <Route path="settings" element={<AdminSystem />} />
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

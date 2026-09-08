@@ -24,9 +24,19 @@ psql -q -v ON_ERROR_STOP=1 -d "$DB" -f "$ROOT/supabase/tests/_shim.sql" >/dev/nu
 
 echo "→ applying migrations"
 fail=0
+#
+# `--single-transaction` because that is what the Supabase CLI does, and the
+# difference is not cosmetic: a migration that takes a `LOCK TABLE` — the
+# correct way to consolidate rows before adding a unique index — is rejected
+# outright in autocommit with "LOCK TABLE can only be used in transaction
+# blocks". Without this flag the harness was *more permissive* than production,
+# which is the wrong direction for a harness to be wrong in: a migration that
+# only worked outside a transaction would have passed here and failed on
+# deploy, and one that needs a transaction failed here while being correct.
+#
 for f in $(ls "$MIGRATIONS"/*.sql | sort); do
   name="$(basename "$f")"
-  if out=$(psql -v ON_ERROR_STOP=1 -q -d "$DB" -f "$f" 2>&1); then
+  if out=$(psql -v ON_ERROR_STOP=1 -q --single-transaction -d "$DB" -f "$f" 2>&1); then
     printf '   ok   %s\n' "$name"
   else
     printf '   FAIL %s\n' "$name"

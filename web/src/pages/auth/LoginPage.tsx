@@ -327,8 +327,8 @@ export default function LoginPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label htmlFor="login-password" className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">Password</label>
-                      <button type="button" disabled title="Password recovery is coming soon."
-                        className="text-[11px] cursor-not-allowed opacity-60"
+                      <button type="button" onClick={() => navigate('/auth/forgot-password')}
+                        className="text-[11px] hover:underline"
                         style={{ color: `${accent}90` }}>Forgot password?</button>
                     </div>
                     <div className="relative rounded-xl transition-all duration-200"

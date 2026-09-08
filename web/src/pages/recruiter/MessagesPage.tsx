@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send, Search, ShieldCheck, MessageSquare, Loader2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { listConversations, listMessages, sendMessage, markMessagesRead } from '../../api/messaging';
+import { listConversations, listMessages, sendMessage, markMessagesRead, getOrCreateConversation } from '../../api/messaging';
 import type { UserProfile } from '../../types';
+import { withoutSearchParam } from '../../lib/searchParams';
+import { isCurrentConversationRequest } from '../../lib/conversationState';
 
 function timeLabel(iso: string | null) {
   if (!iso) return '';
@@ -31,11 +34,14 @@ function Avatar({ user, size }: { user: UserProfile | undefined; size: number })
 export default function RecruiterMessagesPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [search, setSearch] = useState('');
   const [sending, setSending] = useState(false);
+  const [messageError, setMessageError] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const conversationRequestRef = useRef<string | null>(null);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ['conversations', user?.id],
@@ -54,10 +60,44 @@ export default function RecruiterMessagesPage() {
   }, [conversations, activeId]);
 
   useEffect(() => {
+    const otherUserId = searchParams.get('user');
+    if (!user || !otherUserId) {
+      conversationRequestRef.current = null;
+      return;
+    }
+    const existing = conversations.find((conversation) =>
+      conversation.participant_1_id === otherUserId || conversation.participant_2_id === otherUserId,
+    );
+    if (existing) {
+      conversationRequestRef.current = null;
+      setActiveId(existing.id);
+      setSearchParams((current) => withoutSearchParam(current, 'user'), { replace: true });
+      return;
+    }
+    const requestKey = `${user.id}:${otherUserId}`;
+    if (conversationRequestRef.current === requestKey) return;
+    conversationRequestRef.current = requestKey;
+    void getOrCreateConversation(user.id, otherUserId).then((conversation) => {
+      if (!isCurrentConversationRequest(conversationRequestRef.current, requestKey)) return;
+      setActiveId(conversation.id);
+      setMessageError('');
+      setSearchParams((current) => withoutSearchParam(current, 'user'), { replace: true });
+      void queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+    }).catch((error) => {
+      if (!isCurrentConversationRequest(conversationRequestRef.current, requestKey)) return;
+      setMessageError(error instanceof Error ? error.message : 'Conversation could not be opened.');
+    }).finally(() => {
+      if (isCurrentConversationRequest(conversationRequestRef.current, requestKey)) {
+        conversationRequestRef.current = null;
+      }
+    });
+  }, [searchParams, setSearchParams, user, conversations, queryClient]);
+
+  useEffect(() => {
     if (!activeId || !user) return;
     markMessagesRead(activeId, user.id).then(() =>
       queryClient.invalidateQueries({ queryKey: ['conversations', user.id] }),
-    );
+    ).catch(() => setMessageError('Messages loaded, but read status could not be updated.'));
   }, [activeId, user, queryClient]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -71,12 +111,18 @@ export default function RecruiterMessagesPage() {
   async function send() {
     if (!input.trim() || !activeId || !user || sending) return;
     const text = input.trim();
-    setInput('');
     setSending(true);
-    await sendMessage(activeId, user.id, text);
-    await queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
-    await queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
-    setSending(false);
+    setMessageError('');
+    try {
+      await sendMessage(activeId, user.id, text);
+      setInput('');
+      await queryClient.invalidateQueries({ queryKey: ['messages', activeId] });
+      await queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+    } catch (error) {
+      setMessageError(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -84,6 +130,7 @@ export default function RecruiterMessagesPage() {
       <div className="mb-6">
         <h1 className="section-title">Messages</h1>
         <p className="section-subtitle">Communicate directly with your prospects</p>
+        {messageError && !activeId && <p role="alert" className="text-xs text-coral mt-2">{messageError}</p>}
       </div>
       <div className="flex gap-4" style={{ height: '560px' }}>
         {/* Sidebar */}
@@ -187,17 +234,20 @@ export default function RecruiterMessagesPage() {
                 <div ref={bottomRef} />
               </div>
 
-              <div className="p-4 border-t border-slate-700/50 flex gap-3">
-                <input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && send()}
-                  placeholder="Write a message..."
-                  className="input-field flex-1 text-sm"
-                />
-                <button onClick={send} disabled={!input.trim() || sending} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0">
-                  {sending ? <Loader2 size={15} className="text-white animate-spin" /> : <Send size={15} className="text-white" />}
-                </button>
+              <div className="p-4 border-t border-slate-700/50">
+                {messageError && <p role="alert" className="text-xs text-coral mb-2">{messageError}</p>}
+                <div className="flex gap-3">
+                  <input
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && send()}
+                    placeholder="Write a message..."
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button onClick={send} disabled={!input.trim() || sending} className="w-10 h-10 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 rounded-xl flex items-center justify-center transition-colors flex-shrink-0">
+                    {sending ? <Loader2 size={15} className="text-white animate-spin" /> : <Send size={15} className="text-white" />}
+                  </button>
+                </div>
               </div>
             </>
           )}

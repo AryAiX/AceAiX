@@ -1,16 +1,26 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { listAthletes } from '../../api/athletes';
+import { addAthleteToWatchlist, getOrCreateWatchlist, listWatchlists, removeAthleteFromWatchlist } from '../../api/watchlists';
+import {
+  DEFAULT_WATCHLIST_NAME,
+  findDefaultWatchlist,
+  findDefaultWatchlistAthleteRow,
+  watchlistMutationErrorMessage,
+} from '../../lib/watchlistState';
 import {
   Search, SlidersHorizontal, ShieldCheck, Plus, Star,
   MessageSquare, Eye, Zap, X, ChevronDown, LayoutGrid,
   List, Flame, MapPin, Loader2,
 } from 'lucide-react';
-import { listAthletes } from '../../api/athletes';
 import type { AthleteProfile, UserProfile } from '../../types';
 
 /* ── card view model (mapped from athlete_profiles + user) ──── */
 interface CardAthlete {
   id: string;
+  userId: string | null;
   name: string;
   sport: string;
   position: string;
@@ -22,6 +32,7 @@ interface CardAthlete {
   goals: number;
   assists: number;
   matches: number;
+  dominantFoot: string;
   verified: boolean;
   hot: boolean;
   match: number;
@@ -40,6 +51,7 @@ function toCard(a: AthleteProfile & { user?: UserProfile }): CardAthlete {
   const score = Math.round((a.visibility_score ?? 0) / 10 * 10) / 10;
   return {
     id: a.id,
+    userId: a.user_id ?? a.user?.id ?? null,
     name: a.user?.full_name ?? 'Unnamed athlete',
     sport: a.sport ?? 'Football',
     position: a.position ?? a.position_primary ?? '—',
@@ -51,6 +63,7 @@ function toCard(a: AthleteProfile & { user?: UserProfile }): CardAthlete {
     goals: Number(stats.goals ?? 0),
     assists: Number(stats.assists ?? 0),
     matches: Number(stats.matches ?? stats.appearances ?? 0),
+    dominantFoot: a.dominant_foot ?? '',
     verified: a.user?.is_verified ?? false,
     hot: (a.visibility_score ?? 0) >= 90 || a.is_open_to_offers,
     match: Math.min(99, Math.round(a.visibility_score ?? 0)),
@@ -119,8 +132,8 @@ function MatchBar({ pct, color }: { pct: number; color: string }) {
 }
 
 /* ── grid card ────────────────────────────────────────────── */
-function GridCard({ a, idx, watchlisted, onWatchlist }:
-  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void }) {
+function GridCard({ a, idx, watchlisted, watchlistPending, onWatchlist, onView, onMessage }:
+  { a: CardAthlete; idx: number; watchlisted: boolean; watchlistPending: boolean; onWatchlist: () => void; onView: () => void; onMessage: () => void }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 60 + idx * 70); return () => clearTimeout(t); }, [idx]);
@@ -207,23 +220,26 @@ function GridCard({ a, idx, watchlisted, onWatchlist }:
           ))}
         </div>
         <div className="flex gap-2">
-          <button className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
+          <button type="button" onClick={onView} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.60)' }}
             onMouseEnter={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.09)'; el.style.color = '#fff'; }}
             onMouseLeave={e => { const el = e.currentTarget; el.style.background = 'rgba(255,255,255,0.05)'; el.style.color = 'rgba(255,255,255,0.60)'; }}>
             <Eye size={11} /> View
           </button>
-          <button onClick={onWatchlist}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.94]"
+          <button
+            onClick={onWatchlist}
+            disabled={watchlistPending}
+            title={watchlisted ? 'Remove from Saved prospects' : 'Add to Saved prospects'}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition-all active:scale-[0.94] disabled:opacity-50 disabled:cursor-wait"
             style={{
               background: watchlisted ? 'rgba(245,166,35,0.15)' : 'rgba(47,128,237,0.12)',
               border: `1px solid ${watchlisted ? 'rgba(245,166,35,0.38)' : 'rgba(47,128,237,0.32)'}`,
               color: watchlisted ? '#F5A623' : '#2F80ED',
             }}>
-            {watchlisted ? <Star size={11} fill="currentColor" /> : <Plus size={11} />}
-            {watchlisted ? 'Saved' : 'Watchlist'}
+            {watchlistPending ? <Loader2 size={11} className="animate-spin" /> : watchlisted ? <Star size={11} fill="currentColor" /> : <Plus size={11} />}
+            {watchlistPending ? 'Saving…' : watchlisted ? 'Saved' : 'Save'}
           </button>
-          <button className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all active:scale-[0.94]"
+          <button type="button" onClick={onMessage} className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0 transition-all active:scale-[0.94]"
             style={{ background: 'rgba(31,181,122,0.10)', border: '1px solid rgba(31,181,122,0.25)', color: '#1FB57A' }}>
             <MessageSquare size={12} />
           </button>
@@ -234,8 +250,8 @@ function GridCard({ a, idx, watchlisted, onWatchlist }:
 }
 
 /* ── list row ─────────────────────────────────────────────── */
-function ListRow({ a, idx, watchlisted, onWatchlist }:
-  { a: CardAthlete; idx: number; watchlisted: boolean; onWatchlist: () => void }) {
+function ListRow({ a, idx, watchlisted, watchlistPending, onWatchlist, onView, onMessage }:
+  { a: CardAthlete; idx: number; watchlisted: boolean; watchlistPending: boolean; onWatchlist: () => void; onView: () => void; onMessage: () => void }) {
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), 40 + idx * 55); return () => clearTimeout(t); }, [idx]);
@@ -245,6 +261,7 @@ function ListRow({ a, idx, watchlisted, onWatchlist }:
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       className="flex items-center gap-4 px-5 py-4 rounded-2xl cursor-pointer"
+      onClick={onView}
       style={{
         background: hov ? 'rgba(22,39,59,0.98)' : 'rgba(22,39,59,0.90)',
         border: `1px solid ${hov ? 'rgba(47,128,237,0.30)' : 'rgba(255,255,255,0.07)'}`,
@@ -292,12 +309,18 @@ function ListRow({ a, idx, watchlisted, onWatchlist }:
           <p className="text-[9px] text-white/25">score</p>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={onWatchlist}
-            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
+          <button
+            type="button"
+            disabled={watchlistPending}
+            title={watchlisted ? 'Remove from Saved prospects' : 'Add to Saved prospects'}
+            onClick={(event) => { event.stopPropagation(); onWatchlist(); }}
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90] disabled:opacity-50 disabled:cursor-wait"
             style={{ background: watchlisted ? 'rgba(245,166,35,0.15)' : 'rgba(255,255,255,0.05)', border: `1px solid ${watchlisted ? 'rgba(245,166,35,0.38)' : 'rgba(255,255,255,0.10)'}`, color: watchlisted ? '#F5A623' : 'rgba(255,255,255,0.40)' }}>
-            <Star size={12} fill={watchlisted ? 'currentColor' : 'none'} />
+            {watchlistPending
+              ? <Loader2 size={12} className="animate-spin" />
+              : <Star size={12} fill={watchlisted ? 'currentColor' : 'none'} />}
           </button>
-          <button className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
+          <button type="button" onClick={(event) => { event.stopPropagation(); onMessage(); }} className="w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-[0.90]"
             style={{ background: 'rgba(31,181,122,0.10)', border: '1px solid rgba(31,181,122,0.22)', color: '#1FB57A' }}>
             <MessageSquare size={12} />
           </button>
@@ -337,20 +360,47 @@ function FilterSelect({ label, value, options, onChange, color = '#2F80ED' }:
 
 /* ── main ─────────────────────────────────────────────────── */
 export default function SearchPage() {
-  const [query,        setQuery]        = useState('');
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [query,        setQuery]        = useState(searchParams.get('q') ?? '');
   const [sport,        setSport]        = useState('All');
   const [position,     setPosition]     = useState('All');
   const [level,        setLevel]        = useState('All');
   const [ageRange,     setAgeRange]     = useState('All');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [maxAge, setMaxAge] = useState<number | null>(null);
+  const [minAssists, setMinAssists] = useState<number | null>(null);
+  const [dominantFoot, setDominantFoot] = useState<string | null>(null);
   const [aiQuery,      setAiQuery]      = useState('');
   const [aiDone,       setAiDone]       = useState(false);
   const [aiTyping,     setAiTyping]     = useState(false);
   const [view,         setView]         = useState<'grid' | 'list'>('grid');
   const [watchlisted,  setWatchlisted]  = useState<Set<string>>(new Set());
+  const [pendingWatchlistIds, setPendingWatchlistIds] = useState<Set<string>>(new Set());
+  const pendingWatchlistIdsRef = useRef(new Set<string>());
+  const [watchlistError, setWatchlistError] = useState('');
   const [filtersOpen,  setFiltersOpen]  = useState(true);
   const [mounted,      setMounted]      = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+  useEffect(() => {
+    if (!user) return;
+    void listWatchlists(user.id)
+      .then((lists) => {
+        const ids = new Set(
+          (findDefaultWatchlist(lists)?.athletes ?? []).map((row) => row.athlete_id),
+        );
+        setWatchlisted(ids);
+        setWatchlistError('');
+      })
+      .catch((error) => {
+        setWatchlistError(error instanceof Error ? error.message : 'Watchlists could not be loaded.');
+      });
+  }, [user]);
+  useEffect(() => {
+    const incoming = searchParams.get('q');
+    if (incoming) setQuery(incoming);
+  }, [searchParams]);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ['recruiter-athletes', sport, level, query],
@@ -366,6 +416,9 @@ export default function SearchPage() {
   const filtered = athletes.filter(a => {
     if (position !== 'All' && a.position !== position) return false;
     if (verifiedOnly && !a.verified) return false;
+    if (maxAge != null && (a.age == null || a.age >= maxAge)) return false;
+    if (minAssists != null && a.assists < minAssists) return false;
+    if (dominantFoot && !a.dominantFoot.toLowerCase().includes(dominantFoot)) return false;
     if (ageRange !== 'All') {
       if (a.age == null) return false;
       if (ageRange === 'Under 21' && a.age >= 21)               return false;
@@ -378,27 +431,84 @@ export default function SearchPage() {
 
   const verifiedCount = athletes.filter(a => a.verified).length;
 
-  const activeFilters = [sport !== 'All', position !== 'All', level !== 'All', ageRange !== 'All', verifiedOnly].filter(Boolean).length;
+  const activeFilters = [
+    sport !== 'All', position !== 'All', level !== 'All', ageRange !== 'All',
+    verifiedOnly, maxAge != null, minAssists != null, dominantFoot != null,
+  ].filter(Boolean).length;
 
   function clearFilters() {
     setSport('All'); setPosition('All'); setLevel('All');
     setAgeRange('All'); setVerifiedOnly(false); setQuery('');
+    setMaxAge(null); setMinAssists(null); setDominantFoot(null);
   }
 
   function handleAiSearch() {
     if (!aiQuery.trim()) return;
+    const text = aiQuery.toLowerCase();
     setAiDone(false);
     setAiTyping(true);
-    setTimeout(() => { setAiTyping(false); setAiDone(true); }, 1300);
+    setMaxAge(null);
+    setMinAssists(null);
+    setDominantFoot(null);
+    if (text.includes('striker')) setPosition('Striker');
+    if (text.includes('midfielder')) setPosition('Midfielder');
+    if (text.includes('goalkeeper')) setPosition('Goalkeeper');
+    if (text.includes('winger')) setPosition('Winger');
+    if (text.includes('verified')) setVerifiedOnly(true);
+    const ageMatch = text.match(/under\s+(\d{2})/);
+    if (ageMatch) {
+      setAgeRange('All');
+      setMaxAge(Number(ageMatch[1]));
+    }
+    const assistsMatch = text.match(/(\d+)\+?\s+assists?/);
+    if (assistsMatch) setMinAssists(Number(assistsMatch[1]));
+    if (text.includes('left-footed') || text.includes('left footed')) setDominantFoot('left');
+    if (text.includes('professional')) setLevel('professional');
+    if (text.includes('football')) setSport('Football');
+    if (text.includes('basketball')) setSport('Basketball');
+    if (text.includes('tennis')) setSport('Tennis');
+    setQuery(text.includes('uae') ? 'uae' : '');
+    setTimeout(() => { setAiTyping(false); setAiDone(true); }, 400);
   }
 
-  function toggleWatchlist(id: string) {
-    setWatchlisted(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  async function toggleWatchlist(id: string) {
+    if (!user || pendingWatchlistIdsRef.current.has(id)) return;
+    pendingWatchlistIdsRef.current.add(id);
+    setPendingWatchlistIds((current) => new Set(current).add(id));
+    setWatchlistError('');
+    try {
+      const lists = await listWatchlists(user.id);
+      const existingRowId = findDefaultWatchlistAthleteRow(lists, id);
+      if (existingRowId) {
+        await removeAthleteFromWatchlist(existingRowId);
+      } else {
+        const list = findDefaultWatchlist(lists)
+          ?? await getOrCreateWatchlist(user.id, DEFAULT_WATCHLIST_NAME);
+        await addAthleteToWatchlist(list.id, id);
+      }
+      const refreshed = await listWatchlists(user.id);
+      setWatchlisted(new Set(
+        (findDefaultWatchlist(refreshed)?.athletes ?? []).map((row) => row.athlete_id),
+      ));
+    } catch (error) {
+      setWatchlistError(watchlistMutationErrorMessage(error));
+    } finally {
+      pendingWatchlistIdsRef.current.delete(id);
+      setPendingWatchlistIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
+  }
+
+  function openAthlete(id: string) {
+    navigate(`/athletes/${id}`);
+  }
+
+  function messageAthlete(userId: string | null) {
+    if (!userId) return;
+    navigate(`/recruiter/messages?user=${userId}`);
   }
 
   return (
@@ -585,6 +695,8 @@ export default function SearchPage() {
         </div>
       </div>
 
+      {watchlistError && <p role="alert" className="text-xs text-coral">{watchlistError}</p>}
+
       {/* RESULTS HEADER */}
       <div className="flex items-center justify-between" style={{ animation: 'slideUp 0.4s ease 0.25s both' }}>
         <div className="flex items-center gap-3">
@@ -635,7 +747,10 @@ export default function SearchPage() {
           {filtered.map((a, i) => (
             <GridCard key={a.id} a={a} idx={i}
               watchlisted={watchlisted.has(a.id)}
-              onWatchlist={() => toggleWatchlist(a.id)} />
+              watchlistPending={pendingWatchlistIds.has(a.id)}
+              onWatchlist={() => toggleWatchlist(a.id)}
+              onView={() => openAthlete(a.id)}
+              onMessage={() => messageAthlete(a.userId)} />
           ))}
         </div>
       ) : (
@@ -643,7 +758,10 @@ export default function SearchPage() {
           {filtered.map((a, i) => (
             <ListRow key={a.id} a={a} idx={i}
               watchlisted={watchlisted.has(a.id)}
-              onWatchlist={() => toggleWatchlist(a.id)} />
+              watchlistPending={pendingWatchlistIds.has(a.id)}
+              onWatchlist={() => toggleWatchlist(a.id)}
+              onView={() => openAthlete(a.id)}
+              onMessage={() => messageAthlete(a.userId)} />
           ))}
         </div>
       )}

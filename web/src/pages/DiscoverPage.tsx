@@ -5,12 +5,6 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { listAthletes } from '../api/athletes';
 
-const AI_RESPONSES: Record<string, string> = {
-  default: 'I found 6 athletes matching your description. Results are ranked by AI fit score, verified metrics, and recency. Would you like to filter by position, age, or nationality?',
-  striker: 'Found 2 strikers in the UAE market. Khalid Al-Rashidi leads with a 9.2 score — 18 goals this season with full medical verification. Want me to show their full profiles?',
-  goalkeeper: 'Rayan Benali is your top match — 87% rating, professional level, verified medical clearance active. Currently at Wydad AC. Shall I send a contact request?',
-};
-
 export default function DiscoverPage() {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
@@ -18,8 +12,8 @@ export default function DiscoverPage() {
   ]);
   const [loading, setLoading] = useState(false);
   const { data: athletes = [], isLoading } = useQuery({
-    queryKey: ['athletes', { limit: 6 }],
-    queryFn: () => listAthletes({ limit: 6 }),
+    queryKey: ['athletes', { limit: 12 }],
+    queryFn: () => listAthletes({ limit: 12 }),
   });
 
   async function handleSearch() {
@@ -28,11 +22,27 @@ export default function DiscoverPage() {
     setQuery('');
     setMessages((prev) => [...prev, { role: 'user', text: userQ }]);
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    const lower = userQ.toLowerCase();
-    const resp = lower.includes('striker') ? AI_RESPONSES.striker : lower.includes('goalkeeper') ? AI_RESPONSES.goalkeeper : AI_RESPONSES.default;
-    setMessages((prev) => [...prev, { role: 'ai', text: resp }]);
-    setLoading(false);
+    try {
+      const lower = userQ.toLowerCase();
+      const sport = lower.includes('basket') ? 'Basketball' : lower.includes('tennis') ? 'Tennis' : lower.includes('swim') ? 'Swimming' : lower.includes('football') ? 'Football' : undefined;
+      const matches = await listAthletes({
+        sport,
+        q: userQ,
+        limit: 8,
+      });
+      const names = matches.slice(0, 3).map((athlete) => athlete.user?.full_name).filter(Boolean);
+      const resp = matches.length
+        ? `I found ${matches.length} athletes${sport ? ` in ${sport}` : ''}${names.length ? `, including ${names.join(', ')}` : ''}. Open a profile from the results list to inspect verified data.`
+        : 'No athletes matched that description. Try a sport, position, or name.';
+      setMessages((prev) => [...prev, { role: 'ai', text: resp }]);
+    } catch {
+      setMessages((prev) => [...prev, {
+        role: 'ai',
+        text: 'Athlete search is temporarily unavailable. Please try again.',
+      }]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

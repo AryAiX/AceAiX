@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
 import { ShieldCheck, Search, Star, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -15,8 +16,13 @@ function ageFromBirthDate(birth: string | null): number | null {
 }
 
 export default function AthletesPage() {
+  const [searchParams] = useSearchParams();
   const [sport, setSport] = useState('All');
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(searchParams.get('q') ?? '');
+
+  useEffect(() => {
+    setQuery(searchParams.get('q') ?? '');
+  }, [searchParams]);
 
   const { data: athletes = [], isLoading } = useQuery({
     queryKey: ['athletes', { sport, q: query }],

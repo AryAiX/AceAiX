@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserProfile, UserRole } from '../types';
+import { authIdentityTransition } from '../lib/authState';
 
 interface AuthContextType {
   user: User | null;
@@ -11,6 +12,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, role: UserRole, fullName: string) => Promise<{ error: Error | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -23,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const profileRequest = useRef(0);
+  const currentUserId = useRef<string | null>(null);
 
   async function fetchProfile(userId: string, controlsLoading = false) {
     const requestId = ++profileRequest.current;
@@ -33,9 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
       if (requestId !== profileRequest.current) return;
-      setProfile(!error && data ? (data as UserProfile) : null);
+      if (error) {
+        if (!data) return;
+      } else {
+        setProfile(data ? (data as UserProfile) : null);
+      }
     } catch {
-      if (requestId === profileRequest.current) setProfile(null);
+      // Keep the last known profile rather than treating the user as logged out.
     } finally {
       if (controlsLoading && requestId === profileRequest.current) setLoading(false);
     }
@@ -47,23 +55,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const transition = authIdentityTransition(currentUserId.current, session?.user.id ?? null);
+      currentUserId.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        void fetchProfile(session.user.id, true);
+        if (transition !== 'same-user') {
+          setLoading(true);
+          setProfile(null);
+          void fetchProfile(session.user.id, true);
+        }
       } else {
         profileRequest.current += 1;
+        setProfile(null);
         setLoading(false);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const transition = authIdentityTransition(currentUserId.current, session?.user.id ?? null);
+      currentUserId.current = session?.user.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        setLoading(true);
-        setProfile(null);
-        void fetchProfile(session.user.id, true);
+        if (transition !== 'same-user') {
+          setLoading(true);
+          setProfile(null);
+          void fetchProfile(session.user.id, true);
+        }
       } else {
         profileRequest.current += 1;
         setProfile(null);
@@ -111,10 +130,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
   }
 
+  async function requestPasswordReset(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    return { error: error as Error | null };
+  }
+
+  async function updatePassword(password: string) {
+    const { error } = await supabase.auth.updateUser({ password });
+    return { error: error as Error | null };
+  }
+
   const role = profile?.role ?? null;
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signUp, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, profile, role, loading, signIn, signUp, requestPasswordReset, updatePassword, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

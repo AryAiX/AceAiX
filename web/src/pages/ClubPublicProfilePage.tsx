@@ -78,7 +78,7 @@ const TROPHY_ICONS: Record<string, string> = {
 /* ─── Message Modal ─── */
 function ContactModal({ name, onClose, isAuth }: { name: string; onClose: () => void; isAuth: boolean }) {
   const [text, setText] = useState('');
-  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', h);
@@ -100,16 +100,11 @@ function ContactModal({ name, onClose, isAuth }: { name: string; onClose: () => 
               <Link to="/auth/register" onClick={onClose} className="btn-outline px-5 py-2.5 text-sm">Register</Link>
             </div>
           </div>
-        ) : sent ? (
-          <div className="text-center py-6">
-            <CheckCircle2 size={36} className="text-emerald mx-auto mb-3" />
-            <p className="font-semibold text-white">Message sent!</p>
-            <p className="text-xs text-muted mt-1">The club's representative will get back to you.</p>
-          </div>
         ) : (
           <>
             <textarea value={text} onChange={e => setText(e.target.value)} placeholder="Your message…" rows={4} className="input-dark resize-none mb-4 text-sm" autoFocus />
-            <button onClick={() => setSent(true)} disabled={!text.trim()}
+            {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
+            <button onClick={() => setError('Clubs do not have a direct inbox yet. Apply to an open trial from Opportunities instead.')} disabled={!text.trim()}
               className="btn-primary w-full py-2.5 text-sm inline-flex items-center justify-center gap-2 disabled:opacity-50">
               <Send size={14} /> Send Message
             </button>

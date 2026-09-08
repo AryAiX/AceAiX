@@ -272,13 +272,25 @@ export default function AppLayout() {
             <Menu size={20} />
           </button>
 
-          <div className="relative hidden sm:flex items-center flex-1 max-w-xs">
+          <form
+            className="relative hidden sm:flex items-center flex-1 max-w-xs"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = (new FormData(event.currentTarget).get('q') as string | null)?.trim();
+              if (!value) return;
+              navigate(role === 'scout' || role === 'club'
+                ? `/recruiter/search?q=${encodeURIComponent(value)}`
+                : `/athletes?q=${encodeURIComponent(value)}`);
+            }}
+          >
             <Search size={14} className="absolute left-3 text-muted pointer-events-none" />
             <input
+              name="q"
+              aria-label="Search athletes and clubs"
               placeholder="Search athletes, clubs..."
               className="input-field pl-9 text-sm"
             />
-          </div>
+          </form>
 
           {/* Energy accent line under topbar */}
           <div className="absolute bottom-0 left-0 right-0 h-px energy-line opacity-30" />
