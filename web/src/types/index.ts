@@ -392,6 +392,8 @@ export interface Post {
   comments_count: number;
   created_at: string;
   author?: UserProfile;
+  liked?: boolean;
+  saved?: boolean;
 }
 
 export interface CoachProfile {

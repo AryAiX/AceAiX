@@ -156,9 +156,12 @@ export async function fetchNotifPrefs(userId: string): Promise<NotificationPrefs
 }
 
 export async function saveNotifPrefs(userId: string, prefs: NotificationPrefs): Promise<{ error: string | null }> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('user_private')
-    .update({ notification_preferences: prefs })
-    .eq('user_id', userId);
-  return { error: error?.message ?? null };
+    .upsert({ user_id: userId, notification_preferences: prefs }, { onConflict: 'user_id' })
+    .select('user_id')
+    .single();
+  if (error) return { error: error.message };
+  if (!data) return { error: 'Preferences were not saved.' };
+  return { error: null };
 }

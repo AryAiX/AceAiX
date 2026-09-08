@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, Platform, RefreshControl,
 } from 'react-native';
 import {
   Calendar, MapPin, Clock, ChevronRight, Plus, Trash2, Edit,
@@ -11,8 +11,10 @@ import { CreateEventSheet, TYPE_COLORS } from '@/components/events/CreateEventSh
 import {
   fetchMyEvents, deleteEvent, formatEventDate, fetchPlatformEvents, toggleEventAttendance, type AthleteEvent, type PlatformEvent,
 } from '@/lib/eventsService';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function Events() {
+  const params = useLocalSearchParams<{ create?: string }>();
   const [myEvents, setMyEvents] = useState<AthleteEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -24,6 +26,12 @@ export default function Events() {
   const [platformError, setPlatformError] = useState(false);
 
   useEffect(() => { load(); loadPlatform(); }, []);
+  useEffect(() => {
+    if (params.create === '1') {
+      setEditingEvent(null);
+      setShowCreate(true);
+    }
+  }, [params.create]);
 
   async function load() {
     setLoading(true);
@@ -108,7 +116,12 @@ export default function Events() {
     <View style={s.root}>
       <AppHeader title="Events" />
 
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading || platformLoading} onRefresh={() => { void load(); void loadPlatform(); }} tintColor={Colors.primary} />}
+      >
         {/* Summary */}
         <View style={s.summaryRow}>
           {[

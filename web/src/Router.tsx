@@ -22,6 +22,7 @@ import AboutPage from './pages/AboutPage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import SupportPage from './pages/SupportPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // Auth
 import LoginPage from './pages/auth/LoginPage';
@@ -190,8 +191,7 @@ export default function Router() {
           <Route path="settings" element={<AdminSystem />} />
         </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

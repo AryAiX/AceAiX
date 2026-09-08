@@ -3,8 +3,22 @@ import { Link } from 'react-router-dom';
 import { LifeBuoy, Mail, ShieldCheck, Trash2 } from 'lucide-react';
 
 type SupportCard =
-  | { kind: 'external'; title: string; icon: React.ReactNode; body: string; action: string; href: string }
-  | { kind: 'internal'; title: string; icon: React.ReactNode; body: string; action: string; to: string };
+  | {
+      kind: 'external';
+      title: string;
+      icon: React.ReactNode;
+      body: string;
+      action: string;
+      href: string;
+    }
+  | {
+      kind: 'internal';
+      title: string;
+      icon: React.ReactNode;
+      body: string;
+      action: string;
+      to: string;
+    };
 
 const supportCards: SupportCard[] = [
   {
@@ -27,7 +41,7 @@ const supportCards: SupportCard[] = [
     kind: 'external',
     title: 'Account Deletion',
     icon: <Trash2 size={18} />,
-    body: 'You can delete your account directly in the AceAiX app from Settings > Account Deletion. Email support only if you need help accessing the app.',
+    body: 'Account deletion is available in the AceAiX mobile app under Settings > Account Deletion. The web app does not offer deletion yet; email support if you cannot access the mobile app.',
     action: 'Get deletion help',
     href: 'mailto:customer-devops@apsy.io?subject=AceAiX%20Account%20Deletion%20Request',
   },
@@ -43,24 +57,35 @@ export default function SupportPage() {
             <LifeBuoy size={14} />
             Support
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">AceAiX Support</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            AceAiX Support
+          </h1>
           <p className="text-slate-400 leading-relaxed max-w-2xl mx-auto">
-            We help athletes, scouts, clubs, coaches, guardians, and partners with AceAiX account and product questions.
+            We help athletes, scouts, clubs, coaches, guardians, and partners
+            with AceAiX account and product questions.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-          {supportCards.map(card => (
+          {supportCards.map((card) => (
             <section key={card.title} className="card p-6 flex flex-col">
               <div className="w-10 h-10 rounded-xl bg-azure/10 text-azure flex items-center justify-center mb-4">
                 {card.icon}
               </div>
-              <h2 className="text-lg font-bold text-white mb-3">{card.title}</h2>
-              <p className="text-sm text-slate-400 leading-relaxed flex-1">{card.body}</p>
+              <h2 className="text-lg font-bold text-white mb-3">
+                {card.title}
+              </h2>
+              <p className="text-sm text-slate-400 leading-relaxed flex-1">
+                {card.body}
+              </p>
               {card.kind === 'internal' ? (
-                <Link to={card.to} className="btn-outline mt-5">{card.action}</Link>
+                <Link to={card.to} className="btn-outline mt-5">
+                  {card.action}
+                </Link>
               ) : (
-                <a href={card.href} className="btn-outline mt-5">{card.action}</a>
+                <a href={card.href} className="btn-outline mt-5">
+                  {card.action}
+                </a>
               )}
             </section>
           ))}
@@ -69,12 +94,19 @@ export default function SupportPage() {
         <section className="card p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
             <div>
-              <h2 className="text-2xl font-bold text-white mb-3">Contact AceAiX</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">
+                Contact AceAiX
+              </h2>
               <p className="text-sm text-slate-400 leading-relaxed">
-                For fastest support, include your account email, device type, app version if known, and a short description of the issue. We aim to respond within 2 business days.
+                For fastest support, include your account email, device type,
+                app version if known, and a short description of the issue. We
+                aim to respond within 2 business days.
               </p>
             </div>
-            <a href="mailto:customer-devops@apsy.io" className="btn-primary flex-shrink-0">
+            <a
+              href="mailto:customer-devops@apsy.io"
+              className="btn-primary flex-shrink-0"
+            >
               <Mail size={16} /> customer-devops@apsy.io
             </a>
           </div>

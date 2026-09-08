@@ -6,8 +6,9 @@ import {
   X, Loader2, Check, ChevronRight, TrendingUp,
   Network, Sparkles,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listAthletes } from '../../api/athletes';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
@@ -292,6 +293,7 @@ function StatCard({ label, value, icon: Icon, color, delay }: {
 
 /* ── main page ──────────────────────────────────────────────── */
 export default function NetworkPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: athlete } = useMyAthlete();
   const [tab, setTab]                       = useState<Tab>('followers');
@@ -355,24 +357,38 @@ export default function NetworkPage() {
 
   async function toggleFollow(targetId: string) {
     if (!user) return;
-    if (myFollowingIds.has(targetId)) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
-      setMyFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
-      setFollowing(f => f.filter(u => u.id !== targetId));
-    } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
-      setMyFollowingIds(s => new Set([...s, targetId]));
+    const followingAlready = myFollowingIds.has(targetId);
+    try {
+      if (followingAlready) {
+        const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
+        if (error) throw error;
+        setMyFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
+        setFollowing(f => f.filter(u => u.id !== targetId));
+      } else {
+        const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+        setMyFollowingIds(s => new Set([...s, targetId]));
+      }
+    } catch {
+      /* keep previous follow state */
     }
   }
 
   async function toggleSuggFollow(targetId: string) {
     if (!user) return;
-    if (suggFollowingIds.has(targetId)) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
-      setSuggFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
-    } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
-      setSuggFollowingIds(s => new Set([...s, targetId]));
+    const followingAlready = suggFollowingIds.has(targetId);
+    try {
+      if (followingAlready) {
+        const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', targetId);
+        if (error) throw error;
+        setSuggFollowingIds(s => { const n = new Set(s); n.delete(targetId); return n; });
+      } else {
+        const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+        setSuggFollowingIds(s => new Set([...s, targetId]));
+      }
+    } catch {
+      /* keep previous follow state */
     }
   }
 
@@ -455,10 +471,13 @@ export default function NetworkPage() {
             <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
               style={{ background: 'rgba(245,166,35,0.08)', border: '1px solid rgba(245,166,35,0.22)' }}>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#F5A623', boxShadow: '0 0 6px rgba(245,166,35,0.7)' }} />
-              <span className="text-xs font-bold text-amber">4 scouts active today</span>
+              <span className="text-xs font-bold text-amber">{viewCount} scout views this period</span>
             </div>
 
-            <button onClick={() => setWriteRecModal({ id: user?.id ?? '', name: 'someone' })}
+            <button onClick={() => {
+              const first = suggestions.find((person) => person.id && person.id !== user?.id);
+              if (first?.id) setWriteRecModal({ id: first.id, name: first.full_name ?? 'teammate' });
+            }}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
               style={{ background: '#2F80ED', color: '#fff', boxShadow: '0 4px 20px rgba(47,128,237,0.40)' }}>
               <Quote size={15} /> Recommend
@@ -541,7 +560,7 @@ export default function NetworkPage() {
                   </div>
                 ))}
               </div>
-              <button className="mt-4 w-full py-2 rounded-xl text-[11px] font-bold text-amber flex items-center justify-center gap-1.5 transition-colors hover:bg-amber/08"
+              <button type="button" onClick={() => navigate('/athlete/analytics')} className="mt-4 w-full py-2 rounded-xl text-[11px] font-bold text-amber flex items-center justify-center gap-1.5 transition-colors hover:bg-amber/08"
                 style={{ border: '1px solid rgba(245,166,35,0.18)' }}>
                 <Eye size={11} /> See full report
               </button>
@@ -578,7 +597,10 @@ export default function NetworkPage() {
                 </button>
               ))}
               {tab === 'recommendations' && (
-                <button onClick={() => setWriteRecModal({ id: user?.id ?? '', name: 'someone' })}
+                <button onClick={() => {
+              const first = suggestions.find((person) => person.id && person.id !== user?.id);
+              if (first?.id) setWriteRecModal({ id: first.id, name: first.full_name ?? 'teammate' });
+            }}
                   className="ml-auto mr-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95"
                   style={{ background: 'rgba(184,241,53,0.12)', border: '1px solid rgba(184,241,53,0.25)', color: '#B8F135' }}>
                   <Quote size={11} /> Write
@@ -612,7 +634,7 @@ export default function NetworkPage() {
                       ? <EmptyState icon={Users} title="No followers yet" sub="Share your profile to attract followers and scouts" />
                       : filterBySearch(followers).map((u, i) => (
                           <UserRow key={u.id} user={u} isFollowing={myFollowingIds.has(u.id)}
-                            onToggle={() => toggleFollow(u.id)} onMessage={() => {}} delay={i * 40} />
+                            onToggle={() => toggleFollow(u.id)} onMessage={() => u.id && navigate(`/athlete/messages?user=${u.id}`)} delay={i * 40} />
                         ))
                   )}
 
@@ -621,7 +643,7 @@ export default function NetworkPage() {
                       ? <EmptyState icon={UserPlus} title="Not following anyone yet" sub="Discover athletes, scouts and coaches to follow" />
                       : filterBySearch(following).map((u, i) => (
                           <UserRow key={u.id} user={u} isFollowing={true}
-                            onToggle={() => toggleFollow(u.id)} onMessage={() => {}} delay={i * 40} />
+                            onToggle={() => toggleFollow(u.id)} onMessage={() => u.id && navigate(`/athlete/messages?user=${u.id}`)} delay={i * 40} />
                         ))
                   )}
 

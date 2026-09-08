@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { Shield, Activity, AlertCircle, CheckCircle2, Clock, FileText, BadgeCheck } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
 import { PartnerConsentsModal } from '@/components/medical/PartnerConsentsModal';
@@ -14,6 +14,7 @@ export default function Medical() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [partnersModalVisible, setPartnersModalVisible] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!profile?.athlete_profile_id) return;
@@ -43,7 +44,7 @@ export default function Medical() {
       if (mounted) setLoading(false);
     });
     return () => { mounted = false; };
-  }, [profile?.athlete_profile_id]);
+  }, [profile?.athlete_profile_id, reloadKey]);
 
   const CLEARANCE_META: Record<string, { label: string; color: string; subtitle: string }> = {
     cleared: { label: 'Cleared', color: Colors.success, subtitle: 'Medically verified athlete' },
@@ -79,7 +80,12 @@ export default function Medical() {
   return (
     <View style={s.root}>
       <AppHeader title="Medical" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={() => setReloadKey((key) => key + 1)} tintColor={Colors.primary} />}
+      >
         <View style={[s.card, s.clearanceCard]}>
           <View style={s.clearanceRow}>
             <Shield color={clearanceMeta.color} size={32} />

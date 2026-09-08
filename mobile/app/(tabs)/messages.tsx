@@ -29,6 +29,11 @@ import { AppHeader } from '@/components/AppHeader';
 import { Colors, Typography, Spacing, Radii } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
+import {
+  canonicalConversationParticipants,
+  conversationPairFilter,
+  isUniqueViolation,
+} from '@/lib/conversationState';
 
 interface ConversationRow {
   id: string;
@@ -84,14 +89,10 @@ async function findOrCreateConversation(
   userId: string,
   member: MemberRow,
 ): Promise<{ data: ConversationRecord | null; error: string | null }> {
-  const pairFilter = [
-    `and(participant_1_id.eq.${userId},participant_2_id.eq.${member.id})`,
-    `and(participant_1_id.eq.${member.id},participant_2_id.eq.${userId})`,
-  ].join(',');
   const existing = await supabase
     .from('conversations')
     .select(CONVERSATION_COLUMNS)
-    .or(pairFilter)
+    .or(conversationPairFilter(userId, member.id))
     .maybeSingle();
   if (existing.error) return { data: null, error: existing.error.message };
   if (existing.data) return { data: existing.data as ConversationRecord, error: null };
@@ -99,8 +100,7 @@ async function findOrCreateConversation(
   const created = await supabase
     .from('conversations')
     .insert({
-      participant_1_id: userId,
-      participant_2_id: member.id,
+      ...canonicalConversationParticipants(userId, member.id),
       subject: member.full_name ?? roleLabel(member.role),
     })
     .select(CONVERSATION_COLUMNS)
@@ -110,11 +110,11 @@ async function findOrCreateConversation(
   }
 
   // A concurrent message/story action may have created the same unique pair.
-  if (created.error?.code === '23505') {
+  if (isUniqueViolation(created.error)) {
     const raced = await supabase
       .from('conversations')
       .select(CONVERSATION_COLUMNS)
-      .or(pairFilter)
+      .or(conversationPairFilter(userId, member.id))
       .maybeSingle();
     if (raced.data) return { data: raced.data as ConversationRecord, error: null };
   }
@@ -193,12 +193,15 @@ function ChatThread({
     setLoading(false);
 
     const readAt = new Date().toISOString();
-    await supabase
+    const { error: readError } = await supabase
       .from('messages')
       .update({ is_read: true, read_at: readAt })
       .eq('conversation_id', conversation.id)
       .neq('sender_id', userId)
       .eq('is_read', false);
+    if (readError) {
+      setError('Messages loaded, but unread status could not be updated.');
+    }
   }, [conversation.id, userId]);
 
   useEffect(() => {
@@ -427,7 +430,11 @@ function NewConversationModal({
   const [creatingId, setCreatingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setQuery('');
+      setMembers([]);
+      return;
+    }
     let mounted = true;
     setLoading(true);
     Promise.all([

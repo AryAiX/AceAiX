@@ -26,6 +26,12 @@ import {
 } from '@/lib/postsService';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
+import {
+  appendCommentResult,
+  commentReplyParentId,
+  isCurrentCommentRequest,
+  isSameCommentRequestIdentity,
+} from '@/lib/commentState';
 
 interface Props {
   post: FeedPost | null;
@@ -41,55 +47,149 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
+  const loadRequestRef = useRef(0);
+  const postId = post?.id;
+  const userId = user?.id;
+  const requestIdentity = { postId, userId };
+  const activeRequestIdentityRef = useRef(requestIdentity);
+  const requestGenerationRef = useRef(0);
+  const submitGenerationRef = useRef<number | null>(null);
+
+  if (!isSameCommentRequestIdentity(activeRequestIdentityRef.current, requestIdentity)) {
+    activeRequestIdentityRef.current = requestIdentity;
+    requestGenerationRef.current += 1;
+    loadRequestRef.current += 1;
+    submitGenerationRef.current = null;
+  }
 
   const load = useCallback(async (silent = false) => {
-    if (!post || !user) return;
+    if (!postId || !userId) return;
+    const requestId = ++loadRequestRef.current;
+    const requestGeneration = requestGenerationRef.current;
+    const submittedIdentity = { postId, userId };
     if (!silent) setLoading(true);
-    const data = await fetchComments(post.id, user.id);
-    setComments(data);
-    if (!silent) setLoading(false);
-  }, [post?.id, user]);
+    try {
+      const data = await fetchComments(postId, userId);
+      if (
+        requestId !== loadRequestRef.current
+        || !isCurrentCommentRequest(
+          activeRequestIdentityRef.current,
+          requestGenerationRef.current,
+          submittedIdentity,
+          requestGeneration,
+        )
+      ) return;
+      setComments(data);
+      setLoadError(null);
+    } catch (err) {
+      if (
+        requestId !== loadRequestRef.current
+        || !isCurrentCommentRequest(
+          activeRequestIdentityRef.current,
+          requestGenerationRef.current,
+          submittedIdentity,
+          requestGeneration,
+        )
+      ) return;
+      if (!silent) setComments([]);
+      setLoadError(err instanceof Error ? err.message : 'Could not load comments.');
+    } finally {
+      if (
+        requestId === loadRequestRef.current
+        && isCurrentCommentRequest(
+          activeRequestIdentityRef.current,
+          requestGenerationRef.current,
+          submittedIdentity,
+          requestGeneration,
+        )
+      ) setLoading(false);
+    }
+  }, [postId, userId]);
 
   useEffect(() => {
-    if (post) load();
-    else setComments([]);
-  }, [post?.id]);
+    if (postId) {
+      setComments([]);
+      setText('');
+      setReplyTo(null);
+      setLoadError(null);
+      setSubmitting(false);
+      void load();
+    } else {
+      setComments([]);
+      setText('');
+      setReplyTo(null);
+      setLoadError(null);
+      setLoading(false);
+      setSubmitting(false);
+    }
+  }, [load, postId]);
 
   // Realtime new comments
   useEffect(() => {
-    if (!post) return;
+    if (!postId) return;
     const channel = supabase
-      .channel(`comments:${post.id}`)
+      .channel(`comments:${postId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'post_comments',
-        filter: `post_id=eq.${post.id}`,
+        filter: `post_id=eq.${postId}`,
       }, () => { load(true); })
       .subscribe();
     return () => { channel.unsubscribe(); };
-  }, [post?.id, load]);
+  }, [postId, load]);
 
   const handleSubmit = useCallback(async () => {
     if (!text.trim() || !post || !user) return;
+    const requestGeneration = requestGenerationRef.current;
+    if (submitGenerationRef.current === requestGeneration) return;
+    const submittedPostId = post.id;
+    const submittedUserId = user.id;
+    const submittedIdentity = { postId: submittedPostId, userId: submittedUserId };
+    const submittedReplyTo = replyTo;
+    const submittedText = text.trim();
+    submitGenerationRef.current = requestGeneration;
     setSubmitting(true);
-    const { comment, error } = await addComment(post.id, user.id, text.trim(), replyTo?.id);
+
+    const isCurrent = () => isCurrentCommentRequest(
+      activeRequestIdentityRef.current,
+      requestGenerationRef.current,
+      submittedIdentity,
+      requestGeneration,
+    );
+    let result: Awaited<ReturnType<typeof addComment>>;
+    try {
+      result = await addComment(
+        submittedPostId,
+        submittedUserId,
+        submittedText,
+        commentReplyParentId(submittedReplyTo),
+      );
+    } catch (error) {
+      if (!isCurrent()) return;
+      submitGenerationRef.current = null;
+      setSubmitting(false);
+      Alert.alert(
+        'Comment not sent',
+        error instanceof Error ? error.message : 'Something went wrong. Please try again.',
+      );
+      return;
+    }
+    if (!isCurrent()) return;
+
+    if (submitGenerationRef.current === requestGeneration) {
+      submitGenerationRef.current = null;
+    }
     setSubmitting(false);
+    const { comment, error } = result;
     if (!comment) {
       Alert.alert('Comment not sent', error ?? 'Something went wrong. Please try again.');
       return;
     }
-    if (replyTo) {
-      setComments((prev) =>
-        prev.map((c) =>
-          c.id === replyTo.id ? { ...c, replies: [...(c.replies ?? []), comment] } : c
-        )
-      );
-    } else {
-      setComments((prev) => [...prev, { ...comment, replies: [] }]);
-    }
-    onCommentAdded(post.id);
+    setComments((prev) => appendCommentResult(prev, comment, submittedReplyTo));
+    onCommentAdded(submittedPostId);
     setText('');
     setReplyTo(null);
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
@@ -186,26 +286,44 @@ export function CommentsSheet({ post, onClose, onCommentAdded }: Props) {
           {/* Comment list */}
           {loading ? (
             <ActivityIndicator color={Colors.primary} style={{ paddingVertical: Spacing.xl }} />
+          ) : loadError && comments.length === 0 ? (
+            <View style={{ alignItems: 'center', padding: Spacing.xl, gap: Spacing.md }}>
+              <Text style={s.emptyTxt}>{loadError}</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Retry loading comments"
+                onPress={() => void load()}
+              >
+                <Text style={{ color: Colors.primary, fontFamily: Typography.family.bold }}>
+                  Try again
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            <FlatList
-              ref={listRef}
-              data={comments}
-              keyExtractor={(c) => c.id}
-              renderItem={({ item }) => (
-                <CommentRow
-                  comment={item}
-                  onLike={() => handleLikeComment(item)}
-                  onReply={() => setReplyTo(item)}
-                  onLikeReply={(reply) => handleLikeReply(item.id, reply)}
-                  onReplyToReply={(reply) => setReplyTo(reply)}
-                />
-              )}
-              contentContainerStyle={s.listContent}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={
-                <Text style={s.emptyTxt}>No comments yet. Be the first!</Text>
-              }
-            />
+            <>
+              {loadError ? (
+                <Text style={[s.emptyTxt, { paddingVertical: Spacing.sm }]}>{loadError}</Text>
+              ) : null}
+              <FlatList
+                ref={listRef}
+                data={comments}
+                keyExtractor={(c) => c.id}
+                renderItem={({ item }) => (
+                  <CommentRow
+                    comment={item}
+                    onLike={() => handleLikeComment(item)}
+                    onReply={() => setReplyTo(item)}
+                    onLikeReply={(reply) => handleLikeReply(item.id, reply)}
+                    onReplyToReply={(reply) => setReplyTo(reply)}
+                  />
+                )}
+                contentContainerStyle={s.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <Text style={s.emptyTxt}>No comments yet. Be the first!</Text>
+                }
+              />
+            </>
           )}
 
           {/* Reply hint */}

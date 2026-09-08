@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Play, Upload, Star, Eye, Plus, Film, Tag, Trash2,
-  Share2, Pencil, MoreHorizontal, TrendingUp,
+  Play, Upload, Star, Eye,   Plus, Film, Tag, Trash2,
+  Share2, MoreHorizontal, TrendingUp,
   CheckCircle2, Loader2, X, Sparkles, BarChart2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
@@ -17,10 +17,10 @@ interface MediaView {
   views: number;
   duration: string;
   thumbnail: string;
+  storageUrl: string;
   tags: string[];
   featured: boolean;
   status: 'published' | 'processing';
-  likes: number;
 }
 
 const FALLBACK_THUMB = 'https://images.pexels.com/photos/46798/the-ball-stadion-football-the-pitch-46798.jpeg?auto=compress&cs=tinysrgb&w=600';
@@ -43,10 +43,10 @@ function toMediaView(m: AthleteMedia): MediaView {
     views: m.views_count,
     duration: fmtDuration(m.duration_seconds),
     thumbnail: m.thumbnail_url || m.storage_url || FALLBACK_THUMB,
+    storageUrl: m.storage_url,
     tags: m.ai_tags ?? [],
     featured: m.is_featured,
     status: m.transcode_status === 'processing' ? 'processing' : 'published',
-    likes: 0,
   };
 }
 
@@ -116,6 +116,7 @@ function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number
   const [vis, setVis] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [menuNotice, setMenuNotice] = useState('');
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
 
   return (
@@ -195,8 +196,16 @@ function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number
               <div className="absolute right-0 top-8 w-36 rounded-xl overflow-hidden z-20 py-1"
                 style={{ background: '#16273B', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 16px 48px rgba(0,0,0,0.6)', animation: 'slideUp 0.2s ease both' }}>
                 {[
-                  { label: 'Edit',     icon: Pencil,  color: '#2F80ED', action: () => setMenuOpen(false) },
-                  { label: 'Share',    icon: Share2,  color: '#1FB57A', action: () => setMenuOpen(false) },
+                  { label: 'Copy link', icon: Share2,  color: '#1FB57A', action: async () => {
+                    setMenuOpen(false);
+                    try {
+                      await navigator.clipboard.writeText(media.storageUrl);
+                      setMenuNotice('Link copied');
+                    } catch {
+                      setMenuNotice('Could not copy link');
+                    }
+                    setTimeout(() => setMenuNotice(''), 1600);
+                  } },
                   { label: 'Delete',   icon: Trash2,  color: '#EF5350', action: () => { setMenuOpen(false); onDelete(media.id); } },
                 ].map(item => (
                   <button key={item.label}
@@ -221,9 +230,7 @@ function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number
           <span className="flex items-center gap-1 text-[11px] text-white/35">
             <Eye size={10} />{media.views.toLocaleString()}
           </span>
-          <span className="flex items-center gap-1 text-[11px] text-white/35">
-            <Star size={10} />{media.likes}
-          </span>
+          {menuNotice && <span className="text-[11px] text-emerald">{menuNotice}</span>}
           <span className="text-[11px] text-white/25 ml-auto">{media.date}</span>
         </div>
       </div>
@@ -232,13 +239,15 @@ function VideoCard({ media, delay, onDelete }: { media: MediaView; delay: number
 }
 
 /* ── upload modal ──────────────────────────────────────────── */
-function UploadMediaModal({ athleteId, onClose, onUploaded }: {
-  athleteId: string; onClose: () => void; onUploaded: () => void;
+function UploadMediaModal({ athleteId, onClose, onUploaded, initialTitle = '' }: {
+  athleteId: string; onClose: () => void; onUploaded: () => void; initialTitle?: string;
 }) {
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({ title: '', storage_url: '', thumbnail_url: '', tags: '' });
+  const [error, setError] = useState(initialTitle
+    ? 'Local files are not stored yet. Paste a hosted media URL to add this clip.'
+    : '');
+  const [form, setForm] = useState({ title: initialTitle, storage_url: '', thumbnail_url: '', tags: '' });
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -322,6 +331,7 @@ export default function MediaPage() {
   const [mounted, setMounted] = useState(false);
   const [aiDismissed, setAiDismissed] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [pendingTitle, setPendingTitle] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -350,13 +360,23 @@ export default function MediaPage() {
   );
 
   const totalViews = media.reduce((s, m) => s + m.views, 0);
-  const totalLikes = media.reduce((s, m) => s + m.likes, 0);
+  const taggedCount = media.filter(m => m.tags.length > 0).length;
+
+  function openUpload(title = '') {
+    setPendingTitle(title);
+    setShowUpload(true);
+  }
 
   return (
     <div className="max-w-6xl space-y-6 pb-10">
 
       {showUpload && athleteId && (
-        <UploadMediaModal athleteId={athleteId} onClose={() => setShowUpload(false)} onUploaded={invalidateMedia} />
+        <UploadMediaModal
+          athleteId={athleteId}
+          initialTitle={pendingTitle}
+          onClose={() => { setShowUpload(false); setPendingTitle(''); }}
+          onUploaded={invalidateMedia}
+        />
       )}
 
       {/* ── PAGE HEADER ─────────────────────────────────────── */}
@@ -387,12 +407,22 @@ export default function MediaPage() {
             </div>
           </div>
           <button
-            onClick={() => setShowUpload(true)}
+            onClick={() => openUpload()}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm flex-shrink-0 transition-all active:scale-95"
             style={{ background: '#EF5350', color: '#fff', boxShadow: '0 4px 20px rgba(239,83,80,0.40)' }}>
             <Upload size={15} /> Upload Video
           </button>
-          <input ref={fileRef} type="file" accept="video/*" className="hidden" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              openUpload(file?.name.replace(/\.[^/.]+$/, '') ?? '');
+              e.target.value = '';
+            }}
+          />
         </div>
 
         {/* energy line */}
@@ -402,7 +432,7 @@ export default function MediaPage() {
         <div className="relative p-6 sm:px-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatBar value={String(media.length)}          label="Total clips"   color="#2F80ED" icon={Film}       delay={80}  />
           <StatBar value={totalViews.toLocaleString()}        label="Total views"   color="#1FB57A" icon={Eye}        delay={140} />
-          <StatBar value={totalLikes.toLocaleString()}        label="Total likes"   color="#B8F135" icon={Star}       delay={200} />
+          <StatBar value={String(taggedCount)} label="Tagged clips" color="#B8F135" icon={Tag} delay={200} />
           <StatBar value={String(media.filter(m => m.featured).length)} label="Featured"  color="#EF5350" icon={TrendingUp} delay={260} />
         </div>
       </div>
@@ -426,10 +456,10 @@ export default function MediaPage() {
             <p className="text-xs text-white/45 leading-relaxed">Upload raw match footage and our AI auto-tags goals, sprints, tackles &amp; key moments — then generates an optimized highlight reel for scouts.</p>
             <div className="flex items-center gap-3 mt-2">
               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald">
-                <CheckCircle2 size={11} /> 3 videos analyzed this week
+                <CheckCircle2 size={11} /> {taggedCount} clip{taggedCount === 1 ? '' : 's'} with tags
               </span>
               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-volt">
-                <BarChart2 size={11} /> 189 scout impressions
+                <BarChart2 size={11} /> {totalViews.toLocaleString()} recorded views
               </span>
             </div>
           </div>
@@ -444,8 +474,13 @@ export default function MediaPage() {
       <div
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
-        onDrop={e => { e.preventDefault(); setDragOver(false); }}
-        onClick={() => setShowUpload(true)}
+        onDrop={e => {
+          e.preventDefault();
+          setDragOver(false);
+          const file = e.dataTransfer.files[0];
+          openUpload(file?.name.replace(/\.[^/.]+$/, '') ?? '');
+        }}
+        onClick={() => openUpload()}
         className="relative rounded-2xl cursor-pointer overflow-hidden group"
         style={{
           padding: '2.5rem 2rem',
@@ -473,9 +508,9 @@ export default function MediaPage() {
           </div>
           <div className="flex-1">
             <p className="text-white/70 font-semibold text-sm">
-              {dragOver ? 'Drop to upload' : 'Drag & drop video files here'}
+              {dragOver ? 'Drop to add a clip title' : 'Add highlight clips by URL'}
             </p>
-            <p className="text-white/30 text-xs mt-1">MP4, MOV, AVI · up to 2 GB per file</p>
+            <p className="text-white/30 text-xs mt-1">Hosted MP4/MOV URLs · local file storage is not enabled yet</p>
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
               {['Auto-tagging', 'Highlight reels', 'Scout delivery'].map((f, i) => (
                 <span key={f} className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide"
@@ -486,7 +521,7 @@ export default function MediaPage() {
             </div>
           </div>
           <button
-            onClick={e => { e.stopPropagation(); setShowUpload(true); }}
+            onClick={e => { e.stopPropagation(); fileRef.current?.click(); }}
             className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
             style={{ background: 'rgba(47,128,237,0.15)', border: '1px solid rgba(47,128,237,0.30)', color: '#2F80ED' }}>
             <Plus size={13} /> Browse files

@@ -33,6 +33,7 @@ export default function PartnerDashboard() {
     enabled: !!partnerId,
   });
 
+  const verified = partner?.accreditation_status === 'approved';
   const clinicName = partner?.name ?? profile?.full_name ?? 'Medical Partner';
 
   const pendingCount = clearances.filter((c) => c.status === 'pending').length;
@@ -51,11 +52,11 @@ export default function PartnerDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-ink font-display">Medical Partner Dashboard</h1>
-          <p className="text-sm text-slate mt-0.5">{clinicName} · Verified Partner</p>
+          <p className="text-sm text-slate mt-0.5">{clinicName} · {verified ? 'Verified Partner' : partner ? 'Verification pending' : 'Partner profile incomplete'}</p>
         </div>
-        <div className="flex items-center gap-2 bg-emerald/8 border border-emerald/20 rounded-full px-3 py-1.5">
-          <ShieldCheck size={13} className="text-emerald" />
-          <span className="text-xs text-emerald font-semibold">Verified Partner</span>
+        <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${verified ? 'bg-emerald/8 border border-emerald/20' : 'bg-amber/8 border border-amber/20'}`}>
+          <ShieldCheck size={13} className={verified ? 'text-emerald' : 'text-amber'} />
+          <span className={`text-xs font-semibold ${verified ? 'text-emerald' : 'text-amber'}`}>{verified ? 'Verified Partner' : 'Unverified'}</span>
         </div>
       </div>
 

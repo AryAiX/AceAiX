@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { attachCommentReplies } from '@/lib/commentState';
 import { normalizeSportKey } from '@/constants/sportsConfig';
 import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
@@ -123,7 +124,7 @@ export async function fetchFeedPosts(
       .from('follows')
       .select('following_id')
       .eq('follower_id', currentUserId);
-    if (followsError) return [];
+    if (followsError) throw new Error(followsError.message);
     authorIds = [currentUserId, ...(follows ?? []).map((follow) => follow.following_id)];
   }
 
@@ -151,21 +152,25 @@ export async function fetchFeedPosts(
   if (authorIds) query = query.in('author_id', authorIds);
   if (sportAuthorIds) query = query.in('author_id', sportAuthorIds);
 
-  const [{ data, error }, { data: blocks }] = await Promise.all([
+  const [{ data, error }, { data: blocks, error: blocksError }] = await Promise.all([
     query,
     supabase.rpc('get_blocked_user_ids'),
   ]);
-  if (error || !data) return [];
+  if (error) throw new Error(error.message);
+  if (blocksError) throw new Error(blocksError.message);
+  if (!data) return [];
 
   const blockedIds = new Set(
     (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
   );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
-  const [{ data: likes }, { data: saves }] = await Promise.all([
-    ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
-    ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
+  const [{ data: likes, error: likesError }, { data: saves, error: savesError }] = await Promise.all([
+    ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [], error: null }),
+    ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [], error: null }),
   ]);
+  if (likesError) throw new Error(likesError.message);
+  if (savesError) throw new Error(savesError.message);
 
   const likedIds = new Set((likes ?? []).map((l: any) => l.post_id));
   const savedIds = new Set((saves ?? []).map((s: any) => s.post_id));
@@ -192,21 +197,25 @@ export async function fetchReels(
 
   if (cursor) query = query.lt('created_at', cursor);
 
-  const [{ data, error }, { data: blocks }] = await Promise.all([
+  const [{ data, error }, { data: blocks, error: blocksError }] = await Promise.all([
     query,
     supabase.rpc('get_blocked_user_ids'),
   ]);
-  if (error || !data) return [];
+  if (error) throw new Error(error.message);
+  if (blocksError) throw new Error(blocksError.message);
+  if (!data) return [];
 
   const blockedIds = new Set(
     (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
   );
   const visibleData = data.filter((row: any) => !blockedIds.has(row.author_id));
   const ids = visibleData.map((r: any) => r.id);
-  const [{ data: likes }, { data: saves }] = await Promise.all([
-    ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
-    ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [] }),
+  const [{ data: likes, error: likesError }, { data: saves, error: savesError }] = await Promise.all([
+    ids.length ? supabase.from('post_likes').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [], error: null }),
+    ids.length ? supabase.from('post_saves').select('post_id').eq('user_id', currentUserId).in('post_id', ids) : Promise.resolve({ data: [], error: null }),
   ]);
+  if (likesError) throw new Error(likesError.message);
+  if (savesError) throw new Error(savesError.message);
 
   const likedIds = new Set((likes ?? []).map((l: any) => l.post_id));
   const savedIds = new Set((saves ?? []).map((s: any) => s.post_id));
@@ -231,7 +240,8 @@ export async function fetchMyPosts(
   else if (type) query = query.eq('type', type);
 
   const { data, error } = await query;
-  if (error || !data) return [];
+  if (error) throw new Error(error.message);
+  if (!data) return [];
 
   const likedIds = new Set<string>();
   const savedIds = new Set<string>();
@@ -407,24 +417,34 @@ export async function fetchComments(postId: string, currentUserId: string): Prom
     .is('parent_id', null)
     .order('created_at', { ascending: true });
 
-  if (error || !data) return [];
+  if (error) throw new Error(error.message);
+  if (!data) return [];
 
   const commentIds = data.map((c: any) => c.id);
-  const { data: replies } = commentIds.length
-    ? await supabase
-        .from('post_comments')
-        .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
-        .in('parent_id', commentIds)
-        .order('created_at', { ascending: true })
-    : { data: [] };
+  let replies: any[] = [];
+  if (commentIds.length > 0) {
+    const repliesResult = await supabase
+      .from('post_comments')
+      .select('*, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url)')
+      .in('parent_id', commentIds)
+      .order('created_at', { ascending: true });
+    if (repliesResult.error) throw new Error(repliesResult.error.message);
+    replies = repliesResult.data ?? [];
+  }
 
-  const { data: clikes } = await supabase
-    .from('comment_likes')
-    .select('comment_id')
-    .eq('user_id', currentUserId)
-    .in('comment_id', [...commentIds, ...((replies ?? []).map((r: any) => r.id))]);
+  const allCommentIds = [...commentIds, ...replies.map((reply: any) => reply.id)];
+  let clikes: { comment_id: string }[] = [];
+  if (allCommentIds.length > 0) {
+    const likesResult = await supabase
+      .from('comment_likes')
+      .select('comment_id')
+      .eq('user_id', currentUserId)
+      .in('comment_id', allCommentIds);
+    if (likesResult.error) throw new Error(likesResult.error.message);
+    clikes = likesResult.data ?? [];
+  }
 
-  const likedCommentIds = new Set((clikes ?? []).map((c: any) => c.comment_id));
+  const likedCommentIds = new Set(clikes.map((c) => c.comment_id));
 
   const mapComment = (c: any): PostComment => ({
     id: c.id,
@@ -439,12 +459,10 @@ export async function fetchComments(postId: string, currentUserId: string): Prom
     liked: likedCommentIds.has(c.id),
   });
 
-  return data.map((c: any) => ({
-    ...mapComment(c),
-    replies: (replies ?? [])
-      .filter((r: any) => r.parent_id === c.id)
-      .map(mapComment),
-  }));
+  return attachCommentReplies(
+    data.map(mapComment),
+    replies.map(mapComment),
+  );
 }
 
 export async function addComment(

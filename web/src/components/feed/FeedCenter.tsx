@@ -1,14 +1,29 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
 import {
   Heart, MessageCircle, Share2, Play, Zap, ShieldCheck,
   MoreHorizontal, Video, Image as ImageIcon, BarChart3, Send,
   Plus, ThumbsUp, Shield, FileText,
 } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
-import { listPosts, createPost } from '../../api/content';
+import {
+  listPostPage,
+  mergePostPages,
+  createPost,
+  togglePostLike,
+  togglePostSave,
+  type PostCursor,
+  type PostPage,
+} from '../../api/content';
 import { listAthletes } from '../../api/athletes';
 import type { Post as ApiPost } from '../../types';
 
@@ -24,6 +39,8 @@ interface Post {
   content: string;
   media?: string;
   likes: number;
+  liked: boolean;
+  saved: boolean;
   comments: number;
   shares: number;
   time: string;
@@ -66,6 +83,8 @@ function mapPost(p: ApiPost): Post {
     content: p.text ?? '',
     media: p.image_url ?? undefined,
     likes: p.reactions_count ?? 0,
+    liked: p.liked ?? false,
+    saved: p.saved ?? false,
     comments: p.comments_count ?? 0,
     shares: 0,
     time: timeAgo(p.created_at),
@@ -240,17 +259,59 @@ function ActionBar({ liked, likes, onLike, endorse = false }: {
 }
 
 /* ─── Post Card ─────────────────────────────────────────── */
-function PostCard({ post, index }: { post: Post; index: number }) {
-  const [likes,   setLikes]   = useState(post.likes);
-  const [liked,   setLiked]   = useState(false);
+type PostReactionPatch = Partial<Pick<ApiPost, 'liked' | 'reactions_count' | 'saved'>>;
+
+function PostCard({
+  post,
+  index,
+  onReactionChange,
+}: {
+  post: Post;
+  index: number;
+  onReactionChange: (postId: string, patch: PostReactionPatch) => void;
+}) {
+  const { user } = useAuth();
+  const { liked, likes, saved } = post;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [reported, setReported] = useState(false);
   const [visible, setVisible] = useState(false);
   const menuRef  = useRef<HTMLButtonElement>(null);
   const cardRef  = useRef<HTMLDivElement>(null);
+  const likeRequestRef = useRef(false);
+  const saveRequestRef = useRef(false);
 
-  function toggleLike() { setLiked(l => !l); setLikes(n => n + (liked ? -1 : 1)); }
+  async function toggleLike() {
+    if (!user || likeRequestRef.current) return;
+    likeRequestRef.current = true;
+    const previousLiked = liked;
+    const previousLikes = likes;
+    const nextLiked = !liked;
+    onReactionChange(post.id, {
+      liked: nextLiked,
+      reactions_count: previousLikes + (nextLiked ? 1 : -1),
+    });
+    try {
+      await togglePostLike(post.id, user.id, previousLiked);
+    } catch {
+      onReactionChange(post.id, { liked: previousLiked, reactions_count: previousLikes });
+    } finally {
+      likeRequestRef.current = false;
+    }
+  }
+
+  async function toggleSave() {
+    if (!user || saveRequestRef.current) return;
+    saveRequestRef.current = true;
+    const previous = saved;
+    onReactionChange(post.id, { saved: !previous });
+    try {
+      await togglePostSave(post.id, user.id, previous);
+    } catch {
+      onReactionChange(post.id, { saved: previous });
+    } finally {
+      saveRequestRef.current = false;
+    }
+  }
 
   useEffect(() => {
     const el = cardRef.current;
@@ -304,7 +365,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
           menuRef={menuRef as React.RefObject<HTMLButtonElement>}
           saved={saved}
           reported={reported}
-          onSave={() => setSaved(true)}
+          onSave={toggleSave}
           onReport={() => setReported(true)}
         />
         <div className="mt-4 rounded-xl p-4 text-center mb-3" style={{ background: 'rgba(31,181,122,0.10)', border: '1px solid rgba(31,181,122,0.20)' }}>
@@ -331,7 +392,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
           menuRef={menuRef as React.RefObject<HTMLButtonElement>}
           saved={saved}
           reported={reported}
-          onSave={() => setSaved(true)}
+          onSave={toggleSave}
           onReport={() => setReported(true)}
         />
         <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-full mb-3" style={{ background: 'rgba(47,128,237,0.14)', border: '1px solid rgba(47,128,237,0.25)' }}>
@@ -357,7 +418,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
             menuRef={menuRef as React.RefObject<HTMLButtonElement>}
             saved={saved}
             reported={reported}
-            onSave={() => setSaved(true)}
+            onSave={toggleSave}
             onReport={() => setReported(true)}
           />
           <p className="text-sm text-ink mt-3">{post.content}</p>
@@ -401,7 +462,7 @@ function PostCard({ post, index }: { post: Post; index: number }) {
         menuRef={menuRef as React.RefObject<HTMLButtonElement>}
         saved={saved}
         reported={reported}
-        onSave={() => setSaved(true)}
+        onSave={toggleSave}
         onReport={() => setReported(true)}
       />
       <p className="text-sm text-ink my-3">{post.content}</p>
@@ -508,11 +569,52 @@ function LoadMore({ onClick, loading }: { onClick: () => void; loading: boolean 
   );
 }
 
+function FeedError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="card p-8 text-center">
+      <p className="text-sm font-semibold text-coral">Posts couldn’t be loaded</p>
+      <p className="text-xs text-white/45 mt-2">{message}</p>
+      <button type="button" onClick={onRetry} className="btn-outline px-5 py-2 mt-4 text-xs">
+        Try again
+      </button>
+    </div>
+  );
+}
+
 /* ─── Main ──────────────────────────────────────────────── */
 export default function FeedCenter() {
-  const { data: apiPosts = [], isLoading: postsLoading, isFetching, refetch } = useQuery({
-    queryKey: ['posts', { limit: 20 }],
-    queryFn: () => listPosts({ limit: 20 }),
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const pageSize = 20;
+  const postsQueryKey = useMemo(
+    () => ['posts', { pageSize, viewerId: user?.id }] as const,
+    [user?.id],
+  );
+  const {
+    data: postPages,
+    isLoading: postsLoading,
+    isFetchingNextPage,
+    isError: postsError,
+    error: postsErrorValue,
+    isFetchNextPageError,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery<
+    PostPage,
+    Error,
+    InfiniteData<PostPage, PostCursor | null>,
+    QueryKey,
+    PostCursor | null
+  >({
+    queryKey: postsQueryKey,
+    queryFn: ({ pageParam }) => listPostPage({
+      pageSize,
+      cursor: pageParam ?? undefined,
+      viewerId: user?.id,
+    }),
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 
   const { data: athletes = [] } = useQuery({
@@ -520,7 +622,22 @@ export default function FeedCenter() {
     queryFn: () => listAthletes({ limit: 6 }),
   });
 
-  const posts = apiPosts.map(mapPost);
+  const posts = mergePostPages(postPages?.pages ?? []).map(mapPost);
+  const updatePostReaction = useCallback((postId: string, patch: PostReactionPatch) => {
+    queryClient.setQueryData<InfiniteData<PostPage, PostCursor | null>>(
+      postsQueryKey,
+      (current) => current ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          items: page.items.map((post) => post.id === postId ? { ...post, ...patch } : post),
+        })),
+      } : current,
+    );
+  }, [postsQueryKey, queryClient]);
+  const postErrorMessage = postsErrorValue instanceof Error
+    ? postsErrorValue.message
+    : 'Check your connection and try again.';
   const stories: Story[] = athletes.map((a, i) => ({
     id: a.id,
     name: firstName(a.user?.full_name),
@@ -540,6 +657,8 @@ export default function FeedCenter() {
               <span className="text-sm">Loading posts…</span>
             </div>
           </div>
+        ) : postsError && posts.length === 0 ? (
+          <FeedError message={postErrorMessage} onRetry={() => void refetch()} />
         ) : posts.length === 0 ? (
           <div className="card p-10 text-center">
             <p className="text-sm text-white/50">No posts yet. Be the first to share an update.</p>
@@ -547,9 +666,21 @@ export default function FeedCenter() {
         ) : (
           <>
             <div>
-              {posts.map((post, i) => <PostCard key={post.id} post={post} index={i} />)}
+              {posts.map((post, i) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  index={i}
+                  onReactionChange={updatePostReaction}
+                />
+              ))}
             </div>
-            <LoadMore onClick={() => refetch()} loading={isFetching} />
+            {isFetchNextPageError && (
+              <FeedError message={postErrorMessage} onRetry={() => void fetchNextPage()} />
+            )}
+            {hasNextPage && !isFetchNextPageError && (
+              <LoadMore onClick={() => void fetchNextPage()} loading={isFetchingNextPage} />
+            )}
           </>
         )}
       </div>

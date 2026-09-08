@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { RefreshCw, ChevronDown, Zap } from 'lucide-react-native';
 import { AppHeader } from '@/components/AppHeader';
@@ -244,16 +244,19 @@ export default function Performance() {
   const [gallery, setGallery] = useState<GalleryAthlete[]>([]);
   const [galleryLoading, setGalleryLoading] = useState(true);
   const [galleryError, setGalleryError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!user) { setGalleryLoading(false); return; }
     let mounted = true;
-    supabase
+    setGalleryLoading(true);
+    setGalleryError(false);
+    Promise.resolve(supabase
       .from('performance_records')
       .select('athlete_id, sport, season_or_period, stats, source, last_synced_at, user_profiles(full_name)')
       .neq('athlete_id', user.id)
       .order('last_synced_at', { ascending: false })
-      .limit(20)
+      .limit(20))
       .then(({ data, error }) => {
         if (!mounted) return;
         if (error) {
@@ -280,15 +283,26 @@ export default function Performance() {
           if (unique.length >= 10) break;
         }
         setGallery(unique);
-        setGalleryLoading(false);
+        setGalleryError(false);
+      })
+      .catch(() => {
+        if (mounted) setGalleryError(true);
+      })
+      .finally(() => {
+        if (mounted) setGalleryLoading(false);
       });
     return () => { mounted = false; };
-  }, [user]);
+  }, [user, reloadKey]);
 
   return (
     <View style={s.root}>
       <AppHeader title="Performance Engine" />
-      <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={s.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={galleryLoading} onRefresh={() => setReloadKey((key) => key + 1)} tintColor={Colors.primary} />}
+      >
 
         {/* My Performance */}
         <View style={s.sectionHeader}>

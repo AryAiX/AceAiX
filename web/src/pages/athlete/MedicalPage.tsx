@@ -6,6 +6,7 @@ import {
   ChevronRight, Upload, Eye, EyeOff, Sparkles,
   Stethoscope, Syringe, FlaskConical,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listClearances, listMedicalRecords, listInjuries } from '../../api/medical';
 import type { MedicalClearance, MedicalRecord, Injury } from '../../types';
@@ -234,11 +235,12 @@ function RiskRing({ color, score }: { color: string; score: string }) {
 
 /* ── main ───────────────────────────────────────────────────── */
 export default function MedicalPage() {
+  const navigate = useNavigate();
   const { data: athlete } = useMyAthlete();
   const athleteId = athlete?.id;
   const [mounted, setMounted] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [privacy, setPrivacy] = useState(true);
+  const privacy = true;
   const [hoveredRec, setHoveredRec] = useState<string | null>(null);
 
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -356,7 +358,7 @@ export default function MedicalPage() {
             <p className="text-xs font-semibold text-azure">Consent-First Privacy</p>
             <p className="text-[11px] text-white/35 mt-0.5">Medical data is only shared with scouts/clubs you explicitly authorize. Revoke anytime in Privacy Settings.</p>
           </div>
-          <button onClick={() => setPrivacy(v => !v)}
+          <button type="button" onClick={() => navigate('/athlete/settings')}
             className="flex items-center gap-1.5 text-[11px] font-semibold flex-shrink-0 transition-colors"
             style={{ color: privacy ? '#1FB57A' : '#7C8DA6' }}>
             {privacy ? <Eye size={12} /> : <EyeOff size={12} />}

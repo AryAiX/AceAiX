@@ -1,4 +1,10 @@
 import { supabase } from '@/lib/supabase';
+import { throwIfError } from '@/lib/query';
+import {
+  canonicalConversationParticipants,
+  conversationPairFilter,
+  isUniqueViolation,
+} from '@/lib/conversationState';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 
@@ -45,7 +51,7 @@ export interface StoryAuthorGroup {
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
 export async function fetchActiveStories(currentUserId: string): Promise<StoryAuthorGroup[]> {
-  const [{ data, error }, { data: blocks }] = await Promise.all([
+  const [{ data, error }, { data: blocks, error: blocksError }] = await Promise.all([
     supabase
       .from('stories')
       .select(`
@@ -57,7 +63,9 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
     supabase.rpc('get_blocked_user_ids'),
   ]);
 
-  if (error || !data) return [];
+  throwIfError(error);
+  throwIfError(blocksError);
+  if (!data) return [];
   const blockedIds = new Set(
     (blocks ?? []).map((block: { blocked_user_id: string }) => block.blocked_user_id),
   );
@@ -67,11 +75,12 @@ export async function fetchActiveStories(currentUserId: string): Promise<StoryAu
   const storyIds = visibleRows.map((s) => s.id);
   let seenSet = new Set<string>();
   if (storyIds.length > 0) {
-    const { data: views } = await supabase
+    const { data: views, error: viewsError } = await supabase
       .from('story_views')
       .select('story_id')
       .eq('viewer_id', currentUserId)
       .in('story_id', storyIds);
+    throwIfError(viewsError);
     seenSet = new Set((views ?? []).map((v: any) => v.story_id));
   }
 
@@ -241,16 +250,13 @@ export async function sendStoryReply(
   if (!normalized) return { error: 'Reply cannot be empty.' };
   if (story.author_id === senderId) return { error: 'You cannot reply to your own story.' };
 
-  const pairFilter = [
-    `and(participant_1_id.eq.${senderId},participant_2_id.eq.${story.author_id})`,
-    `and(participant_1_id.eq.${story.author_id},participant_2_id.eq.${senderId})`,
-  ].join(',');
-  const { data: existing, error: findError } = await supabase
+  const selectConversation = () => supabase
     .from('conversations')
     .select('id')
-    .or(pairFilter)
+    .or(conversationPairFilter(senderId, story.author_id))
     .limit(1)
     .maybeSingle();
+  const { data: existing, error: findError } = await selectConversation();
 
   if (findError) return { error: findError.message };
 
@@ -259,14 +265,21 @@ export async function sendStoryReply(
     const { data: created, error: createError } = await supabase
       .from('conversations')
       .insert({
-        participant_1_id: senderId,
-        participant_2_id: story.author_id,
+        ...canonicalConversationParticipants(senderId, story.author_id),
         subject: 'Story reply',
       })
       .select('id')
       .single();
-    if (createError || !created) return { error: createError?.message ?? 'Unable to start conversation.' };
-    conversationId = created.id;
+    if (!createError && created) {
+      conversationId = created.id;
+    } else if (isUniqueViolation(createError)) {
+      const raced = await selectConversation();
+      if (raced.error) return { error: raced.error.message };
+      if (!raced.data) return { error: 'Conversation was created concurrently but could not be loaded.' };
+      conversationId = raced.data.id;
+    } else {
+      return { error: createError?.message ?? 'Unable to start conversation.' };
+    }
   }
 
   const message = `Reply to your story: ${normalized}`;
@@ -279,13 +292,19 @@ export async function sendStoryReply(
   });
   if (messageError) return { error: messageError.message };
 
-  await supabase
+  const { error: previewError } = await supabase
     .from('conversations')
     .update({
       last_message_at: createdAt,
       last_message_preview: message.slice(0, 255),
     })
     .eq('id', conversationId);
+  if (previewError) {
+    console.warn('Story reply delivered, but conversation preview update failed', {
+      conversationId,
+      error: previewError.message,
+    });
+  }
 
   return { error: null };
 }

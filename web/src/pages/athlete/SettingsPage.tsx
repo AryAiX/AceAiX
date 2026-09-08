@@ -27,6 +27,7 @@ export default function SettingsPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const { data: priv } = useQuery({
     queryKey: ['user-private', user?.id],
@@ -59,19 +60,30 @@ export default function SettingsPage() {
   async function handleSave() {
     if (!user) return;
     setSaving(true);
-    await updateUserProfile(user.id, { full_name: form.full_name, bio: form.bio, city: form.city });
-    await updateUserPrivate(user.id, { email: form.email, phone: form.phone });
-    await refreshProfile();
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaveError('');
+    try {
+      await updateUserProfile(user.id, { full_name: form.full_name, bio: form.bio, city: form.city });
+      await updateUserPrivate(user.id, { email: form.email, phone: form.phone });
+      await refreshProfile();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'Could not save settings.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function toggleNotif(key: string) {
     if (!user) return;
+    const previous = notifPrefs;
     const next = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(next);
-    await updateUserPrivate(user.id, { notification_preferences: next });
+    try {
+      await updateUserPrivate(user.id, { notification_preferences: next });
+    } catch {
+      setNotifPrefs(previous);
+    }
   }
 
   const TABS = [
@@ -126,7 +138,8 @@ export default function SettingsPage() {
             <label className="label">Bio</label>
             <textarea value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} className="input-field resize-none" placeholder="Tell scouts about yourself..." />
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3 items-center">
+            {saveError && <p role="alert" className="text-xs text-coral">{saveError}</p>}
             <button onClick={handleSave} disabled={saving} className="btn-primary">
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
               {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}
@@ -153,9 +166,17 @@ export default function SettingsPage() {
       {tab === 'privacy' && (
         <div className="card space-y-4">
           <h2 className="text-base font-semibold text-white">Privacy Controls</h2>
-          {/* NOTE: deferred — privacy toggles are local UI only (no dedicated columns yet). */}
+          <p className="text-xs text-slate-400">These preferences are not stored yet. Visibility continues to follow your public profile and medical consent settings.</p>
           {PRIVACY_TOGGLES.map((item) => (
-            <LocalToggleRow key={item.label} {...item} />
+            <div key={item.label} className="flex items-center justify-between py-3 border-b border-slate-700/30 last:border-0 opacity-70">
+              <div>
+                <p className="text-sm font-medium text-white">{item.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">{item.desc} Unavailable until privacy columns ship.</p>
+              </div>
+              <div className={`w-10 h-6 rounded-full flex items-center px-0.5 flex-shrink-0 ml-4 ${item.defaultOn ? 'bg-slate-600' : 'bg-slate-800'}`}>
+                <div className={`w-5 h-5 bg-white/70 rounded-full ${item.defaultOn ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -216,16 +237,15 @@ function ToggleRow({ label, desc, on, onChange }: { label: string; desc: string;
         <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
       </div>
       <div
+        role="switch"
+        aria-checked={on}
+        tabIndex={0}
         onClick={onChange}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(); } }}
         className={`w-10 h-6 rounded-full cursor-pointer transition-colors flex items-center px-0.5 flex-shrink-0 ml-4 ${on ? 'bg-blue-600' : 'bg-slate-700'}`}
       >
         <div className={`w-5 h-5 bg-white rounded-full transition-transform ${on ? 'translate-x-4' : 'translate-x-0'}`} />
       </div>
     </div>
   );
-}
-
-function LocalToggleRow({ label, desc, defaultOn }: { label: string; desc: string; defaultOn: boolean }) {
-  const [on, setOn] = useState(defaultOn);
-  return <ToggleRow label={label} desc={desc} on={on} onChange={() => setOn(!on)} />;
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, TrendingUp, BarChart3, Target, Zap, X,
-  Flame, Award, Calendar, ChevronRight, Check,
+  Flame, Award, Calendar, Check,
   Loader2, Swords, Clock, Star, RefreshCw, Link2,
 } from 'lucide-react';
 import { useMyAthlete } from '../../hooks/useAthlete';
@@ -20,7 +20,7 @@ interface MatchView {
   minutes: number;
   goals: number;
   assists: number;
-  rating: number;
+  rating: number | null;
 }
 
 interface SeasonStat {
@@ -49,9 +49,9 @@ function resultKind(r: string | null): 'win' | 'draw' | 'loss' {
   return 'draw';
 }
 
-function matchRating(m: MatchRecord): number {
+function matchRating(m: MatchRecord): number | null {
   const r = (m.stats as { rating?: number })?.rating;
-  return typeof r === 'number' ? r : 7;
+  return typeof r === 'number' && Number.isFinite(r) ? r : null;
 }
 
 function toMatchView(m: MatchRecord): MatchView {
@@ -257,11 +257,11 @@ function FormBars({ matches: source }: { matches: MatchView[] }) {
     <div className="flex items-end gap-2 h-28">
       {matches.map((m, i) => {
         const [color] = RESULT_STYLE[m.result];
-        const frac = m.rating / 10;
+        const frac = (m.rating ?? 0) / 10;
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
             <span className="text-[9px] font-bold tabular opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ color }}>{m.rating}</span>
+              style={{ color }}>{m.rating ?? '—'}</span>
             <div className="w-full rounded-t-lg relative overflow-hidden"
               style={{
                 height: vis ? `${frac * 100}%` : '0%',
@@ -353,7 +353,8 @@ export default function PerformancePage() {
 
   const matches: MatchView[] = rawMatches.map(toMatchView);
 
-  const avgRating = matches.length ? (matches.reduce((s, m) => s + m.rating, 0) / matches.length).toFixed(1) : '—';
+  const ratedMatches = matches.filter(m => m.rating != null);
+  const avgRating = ratedMatches.length ? (ratedMatches.reduce((s, m) => s + (m.rating ?? 0), 0) / ratedMatches.length).toFixed(1) : '—';
   const totalGoals = matches.reduce((s, m) => s + m.goals, 0);
   const totalAssists = matches.reduce((s, m) => s + m.assists, 0);
   const totalMinutes = matches.reduce((s, m) => s + m.minutes, 0);
@@ -436,7 +437,7 @@ export default function PerformancePage() {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-display font-bold text-white">Performance</h1>
-                <p className="text-white/40 text-sm mt-0.5">Match records &amp; AI insights · Season 2025/26</p>
+                <p className="text-white/40 text-sm mt-0.5">Match records &amp; AI insights</p>
               </div>
             </div>
             {/* quick KPIs */}
@@ -611,10 +612,8 @@ export default function PerformancePage() {
               <h2 className="text-sm font-bold text-white">Match Log</h2>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-white/25">Season 2025/26</span>
-              <button className="text-[11px] text-azure flex items-center gap-0.5 hover:text-azure/80 transition-colors">
-                Full history <ChevronRight size={11} />
-              </button>
+              <span className="text-[11px] text-white/25">{matches.length} records</span>
+              <span className="text-[11px] text-white/25">All loaded matches</span>
             </div>
           </div>
 
@@ -667,8 +666,8 @@ export default function PerformancePage() {
                       </td>
                       <td className="py-3 text-right text-white/40 tabular pr-3">{match.minutes}'</td>
                       <td className="py-3 text-right">
-                        <span className="font-bold tabular text-sm" style={{ color: ratingColor(match.rating) }}>
-                          {match.rating}
+                        <span className="font-bold tabular text-sm" style={{ color: match.rating == null ? 'rgba(255,255,255,0.35)' : ratingColor(match.rating) }}>
+                          {match.rating ?? '—'}
                         </span>
                       </td>
                     </tr>

@@ -3,6 +3,7 @@ import {
   Send, Search, MessageSquare, ShieldCheck, Plus,
   ArrowLeft, Loader2, Users, MoreHorizontal, Phone, Video,
 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import {
@@ -11,8 +12,9 @@ import {
 } from '../../api/messaging';
 import { searchUsers } from '../../api/network';
 import type { Conversation, Message, UserProfile } from '../../types';
+import { withoutSearchParam } from '../../lib/searchParams';
+import { isCurrentConversationRequest } from '../../lib/conversationState';
 
-/* ─── Helpers ──────────────────────────────────────────────── */
 function timeLabel(iso: string) {
   const d = new Date(iso), now = new Date();
   const diff = now.getTime() - d.getTime();
@@ -24,7 +26,7 @@ function timeLabel(iso: string) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
-function Avatar({ user, size = 10, online = false }: { user: Partial<UserProfile> | null | undefined; size?: number; online?: boolean }) {
+function Avatar({ user, size = 10 }: { user: Partial<UserProfile> | null | undefined; size?: number }) {
   const px = size * 4;
   return (
     <div className="relative flex-shrink-0" style={{ width: px, height: px }}>
@@ -34,9 +36,6 @@ function Avatar({ user, size = 10, online = false }: { user: Partial<UserProfile
           : <span className="text-xs font-bold text-azure">{user?.full_name?.charAt(0) ?? '?'}</span>
         }
       </div>
-      {online && (
-        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald border-2 border-panel" />
-      )}
     </div>
   );
 }
@@ -97,6 +96,7 @@ function NewConversationModal({ onClose, onSelect }: {
 /* ─── Page ───────────────────────────────────────────────────── */
 export default function MessagesPage() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId]   = useState<string | null>(null);
   const [messages, setMessages]           = useState<Message[]>([]);
@@ -109,23 +109,73 @@ export default function MessagesPage() {
   const [mobileView, setMobileView]       = useState<'list' | 'chat'>('list');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+  const conversationRequestRef = useRef<string | null>(null);
+  const [sendError, setSendError] = useState('');
 
   const activeConv = conversations.find(c => c.id === activeConvId) ?? null;
 
   const loadConversations = useCallback(async () => {
     if (!user) return;
-    const data = await listConversations(user.id);
-    setConversations(data);
-    setLoading(false);
+    try {
+      const data = await listConversations(user.id);
+      setConversations(data);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Conversations could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
   useEffect(() => {
+    const otherUserId = searchParams.get('user');
+    if (!user || !otherUserId) {
+      conversationRequestRef.current = null;
+      return;
+    }
+    if (loading) return;
+    const existing = conversations.find(c =>
+      c.participant_1_id === otherUserId || c.participant_2_id === otherUserId,
+    );
+    if (existing) {
+      conversationRequestRef.current = null;
+      setActiveConvId(existing.id);
+      setMobileView('chat');
+      setSearchParams((current) => withoutSearchParam(current, 'user'), { replace: true });
+      return;
+    }
+    const requestKey = `${user.id}:${otherUserId}`;
+    if (conversationRequestRef.current === requestKey) return;
+    conversationRequestRef.current = requestKey;
+    void getOrCreateConversation(user.id, otherUserId).then((conv) => {
+      if (!isCurrentConversationRequest(conversationRequestRef.current, requestKey)) return;
+      setConversations(prev => prev.some(item => item.id === conv.id) ? prev : [conv, ...prev]);
+      setActiveConvId(conv.id);
+      setMobileView('chat');
+      setSendError('');
+      setSearchParams((current) => withoutSearchParam(current, 'user'), { replace: true });
+      void loadConversations();
+    }).catch((error) => {
+      if (!isCurrentConversationRequest(conversationRequestRef.current, requestKey)) return;
+      setSendError(error instanceof Error ? error.message : 'Conversation could not be opened.');
+    }).finally(() => {
+      if (isCurrentConversationRequest(conversationRequestRef.current, requestKey)) {
+        conversationRequestRef.current = null;
+      }
+    });
+  }, [conversations, loadConversations, loading, searchParams, setSearchParams, user]);
+
+  useEffect(() => {
     if (!activeConvId || !user) return;
     setMsgLoading(true);
-    listMessages(activeConvId).then((data) => { setMessages(data); setMsgLoading(false); });
-    markMessagesRead(activeConvId, user.id).then(() => loadConversations());
+    listMessages(activeConvId)
+      .then(setMessages)
+      .catch((error) => setSendError(error instanceof Error ? error.message : 'Messages could not be loaded.'))
+      .finally(() => setMsgLoading(false));
+    markMessagesRead(activeConvId, user.id)
+      .then(() => loadConversations())
+      .catch(() => setSendError('Messages loaded, but read status could not be updated.'));
   }, [activeConvId, user, loadConversations]);
 
   useEffect(() => {
@@ -160,18 +210,27 @@ export default function MessagesPage() {
   async function sendMessage() {
     if (!input.trim() || !activeConvId || !user || sending) return;
     const text = input.trim();
-    setInput('');
     setSending(true);
-    await sendMessageApi(activeConvId, user.id, text);
-    setSending(false);
-    loadConversations();
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setSendError('');
+    try {
+      await sendMessageApi(activeConvId, user.id, text);
+      setInput('');
+      loadConversations();
+      setTimeout(() => inputRef.current?.focus(), 50);
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setSending(false);
+    }
   }
 
   const filtered = conversations.filter(c => !search || c.other_user?.full_name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="animate-in" style={{ height: 'calc(100vh - 130px)', minHeight: 500 }}>
+      {sendError && !activeConvId && (
+        <p role="alert" className="text-xs text-coral mb-3">{sendError}</p>
+      )}
       <div className="flex h-full rounded-2xl overflow-hidden border border-white/[0.06]" style={{ background: 'rgba(10,20,35,0.9)' }}>
 
         {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -224,7 +283,7 @@ export default function MessagesPage() {
                   className={`w-full flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] last:border-0 transition-all text-left ${isActive ? 'bg-azure/8' : 'hover:bg-white/[0.03]'}`}
                   style={{ background: isActive ? 'rgba(47,128,237,0.08)' : undefined }}
                 >
-                  <Avatar user={other} size={10} online={Math.random() > 0.5} />
+                  <Avatar user={other} size={10} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <span className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-slate-200'}`}>
@@ -270,22 +329,27 @@ export default function MessagesPage() {
                   className="lg:hidden p-1.5 rounded-lg hover:bg-white/5 text-muted hover:text-white transition-colors mr-1">
                   <ArrowLeft size={16} />
                 </button>
-                <Avatar user={activeConv?.other_user} size={9} online />
+                <Avatar user={activeConv?.other_user} size={9} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-white truncate">{activeConv?.other_user?.full_name}</p>
                   <div className="flex items-center gap-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald" />
-                    <p className="text-[10px] text-emerald">Online</p>
+                    <p className="text-[10px] text-muted">
+                      {activeConv?.last_message_at
+                        ? `Last message ${timeLabel(activeConv.last_message_at)}`
+                        : activeConv?.other_user?.role
+                          ? activeConv.other_user.role.replace('_', ' ')
+                          : 'AceAiX member'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button className="w-8 h-8 flex items-center justify-center rounded-xl text-muted hover:text-white hover:bg-white/5 transition-colors">
+                  <button type="button" disabled title="Voice calls are not available yet." className="w-8 h-8 flex items-center justify-center rounded-xl text-muted/40 cursor-not-allowed">
                     <Phone size={15} />
                   </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-xl text-muted hover:text-white hover:bg-white/5 transition-colors">
+                  <button type="button" disabled title="Video calls are not available yet." className="w-8 h-8 flex items-center justify-center rounded-xl text-muted/40 cursor-not-allowed">
                     <Video size={15} />
                   </button>
-                  <button className="w-8 h-8 flex items-center justify-center rounded-xl text-muted hover:text-white hover:bg-white/5 transition-colors">
+                  <button type="button" disabled title="More conversation actions are not available yet." className="w-8 h-8 flex items-center justify-center rounded-xl text-muted/40 cursor-not-allowed">
                     <MoreHorizontal size={15} />
                   </button>
                 </div>
@@ -336,6 +400,7 @@ export default function MessagesPage() {
 
               {/* Input */}
               <div className="px-4 py-3 border-t border-white/[0.06] flex-shrink-0">
+                {sendError && <p role="alert" className="text-xs text-coral mb-2">{sendError}</p>}
                 <div className="flex items-center gap-2">
                   <input
                     ref={inputRef}

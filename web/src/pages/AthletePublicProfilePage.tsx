@@ -37,6 +37,10 @@ import { listMedia, listMatches } from '../api/portfolio';
 import { listEndorsements, listRecommendations } from '../api/network';
 import { latestClearance, listMedicalRecords } from '../api/medical';
 import { listPosts } from '../api/content';
+import {
+  getOrCreateConversation,
+  sendMessage as sendConversationMessage,
+} from '../api/messaging';
 import { normalizeAttributes } from '../lib/profileData';
 import type { UserProfile } from '../types';
 
@@ -187,9 +191,9 @@ function FollowersModal({ profileUserId, count, currentUserId, onClose }: {
 }
 
 /* ─── Message Modal ───────────────────────────────────────── */
-function MessageModal({ athleteName, onClose, onSend, sending, isAuth }: {
+function MessageModal({ athleteName, onClose, onSend, sending, error, isAuth }: {
   athleteName: string; onClose: () => void;
-  onSend: (text: string) => Promise<void>; sending: boolean; isAuth: boolean;
+  onSend: (text: string) => Promise<void>; sending: boolean; error: string; isAuth: boolean;
 }) {
   const [text, setText] = useState('');
   useEffect(() => {
@@ -217,6 +221,7 @@ function MessageModal({ athleteName, onClose, onSend, sending, isAuth }: {
         ) : (
           <>
             <textarea value={text} onChange={e => setText(e.target.value)} placeholder={`Write a message to ${athleteName.split(' ')[0]}…`} rows={4} className="input-dark resize-none mb-4 text-sm leading-relaxed" autoFocus />
+            {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted">{text.length}/500</span>
               <button onClick={() => text.trim() && onSend(text)} disabled={!text.trim() || sending || text.length > 500}
@@ -435,6 +440,7 @@ export default function AthletePublicProfilePage() {
   const [msgOpen, setMsgOpen] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [msgError, setMsgError] = useState('');
   const [shared, setShared] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -495,10 +501,12 @@ export default function AthletePublicProfilePage() {
     if (!user) { navigate('/auth/login'); return; }
     setFollowLoading(true);
     if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
+      const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
+      if (error) { setFollowLoading(false); return; }
       setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
     } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: profileUserId });
+      const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: profileUserId });
+      if (error) { setFollowLoading(false); return; }
       setIsFollowing(true); setFollowerCount(c => c + 1);
     }
     setFollowLoading(false);
@@ -524,17 +532,18 @@ export default function AthletePublicProfilePage() {
   async function handleSendMessage(text: string) {
     if (!user) return;
     setMsgSending(true);
-    const { data: existing } = await supabase.from('conversations').select('id')
-      .or(`and(participant_1_id.eq.${user.id},participant_2_id.eq.${profileUserId}),and(participant_1_id.eq.${profileUserId},participant_2_id.eq.${user.id})`).maybeSingle();
-    let convId = existing?.id;
-    if (!convId) {
-      const { data: nc } = await supabase.from('conversations').insert({ participant_1_id: user.id, participant_2_id: profileUserId }).select('id').single();
-      convId = nc?.id;
+    setMsgError('');
+    try {
+      const conversation = await getOrCreateConversation(user.id, profileUserId);
+      await sendConversationMessage(conversation.id, user.id, text);
+      setMsgSent(true); setMsgOpen(false);
+      const base = role === 'scout' || role === 'club' ? '/recruiter' : '/athlete';
+      setTimeout(() => navigate(`${base}/messages`), 300);
+    } catch (error) {
+      setMsgError(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setMsgSending(false);
     }
-    if (convId) await supabase.from('messages').insert({ conversation_id: convId, sender_id: user.id, content: text });
-    setMsgSending(false); setMsgSent(true); setMsgOpen(false);
-    const base = role === 'scout' || role === 'club' ? '/recruiter' : '/athlete';
-    setTimeout(() => navigate(`${base}/messages`), 300);
   }
 
   async function shareProfile() {
@@ -596,7 +605,7 @@ export default function AthletePublicProfilePage() {
                 </button>
               )}
               {!isSelf && !isBlocked && (
-                <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+                <button onClick={() => { if (user) { setMsgError(''); setMsgOpen(true); } else navigate('/auth/login'); }}
                   className="btn-primary px-4 py-1.5 text-xs rounded-lg font-semibold inline-flex items-center gap-1.5">
                   <MessageSquare size={11} /> Message
                 </button>
@@ -878,7 +887,7 @@ export default function AthletePublicProfilePage() {
             </button>
           )}
           {!isBlocked && (
-            <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+            <button onClick={() => { if (user) { setMsgError(''); setMsgOpen(true); } else navigate('/auth/login'); }}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${msgSent ? 'bg-emerald/10 border border-emerald/20 text-emerald' : 'btn-primary'}`}>
               <MessageSquare size={13} /> {msgSent ? 'Sent' : 'Message'}
             </button>
@@ -893,7 +902,7 @@ export default function AthletePublicProfilePage() {
       {/* Modals */}
       {followersOpen && <FollowersModal profileUserId={profileUserId} count={followerCount} currentUserId={user?.id} onClose={() => setFollowersOpen(false)} />}
       {blockConfirmOpen && <BlockConfirmModal name={athlete.name} isBlocked={isBlocked} onConfirm={toggleBlock} onCancel={() => setBlockConfirmOpen(false)} loading={blockLoading} />}
-      {msgOpen && <MessageModal athleteName={athlete.name} onClose={() => setMsgOpen(false)} onSend={handleSendMessage} sending={msgSending} isAuth={!!user} />}
+      {msgOpen && <MessageModal athleteName={athlete.name} onClose={() => setMsgOpen(false)} onSend={handleSendMessage} sending={msgSending} error={msgError} isAuth={!!user} />}
     </div>
   );
 }

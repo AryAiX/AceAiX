@@ -21,23 +21,32 @@ import { CommentsSheet } from '@/components/posts/CommentsSheet';
 import { PostCard } from '@/components/posts/PostCard';
 import { FeedPost, fetchFeedPosts, fetchReels } from '@/lib/postsService';
 import { useAuth } from '@/context/AuthContext';
+import { useLocalSearchParams } from 'expo-router';
+import { resolveMediaTab, type MediaTab } from '@/lib/deepLinkMappings';
 
 const { width: SW } = Dimensions.get('window');
 const GRID_GAP = 2;
 const CELL = (SW - GRID_GAP * 2) / 3;
 
-type Tab = 'Posts' | 'Reels';
+type Tab = MediaTab;
 
 export default function MediaScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>('Posts');
+
+  useEffect(() => {
+    const requestedTab = resolveMediaTab(params.tab);
+    if (requestedTab) setTab(requestedTab);
+  }, [params.tab]);
 
   // Posts grid state
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsRefreshing, setPostsRefreshing] = useState(false);
   const [postsLoadingMore, setPostsLoadingMore] = useState(false);
+  const [postsError, setPostsError] = useState<string | null>(null);
   const postsCursorRef = useRef<string | undefined>(undefined);
   const postsHasMoreRef = useRef(true);
 
@@ -46,6 +55,7 @@ export default function MediaScreen() {
   const [reelsLoading, setReelsLoading] = useState(false);
   const [reelsFetched, setReelsFetched] = useState(false);
   const [reelsLoadingMore, setReelsLoadingMore] = useState(false);
+  const [reelsError, setReelsError] = useState<string | null>(null);
   const reelsCursorRef = useRef<string | undefined>(undefined);
   const reelsHasMoreRef = useRef(true);
 
@@ -58,26 +68,36 @@ export default function MediaScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : postsCursorRef.current;
-    const data = await fetchFeedPosts(user.id, cursor);
-    if (data.length > 0) postsCursorRef.current = data[data.length - 1].created_at;
-    postsHasMoreRef.current = data.length === 20;
-    setPosts((prev) => (reset ? data : [...prev, ...data]));
+    try {
+      const data = await fetchFeedPosts(user.id, cursor);
+      if (data.length > 0) postsCursorRef.current = data[data.length - 1].created_at;
+      postsHasMoreRef.current = data.length === 20;
+      setPosts((prev) => (reset ? data : [...prev, ...data]));
+      setPostsError(null);
+    } catch (error) {
+      setPostsError(error instanceof Error ? error.message : 'Could not load posts.');
+    }
   }, [user]);
 
   const loadReels = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : reelsCursorRef.current;
-    const data = await fetchReels(user.id, cursor);
-    if (data.length > 0) reelsCursorRef.current = data[data.length - 1].created_at;
-    reelsHasMoreRef.current = data.length === 10;
-    setReels((prev) => (reset ? data : [...prev, ...data]));
+    try {
+      const data = await fetchReels(user.id, cursor);
+      if (data.length > 0) reelsCursorRef.current = data[data.length - 1].created_at;
+      reelsHasMoreRef.current = data.length === 10;
+      setReels((prev) => (reset ? data : [...prev, ...data]));
+      setReelsError(null);
+    } catch (error) {
+      setReelsError(error instanceof Error ? error.message : 'Could not load reels.');
+    }
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
     setPostsLoading(true);
     loadPosts(true).finally(() => setPostsLoading(false));
-  }, [user]);
+  }, [loadPosts, user]);
 
   useEffect(() => {
     if (tab === 'Reels' && !reelsFetched && user) {
@@ -87,7 +107,7 @@ export default function MediaScreen() {
         setReelsFetched(true);
       });
     }
-  }, [tab, user, reelsFetched]);
+  }, [loadReels, tab, user, reelsFetched]);
 
   const onPostsRefresh = async () => {
     setPostsRefreshing(true);
@@ -171,7 +191,12 @@ export default function MediaScreen() {
             numColumns={3}
             columnWrapperStyle={s.row}
             renderItem={({ item }) => <GridCell post={item} onPress={() => setSelectedPost(item)} />}
-            ListEmptyComponent={<EmptyGrid label="No posts yet" sub="Create your first post to share your journey." />}
+            ListEmptyComponent={(
+              <EmptyGrid
+                label={postsError ? 'Couldn’t load posts' : 'No posts yet'}
+                sub={postsError ?? 'Create your first post to share your journey.'}
+              />
+            )}
             contentContainerStyle={s.gridContent}
             showsVerticalScrollIndicator={false}
             onEndReached={() => {
@@ -191,6 +216,8 @@ export default function MediaScreen() {
       {tab === 'Reels' && (
         reelsLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxxl }} />
+        ) : reelsError && reels.length === 0 ? (
+          <EmptyGrid label="Couldn’t load reels" sub={reelsError} />
         ) : (
           <ReelsFeed
             reels={reels}

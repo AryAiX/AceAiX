@@ -67,16 +67,22 @@ export default function SportifyTalentScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (showRefresh = false) => {
     if (!user) return;
     if (showRefresh) setRefreshing(true);
-    const [r, c] = await Promise.all([
-      fetchSportifyResults(user.id),
-      fetchConsent(user.id),
-    ]);
-    setResults(r);
-    setConsent(c);
+    try {
+      const [r, c] = await Promise.all([
+        fetchSportifyResults(user.id),
+        fetchConsent(user.id),
+      ]);
+      setResults(r);
+      setConsent(c);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load Sportify data.');
+    }
     if (showRefresh) setRefreshing(false);
   }, [user]);
 
@@ -131,6 +137,13 @@ export default function SportifyTalentScreen() {
 
       {loading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: Spacing.xxxl }} />
+      ) : loadError ? (
+        <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
+          <Text style={{ color: Colors.error, textAlign: 'center' }}>{loadError}</Text>
+          <TouchableOpacity onPress={() => void load()} style={{ marginTop: Spacing.md }}>
+            <Text style={{ color: Colors.primary }}>Try again</Text>
+          </TouchableOpacity>
+        </View>
       ) : !consentActive ? (
         <NoConsentState onGoSettings={() => router.push('/(tabs)/settings' as any)} />
       ) : !talentResult ? (

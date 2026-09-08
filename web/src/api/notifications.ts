@@ -13,9 +13,23 @@ export async function unreadCount(userId: string): Promise<number> {
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+  unwrap(
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id)
+      .select('id')
+      .single(),
+  );
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false);
+  unwrap(
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', userId)
+      .eq('is_read', false)
+      .select('id'),
+  );
 }

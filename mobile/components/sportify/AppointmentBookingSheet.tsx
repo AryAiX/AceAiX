@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,15 @@ export function AppointmentBookingSheet({ visible, onClose, onBooked }: Props) {
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!visible) {
+      setLocation(ACADEMY_LOCATIONS[0]);
+      setTestType(TEST_TYPES[0]);
+      setPreferredTimes([PREFERRED_TIMES_OPTIONS[0]]);
+      setNotes('');
+      setError(null);
+    }
+  }, [visible]);
 
   const toggleTime = (t: string) => {
     setPreferredTimes((prev) =>

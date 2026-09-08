@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   TrendingUp, Users, Trophy, ArrowUpRight, Zap,
@@ -14,7 +15,7 @@ import type { AthleteWithUser } from '../../api/athletes';
 /* ── display shapes & derivations ──────────────────────────── */
 interface TrajView { year: string; score: number; projected: boolean; current: boolean }
 interface ComparableView { name: string; club: string; similarity: number; score: number; avatar: string }
-interface OppCareerView { title: string; type: string; deadline: string; location: string; color: string }
+interface OppCareerView { id: string; title: string; type: string; deadline: string; location: string; color: string }
 interface MilestoneView { label: string; pct: number; color: string; icon: React.ElementType }
 
 const OPP_COLORS = ['#2F80ED', '#1FB57A', '#B8F135', '#F5A623'];
@@ -98,11 +99,13 @@ function TrajectoryBars({ data }: { data: TrajView[] }) {
 
 /* ── opportunity card ───────────────────────────────────────── */
 function OppCard({ opp, delay }: { opp: OppCareerView; delay: number }) {
+  const navigate = useNavigate();
   const [vis, setVis] = useState(false);
   const [hov, setHov] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVis(true), delay); return () => clearTimeout(t); }, [delay]);
   return (
     <div
+      onClick={() => navigate('/athlete/opportunities')}
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       className="rounded-2xl p-5 cursor-pointer transition-all duration-200"
@@ -131,7 +134,7 @@ function OppCard({ opp, delay }: { opp: OppCareerView; delay: number }) {
           <Clock size={10} />
           <span className="text-[10px]">Deadline {opp.deadline}</span>
         </div>
-        <button className="px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95"
+        <button type="button" onClick={(event) => { event.stopPropagation(); navigate('/athlete/opportunities'); }} className="px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95"
           style={{ background: opp.color, color: '#0C1A2B', boxShadow: `0 2px 10px ${opp.color}40` }}>
           Apply
         </button>
@@ -188,6 +191,7 @@ function ComparableCard({ c, delay }: { c: ComparableView; delay: number }) {
 
 /* ── main ───────────────────────────────────────────────────── */
 export default function CareerPage() {
+  const navigate = useNavigate();
   const { data: athlete } = useMyAthlete();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
@@ -217,6 +221,7 @@ export default function CareerPage() {
     .sort((x, y) => y.similarity - x.similarity);
 
   const opportunities: OppCareerView[] = rawOpps.slice(0, 3).map((o, i) => ({
+    id: o.id,
     title: o.organization?.name ? `${o.title} — ${o.organization.name}` : o.title,
     type: o.type ? o.type.charAt(0).toUpperCase() + o.type.slice(1) : 'Opportunity',
     deadline: o.application_deadline ?? 'Open',
@@ -262,7 +267,11 @@ export default function CareerPage() {
           <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl flex-shrink-0"
             style={{ background: 'rgba(184,241,53,0.08)', border: '1px solid rgba(184,241,53,0.22)' }}>
             <Flame size={13} style={{ color: '#B8F135' }} />
-            <span className="text-xs font-bold text-volt">On track — Professional move in 12-18 mo</span>
+            <span className="text-xs font-bold text-volt">
+              {trajectory.some((point) => point.projected)
+                ? 'Forecast available from your recorded trajectory'
+                : 'No forecast until trajectory data is saved'}
+            </span>
           </div>
         </div>
 
@@ -330,9 +339,13 @@ export default function CareerPage() {
             style={{ background: 'rgba(47,128,237,0.07)', border: '1px solid rgba(47,128,237,0.18)' }}>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={11} className="text-azure" />
-              <p className="text-[11px] font-bold text-azure">AI Forecast · 74% Confidence</p>
+              <p className="text-[11px] font-bold text-azure">Trajectory note</p>
             </div>
-            <p className="text-[11px] text-white/40 leading-relaxed">Based on comparable player progressions and your current trajectory, you're on track for a professional-level move within 12–18 months.</p>
+            <p className="text-[11px] text-white/40 leading-relaxed">
+              {trajectory.some((point) => point.projected)
+                ? 'Projected bars come from scores saved on your athlete trajectory. They are not a live market or transfer forecast.'
+                : 'No projected seasons are on file yet. Add performance history to plot a trajectory.'}
+            </p>
           </div>
         </div>
 
@@ -372,7 +385,7 @@ export default function CareerPage() {
               style={{ background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)', color: '#F5A623' }}>
               {opportunities.length} open
             </span>
-            <button className="text-[11px] text-white/30 flex items-center gap-0.5 hover:text-white/60 transition-colors">
+            <button type="button" onClick={() => navigate('/athlete/opportunities')} className="text-[11px] text-white/30 flex items-center gap-0.5 hover:text-white/60 transition-colors">
               View all <ChevronRight size={11} />
             </button>
           </div>

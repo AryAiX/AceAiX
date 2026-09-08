@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { throwIfError } from '@/lib/query';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -72,11 +73,12 @@ export interface Appointment {
 // ── Consent ───────────────────────────────────────────────────────────────────
 
 export async function fetchConsent(athleteId: string): Promise<SportifyConsent | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('sportify_consents')
     .select('*')
     .eq('athlete_id', athleteId)
     .maybeSingle();
+  throwIfError(error);
   return data ?? null;
 }
 
@@ -120,11 +122,12 @@ export async function deleteImportedData(athleteId: string): Promise<void> {
 // ── Results ───────────────────────────────────────────────────────────────────
 
 export async function fetchSportifyResults(athleteId: string): Promise<SportifyResult[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('sportify_results')
     .select('*')
     .eq('athlete_id', athleteId)
     .order('tested_at', { ascending: false });
+  throwIfError(error);
   return data ?? [];
 }
 
@@ -144,11 +147,12 @@ export async function linkSportifyAccount(
 // ── Appointments ──────────────────────────────────────────────────────────────
 
 export async function fetchAppointments(athleteId: string): Promise<Appointment[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('appointments')
     .select('*')
     .eq('athlete_id', athleteId)
     .order('created_at', { ascending: false });
+  throwIfError(error);
   return data ?? [];
 }
 

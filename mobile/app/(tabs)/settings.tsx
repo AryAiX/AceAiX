@@ -93,7 +93,15 @@ export default function Settings() {
       .finally(() => {
         if (active) setPrefsLoading(false);
       });
-    fetchConsent(user.id).then(setSportifyConsent);
+    fetchConsent(user.id)
+      .then((consent) => {
+        if (active) setSportifyConsent(consent);
+      })
+      .catch((error) => {
+        if (active) {
+          setSportifyMsg(error instanceof Error ? error.message : 'Could not load Sportify consent.');
+        }
+      });
     return () => { active = false; };
   }, [user]);
 
@@ -786,9 +794,13 @@ export default function Settings() {
         onClose={() => setConsentModalVisible(false)}
         onConsented={async () => {
           if (user) {
-            await handleSportifyLink();
-            const c = await fetchConsent(user.id);
-            setSportifyConsent(c);
+            try {
+              await handleSportifyLink();
+              const c = await fetchConsent(user.id);
+              setSportifyConsent(c);
+            } catch (error) {
+              setSportifyMsg(error instanceof Error ? error.message : 'Could not refresh Sportify consent.');
+            }
           }
         }}
       />

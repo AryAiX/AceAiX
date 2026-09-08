@@ -25,6 +25,8 @@ import { StoryAuthorGroup } from '@/lib/storiesService';
 import { FeedPost, fetchFeedPosts } from '@/lib/postsService';
 import { useStoriesContext } from '@/context/StoriesContext';
 import { useAuth } from '@/context/AuthContext';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { resolveFeedType, type FeedFilterKey } from '@/lib/deepLinkMappings';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -34,17 +36,28 @@ const FILTERS = [
   { key: 'latest',    label: 'Latest',     Icon: Clock  },
 ] as const;
 
-type FilterKey = typeof FILTERS[number]['key'];
+type FilterKey = FeedFilterKey;
 
 export default function FeedScreen() {
   const { user, profile } = useAuth();
   const { refresh: refreshStories } = useStoriesContext();
+  const router = useRouter();
 
   const [posts, setPosts]         = useState<FeedPost[]>([]);
   const [loading, setLoading]     = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterKey>('for_you');
+  const params = useLocalSearchParams<{ type?: string }>();
+  useEffect(() => {
+    const destination = resolveFeedType(params.type);
+    if (destination?.screen === 'media') {
+      router.replace('/(tabs)/media?tab=reels' as never);
+      return;
+    }
+    if (destination?.screen === 'feed') setActiveFilter(destination.filter);
+  }, [params.type, router]);
 
   const cursorRef  = useRef<string | undefined>(undefined);
   const hasMoreRef = useRef(true);
@@ -61,10 +74,15 @@ export default function FeedScreen() {
   const loadPosts = useCallback(async (reset = false) => {
     if (!user) return;
     const cursor = reset ? undefined : cursorRef.current;
-    const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
-    if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
-    hasMoreRef.current = data.length === 20;
-    setPosts(prev => reset ? data : [...prev, ...data]);
+    try {
+      const data = await fetchFeedPosts(user.id, cursor, 20, activeFilter, profile?.sport);
+      if (data.length > 0) cursorRef.current = data[data.length - 1].created_at;
+      hasMoreRef.current = data.length === 20;
+      setPosts(prev => reset ? data : [...prev, ...data]);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Could not load the feed.');
+    }
   }, [activeFilter, profile?.sport, user]);
 
   useEffect(() => {
@@ -227,7 +245,7 @@ export default function FeedScreen() {
             />
           )}
           ListHeaderComponent={ListHeader}
-          ListEmptyComponent={<EmptyFeed />}
+          ListEmptyComponent={<EmptyFeed error={loadError} />}
           ListFooterComponent={
             loadingMore ? (
               <ActivityIndicator color={Colors.primary} style={{ paddingVertical: Spacing.xl }} />
@@ -328,7 +346,7 @@ const sk = StyleSheet.create({
 });
 
 // ── Empty state ───────────────────────────────────────────────────────────────
-function EmptyFeed() {
+function EmptyFeed({ error }: { error?: string | null }) {
   const ring1 = useRef(new Animated.Value(1)).current;
   const ring2 = useRef(new Animated.Value(1)).current;
 
@@ -365,8 +383,8 @@ function EmptyFeed() {
           <Flame color={Colors.primary} size={28} />
         </View>
       </View>
-      <Text style={e.title}>Your feed is empty</Text>
-      <Text style={e.body}>Follow athletes or post your first update to get started.</Text>
+      <Text style={e.title}>{error ? 'Couldn’t load posts' : 'Your feed is empty'}</Text>
+      <Text style={e.body}>{error ?? 'Follow athletes or post your first update to get started.'}</Text>
     </View>
   );
 }

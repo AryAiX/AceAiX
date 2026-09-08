@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Alert, View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
-  Animated, AccessibilityInfo, Image, Share,
+  Animated, AccessibilityInfo, Image, Share, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
@@ -27,7 +27,6 @@ import { getSportConfig } from '@/constants/sportsConfig';
 import { normalizeMatchResult } from '@/lib/matchResults';
 
 const { width: SW } = Dimensions.get('window');
-const NETWORK_LIST: Array<{ name: string; role: string; org: string; type: string; connected: boolean }> = [];
 
 interface ProfileHighlight {
   id: string;
@@ -352,8 +351,15 @@ const TYPE_COLORS: Record<string, string> = {
 
 // ── Video clip card ────────────────────────────────────────────────────────────
 function ClipCard({ clip, wide }: { clip: ProfileHighlight; wide?: boolean }) {
+  const router = useRouter();
   return (
-    <View style={[s.clipCard, wide && { width: SW - 32 }]}>
+    <TouchableOpacity
+      style={[s.clipCard, wide && { width: SW - 32 }]}
+      onPress={() => {
+        if (clip.imageUrl) void Linking.openURL(clip.imageUrl);
+        else router.push('/(tabs)/media' as any);
+      }}
+    >
       <View style={s.clipThumb}>
         {clip.imageUrl ? (
           <Image
@@ -389,7 +395,7 @@ function ClipCard({ clip, wide }: { clip: ProfileHighlight; wide?: boolean }) {
           <Text style={s.clipViews}>{clip.views}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -1206,6 +1212,26 @@ function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any;
   const followers   = useCountUp(profile?.followers_count ?? 0, 1000, 100);
   const connections = useCountUp(profile?.connections_count ?? 0, 900, 200);
   const scoutViews  = useCountUp(scoutViewCount ?? 0, 1100, 300);
+  const [people, setPeople] = useState<Array<{ id: string; name: string; role: string; org: string; type: string }>>([]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    void supabase
+      .from('follows')
+      .select('following_id, following:user_profiles!follows_following_id_fkey(full_name, role, city)')
+      .eq('follower_id', profile.id)
+      .limit(20)
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        setPeople(data.map((row: any) => ({
+          id: row.following_id,
+          name: row.following?.full_name ?? 'Member',
+          role: row.following?.role ?? 'user',
+          org: row.following?.city ?? '',
+          type: row.following?.role ?? 'scout',
+        })));
+      });
+  }, [profile?.id]);
 
   return (
     <>
@@ -1226,10 +1252,10 @@ function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any;
       </View>
       <View style={s.card}>
         <SH title="Connections" color={Colors.success} />
-        {NETWORK_LIST.map((person, i) => {
+        {people.map((person, i) => {
           const col = TYPE_COLORS[person.type] ?? Colors.primary;
           return (
-            <View key={person.name} style={[s.networkRow, i < NETWORK_LIST.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
+            <View key={person.id} style={[s.networkRow, i < people.length - 1 && { borderBottomWidth: 1, borderBottomColor: Colors.border }]}>
               <LinearGradient
                 colors={[col, `${col}80`]}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -1240,9 +1266,9 @@ function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any;
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                   <Text style={s.networkName}>{person.name}</Text>
-                  {person.connected && <UserCheck color={col} size={12} />}
+                  <UserCheck color={col} size={12} />
                 </View>
-                <Text style={s.networkRole}>{person.role} · {person.org}</Text>
+                <Text style={s.networkRole}>{person.role} · {person.org || 'AceAiX'}</Text>
               </View>
               <View style={[s.networkTypePill, { backgroundColor: `${col}15`, borderColor: `${col}30` }]}>
                 <Text style={[s.networkTypeTxt, { color: col }]}>{person.type}</Text>
@@ -1250,7 +1276,7 @@ function NetworkTab({ router, reduced, profile, scoutViewCount }: { router: any;
             </View>
           );
         })}
-        {NETWORK_LIST.length === 0 && <Text style={s.emptyText}>No profile connections yet.</Text>}
+        {people.length === 0 && <Text style={s.emptyText}>No profile connections yet.</Text>}
       </View>
     </>
   );
