@@ -244,8 +244,9 @@ eas build --platform android --profile production   # produces an .aab
 - [ ] Sanity-check the build on a real device: sign in with `layla.demo@aceaix.com`,
       open the feed, open a profile, open Settings → Account.
 
-Note: `mobile/builds/aceaix-android-production-v2.aab` is an artefact from an earlier
-build. Do not submit it. Build fresh so the version and build number are correct.
+Note: there is deliberately no `.aab` in the tree. One was committed once — 61 MB
+in every clone, for ever — and `mobile/.gitignore` now refuses the whole class.
+Build fresh, every time, so the version and build number are the ones you meant.
 
 ### 2.3 Submit
 
