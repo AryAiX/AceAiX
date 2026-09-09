@@ -471,6 +471,7 @@ export default function OpportunitiesScreen() {
 
   const allCursorRef  = useRef<{ createdAt: string; id: string } | undefined>(undefined);
   const allHasMoreRef = useRef(true);
+  const allRequestIdRef = useRef(0);
   const loadingMoreRef = useRef(false);
   const fetchedTabs   = useRef<Set<Tab>>(new Set());
 
@@ -496,7 +497,9 @@ export default function OpportunitiesScreen() {
     if (!user) return;
     const f = { ...filters, search: searchText || undefined };
     const cursor = reset ? undefined : allCursorRef.current;
+    const requestId = reset ? ++allRequestIdRef.current : allRequestIdRef.current;
     const data = await fetchAllOpportunities(user.id, cursor, f, 20, profile?.sport ?? null, profile?.position ?? null);
+    if (requestId !== allRequestIdRef.current) return; // a newer reset has since started; discard this stale result
     if (data.length > 0) {
       const last = data[data.length - 1];
       allCursorRef.current = { createdAt: last.created_at, id: last.id };
