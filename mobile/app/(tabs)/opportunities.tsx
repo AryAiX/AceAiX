@@ -384,7 +384,7 @@ function ApplicationRow({ app, onPress }: { app: Application; onPress: () => voi
 }
 
 // ── EmptyState ────────────────────────────────────────────────────────────────
-function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => void }) {
+function EmptyState({ tab, onProfilePress, profile }: { tab: Tab; onProfilePress: () => void; profile?: any }) {
   const ring1 = useRef(new Animated.Value(1)).current;
   const ring2 = useRef(new Animated.Value(1)).current;
 
@@ -410,8 +410,13 @@ function EmptyState({ tab, onProfilePress }: { tab: Tab; onProfilePress: () => v
   const r1o = ring1.interpolate({ inputRange: [1, 2.4], outputRange: [0.55, 0] });
   const r2o = ring2.interpolate({ inputRange: [1, 2.4], outputRange: [0.35, 0] });
 
+  const hasProfileBasics = Boolean(profile?.sport);
+  const forYouMessage = hasProfileBasics
+    ? { title: 'No matches yet', body: 'There are no active opportunities for your sport right now — check back soon.', cta: false }
+    : { title: 'No matches yet', body: 'Complete your profile to improve opportunity matching.', cta: true };
+
   const messages: Record<Tab, { title: string; body: string; cta?: boolean }> = {
-    'For You': { title: 'No matches yet',          body: 'Complete your profile to improve opportunity matching.', cta: true },
+    'For You': forYouMessage,
     All:       { title: 'No opportunities',         body: 'Check back soon — new opportunities are added daily.' },
     Saved:     { title: 'No saved opportunities',   body: 'Bookmark opportunities to find them here quickly.' },
     Applied:   { title: 'No applications yet',      body: 'Browse opportunities and express your interest.' },
@@ -717,7 +722,7 @@ export default function OpportunitiesScreen() {
             )}
             contentContainerStyle={s.listContent}
             showsVerticalScrollIndicator={false}
-            ListEmptyComponent={<EmptyState tab={tab} onProfilePress={() => router.push('/(tabs)/profile' as any)} />}
+            ListEmptyComponent={<EmptyState tab={tab} onProfilePress={() => router.push('/(tabs)/profile' as any)} profile={profile} />}
             ListFooterComponent={
               loadingMore ? <ActivityIndicator color={Colors.primary} style={{ paddingVertical: Spacing.xl }} /> : null
             }
