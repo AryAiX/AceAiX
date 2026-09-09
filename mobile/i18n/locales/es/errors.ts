@@ -41,4 +41,7 @@ export const errors = {
   favoriteTeamsMax: 'Cinco equipos es el límite: quita uno para añadir otro.',
   profileIncomplete: 'Completa antes tu perfil de deportista.',
   notAnAthlete: 'Solo los deportistas tienen Puntuación de talento.',
+
+  endorseSelf: 'No puedes avalarte a ti mismo.',
+  endorseLimit: 'Ya has avalado seis cosas de este jugador.',
 };

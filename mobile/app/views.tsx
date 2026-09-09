@@ -104,6 +104,7 @@ export default function ProfileViewsScreen() {
                   {data.named.map((viewer) => (
                     <ListItem
                       key={viewer.user_id}
+                      inset
                       title={displayName(viewer.full_name)}
                       subtitle={[
                         viewer.organization ?? roleLabel(viewer.role),

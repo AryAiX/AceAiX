@@ -170,6 +170,28 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'Ask a coach who knows your game. One from a verified coach counts for a lot.',
 
+  endorsementsEmptyBodyOther:
+    'Nobody has said anything about this player yet. You could be the first.',
+  endorse: 'Endorse',
+  endorseEdit: 'Edit',
+  endorseTitle: 'Endorse this player',
+  endorseSubtitle: 'One thing you have actually seen them do. Short is better.',
+  endorseMineTitle: 'What you have said',
+  endorseSkillLabel: 'Skill or trait',
+  endorseSkillPlaceholder: 'Movement in the box',
+  endorseSkillHint: 'A word or two — not a sentence.',
+  endorseSkillRequired: 'Say what you are endorsing, in a word or two.',
+  endorseNoteLabel: 'A note (optional)',
+  endorseNotePlaceholder: 'Times her runs better than most players two years older.',
+  endorseSave: 'Endorse',
+  endorseSavedToast: 'Endorsement saved',
+  endorseRemove: 'Remove',
+  endorseRemoveA11y: 'Remove your endorsement of {{skill}}',
+  endorseRemovedToast: 'Endorsement withdrawn',
+  endorseLimitReached:
+    'You have endorsed {{count}} things about this player — remove one to add another.',
+
+
   logMatchTitle: 'Log a match',
   logMatchSubtitle: 'Only what you remember — you can add more later.',
   matchDate: 'Date',

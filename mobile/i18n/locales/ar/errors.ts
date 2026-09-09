@@ -40,4 +40,7 @@ export const errors = {
   favoriteTeamsMax: 'خمسة فرق هي الحد — أزل واحدًا لتضيف آخر.',
   profileIncomplete: 'أكمل ملفك كلاعب أولًا.',
   notAnAthlete: 'درجة الموهبة للاعبين فقط.',
+
+  endorseSelf: 'لا يمكنك تزكية نفسك.',
+  endorseLimit: 'زكّيت بالفعل ست صفات لهذا اللاعب.',
 };

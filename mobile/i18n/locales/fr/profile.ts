@@ -174,6 +174,28 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'Demande à un coach qui connaît ton jeu. Une recommandation d’un coach vérifié pèse lourd.',
 
+  endorsementsEmptyBodyOther:
+    'Personne n’a encore rien dit sur ce joueur. Tu peux être le premier.',
+  endorse: 'Recommander',
+  endorseEdit: 'Modifier',
+  endorseTitle: 'Recommander ce joueur',
+  endorseSubtitle: 'Une chose que tu lui as vraiment vu faire. Court, c’est mieux.',
+  endorseMineTitle: 'Ce que tu as dit',
+  endorseSkillLabel: 'Qualité ou point fort',
+  endorseSkillPlaceholder: 'Les appels dans la surface',
+  endorseSkillHint: 'Un ou deux mots, pas une phrase.',
+  endorseSkillRequired: 'Dis ce que tu recommandes, en un ou deux mots.',
+  endorseNoteLabel: 'Une note (facultatif)',
+  endorseNotePlaceholder: 'Elle règle ses appels mieux que des joueuses de deux ans son aînée.',
+  endorseSave: 'Recommander',
+  endorseSavedToast: 'Recommandation enregistrée',
+  endorseRemove: 'Retirer',
+  endorseRemoveA11y: 'Retirer ta recommandation sur {{skill}}',
+  endorseRemovedToast: 'Recommandation retirée',
+  endorseLimitReached:
+    'Tu as recommandé {{count}} choses chez ce joueur — retires-en une pour en ajouter une autre.',
+
+
   logMatchTitle: 'Noter un match',
   logMatchSubtitle: 'Juste ce dont tu te souviens — tu pourras compléter plus tard.',
   matchDate: 'Date',

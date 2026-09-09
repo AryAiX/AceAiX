@@ -40,4 +40,7 @@ export const errors = {
   favoriteTeamsMax: 'Five teams is the limit — remove one to add another.',
   profileIncomplete: 'Finish your athlete profile first.',
   notAnAthlete: 'Only athletes have a Talent Score.',
+
+  endorseSelf: 'You cannot endorse yourself.',
+  endorseLimit: 'You have already endorsed six things about this player.',
 };

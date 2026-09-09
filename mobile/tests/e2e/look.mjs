@@ -96,6 +96,50 @@ const geometry = await page.evaluate(() => {
 console.log('\n  tab bar geometry');
 console.log(`    ${JSON.stringify(geometry)}`);
 
+/*
+ * Nothing may hang off the right-hand edge.
+ *
+ * The create button spent a release scaling a container that was the width of
+ * the screen, so a 3% breath made the document 12pt wider than the viewport.
+ * On a phone that is invisible. In the browser the whole app slides sideways
+ * under a finger and a strip of bare page shows down the right of every
+ * screen — which reads as "the right margins are wrong", everywhere at once,
+ * with nothing wrong in any of the margins.
+ *
+ * Measured on every screen because the offender need not be on the screen that
+ * looks broken: the tab bar is on all of them.
+ */
+const overflows = [];
+const checkWidth = async (name) => {
+  const w = await page.evaluate(() => ({
+    doc: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    view: window.innerWidth,
+    widest: (() => {
+      let worst = null;
+      for (const el of document.querySelectorAll('*')) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        const past = r.right - window.innerWidth;
+        if (past > 0.5 && (!worst || past > worst.past)) {
+          worst = {
+            past: Math.round(past * 10) / 10,
+            tag: el.tagName.toLowerCase(),
+            text: (el.textContent || '').trim().slice(0, 24),
+          };
+        }
+      }
+      return worst;
+    })(),
+  }));
+  const over = Math.round((w.doc - w.view) * 10) / 10;
+  if (over > 0.5) {
+    overflows.push({ screen: name, over, widest: w.widest });
+    console.log(`    ✗ ${name}: document is ${over}px wider than the viewport ` +
+      `${w.widest ? `— worst offender <${w.widest.tag}> "${w.widest.text}"` : ''}`);
+  }
+  return over;
+};
+
 const go = async (href, name, wait = 2600) => {
   const link = page.locator(`a[href="${href}"]`).first();
   if ((await link.count()) === 0) {
@@ -105,7 +149,11 @@ const go = async (href, name, wait = 2600) => {
   await link.click().catch(() => {});
   await page.waitForTimeout(wait);
   await shot(name);
+  await checkWidth(name);
 };
+
+/* Still on Home at this point — the first screen to measure. */
+await checkWidth('02-home');
 
 await go('/meetups', '03-meetups', 3200);
 /* The centred action button, now that it floats rather than occupying a slot. */
@@ -126,8 +174,12 @@ await page.getByText('Saturday five-a-side').first().click().catch(() => {});
 await page.waitForTimeout(3000);
 await shot('03b-meetup-detail');
 console.log(`    meetup detail: ${(await page.getByTestId('meetup-screen').count()) > 0}`);
-await page.locator('a[href="/meetups"]').first().click().catch(() => {});
-await page.waitForTimeout(2000);
+/* A pushed screen hides the tab bar, so there is no `a[href="/meetups"]` to
+   click back with — the header's own button is the only way out, and clicking
+   nothing here used to leave the rest of this file screenshotting the meetup
+   detail under a dozen different names. */
+await page.getByRole('button', { name: /back/i }).first().click().catch(() => {});
+await page.waitForTimeout(2400);
 await go('/discover', '04-discover');
 await go('/opportunities', '05-trials');
 await go('/profile', '06-profile', 3200);
@@ -168,4 +220,14 @@ console.log(`    cover editor present: ${(await page.getByTestId('edit-cover').c
 
 await browser.close();
 server.close();
+
+console.log('\n  horizontal overflow');
+if (overflows.length === 0) {
+  console.log('    none — every screen fits its viewport');
+} else {
+  console.log(`    ${overflows.length} screen(s) overflow:`);
+  for (const o of overflows) console.log(`      ${o.screen}  +${o.over}px`);
+}
+
 console.log(`\n  shots in ${SHOTS}\n`);
+if (overflows.length > 0) process.exitCode = 1;

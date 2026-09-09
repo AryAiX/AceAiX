@@ -124,6 +124,8 @@ export function roleLabel(role: string | null | undefined): string {
       return tr('common.guardian', 'Parent or guardian');
     case 'federation':
       return tr('common.federation', 'Federation');
+    case 'medical_partner':
+      return tr('common.medicalPartner', 'Medical partner');
     case 'admin':
     case 'org_admin':
       return tr('common.aceaixTeam', 'AceAiX team');

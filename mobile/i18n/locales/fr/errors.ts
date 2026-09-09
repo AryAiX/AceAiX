@@ -41,4 +41,7 @@ export const errors = {
   favoriteTeamsMax: 'Cinq équipes, c’est la limite — retires-en une pour en ajouter une autre.',
   profileIncomplete: 'Complète d’abord ton profil d’athlète.',
   notAnAthlete: 'Seuls les athlètes ont un Score Talent.',
+
+  endorseSelf: 'Tu ne peux pas te recommander toi-même.',
+  endorseLimit: 'Tu as déjà recommandé six choses chez ce joueur.',
 };

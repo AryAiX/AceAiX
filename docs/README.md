@@ -35,12 +35,13 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 19 | [`19-discovery-features.md`](./19-discovery-features.md) | Fandom, weekly challenges, the profile-views digest, the score simulator and the player card — and why none of them moved the Talent Score | Mobile + Backend |
 | 20 | [`20-colour-and-motion.md`](./20-colour-and-motion.md) | The mobile palette, the tier ramp, the motion kit — and the two web-only rendering traps that shipped once each | Mobile |
 | 21 | [`21-meetups-and-translation.md`](./21-meetups-and-translation.md) | Meetups — the eighteen-plus floor and the three gates that enforce it, why there are still no coordinates — and the cached, provider-agnostic "See translation" | Mobile + Backend |
+| 22 | [`22-endorsements-and-edges.md`](./22-endorsements-and-edges.md) | The endorsement write path the score had been advertising for a year, the two rules that only mattered once anyone could reach the table — and three layout defects that all read as "the margins are wrong" | Mobile + Backend |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
-marketing and admin surface. **10–21 describe the product as it stands** after the September 2026
+marketing and admin surface. **10–22 describe the product as it stands** after the September 2026
 mobile rebuild: `mobile/` is the 1.0 app, and the Supabase schema it shares with `web/` was extended
-by migrations `20260825000000`, `20260904000001`–`…0011` and `20260907000001`–`…0008` and `20260909000001`–`…0002`. Where 01–09 and 10–21 disagree about
-the mobile client, 10–21 win; for schema and RLS baseline, 03 and 06 still apply.
+by migrations `20260825000000`, `20260904000001`–`…0011` and `20260907000001`–`…0008` and `20260909000001`–`…0003`. Where 01–09 and 10–22 disagree about
+the mobile client, 10–22 win; for schema and RLS baseline, 03 and 06 still apply.
 
 Two places where 01–09 are now specifically out of date on language: `01` says "Launch languages:
 English (default); Arabic + full RTL in Phase 2" and `08` plans `react-i18next` — the app ships
@@ -60,7 +61,10 @@ seven languages today, with no i18n library. See 16.
 - **Touching meetups, the age gate or translation?** [21](./21-meetups-and-translation.md) —
   especially §2 before you loosen anything.
 - **Adding a colour, a gradient or an animation?** [20](./20-colour-and-motion.md) — including
-  the two things that render correctly on a phone and wrongly in the preview build.
+  the two things that render correctly on a phone and wrongly in the preview build, and
+  [22](./22-endorsements-and-edges.md) §5 for the third, which was a transform on a full-width box.
+- **Putting anything inside a card?** [22](./22-endorsements-and-edges.md) §6 — `Card padded={false}`
+  means each row pays for its own margin, and `tests/e2e/cards.mjs` measures whether it did.
 - **Touching challenges, fandom or the score simulator?** [19](./19-discovery-features.md) — and
   note that none of them may move the Talent Score's weights.
 - **Starting fresh on the product itself?** Read 01 → 02 → 03 → 07 → 08.

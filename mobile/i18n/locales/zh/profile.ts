@@ -163,6 +163,26 @@ export const profile = {
   endorsementsEmptyBodySelf:
     '找一位了解你球风的教练。来自认证教练的推荐分量很重。',
 
+  endorsementsEmptyBodyOther: '还没有人评价这名球员。你可以是第一个。',
+  endorse: '推荐',
+  endorseEdit: '修改',
+  endorseTitle: '推荐这名球员',
+  endorseSubtitle: '写一件你真正看到过的事。越简短越好。',
+  endorseMineTitle: '你写过的',
+  endorseSkillLabel: '技术或特点',
+  endorseSkillPlaceholder: '禁区内的跑位',
+  endorseSkillHint: '一两个词，不用整句。',
+  endorseSkillRequired: '用一两个词写清楚你推荐的是什么。',
+  endorseNoteLabel: '备注（可选）',
+  endorseNotePlaceholder: '她把握跑位时机比大两岁的球员还好。',
+  endorseSave: '推荐',
+  endorseSavedToast: '推荐已保存',
+  endorseRemove: '移除',
+  endorseRemoveA11y: '移除你对「{{skill}}」的推荐',
+  endorseRemovedToast: '推荐已撤回',
+  endorseLimitReached: '你已经推荐了这名球员的 {{count}} 项特点——移除一项才能再加。',
+
+
   logMatchTitle: '记录一场比赛',
   logMatchSubtitle: '记得多少写多少 —— 之后还能补。',
   matchDate: '日期',

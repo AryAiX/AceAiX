@@ -11,8 +11,29 @@
 --
 --     AceAiX-Demo-2026
 --
--- Review account:  layla.demo@aceaix.com  (athlete, 19, complete profile)
--- Recruiter view:  marco.demo@aceaix.com  (verified coach)
+-- One account per role the product has, so every role can be signed into and
+-- looked at rather than reasoned about. Sign-up itself offers four of these
+-- (athlete, coach, club, guardian); scout, federation and medical partner are
+-- assigned, so this file is the only way to see one.
+--
+--   layla.demo@aceaix.com       athlete, 19, complete profile — the review account
+--   omar.demo@aceaix.com        athlete, 17, guardian consent granted
+--   yusuf.demo@aceaix.com       athlete, 15, guardian consent granted
+--   mina.demo@aceaix.com        athlete, 14, consent PENDING — hidden from discovery
+--   sara.demo@aceaix.com        athlete, 22, athletics
+--   daniel.demo@aceaix.com      athlete, 24, basketball
+--   marco.demo@aceaix.com       coach, verified — the recruiter view
+--   hana.demo@aceaix.com        coach, unverified — what an unverified account can do
+--   academy.demo@aceaix.com     club, verified — owns Al Jadaf Academy
+--   parent.demo@aceaix.com      guardian — Mina's pending request lands here
+--   nadia.demo@aceaix.com       scout, verified
+--   federation.demo@aceaix.com  federation, verified
+--   amin.demo@aceaix.com        medical partner
+--
+-- The three minors are the interesting ones: Omar and Yusuf are discoverable
+-- because a guardian approved them, Mina is not because nobody has yet, and
+-- none of the three can reach Play — meetups are eighteen-plus and the database
+-- is what says so (docs/21 §2).
 --
 -- Safe to re-run: everything is keyed on fixed UUIDs and upserts.
 -- ============================================================
@@ -35,7 +56,12 @@ values
   ('b0000000-0000-4000-8000-000000000001', 'marco.demo@aceaix.com',   crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Marco Silva","first_name":"Marco","last_name":"Silva","role":"coach"}'),
   ('b0000000-0000-4000-8000-000000000002', 'hana.demo@aceaix.com',    crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Hana Tanaka","first_name":"Hana","last_name":"Tanaka","role":"coach"}'),
   ('c0000000-0000-4000-8000-000000000001', 'academy.demo@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Al Jadaf Academy","first_name":"Al Jadaf","last_name":"Academy","role":"club"}'),
-  ('d0000000-0000-4000-8000-000000000001', 'parent.demo@aceaix.com',  crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Reza Karimi","first_name":"Reza","last_name":"Karimi","role":"guardian"}')
+  ('d0000000-0000-4000-8000-000000000001', 'parent.demo@aceaix.com',  crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Reza Karimi","first_name":"Reza","last_name":"Karimi","role":"guardian"}'),
+  /* The three roles sign-up does not offer. Two of them the signup trigger
+     refuses outright — see the role assignment below. */
+  ('50000000-0000-4000-8000-000000000001', 'nadia.demo@aceaix.com',     crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Nadia Rahal","first_name":"Nadia","last_name":"Rahal","role":"scout"}'),
+  ('50000000-0000-4000-8000-000000000002', 'federation.demo@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Emirates Football Association","first_name":"Emirates","last_name":"Football Association","role":"federation"}'),
+  ('50000000-0000-4000-8000-000000000003', 'amin.demo@aceaix.com',      crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Amin Shirazi","first_name":"Amin","last_name":"Shirazi","role":"medical_partner"}')
 on conflict (id) do nothing;
 
 -- ------------------------------------------------------------
@@ -51,6 +77,9 @@ update public.user_private set date_of_birth = current_date - interval '41 years
 update public.user_private set date_of_birth = current_date - interval '36 years' where user_id = 'b0000000-0000-4000-8000-000000000002';
 update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = 'c0000000-0000-4000-8000-000000000001';
 update public.user_private set date_of_birth = current_date - interval '45 years' where user_id = 'd0000000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '38 years' where user_id = '50000000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = '50000000-0000-4000-8000-000000000002';
+update public.user_private set date_of_birth = current_date - interval '49 years' where user_id = '50000000-0000-4000-8000-000000000003';
 
 -- ------------------------------------------------------------
 -- Public profiles
@@ -106,6 +135,55 @@ where id = 'c0000000-0000-4000-8000-000000000001';
 update public.user_profiles set
   city = 'Dubai', country = 'United Arab Emirates', onboarding_completed = true
 where id = 'd0000000-0000-4000-8000-000000000001';
+
+update public.user_profiles set
+  bio = 'Recruitment for Marina SC. I travel to watch, and I answer every message.',
+  city = 'Dubai', country = 'United Arab Emirates',
+  is_verified = true, onboarding_completed = true
+where id = '50000000-0000-4000-8000-000000000001';
+
+update public.user_profiles set
+  bio = 'National federation. Age-group pathways, licensing and sanctioned competition.',
+  city = 'Abu Dhabi', country = 'United Arab Emirates',
+  is_verified = true, onboarding_completed = true
+where id = '50000000-0000-4000-8000-000000000002';
+
+update public.user_profiles set
+  bio = 'Sports physiotherapist. Return-to-play and load management for youth athletes.',
+  city = 'Dubai', country = 'United Arab Emirates', onboarding_completed = true
+where id = '50000000-0000-4000-8000-000000000003';
+
+/*
+ * Federation and medical partner are assigned, not claimed.
+ *
+ * `private.handle_new_user` clamps admin, org_admin, medical_partner and
+ * federation to 'athlete', because signup metadata is written by the client and
+ * a client must not be able to award itself a credential. `endorse_athlete`
+ * reads `user_profiles.role` to stamp an endorsement, and 'federation' is one of
+ * the four roles the Talent Score counts as expert — so the clamp is load-bearing,
+ * not tidiness. Assigning the role here, as the service role, is the same path
+ * an administrator would use.
+ */
+update public.user_profiles set role = 'federation'
+where id = '50000000-0000-4000-8000-000000000002';
+update public.user_profiles set role = 'medical_partner'
+where id = '50000000-0000-4000-8000-000000000003';
+
+/* The trigger already gave them an athlete profile on the way past, and an
+   empty one would put a federation in the athlete search results. */
+delete from public.athlete_profiles
+where user_id in ('50000000-0000-4000-8000-000000000002',
+                  '50000000-0000-4000-8000-000000000003');
+
+/* The signup trigger gives scouts and clubs a scout profile; this fills in the
+   parts an administrator would set when approving one. */
+insert into public.scout_profiles (user_id, credentials, verification_status, contact_quota_limit)
+values ('50000000-0000-4000-8000-000000000001',
+        'Marina Sports Club — head of recruitment, licensed since 2016', 'approved', 30)
+on conflict (user_id) do update
+  set credentials = excluded.credentials,
+      verification_status = excluded.verification_status,
+      contact_quota_limit = excluded.contact_quota_limit;
 
 -- ------------------------------------------------------------
 -- Organisations
@@ -249,17 +327,63 @@ on conflict do nothing;
 
 -- ------------------------------------------------------------
 -- Social graph
+--
+-- Thick enough that Followers and Following are lists rather than empty
+-- states, and mixed enough that a row is worth reading: every list here has
+-- more than one kind of account in it, because "who follows me" is the screen
+-- where an athlete first notices a scout is watching.
+--
+-- Layla ends up with eleven followers and follows eight — a shape that fits on
+-- a screen, and does not fit without scrolling, which is the point of seeding
+-- it at all.
 -- ------------------------------------------------------------
 insert into public.follows (follower_id, following_id) values
+  -- Following Layla: two coaches, a club, a scout, the federation, five athletes.
   ('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
-  ('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002'),
+  ('b0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001'),
   ('c0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
-  ('a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001'),
-  ('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004'),
+  ('50000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
+  ('50000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001'),
+  ('50000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001'),
   ('a0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001'),
   ('a0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000001'),
   ('a0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000001'),
-  ('a0000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000001')
+  ('a0000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000001'),
+
+  -- Who Layla follows back, and who she does not: the scout and the federation
+  -- are followers she has not returned, which is the normal state of things.
+  ('a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000002'),
+  ('a0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002'),
+  ('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004'),
+  ('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000005'),
+  ('a0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000006'),
+  ('a0000000-0000-4000-8000-000000000001', '50000000-0000-4000-8000-000000000003'),
+
+  -- The rest of the network, so no account signs in to an empty app.
+  ('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002'),
+  ('b0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004'),
+  ('b0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001'),
+  ('b0000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000006'),
+  ('c0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001'),
+  ('c0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002'),
+  ('50000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004'),
+  ('50000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000005'),
+  ('50000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001'),
+  ('50000000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000001'),
+  ('50000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001'),
+  ('50000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000002'),
+  ('a0000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000002', 'c0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000004', '50000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000005'),
+  ('a0000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000004'),
+  ('a0000000-0000-4000-8000-000000000006', 'b0000000-0000-4000-8000-000000000002'),
+  ('d0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000006'),
+  ('d0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001')
 on conflict do nothing;
 
 -- ------------------------------------------------------------

@@ -69,6 +69,7 @@ export const common = {
   scout: 'كشّاف مواهب',
   guardian: 'أحد الوالدين أو ولي الأمر',
   federation: 'اتحاد',
+  medicalPartner: 'شريك طبي',
   member: 'عضو',
   aceaixTeam: 'فريق AceAiX',
   verified: 'موثّق',

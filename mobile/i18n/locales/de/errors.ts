@@ -41,4 +41,7 @@ export const errors = {
   favoriteTeamsMax: 'Fünf Teams sind die Grenze — nimm eins weg, um ein anderes hinzuzufügen.',
   profileIncomplete: 'Mach zuerst dein Sportlerprofil fertig.',
   notAnAthlete: 'Nur Sportler haben einen Talent Score.',
+
+  endorseSelf: 'Du kannst dich nicht selbst empfehlen.',
+  endorseLimit: 'Du hast über diesen Spieler schon sechs Dinge empfohlen.',
 };

@@ -186,6 +186,26 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'اطلبها من مدرّب يعرف مستواك. تزكية من مدرّب موثّق تعني الكثير.',
 
+  endorsementsEmptyBodyOther: 'لم يقل أحد شيئًا عن هذا اللاعب بعد. يمكن أن تكون الأول.',
+  endorse: 'تزكية',
+  endorseEdit: 'تعديل',
+  endorseTitle: 'زكِّ هذا اللاعب',
+  endorseSubtitle: 'شيء واحد رأيته منه فعلًا. الأقصر أفضل.',
+  endorseMineTitle: 'ما قلته أنت',
+  endorseSkillLabel: 'مهارة أو صفة',
+  endorseSkillPlaceholder: 'التحرّك داخل المنطقة',
+  endorseSkillHint: 'كلمة أو كلمتان — لا جملة.',
+  endorseSkillRequired: 'اكتب ما تزكّيه، في كلمة أو كلمتين.',
+  endorseNoteLabel: 'ملاحظة (اختياري)',
+  endorseNotePlaceholder: 'تتوقّع اللحظة أفضل من لاعبين يكبرونها بعامين.',
+  endorseSave: 'تزكية',
+  endorseSavedToast: 'حُفظت التزكية',
+  endorseRemove: 'إزالة',
+  endorseRemoveA11y: 'أزل تزكيتك لـ {{skill}}',
+  endorseRemovedToast: 'سُحبت التزكية',
+  endorseLimitReached: 'زكّيت {{count}} صفات لهذا اللاعب — أزل واحدة لتضيف أخرى.',
+
+
   logMatchTitle: 'تسجيل مباراة',
   logMatchSubtitle: 'ما تتذكّره فقط — يمكنك إضافة المزيد لاحقًا.',
   matchDate: 'التاريخ',

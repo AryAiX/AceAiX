@@ -40,6 +40,7 @@ yarn-error.*
 preview.html
 tests/e2e/preview-shots/
 tests/e2e/look-shots/
+tests/e2e/card-shots/
 stubs/lucide-pkg/
 
 # build artefacts — an .aab or .apk is a build output, not source. One was

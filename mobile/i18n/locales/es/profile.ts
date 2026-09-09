@@ -181,6 +181,28 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'Pídeselo a un entrenador que conozca tu juego. El de un entrenador verificado cuenta mucho.',
 
+  endorsementsEmptyBodyOther:
+    'Nadie ha dicho nada sobre este jugador todavía. Podrías ser el primero.',
+  endorse: 'Avalar',
+  endorseEdit: 'Editar',
+  endorseTitle: 'Avalar a este jugador',
+  endorseSubtitle: 'Una cosa que le hayas visto hacer de verdad. Mejor corto.',
+  endorseMineTitle: 'Lo que has dicho',
+  endorseSkillLabel: 'Habilidad o cualidad',
+  endorseSkillPlaceholder: 'Desmarques en el área',
+  endorseSkillHint: 'Una o dos palabras, no una frase.',
+  endorseSkillRequired: 'Di qué avalas, en una o dos palabras.',
+  endorseNoteLabel: 'Una nota (opcional)',
+  endorseNotePlaceholder: 'Mide sus desmarques mejor que jugadoras dos años mayores.',
+  endorseSave: 'Avalar',
+  endorseSavedToast: 'Aval guardado',
+  endorseRemove: 'Quitar',
+  endorseRemoveA11y: 'Quitar tu aval de {{skill}}',
+  endorseRemovedToast: 'Aval retirado',
+  endorseLimitReached:
+    'Has avalado {{count}} cosas de este jugador: quita una para añadir otra.',
+
+
   logMatchTitle: 'Registrar un partido',
   logMatchSubtitle: 'Solo lo que recuerdes: puedes añadir más después.',
   matchDate: 'Fecha',

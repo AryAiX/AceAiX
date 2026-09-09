@@ -70,6 +70,7 @@ export const common = {
   scout: 'Scout',
   guardian: 'Elternteil oder Vormund',
   federation: 'Verband',
+  medicalPartner: 'Medizinischer Partner',
   member: 'Mitglied',
   aceaixTeam: 'AceAiX-Team',
   verified: 'Geprüft',

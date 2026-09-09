@@ -26,11 +26,21 @@ const OUT = path.join(HERE, 'recordings.json');
 const PORT = 8794;
 const API = 'http://localhost:8790';
 
+/*
+ * One account per role, because the preview is how anybody without a database
+ * sees the app, and "what does a scout see" is a question the preview should be
+ * able to answer. The minor is here for the same reason: her empty Play tab is
+ * a feature, and a preview that only ever recorded adults would hide it.
+ */
 const ACCOUNTS = [
   { role: 'athlete', email: 'layla.demo@aceaix.com' },
   { role: 'coach', email: 'marco.demo@aceaix.com' },
   { role: 'club', email: 'academy.demo@aceaix.com' },
   { role: 'guardian', email: 'parent.demo@aceaix.com' },
+  { role: 'scout', email: 'nadia.demo@aceaix.com' },
+  { role: 'federation', email: 'federation.demo@aceaix.com' },
+  { role: 'medical', email: 'amin.demo@aceaix.com' },
+  { role: 'minor', email: 'mina.demo@aceaix.com' },
 ];
 const PASSWORD = 'AceAiX-Demo-2026';
 
@@ -120,6 +130,19 @@ const TOUR = [
   '/u/a0000000-0000-4000-8000-000000000004',
   '/u/a0000000-0000-4000-8000-000000000005',
   '/u/a0000000-0000-4000-8000-000000000006',
+  '/u/50000000-0000-4000-8000-000000000001',
+  '/u/50000000-0000-4000-8000-000000000002',
+  '/u/50000000-0000-4000-8000-000000000003',
+  /* Followers and Following. These are pushed screens nothing links to from a
+     tab, so without naming them here the preview answers every follower list
+     with an empty state — which reads as a bug in the app rather than a gap in
+     the recording. */
+  '/u/a0000000-0000-4000-8000-000000000001/followers',
+  '/u/a0000000-0000-4000-8000-000000000001/following',
+  '/u/b0000000-0000-4000-8000-000000000001/followers',
+  '/u/b0000000-0000-4000-8000-000000000001/following',
+  '/u/c0000000-0000-4000-8000-000000000001/followers',
+  '/u/50000000-0000-4000-8000-000000000001/following',
   '/post/90000000-0000-4000-8000-000000000001',
   '/post/90000000-0000-4000-8000-000000000002',
   '/post/90000000-0000-4000-8000-000000000003',

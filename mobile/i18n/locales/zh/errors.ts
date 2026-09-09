@@ -40,4 +40,7 @@ export const errors = {
   favoriteTeamsMax: '最多五支球队 —— 先移除一支，才能再加一支。',
   profileIncomplete: '请先完善你的运动员资料。',
   notAnAthlete: '只有运动员才有天赋分。',
+
+  endorseSelf: '不能推荐你自己。',
+  endorseLimit: '你已经推荐了这名球员的六项特点。',
 };

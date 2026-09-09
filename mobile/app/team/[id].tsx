@@ -103,6 +103,7 @@ export default function TeamScreen() {
               {fans.data.map((fan) => (
                 <ListItem
                   key={fan.user_id}
+                  inset
                   title={displayName(fan.full_name)}
                   subtitle={metaLine(
                     fan.position ?? roleLabel(fan.role),

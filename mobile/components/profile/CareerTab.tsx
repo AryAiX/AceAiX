@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { Award, BadgeCheck, ScrollText, Trophy } from 'lucide-react-native';
+import { Award, BadgeCheck, ScrollText, Trophy, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -22,17 +22,23 @@ import { useAsync } from '@/hooks/useAsync';
 import {
   addMatchRecord,
   CertificationEntry,
+  endorseAthlete,
+  ENDORSEMENT_LIMIT,
   getEndorsements,
   getMatchRecords,
   HonorEntry,
+  MyEndorsement,
+  myEndorsementsOf,
   normaliseCertifications,
   normaliseHonors,
   saveCertifications,
   saveHonors,
+  withdrawEndorsement,
 } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, roleLabel } from '@/lib/format';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 
 interface Props {
   athleteId: string | null;
@@ -68,6 +74,7 @@ export function CareerTab({
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const { user } = useAuth();
 
   const matches = useAsync(
     () => (athleteId ? getMatchRecords(athleteId) : Promise.resolve([])),
@@ -98,6 +105,66 @@ export function CareerTab({
     null,
   );
   const [saving, setSaving] = useState(false);
+
+  /*
+   * Endorsing is the one thing on this tab you do to somebody else, so the
+   * button is on their profile and never on your own. `mine` is what I have
+   * already said about this athlete: it is what turns a second tap into an edit
+   * instead of a duplicate, and it is what the sheet lists so you can take one
+   * back. The server refuses a seventh either way — this only means you find
+   * out before typing it rather than after.
+   */
+  const [endorseForm, setEndorseForm] = useState<{ skill: string; note: string } | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const canEndorse = !!athleteId && !isSelf && !!user;
+
+  const mine = useAsync<MyEndorsement[]>(
+    () => (canEndorse ? myEndorsementsOf(athleteId as string) : Promise.resolve([])),
+    [athleteId, canEndorse, refreshKey],
+    { enabled: canEndorse },
+  );
+  const mineList = mine.data ?? [];
+  const atLimit = mineList.length >= ENDORSEMENT_LIMIT;
+
+  const submitEndorsement = useCallback(async () => {
+    if (!endorseForm || !athleteId) return;
+    const skill = endorseForm.skill.trim();
+    if (skill.length < 2) {
+      toast.error(t('profile.endorseSkillRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      await endorseAthlete(athleteId, skill, endorseForm.note);
+      setEndorseForm(null);
+      toast.success(t('profile.endorseSavedToast'));
+      mine.reload();
+      endorsements.reload();
+      onChanged?.();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }, [athleteId, endorseForm, endorsements, mine, onChanged, t, toast]);
+
+  const removeEndorsement = useCallback(
+    async (id: string) => {
+      setWithdrawing(id);
+      try {
+        await withdrawEndorsement(id);
+        toast.success(t('profile.endorseRemovedToast'));
+        mine.reload();
+        endorsements.reload();
+        onChanged?.();
+      } catch (err) {
+        toast.error(errorMessage(err));
+      } finally {
+        setWithdrawing(null);
+      }
+    },
+    [endorsements, mine, onChanged, t, toast],
+  );
 
   const submitMatch = useCallback(async () => {
     if (!matchForm || !athleteId) return;
@@ -367,7 +434,20 @@ export function CareerTab({
 
       {/* ── Endorsements ── */}
       <View>
-        <SectionHeader title={t('profile.endorsementsTitle')} />
+        <SectionHeader
+          title={t('profile.endorsementsTitle')}
+          /* On somebody else's profile this reads "Endorse"; on a second visit
+             it reads "Edit", because the row already exists and endorsing the
+             same skill again updates it. On your own profile there is nothing
+             to offer — you cannot endorse yourself, and the database says so
+             as well as the button. */
+          action={
+            canEndorse
+              ? t(mineList.length > 0 ? 'profile.endorseEdit' : 'profile.endorse')
+              : undefined
+          }
+          onAction={canEndorse ? () => setEndorseForm({ skill: '', note: '' }) : undefined}
+        />
         {endorsements.loading ? (
           <Skeleton height={64} />
         ) : endorsements.error ? (
@@ -377,7 +457,15 @@ export function CareerTab({
             compact
             icon={<BadgeCheck size={24} color={colors.textMuted} />}
             title={t('profile.endorsementsEmptyTitle')}
-            body={isSelf ? t('profile.endorsementsEmptyBodySelf') : undefined}
+            body={
+              isSelf
+                ? t('profile.endorsementsEmptyBodySelf')
+                : canEndorse
+                  ? t('profile.endorsementsEmptyBodyOther')
+                  : undefined
+            }
+            actionLabel={canEndorse ? t('profile.endorse') : undefined}
+            onAction={canEndorse ? () => setEndorseForm({ skill: '', note: '' }) : undefined}
           />
         ) : (
           <Card padded={false}>
@@ -416,6 +504,103 @@ export function CareerTab({
           </Card>
         )}
       </View>
+
+      {/* ── Endorse somebody ──
+           One sheet does both jobs. What you have already said is listed at the
+           top with a way to take each one back, and the field below adds
+           another — or edits one of them, because typing a skill that is
+           already there updates its note instead of making a second row. That
+           is the database's rule as much as the screen's: there is a unique
+           index on (athlete, endorser, skill), so two rows cannot exist to be
+           counted twice by the Talent Score. */}
+      <Sheet
+        visible={endorseForm !== null}
+        onClose={() => (saving ? undefined : setEndorseForm(null))}
+        title={t('profile.endorseTitle')}
+        subtitle={t('profile.endorseSubtitle')}
+      >
+        <View style={{ gap: spacing.md }}>
+          {mineList.length > 0 ? (
+            <View style={{ gap: spacing.xs }}>
+              <Text variant="overline" tone="muted">
+                {t('profile.endorseMineTitle')}
+              </Text>
+              <Card padded={false}>
+                {mineList.map((item, index) => (
+                  <View key={item.id}>
+                    {index > 0 ? <Divider /> : null}
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.md,
+                        paddingVertical: spacing.md,
+                        paddingHorizontal: spacing.lg,
+                      }}
+                    >
+                      <View style={{ flex: 1, gap: 2 }}>
+                        <Text variant="bodyStrong" numberOfLines={1}>
+                          {item.skill_or_trait}
+                        </Text>
+                        {item.note ? (
+                          <Text variant="caption" tone="muted" numberOfLines={2}>
+                            {item.note}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <Button
+                        label={t('profile.endorseRemove')}
+                        variant="ghost"
+                        size="sm"
+                        icon={<X size={15} color={colors.textMuted} />}
+                        loading={withdrawing === item.id}
+                        onPress={() => removeEndorsement(item.id)}
+                        accessibilityLabel={t('profile.endorseRemoveA11y', {
+                          skill: item.skill_or_trait,
+                        })}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            </View>
+          ) : null}
+
+          {atLimit ? (
+            <Text variant="caption" tone="muted">
+              {t('profile.endorseLimitReached', { count: ENDORSEMENT_LIMIT })}
+            </Text>
+          ) : (
+            <>
+              <Input
+                label={t('profile.endorseSkillLabel')}
+                required
+                maxLength={60}
+                placeholder={t('profile.endorseSkillPlaceholder')}
+                hint={t('profile.endorseSkillHint')}
+                value={endorseForm?.skill ?? ''}
+                onChangeText={(text) => setEndorseForm((f) => (f ? { ...f, skill: text } : f))}
+              />
+              <Input
+                label={t('profile.endorseNoteLabel')}
+                placeholder={t('profile.endorseNotePlaceholder')}
+                multiline
+                numberOfLines={3}
+                maxLength={280}
+                value={endorseForm?.note ?? ''}
+                onChangeText={(text) => setEndorseForm((f) => (f ? { ...f, note: text } : f))}
+              />
+              <Button
+                label={t('profile.endorseSave')}
+                fullWidth
+                loading={saving}
+                style={{ marginTop: spacing.sm }}
+                onPress={submitEndorsement}
+              />
+            </>
+          )}
+        </View>
+      </Sheet>
 
       {/* ── Add a match ── */}
       <Sheet

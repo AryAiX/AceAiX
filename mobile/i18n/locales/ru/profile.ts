@@ -181,6 +181,28 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'Попроси тренера, который знает твою игру. Рекомендация от проверенного тренера весит много.',
 
+  endorsementsEmptyBodyOther:
+    'Об этом игроке пока никто ничего не сказал. Ты можешь быть первым.',
+  endorse: 'Рекомендовать',
+  endorseEdit: 'Изменить',
+  endorseTitle: 'Рекомендовать этого игрока',
+  endorseSubtitle: 'Одно, что ты действительно видел. Короче — лучше.',
+  endorseMineTitle: 'Что ты сказал',
+  endorseSkillLabel: 'Навык или качество',
+  endorseSkillPlaceholder: 'Движение в штрафной',
+  endorseSkillHint: 'Одно-два слова, не предложение.',
+  endorseSkillRequired: 'Напиши в одном-двух словах, что рекомендуешь.',
+  endorseNoteLabel: 'Заметка (необязательно)',
+  endorseNotePlaceholder: 'Выбирает момент лучше, чем игроки на два года старше.',
+  endorseSave: 'Рекомендовать',
+  endorseSavedToast: 'Рекомендация сохранена',
+  endorseRemove: 'Убрать',
+  endorseRemoveA11y: 'Убрать твою рекомендацию «{{skill}}»',
+  endorseRemovedToast: 'Рекомендация отозвана',
+  endorseLimitReached:
+    'Ты уже отметил {{count}} качества этого игрока — убери одно, чтобы добавить другое.',
+
+
   logMatchTitle: 'Записать матч',
   logMatchSubtitle: 'Только то, что помнишь, — остальное добавишь позже.',
   matchDate: 'Дата',

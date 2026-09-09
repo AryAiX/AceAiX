@@ -75,6 +75,17 @@ export interface EndorsementRow {
   } | null;
 }
 
+/** One of my own endorsements of an athlete, as `my_endorsements_of` returns it. */
+export interface MyEndorsement {
+  id: string;
+  skill_or_trait: string;
+  note: string | null;
+  created_at: string;
+}
+
+/** The server refuses a seventh; the sheet says so before you type it. */
+export const ENDORSEMENT_LIMIT = 6;
+
 /** Shapes shared with the web app's profile JSONB, so both read the same rows. */
 export interface HonorEntry {
   title: string;
@@ -331,6 +342,59 @@ export async function getEndorsements(athleteId: string): Promise<EndorsementRow
     ...row,
     endorser: Array.isArray(row.endorser) ? row.endorser[0] ?? null : row.endorser ?? null,
   })) as EndorsementRow[];
+}
+
+/**
+ * Giving one.
+ *
+ * Reads through the table, writes through a function — the same shape as
+ * everything added since 0904, and for the usual reason: an insert policy can
+ * say who you are and nothing else about the row. Two rules live in
+ * `endorse_athlete` because a `with check` cannot express them:
+ *
+ * - `endorser_role` is read from your profile. It used to be a plain column the
+ *   client filled in, and it is exactly the column `compute_talent_score` reads
+ *   to decide whether an endorsement is an expert one. A self-declared
+ *   credential is not a credential.
+ * - one row per (athlete, endorser, skill), and six skills per endorser. The
+ *   score counts rows, so without the first, saying "Fast" five times was worth
+ *   five endorsements.
+ *
+ * Endorsing the same skill again edits the note rather than adding a row, so
+ * the caller does not need to know which of the two it is doing.
+ */
+export async function endorseAthlete(
+  athleteId: string,
+  skill: string,
+  note?: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('endorse_athlete', {
+    p_athlete: athleteId,
+    p_skill: skill,
+    p_note: note?.trim() ? note.trim() : null,
+  });
+  if (error) throw new AppError(error);
+  return data as string;
+}
+
+/** Taking one back. Yours only — the athlete cannot delete an unflattering one. */
+export async function withdrawEndorsement(endorsementId: string): Promise<void> {
+  const { error } = await supabase.rpc('withdraw_endorsement', {
+    p_endorsement: endorsementId,
+  });
+  if (error) throw new AppError(error);
+}
+
+/**
+ * What I have already said about this athlete — so the button can offer to edit
+ * rather than to repeat, and the sheet opens with the note already in it.
+ */
+export async function myEndorsementsOf(athleteId: string): Promise<MyEndorsement[]> {
+  const { data, error } = await supabase.rpc('my_endorsements_of', {
+    p_athlete: athleteId,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as MyEndorsement[];
 }
 
 // ── Portfolio JSONB (honours + certifications) ───────────────────────────────

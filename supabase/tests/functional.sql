@@ -1378,6 +1378,137 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── endorsements ──'; end $$;
+
+/*
+ * The Talent Score has told athletes to "ask a coach to endorse you" since it
+ * shipped, and it is worth up to 45 of the 100 credibility points. Until now
+ * there was no way for the coach to do it. These assert the write path, and
+ * the two rules that only started mattering once anybody could reach the
+ * table: the role on the row is the server's word, not the caller's, and the
+ * same skill cannot be endorsed twice to stack the count.
+ */
+do $$
+declare
+  v_athlete uuid;
+  v_id      uuid;
+  v_role    text;
+  v_rows    integer;
+  v_err     text;
+  v_hint    text;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '11111111-1111-1111-1111-111111111111';
+
+  -- The coach endorses.
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  v_id := public.endorse_athlete(v_athlete, 'Movement in the box', 'Times her runs well.');
+  perform tests.ok(v_id is not null, 'a coach can endorse an athlete');
+
+  select endorser_role::text into v_role from public.endorsements where id = v_id;
+  perform tests.ok(v_role = 'coach',
+    'the role on the endorsement comes from the endorser''s profile');
+
+  /* The column the score reads is no longer writable by a client at all. This
+     drops to the `authenticated` role for the statement: the suite runs as the
+     superuser, and a superuser has every privilege regardless of what was
+     revoked — which is how a missing REVOKE survives a green suite. */
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.endorsements (athlete_id, endorser_id, endorser_role, skill_or_trait)
+    values (v_athlete, '33333333-3333-3333-3333-333333333333', 'federation', 'Vision');
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null,
+    'and a client cannot insert one directly to claim a role it does not have');
+
+  -- Same skill again updates rather than stacking.
+  perform public.endorse_athlete(v_athlete, '  movement in the BOX ', 'Still true.');
+  select count(*) into v_rows from public.endorsements
+   where athlete_id = v_athlete and endorser_id = '33333333-3333-3333-3333-333333333333';
+  perform tests.ok(v_rows = 1,
+    'endorsing the same skill again updates it rather than counting twice');
+
+  select note into v_err from public.endorsements where id = v_id;
+  perform tests.ok(v_err = 'Still true.', 'and the note is the newer one');
+
+  -- Six distinct skills, and no more.
+  perform public.endorse_athlete(v_athlete, 'First touch');
+  perform public.endorse_athlete(v_athlete, 'Pressing');
+  perform public.endorse_athlete(v_athlete, 'Left foot');
+  perform public.endorse_athlete(v_athlete, 'Work rate');
+  perform public.endorse_athlete(v_athlete, 'Coachability');
+
+  v_hint := null;
+  begin
+    perform public.endorse_athlete(v_athlete, 'Leadership');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'endorse_limit',
+    'a seventh skill from the same endorser is refused');
+
+  perform tests.ok(
+    (select count(*) from public.endorsements where athlete_id = v_athlete) = 6,
+    'so six is what the athlete carries from one endorser');
+
+  -- Nobody endorses themselves.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_hint := null;
+  begin
+    perform public.endorse_athlete(v_athlete, 'Modesty');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'endorse_self', 'and nobody endorses themselves');
+
+  -- Withdrawing is the endorser's to do, and only theirs.
+  v_err := null;
+  begin
+    perform public.withdraw_endorsement(v_id);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null,
+    'the athlete cannot delete an endorsement written about them');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  select count(*) into v_rows from public.my_endorsements_of(v_athlete);
+  perform tests.ok(v_rows = 6, 'my_endorsements_of tells the button what I already said');
+
+  perform public.withdraw_endorsement(v_id);
+  select count(*) into v_rows from public.my_endorsements_of(v_athlete);
+  perform tests.ok(v_rows = 5, 'and the endorser can take one back');
+end $$;
+
+/* The score is the reason any of this exists, so check it moves. */
+do $$
+declare
+  v_athlete uuid;
+  v_before  integer;
+  v_after   integer;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '44444444-4444-4444-4444-444444444444';
+
+  if v_athlete is null then
+    raise notice '  ok   (no athlete profile for the control account — skipped)';
+    return;
+  end if;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_before := (private.compute_talent_score(v_athlete) ->> 'credibility_score')::integer;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform public.endorse_athlete(v_athlete, 'Reads the game');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_after := (private.compute_talent_score(v_athlete) ->> 'credibility_score')::integer;
+
+  perform tests.ok(v_after > v_before,
+    'an endorsement from a verified coach moves the credibility score');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*

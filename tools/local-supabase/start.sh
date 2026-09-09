@@ -84,10 +84,24 @@ cat <<EOF
     EXPO_PUBLIC_SUPABASE_ANON_KEY=${ANON}
 
   Every demo account uses the password  AceAiX-Demo-2026
-    athlete   layla.demo@aceaix.com
-    coach     marco.demo@aceaix.com
-    club      academy.demo@aceaix.com
-    guardian  parent.demo@aceaix.com
+  One per role, so every role can be signed into rather than reasoned about:
+
+    athlete, 19, full profile   layla.demo@aceaix.com     (the review account)
+    athlete, 17, consented      omar.demo@aceaix.com
+    athlete, 15, consented      yusuf.demo@aceaix.com
+    athlete, 14, NO consent     mina.demo@aceaix.com      (hidden from discovery)
+    athlete, 22                 sara.demo@aceaix.com
+    athlete, 24                 daniel.demo@aceaix.com
+    coach, verified             marco.demo@aceaix.com     (the recruiter view)
+    coach, unverified           hana.demo@aceaix.com
+    club, verified              academy.demo@aceaix.com
+    guardian                    parent.demo@aceaix.com    (Mina's request is here)
+    scout, verified             nadia.demo@aceaix.com
+    federation                  federation.demo@aceaix.com
+    medical partner             amin.demo@aceaix.com
+
+  The three minors cannot reach Play — meetups are eighteen-plus, and the
+  database is what says so, not the tab bar.
 
   Logs: $RUNTIME/postgrest.log  ·  $RUNTIME/api.log
 EOF

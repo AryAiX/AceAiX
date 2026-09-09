@@ -118,6 +118,22 @@ interface ListItemProps {
   showChevron?: boolean;
   destructive?: boolean;
   disabled?: boolean;
+  /**
+   * Pad the row's own left and right edges.
+   *
+   * Rows are flush by default, and that is right for the two places nearly all
+   * of them live: a `Sheet`, whose body is already inset, and a
+   * `SettingsGroup`, which insets its rows itself. Doubling either would push
+   * the text a third of the way across the screen.
+   *
+   * Inside a `Card padded={false}` there is nothing between the row and the
+   * card border — that card is unpadded precisely so its dividers can run edge
+   * to edge, which leaves each row paying for its own margin. Without this the
+   * avatar and the name sit flat against the border, which is how the "Who
+   * looked at your profile" list ended up looking cramped while every other
+   * card on the same screen breathed.
+   */
+  inset?: boolean;
   style?: ViewStyle;
   testID?: string;
 }
@@ -131,6 +147,7 @@ export function ListItem({
   showChevron,
   destructive,
   disabled,
+  inset = false,
   style,
   testID,
 }: ListItemProps) {
@@ -146,6 +163,7 @@ export function ListItem({
           gap: spacing.md,
           minHeight: 56,
           paddingVertical: spacing.md,
+          paddingHorizontal: inset ? spacing.lg : 0,
           opacity: disabled ? 0.5 : 1,
         },
         style,

@@ -31,6 +31,8 @@ const EN: Record<string, string> = {
   'errors.invalidDetails': 'Some of those details are not valid.',
   'errors.noPermission': "You don't have permission to do that.",
   'errors.notFound': 'We could not find that.',
+  'errors.endorseSelf': 'You cannot endorse yourself.',
+  'errors.endorseLimit': 'You have already endorsed six things about this player.',
   'errors.invalidCredentials': 'That email or password is not right.',
   'errors.emailNotConfirmed': 'Check your inbox and confirm your email address first.',
   'errors.emailInUse': 'An account already uses that email. Try signing in.',
@@ -55,6 +57,8 @@ const HINTS: Record<string, string> = {
   favorite_teams_max: 'errors.favoriteTeamsMax',
   profile_incomplete: 'errors.profileIncomplete',
   not_an_athlete: 'errors.notAnAthlete',
+  endorse_self: 'errors.endorseSelf',
+  endorse_limit: 'errors.endorseLimit',
 };
 
 const CODES: Record<string, string> = {

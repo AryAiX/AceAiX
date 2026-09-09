@@ -170,6 +170,28 @@ export const profile = {
   endorsementsEmptyBodySelf:
     'Frag einen Trainer, der dein Spiel kennt. Eine von einem geprüften Trainer zählt viel.',
 
+  endorsementsEmptyBodyOther:
+    'Über diesen Spieler hat noch niemand etwas gesagt. Du könntest der Erste sein.',
+  endorse: 'Empfehlen',
+  endorseEdit: 'Bearbeiten',
+  endorseTitle: 'Diesen Spieler empfehlen',
+  endorseSubtitle: 'Eine Sache, die du wirklich gesehen hast. Kurz ist besser.',
+  endorseMineTitle: 'Was du gesagt hast',
+  endorseSkillLabel: 'Fähigkeit oder Eigenschaft',
+  endorseSkillPlaceholder: 'Laufwege im Strafraum',
+  endorseSkillHint: 'Ein, zwei Wörter — kein Satz.',
+  endorseSkillRequired: 'Schreib in ein, zwei Wörtern, was du empfiehlst.',
+  endorseNoteLabel: 'Notiz (optional)',
+  endorseNotePlaceholder: 'Timet ihre Läufe besser als die meisten zwei Jahre älteren Spieler.',
+  endorseSave: 'Empfehlen',
+  endorseSavedToast: 'Empfehlung gespeichert',
+  endorseRemove: 'Entfernen',
+  endorseRemoveA11y: 'Deine Empfehlung für {{skill}} entfernen',
+  endorseRemovedToast: 'Empfehlung zurückgezogen',
+  endorseLimitReached:
+    'Du hast {{count}} Dinge über diesen Spieler empfohlen — entferne eines, um ein weiteres hinzuzufügen.',
+
+
   logMatchTitle: 'Spiel eintragen',
   logMatchSubtitle: 'Nur das, woran du dich erinnerst — mehr geht später.',
   matchDate: 'Datum',

@@ -190,9 +190,24 @@ function CreateButton({ bottom }: { bottom: number }) {
    * flex:1 slot, thirteen points left of centre on a 414pt screen. Being out
    * of the bar means neither mistake is available any more: there is no slot
    * to be misaligned within, and no tab count that can move it.
+   *
+   * Two views, and the split is the point. The outer one positions, and is the
+   * width of the screen; the inner one animates, and is the width of the
+   * button. Scaling the outer one — which is what this did first — grows a
+   * 414pt box to 426pt, so it hangs six points past both edges of the screen.
+   * A phone shows nothing for that. The web build is a real document, so the
+   * page becomes wider than the viewport, the whole app slides sideways under
+   * a finger, and a strip of bare page sits down the right-hand edge of every
+   * screen in the app. Every margin looks wrong at once and the cause is
+   * nowhere near any of them.
+   *
+   * A 56pt button scaled by that same 3% grows by under a point, well inside
+   * its own margin. `tests/e2e/look.mjs` now asserts the document is never
+   * wider than the viewport, on every screen, because nobody would find this
+   * one by reading the tab bar.
    */
   return (
-    <Animated.View
+    <View
       pointerEvents="box-none"
       style={{
         position: 'absolute',
@@ -200,67 +215,75 @@ function CreateButton({ bottom }: { bottom: number }) {
         right: 0,
         bottom,
         alignItems: 'center',
-        transform: [
-          { scale },
-          { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) },
-        ],
       }}
     >
-      {/* A soft halo that pulses with the breath — colour, not chrome. */}
       <Animated.View
-        pointerEvents="none"
+        pointerEvents="box-none"
         style={{
-          position: 'absolute',
-          top: -6,
-          width: 68,
-          height: 68,
-          borderRadius: 34,
-          backgroundColor: theme.alpha(theme.colors.primary, 0.28),
-          opacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.85] }),
-          transform: [
-            { scale: glow.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.08] }) },
-          ],
-        }}
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('common.tabCreate')}
-        testID="tab-create"
-        onPressIn={() => press(0.92)}
-        onPressOut={() => press(1)}
-        onPress={() => {
-          if (Platform.OS !== 'web') {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-          }
-          router.push('/compose');
-        }}
-        style={{
-          width: 56,
-          height: 56,
-          borderRadius: 28,
           alignItems: 'center',
           justifyContent: 'center',
-          borderWidth: 4,
-          borderColor: theme.colors.tabBar,
-          overflow: 'hidden',
-          ...theme.elevation(2),
+          transform: [
+            { scale },
+            { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) },
+          ],
         }}
       >
-        <LinearGradient
-          colors={theme.gradients.action}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
+        {/* A soft halo that pulses with the breath — colour, not chrome. */}
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -6,
+            width: 68,
+            height: 68,
+            borderRadius: 34,
+            backgroundColor: theme.alpha(theme.colors.primary, 0.28),
+            opacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.85] }),
+            transform: [
+              { scale: glow.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.08] }) },
+            ],
+          }}
         />
-        {/* The icon is wrapped rather than bare: on the web build an
-            absolutely-positioned sibling paints above static content whatever
-            the source order, so an unwrapped <svg> disappears under the
-            gradient. A View gives it a stacking context of its own. */}
-        <View>
-          <Plus size={26} color={theme.colors.textOnBrand} strokeWidth={2.8} />
-        </View>
-      </Pressable>
-    </Animated.View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.tabCreate')}
+          testID="tab-create"
+          onPressIn={() => press(0.92)}
+          onPressOut={() => press(1)}
+          onPress={() => {
+            if (Platform.OS !== 'web') {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+            }
+            router.push('/compose');
+          }}
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderWidth: 4,
+            borderColor: theme.colors.tabBar,
+            overflow: 'hidden',
+            ...theme.elevation(2),
+          }}
+        >
+          <LinearGradient
+            colors={theme.gradients.action}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          {/* The icon is wrapped rather than bare: on the web build an
+              absolutely-positioned sibling paints above static content whatever
+              the source order, so an unwrapped <svg> disappears under the
+              gradient. A View gives it a stacking context of its own. */}
+          <View>
+            <Plus size={26} color={theme.colors.textOnBrand} strokeWidth={2.8} />
+          </View>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 

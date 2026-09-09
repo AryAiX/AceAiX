@@ -69,6 +69,7 @@ export const common = {
   scout: '球探',
   guardian: '家长或监护人',
   federation: '协会',
+  medicalPartner: '医疗伙伴',
   member: '成员',
   aceaixTeam: 'AceAiX 团队',
   verified: '已认证',
