@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Dimensions,
-  Animated, AccessibilityInfo,
+  Animated, AccessibilityInfo, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Polygon, Line, Path, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
@@ -338,7 +338,7 @@ function formatRelativeTime(iso: string): string {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, loading } = useAuth();
   const router = useRouter();
   const [reduced, setReduced] = useState(false);
   const [scoutViews, setScoutViews] = useState(0);
@@ -532,7 +532,11 @@ export default function Dashboard() {
   return (
     <View style={s.root}>
       <AppHeader title="Dashboard" />
-      {dashboardError ? (
+      {loading || !profile ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+        </View>
+      ) : dashboardError ? (
         <View style={{ padding: Spacing.lg, alignItems: 'center' }}>
           <Text style={{ fontFamily: Typography.family.bold, fontSize: Typography.size.lg, color: Colors.textPrimary, marginBottom: Spacing.sm }}>
             Unable to load dashboard
