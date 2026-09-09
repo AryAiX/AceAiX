@@ -5,6 +5,7 @@ import { Clock, RotateCw } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { TranslatableText } from '@/components/common/TranslatableText';
 import { timeOfDay } from '@/lib/format';
 import type { ChatMessage } from '@/lib/api.messaging';
 
@@ -50,9 +51,15 @@ export function MessageBubble({ message, isOwn, showTime, continues, onRetry }: 
         opacity: sending ? 0.62 : 1,
       }}
     >
-      <Text variant="body" color={bubbleFg}>
-        {message.content}
-      </Text>
+      {/* Your own words never need translating, and offering it on them looks
+          like the app does not know who is talking. */}
+      {isOwn ? (
+        <Text variant="body" color={bubbleFg}>
+          {message.content}
+        </Text>
+      ) : (
+        <TranslatableText text={message.content} variant="body" color={bubbleFg} />
+      )}
     </View>
   );
 

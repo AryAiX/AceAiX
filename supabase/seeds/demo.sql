@@ -531,3 +531,43 @@ from public.talent_scores ts
 join public.athlete_profiles ap on ap.id = ts.athlete_id
 join public.user_profiles up on up.id = ap.user_id
 order by ts.overall desc;
+
+-- ------------------------------------------------------------
+-- Meetups
+--
+-- Adults only, so the two seeded minors are deliberately absent. Marco hosts a
+-- five-a-side that is nearly full and Layla wants a hitting partner abroad —
+-- the two shapes the feature exists for, so a screenshot of an empty Play tab
+-- is never the first thing anybody sees.
+-- ------------------------------------------------------------
+insert into public.meetups (
+  id, host_id, sport, title, note, country, city, area, venue,
+  starts_at, spots_total, spots_taken, level, cost_note, status
+) values
+  ('e1000000-0000-4000-8000-000000000001',
+   'b0000000-0000-4000-8000-000000000001', 'football',
+   'Saturday five-a-side',
+   'Regular game, all levels welcome. Bring dark and light. We split the pitch.',
+   'United Arab Emirates', 'Dubai', 'Al Jadaf', 'Al Jadaf Pitch 2',
+   now() + interval '3 days' + interval '18 hours', 10, 0, 'any', 'AED 25', 'open'),
+  ('e1000000-0000-4000-8000-000000000002',
+   'a0000000-0000-4000-8000-000000000001', 'tennis',
+   'Hitting partner in Marbella?',
+   'Away for the week and looking for one or two hits. Intermediate, happy to play early.',
+   'Spain', 'Marbella', 'Puerto Banús', null,
+   now() + interval '6 days' + interval '9 hours', 2, 0, 'intermediate', null, 'open')
+on conflict (id) do nothing;
+
+insert into public.meetup_participants (meetup_id, user_id, status, decided_at) values
+  ('e1000000-0000-4000-8000-000000000001',
+   'b0000000-0000-4000-8000-000000000001', 'host', now()),
+  ('e1000000-0000-4000-8000-000000000002',
+   'a0000000-0000-4000-8000-000000000001', 'host', now()),
+  /* Six of ten taken, so the card shows a number worth reacting to. */
+  ('e1000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'joined', now()),
+  ('e1000000-0000-4000-8000-000000000001',
+   'b0000000-0000-4000-8000-000000000002', 'joined', now()),
+  ('e1000000-0000-4000-8000-000000000001',
+   'd0000000-0000-4000-8000-000000000001', 'joined', now())
+on conflict (meetup_id, user_id) do nothing;

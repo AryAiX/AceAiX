@@ -4,17 +4,28 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Compass, Home, Plus, Target, User } from 'lucide-react-native';
+import { Compass, Home, Plus, Target, User, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
  * from one of them — the previous build had sixteen screens hidden behind a
  * drawer, which is the main reason it felt complicated.
+ *
+ * Composing is not a destination, so it is not a tab. It used to be one — a
+ * raised circle occupying the middle of five slots — and that worked only
+ * while the number of tabs was odd. Adding Play made it six, and six slots
+ * have no middle: the button would have gone back to sitting off-centre, which
+ * is the exact defect that was just fixed. So it lifted out of the bar
+ * entirely and became what it always was, an action rather than a place.
+ *
+ * It now floats above the bar, centred on the screen rather than on a slot,
+ * which is both more honest and no longer hostage to how many tabs there are.
  */
 
 function TabIcon({
@@ -102,8 +113,13 @@ function TabIcon({
   );
 }
 
-/** Centre action. Not a route — it opens the composer as a modal. */
-function CreateButton() {
+/**
+ * The compose action, floating above the tab bar.
+ *
+ * Positioned against the screen, not against a tab slot, so it is centred by
+ * arithmetic that cannot drift when a destination is added or removed.
+ */
+function CreateButton({ bottom }: { bottom: number }) {
   const theme = useTheme();
   const router = useRouter();
   const reduced = useReducedMotion();
@@ -168,26 +184,26 @@ function CreateButton() {
   }, [breath, glow, reduced]);
 
   /*
-   * `tabBarButton` replaces the default button entirely, and the default is the
-   * thing that centred it: react-navigation hands the button a style carrying
-   * `alignItems: 'center'`, and this one ignored it. The slot is `flex: 1`, so
-   * the 56px circle was laid out at the slot's leading edge — about 13px left
-   * of centre on a 414pt screen, which is exactly far enough to look wrong
-   * beside four symmetrical icons. `alignItems: 'center'` here is the fix; it
-   * also means the press and breath scales now pivot on the button rather than
-   * on the whole slot.
+   * `left: 0, right: 0` with `alignItems: 'center'` centres against the screen.
+   * Its predecessor was a `tabBarButton`, centred by react-navigation's own
+   * item style, which it ignored — so the circle sat at the leading edge of a
+   * flex:1 slot, thirteen points left of centre on a 414pt screen. Being out
+   * of the bar means neither mistake is available any more: there is no slot
+   * to be misaligned within, and no tab count that can move it.
    */
   return (
     <Animated.View
+      pointerEvents="box-none"
       style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom,
         alignItems: 'center',
-        justifyContent: 'flex-start',
-        alignSelf: 'stretch',
         transform: [
           { scale },
           { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) },
         ],
-        marginTop: -18,
       }}
     >
       {/* A soft halo that pulses with the breath — colour, not chrome. */}
@@ -253,6 +269,18 @@ export default function TabsLayout() {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const t = useT();
+  const { profile } = useAuth();
+
+  /*
+   * Meetups are eighteen-plus, and the database enforces that — a minor asking
+   * gets an empty list, not an error. The tab is hidden from them anyway,
+   * because a destination that is always empty reads as a broken app rather
+   * than as a rule, and there is nothing there for them to see.
+   *
+   * `href: null` removes it from the bar without removing the route, so a deep
+   * link still resolves and the screen's own empty state handles it.
+   */
+  const canMeet = profile?.is_minor === false;
 
   /* Which tab was last re-tapped, and how many times. Tapping the tab you are
      already on has no navigation to show for itself, so the icon answers. */
@@ -269,8 +297,12 @@ export default function TabsLayout() {
 
   const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
 
+  /* Clear of the bar and of the home indicator, so it never covers a label. */
+  const fabBottom = 60 + insets.bottom + 12;
+
   return (
-    <Tabs
+    <View style={{ flex: 1 }}>
+      <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
@@ -312,13 +344,30 @@ export default function TabsLayout() {
           tabPress: () => onTabPress('discover', navigation.isFocused()),
         })}
       />
+      {/* Still a route, so `/compose` and deep links resolve, but no longer a
+          button in the bar — `href: null` takes it out without removing it. */}
       <Tabs.Screen
         name="create"
+        options={{ title: t('common.tabCreate'), href: null }}
+      />
+      <Tabs.Screen
+        name="meetups"
         options={{
-          title: t('common.tabCreate'),
-          tabBarButton: () => <CreateButton />,
+          title: t('common.tabMeetups'),
+          href: canMeet ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Users}
+              focused={focused}
+              label={t('common.tabMeetups')}
+              bump={bumpFor('meetups')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('common.tabMeetups'),
         }}
-        listeners={{ tabPress: (e) => e.preventDefault() }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('meetups', navigation.isFocused()),
+        })}
       />
       <Tabs.Screen
         name="opportunities"
@@ -351,7 +400,10 @@ export default function TabsLayout() {
           tabPress: () => onTabPress('profile', navigation.isFocused()),
         })}
       />
-    </Tabs>
+      </Tabs>
+
+      <CreateButton bottom={fabBottom} />
+    </View>
   );
 }
 

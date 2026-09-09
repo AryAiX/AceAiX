@@ -8,6 +8,7 @@ import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
 import { challenges } from './challenges';
+import { meetups } from './meetups';
 import { teams } from './teams';
 import { views } from './views';
 import { progress } from './progress';
@@ -23,5 +24,5 @@ import { format } from './format';
 
 /** Spanish. Typed against English, so a missing key is a compile error. */
 export const es: Translations = { common, language, auth, onboarding, feed, profile,
-  score, challenges, teams, views, progress, discover, opportunities, messaging, settings,
+  score, challenges, meetups, teams, views, progress, discover, opportunities, messaging, settings,
   safety, sports, countries, errors, format };

@@ -34,6 +34,10 @@ export const Routes = {
   followers: (userId: string) => `/u/${userId}/followers` as const,
   following: (userId: string) => `/u/${userId}/following` as const,
 
+  meetups: '/(tabs)/meetups' as const,
+  meetup: (id: string) => `/meetup/${id}` as const,
+  newMeetup: '/meetup/new' as const,
+
   challenges: '/challenges' as const,
   challenge: (id: string) => `/challenge/${id}` as const,
   newChallenge: '/challenge/new' as const,

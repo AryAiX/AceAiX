@@ -1187,6 +1187,197 @@ end $$;
 
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── meetups, and the eighteen-plus floor ──'; end $$;
+
+do $$
+declare
+  v_meetup uuid;
+  v_raised boolean;
+  v_rows   integer;
+  v_detail jsonb;
+begin
+  -- The adult athlete hosts a five-a-side.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_meetup := public.create_meetup(
+    'football', 'Saturday five-a-side', 'United Arab Emirates', 'Dubai',
+    now() + interval '3 days', 10, 'Al Jadaf', 'Al Jadaf Pitch 2');
+
+  perform tests.ok(v_meetup is not null, 'an adult can host a meetup');
+
+  perform tests.ok(
+    (select spots_taken from public.meetups where id = v_meetup) = 1,
+    'the host occupies one of the spots');
+
+  -- The minor must not be able to host, join, see or find one.
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+
+  perform tests.ok(not private.may_meet(), 'a minor fails the meetup gate');
+
+  v_raised := false;
+  begin
+    perform public.create_meetup('tennis', 'Hitting partner', 'Spain', 'Marbella',
+                                 now() + interval '2 days', 2);
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a minor cannot host a meetup');
+
+  v_raised := false;
+  begin
+    perform public.request_to_join_meetup(v_meetup, 'can I come');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a minor cannot ask to join one');
+
+  select count(*) into v_rows from public.find_meetups();
+  perform tests.ok(v_rows = 0, 'a minor searching finds nothing at all');
+
+  /* The search function is SECURITY DEFINER, so the assertion above proves the
+     gate inside it and nothing about RLS. This one drops to the `authenticated`
+     role for one statement, because the tests otherwise run as the superuser,
+     and a superuser bypasses row-level security entirely — which is how an
+     RLS hole survives a full green suite. */
+  set local role authenticated;
+  select count(*) into v_rows from public.meetups;
+  reset role;
+  perform tests.ok(v_rows = 0, 'and RLS hides the row itself, not just the search');
+
+  /* The trigger is the third gate: even service-role code that skipped every
+     function above cannot put a minor in a place at a time. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_raised := false;
+  begin
+    insert into public.meetup_participants (meetup_id, user_id, status)
+    values (v_meetup, '22222222-2222-2222-2222-222222222222', 'joined');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'and the participant trigger refuses a minor outright');
+
+  -- A second adult asks, and the host decides.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  perform tests.ok(
+    public.request_to_join_meetup(v_meetup, 'I play left back') = 'requested',
+    'another adult can ask to join');
+
+  perform tests.ok(
+    (select spots_taken from public.meetups where id = v_meetup) = 1,
+    'asking does not take a spot — only the host deciding does');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_detail := public.meetup_detail(v_meetup);
+  perform tests.ok(
+    jsonb_array_length(v_detail -> 'pending') = 1,
+    'the host sees the pending request');
+
+  perform public.decide_meetup_request(
+    v_meetup, '44444444-4444-4444-4444-444444444444', true);
+
+  perform tests.ok(
+    (select spots_taken from public.meetups where id = v_meetup) = 2,
+    'accepting takes a spot');
+
+  v_detail := public.meetup_detail(v_meetup);
+  perform tests.ok(
+    (v_detail -> 'meetup' ->> 'spots_left')::int = 8,
+    'and eight of ten are left, which is what the card says');
+
+  -- Someone who is not the host cannot decide.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_raised := false;
+  begin
+    perform public.decide_meetup_request(
+      v_meetup, '44444444-4444-4444-4444-444444444444', true);
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'only the host decides who comes');
+
+  -- Leaving gives the spot back.
+  perform public.leave_meetup(v_meetup);
+  perform tests.ok(
+    (select spots_taken from public.meetups where id = v_meetup) = 1,
+    'leaving returns the spot to the pool');
+
+  -- A host cancels rather than leaving.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_raised := false;
+  begin
+    perform public.leave_meetup(v_meetup);
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a host is told to cancel rather than leave');
+
+  perform public.cancel_meetup(v_meetup);
+  perform tests.ok(
+    (select status from public.meetups where id = v_meetup) = 'cancelled',
+    'a host can call it off');
+
+  select count(*) into v_rows from public.find_meetups();
+  perform tests.ok(v_rows = 0, 'a cancelled meetup drops out of search');
+end $$;
+
+-- Search actually narrows.
+do $$
+declare v_rows integer;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  perform public.create_meetup('tennis', 'Hitting partner wanted', 'Spain', 'Marbella',
+                               now() + interval '5 days', 2, 'Puerto Banus');
+  perform public.create_meetup('football', 'Sunday game', 'United Arab Emirates', 'Dubai',
+                               now() + interval '6 days', 12, 'Marina');
+
+  select count(*) into v_rows from public.find_meetups(p_place => 'marbella');
+  perform tests.ok(v_rows = 1, 'searching a place you are travelling to finds it');
+
+  select count(*) into v_rows from public.find_meetups(p_sport => 'tennis');
+  perform tests.ok(v_rows = 1, 'and searching by sport narrows to the sport');
+
+  select count(*) into v_rows from public.find_meetups(
+    p_from => now() + interval '7 days');
+  perform tests.ok(v_rows = 0, 'a date window with nothing in it returns nothing');
+
+  select count(*) into v_rows from public.my_meetups();
+  perform tests.ok(v_rows = 2, 'my_meetups lists what I am hosting');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── translation cache ──'; end $$;
+
+do $$
+declare v_hit jsonb; v_raised boolean;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+
+  perform tests.ok(
+    public.cached_translation('Bom jogo hoje', 'en') is null,
+    'a miss is null, so the client knows to call the function');
+
+  -- Only the service role writes.
+  v_raised := false;
+  begin
+    perform public.store_translation('Bom jogo hoje', 'en', 'Good game today', 'test');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a signed-in account cannot write a translation');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform public.store_translation('Bom jogo hoje', 'en', 'Good game today', 'test', 'pt');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_hit := public.cached_translation('Bom jogo hoje', 'en');
+  perform tests.ok(v_hit ->> 'translated' = 'Good game today',
+    'and the next reader gets it from the cache, free');
+  perform tests.ok(v_hit ->> 'detected_lang' = 'pt',
+    'the detected source language comes back too');
+
+  perform tests.ok(
+    public.cached_translation('  Bom jogo hoje  ', 'en') ->> 'translated' = 'Good game today',
+    'whitespace does not create a second row for the same sentence');
+
+  perform tests.ok(
+    public.cached_translation('Bom jogo hoje!', 'en') is null,
+    'but edited text is a different hash, so it is not answered with stale words');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*
@@ -1265,7 +1456,12 @@ begin
     and p.proname not in (
       'is_admin', 'owns_athlete', 'owns_watchlist', 'owns_ai_session',
       'owns_medical_partner', 'has_medical_consent', 'in_conversation',
-      'is_org_member', 'is_verified_partner'
+      'is_org_member', 'is_verified_partner',
+      /* 0909/01. Named in the read policies on `meetups` and
+         `meetup_participants`; a policy runs as the querying user, so without
+         EXECUTE every meetup read answers "permission denied for function
+         may_meet". Read-only, and it answers a question about the caller. */
+      'may_meet'
     );
 
   perform tests.ok(

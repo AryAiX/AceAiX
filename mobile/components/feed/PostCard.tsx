@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Pressable, Share, View } from 'react-native';
+import { Animated, Easing, Platform, Share, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Heart, MoreHorizontal } from 'lucide-react-native';
 
@@ -8,6 +8,7 @@ import { Avatar, Tappable, Text, useToast } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { TranslatableText } from '@/components/common/TranslatableText';
 import { toggleLike, toggleSave } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
@@ -278,24 +279,26 @@ function PostCardBase({
       </View>
 
       {caption ? (
-        captionIsInert ? (
-          <Text variant="body">{caption}</Text>
-        ) : (
-          <Pressable
-            onPress={() => (showAll ? openPost?.() : setShowAll(true))}
-            accessibilityRole="button"
-            accessibilityLabel={showAll ? t('feed.openPost') : t('feed.showFullCaption')}
-          >
-            <Text variant="body" numberOfLines={showAll ? undefined : CAPTION_LINES}>
-              {caption}
-            </Text>
-            {!showAll && mightOverflow ? (
+        <TranslatableText
+          text={caption}
+          variant="body"
+          numberOfLines={showAll ? undefined : CAPTION_LINES}
+          /* Inert on the single-post screen: it is already whole and there is
+             nowhere further to go. */
+          onPressText={
+            captionIsInert ? undefined : () => (showAll ? openPost?.() : setShowAll(true))
+          }
+          pressLabel={showAll ? t('feed.openPost') : t('feed.showFullCaption')}
+          footer={
+            !showAll && mightOverflow ? (
               <Text variant="captionStrong" tone="muted" style={{ marginTop: 2 }}>
                 {t('common.showMore')}
               </Text>
-            ) : null}
-          </Pressable>
-        )
+            ) : null
+          }
+          /* Not while it is truncated — see the prop's own note. */
+          offer={showAll || captionIsInert}
+        />
       ) : null}
 
       {post.media.length > 0 ? (

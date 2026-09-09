@@ -107,9 +107,30 @@ const go = async (href, name, wait = 2600) => {
   await shot(name);
 };
 
-await go('/discover', '03-discover');
-await go('/opportunities', '04-trials');
-await go('/profile', '05-profile', 3200);
+await go('/meetups', '03-meetups', 3200);
+/* The centred action button, now that it floats rather than occupying a slot. */
+const fab = await page.evaluate(() => {
+  const b = document.querySelector('[data-testid="tab-create"]');
+  if (!b) return { error: 'no create button' };
+  const r = b.getBoundingClientRect();
+  return {
+    buttonCentre: Math.round((r.left + r.right) / 2),
+    screenCentre: Math.round(window.innerWidth / 2),
+    offBy: Math.round((r.left + r.right) / 2 - window.innerWidth / 2),
+  };
+});
+console.log(`  create button: ${JSON.stringify(fab)}`);
+
+/* Into one game, to see the roster, the host and the join button. */
+await page.getByText('Saturday five-a-side').first().click().catch(() => {});
+await page.waitForTimeout(3000);
+await shot('03b-meetup-detail');
+console.log(`    meetup detail: ${(await page.getByTestId('meetup-screen').count()) > 0}`);
+await page.locator('a[href="/meetups"]').first().click().catch(() => {});
+await page.waitForTimeout(2000);
+await go('/discover', '04-discover');
+await go('/opportunities', '05-trials');
+await go('/profile', '06-profile', 3200);
 
 /* /score and /edit-profile are pushed, not linked, so they are reached the way
    a person reaches them: by tapping the thing on the profile that opens them. */
@@ -129,20 +150,20 @@ const tap = async (name, label, wait = 3000) => {
 await page.getByTestId('profile-avatar').first().click().catch(() => {});
 await page.waitForTimeout(1500);
 const lightboxOpen = (await page.getByTestId('lightbox-image').count()) > 0;
-await shot('06-lightbox');
+await shot('07-lightbox');
 console.log(`    lightbox open: ${lightboxOpen}`);
 if (lightboxOpen) {
   await page.getByTestId('lightbox-close').first().click().catch(() => {});
   await page.waitForTimeout(1100);
 }
 
-await tap('07-score', 'Talent Score', 3400);
+await tap('08-score', 'Talent Score', 3400);
 /* Back through the screen's own header button. The runtime pins the address, so
    `goBack` leaves the app rather than the screen, and the tab bar only re-shows
    the tab this pushed screen is stacked on top of. */
 await page.getByRole('button', { name: /back/i }).first().click().catch(() => {});
 await page.waitForTimeout(2600);
-await tap('08-edit-profile', 'Edit profile', 3600);
+await tap('09-edit-profile', 'Edit profile', 3600);
 console.log(`    cover editor present: ${(await page.getByTestId('edit-cover').count()) > 0}`);
 
 await browser.close();

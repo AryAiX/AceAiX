@@ -140,6 +140,13 @@ const TOUR = [
   '/player-card',
   '/team/d1000000-0000-4000-8000-000000000001',
   '/team/d1000000-0000-4000-8000-000000000002',
+  /* Meetups. The two adults tour these and record real answers; the minor and
+     the guardian record the empty set, which is what the eighteen-plus gate
+     produces and exactly what the preview should show for them. */
+  '/meetups',
+  '/meetup/e1000000-0000-4000-8000-000000000001',
+  '/meetup/e1000000-0000-4000-8000-000000000002',
+  '/meetup/new',
 ];
 
 const server = await serve();

@@ -6,6 +6,7 @@ import { feed } from './feed';
 import { profile } from './profile';
 import { score } from './score';
 import { challenges } from './challenges';
+import { meetups } from './meetups';
 import { teams } from './teams';
 import { views } from './views';
 import { progress } from './progress';
@@ -34,6 +35,7 @@ export const en = {
   profile,
   score,
   challenges,
+  meetups,
   teams,
   views,
   progress,
