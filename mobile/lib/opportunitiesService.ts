@@ -25,6 +25,7 @@ export interface Opportunity {
   posted_by: string | null;
   club: string;
   club_abbr: string | null;
+  club_verified: boolean;
   sport: string;
   position: string;
   type: OpportunityType;
@@ -114,6 +115,7 @@ function mapRow(
     posted_by: row.posted_by ?? row.created_by_id ?? null,
     club: org?.name ?? row.title ?? 'Club opportunity',
     club_abbr: org?.short_name ?? org?.initials ?? null,
+    club_verified: org?.is_verified ?? false,
     sport: row.sport,
     position: row.position ?? 'Open role',
     type: (row.type ?? 'Trial') as OpportunityType,
@@ -198,7 +200,7 @@ export async function fetchForYouOpportunities(
 ): Promise<Opportunity[]> {
   let q = supabase
     .from('opportunities')
-    .select('*, organization:organizations(name, short_name, initials, city, country)')
+    .select('*, organization:organizations(name, short_name, initials, city, country, is_verified)')
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
@@ -242,7 +244,7 @@ export async function fetchAllOpportunities(
 ): Promise<Opportunity[]> {
   let q = supabase
     .from('opportunities')
-    .select('*, organization:organizations(name, short_name, initials, city, country)')
+    .select('*, organization:organizations(name, short_name, initials, city, country, is_verified)')
     .eq('is_active', true)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -273,7 +275,7 @@ export async function fetchAllOpportunities(
 export async function fetchSavedOpportunities(athleteId: string): Promise<Opportunity[]> {
   const { data: saves } = await supabase
     .from('opportunity_saves')
-    .select('opportunity_id, opportunities(*, organization:organizations(name, short_name, initials, city, country))')
+    .select('opportunity_id, opportunities(*, organization:organizations(name, short_name, initials, city, country, is_verified))')
     .eq('athlete_id', athleteId)
     .order('created_at', { ascending: false });
 
@@ -290,7 +292,7 @@ export async function fetchSavedOpportunities(athleteId: string): Promise<Opport
 export async function fetchMyApplications(athleteId: string): Promise<Application[]> {
   const { data, error } = await supabase
     .from('applications')
-    .select('*, opportunities(*, organization:organizations(name, short_name, initials, city, country))')
+    .select('*, opportunities(*, organization:organizations(name, short_name, initials, city, country, is_verified))')
     .eq('athlete_id', athleteId)
     .order('updated_at', { ascending: false });
 

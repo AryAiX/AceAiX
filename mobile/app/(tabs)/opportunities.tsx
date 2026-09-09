@@ -229,7 +229,7 @@ function OpportunityCard({
             <Text style={c.position} numberOfLines={1}>{opp.position}</Text>
             <View style={c.clubRow}>
               <Text style={c.club} numberOfLines={1}>{opp.club}</Text>
-              <BadgeCheck color={Colors.primary} size={12} />
+              {opp.club_verified && <BadgeCheck color={Colors.primary} size={12} />}
             </View>
             <View style={c.metaRow}>
               <MapPin color={Colors.textDisabled} size={11} />

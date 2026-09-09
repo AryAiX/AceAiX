@@ -239,7 +239,7 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
               <Text style={s.heroPosition}>{opportunity.position}</Text>
               <View style={s.heroClubRow}>
                 <Text style={s.heroClub}>{opportunity.club}</Text>
-                <BadgeCheck color={Colors.primary} size={15} />
+                {opportunity.club_verified && <BadgeCheck color={Colors.primary} size={15} />}
               </View>
 
               <View style={s.heroBadgeRow}>
