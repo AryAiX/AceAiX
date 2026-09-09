@@ -67,9 +67,22 @@ export async function fetchChessStats(athlete_id: string): Promise<ChessStats | 
     .select('athlete_id,stats,source,last_synced_at')
     .eq('athlete_id', athlete_id)
     .maybeSingle();
-  if (error || !data) return null;
 
-  const stats = (data.stats ?? {}) as Record<string, unknown>;
+  let resolvedData = data;
+  if (error || !data) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('performance_records')
+      .select('athlete_id,stats,source,last_synced_at')
+      .eq('athlete_id', athlete_id)
+      .ilike('sport', 'chess')
+      .order('last_synced_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (fallbackError || !fallbackData) return null;
+    resolvedData = fallbackData;
+  }
+
+  const stats = (resolvedData.stats ?? {}) as Record<string, unknown>;
   const numberValue = (key: string): number => {
     const value = stats[key];
     return typeof value === 'number' ? value : Number(value ?? 0) || 0;
@@ -82,8 +95,8 @@ export async function fetchChessStats(athlete_id: string): Promise<ChessStats | 
   };
 
   return {
-    id: data.athlete_id,
-    athlete_id: data.athlete_id,
+    id: resolvedData.athlete_id,
+    athlete_id: resolvedData.athlete_id,
     rapid_current: nullableNumber('rapid_current'),
     rapid_peak: nullableNumber('rapid_peak'),
     rapid_wins: numberValue('rapid_wins'),
@@ -112,8 +125,8 @@ export async function fetchChessStats(athlete_id: string): Promise<ChessStats | 
     recent_games: Array.isArray(stats.recent_games)
       ? stats.recent_games as RecentGame[]
       : [],
-    source: data.source,
-    last_synced_at: data.last_synced_at,
+    source: resolvedData.source,
+    last_synced_at: resolvedData.last_synced_at,
   };
 }
 
