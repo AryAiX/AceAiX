@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 
 export interface PartnerConsentInfo {
   partnerId: string;
+  consentId: string | null;
   partnerName: string;
   accreditationStatus: string;
   consentStatus: string | null;
@@ -15,7 +16,7 @@ export async function fetchConnectedPartners(
 ): Promise<{ data: PartnerConsentInfo[]; error: string | null }> {
   const { data: consentRows, error: consentsError } = await supabase
     .from('medical_consents')
-    .select('grantee_user_id, status, scope, granted_at, revoked_at')
+    .select('id, grantee_user_id, status, scope, granted_at, revoked_at')
     .eq('athlete_id', athleteId);
 
   if (consentsError) return { data: [], error: consentsError.message };
@@ -64,6 +65,7 @@ export async function fetchConnectedPartners(
     const consent = (consentRows ?? []).find((row) => row.grantee_user_id === partner.user_id);
     return {
       partnerId: partner.id,
+      consentId: consent?.id ?? null,
       partnerName: partner.name ?? 'Medical Partner',
       accreditationStatus: partner.accreditation_status,
       consentStatus: consent?.status ?? null,
@@ -74,4 +76,20 @@ export async function fetchConnectedPartners(
   });
 
   return { data: mapped, error: null };
+}
+
+export async function revokeConsent(consentId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('medical_consents')
+    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+    .eq('id', consentId);
+  return { error: error?.message ?? null };
+}
+
+export async function grantConsent(consentId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('medical_consents')
+    .update({ status: 'granted', granted_at: new Date().toISOString(), revoked_at: null })
+    .eq('id', consentId);
+  return { error: error?.message ?? null };
 }

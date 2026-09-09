@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Shield, X } from 'lucide-react-native';
 import { Colors, Radii, Spacing, Typography } from '@/constants/theme';
-import { fetchConnectedPartners, PartnerConsentInfo } from '@/lib/medicalService';
+import { fetchConnectedPartners, PartnerConsentInfo, revokeConsent, grantConsent } from '@/lib/medicalService';
 
 interface Props {
   visible: boolean;
@@ -30,6 +32,7 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [partners, setPartners] = useState<PartnerConsentInfo[]>([]);
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   useEffect(() => {
     if (!visible || !athleteId) return;
@@ -48,6 +51,40 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
     });
     return () => { mounted = false; };
   }, [visible, athleteId]);
+
+  async function handleToggleConsent(partner: PartnerConsentInfo) {
+    if (!partner.consentId) return;
+    const isGranted = partner.consentStatus === 'granted';
+    const action = async () => {
+      setActionInProgress(partner.partnerId);
+      const { error } = isGranted
+        ? await revokeConsent(partner.consentId!)
+        : await grantConsent(partner.consentId!);
+      if (error) {
+        Alert.alert('Could not update access', error);
+      } else if (athleteId) {
+        const { data } = await fetchConnectedPartners(athleteId);
+        setPartners(data);
+      }
+      setActionInProgress(null);
+    };
+    if (isGranted) {
+      if (Platform.OS === 'web') {
+        if (globalThis.confirm(`Revoke ${partner.partnerName}'s access to your medical records?`)) void action();
+        return;
+      }
+      Alert.alert(
+        `Revoke ${partner.partnerName}'s access?`,
+        'They will no longer be able to view your medical records.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Revoke', style: 'destructive', onPress: () => void action() },
+        ],
+      );
+    } else {
+      void action();
+    }
+  }
 
   return (
     <Modal
@@ -99,6 +136,23 @@ export function PartnerConsentsModal({ visible, athleteId, onClose }: Props) {
                       <Text style={[s.pillTxt, { color: pill.color }]}>{pill.text}</Text>
                     </View>
                     <Text style={s.meta}>{meta}</Text>
+                    {partner.consentId && (
+                      <TouchableOpacity
+                        style={s.actionBtn}
+                        disabled={actionInProgress === partner.partnerId}
+                        onPress={() => handleToggleConsent(partner)}
+                        accessibilityRole="button"
+                        accessibilityLabel={partner.consentStatus === 'granted' ? `Revoke access for ${partner.partnerName}` : `Grant access for ${partner.partnerName}`}
+                      >
+                        {actionInProgress === partner.partnerId ? (
+                          <ActivityIndicator color={Colors.primary} size="small" />
+                        ) : (
+                          <Text style={[s.actionBtnTxt, partner.consentStatus === 'granted' && { color: Colors.error }]}>
+                            {partner.consentStatus === 'granted' ? 'Revoke Access' : 'Grant Access'}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                 );
               })
@@ -132,4 +186,6 @@ const s = StyleSheet.create({
   pill: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: Radii.full, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1 },
   pillTxt: { fontFamily: Typography.family.bold, fontSize: 10 },
   meta: { fontFamily: Typography.family.regular, fontSize: Typography.size.xs, color: Colors.textMuted },
+  actionBtn: { alignSelf: 'flex-start', marginTop: Spacing.xs, paddingVertical: 6, paddingHorizontal: 12, borderRadius: Radii.md, borderWidth: 1, borderColor: Colors.border },
+  actionBtnTxt: { fontFamily: Typography.family.bold, fontSize: Typography.size.xs, color: Colors.primary },
 });
