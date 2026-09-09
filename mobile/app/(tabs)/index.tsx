@@ -347,6 +347,7 @@ export default function Dashboard() {
   const [opps, setOpps] = useState<OppCard[]>([]);
   const [attributes, setAttributes] = useState<AttributeCard[]>([]);
   const [form, setForm] = useState<MatchCard[]>([]);
+  const [medicalClearance, setMedicalClearance] = useState<{ status: string; effective_to: string | null; created_at: string } | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
@@ -359,7 +360,7 @@ export default function Dashboard() {
     setDashboardLoading(true);
     setDashboardError(null);
     try {
-      const [views, matches, scoutRows, oppRows, attributeRows, matchRows] = await Promise.all([
+      const [views, matches, scoutRows, oppRows, attributeRows, matchRows, clearanceRow] = await Promise.all([
       profile?.athlete_profile_id
         ? supabase
           .from('profile_views')
@@ -396,6 +397,15 @@ export default function Dashboard() {
           .order('match_date', { ascending: false })
           .limit(5)
         : Promise.resolve({ data: [] }),
+      profile?.athlete_profile_id
+        ? supabase
+          .from('medical_clearances')
+          .select('status, effective_to, created_at')
+          .eq('athlete_id', profile.athlete_profile_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        : Promise.resolve({ data: null }),
     ]);
       setScoutViews(views.count ?? 0);
       setOpportunityMatches(matches.count ?? 0);
@@ -487,6 +497,7 @@ export default function Dashboard() {
         })
         .filter((c): c is MatchCard => c !== null);
       setForm(mappedForm);
+      setMedicalClearance(clearanceRow.data ?? null);
     } catch (err) {
       setDashboardError(err instanceof Error ? err.message : 'Unable to load dashboard. Check your connection and try again.');
     } finally {
@@ -528,6 +539,21 @@ export default function Dashboard() {
     { label: 'Open Opps', value: opportunityMatches, display: String(opportunityMatches), delta: 'Live', sub: 'matched', Icon: Target, grad: ['#2D1F0A', '#5C3A10'] as const, accent: Colors.warning },
     { label: 'Performance', value: performanceScore, display: String(performanceScore), delta: 'Live', sub: 'score', Icon: TrendingUp, grad: ['#2A1010', '#5C1A1A'] as const, accent: Colors.error },
   ];
+
+  const clearanceStatus = medicalClearance?.status ?? null;
+  const clearanceValid = medicalClearance?.effective_to
+    ? new Date(medicalClearance.effective_to).getTime() >= new Date().setHours(0, 0, 0, 0)
+    : true;
+  const isCleared = clearanceStatus === 'cleared' && clearanceValid;
+  const medicalPillText =
+    clearanceStatus === 'cleared' && clearanceValid ? 'CLEARED · Active clearance' :
+    clearanceStatus === 'cleared' && !clearanceValid ? 'EXPIRED · Clearance lapsed' :
+    clearanceStatus === 'restricted' ? 'RESTRICTED · Cleared with restrictions' :
+    clearanceStatus === 'not_cleared' ? 'NOT CLEARED' :
+    'PENDING · No active clearance';
+  const medicalLastVerified = medicalClearance?.created_at
+    ? new Date(medicalClearance.created_at).toLocaleDateString()
+    : '—';
 
   return (
     <View style={s.root}>
@@ -849,16 +875,20 @@ export default function Dashboard() {
             </View>
             <View style={{ flex: 1 }}>
               <View style={s.medPill}>
-                <Text style={s.medPillTxt}>PENDING · No active clearance</Text>
+                <Text style={s.medPillTxt}>{medicalPillText}</Text>
               </View>
               <Text style={s.medDesc}>Medical intelligence will appear when a partner-issued clearance is available.</Text>
             </View>
           </View>
           <View style={s.medFooter}>
             <Clock color={Colors.textDisabled} size={11} />
-            <Text style={s.medTime}>Last verified: —</Text>
-            <BadgeCheck color={Colors.primary} size={12} />
-            <Text style={s.medVerified}>Verified</Text>
+            <Text style={s.medTime}>Last verified: {medicalLastVerified}</Text>
+            {isCleared && (
+              <>
+                <BadgeCheck color={Colors.primary} size={12} />
+                <Text style={s.medVerified}>Verified</Text>
+              </>
+            )}
           </View>
         </RevealCard>
 
