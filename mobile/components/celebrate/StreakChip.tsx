@@ -8,6 +8,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { Button, Sheet, Text } from '@/components/ui';
 import { useProgress } from '@/providers/ProgressProvider';
 import { useT } from '@/i18n';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { StreakCalendar } from './StreakCalendar';
 
 interface Props {
@@ -66,11 +67,11 @@ export function StreakChip({ current, style, testID }: Props) {
       Animated.timing(roll, {
         toValue: 1,
         duration: theme.duration.slow,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }),
       Animated.sequence([
-        Animated.spring(pulse, { toValue: 1, useNativeDriver: true, friction: 4, tension: 120 }),
-        Animated.spring(pulse, { toValue: 0, useNativeDriver: true, friction: 6, tension: 90 }),
+        Animated.spring(pulse, { toValue: 1, useNativeDriver: NATIVE_DRIVER, friction: 4, tension: 120 }),
+        Animated.spring(pulse, { toValue: 0, useNativeDriver: NATIVE_DRIVER, friction: 6, tension: 90 }),
       ]),
     ]);
 

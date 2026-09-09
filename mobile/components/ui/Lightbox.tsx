@@ -18,6 +18,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { huePair } from '@/theme/tokens';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
 interface Props {
@@ -66,7 +67,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
     }
     Animated.spring(enter, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
       speed: 16,
       bounciness: 5,
     }).start();
@@ -91,7 +92,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
       toValue: 0,
       duration: 160,
       easing: Easing.in(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start(({ finished }) => {
       if (finished) onClose();
     });

@@ -11,6 +11,7 @@ import { AnimatedGradient, Button, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { LegalLine } from '@/components/onboarding/Shared';
 import { Routes } from '@/lib/routes';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 /**
  * The first screen anyone sees.
@@ -60,7 +61,7 @@ export default function WelcomeScreen() {
       toValue: 1,
       duration: 520,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
   }, [entrance]);
 

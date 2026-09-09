@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
 export type ToastTone = 'success' | 'error' | 'info' | 'warning';
@@ -48,7 +49,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       toValue: -140,
       duration: 180,
       easing: Easing.in(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start(() => setToast(null));
   }, [translate]);
 
@@ -61,7 +62,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         toValue: 0,
         duration: 260,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }).start();
       const ms = payload.duration ?? (payload.tone === 'error' ? 5000 : 3200);
       timer.current = setTimeout(hide, ms);

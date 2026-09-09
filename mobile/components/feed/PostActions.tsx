@@ -8,6 +8,7 @@ import { AnimatedNumber, Tappable } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 interface Props {
   liked: boolean;
@@ -60,8 +61,8 @@ export function PostActions({
 
     if (liked) {
       Animated.sequence([
-        Animated.spring(pop, { toValue: 1.3, useNativeDriver: true, speed: 60, bounciness: 12 }),
-        Animated.spring(pop, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 8 }),
+        Animated.spring(pop, { toValue: 1.3, useNativeDriver: NATIVE_DRIVER, speed: 60, bounciness: 12 }),
+        Animated.spring(pop, { toValue: 1, useNativeDriver: NATIVE_DRIVER, speed: 30, bounciness: 8 }),
       ]).start();
       return;
     }
@@ -73,13 +74,13 @@ export function PostActions({
         toValue: 0.85,
         duration: theme.duration.fast,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }),
       Animated.timing(pop, {
         toValue: 1,
         duration: theme.duration.base,
         easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }),
     ]).start();
   }, [liked, pop, reduced, theme.duration.fast, theme.duration.base]);
@@ -96,7 +97,7 @@ export function PostActions({
     if (saved) {
       Animated.spring(fill, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
         speed: 26,
         bounciness: 14,
       }).start();
@@ -106,7 +107,7 @@ export function PostActions({
       toValue: 0,
       duration: theme.duration.fast,
       easing: Easing.out(Easing.quad),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
   }, [saved, fill, reduced, theme.duration.fast]);
 

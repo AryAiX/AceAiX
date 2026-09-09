@@ -5,6 +5,7 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, TierLabels, tierForScore, tierGradient } from '@/theme/tokens';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -108,13 +109,13 @@ export function ScoreRing({
           toValue: 1,
           duration: 280,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(glow, {
           toValue: 0,
           duration: 620,
           easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
       Animated.sequence([
@@ -122,14 +123,14 @@ export function ScoreRing({
           toValue: 1,
           duration: 200,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.delay(340),
         Animated.timing(sheenFade, {
           toValue: 0,
           duration: 300,
           easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
       /* SVG geometry has no native-driver equivalent, so the travel runs on the

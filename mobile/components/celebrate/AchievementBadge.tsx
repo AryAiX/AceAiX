@@ -4,6 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { raritySkin, type AchievementMeta } from './achievements';
 
 export type BadgeSize = 'sm' | 'md' | 'lg';
@@ -61,11 +62,11 @@ export function AchievementBadge({
         Animated.timing(enter, {
           toValue: 1,
           duration: theme.duration.slow,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         })
       : Animated.spring(enter, {
           toValue: 1,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
           friction: 5,
           tension: 90,
         });

@@ -13,6 +13,7 @@ import { toggleLike, toggleSave } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { displayName, metaLine, relativeTime } from '@/lib/format';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import type { FeedPost } from '@/types/models';
 import { MediaCarousel } from './MediaCarousel';
 import { PostActions } from './PostActions';
@@ -142,13 +143,13 @@ function PostCardBase({
           toValue: 1,
           duration: reduced ? theme.duration.fast : 130,
           easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         reduced
           ? Animated.delay(0)
           : Animated.spring(burstScale, {
               toValue: 1.1,
-              useNativeDriver: true,
+              useNativeDriver: NATIVE_DRIVER,
               speed: 18,
               bounciness: 14,
             }),
@@ -159,7 +160,7 @@ function PostCardBase({
           toValue: 0,
           duration: theme.duration.base,
           easing: Easing.in(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         reduced
           ? Animated.delay(0)
@@ -167,7 +168,7 @@ function PostCardBase({
               toValue: 1.35,
               duration: theme.duration.base,
               easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
+              useNativeDriver: NATIVE_DRIVER,
             }),
       ]),
     ]).start();

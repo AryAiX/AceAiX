@@ -13,6 +13,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
 // ── SegmentedControl ──────────────────────────────────────────────────────────
@@ -48,7 +49,7 @@ export function SegmentedControl<T extends string>({
       toValue: (i * widthRef.current) / options.length,
       duration: 200,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
 
   return (

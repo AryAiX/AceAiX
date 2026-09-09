@@ -20,7 +20,11 @@ import { SavedBadge } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotificationPreferences, saveNotificationPreferences } from '@/lib/api';
-import { hasPushPermission, requestPushPermissionSafely } from '@/lib/api.settings';
+import {
+  hasPushPermission,
+  pushSupported,
+  requestPushPermissionSafely,
+} from '@/lib/api.settings';
 import { errorMessage } from '@/lib/errors';
 import type { NotificationPreferences } from '@/types/models';
 
@@ -63,7 +67,10 @@ export default function NotificationSettingsScreen() {
     if (loaded.data) setPrefs({ ...DEFAULTS, ...loaded.data });
   }, [loaded.data]);
 
+  /* On web there is nothing to grant, so the card below stays away rather than
+     offering to turn on something a browser cannot receive. */
   useEffect(() => {
+    if (!pushSupported) return;
     let cancelled = false;
     hasPushPermission().then((granted) => {
       if (!cancelled) setPushGranted(granted);

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Button } from './Button';
 import { Text } from './Text';
 
@@ -63,9 +64,9 @@ export function Sheet({
           toValue: 0,
           duration: 260,
           easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
-        Animated.timing(backdrop, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.timing(backdrop, { toValue: 1, duration: 200, useNativeDriver: NATIVE_DRIVER }),
       ]).start();
     } else {
       translate.setValue(screenH);

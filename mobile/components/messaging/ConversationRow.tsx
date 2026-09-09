@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { displayName, relativeTime, truncate } from '@/lib/format';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import type { Conversation } from '@/types/models';
 
 interface Props {
@@ -45,7 +46,7 @@ export function ConversationRow({ conversation, muted, onPress, onOpenActions }:
         pulled.current = 0;
         Animated.spring(translate, {
           toValue: 0,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
           speed: 20,
           bounciness: 6,
         }).start(() => {
@@ -54,7 +55,7 @@ export function ConversationRow({ conversation, muted, onPress, onOpenActions }:
       },
       onPanResponderTerminate: () => {
         pulled.current = 0;
-        Animated.spring(translate, { toValue: 0, useNativeDriver: true, speed: 20 }).start();
+        Animated.spring(translate, { toValue: 0, useNativeDriver: NATIVE_DRIVER, speed: 20 }).start();
       },
     }),
   ).current;

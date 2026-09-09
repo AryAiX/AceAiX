@@ -3,6 +3,7 @@ import { Animated, Pressable, View, ViewProps, ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 interface Props extends ViewProps {
   /** 0 = flat with border, 1–3 = raised. */
@@ -39,7 +40,7 @@ export function Card({
       }
       Animated.spring(scale, {
         toValue: pressed ? 0.985 : 1,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
         speed: 45,
         bounciness: pressed ? 0 : 5,
       }).start();

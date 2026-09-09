@@ -5,6 +5,7 @@ import Svg, { Circle, Rect } from 'react-native-svg';
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors } from '@/theme/tokens';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 interface Props {
   /** Number of particles. Clamped to 12–60; 30–40 is the sweet spot. */
@@ -112,7 +113,7 @@ export function Confetti({ count = 34, origin, colors, duration = 2200, onDone }
       toValue: 1,
       duration,
       easing: Easing.linear,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     });
 
     animation.start();

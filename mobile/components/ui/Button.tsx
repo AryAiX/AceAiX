@@ -13,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
@@ -105,7 +106,7 @@ export function Button({
   const animate = (to: number) =>
     Animated.spring(scale, {
       toValue: to,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
       speed: 40,
       bounciness: 4,
     }).start();

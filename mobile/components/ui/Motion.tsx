@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 /**
  * The motion kit.
@@ -14,7 +15,9 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
  * to the finished state, immediately.
  *
  * `react-native-reanimated` is stubbed out in this project, so everything here
- * is RN's own `Animated`, native-driven wherever the property allows it.
+ * is RN's own `Animated`, native-driven wherever the property allows it — and
+ * wherever the platform has a native driver at all, which a browser does not.
+ * See `lib/motion.ts`.
  */
 
 // ── Reveal ────────────────────────────────────────────────────────────────────
@@ -62,7 +65,7 @@ export function Reveal({
       Animated.delay(wait),
       Animated.spring(t, {
         toValue: 1,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
         speed: 14,
         bounciness: 6,
       }),
@@ -148,13 +151,13 @@ export function AnimatedGradient({
           toValue: 1,
           duration: half,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(drift, {
           toValue: 0,
           duration: half,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
     );
@@ -215,9 +218,9 @@ export function Shine({ width = 0.35, every = 5, color, radius }: ShineProps) {
           toValue: 1,
           duration: 900,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
-        Animated.timing(x, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(x, { toValue: 0, duration: 0, useNativeDriver: NATIVE_DRIVER }),
       ]),
     );
     loop.start();
@@ -292,7 +295,7 @@ export function Pulse({
         toValue: 1,
         duration: period * 1000,
         easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
       }),
     );
     loop.start();

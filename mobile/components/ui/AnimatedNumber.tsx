@@ -3,6 +3,7 @@ import { Animated, Easing, StyleProp, TextStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 import type { TextTone, TextVariant } from './Text';
 
@@ -98,7 +99,7 @@ function AnimatedNumberBase({
       }),
       Animated.spring(shift, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
         speed: 20,
         bounciness: 6,
       }),

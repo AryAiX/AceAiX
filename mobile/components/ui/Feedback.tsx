@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { Button } from './Button';
 import { Text } from './Text';
 
@@ -141,13 +142,13 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }: Ske
           toValue: 0.4,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(pulse, {
           toValue: 1,
           duration: 700,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
     );
@@ -164,7 +165,7 @@ export function Skeleton({ width = '100%', height = 16, radius = 8, style }: Ske
           toValue: 1,
           duration: 1000,
           easing: Easing.inOut(Easing.quad),
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.delay(320),
       ]),

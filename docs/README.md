@@ -35,7 +35,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 19 | [`19-discovery-features.md`](./19-discovery-features.md) | Fandom, weekly challenges, the profile-views digest, the score simulator and the player card — and why none of them moved the Talent Score | Mobile + Backend |
 | 20 | [`20-colour-and-motion.md`](./20-colour-and-motion.md) | The mobile palette, the tier ramp, the motion kit — and the two web-only rendering traps that shipped once each | Mobile |
 | 21 | [`21-meetups-and-translation.md`](./21-meetups-and-translation.md) | Meetups — the eighteen-plus floor and the three gates that enforce it, why there are still no coordinates — and the cached, provider-agnostic "See translation" | Mobile + Backend |
-| 22 | [`22-endorsements-and-edges.md`](./22-endorsements-and-edges.md) | The endorsement write path the score had been advertising for a year, the two rules that only mattered once anyone could reach the table — and three layout defects that all read as "the margins are wrong" | Mobile + Backend |
+| 22 | [`22-endorsements-and-edges.md`](./22-endorsements-and-edges.md) | The endorsement write path the score had been advertising, the two rules that only mattered once anyone could reach the table — plus three layout defects that all read as "the margins are wrong", and the two console warnings that had to be fixed at the import rather than the call | Mobile + Backend |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–22 describe the product as it stands** after the September 2026
@@ -65,6 +65,9 @@ seven languages today, with no i18n library. See 16.
   [22](./22-endorsements-and-edges.md) §5 for the third, which was a transform on a full-width box.
 - **Putting anything inside a card?** [22](./22-endorsements-and-edges.md) §6 — `Card padded={false}`
   means each row pays for its own margin, and `tests/e2e/cards.mjs` measures whether it did.
+- **Reaching for `expo-notifications` or `useNativeDriver`?** [22](./22-endorsements-and-edges.md) §7 —
+  both go through a module (`lib/push.ts`, `lib/motion.ts`) rather than being imported directly, and
+  `tests/e2e/console.mjs` fails the build if a warning comes back.
 - **Touching challenges, fandom or the score simulator?** [19](./19-discovery-features.md) — and
   note that none of them may move the Talent Score's weights.
 - **Starting fresh on the product itself?** Read 01 → 02 → 03 → 07 → 08.

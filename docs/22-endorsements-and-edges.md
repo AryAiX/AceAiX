@@ -1,7 +1,8 @@
-# 22 — Endorsements, and three edges that were wrong
+# 22 — Endorsements, and the edges
 
-> One feature the app had been advertising without providing, and three layout
-> defects that all read as "the margins are wrong" from the outside.
+> One feature the app had been advertising without providing; three layout
+> defects that all read as "the margins are wrong" from the outside; and two
+> console warnings that could not be fixed where they appeared to come from.
 
 ---
 
@@ -106,10 +107,10 @@ REVOKE survives a green suite. The same trap as the RLS one in
 
 ---
 
-## Part two: three edges
+## Part two: the edges
 
-All three arrived as one report — "the right-hand margins are wrong" — and none
-of them was in a margin.
+The first three arrived as one report — "the right-hand margins are wrong" — and
+none of them was in a margin.
 
 ### 5. A 3% breath on a full-width box
 
@@ -150,7 +151,55 @@ clips it. `ListItem` now takes `inset` for exactly that case, and
 `tests/e2e/cards.mjs` measures every card-like surface in the built app against
 everything drawn inside it, so the next instance is found rather than reported.
 
-### 7. What the audit still reports, and should
+### 7. Two console warnings nobody could act on
+
+The web build printed these on every launch:
+
+```
+[expo-notifications] Listening to push token changes is not yet fully
+supported on web. Adding a listener will have no effect.
+
+Animated: `useNativeDriver` is not supported because the native animated
+module is missing. Falling back to JS-based animation.
+```
+
+Both describe correct behaviour and ask for nothing, which is the worst kind:
+they train everybody reading the console to skim past warnings, and the next
+one will be real.
+
+The first could not be fixed by a guard. `expo-notifications` subscribes to
+device push token changes **at module scope**, in
+`DevicePushTokenAutoRegistration.fx`, so it warns the moment the module is
+evaluated — long before any `Platform.OS === 'web'` check inside a function
+could run. The only fix is not to import it on web, so everything that touches
+it now goes through `lib/push.ts`, which has a `push.web.ts` twin that Metro
+resolves first. That takes the notifications module and its abort-controller
+polyfill out of the web bundle entirely, where neither could ever have worked:
+**3.7 MB → 3.5 MB.**
+
+It also retired a duplicate. `api.settings.ts` carried a push-permission bridge
+written while the hook was still being built — a `require` of the hook with a
+fallback that imported `expo-notifications` directly. The hook has existed for
+some time; the fallback had quietly become a second copy of the rules with a
+different failure default (it reported "granted" on error so the settings screen
+would not nag, where the hook reported "denied"). One implementation now, and
+the screen asks `pushSupported` instead, so it leaves the card out on web rather
+than offering to turn on something a browser cannot receive.
+
+The second was sixty-five literal `useNativeDriver: true`s. There is no native
+animated module in a browser, and the JS fallback the warning describes is
+exactly what we want there, so the flag is now `NATIVE_DRIVER` from
+`lib/motion.ts` — `Platform.OS !== 'web'`. Nothing changes on a phone. The ten
+places that need `useNativeDriver: false` because they animate a layout or
+colour property stay written out as `false`, so the reason stays visible where
+it applies.
+
+`tests/e2e/console.mjs` signs in, walks five screens and fails on any warning or
+error the app is responsible for. It currently reports **clean**. It also fails
+outright if `expo-notifications` reappears in the web bundle, because that
+particular regression is invisible: nothing breaks except the console.
+
+### 8. What the audit still reports, and should
 
 The `SegmentedControl` shows a 4px gutter around its active thumb. That is the
 control's design — a pill inside a track — not a card edge, and the audit names
@@ -159,7 +208,7 @@ baked in stops being a measurement.
 
 ---
 
-## 8. The demo data this needed
+## 9. The demo data this needed
 
 Endorsements are given by one account to another, and follower lists are lists
 of other people, so both were untestable against a seed with four roles in it.
@@ -174,7 +223,7 @@ yet" — a gap in the recording that read exactly like a bug in the app.
 
 ---
 
-## 9. Related documents
+## 10. Related documents
 
 - [11 — Talent Score](11-talent-score.md) — the 45 points this feature feeds
 - [20 — Colour and motion](20-colour-and-motion.md) — the button that breathes

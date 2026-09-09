@@ -11,6 +11,7 @@ import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
@@ -55,15 +56,15 @@ function TabIcon({
       toValue: focused ? 1 : 0,
       duration: 180,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
   }, [focused, lift, reduced]);
 
   useEffect(() => {
     if (bump === 0 || reduced) return;
     Animated.sequence([
-      Animated.spring(bounce, { toValue: 1.18, useNativeDriver: true, speed: 70, bounciness: 0 }),
-      Animated.spring(bounce, { toValue: 1, useNativeDriver: true, speed: 34, bounciness: 12 }),
+      Animated.spring(bounce, { toValue: 1.18, useNativeDriver: NATIVE_DRIVER, speed: 70, bounciness: 0 }),
+      Animated.spring(bounce, { toValue: 1, useNativeDriver: NATIVE_DRIVER, speed: 34, bounciness: 12 }),
     ]).start();
   }, [bump, bounce, reduced]);
 
@@ -133,7 +134,7 @@ function CreateButton({ bottom }: { bottom: number }) {
       scale.setValue(1);
       return;
     }
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 50, bounciness: 6 }).start();
+    Animated.spring(scale, { toValue: to, useNativeDriver: NATIVE_DRIVER, speed: 50, bounciness: 6 }).start();
   };
 
   /**
@@ -154,13 +155,13 @@ function CreateButton({ bottom }: { bottom: number }) {
             toValue: 1,
             duration: 2600,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: NATIVE_DRIVER,
           }),
           Animated.timing(glow, {
             toValue: 1,
             duration: 2600,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: NATIVE_DRIVER,
           }),
         ]),
         Animated.parallel([
@@ -168,13 +169,13 @@ function CreateButton({ bottom }: { bottom: number }) {
             toValue: 0,
             duration: 2600,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: NATIVE_DRIVER,
           }),
           Animated.timing(glow, {
             toValue: 0,
             duration: 2600,
             easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
+            useNativeDriver: NATIVE_DRIVER,
           }),
         ]),
       ]),

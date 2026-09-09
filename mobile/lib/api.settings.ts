@@ -198,51 +198,21 @@ export async function shareDataExport(file: ExportedFile): Promise<boolean> {
   return result.action !== Share.dismissedAction;
 }
 
-// ── Push permission bridge ───────────────────────────────────────────────────
-interface PushModule {
-  requestPushPermission?: () => Promise<boolean>;
-}
-
-/**
- * Ask for push permission through the notifications hook when it is available.
+// ── Push permission ──────────────────────────────────────────────────────────
+/*
+ * These used to be a bridge: a `require` of the notifications hook with a
+ * fallback that imported `expo-notifications` directly, written while the hook
+ * was still being built. The hook exists now, and the fallback had become the
+ * second copy of the rules — it read permission with a different failure
+ * default from the hook's, and its dynamic import pulled the notifications
+ * module into the web bundle, where merely loading it prints a warning about
+ * push token listeners (see `lib/push.ts`).
  *
- * That hook is owned by another part of the app and registers the device token
- * as well as asking the OS, so we prefer it. When it is missing we fall back to
- * asking expo-notifications directly rather than doing nothing.
- *
- * `require` rather than `import` on purpose: an ES import of a module that does
- * not exist yet fails to compile, and this screen must keep working while the
- * hook is still being written.
+ * One implementation, re-exported so the settings screen keeps its import.
  */
-export async function requestPushPermissionSafely(): Promise<boolean> {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('@/hooks/usePushNotifications') as PushModule;
-    if (typeof mod?.requestPushPermission === 'function') {
-      return await mod.requestPushPermission();
-    }
-  } catch {
-    /* the hook is not in the bundle yet — fall through */
-  }
+export {
+  requestPushPermission as requestPushPermissionSafely,
+  hasPushPermission,
+} from '@/hooks/usePushNotifications';
 
-  try {
-    const Notifications = await import('expo-notifications');
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  } catch {
-    return false;
-  }
-}
-
-/** Whether the OS has already granted permission to show notifications. */
-export async function hasPushPermission(): Promise<boolean> {
-  try {
-    const Notifications = await import('expo-notifications');
-    const { status } = await Notifications.getPermissionsAsync();
-    return status === 'granted';
-  } catch {
-    // Permission state is unknowable on web and in Expo Go on some platforms;
-    // treat that as "granted" so we never nag with a card that cannot help.
-    return true;
-  }
-}
+export { pushSupported } from '@/lib/push';

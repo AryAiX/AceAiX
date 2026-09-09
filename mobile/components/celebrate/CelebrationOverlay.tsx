@@ -16,6 +16,7 @@ import { TierColors, type Tier } from '@/theme/tokens';
 import { Button, ScoreRing, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { AchievementKey } from '@/types/models';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { AchievementBadge } from './AchievementBadge';
 import { Confetti } from './Confetti';
 import { achievementFor } from './achievements';
@@ -324,9 +325,9 @@ function StreakCard({ days }: { days: number }) {
       ? Animated.timing(enter, {
           toValue: 1,
           duration: theme.duration.slow,
-          useNativeDriver: true,
+          useNativeDriver: NATIVE_DRIVER,
         })
-      : Animated.spring(enter, { toValue: 1, useNativeDriver: true, friction: 5, tension: 90 });
+      : Animated.spring(enter, { toValue: 1, useNativeDriver: NATIVE_DRIVER, friction: 5, tension: 90 });
     animation.start();
     return () => animation.stop();
   }, [enter, reduceMotion, theme.duration.slow]);

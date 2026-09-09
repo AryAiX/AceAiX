@@ -11,6 +11,7 @@ import {
 import * as Haptics from 'expo-haptics';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 export interface TappableProps extends Omit<PressableProps, 'style'> {
   /** Same shape as `Pressable`'s — object, array, or `({ pressed }) => style`. */
@@ -59,7 +60,7 @@ export function Tappable({
       dim.setValue(1);
       Animated.spring(scale, {
         toValue: pressed ? scaleTo : 1,
-        useNativeDriver: true,
+        useNativeDriver: NATIVE_DRIVER,
         speed: 40,
         bounciness: pressed ? 0 : 6,
       }).start();

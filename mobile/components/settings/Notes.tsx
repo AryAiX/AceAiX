@@ -5,6 +5,7 @@ import { Check, CircleAlert, Info, Lock, ShieldCheck } from 'lucide-react-native
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { NATIVE_DRIVER } from '@/lib/motion';
 
 export type NoteTone = 'info' | 'warning' | 'danger' | 'success' | 'neutral';
 
@@ -100,7 +101,7 @@ export function SavedBadge({ visible, label }: { visible: boolean; label?: strin
     Animated.timing(opacity, {
       toValue: visible ? 1 : 0,
       duration: visible ? duration.fast : duration.base,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
     }).start();
   }, [visible, opacity, duration]);
 
