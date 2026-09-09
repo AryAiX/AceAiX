@@ -18,6 +18,9 @@
     "test:walkthrough": "npm run build:web && node tests/e2e/walkthrough.mjs",
     "backend:local": "../tools/local-supabase/start.sh",
     "db:test": "../supabase/tests/run-all.sh",
+    "test:pipelines": "node tests/e2e/pipelines.mjs",
+    "test:contract": "node tests/e2e/contract.mjs",
+    "test:backend": "npm run db:test && npm run test:contract && npm run test:pipelines",
     "preview": "npm run build:web && node tests/e2e/record-demo.mjs && node tests/e2e/build-preview.mjs",
     "preview:check": "node tests/e2e/check-preview.mjs preview.html",
     "preview:hosted": "node tests/e2e/check-hosted.mjs preview.html"
