@@ -110,6 +110,14 @@ function interpolate(template: string, vars?: Vars): string {
   });
 }
 
+function pluralCategory(code: LanguageCode, count: number): string {
+  try {
+    return new Intl.PluralRules(code).select(count);
+  } catch {
+    return count === 1 ? 'one' : 'other';
+  }
+}
+
 /**
  * Resolve a dotted key against a catalogue, falling back to English and then
  * to the key itself — a visible key in the UI is a bug report; a blank space
@@ -126,7 +134,7 @@ function lookup(
 
   // Plural forms: `likes_one`, `likes_other`, and for Arabic `likes_zero` etc.
   if (value === undefined && vars && typeof vars.count === 'number') {
-    const category = new Intl.PluralRules(code).select(vars.count);
+    const category = pluralCategory(code, vars.count);
     const last = path[path.length - 1];
     const stem = path.slice(0, -1);
     value =
