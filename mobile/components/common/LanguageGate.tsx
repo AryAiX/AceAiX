@@ -8,6 +8,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Sheet, Text } from '@/components/ui';
 import { LanguageCode, tryRestartApp, useI18n } from '@/i18n';
 import { LanguageList } from './LanguageList';
+import { LogoMark } from './Logo';
 
 /**
  * The first thing anyone sees, once, on a fresh install.
@@ -50,12 +51,18 @@ export function LanguageGate() {
         contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.giant }}
         showsVerticalScrollIndicator={false}
       >
-        <Text variant="title" style={{ letterSpacing: 0.4 }}>
-          Ace
-          <Text variant="title" tone="primary">
-            AiX
+        {/* This, not the welcome screen, is the first thing a new install
+            shows — so it is where the logo from the splash has to reappear,
+            or the app loses its own mark one screen after the icon. */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <LogoMark size={32} />
+          <Text variant="title" style={{ letterSpacing: 0.4 }}>
+            Ace
+            <Text variant="title" tone="primary">
+              AiX
+            </Text>
           </Text>
-        </Text>
+        </View>
 
         <View style={{ marginTop: spacing.xxl, marginBottom: spacing.xl, gap: spacing.sm }}>
           {/* Shown in whichever language the phone is set to, since that is our

@@ -37,9 +37,10 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 21 | [`21-meetups-and-translation.md`](./21-meetups-and-translation.md) | Meetups — the eighteen-plus floor and the three gates that enforce it, why there are still no coordinates — and the cached, provider-agnostic "See translation" | Mobile + Backend |
 | 23 | [`23-backend-pipelines.md`](./23-backend-pipelines.md) | Whether a write by one person actually reaches another: the two suites that check delivery rather than rules, what they found, and the fact that the SQL suite was never in CI | Backend + Eng |
 | 22 | [`22-endorsements-and-edges.md`](./22-endorsements-and-edges.md) | The endorsement write path the score had been advertising, the two rules that only mattered once anyone could reach the table — plus three layout defects that all read as "the margins are wrong", and the two console warnings that had to be fixed at the import rather than the call | Mobile + Backend |
+| 24 | [`24-the-logo.md`](./24-the-logo.md) | The brand assets, generated from one file rather than exported eight times: why the app icon must have no alpha channel, why the splash needs two images, and the launch sequence that used to blink through two empty screens | Mobile + Web + Design |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
-marketing and admin surface. **10–23 describe the product as it stands** after the September 2026
+marketing and admin surface. **10–24 describe the product as it stands** after the September 2026
 mobile rebuild: `mobile/` is the 1.0 app, and the Supabase schema it shares with `web/` was extended
 by migrations `20260825000000`, `20260904000001`–`…0011` and `20260907000001`–`…0008` and `20260909000001`–`…0003`. Where 01–09 and 10–23 disagree about
 the mobile client, 10–23 win; for schema and RLS baseline, 03 and 06 still apply.

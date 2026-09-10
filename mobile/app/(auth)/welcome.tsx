@@ -10,6 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { AnimatedGradient, Button, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { LegalLine } from '@/components/onboarding/Shared';
+import { LogoMark } from '@/components/common/Logo';
 import { Routes } from '@/lib/routes';
 import { NATIVE_DRIVER } from '@/lib/motion';
 
@@ -71,7 +72,15 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    /* `overflow: hidden` is load-bearing, not tidiness. The three flares below
+       are positioned deliberately off-canvas (`right: -120` on a 360pt box) so
+       they read as light spilling in from outside the screen. On a phone that
+       costs nothing. On web the page is a real document, so an unclipped child
+       makes the document 120px wider than the viewport: the whole screen can
+       be dragged sideways and a strip of bare page sits down the right — the
+       same failure the create button had, from the same cause. This screen is
+       signed-out, so the preview walk never reached it. */
+    <View style={{ flex: 1, backgroundColor: colors.bg, overflow: 'hidden' }}>
       <StatusBar style={colors.statusBar} />
 
       {/*
@@ -127,11 +136,17 @@ export default function WelcomeScreen() {
             ]}
           >
             {/* Wordmark. The brand is cased "AceAiX" — the display face is
-                already condensed, so it does not need shouting as well. */}
+                already condensed, so it does not need shouting as well. The
+                mark leads, because this is the screen where somebody meets the
+                app for the first time and the icon they tapped should still be
+                on it. */}
             <View style={{ paddingTop: spacing.xl, gap: spacing.xs }}>
-              <Text variant="title" style={{ letterSpacing: 0.4 }}>
-                Ace<Text variant="title" tone="primary">AiX</Text>
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <LogoMark size={34} />
+                <Text variant="title" style={{ letterSpacing: 0.4 }}>
+                  Ace<Text variant="title" tone="primary">AiX</Text>
+                </Text>
+              </View>
               <Text variant="overline" tone="primary">
                 {t('common.tagline')}
               </Text>
