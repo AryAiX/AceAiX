@@ -133,7 +133,7 @@ the repo was verified by somebody running the script on a laptop.
 
 The job installs PostgreSQL 16, pgvector and a PostgREST binary the same way a
 laptop does, because the local stack is deliberately Docker-free (see
-[docs/14](14-local-development.md)). It applies all 43 migrations from scratch,
+[docs/14](14-local-development.md)). It applies all 66 migrations from scratch,
 seeds thirteen demo accounts and runs the three suites in order: rules, then
 contract, then delivery.
 
