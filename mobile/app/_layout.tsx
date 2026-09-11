@@ -23,6 +23,7 @@ import { ToastProvider } from '@/components/ui';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { UnreadProvider } from '@/providers/UnreadProvider';
 import { ProgressProvider } from '@/providers/ProgressProvider';
+import { BrandSplash } from '@/components/common/BrandSplash';
 import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
@@ -101,7 +102,7 @@ function Shell() {
      point deciding which screen to show until we know what language to show it
      in. On every launch after the first, the stored choice makes this
      invisible. */
-  if (languageLoading) return <View style={{ flex: 1, backgroundColor: theme.colors.bg }} />;
+  if (languageLoading) return <BrandSplash />;
   if (!hasChosen) return <LanguageGate />;
 
   return (

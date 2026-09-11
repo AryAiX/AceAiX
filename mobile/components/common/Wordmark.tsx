@@ -1,46 +1,45 @@
 import React from 'react';
 import { View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Shine, Text } from '@/components/ui';
+import { Text } from '@/components/ui';
+import { LogoMark } from '@/components/common/Logo';
 
 /**
  * The logotype at the top of Home.
  *
- * It was "Ace" in flat orange beside "AiX" in the text colour — two words and
- * no object. This is a lockup: the name on the brand gradient, with the same
- * highlight that crosses the spotlight tiles below it, so the first thing on
- * the first screen is the one that looks most like the app.
+ * It has been three things. First "Ace" in flat orange beside "AiX" in the
+ * text colour — two words and no object. Then the name on a gradient pill,
+ * which was better but was still the app drawing its own logo when it has one.
  *
- * A gradient *through* the letters would need `MaskedView`, which is a native
- * module this project does not carry and would not survive the web build. The
- * gradient goes behind them instead, which costs nothing and works everywhere.
+ * This is the real mark, beside the real name. The supplied lockup stacks the
+ * mark above the word, which is square and wrong for a header — at a height a
+ * header can spare, the word inside it would be four pixels tall. So the
+ * lockup is composed here instead: the mark from `assets/images/logo-mark.png`,
+ * the name in the display face. Same two objects, laid out sideways.
+ *
+ * The mark carries its own colour, so it needs no light and dark variant; the
+ * name takes the theme's ink with the brand accent on `AiX`, which is where
+ * the lockup puts its colour too.
  */
 export function Wordmark({ testID }: { testID?: string }) {
-  const theme = useTheme();
-  const { spacing, radii } = theme;
+  const { spacing } = useTheme();
 
   return (
-    <View style={{ flex: 1 }} testID={testID}>
-      <LinearGradient
-        colors={theme.gradients.action}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          alignSelf: 'flex-start',
-          paddingHorizontal: spacing.md,
-          paddingVertical: 5,
-          borderRadius: radii.pill,
-          overflow: 'hidden',
-          ...theme.elevation(1),
-        }}
-      >
-        <Text variant="subheading" color="#FFFFFF" accessibilityRole="header" numberOfLines={1}>
-          AceAiX
+    <View
+      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
+      testID={testID}
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel="AceAiX"
+    >
+      <LogoMark size={26} />
+      <Text variant="subheading" numberOfLines={1} style={{ letterSpacing: 0.2 }}>
+        Ace
+        <Text variant="subheading" tone="primary">
+          AiX
         </Text>
-        <Shine every={6} radius={radii.pill} />
-      </LinearGradient>
+      </Text>
     </View>
   );
 }

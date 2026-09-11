@@ -91,6 +91,10 @@ describe('lib/push and lib/push.web', () => {
       .filter((f) => !f.includes('/node_modules/'))
       .filter((f) => !f.endsWith('lib/push.ts'))
       .filter((f) => !f.endsWith('tests/unit/push.test.ts'))
+      /* Names the plugin to look its icon up in app.json. Configuring the
+         plugin is not importing the module — the config is read by the
+         prebuild, not bundled — so it is not what this guard is for. */
+      .filter((f) => !f.endsWith('tests/unit/brandAssets.test.ts'))
       .filter((f) => /['"]expo-notifications['"]/.test(readFileSync(f, 'utf8')))
       .map((f) => path.relative(ROOT, f));
 
