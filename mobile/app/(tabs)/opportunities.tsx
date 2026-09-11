@@ -505,7 +505,15 @@ export default function OpportunitiesScreen() {
       allCursorRef.current = { createdAt: last.created_at, id: last.id };
     }
     allHasMoreRef.current = data.length === 20;
-    setAll(prev => reset ? data : [...prev, ...data]);
+    const dedupeById = (arr: Opportunity[]) => {
+      const seen = new Set<string>();
+      return arr.filter(o => {
+        if (seen.has(o.id)) return false;
+        seen.add(o.id);
+        return true;
+      });
+    };
+    setAll(prev => dedupeById(reset ? data : [...prev, ...data]));
   }, [user, profile?.sport, profile?.position, filters, searchText]);
 
   const loadSaved   = useCallback(async () => {
