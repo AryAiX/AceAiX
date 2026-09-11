@@ -72,31 +72,35 @@ function normalizeStr(value: string | null | undefined): string {
   return (value ?? '').trim().toLowerCase();
 }
 
-function computeLiveMatchScore(
+function computeLiveMatch(
   oppSport: string,
   oppPosition: string,
   oppRequirements: OpportunityRequirements | undefined,
   athleteSport: string | null,
   athletePosition: string | null
-): number | undefined {
+): { score: number; reasons: string[] } | undefined {
   if (!athleteSport) return undefined;
   const sportMatches = normalizeStr(oppSport) === normalizeStr(athleteSport);
-  if (!sportMatches) return 0;
+  if (!sportMatches) return { score: 0, reasons: [] };
 
-  if (!athletePosition) return 65;
+  if (!athletePosition) return { score: 65, reasons: ['Sport match'] };
 
   const acceptablePositions = [oppPosition, ...(oppRequirements?.positions ?? [])]
     .filter(Boolean)
     .map(normalizeStr);
-  if (acceptablePositions.includes(normalizeStr(athletePosition))) return 95;
+  if (acceptablePositions.includes(normalizeStr(athletePosition))) {
+    return { score: 95, reasons: ['Sport match', 'Position match'] };
+  }
 
   const oppGroup = getPositionGroup(athleteSport, oppPosition);
   const athleteGroup = getPositionGroup(athleteSport, athletePosition);
   if (oppGroup && athleteGroup) {
-    return oppGroup === athleteGroup ? 82 : 60;
+    return oppGroup === athleteGroup
+      ? { score: 82, reasons: ['Sport match', 'Similar position group'] }
+      : { score: 60, reasons: ['Sport match'] };
   }
 
-  return 70;
+  return { score: 70, reasons: ['Sport match'] };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -221,8 +225,12 @@ export async function fetchForYouOpportunities(
   const mapped = data
     .map((r: any) => {
       const base = mapRow(r, savedIds, matchMap, appliedMap);
-      const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport, athletePosition);
-      return { ...base, match_score: liveScore ?? base.match_score };
+      const live = computeLiveMatch(r.sport, r.position ?? '', r.requirements, athleteSport, athletePosition);
+      return {
+        ...base,
+        match_score: live?.score ?? base.match_score,
+        match_reasons: live?.reasons?.length ? live.reasons : base.match_reasons,
+      };
     })
     .filter((o) => (o.match_score ?? 0) > 0);
 
@@ -267,8 +275,12 @@ export async function fetchAllOpportunities(
 
   return data.map((r: any) => {
     const base = mapRow(r, savedIds, matchMap, appliedMap);
-    const liveScore = computeLiveMatchScore(r.sport, r.position ?? '', r.requirements, athleteSport ?? null, athletePosition ?? null);
-    return { ...base, match_score: liveScore ?? base.match_score };
+    const live = computeLiveMatch(r.sport, r.position ?? '', r.requirements, athleteSport ?? null, athletePosition ?? null);
+    return {
+      ...base,
+      match_score: live?.score ?? base.match_score,
+      match_reasons: live?.reasons?.length ? live.reasons : base.match_reasons,
+    };
   });
 }
 
