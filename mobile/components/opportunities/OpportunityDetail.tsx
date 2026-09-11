@@ -291,19 +291,21 @@ export function OpportunityDetail({ opportunity, onClose, onApply, onSaveToggled
                   <MatchArc score={opportunity.match_score!} />
                   <Text style={[s.matchLabel, { color: scoreColor }]}>Profile Match</Text>
                 </View>
-                <View style={s.reasonsCol}>
-                  {(reasons.length ? reasons : ['Position fit', 'Level match', 'Sport match']).map((r, i) => {
-                    const Icon = REASON_ICONS[r] ?? Zap;
-                    return (
-                      <View key={i} style={s.reasonRow}>
-                        <View style={[s.reasonIconWrap, { backgroundColor: `${scoreColor}15` }]}>
-                          <Icon color={scoreColor} size={12} />
+                {reasons.length > 0 && (
+                  <View style={s.reasonsCol}>
+                    {reasons.map((r, i) => {
+                      const Icon = REASON_ICONS[r] ?? Zap;
+                      return (
+                        <View key={i} style={s.reasonRow}>
+                          <View style={[s.reasonIconWrap, { backgroundColor: `${scoreColor}15` }]}>
+                            <Icon color={scoreColor} size={12} />
+                          </View>
+                          <Text style={s.reasonTxt}>{r}</Text>
                         </View>
-                        <Text style={s.reasonTxt}>{r}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             </Section>
           )}
