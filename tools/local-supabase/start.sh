@@ -14,8 +14,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PGBIN="${PGBIN:-/usr/lib/postgresql/16/bin}"
 POSTGREST="${POSTGREST:-postgrest}"
 export PATH="$PGBIN:$PATH"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+export LANG="${LANG:-en_US.UTF-8}"
 
-export PGHOST="${PGHOST:-/var/lib/pgtest/run}"
+RUNTIME_DIR="${RUNTIME_DIR:-${ACEAIX_PG_RUNTIME:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/aceaix-pgtest}}"
+export RUNTIME_DIR
+RUNTIME="$RUNTIME_DIR"
+export PGHOST="${PGHOST:-$RUNTIME/run}"
 export PGPORT="${PGPORT:-5433}"
 export PGUSER="${PGUSER:-postgres}"
 DB="${DB:-aceaix_local}"
@@ -23,7 +28,6 @@ API_PORT="${API_PORT:-8790}"
 PGRST_PORT="${PGRST_PORT:-3010}"
 JWT_SECRET="${JWT_SECRET:-aceaix-local-development-jwt-secret-not-for-production}"
 
-RUNTIME=/var/lib/pgtest
 mkdir -p "$RUNTIME"
 
 # ---- database ----------------------------------------------------------------
@@ -31,11 +35,17 @@ if ! pg_isready -q 2>/dev/null; then
   echo "→ starting PostgreSQL"
   rm -rf "$RUNTIME/data"
   mkdir -p "$RUNTIME/data" "$PGHOST"
-  chown -R postgres:postgres "$RUNTIME"
-  su postgres -c "PATH=$PGBIN:\$PATH initdb -D $RUNTIME/data -A trust -U postgres" >/dev/null
-  su postgres -c "PATH=$PGBIN:\$PATH pg_ctl -D $RUNTIME/data -o '-k $PGHOST -p $PGPORT -c listen_addresses= -c wal_level=logical' -l $RUNTIME/pg.log start" >/dev/null
+  rm -f "$PGHOST/.s.PGSQL.$PGPORT" "$PGHOST/.s.PGSQL.$PGPORT.lock"
+  initdb -D "$RUNTIME/data" -A trust -U postgres >/dev/null
+  pg_ctl -D "$RUNTIME/data" -o "-k $PGHOST -p $PGPORT -c listen_addresses= -c wal_level=logical" -l "$RUNTIME/pg.log" start >/dev/null
   sleep 2
 fi
+
+# A repeated start must release database connections before run-migrations
+# drops and recreates the local database.
+pkill -f "postgrest $RUNTIME/postgrest.conf" 2>/dev/null || true
+pkill -f "local-supabase/server.mjs" 2>/dev/null || true
+sleep 0.2
 
 "$ROOT/supabase/tests/run-migrations.sh" "$DB"
 
@@ -57,12 +67,33 @@ server-host = "127.0.0.1"
 server-port = ${PGRST_PORT}
 EOF
 
-pkill -f "postgrest $RUNTIME/postgrest.conf" 2>/dev/null || true
+if [[ "$POSTGREST" == */* ]]; then
+  [[ -x "$POSTGREST" ]] || {
+    echo "PostgREST executable not found: $POSTGREST" >&2
+    exit 1
+  }
+elif ! command -v "$POSTGREST" >/dev/null 2>&1; then
+  echo "PostgREST is required but was not found on PATH" >&2
+  exit 1
+fi
+
 "$POSTGREST" "$RUNTIME/postgrest.conf" > "$RUNTIME/postgrest.log" 2>&1 &
 echo "→ PostgREST on :${PGRST_PORT}"
 
+postgrest_ready=false
+for _ in $(seq 1 30); do
+  sleep 0.5
+  if curl -fsS "http://127.0.0.1:${PGRST_PORT}/" >/dev/null 2>&1; then
+    postgrest_ready=true
+    break
+  fi
+done
+if [[ "$postgrest_ready" != true ]]; then
+  echo "PostgREST failed to become ready; see $RUNTIME/postgrest.log" >&2
+  exit 1
+fi
+
 # ---- API server --------------------------------------------------------------
-pkill -f "local-supabase/server.mjs" 2>/dev/null || true
 PORT="$API_PORT" \
 PGRST_URL="http://127.0.0.1:${PGRST_PORT}" \
 JWT_SECRET="$JWT_SECRET" \
@@ -74,7 +105,11 @@ for _ in $(seq 1 30); do
   if curl -fsS "http://localhost:${API_PORT}/health" >/dev/null 2>&1; then break; fi
 done
 
-ANON=$(curl -fsS "http://localhost:${API_PORT}/health" | sed 's/.*"anonKey":"\([^"]*\)".*/\1/')
+HEALTH="$(curl -fsS "http://localhost:${API_PORT}/health")" || {
+  echo "Local API failed to become ready; see $RUNTIME/api.log" >&2
+  exit 1
+}
+ANON=$(printf '%s' "$HEALTH" | sed 's/.*"anonKey":"\([^"]*\)".*/\1/')
 
 cat <<EOF
 

@@ -78,7 +78,9 @@ export default function ResetPasswordScreen() {
       });
       await updatePassword(password);
       toast.success(t('auth.resetPassword.success'));
-      // The session now exists, so the gate takes over from here.
+      // Leave the exempt recovery route; the root gate will then apply the
+      // normal onboarding, suspension, or app destination.
+      router.replace(Routes.home);
     } catch (err) {
       const message = errorMessage(err);
       setPasswordError(message);

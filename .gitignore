@@ -45,3 +45,4 @@ project-bolt-*.zip
 
 # e2e walkthrough screenshots — regenerated on every run
 mobile/tests/e2e/shots/
+mobile/tests/e2e/recordings.json

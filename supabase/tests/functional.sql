@@ -78,6 +78,10 @@ begin
                   '33333333-3333-3333-3333-333333333333',
                   '44444444-4444-4444-4444-444444444444')) = 4,
     'signup trigger created a profile for every account');
+  perform tests.ok(
+    not (select onboarding_completed from public.user_profiles
+         where id = '11111111-1111-1111-1111-111111111111'),
+    'accounts created after the V2 migration still enter onboarding');
 
   perform tests.ok(
     (select count(*) from public.athlete_profiles
@@ -142,6 +146,41 @@ begin
   perform tests.ok(v_raised, 'an under-13 date of birth is rejected outright');
 end $$;
 
+-- Guardian addresses must belong to an adult other than the requesting minor.
+do $$
+declare v_raised boolean;
+begin
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  v_raised := false;
+  begin
+    perform public.request_guardian_consent(
+      'Self', '  MINOR.ATHLETE@TEST.LOCAL  ', 'parent');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a minor cannot send guardian consent to their own auth email');
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (
+    '66666666-6666-6666-6666-666666666666',
+    'other.minor@test.local',
+    '{"full_name":"Other Minor","role":"athlete"}'
+  );
+  update public.user_private
+  set date_of_birth = current_date - interval '16 years'
+  where user_id = '66666666-6666-6666-6666-666666666666';
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  v_raised := false;
+  begin
+    perform public.request_guardian_consent(
+      'Other Minor', ' OTHER.MINOR@test.local ', 'guardian');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a known minor account cannot be named as guardian');
+
+  delete from auth.users where id = '66666666-6666-6666-6666-666666666666';
+end $$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n── who may message a minor ──'; end $$;
 
@@ -165,12 +204,46 @@ end $$;
 
 -- Guardian consent flow
 do $$
-declare v_token text; v_res jsonb;
+declare
+  v_token text;
+  v_request jsonb;
+  v_res jsonb;
+  v_delivery jsonb;
 begin
   perform tests.as_user('22222222-2222-2222-2222-222222222222');
-  select token into v_token from public.request_guardian_consent(
+  v_request := public.request_guardian_consent(
     'Parent Name', 'parent@test.local', 'parent');
-  perform tests.ok(v_token is not null, 'minor can request guardian consent');
+  perform tests.ok(v_request ->> 'id' is not null, 'minor can request guardian consent');
+  perform tests.ok(not (v_request ? 'token'), 'consent request never returns the approval token');
+  perform tests.ok(
+    not has_column_privilege('authenticated', 'public.guardian_consents', 'token', 'SELECT'),
+    'authenticated clients cannot read guardian consent tokens');
+  select token into v_token
+  from public.guardian_consents
+  where id = (v_request ->> 'id')::uuid;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_delivery := public.reserve_guardian_consent_delivery(
+    (v_request ->> 'id')::uuid,
+    '22222222-2222-2222-2222-222222222222');
+  perform tests.ok((v_delivery ->> 'ok')::boolean,
+    'the first guardian email delivery reserves atomically');
+  v_delivery := public.reserve_guardian_consent_delivery(
+    (v_request ->> 'id')::uuid,
+    '22222222-2222-2222-2222-222222222222');
+  perform tests.ok(
+    not (v_delivery ->> 'ok')::boolean and v_delivery ->> 'code' = 'cooldown',
+    'immediate guardian email resend is rate limited');
+
+  update public.guardian_consents
+  set last_delivery_at = null, delivery_day = current_date, delivery_count = 5
+  where id = (v_request ->> 'id')::uuid;
+  v_delivery := public.reserve_guardian_consent_delivery(
+    (v_request ->> 'id')::uuid,
+    '22222222-2222-2222-2222-222222222222');
+  perform tests.ok(
+    not (v_delivery ->> 'ok')::boolean and v_delivery ->> 'code' = 'daily_cap',
+    'guardian email delivery enforces its daily cap');
 
   v_res := public.confirm_guardian_consent(v_token, true, true, true);
   perform tests.ok((v_res ->> 'ok')::boolean, 'guardian can confirm with the e-mailed token');
@@ -203,8 +276,11 @@ begin
 
   -- Re-grant for the remaining tests.
   perform tests.as_user('22222222-2222-2222-2222-222222222222');
-  select token into v_token from public.request_guardian_consent(
+  v_request := public.request_guardian_consent(
     'Parent Name', 'parent@test.local', 'parent');
+  select token into v_token
+  from public.guardian_consents
+  where id = (v_request ->> 'id')::uuid;
   perform public.confirm_guardian_consent(v_token, true, true, true);
 end $$;
 
@@ -456,7 +532,11 @@ end $$;
 do $$ begin raise notice E'\n── feed and profile bundle ──'; end $$;
 
 do $$
-declare v_bundle jsonb; v_rows integer;
+declare
+  v_bundle jsonb;
+  v_rows integer;
+  v_request jsonb;
+  v_token text;
 begin
   perform tests.as_user('33333333-3333-3333-3333-333333333333');
 
@@ -502,13 +582,24 @@ begin
     'opening a blocked profile reports the block');
   perform public.unblock_user('44444444-4444-4444-4444-444444444444');
 
-  -- A minor's exact age is never exposed.
+  -- A minor's exact age is never exposed, even after discovery is granted.
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  v_request := public.request_guardian_consent(
+    'Parent Name', 'parent@test.local', 'parent');
+  select token into v_token
+  from public.guardian_consents
+  where id = (v_request ->> 'id')::uuid;
+  perform public.confirm_guardian_consent(v_token, true, true, true);
+
   perform tests.as_user('33333333-3333-3333-3333-333333333333');
   v_bundle := public.get_profile_bundle('22222222-2222-2222-2222-222222222222');
   perform tests.ok(v_bundle -> 'athlete' ->> 'age' is null,
     'a minor exact age is never returned');
   perform tests.ok(v_bundle -> 'athlete' ->> 'age_band' is not null,
     'a minor is described by age band only');
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  perform public.revoke_guardian_consent((v_request ->> 'id')::uuid);
 end $$;
 
 -- ------------------------------------------------------------
@@ -543,7 +634,10 @@ do $$ begin raise notice E'\n── no route around the discovery gate ──'; 
    or the guardian gate is decoration. The minor's consent was revoked at the
    end of the discovery section above, so they must be absent from all four. */
 do $$
-declare v_token text; v_minor uuid := '22222222-2222-2222-2222-222222222222';
+declare
+  v_token text;
+  v_request jsonb;
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
 begin
   perform tests.as_user('33333333-3333-3333-3333-333333333333');
 
@@ -563,8 +657,11 @@ begin
 
   -- With consent restored they reappear — but never with an exact age.
   perform tests.as_user(v_minor);
-  select token into v_token from public.request_guardian_consent(
+  v_request := public.request_guardian_consent(
     'Parent Name', 'parent@test.local', 'parent');
+  select token into v_token
+  from public.guardian_consents
+  where id = (v_request ->> 'id')::uuid;
   perform public.confirm_guardian_consent(v_token, true, true, true);
 
   perform tests.as_user('33333333-3333-3333-3333-333333333333');
@@ -1592,7 +1689,10 @@ begin
          `meetup_participants`; a policy runs as the querying user, so without
          EXECUTE every meetup read answers "permission denied for function
          may_meet". Read-only, and it answers a question about the caller. */
-      'may_meet'
+      'may_meet',
+      /* Named in posts RLS. Must bypass profile RLS or hidden minors fail open. */
+      'viewer_can_see_author',
+      'viewer_can_see_public_media'
     );
 
   perform tests.ok(
@@ -1610,7 +1710,7 @@ begin
   where n.nspname = 'private'
     and has_function_privilege('anon', p.oid, 'EXECUTE')
     and p.proname not in ('is_admin', 'owns_athlete', 'owns_medical_partner',
-                          'has_medical_consent');
+                          'has_medical_consent', 'viewer_can_see_author');
 
   perform tests.ok(
     v_open is null,
@@ -1655,6 +1755,544 @@ begin
   perform tests.ok(true, 'and their conversations');
 exception when insufficient_privilege then
   raise exception 'FAILED: an RLS predicate is not callable — %', sqlerrm;
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── account data export ownership ──'; end $$;
+
+do $$
+declare
+  v_owner_athlete uuid;
+  v_other_athlete uuid;
+  v_export jsonb;
+begin
+  select id into v_owner_athlete from public.athlete_profiles
+    where user_id = '11111111-1111-1111-1111-111111111111';
+  select id into v_other_athlete from public.athlete_profiles
+    where user_id = '44444444-4444-4444-4444-444444444444';
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.athlete_media (athlete_id, title, storage_url, is_public)
+  values
+    (v_owner_athlete, 'Export owner fixture', 'exports/owner.mp4', false),
+    (v_other_athlete, 'Export other fixture', 'exports/other.mp4', true);
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_export := public.export_my_data();
+
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_export -> 'media') m
+            where m ->> 'title' = 'Export owner fixture'),
+    'account export includes media owned through the athlete profile');
+  perform tests.ok(
+    not exists (select 1 from jsonb_array_elements(v_export -> 'media') m
+                where m ->> 'title' = 'Export other fixture'),
+    'account export cannot include another user''s public media');
+  perform tests.ok(
+    v_export ? 'included_data',
+    'account export describes its bounded scope honestly');
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.export_my_data()', 'EXECUTE'),
+    'signed-out callers cannot export account data');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── source-review security hardening ──'; end $$;
+
+-- Hidden minors are absent from both broad tables and the profile RPC. Even a
+-- discoverable minor's athlete row stays private because it contains exact DOB.
+do $$
+declare
+  v_rows integer;
+  v_raised boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles
+  set is_discoverable = false
+  where id = '22222222-2222-2222-2222-222222222222';
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  begin
+    perform public.get_profile_bundle('22222222-2222-2222-2222-222222222222');
+  exception when no_data_found then
+    v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'get_profile_bundle does not enumerate a hidden minor');
+
+  set local role authenticated;
+  select count(*) into v_rows from public.user_profiles
+  where id = '22222222-2222-2222-2222-222222222222';
+  reset role;
+  perform tests.ok(v_rows = 0, 'user_profiles RLS hides a non-discoverable minor');
+
+  set local role authenticated;
+  select count(*) into v_rows from public.athlete_profiles
+  where user_id = '22222222-2222-2222-2222-222222222222';
+  reset role;
+  perform tests.ok(v_rows = 0, 'athlete_profiles RLS hides a minor exact DOB');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles
+  set is_discoverable = true
+  where id = '22222222-2222-2222-2222-222222222222';
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  select count(*) into v_rows from public.athlete_profiles
+  where user_id = '22222222-2222-2222-2222-222222222222';
+  reset role;
+  perform tests.ok(v_rows = 0,
+    'discovery consent does not expose a minor athlete row or birth date');
+
+  select count(*) into v_rows
+  from public.web_athletes() as w(row)
+  where row ->> 'user_id' = '22222222-2222-2222-2222-222222222222'
+    and row ->> 'birth_date' is null;
+  perform tests.ok(v_rows = 1,
+    'web redacting RPC includes a discoverable minor without exact DOB');
+end $$;
+
+-- Profile grids must not bypass post audience.
+do $$
+declare
+  v_post uuid;
+  v_rows integer;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  insert into public.posts (author_id, type, caption, audience)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'Followers only source-review fixture', 'followers'
+  ) returning id into v_post;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  select count(*) into v_rows
+  from public.get_user_posts('11111111-1111-1111-1111-111111111111', 50, null)
+  where id = v_post;
+  perform tests.ok(v_rows = 0, 'get_user_posts excludes follower-only posts for strangers');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  select count(*) into v_rows
+  from public.get_user_posts('11111111-1111-1111-1111-111111111111', 50, null)
+  where id = v_post;
+  perform tests.ok(v_rows = 1, 'post authors still see their own restricted posts');
+end $$;
+
+-- A pending request must not override another consent that remains granted.
+do $$
+declare
+  v_request jsonb;
+begin
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  v_request := public.request_guardian_consent(
+    'Second Parent', 'second-parent@test.local', 'parent');
+  perform tests.ok(
+    (select is_discoverable from public.user_profiles
+     where id = '22222222-2222-2222-2222-222222222222'),
+    'a pending request does not override an active discovery consent');
+
+  perform public.revoke_guardian_consent((v_request ->> 'id')::uuid);
+  perform tests.ok(
+    (select is_discoverable from public.user_profiles
+     where id = '22222222-2222-2222-2222-222222222222'),
+    'revoking one request recomputes all remaining active consents');
+end $$;
+
+-- Reviewer transitions follow the V2 state machine. Organization membership
+-- authorizes active reviewers but cannot resurrect a withdrawal.
+do $$
+declare
+  v_app uuid;
+  v_opp uuid;
+  v_org uuid;
+  v_raised boolean := false;
+begin
+  select id, opportunity_id into v_app, v_opp
+  from public.applications
+  where athlete_id = '11111111-1111-1111-1111-111111111111'
+  limit 1;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.applications set status = 'applied' where id = v_app;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  update public.applications set status = 'in_review' where id = v_app;
+  update public.applications set status = 'shortlisted' where id = v_app;
+  update public.applications set status = 'invited' where id = v_app;
+  update public.applications set status = 'accepted' where id = v_app;
+  perform tests.ok(
+    (select status from public.applications where id = v_app) = 'accepted',
+    'accepted remains distinct durable history after valid reviewer transitions');
+
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  begin
+    update public.applications set status = 'in_review' where id = v_app;
+  exception when insufficient_privilege then
+    v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'an unrelated user cannot change application status');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.organizations (name, type)
+  values ('Source Review Club', 'club')
+  returning id into v_org;
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status
+  ) values (
+    v_org, '44444444-4444-4444-4444-444444444444', 'manager', 'active'
+  );
+  update public.opportunities set organization_id = v_org where id = v_opp;
+  update public.applications set status = 'withdrawn' where id = v_app;
+
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_raised := false;
+  begin
+    update public.applications set status = 'in_review' where id = v_app;
+  exception when others then
+    v_raised := true;
+  end;
+  perform tests.ok(
+    v_raised
+    and (select status from public.applications where id = v_app) = 'withdrawn',
+    'an active organization reviewer cannot resurrect a withdrawn application');
+end $$;
+
+do $$
+declare v_post uuid; v_rows integer; v_rpc_rows integer; v_feed_rows integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.guardian_consents
+  set status = 'revoked', revoked_at = coalesce(revoked_at, now())
+  where minor_user_id = '22222222-2222-2222-2222-222222222222'
+    and status = 'granted';
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, allow_messaging, allow_media
+  ) values (
+    '22222222-2222-2222-2222-222222222222',
+    '33333333-3333-3333-3333-333333333333',
+    'Linked Guardian', 'linked.guardian@test.local',
+    'guardian', 'granted', false, false, false
+  );
+  update public.user_profiles set is_discoverable = false
+  where id = '22222222-2222-2222-2222-222222222222';
+  insert into public.posts (author_id, type, caption, audience)
+  values (
+    '22222222-2222-2222-2222-222222222222',
+    'standard', 'Guardian-visible hidden minor post', 'public'
+  ) returning id into v_post;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  select count(*) into v_rows from public.posts where id = v_post;
+  reset role;
+  select count(*) into v_rpc_rows
+  from public.get_user_posts(
+    '22222222-2222-2222-2222-222222222222', 50, null
+  ) where id = v_post;
+  select count(*) into v_feed_rows
+  from public.get_feed('for_you', null, 50, null) where id = v_post;
+  perform tests.ok(v_rows = 1 and v_rpc_rows = 1 and v_feed_rows = 1,
+    'linked guardian visibility is aligned across direct posts and feed RPCs');
+
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  set local role authenticated;
+  select count(*) into v_rows from public.posts where id = v_post;
+  reset role;
+  select count(*) into v_rpc_rows
+  from public.get_user_posts(
+    '22222222-2222-2222-2222-222222222222', 50, null
+  ) where id = v_post;
+  select count(*) into v_feed_rows
+  from public.get_feed('for_you', null, 50, null) where id = v_post;
+  perform tests.ok(v_rows = 0 and v_rpc_rows = 0 and v_feed_rows = 0,
+    'other viewers cannot read a hidden minor post directly');
+end $$;
+
+do $$
+declare
+  v_quota jsonb;
+begin
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.fandom_of(uuid)', 'EXECUTE'),
+    'anonymous users cannot invoke fandom RPCs');
+  perform tests.ok(
+    not has_function_privilege(
+      'anon', 'public.challenge_leaderboard(uuid,integer,integer)', 'EXECUTE'),
+    'anonymous users cannot invoke challenge RPCs');
+  perform tests.ok(
+    not has_function_privilege(
+      'authenticated', 'public.consume_translation_quota(uuid,integer,boolean)', 'EXECUTE'),
+    'clients cannot reserve or bypass translation quota');
+  perform tests.ok(
+    not has_function_privilege(
+      'authenticated',
+      'public.reserve_guardian_consent_delivery(uuid,uuid)',
+      'EXECUTE'),
+    'clients cannot bypass guardian email delivery limits');
+  perform tests.ok(
+    not has_column_privilege(
+      'authenticated', 'public.guardian_consents', 'delivery_count', 'SELECT'),
+    'guardian email delivery counters are service-role-only');
+  perform tests.ok(
+    not has_table_privilege(
+      'authenticated', 'private.underage_account_quarantine', 'SELECT'),
+    'underage quarantine is service-only');
+  perform tests.ok(
+    not has_function_privilege(
+      'authenticated', 'private.quarantine_underage_accounts()', 'EXECUTE'),
+    'clients cannot alter underage remediation state');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_quota := public.consume_translation_quota(
+    '11111111-1111-1111-1111-111111111111', 100, true);
+  perform tests.ok(
+    (v_quota ->> 'user_character_limit')::integer = 40000,
+    'service translation calls reserve per-user and project budget');
+
+  perform tests.ok(
+    exists (
+      select 1 from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = 'sync_user_full_name'
+        and 'search_path=public, pg_temp' = any(p.proconfig)
+    ),
+    'restored trigger definitions keep a hardened search_path');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── source review security assertions ──'; end $$;
+
+do $$
+declare
+  v_public_post uuid;
+  v_private_post uuid;
+  v_adult_athlete uuid;
+  v_minor_athlete uuid;
+  v_rows integer;
+begin
+  perform tests.ok(
+    exists (
+      select 1 from pg_policies
+      where schemaname = 'storage'
+        and tablename = 'objects'
+        and policyname = 'media_authenticated_read'
+    ),
+    'audience-aware storage SELECT policy exists after all migrations');
+  perform tests.ok(
+    not (select public from storage.buckets where id = 'posts'),
+    'post media bucket remains private');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.posts (author_id, type, caption, audience, media)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'Storage public fixture', 'public',
+    '[{"url":"11111111-1111-1111-1111-111111111111/public.jpg","thumbnail":"11111111-1111-1111-1111-111111111111/public-thumb.jpg"}]'::jsonb
+  ) returning id into v_public_post;
+  insert into public.posts (author_id, type, caption, audience, media)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'Storage restricted fixture', 'connections',
+    '[{"url":"11111111-1111-1111-1111-111111111111/restricted.jpg"}]'::jsonb
+  ) returning id into v_private_post;
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    '44444444-4444-4444-4444-444444444444'
+  ) on conflict do nothing;
+
+  select id into v_adult_athlete from public.athlete_profiles
+  where user_id = '11111111-1111-1111-1111-111111111111';
+  select id into v_minor_athlete from public.athlete_profiles
+  where user_id = '22222222-2222-2222-2222-222222222222';
+  insert into public.athlete_media (athlete_id, title, storage_url, is_public)
+  values
+    (v_adult_athlete, 'Storage adult clip',
+     '11111111-1111-1111-1111-111111111111/adult-clip.mp4', true),
+    (v_minor_athlete, 'Storage hidden minor clip',
+     '22222222-2222-2222-2222-222222222222/minor-clip.mp4', true);
+  update public.guardian_consents set allow_media = false
+  where minor_user_id = '22222222-2222-2222-2222-222222222222';
+
+  insert into storage.objects (bucket_id, name) values
+    ('posts', '11111111-1111-1111-1111-111111111111/orphan.jpg'),
+    ('posts', '11111111-1111-1111-1111-111111111111/public.jpg'),
+    ('posts', '11111111-1111-1111-1111-111111111111/public-thumb.jpg'),
+    ('posts', '11111111-1111-1111-1111-111111111111/restricted.jpg'),
+    ('posts', '11111111-1111-1111-1111-111111111111/adult-clip.mp4'),
+    ('posts', '22222222-2222-2222-2222-222222222222/minor-clip.mp4');
+
+  grant select on storage.objects to authenticated;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  select count(*) into v_rows from public.athlete_media
+  where storage_url = '11111111-1111-1111-1111-111111111111/adult-clip.mp4';
+  reset role;
+  perform tests.ok(v_rows = 1, 'signed-out visitors can list public adult athlete media');
+
+  set local role anon;
+  select count(*) into v_rows from storage.objects
+  where name = '11111111-1111-1111-1111-111111111111/adult-clip.mp4';
+  reset role;
+  perform tests.ok(v_rows = 1, 'signed-out visitors can sign public adult athlete media');
+
+  set local role anon;
+  select count(*) into v_rows from storage.objects
+  where name = '22222222-2222-2222-2222-222222222222/minor-clip.mp4';
+  reset role;
+  perform tests.ok(v_rows = 0, 'signed-out visitors cannot sign minor athlete media');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where name in (
+    '11111111-1111-1111-1111-111111111111/public.jpg',
+    '11111111-1111-1111-1111-111111111111/public-thumb.jpg'
+  );
+  reset role;
+  perform tests.ok(v_rows = 2, 'visible post media and thumbnails can be signed');
+
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where name = '11111111-1111-1111-1111-111111111111/restricted.jpg';
+  reset role;
+  perform tests.ok(v_rows = 0, 'restricted post media cannot bypass parent post RLS');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where name = '11111111-1111-1111-1111-111111111111/adult-clip.mp4';
+  reset role;
+  perform tests.ok(v_rows = 1, 'public adult athlete media can be signed');
+
+  -- User 333 is a linked guardian from the visibility fixtures above and may
+  -- still review the minor's clips. A stranger must not be able to sign them
+  -- when media consent is off.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where name = '22222222-2222-2222-2222-222222222222/minor-clip.mp4';
+  reset role;
+  perform tests.ok(v_rows = 0, 'minor clip without media consent cannot be signed');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where name = '11111111-1111-1111-1111-111111111111/orphan.jpg';
+  reset role;
+  perform tests.ok(v_rows = 1, 'object owners retain access to their own folder');
+end $$;
+
+do $$
+declare
+  v_dob date := (current_date - interval '12 years')::date;
+  v_corrected_dob date := (current_date - interval '28 years')::date;
+  v_before_users bigint;
+  v_appeal jsonb;
+  v_raised boolean := false;
+begin
+  perform tests.ok(
+    not has_function_privilege(
+      'authenticated', 'public.cached_translation(text,text)', 'EXECUTE'),
+    'clients cannot probe the global translation cache with arbitrary text');
+  perform tests.ok(
+    has_function_privilege(
+      'authenticated', 'public.translation_source(text,uuid)', 'EXECUTE'),
+    'authenticated translation requests bind to a source row');
+  perform tests.ok(
+    not has_function_privilege(
+      'anon', 'public.translation_source(text,uuid)', 'EXECUTE'),
+    'signed-out callers cannot resolve translation sources');
+
+  select count(*) into v_before_users from public.user_profiles;
+  execute 'alter table public.user_private disable trigger trg_user_private_age_sync';
+  update public.user_private set date_of_birth = v_dob
+  where user_id = '44444444-4444-4444-4444-444444444444';
+  execute 'alter table public.user_private enable trigger trg_user_private_age_sync';
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform private.quarantine_underage_accounts();
+
+  perform tests.ok(
+    (select count(*) from public.user_profiles) = v_before_users,
+    'under-13 quarantine preserves the account row');
+  perform tests.ok(
+    (select date_of_birth from public.user_private
+     where user_id = '44444444-4444-4444-4444-444444444444') = v_dob,
+    'under-13 quarantine does not mutate the declared DOB');
+  perform tests.ok(
+    (select is_suspended and not is_discoverable and allow_messages_from = 'nobody'
+     from public.user_profiles
+     where id = '44444444-4444-4444-4444-444444444444'),
+    'under-13 quarantine suspends access, discovery, and messaging');
+  perform tests.ok(
+    exists (
+      select 1 from public.audit_logs
+      where action = 'account.under13_quarantined'
+        and record_id = '44444444-4444-4444-4444-444444444444'
+    ),
+    'under-13 quarantine records its audit reason');
+
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_appeal := public.request_underage_age_appeal(null);
+  perform tests.ok(
+    v_appeal ->> 'status' = 'appeal_requested'
+    and exists (
+      select 1 from private.underage_account_quarantine
+      where user_id = '44444444-4444-4444-4444-444444444444'
+        and remediation_status = 'appeal_requested'
+    ),
+    'a suspended owner can request an age correction appeal without data loss');
+
+  begin
+    perform public.resolve_underage_age_appeal(
+      '44444444-4444-4444-4444-444444444444',
+      v_corrected_dob,
+      'unauthorized self resolution');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised,
+    'an account owner or guardian cannot change DOB through the resolution RPC');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_raised := false;
+  begin
+    perform public.resolve_underage_age_appeal(
+      '44444444-4444-4444-4444-444444444444',
+      v_dob,
+      'still under age');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'resolution rejects a corrected DOB below age 13');
+
+  perform public.resolve_underage_age_appeal(
+    '44444444-4444-4444-4444-444444444444',
+    v_corrected_dob,
+    'verified correction');
+  perform tests.ok(
+    (select date_of_birth = v_corrected_dob
+            and remediation_status = 'dob_corrected'
+            and remediated_at is not null
+     from public.user_private p
+     join private.underage_account_quarantine q on q.user_id = p.user_id
+     where p.user_id = '44444444-4444-4444-4444-444444444444'),
+    'service resolution validates and records the corrected DOB');
+  perform tests.ok(
+    (select not is_suspended and suspended_reason is null
+     from public.user_profiles
+     where id = '44444444-4444-4444-4444-444444444444'),
+    'successful age correction safely restores account access');
+  perform tests.ok(
+    exists (
+      select 1 from public.audit_logs
+      where action = 'account.under13_age_corrected'
+        and record_id = '44444444-4444-4444-4444-444444444444'
+    ),
+    'age correction resolution is audited');
 end $$;
 
 -- ------------------------------------------------------------

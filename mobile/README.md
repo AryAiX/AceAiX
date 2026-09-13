@@ -96,13 +96,12 @@ previous build.
 asserts that the light and dark palettes have exactly the same keys, so a token added to one and
 forgotten in the other fails the test run rather than a user's night-time session.
 
-**Reanimated is stubbed — use React Native's `Animated`.** `react-native-reanimated` resolves to
-`stubs/reanimated-pkg` (via `metro.config.js` and a `file:` dependency), because the native
-worklets version in Expo Go does not reliably match the JS one, and a mismatch is a hard crash on
-launch. The stub exports no-op hooks and passthrough helpers, so a library that imports Reanimated
-still loads — but anything you write with it will not animate. Write animations with
-`Animated.timing` / `Animated.spring` from `react-native` and `useNativeDriver: true`, the way
-`app/(tabs)/_layout.tsx` does.
+**The Reanimated runtime is real; app motion uses React Native's `Animated`.**
+`react-native-reanimated` and `react-native-worklets` are Expo-compatible installed packages, with
+no Metro stub redirect. Keep the design-system effects on `Animated.timing` / `Animated.spring`
+from `react-native`: they need no worklet and already choose the native driver per platform.
+`npm run doctor` and `npm run test:native-runtime` verify package compatibility and resolution;
+an iOS and Android development/store build is still required to verify native JSI initialization.
 
 **Every screen renders loading, error and empty.** Not "usually". `useAsync` returns
 `{ data, error, loading, refreshing }` and the kit ships `SkeletonList`, `ErrorState` (with a

@@ -394,7 +394,9 @@ export default function AthletePublicProfilePage() {
       })),
       highlights: media.map(m => ({
         id: m.id,
-        thumbnail: m.thumbnail_url ?? m.storage_url,
+        thumbnail: m.thumbnail_url ?? '',
+        mediaUrl: m.storage_url,
+        mediaType: m.media_type,
         title: m.title,
         duration: fmtDuration(m.duration_seconds),
         tags: m.ai_tags ?? [],
@@ -592,7 +594,13 @@ export default function AthletePublicProfilePage() {
         <div className="fixed top-14 left-0 right-0 z-40 glass-dark border-b border-white/[0.08] px-4 lg:px-8"
           style={{ animation: 'slideUp 0.25s cubic-bezier(0.19,1,0.22,1)' }}>
           <div className="max-w-6xl mx-auto flex items-center gap-4 py-2.5">
-            <img src={athlete.image} alt={athlete.name} className="w-8 h-8 rounded-full object-cover border border-white/15 flex-shrink-0" />
+            {athlete.image ? (
+              <img src={athlete.image} alt={athlete.name} className="w-8 h-8 rounded-full object-cover border border-white/15 flex-shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-azure/15 border border-azure/25 flex items-center justify-center text-xs font-bold text-azure flex-shrink-0">
+                {initialsOf(athlete.name)}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="font-display font-bold text-white text-sm truncate">{athlete.name}</p>
               <p className="text-xs text-muted truncate hidden sm:block">{athlete.position} · {athlete.club}</p>
@@ -648,7 +656,13 @@ export default function AthletePublicProfilePage() {
             <div className="absolute -top-14 left-0 z-10" style={{ animation: 'scaleIn 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.1s both' }}>
               <div className="relative w-28 h-28 rounded-2xl overflow-hidden border-4 border-[#0C1A2B]"
                 style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                <img src={athlete.image} alt={athlete.name} className="w-full h-full object-cover" />
+                {athlete.image ? (
+                  <img src={athlete.image} alt={athlete.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-azure/15 flex items-center justify-center text-3xl font-bold text-azure">
+                    {initialsOf(athlete.name)}
+                  </div>
+                )}
               </div>
               {athlete.isOpenToTrials && (
                 <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald text-ink text-[9px] font-bold whitespace-nowrap border border-emerald/30"

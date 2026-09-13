@@ -25,6 +25,8 @@ export interface AccountProfile {
   is_minor: boolean;
   age_band: AgeBand | null;
   is_discoverable: boolean;
+  is_suspended: boolean;
+  suspended_reason: string | null;
   onboarding_completed: boolean;
   allow_messages_from: string;
   followers_count: number;
@@ -60,7 +62,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const PROFILE_COLUMNS =
-  'id, role, full_name, first_name, last_name, avatar_url, is_verified, is_minor, age_band, is_discoverable, onboarding_completed, allow_messages_from, followers_count, following_count';
+  'id, role, full_name, first_name, last_name, avatar_url, is_verified, is_minor, age_band, is_discoverable, is_suspended, suspended_reason, onboarding_completed, allow_messages_from, followers_count, following_count';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);

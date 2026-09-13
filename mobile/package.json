@@ -1,12 +1,12 @@
 {
   "name": "aceaix-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
     "dev:web": "EXPO_NO_TELEMETRY=1 expo start --web",
-    "build:web": "expo export --platform web",
+    "build:web": "expo export --platform web --clear",
     "build:ios": "npx eas-cli build --platform ios --profile production",
     "build:android": "npx eas-cli build --platform android --profile production",
     "submit:ios": "npx eas-cli submit --platform ios --profile production",
@@ -15,6 +15,9 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && npm run lint && npm run test:unit",
     "test:unit": "vitest run",
+    "test:smoke:web": "EXPO_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co EXPO_PUBLIC_SUPABASE_ANON_KEY=synthetic-anon-key-for-browser-smoke-only expo export --platform web --clear && node tests/e2e/smoke.mjs",
+    "test:native-runtime": "node scripts/check-native-runtime.mjs",
+    "doctor": "npx expo install --check && npx expo-doctor",
     "test:walkthrough": "npm run build:web && node tests/e2e/walkthrough.mjs",
     "backend:local": "../tools/local-supabase/start.sh",
     "db:test": "../supabase/tests/run-all.sh",
@@ -63,13 +66,14 @@
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "file:./stubs/reanimated-pkg",
+    "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.21.0",
-    "react-native-webview": "13.15.0"
+    "react-native-webview": "13.15.0",
+    "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

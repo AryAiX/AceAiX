@@ -58,7 +58,12 @@ export function MessageBubble({ message, isOwn, showTime, continues, onRetry }: 
           {message.content}
         </Text>
       ) : (
-        <TranslatableText text={message.content} variant="body" color={bubbleFg} />
+        <TranslatableText
+          text={message.content}
+          sourceRef={{ type: 'message', id: message.id }}
+          variant="body"
+          color={bubbleFg}
+        />
       )}
     </View>
   );

@@ -14,10 +14,9 @@ import { NATIVE_DRIVER } from '@/lib/motion';
  * All three collapse to a still frame under reduce-motion — not to *nothing*,
  * to the finished state, immediately.
  *
- * `react-native-reanimated` is stubbed out in this project, so everything here
- * is RN's own `Animated`, native-driven wherever the property allows it — and
- * wherever the platform has a native driver at all, which a browser does not.
- * See `lib/motion.ts`.
+ * This kit uses RN's own `Animated`, native-driven wherever the property allows
+ * it. Reanimated remains installed for React Navigation, Screens, and Gesture
+ * Handler, which import its native APIs directly. See `lib/motion.ts`.
  */
 
 // ── Reveal ────────────────────────────────────────────────────────────────────

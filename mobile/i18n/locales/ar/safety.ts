@@ -61,6 +61,18 @@ export const safety = {
   guardianTitle: 'الوالد أو ولي الأمر',
   guardianAthletesTitle: 'اللاعبون تحت رعايتك',
   guardianSubtitleMinor: 'الإذن الخاص بملفك',
+  ageReviewTitle: 'يلزم التحقق من العمر',
+  ageReviewBody:
+    'AceAiX متاح فقط لمن يبلغون 13 عامًا أو أكثر. الحساب موقوف مؤقتًا أثناء مراجعة العمر.',
+  ageReviewCorrection:
+    'إذا كان تاريخ الميلاد غير صحيح، فاطلب مراجعة. ويمكن لوالد أو وصي مرتبط بالحساب طلبها أيضًا.',
+  ageReviewRequest: 'طلب مراجعة العمر',
+  ageReviewRequestedButton: 'طُلبت المراجعة',
+  ageReviewRequested:
+    'سُجل الطلب. سنحفظ البيانات وسيبقى الحساب موقوفًا أثناء المراجعة.',
+  ageReviewEmail: 'تحتاج إلى مساعدة؟ راسل {{email}}',
+  guardianAgeReview: 'طلب مراجعة العمر',
+  guardianAgeReviewDone: 'طُلبت مراجعة العمر.',
 
   // ما يوافق عليه ولي الأمر، إذنًا إذنًا
   scopeDiscovery: 'الظهور في بحث الكشّافين',

@@ -282,6 +282,7 @@ function PostCardBase({
       {caption ? (
         <TranslatableText
           text={caption}
+          sourceRef={{ type: 'post', id: post.id }}
           variant="body"
           numberOfLines={showAll ? undefined : CAPTION_LINES}
           /* Inert on the single-post screen: it is already whole and there is

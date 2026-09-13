@@ -31,6 +31,7 @@ const STATUSES: Record<ApplicationStatus, { tone: Tone }> = {
   in_review: { tone: 'info' },
   shortlisted: { tone: 'warning' },
   invited: { tone: 'success' },
+  accepted: { tone: 'success' },
   rejected: { tone: 'danger' },
   withdrawn: { tone: 'muted' },
 };

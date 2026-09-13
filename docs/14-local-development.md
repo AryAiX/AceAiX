@@ -22,8 +22,9 @@ page.
 
 The script, in order:
 
-1. Starts a disposable PostgreSQL 16 cluster under `/var/lib/pgtest` if nothing is already
-   listening — socket at `$PGHOST`, port 5433, trust auth, `wal_level=logical`.
+1. Starts a disposable PostgreSQL 16 cluster under `$RUNTIME_DIR` if nothing is already listening
+   — socket at `$PGHOST`, port 5433, trust auth, `wal_level=logical`. The default is under
+   `$RUNNER_TEMP`, then `$TMPDIR`.
 2. Runs `supabase/tests/run-migrations.sh`, which drops and recreates `aceaix_local`, applies
    `supabase/tests/_shim.sql`, then applies **every** file in `supabase/migrations/` in filename
    order, printing `ok` or `FAIL` per file and stopping on the first failure.
@@ -43,7 +44,12 @@ The script, in order:
 holding the whole payload (which is what the hosted platform does); the SQL test harness sets the
 individual `request.jwt.claim.*` GUCs directly, because it has no token to present. Both are read.
 
-Logs: `/var/lib/pgtest/postgrest.log` and `/var/lib/pgtest/api.log`.
+Logs: `$RUNTIME_DIR/postgrest.log` and `$RUNTIME_DIR/api.log`.
+
+`RUNTIME_DIR` is disposable database state, not a tool cache. The harness may replace its `data/`
+directory and stale socket files when PostgreSQL is not running. CI installs PostgREST separately
+under `$RUNNER_TEMP/aceaix-tools/bin` and sets `POSTGREST` to that stable executable, so any number
+of fresh and archived-upgrade proofs can rebuild the cluster without deleting the server binary.
 
 ---
 
@@ -123,8 +129,8 @@ different networks — but it only tunnels Metro, not the API, so the backend st
 reachable from the phone. For that case, point `mobile/.env` at the hosted Supabase project
 (§6) instead of the local harness.
 
-Override any of `PGHOST`, `PGPORT`, `DB`, `API_PORT`, `PGRST_PORT`, `JWT_SECRET`, `PGBIN`,
-`POSTGREST` in the environment if the defaults collide with something.
+Override any of `RUNTIME_DIR`, `PGHOST`, `PGPORT`, `DB`, `API_PORT`, `PGRST_PORT`, `JWT_SECRET`,
+`PGBIN`, `POSTGREST` in the environment if the defaults collide with something.
 
 ---
 
@@ -179,6 +185,18 @@ every assertion runs under real RLS as a real user. Sections:
 
 It ends with `✓ all functional tests passed`, or stops at the first failed assertion. Because it
 runs `ON_ERROR_STOP`, a failure is loud.
+
+### 4.2.1 Archived V1 upgrade proof
+
+```bash
+./supabase/tests/run-upgrade.sh
+```
+
+Builds a database from `v1-main-archive-2026-09-13`, then applies every migration filename in
+order. Shared names keep the archived V1 SQL (production already applied those files). Names
+that exist only in V2 — including `20260825000000`, whose timestamp sits inside the V1
+sequence — are applied in that same filename order. The script does not rewrite historical
+SQL. CI runs this upgrade path as well as the fresh proof.
 
 **This suite is where the youth-safety rules are actually verified.** A change to messaging,
 discovery or consent that does not break it has probably not been tested.

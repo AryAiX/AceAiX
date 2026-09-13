@@ -2,7 +2,7 @@
   "expo": {
     "name": "AceAiX",
     "slug": "aceaix-athlete",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aceaix",
@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.aryaix.aceaix.athlete",
-      "buildNumber": "1",
+      "buildNumber": "19",
       "associatedDomains": [
         "applinks:aceaix.com"
       ],
@@ -161,7 +161,7 @@
     },
     "android": {
       "package": "com.aryaix.aceaix.athlete",
-      "versionCode": 1,
+      "versionCode": 8,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#0B0A16"

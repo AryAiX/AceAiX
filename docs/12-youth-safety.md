@@ -21,7 +21,7 @@
 
 | # | Rule | Enforced by |
 |---|------|-------------|
-| 1 | Nobody under 13 holds an account | `private.sync_age_state()` trigger on `user_private` — raises `23514` with hint `age_below_minimum` |
+| 1 | New accounts under 13 cannot be created; existing under-13 rows are quarantined, not auto-deleted | `private.sync_age_state()` raises `23514` / `age_below_minimum` on new writes; `private.quarantine_underage_accounts()` suspends and hides legacy rows; `request_underage_age_appeal` / `resolve_underage_age_appeal` |
 | 2 | A 13–17 account is invisible in **every** surface that can name a person, until a guardian consents | `sync_age_state` sets `is_discoverable = false`; `discover_athletes`, `recommended_athletes`, `search_people` and `talent_leaderboard` all filter on it; `private.guard_minor_visibility()` blocks turning it back on |
 | 3 | Only a verified adult professional may open a conversation with a minor, and only within a granted consent | `private.can_message()`, called by `start_conversation` and by the `conversations` insert trigger |
 | 4 | A minor's exact date of birth **and exact age in years** are never returned to another user | `user_private` RLS (owner/admin only); `get_profile_bundle`, `discover_athletes`, `recommended_athletes` and `opportunity_applicants` all return `age: null` plus `age_band` when `is_minor` |
@@ -53,8 +53,15 @@ explanation rather than a database error — but the database is the rule. `lib/
 `age_below_minimum` hint to a written sentence for the case where the client check is bypassed.
 
 There is no compliant way to run a social product for under-13s without full COPPA-grade
-verifiable-parental-consent infrastructure. Rather than build a diminished under-13 experience, the
-account cannot exist.
+verifiable-parental-consent infrastructure. New sign-ups are refused at this floor.
+
+If an existing, imported, or later-corrected date of birth is under 13, V2 does **not**
+auto-delete the account. `private.quarantine_underage_accounts()` suspends access, turns off
+discovery and messaging, and keeps the row so a parent or the owner can request an age-correction
+appeal (`request_underage_age_appeal`). Service-role resolution
+(`resolve_underage_age_appeal`) can restore access only after a date of birth that is 13 or
+older is validated. The declared date is not silently rewritten. The in-app surface is
+`mobile/app/age-review.tsx`.
 
 ---
 
@@ -131,8 +138,9 @@ force an all-or-nothing answer.
 
 `public.request_guardian_consent(name, email, relationship)` — authenticated, callable only for
 `auth.uid()`. Validates the address, expires any earlier `pending` row for that minor, inserts a new
-one, returns it. `INSERT` and `DELETE` on the table are revoked from `authenticated`, so this
-function is the only way a row appears.
+one, and returns only the non-secret display fields. The approval token is readable only by the
+service role used to send the guardian's email. `INSERT` and `DELETE` on the table are revoked from
+`authenticated`, so this function is the only way a row appears.
 
 The onboarding wizard calls it at the guardian step for any 13–17 account; `/settings/guardian`
 calls it again for a re-request.
@@ -140,13 +148,13 @@ calls it again for a re-request.
 ### 4.3 E-mail
 
 `mobile/lib/api.ts → requestGuardianConsent` invokes the `guardian-consent` edge function with the
-new `consent_id`. That call is fire-and-forget: if the function is not deployed, or delivery fails,
-**the request still stands** and can be re-sent from `/settings/guardian`. Losing an e-mail must not
-lose the consent record.
+new `consent_id`. If the function is not deployed or delivery fails, the app says that the request
+was saved but the email was not sent; it can be re-sent from `/settings/guardian`. Losing an email
+must not lose the consent record or look like successful delivery.
 
 The function verifies the caller's JWT and refuses unless the caller *is* the minor the request
-belongs to, then sends through Resend. Without `RESEND_API_KEY` it returns the link in the response
-instead of silently dropping the request, so it can be delivered by hand in development.
+belongs to, then sends through Resend. Without `RESEND_API_KEY` it fails without returning the
+approval link. That link is a bearer credential and must never be exposed to the minor.
 
 ### 4.4 Confirm
 
@@ -552,7 +560,7 @@ survive, and is a decision worth knowing about: `guardian_consents.minor_user_id
 
 | Question | Answer lives in |
 |----------|-----------------|
-| Can a child under 13 sign up? | `private.sync_age_state` (§2); `functional.sql` asserts the raise. |
+| Can a child under 13 sign up? | `private.sync_age_state` (§2); `functional.sql` asserts the raise. Existing under-13 rows are quarantined, not deleted. |
 | How do you know a parent actually consented? | `guardian_consents` row with `granted_at`, `consent_method = 'email_confirmation'` and the token that was used (§4); the flow is the `guardian-consent` edge function. |
 | Can a stranger message my child? | `private.can_message` branch 8 (§6): verified professional **and** granted messaging consent. Everything else is refused at the database. |
 | Can I change my mind? | `revoke_guardian_consent`, or `safety@aceaix.com`. Takes effect on the next read (§4.5). From inside the app if the guardian holds an account (§4.6). |
@@ -562,7 +570,7 @@ survive, and is a decision worth knowing about: `guardian_consents.minor_user_id
 | Where is the report button? | Every post and comment (`ContentActionsSheet`), every profile (`ProfileHeader`), every opportunity, and every conversation — where the sheet reports the sender (`PeerActionsSheet`). All four call `report_content` (§8). |
 | What happens to a child-safety report? | Immediate removal from circulation, `high` severity, human review in the web portal (§8). |
 | Where are your child-safety standards? | `/legal/child-safety` in the app — `mobile/lib/legal/childSafety.ts`, shipped as a string so it reads with no network. Also `/legal/terms`, `/legal/privacy`, `/legal/guidelines`. |
-| Can a user delete everything? | `/settings/delete-account` → `public.delete_own_account`, which now removes uploaded files as well as rows (§9.1). `/settings/account` also offers a full JSON export (`exportMyData`). |
+| Can a user delete everything? | `/settings/delete-account` → `public.delete_own_account`, which now removes uploaded files as well as rows (§9.1). `/settings/account` also offers a scoped JSON export of the account, profile, authored activity, applications, and owned media (`exportMyData`). |
 | Who can see a minor when logged out? | Nobody. `up_select_anon` / `ap_select_anon` (§5). |
 
 ---

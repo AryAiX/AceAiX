@@ -59,6 +59,22 @@ begin
     raise exception 'Profile not found' using errcode = 'P0002';
   end if;
 
+  -- A SECURITY DEFINER RPC bypasses table RLS, so it must enforce the hidden
+  -- minor boundary itself. Return the same not-found shape as an unknown id to
+  -- prevent account enumeration.
+  if coalesce(up.is_minor, false)
+     and not coalesce(up.is_discoverable, false)
+     and v_viewer <> p_user
+     and not private.is_admin()
+     and not exists (
+       select 1 from public.guardian_consents g
+       where g.minor_user_id = p_user
+         and g.guardian_user_id = v_viewer
+         and g.status = 'granted'
+     ) then
+    raise exception 'Profile not found' using errcode = 'P0002';
+  end if;
+
   select exists (
     select 1 from public.user_blocks b
     where (b.blocker_id = v_viewer and b.blocked_id = p_user)

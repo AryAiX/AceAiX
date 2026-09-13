@@ -14,6 +14,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-hygiene:
+    name: Source hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check tracked source
+        run: ./tools/ci/source-hygiene.sh
+
   web:
     name: Web
     runs-on: ubuntu-latest
@@ -73,6 +85,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify Expo and native runtime
+        run: |
+          npm run doctor
+          npm run test:native-runtime
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -82,15 +99,25 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Export web bundle
-        run: npm run build:web
+      - name: Provision Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Expo-web public and recovery smoke
+        run: npm run test:smoke:web
 
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    env:
+      RUNTIME_DIR: ${{ runner.temp }}/aceaix-pgtest
+      PGHOST: ${{ runner.temp }}/aceaix-pgtest/run
+      TOOLS_BIN: ${{ runner.temp }}/aceaix-tools/bin
+      POSTGREST: ${{ runner.temp }}/aceaix-tools/bin/postgrest
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -110,25 +137,33 @@ jobs:
 
       - name: Install PostgREST
         run: |
-          curl -fsSL -o /tmp/postgrest.tar.xz \
+          mkdir -p "$TOOLS_BIN"
+          curl -fsSL -o "${RUNNER_TEMP}/aceaix-tools/postgrest.tar.xz" \
             https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
-          tar -xJf /tmp/postgrest.tar.xz -C /usr/local/bin
-          postgrest --version
+          tar -xJf "${RUNNER_TEMP}/aceaix-tools/postgrest.tar.xz" -C "$TOOLS_BIN"
+          echo "$TOOLS_BIN" >> "$GITHUB_PATH"
+          "$POSTGREST" --version
 
       - name: Install mobile dependencies
         working-directory: mobile
         run: npm ci
 
-      # All 43 migrations from scratch, then the assertions that need a
+      - name: Provision Chromium
+        working-directory: mobile
+        run: npx playwright install --with-deps chromium
+
+      # All migrations from scratch, then the assertions that need a
       # superuser: RLS, the youth-safety gates, the whole-schema invariants.
-      - name: Migrations and SQL suite
+      - name: Fresh database and SQL suite
         run: ./supabase/tests/run-all.sh
+
+      - name: V1 archive upgrade proof
+        run: ./supabase/tests/run-upgrade.sh
 
       - name: Bring the stack up
         run: |
-          sudo mkdir -p /var/lib/pgtest && sudo chown "$USER" /var/lib/pgtest
-          ./tools/local-supabase/start.sh | tee /tmp/stack.log
-          grep -E '^\s+EXPO_PUBLIC_' /tmp/stack.log | sed 's/^ *//' > mobile/.env
+          ./tools/local-supabase/start.sh | tee "$RUNTIME_DIR/stack.log"
+          grep -E '^\s+EXPO_PUBLIC_' "$RUNTIME_DIR/stack.log" | sed 's/^ *//' > mobile/.env
           cat mobile/.env | sed 's/\(ANON_KEY=\).*/\1<redacted>/'
 
       # Does every call the client makes exist on the other end? A renamed
@@ -144,8 +179,14 @@ jobs:
         working-directory: mobile
         run: npm run test:pipelines
 
+      # A signed-in browser tour of the rewritten Expo app. This intentionally
+      # checks the V2 screens rather than restoring the deleted V1 suites.
+      - name: Browser smoke
+        working-directory: mobile
+        run: npm run test:walkthrough
+
       - name: Stack logs on failure
         if: failure()
         run: |
-          echo '── postgrest ──'; tail -50 /var/lib/pgtest/postgrest.log || true
-          echo '── api ──';       tail -50 /var/lib/pgtest/api.log || true
+          echo '── postgrest ──'; tail -50 "$RUNTIME_DIR/postgrest.log" || true
+          echo '── api ──';       tail -50 "$RUNTIME_DIR/api.log" || true

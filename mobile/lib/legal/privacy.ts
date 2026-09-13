@@ -86,7 +86,7 @@ This section is for people aged 13 to 17 and for their parents and guardians. It
 - **No precise location.** The app never asks for GPS. Only the city typed on the profile is shown.
 - We do not show personalised advertising to anyone, and we do not profile minors for advertising.
 
-If you are a parent or guardian and you believe a child under 13 has an account, or you want your child's data removed, email [privacy@aceaix.com](mailto:privacy@aceaix.com) or [safety@aceaix.com](mailto:safety@aceaix.com) and we will act quickly.
+If you are a parent or guardian and you believe a child under 13 has an account, email [privacy@aceaix.com](mailto:privacy@aceaix.com) or [safety@aceaix.com](mailto:safety@aceaix.com). We suspend access and hide the profile, keep the data, and offer a guardian-supported age correction rather than deleting the account automatically. If you want the data removed after that review, we will handle a deletion request.
 
 ## Your rights
 

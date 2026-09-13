@@ -51,9 +51,24 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'in_review', label: 'opportunities.status.recruiter.in_review' },
   { value: 'shortlisted', label: 'opportunities.status.recruiter.shortlisted' },
   { value: 'invited', label: 'opportunities.status.recruiter.invited' },
+  { value: 'accepted', label: 'opportunities.status.recruiter.accepted' },
   { value: 'rejected', label: 'opportunities.status.recruiter.rejected' },
   { value: 'withdrawn', label: 'opportunities.status.recruiter.withdrawn' },
 ];
+
+const RECRUITER_TRANSITIONS: Record<ApplicationStatus, readonly ApplicationStatus[]> = {
+  applied: ['in_review', 'shortlisted', 'rejected'],
+  in_review: ['shortlisted', 'invited', 'rejected'],
+  shortlisted: ['in_review', 'invited', 'rejected'],
+  invited: ['accepted', 'rejected'],
+  accepted: [],
+  rejected: [],
+  withdrawn: [],
+};
+
+function canMove(from: ApplicationStatus, to: ApplicationStatus): boolean {
+  return RECRUITER_TRANSITIONS[from].includes(to);
+}
 
 /**
  * The club's side of an application.
@@ -337,11 +352,24 @@ export default function ApplicantsScreen() {
                 {t('opportunities.applicants.moveForward')}
               </Text>
               <Button
+                label={t('opportunities.status.recruiter.in_review')}
+                variant="secondary"
+                fullWidth
+                disabled={!canMove(selected.status, 'in_review')}
+                onPress={() =>
+                  changeStatus(
+                    selected,
+                    'in_review',
+                    t('opportunities.status.recruiter.in_review'),
+                  )
+                }
+              />
+              <Button
                 label={t('opportunities.applicants.shortlist')}
                 variant="secondary"
                 fullWidth
                 icon={<Star size={16} color={colors.warning} strokeWidth={2.4} />}
-                disabled={selected.status === 'shortlisted'}
+                disabled={!canMove(selected.status, 'shortlisted')}
                 onPress={() =>
                   changeStatus(
                     selected,
@@ -354,9 +382,18 @@ export default function ApplicantsScreen() {
                 label={t('opportunities.applicants.invite')}
                 fullWidth
                 icon={<CalendarCheck size={16} color={colors.textOnBrand} strokeWidth={2.4} />}
-                disabled={selected.status === 'invited'}
+                disabled={!canMove(selected.status, 'invited')}
                 onPress={() =>
                   changeStatus(selected, 'invited', t('opportunities.applicants.inviteDone'))
+                }
+              />
+              <Button
+                label={t('opportunities.applicants.accept')}
+                fullWidth
+                icon={<CalendarCheck size={16} color={colors.textOnBrand} strokeWidth={2.4} />}
+                disabled={!canMove(selected.status, 'accepted')}
+                onPress={() =>
+                  changeStatus(selected, 'accepted', t('opportunities.applicants.acceptDone'))
                 }
               />
               <Button
@@ -364,7 +401,7 @@ export default function ApplicantsScreen() {
                 variant="danger"
                 fullWidth
                 icon={<Ban size={16} color={colors.danger} strokeWidth={2.4} />}
-                disabled={selected.status === 'rejected'}
+                disabled={!canMove(selected.status, 'rejected')}
                 onPress={() =>
                   changeStatus(selected, 'rejected', t('opportunities.applicants.rejectDone'))
                 }

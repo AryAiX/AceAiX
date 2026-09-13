@@ -42,7 +42,10 @@ const ACCOUNTS = [
   { role: 'medical', email: 'amin.demo@aceaix.com' },
   { role: 'minor', email: 'mina.demo@aceaix.com' },
 ];
-const PASSWORD = 'AceAiX-Demo-2026';
+const PASSWORD = process.env.ACEAIX_DEMO_PASSWORD;
+if (!PASSWORD) {
+  throw new Error('ACEAIX_DEMO_PASSWORD is required to record the authenticated demo');
+}
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -80,6 +83,38 @@ function keyOf(sub, method, target, body) {
   return [sub, method.toUpperCase(), target, body ?? ''].join(' ');
 }
 
+const REDACTED = '[REDACTED]';
+
+function fixtureToken(user = {}) {
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
+    sub: user.id,
+    email: user.email,
+    role: 'authenticated',
+    aud: 'authenticated',
+    exp: 4102444800,
+  })}.recording-fixture`;
+}
+
+function sanitizeAuthJson(target, text, response = false) {
+  if (!target.startsWith('/auth/v1/') || !text) return text;
+  try {
+    const value = JSON.parse(text);
+    const visit = (item) => {
+      if (!item || typeof item !== 'object') return;
+      for (const [name, child] of Object.entries(item)) {
+        if (name === 'password' || name === 'refresh_token') item[name] = REDACTED;
+        else if (name === 'access_token') item[name] = response ? fixtureToken(value.user) : REDACTED;
+        else visit(child);
+      }
+    };
+    visit(value);
+    return JSON.stringify(value);
+  } catch {
+    return REDACTED;
+  }
+}
+
 async function capture(response) {
   const request = response.request();
   const url = request.url();
@@ -90,11 +125,11 @@ async function capture(response) {
   const target = url.slice(API.length);
   const headers = await request.allHeaders();
   const sub = subjectOf(headers);
-  const body = request.postData() ?? '';
+  const body = sanitizeAuthJson(target, request.postData() ?? '');
 
   let text = '';
   try {
-    text = await response.text();
+    text = sanitizeAuthJson(target, await response.text(), true);
   } catch {
     return;
   }
@@ -173,7 +208,9 @@ const TOUR = [
 ];
 
 const server = await serve();
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+  : {});
 
 for (const account of ACCOUNTS) {
   const ctx = await browser.newContext({ viewport: { width: 414, height: 896 }, deviceScaleFactor: 2 });

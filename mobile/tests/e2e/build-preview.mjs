@@ -226,6 +226,23 @@ const runtime = `
     return new Response(body, { status: 200, headers: { 'content-type': 'application/json' } });
   }
 
+  function sanitizeAuthBody(target, text) {
+    if (target.indexOf('/auth/v1/') !== 0 || !text) return text;
+    try {
+      var value = JSON.parse(text);
+      var visit = function (item) {
+        if (!item || typeof item !== 'object') return;
+        Object.keys(item).forEach(function (name) {
+          if (name === 'password' || name === 'refresh_token' || name === 'access_token') {
+            item[name] = '[REDACTED]';
+          } else visit(item[name]);
+        });
+      };
+      visit(value);
+      return JSON.stringify(value);
+    } catch (e) { return '[REDACTED]'; }
+  }
+
   function lookup(method, target, body, sub) {
     return byExact[sub + ' ' + method + ' ' + target + ' ' + body]
       || byExact[currentSub + ' ' + method + ' ' + target + ' ' + body]
@@ -247,6 +264,7 @@ const runtime = `
     if (body && typeof body !== 'string') { try { body = String(body); } catch (e) { body = ''; } }
 
     var target = url.slice(API.length);
+    body = sanitizeAuthBody(target, body);
     var sub = subjectOf(headers);
 
     if (target.indexOf('/storage/v1/') === 0) {

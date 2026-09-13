@@ -3,7 +3,11 @@ import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
-import { translate, mightNeedTranslation } from '@/lib/api.translate';
+import {
+  translate,
+  mightNeedTranslation,
+  type TranslationSource,
+} from '@/lib/api.translate';
 import { useI18n, useT } from '@/i18n';
 
 /**
@@ -23,6 +27,8 @@ import { useI18n, useT } from '@/i18n';
 
 interface Props {
   text: string | null | undefined;
+  /** Server-owned row whose current text is authorized before translation. */
+  sourceRef?: TranslationSource;
   variant?: 'body' | 'caption' | 'bodyStrong';
   tone?: 'primary' | 'secondary' | 'muted';
   color?: string;
@@ -50,6 +56,7 @@ interface Props {
 
 export function TranslatableText({
   text,
+  sourceRef,
   variant = 'body',
   tone,
   color,
@@ -82,8 +89,9 @@ export function TranslatableText({
       return;
     }
 
+    if (!sourceRef) return;
     setBusy(true);
-    const result = await translate(text ?? '', language);
+    const result = await translate(text ?? '', language, sourceRef);
     setBusy(false);
 
     if (!result) {
@@ -92,11 +100,11 @@ export function TranslatableText({
     }
     setTranslated(result.translated);
     setShowing(true);
-  }, [language, showing, text, translated]);
+  }, [language, showing, sourceRef, text, translated]);
 
   if (!text?.trim()) return null;
 
-  const offer = offerProp && !unavailable && mightNeedTranslation(text, language);
+  const offer = !!sourceRef && offerProp && !unavailable && mightNeedTranslation(text, language);
 
   const body = (
     <Text variant={variant} tone={tone} color={color} numberOfLines={numberOfLines}>

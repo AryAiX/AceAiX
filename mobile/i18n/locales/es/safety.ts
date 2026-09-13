@@ -59,6 +59,18 @@ export const safety = {
   guardianTitle: 'Madre, padre o tutor',
   guardianAthletesTitle: 'Deportistas a tu cargo',
   guardianSubtitleMinor: 'Permiso para tu perfil',
+  ageReviewTitle: 'Revisión de edad necesaria',
+  ageReviewBody:
+    'AceAiX solo está disponible para personas de 13 años o más. Esta cuenta está pausada mientras revisamos su edad.',
+  ageReviewCorrection:
+    'Si la fecha de nacimiento es incorrecta, solicita una revisión. Un padre o tutor vinculado también puede solicitarla.',
+  ageReviewRequest: 'Solicitar revisión de edad',
+  ageReviewRequestedButton: 'Revisión solicitada',
+  ageReviewRequested:
+    'Registramos tu solicitud. Conservaremos los datos y la cuenta seguirá pausada durante la revisión.',
+  ageReviewEmail: '¿Necesitas ayuda? Escribe a {{email}}',
+  guardianAgeReview: 'Solicitar revisión de edad',
+  guardianAgeReviewDone: 'Revisión de edad solicitada.',
 
   // Lo que aprueba un adulto, permiso a permiso
   scopeDiscovery: 'Aparecer en las búsquedas de reclutadores',

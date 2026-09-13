@@ -102,8 +102,9 @@ the design system and not of whichever screen someone remembered to animate.
 | `Shine` | A highlight that crosses a surface every few seconds. Goes *inside* the thing it lights, which needs `overflow: 'hidden'` |
 | `Pulse` | A soft halo behind a small live element |
 
-`react-native-reanimated` is stubbed out in this project, so all of it is RN's own `Animated`,
-native-driven wherever the property allows.
+These design-system effects use RN's own `Animated`, native-driven wherever the property allows.
+Reanimated and Worklets are real Expo-compatible dependencies for navigation and gesture
+internals; they are no longer redirected to a stub.
 
 **Every one of them collapses under reduce-motion** — and collapses to the *finished state*, not to
 nothing. A motion-reduced build still tells you what changed; it just tells you instantly.

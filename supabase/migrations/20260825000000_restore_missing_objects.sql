@@ -23,6 +23,7 @@ create or replace function public.sync_user_full_name()
 returns trigger
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 begin
   if new.first_name is not null or new.middle_name is not null or new.last_name is not null then
@@ -49,6 +50,7 @@ create or replace function public.sync_current_club_name()
 returns trigger
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 begin
   if new.current_club_id is not null then
@@ -73,6 +75,7 @@ create or replace function private.sync_notification_read_columns()
 returns trigger
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 begin
   if tg_op = 'INSERT' then
@@ -125,6 +128,7 @@ create or replace function public.sync_media_likes_count()
 returns trigger
 language plpgsql
 security definer
+set search_path = public, pg_temp
 as $$
 declare v_media uuid := coalesce(new.media_id, old.media_id);
 begin

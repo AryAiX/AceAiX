@@ -47,7 +47,9 @@ const server = http.createServer((_q, res) => {
 await new Promise((r) => server.listen(PORT, r));
 fs.mkdirSync(OUT, { recursive: true });
 
-const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+  : {});
 const ctx = await browser.newContext({
   viewport: { width: 414, height: 896 },
   deviceScaleFactor: 2,

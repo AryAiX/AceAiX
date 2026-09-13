@@ -1,5 +1,3 @@
-begin;
-
 -- Consolidate case-insensitive duplicate watchlists before enforcing uniqueness.
 --
 -- Deterministic precedence:
@@ -172,5 +170,3 @@ alter table public.watchlists
 
 create unique index watchlists_user_normalized_name_uidx
   on public.watchlists (user_id, name_normalized);
-
-commit;

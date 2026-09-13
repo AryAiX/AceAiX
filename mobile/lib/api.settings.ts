@@ -86,37 +86,67 @@ export async function requestVerification(role: UserRole | null | undefined) {
 
 // ── Guardian consent extras ──────────────────────────────────────────────────
 export interface GuardianLink extends GuardianConsent {
-  minor: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  minor: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    is_suspended: boolean;
+    is_discoverable: boolean;
+  } | null;
 }
 
 /**
  * The children linked to a guardian account.
  *
- * A minor reads their own consents through `getGuardianConsents()`; a guardian
- * needs the child's name alongside the record, which means a join.
+ * A minor reads their own consents through `getGuardianConsents()`. Guardian
+ * identity comes from the SECURITY DEFINER RPC instead of a nested profile
+ * join, because hidden-minor RLS correctly blocks that direct join.
  */
 export async function getGuardianLinks(): Promise<GuardianLink[]> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return [];
 
-  const { data, error } = await supabase
-    .from('guardian_consents')
-    .select(
-      '*, minor:user_profiles!guardian_consents_minor_user_id_fkey(id, full_name, avatar_url)',
-    )
-    .eq('guardian_user_id', auth.user.id)
-    .order('created_at', { ascending: false });
+  const [consents, minors] = await Promise.all([
+    supabase
+      .from('guardian_consents')
+      .select(
+        'id, minor_user_id, guardian_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, granted_at, revoked_at, created_at, updated_at',
+      )
+      .eq('guardian_user_id', auth.user.id)
+      .order('created_at', { ascending: false }),
+    supabase.rpc('my_linked_minors'),
+  ]);
 
-  if (error) throw new AppError(error);
+  if (consents.error) throw new AppError(consents.error);
+  if (minors.error) throw new AppError(minors.error);
 
-  return (data ?? []).map((row) => {
-    const r = row as Record<string, unknown>;
-    const joined = r.minor;
-    return {
-      ...(r as unknown as GuardianConsent),
-      minor: (Array.isArray(joined) ? joined[0] : joined) as GuardianLink['minor'],
-    };
-  });
+  type LinkedMinor = NonNullable<GuardianLink['minor']>;
+  const linkedRows = (minors.data ?? []) as Array<{
+    minor_user_id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    is_suspended: boolean;
+    is_discoverable: boolean;
+  }>;
+  const minorById = new Map<string, LinkedMinor>(
+    linkedRows.map((row) => [
+      row.minor_user_id as string,
+      {
+        id: row.minor_user_id as string,
+        full_name: row.full_name as string | null,
+        avatar_url: row.avatar_url as string | null,
+        is_suspended: Boolean(row.is_suspended),
+        is_discoverable: Boolean(row.is_discoverable),
+      },
+    ]),
+  );
+
+  return (consents.data ?? []).map(
+    (row): GuardianLink => ({
+      ...(row as GuardianConsent),
+      minor: minorById.get(row.minor_user_id) ?? null,
+    }),
+  );
 }
 
 /**
@@ -126,10 +156,28 @@ export async function getGuardianLinks(): Promise<GuardianLink[]> {
  * delivery, so a bounced or lost email is recoverable without starting over.
  */
 export async function resendGuardianConsentEmail(consentId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('guardian-consent', {
+  const { data, error } = await supabase.functions.invoke('guardian-consent', {
     body: { consent_id: consentId, resend: true },
   });
   if (error) throw new AppError(error);
+  if (data?.sent !== true) {
+    if (data?.code === 'cooldown') {
+      throw new AppError('Please wait a minute before sending that email again.');
+    }
+    if (data?.code === 'daily_cap') {
+      throw new AppError('That email has reached today’s resend limit. Try again tomorrow.');
+    }
+    throw new AppError('We could not email your guardian. Please try again later.');
+  }
+}
+
+/** Record an age-correction appeal. This never changes a date of birth. */
+export async function requestUnderageAgeAppeal(userId?: string): Promise<void> {
+  const { data, error } = await supabase.rpc('request_underage_age_appeal', {
+    p_user: userId ?? null,
+  });
+  if (error) throw new AppError(error);
+  if (data?.ok !== true) throw new AppError('We could not request an age review.');
 }
 
 // ── Data export (GDPR, and a Play Store expectation) ─────────────────────────
@@ -149,15 +197,23 @@ function exportFileName(): string {
   return `aceaix-my-data-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
 }
 
-/** Fetch everything we hold and write it to a JSON file on the device. */
+/** Fetch the documented account-data scope and write it to a JSON file. */
 export async function writeMyDataExport(): Promise<ExportedFile> {
   const payload = await exportMyData();
   const json = JSON.stringify(payload, null, 2);
+  const name = exportFileName();
+
+  if (Platform.OS === 'web') {
+    const uri = URL.createObjectURL(
+      new Blob([json], { type: 'application/json;charset=utf-8' }),
+    );
+    return { uri, name, bytes: new TextEncoder().encode(json).length, contents: json };
+  }
 
   const folder = new Directory(Paths.document, 'exports');
   if (!folder.exists) folder.create({ intermediates: true });
 
-  const file = new File(folder, exportFileName());
+  const file = new File(folder, name);
   file.create({ overwrite: true });
   file.write(json);
 
@@ -176,6 +232,20 @@ export async function writeMyDataExport(): Promise<ExportedFile> {
  * instead of claiming success.
  */
 export async function shareDataExport(file: ExportedFile): Promise<boolean> {
+  if (Platform.OS === 'web') {
+    const link = document.createElement('a');
+    link.href = file.uri;
+    link.download = file.name;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Safari and Firefox may not begin reading the Blob until a later task.
+    // Revoking synchronously can cancel an otherwise successful download.
+    setTimeout(() => URL.revokeObjectURL(file.uri), 10_000);
+    return true;
+  }
+
   if (Platform.OS === 'android') {
     const legacy = await import('expo-file-system/legacy');
     const permission =

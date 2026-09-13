@@ -11,19 +11,26 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PGBIN="${PGBIN:-/usr/lib/postgresql/16/bin}"
 export PATH="$PGBIN:$PATH"
-export PGHOST="${PGHOST:-/var/lib/pgtest/run}"
+# Homebrew/macOS Postgres 16 refuses to start if the process is multithreaded
+# during startup; a UTF-8 locale keeps libc from pulling in extra threads.
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+export LANG="${LANG:-en_US.UTF-8}"
+RUNTIME_DIR="${RUNTIME_DIR:-${ACEAIX_PG_RUNTIME:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/aceaix-pgtest}}"
+export RUNTIME_DIR
+RUNTIME="$RUNTIME_DIR"
+export PGHOST="${PGHOST:-$RUNTIME/run}"
 export PGPORT="${PGPORT:-5433}"
 export PGUSER="${PGUSER:-postgres}"
 DB="${1:-aceaix_test}"
 
 if ! pg_isready -q 2>/dev/null; then
   echo "→ starting a disposable PostgreSQL cluster"
-  DATA=/var/lib/pgtest/data
-  rm -rf /var/lib/pgtest
+  DATA="$RUNTIME/data"
+  rm -rf "$DATA"
   mkdir -p "$DATA" "$PGHOST"
-  chown -R postgres:postgres /var/lib/pgtest
-  su postgres -c "PATH=$PGBIN:\$PATH initdb -D $DATA -A trust -U postgres" >/dev/null
-  su postgres -c "PATH=$PGBIN:\$PATH pg_ctl -D $DATA -o '-k $PGHOST -p $PGPORT -c listen_addresses=' -l /var/lib/pgtest/pg.log start" >/dev/null
+  rm -f "$PGHOST/.s.PGSQL.$PGPORT" "$PGHOST/.s.PGSQL.$PGPORT.lock"
+  initdb -D "$DATA" -A trust -U postgres >/dev/null
+  pg_ctl -D "$DATA" -o "-k $PGHOST -p $PGPORT -c listen_addresses=" -l "$RUNTIME/pg.log" start >/dev/null
   sleep 2
 fi
 

@@ -18,9 +18,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *
  * Environment:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   (provided by the platform)
- *   RESEND_API_KEY                            (optional — without it the link
- *                                              is returned in the response so
- *                                              it can be sent by hand)
+ *   RESEND_API_KEY                            (required for delivery)
  *   CONSENT_FROM_EMAIL                        (default: AceAiX <safety@aceaix.com>)
  */
 
@@ -164,9 +162,9 @@ async function sendEmail(to: string, guardianName: string, childName: string, to
   const link = consentUrl(token);
 
   if (!RESEND_KEY) {
-    // Not configured: hand the link back so it can be delivered another way
-    // rather than silently dropping a consent request on the floor.
-    return { sent: false, link };
+    // The link is a bearer credential that grants consent. Returning it to the
+    // minor would let them approve their own request.
+    throw new Error("Guardian consent email delivery is not configured");
   }
 
   const body = `
@@ -219,7 +217,7 @@ async function sendEmail(to: string, guardianName: string, childName: string, to
     const detail = await res.text();
     throw new Error(`Email delivery failed: ${res.status} ${detail.slice(0, 200)}`);
   }
-  return { sent: true, link };
+  return { sent: true };
 }
 
 // ── Handler ──────────────────────────────────────────────────────────────────
@@ -289,11 +287,29 @@ Deno.serve(async (req: Request) => {
     const decision = String(form.get("decision") ?? "approve");
 
     if (decision === "decline") {
-      await admin
+      const { data: pending } = await admin
+        .from("guardian_consents")
+        .select("id, token_expires_at")
+        .eq("token", token)
+        .eq("status", "pending")
+        .maybeSingle();
+      if (!pending || new Date(pending.token_expires_at).getTime() < Date.now()) {
+        return html(
+          page(`<h1>We couldn't record that</h1>
+            <p>The link may have expired or already been used. Contact
+            <a href="mailto:safety@aceaix.com">safety@aceaix.com</a> and we will help.</p>`),
+          400,
+        );
+      }
+
+      const { error: declineError } = await admin
         .from("guardian_consents")
         .update({ status: "revoked", revoked_at: new Date().toISOString() })
-        .eq("token", token)
+        .eq("id", pending.id)
         .eq("status", "pending");
+      if (declineError) {
+        return html(page("<h1>We couldn't record that</h1><p>Please try again.</p>"), 500);
+      }
 
       return html(
         page(`<div class="ok">✓</div>
@@ -360,6 +376,25 @@ Deno.serve(async (req: Request) => {
   }
   if (consent.status !== "pending") {
     return json({ error: "This request has already been answered" }, 409);
+  }
+
+  const { data: reservation, error: reservationError } = await admin.rpc(
+    "reserve_guardian_consent_delivery",
+    {
+      p_consent: consent.id,
+      p_minor: caller.user.id,
+    },
+  );
+  if (reservationError) {
+    console.error("guardian consent delivery reservation failed:", reservationError);
+    return json({ error: "Could not reserve email delivery" }, 503);
+  }
+  if (!reservation?.ok) {
+    return json({
+      sent: false,
+      code: reservation?.code ?? "rate_limited",
+      retry_after: reservation?.retry_after ?? null,
+    });
   }
 
   const { data: child } = await admin

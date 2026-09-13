@@ -35,6 +35,7 @@ import type {
   UnreadCounts,
   UserPost,
   UserSummary,
+  ApplicationStatus,
 } from '@/types/models';
 
 /**
@@ -197,6 +198,32 @@ export async function getScoreHistory(athleteId: string) {
 }
 
 // ── Feed ─────────────────────────────────────────────────────────────────────
+async function signPostMedia<T extends { media: PostMedia[] }>(rows: T[]): Promise<T[]> {
+  const paths = Array.from(
+    new Set(
+      rows
+        .flatMap((row) => row.media ?? [])
+        .flatMap((item) => [item.url, item.thumbnail])
+        .filter((value): value is string => !!value && !value.startsWith('http')),
+    ),
+  );
+  if (paths.length === 0) return rows;
+  const { data, error } = await supabase.storage.from('posts').createSignedUrls(paths, 3600);
+  if (error || !data) return rows.map((row) => ({ ...row, media: [] }));
+  const signed = new Map(data.map((item) => [item.path, item.signedUrl]));
+  return rows.map((row) => ({
+    ...row,
+    media: (row.media ?? []).flatMap((item) => {
+      const url = item.url.startsWith('http') ? item.url : signed.get(item.url);
+      if (!url) return [];
+      const thumbnail = !item.thumbnail || item.thumbnail.startsWith('http')
+        ? item.thumbnail
+        : signed.get(item.thumbnail);
+      return [{ ...item, url, thumbnail }];
+    }),
+  }));
+}
+
 export async function getFeed(params: {
   scope?: 'for_you' | 'following' | 'sport';
   sport?: string | null;
@@ -210,7 +237,7 @@ export async function getFeed(params: {
     p_before: params.before ?? null,
   });
   if (error) throw new AppError(error);
-  return (data ?? []) as FeedPost[];
+  return signPostMedia((data ?? []) as FeedPost[]);
 }
 
 export async function getUserPosts(
@@ -223,7 +250,7 @@ export async function getUserPosts(
     p_before: before ?? null,
   });
   if (error) throw new AppError(error);
-  return (data ?? []) as UserPost[];
+  return signPostMedia((data ?? []) as UserPost[]);
 }
 
 export async function createPost(input: {
@@ -535,7 +562,10 @@ export async function opportunityApplicants(opportunityId: string): Promise<Appl
   return (data ?? []) as Applicant[];
 }
 
-export async function setApplicationStatus(applicationId: string, status: string) {
+export async function setApplicationStatus(
+  applicationId: string,
+  status: ApplicationStatus,
+) {
   const { error } = await supabase
     .from('applications')
     .update({ status })
@@ -701,14 +731,14 @@ export async function requestGuardianConsent(
   if (error) throw new AppError(error);
   const row = Array.isArray(data) ? data[0] : data;
 
-  // Fire-and-forget: the edge function sends the e-mail. If it is not deployed
-  // yet the request still stands and can be re-sent from the guardian screen.
-  try {
-    await supabase.functions.invoke('guardian-consent', {
-      body: { consent_id: row.id },
-    });
-  } catch {
-    /* delivery is retryable from settings */
+  const { data: delivery, error: deliveryError } = await supabase.functions.invoke(
+    'guardian-consent',
+    { body: { consent_id: row.id } },
+  );
+  if (deliveryError || delivery?.sent !== true) {
+    throw new AppError(
+      'Your request was saved, but we could not email your guardian. Open Parent and guardian settings to try again.',
+    );
   }
 
   return row as GuardianConsent;
@@ -717,7 +747,9 @@ export async function requestGuardianConsent(
 export async function getGuardianConsents(): Promise<GuardianConsent[]> {
   const { data, error } = await supabase
     .from('guardian_consents')
-    .select('*')
+    .select(
+      'id, minor_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, granted_at, created_at',
+    )
     .order('created_at', { ascending: false });
   if (error) throw new AppError(error);
   return (data ?? []) as GuardianConsent[];
@@ -776,36 +808,11 @@ export async function deleteOwnAccount(): Promise<void> {
   await supabase.auth.signOut();
 }
 
-/** Everything we hold about this account, as one JSON export (GDPR/Play). */
+/** Account, profile, and activity data included in the in-app export. */
 export async function exportMyData(): Promise<Record<string, unknown>> {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new AppError('Not signed in');
-  const uid = auth.user.id;
-
-  const [profile, priv, athlete, posts, comments, follows, applications, media] =
-    await Promise.all([
-      supabase.from('user_profiles').select('*').eq('id', uid).maybeSingle(),
-      supabase.from('user_private').select('*').eq('user_id', uid).maybeSingle(),
-      supabase.from('athlete_profiles').select('*').eq('user_id', uid).maybeSingle(),
-      supabase.from('posts').select('*').eq('author_id', uid),
-      supabase.from('post_comments').select('*').eq('author_id', uid),
-      supabase.from('follows').select('*').eq('follower_id', uid),
-      supabase.from('applications').select('*').eq('athlete_id', uid),
-      supabase.from('athlete_media').select('*'),
-    ]);
-
-  return {
-    exported_at: new Date().toISOString(),
-    account: { id: uid, email: auth.user.email },
-    profile: profile.data,
-    private: priv.data,
-    athlete: athlete.data,
-    posts: posts.data ?? [],
-    comments: comments.data ?? [],
-    following: follows.data ?? [],
-    applications: applications.data ?? [],
-    media: media.data ?? [],
-  };
+  const { data, error } = await supabase.rpc('export_my_data');
+  if (error) throw new AppError(error);
+  return (data ?? {}) as Record<string, unknown>;
 }
 
 export { unwrap };
@@ -938,7 +945,29 @@ export async function challengeLeaderboard(
     p_offset: offset,
   });
   if (error) throw new AppError(error);
-  return (data ?? []) as ChallengeEntry[];
+  const rows = (data ?? []) as ChallengeEntry[];
+  const paths = Array.from(new Set(
+    rows
+      .flatMap((row) => [row.media_url, row.thumbnail_url])
+      .filter((value): value is string => !!value && !value.startsWith('http')),
+  ));
+  if (paths.length === 0) return rows;
+  const { data: signed, error: signError } = await supabase.storage
+    .from('posts')
+    .createSignedUrls(paths, 3600);
+  if (signError || !signed) {
+    return rows.map((row) => ({ ...row, media_url: null, thumbnail_url: null }));
+  }
+  const urls = new Map(signed.map((item) => [item.path, item.signedUrl]));
+  return rows.map((row) => ({
+    ...row,
+    media_url: row.media_url?.startsWith('http')
+      ? row.media_url
+      : (row.media_url ? urls.get(row.media_url) ?? null : null),
+    thumbnail_url: row.thumbnail_url?.startsWith('http')
+      ? row.thumbnail_url
+      : (row.thumbnail_url ? urls.get(row.thumbnail_url) ?? null : null),
+  }));
 }
 
 /**
@@ -1025,7 +1054,31 @@ export interface MyClip {
 export async function myClips(): Promise<MyClip[]> {
   const { data, error } = await supabase.rpc('my_clips');
   if (error) throw new AppError(error);
-  return (data ?? []) as MyClip[];
+  const rows = (data ?? []) as MyClip[];
+  const paths = Array.from(new Set(
+    rows
+      .flatMap((row) => [row.storage_url, row.thumbnail_url])
+      .filter((value): value is string => !!value && !value.startsWith('http')),
+  ));
+  if (paths.length === 0) return rows;
+  const { data: signed, error: signError } = await supabase.storage
+    .from('posts')
+    .createSignedUrls(paths, 3600);
+  if (signError || !signed) return [];
+  const urls = new Map(signed.map((item) => [item.path, item.signedUrl]));
+  return rows.flatMap((row) => {
+    const storageUrl = row.storage_url.startsWith('http')
+      ? row.storage_url
+      : urls.get(row.storage_url);
+    if (!storageUrl) return [];
+    return [{
+      ...row,
+      storage_url: storageUrl,
+      thumbnail_url: row.thumbnail_url?.startsWith('http')
+        ? row.thumbnail_url
+        : (row.thumbnail_url ? urls.get(row.thumbnail_url) ?? null : null),
+    }];
+  });
 }
 
 // ── Who has been looking ─────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ It is published by **AryAiX**, Dilan Tower, Al Jadaf, Dubai, United Arab Emirate
 - Every account gives a date of birth during sign-up. It is stored privately and is never displayed.
 - If the date of birth entered is under 13, **the database refuses to create the account**. This is a server-side rule, so a modified app cannot get around it.
 - From that date of birth the account is marked as a minor if the person is under 18, and given a coarse age band — 13–15, 16–17, 18–24 or 25+. Only the band is ever shown to other people.
-- If we learn that an account belongs to someone under 13, we remove it and delete the data.
+- If we learn that an existing account belongs to someone under 13, we **suspend access and hide the profile**. We keep the data so a parent or guardian can help correct the date of birth. We do not auto-delete the account.
 
 ## Parent and guardian consent
 

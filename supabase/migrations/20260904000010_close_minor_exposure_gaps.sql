@@ -539,6 +539,8 @@ returns table (
   full_name     text,
   avatar_url    text,
   age_band      text,
+  is_suspended  boolean,
+  is_discoverable boolean,
   consent_id    uuid,
   status        text,
   allow_discovery boolean,
@@ -556,6 +558,7 @@ as $$
      screen only ever wants the one that is in force. */
   select distinct on (g.minor_user_id)
     g.minor_user_id, up.full_name::text, up.avatar_url::text, up.age_band::text,
+    up.is_suspended, up.is_discoverable,
     g.id, g.status, g.allow_discovery, g.allow_messaging, g.allow_media, g.granted_at
   from public.guardian_consents g
   join public.user_profiles up on up.id = g.minor_user_id

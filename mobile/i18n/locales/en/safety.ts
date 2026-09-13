@@ -55,6 +55,18 @@ export const safety = {
   guardianTitle: 'Parent or guardian',
   guardianAthletesTitle: 'Athletes you look after',
   guardianSubtitleMinor: 'Permission for your profile',
+  ageReviewTitle: 'Age review required',
+  ageReviewBody:
+    'AceAiX is available only to people aged 13 or older. This account is paused while its age is reviewed, so the rest of the app is unavailable.',
+  ageReviewCorrection:
+    'If the birth date was entered incorrectly, request a review. A parent or guardian linked to the account can also request one.',
+  ageReviewRequest: 'Request an age review',
+  ageReviewRequestedButton: 'Review requested',
+  ageReviewRequested:
+    'Your review request was recorded. We will keep the account paused and preserve its data while our safety team checks it.',
+  ageReviewEmail: 'Need help? Email {{email}}',
+  guardianAgeReview: 'Request an age review',
+  guardianAgeReviewDone: 'Age review requested.',
 
   // What a guardian approves, one permission at a time
   scopeDiscovery: 'Appear in scout searches',

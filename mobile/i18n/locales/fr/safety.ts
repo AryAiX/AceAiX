@@ -60,6 +60,18 @@ export const safety = {
   guardianTitle: 'Parent ou tuteur',
   guardianAthletesTitle: 'Les athlètes dont tu t’occupes',
   guardianSubtitleMinor: 'Autorisation pour ton profil',
+  ageReviewTitle: 'Vérification de l’âge requise',
+  ageReviewBody:
+    'AceAiX est réservé aux personnes de 13 ans ou plus. Ce compte est suspendu pendant la vérification de son âge.',
+  ageReviewCorrection:
+    'Si la date de naissance est incorrecte, demande une vérification. Un parent ou tuteur lié peut aussi la demander.',
+  ageReviewRequest: 'Demander une vérification',
+  ageReviewRequestedButton: 'Vérification demandée',
+  ageReviewRequested:
+    'La demande est enregistrée. Les données seront conservées et le compte restera suspendu pendant la vérification.',
+  ageReviewEmail: 'Besoin d’aide ? Écris à {{email}}',
+  guardianAgeReview: 'Demander une vérification de l’âge',
+  guardianAgeReviewDone: 'Vérification de l’âge demandée.',
 
   // Ce qu’un tuteur valide, une autorisation à la fois
   scopeDiscovery: 'Apparaître dans les recherches des recruteurs',

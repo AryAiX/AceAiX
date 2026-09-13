@@ -57,6 +57,18 @@ export const safety = {
   guardianTitle: 'Eltern und Vormund',
   guardianAthletesTitle: 'Sportler, um die du dich kümmerst',
   guardianSubtitleMinor: 'Freigabe für dein Profil',
+  ageReviewTitle: 'Altersprüfung erforderlich',
+  ageReviewBody:
+    'AceAiX ist nur für Personen ab 13 Jahren verfügbar. Dieses Konto bleibt während der Altersprüfung pausiert.',
+  ageReviewCorrection:
+    'Wenn das Geburtsdatum falsch ist, beantrage eine Prüfung. Eine verknüpfte sorgeberechtigte Person kann dies ebenfalls tun.',
+  ageReviewRequest: 'Altersprüfung beantragen',
+  ageReviewRequestedButton: 'Prüfung beantragt',
+  ageReviewRequested:
+    'Der Antrag wurde erfasst. Die Daten bleiben erhalten und das Konto bleibt während der Prüfung pausiert.',
+  ageReviewEmail: 'Brauchst du Hilfe? E-Mail an {{email}}',
+  guardianAgeReview: 'Altersprüfung beantragen',
+  guardianAgeReviewDone: 'Altersprüfung beantragt.',
 
   // Was ein Elternteil freigibt, eine Erlaubnis nach der anderen
   scopeDiscovery: 'In der Scout-Suche erscheinen',

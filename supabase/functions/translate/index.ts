@@ -9,7 +9,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * miss. So this function is the expensive path, and it is written to be as
  * rare as possible: translate once, store, and let everyone else read the row.
  *
- *   POST { text, target }   (authenticated)
+ *   POST { source_type, source_id, target }   (authenticated)
  *     → { translated, detected_lang, provider, cached }
  *
  * ------------------------------------------------------------------
@@ -60,6 +60,13 @@ interface Translated {
   translated: string;
   detected_lang: string | null;
   provider: string;
+}
+
+type SourceType = "post" | "comment" | "message";
+
+interface SourceRef {
+  type: SourceType;
+  id: string;
 }
 
 /**
@@ -134,22 +141,35 @@ Deno.serve(async (req) => {
   const { data: who, error: whoErr } = await caller.auth.getUser();
   if (whoErr || !who.user) return json({ error: "Invalid or expired session" }, 401);
 
-  let text: string;
+  let source: SourceRef;
   let target: string;
   try {
     const body = await req.json();
-    text = String(body?.text ?? "").trim();
     target = String(body?.target ?? "").trim().toLowerCase();
+    const sourceType = body?.source?.type ?? body?.source_type;
+    const sourceId = body?.source?.id ?? body?.source_id;
+    source = { type: String(sourceType ?? "") as SourceType, id: String(sourceId ?? "") };
   } catch {
     return json({ error: "Expected JSON" }, 400);
   }
 
-  if (!text) return json({ error: "Nothing to translate" }, 400);
-  if (text.length > MAX_CHARS) {
-    return json({ error: `Text is longer than ${MAX_CHARS} characters` }, 413);
-  }
   if (!SUPPORTED.includes(target)) {
     return json({ error: `Unsupported target language: ${target}` }, 400);
+  }
+
+  if (!["post", "comment", "message"].includes(source.type) || !source.id) {
+    return json({ error: "Invalid translation source" }, 400);
+  }
+  const { data: resolved, error: sourceError } = await caller.rpc("translation_source", {
+    p_source_type: source.type,
+    p_source_id: source.id,
+  });
+  const text = typeof resolved === "string" ? resolved.trim() : "";
+  if (sourceError || !text) {
+    return json({ error: "Translation source is not available" }, 403);
+  }
+  if (text.length > MAX_CHARS) {
+    return json({ error: `Text is longer than ${MAX_CHARS} characters` }, 413);
   }
 
   /* Check the cache again. The client checked before calling, but two people
@@ -160,6 +180,20 @@ Deno.serve(async (req) => {
     p_target: target,
   });
   if (hit) return json({ ...hit, cached: true });
+
+  /* Reserve both the per-user and whole-project budget atomically before an
+     external provider can incur cost. No provider means no spend to reserve. */
+  if (GOOGLE_KEY || DEEPL_KEY) {
+    const { error: quotaError } = await admin.rpc("consume_translation_quota", {
+      p_user: who.user.id,
+      p_characters: text.length,
+      p_source_bound: true,
+    });
+    if (quotaError) {
+      console.warn("translation quota refused:", quotaError.message);
+      return json({ error: "Translation quota reached; try again tomorrow" }, 429);
+    }
+  }
 
   let result: Translated;
   try {

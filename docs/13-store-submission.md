@@ -129,25 +129,34 @@ be set separately.
       created by migrations, so pushing migrations is enough — but check them:
       - `avatars` — **public**, 10 MB limit, `image/jpeg,image/png,image/webp`
         (`supabase/migrations/0019_profile_media_storage.sql`)
-      - `posts` — **public**, 100 MB, images plus `video/mp4`, `video/quicktime`.
-        Created private by `0018_mobile_release_infrastructure.sql` and flipped to
-        public by `20260904000007_release_fixes.sql:25`, because the feed and profile
-        highlights build plain public URLs and every image 404'd while it was private.
-        Object paths carry an unguessable UUID, and who can *find* a post is still
-        decided by `posts.audience` and RLS — but a URL that leaks is readable.
-        `select id, public from storage.buckets;` after pushing: `posts` must be
-        `true`. (0018 upserts `public = excluded.public`, so re-running it out of
-        order would flip it back.)
-      - `stories` — **private**, same limits as `posts`, and unused by the 1.0 client
+      - `posts` — **private**, 100 MB, images plus `video/mp4`, `video/quicktime`.
+        V2 stores object paths and resolves them to short-lived signed URLs only
+        after both the post and storage audience policies authorize the caller.
+        `select id, public from storage.buckets;` after pushing must show `false`.
+      - `stories` — **private**, with the same limits as `posts`
 
 ### 1.2 Migrations
 
-- [ ] `supabase db push` against the production project. The head migration is
-      `supabase/migrations/20260904000010_close_minor_exposure_gaps.sql`.
+- [ ] `supabase db push --include-all` against the production project. V2 adds
+      migrations whose timestamps precede migrations already applied from 1.0.2,
+      so plain `supabase db push` can leave them unapplied. The head migration is
+      `supabase/migrations/20260913000001_account_data_export.sql`; verify that
+      `20260910000001_source_review_security_hardening.sql` is included too.
+- [ ] Before pushing, export `applications(id, status)`. An earlier draft rewrote
+      `accepted` to `invited`; the corrected migration is additive and never does
+      that. If the draft already ran in an environment, only that pre-deploy export
+      (or an audit log) can distinguish formerly accepted rows from ordinary
+      invitations.
+- [ ] Use the repository migration files as-is. In particular, do not replay an
+      older copy of `20260825000000_restore_missing_objects.sql`: every restored
+      SECURITY DEFINER trigger now pins `search_path = public, pg_temp`, matching
+      the later hardening migration.
 - [ ] Spot-check that the safety machinery landed:
       - `select private.age_band_for(current_date - interval '14 years');` → `13_15`
       - inserting a `user_private.date_of_birth` under 13 raises
         `AceAiX requires all account holders to be at least 13 years old`
+      - an existing under-13 `user_private` row is quarantined (suspended, hidden,
+        data preserved) rather than deleted; `age-review` can request an appeal
       - `select * from pg_policies where tablename = 'user_profiles';` shows
         `up_select_anon` restricted to `not is_minor and not is_suspended`
       - `select proname from pg_proc where proname in
@@ -168,9 +177,8 @@ be set separately.
 - [ ] Set function secrets (`supabase secrets set …`). `SUPABASE_URL` and
       `SUPABASE_SERVICE_ROLE_KEY` are supplied by the platform.
       - `RESEND_API_KEY` — **required in production**. Without it,
-        `guardian-consent` does not send the email; it returns the link in the
-        response instead (`supabase/functions/guardian-consent/index.ts:166-170`).
-        A guardian would never receive it.
+        `guardian-consent` fails delivery without exposing the approval link to
+        the minor. A guardian would never receive it.
       - `CONSENT_FROM_EMAIL` — defaults to `AceAiX <safety@aceaix.com>`. The sending
         domain must be verified with the email provider or the mail will bounce.
       - `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` — optional; see the blocker above.
@@ -191,6 +199,32 @@ https://<project-ref>.supabase.co/functions/v1/guardian-consent?token=<token>
       guardian without the app must land in a browser.
 - [ ] Note for the record: the page is `noindex,nofollow` and the token is the only
       credential; `confirm_guardian_consent` is deliberately granted to `anon`.
+- [ ] Confirm the deployed function has JWT verification disabled at the gateway.
+      GET and form POST validate the one-time guardian token; the app's JSON POST
+      separately validates its bearer JWT in the handler.
+
+### 1.4.1 V2-only production cutover
+
+V2 is an intentional backend cutover, not a V1-compatible rollout. There is **no**
+30-day or 90-day compatibility window. Apply the pending V2 migrations and ship
+the V2 clients together. V1 clients may stop working the moment the database
+changes (private `posts` media, redacted RPCs, consent and quarantine rules).
+
+Before publishing:
+
+1. Confirm all stored post media values are object paths, or backfill any legacy
+   public URLs to object paths.
+2. Apply the V2-only migration filenames (including `20260825000000`, which sorts
+   inside the V1 timeline; do not replay archived V1 copies of shared names).
+3. Verify signed URLs work for owners and permitted audiences, while blocked,
+   hidden-minor, follower-only, and connection-only cases are denied.
+4. Confirm under-13 quarantine: existing under-age rows are suspended and hidden,
+   data is preserved, and age-review / guardian appeal works. New under-13
+   sign-ups still raise `age_below_minimum`.
+
+Treat store rollout and the database cutover as one event. Do not leave V1
+binaries talking to a V2 schema, and do not keep a dual-write compatibility
+layer.
 
 ### 1.5 Build-time environment
 
@@ -218,11 +252,11 @@ eas env:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY  --value <publishable key>  
 
 ### 2.1 Version and build-number policy
 
-- `mobile/app.json` → `version` is the **marketing version** (`1.0.0`) shown in both
+- `mobile/app.json` → `version` is the **marketing version** (`2.0.0`) shown in both
   stores. Bump it by hand for every release you want users to see as new.
 - `mobile/eas.json` → `cli.appVersionSource: "remote"` means **EAS owns the build
-  number**. The `ios.buildNumber: "1"` and `android.versionCode: 1` in `app.json`
-  are ignored for production builds.
+  number**. The checked-in `ios.buildNumber` and `android.versionCode` are fallback
+  values; EAS remote versions take precedence for production builds.
 - `mobile/eas.json` → `build.production.autoIncrement: true` makes EAS read the last
   build number it issued for this project and add one, then write it into the
   binary. You do not edit build numbers by hand, and you cannot collide with a
@@ -252,17 +286,17 @@ Build fresh, every time, so the version and build number are the ones you meant.
 
 ```
 eas submit --platform ios     --profile production   # ascAppId 6785269968 is already set
-eas submit --platform android --profile production   # track: alpha
+eas submit --platform android --profile production   # production track
 ```
 
 - [ ] **OPEN — Play service account.** `mobile/eas.json` `submit.production.android`
-      sets only `track: "alpha"`. There is no `serviceAccountKeyPath`. Either add the
+      sets `track: "production"`. There is no `serviceAccountKeyPath`. Either add the
       key (kept out of the repo) or configure it in EAS credentials. Owner: whoever
       holds the Play Console owner account.
 - [ ] **OPEN — App Store Connect API key** for `eas submit --platform ios`, unless
       you upload manually. Owner: whoever holds the Apple developer account.
-- [ ] `track: "alpha"` sends the build to closed testing, not production. Promote in
-      Play Console when you are ready, or change the track.
+- [ ] Confirm `track: "production"` is intended before submitting. Use `alpha` only
+      for a closed-testing build.
 
 ---
 

@@ -36,7 +36,7 @@ Sources read to produce this: `mobile/lib/api.ts`, `mobile/lib/api.auth.ts`,
 | Applications to trials and scholarships, saved opportunities | `applications`, `opportunity_saves` | `applyToOpportunity`, `toggleSaveOpportunity` |
 | Recruiter search preferences — sports, positions, levels, countries, age range | `match_preferences` | `saveMatchPreferences` |
 | Talent Score, pillar scores, inputs, tips, history, optional AI summary | `talent_scores`, `talent_score_history` | server-side only; no client can write it |
-| **Guardian name, guardian email, relationship, approved scopes, consent token, granted-at** | `guardian_consents` | `public.request_guardian_consent()` |
+| **Guardian name, guardian email, relationship, approved scopes, consent token, granted-at** | `guardian_consents` | `public.request_guardian_consent()` creates the row but returns no token; only the email service can read that credential |
 | Reports — reason, free-text details (capped at 2,000 characters), severity, minor flag | `moderation_reports` | `public.report_content()` |
 | Blocks | `user_blocks` | `public.block_user()` |
 | Verification requests — type and status | `verification_requests` | `requestVerification()`; the client sends `documents: []`, so **no identity documents are uploaded from the app today** |
@@ -266,7 +266,7 @@ only if the user turns notifications on, and removed with the account.
 | Has your app been independently validated against a global security standard? | **No** | There is no audit and no certification. Do not tick this. |
 | Can users request that their data be deleted for a specific data type? | Partially | The account and everything on it goes together. Individual posts, comments, media and blocks can be deleted on their own. |
 
-Also worth stating in the free-text: the app offers a **full data export** — Settings
+Also worth stating in the free-text: the app offers an **in-app data export** — Settings
 → Account → Download my data, or the same button on the delete screen. It writes a
 JSON file of the profile, private record, athlete profile, posts, comments, follows,
 applications and media (`exportMyData()`, `mobile/lib/api.ts:732`).

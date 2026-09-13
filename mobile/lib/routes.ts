@@ -71,7 +71,69 @@ export const Routes = {
   },
 
   onboarding: '/(onboarding)' as const,
+  ageReview: '/age-review' as const,
 };
+
+export type RouteDecisionProfile = {
+  onboarding_completed: boolean;
+  is_suspended?: boolean;
+  suspended_reason?: string | null;
+};
+
+export type RouteDecision =
+  | typeof Routes.auth.welcome
+  | typeof Routes.onboarding
+  | typeof Routes.home
+  | typeof Routes.ageReview
+  | null;
+
+const UNDERAGE_SUSPENSION_REASONS = new Set([
+  'underage_account_pending_remediation',
+  'under_13',
+  'underage',
+]);
+
+/** True only for the suspension state that requires an age review or appeal. */
+export function requiresAgeReview(profile: RouteDecisionProfile): boolean {
+  return Boolean(
+    profile.is_suspended &&
+      profile.suspended_reason &&
+      UNDERAGE_SUSPENSION_REASONS.has(profile.suspended_reason),
+  );
+}
+
+/**
+ * Pure routing policy used by the root layout.
+ *
+ * Keeping this free of router hooks makes recovery-session and suspension
+ * behavior testable without mounting the application shell.
+ */
+export function routeDecision(input: {
+  hasSession: boolean;
+  profile: RouteDecisionProfile | null;
+  segments: readonly string[];
+}): RouteDecision {
+  const { hasSession, profile, segments } = input;
+  const group = segments[0];
+  const inAuth = group === '(auth)';
+  const inRecovery = isResetPasswordRoute(segments);
+  const inOnboarding = group === '(onboarding)';
+  const inAgeReview = group === 'age-review';
+  const isPublic = group === 'legal' || group === '+not-found';
+  const atEntry = segments.length === 0;
+
+  if (!hasSession) return !inAuth && !isPublic ? Routes.auth.welcome : null;
+
+  // Supabase establishes a session before the recovery form is submitted.
+  if (inRecovery) return null;
+  if (!profile) return null;
+
+  if (requiresAgeReview(profile)) return inAgeReview ? null : Routes.ageReview;
+  if (inAgeReview) return profile.onboarding_completed ? Routes.home : Routes.onboarding;
+
+  if (!profile.onboarding_completed) return inOnboarding ? null : Routes.onboarding;
+  return inAuth || inOnboarding || atEntry ? Routes.home : null;
+}
 
 /**
  * Where a notification should take you.
@@ -109,3 +171,8 @@ export function notificationTarget(n: AppNotification): Href | null {
 
 /** Deep-link paths the app answers to (`aceaix://…` and https links). */
 export const DEEP_LINK_PREFIXES = ['aceaix://', 'https://aceaix.com/app'];
+
+/** Recovery must remain reachable after Supabase establishes a recovery session. */
+export function isResetPasswordRoute(segments: readonly string[]): boolean {
+  return segments[0] === '(auth)' && segments[1] === 'reset-password';
+}

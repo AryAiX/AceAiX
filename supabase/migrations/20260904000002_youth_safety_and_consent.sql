@@ -34,6 +34,13 @@ alter table public.user_profiles
   add column if not exists last_active_at    timestamptz,
   add column if not exists onboarding_completed boolean not null default false;
 
+/* Profiles that pre-date this migration already completed the pre-V2 account
+   setup. Backfill only rows present while the migration runs; accounts created
+   afterwards retain the false default and enter the V2 onboarding. */
+update public.user_profiles
+set onboarding_completed = true
+where onboarding_completed = false;
+
 comment on column public.user_profiles.age_band is
   'Coarse band only. The exact date of birth stays in user_private and is never exposed publicly.';
 
@@ -367,27 +374,62 @@ create trigger trg_conversations_safety_guard
 -- ------------------------------------------------------------
 
 /* Called during onboarding by a 13–17 year-old. Creates (or replaces) the
-   pending consent request. The e-mail itself is sent by the
-   `guardian-consent` edge function, which reads the returned token. */
-create or replace function public.request_guardian_consent(
+   pending consent request. The edge function reads the token with its service
+   role; the minor must never receive the credential that approves consent. */
+drop function if exists public.request_guardian_consent(text, text, text);
+create function public.request_guardian_consent(
   p_guardian_name  text,
   p_guardian_email text,
   p_relationship   text default 'parent'
 )
-returns public.guardian_consents
+returns jsonb
 language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
 declare
   v_row public.guardian_consents;
+  v_guardian_email text := lower(btrim(coalesce(p_guardian_email, '')));
+  v_own_email text;
 begin
   if auth.uid() is null then
     raise exception 'Not authenticated' using errcode = '42501';
   end if;
-  if coalesce(trim(p_guardian_email), '') = '' or position('@' in p_guardian_email) = 0 then
+  if v_guardian_email = '' or position('@' in v_guardian_email) = 0 then
     raise exception 'A valid parent or guardian e-mail address is required'
       using errcode = '22023';
+  end if;
+  if not exists (
+    select 1 from public.user_profiles u
+    where u.id = auth.uid() and coalesce(u.is_minor, false)
+  ) then
+    raise exception 'Guardian consent applies only to a minor account'
+      using errcode = '42501';
+  end if;
+
+  select lower(btrim(coalesce(au.email, p.email, '')))
+  into v_own_email
+  from auth.users au
+  left join public.user_private p on p.user_id = au.id
+  where au.id = auth.uid();
+  if v_guardian_email = v_own_email then
+    raise exception 'Use a parent or guardian email, not your own'
+      using errcode = '22023', hint = 'guardian_email_is_own';
+  end if;
+  if exists (
+    select 1
+    from public.user_profiles u
+    join auth.users au on au.id = u.id
+    left join public.user_private p on p.user_id = u.id
+    where (
+      lower(btrim(coalesce(au.email, ''))) = v_guardian_email
+      or lower(btrim(coalesce(p.email, ''))) = v_guardian_email
+    )
+      and u.id <> auth.uid()
+      and coalesce(u.is_minor, false)
+  ) then
+    raise exception 'That email belongs to another minor account'
+      using errcode = '22023', hint = 'guardian_email_is_minor';
   end if;
 
   update public.guardian_consents
@@ -397,11 +439,23 @@ begin
   insert into public.guardian_consents (
     minor_user_id, guardian_name, guardian_email, relationship, status
   )
-  values (auth.uid(), trim(p_guardian_name), lower(trim(p_guardian_email)),
+  values (auth.uid(), trim(p_guardian_name), v_guardian_email,
           coalesce(p_relationship, 'parent'), 'pending')
   returning * into v_row;
 
-  return v_row;
+  return jsonb_build_object(
+    'id', v_row.id,
+    'minor_user_id', v_row.minor_user_id,
+    'guardian_name', v_row.guardian_name,
+    'guardian_email', v_row.guardian_email,
+    'relationship', v_row.relationship,
+    'status', v_row.status,
+    'allow_discovery', v_row.allow_discovery,
+    'allow_messaging', v_row.allow_messaging,
+    'allow_media', v_row.allow_media,
+    'granted_at', v_row.granted_at,
+    'created_at', v_row.created_at
+  );
 end;
 $$;
 
@@ -538,9 +592,15 @@ create policy gc_update on public.guardian_consents
   using (minor_user_id = auth.uid() or guardian_user_id = auth.uid() or private.is_admin())
   with check (minor_user_id = auth.uid() or guardian_user_id = auth.uid() or private.is_admin());
 
--- Rows are only created through request_guardian_consent().
-revoke insert, delete on public.guardian_consents from authenticated, anon;
-grant select, update on public.guardian_consents to authenticated;
+-- Rows are only created through request_guardian_consent(). Grant only the
+-- columns the app displays: `token` is the guardian's bearer credential and
+-- must not be readable by the minor who requested consent.
+revoke all on public.guardian_consents from authenticated, anon;
+grant select (
+  id, minor_user_id, guardian_user_id, guardian_name, guardian_email,
+  relationship, status, allow_discovery, allow_messaging, allow_media,
+  consent_method, granted_at, revoked_at, created_at, updated_at
+) on public.guardian_consents to authenticated;
 
 -- ------------------------------------------------------------
 -- Hide minors from anonymous browsing entirely

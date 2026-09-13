@@ -32,7 +32,11 @@ const PGRST_URL = process.env.PGRST_URL ?? 'http://127.0.0.1:3010';
 const JWT_SECRET =
   process.env.JWT_SECRET ?? 'aceaix-local-development-jwt-secret-not-for-production';
 const PSQL = process.env.PSQL ?? '/usr/lib/postgresql/16/bin/psql';
-const PGHOST = process.env.PGHOST ?? '/var/lib/pgtest/run';
+const PG_RUNTIME =
+  process.env.RUNTIME_DIR ??
+  process.env.ACEAIX_PG_RUNTIME ??
+  `${process.env.RUNNER_TEMP ?? process.env.TMPDIR ?? '/tmp'}/aceaix-pgtest`;
+const PGHOST = process.env.PGHOST ?? `${PG_RUNTIME}/run`;
 const PGPORT = process.env.PGPORT ?? '5433';
 const PGDATABASE = process.env.PGDATABASE ?? 'aceaix_test';
 const PGUSER = process.env.PGUSER ?? 'postgres';

@@ -28,6 +28,7 @@ import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
+import { routeDecision } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -50,29 +51,12 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (loading || !configured) return;
 
-    const group = segments[0];
-    const inAuth = group === '(auth)';
-    const inOnboarding = group === '(onboarding)';
-    const isPublic = group === 'legal' || group === '+not-found';
-    /* `/` renders the entry spinner and has no group of its own. Without this
-       a signed-in person opening the app cold would sit on that spinner for
-       ever, because no other branch below would move them. */
-    const atEntry = (segments as readonly string[]).length === 0;
-
-    if (!session) {
-      if (!inAuth && !isPublic) router.replace('/(auth)/welcome');
-      return;
-    }
-
-    // Signed in. Wait for the profile row before deciding anything else.
-    if (!profile) return;
-
-    if (!profile.onboarding_completed) {
-      if (!inOnboarding) router.replace('/(onboarding)');
-      return;
-    }
-
-    if (inAuth || inOnboarding || atEntry) router.replace('/(tabs)');
+    const target = routeDecision({
+      hasSession: Boolean(session),
+      profile,
+      segments: segments as readonly string[],
+    });
+    if (target) router.replace(target);
   }, [session, profile, loading, configured, segments, router]);
 
   return <>{children}</>;
@@ -119,6 +103,7 @@ function Shell() {
           <Stack.Screen name="(auth)" options={{ animation: 'fade' }} />
           <Stack.Screen name="(onboarding)" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+          <Stack.Screen name="age-review" options={{ animation: 'fade', gestureEnabled: false }} />
           <Stack.Screen
             name="compose"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}

@@ -39,7 +39,11 @@ import {
   requestGuardianConsent,
   revokeGuardianConsent,
 } from '@/lib/api';
-import { getGuardianLinks, resendGuardianConsentEmail } from '@/lib/api.settings';
+import {
+  getGuardianLinks,
+  requestUnderageAgeAppeal,
+  resendGuardianConsentEmail,
+} from '@/lib/api.settings';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, relativeTime, roleLabel } from '@/lib/format';
 import { COMPANY } from '@/lib/legal';
@@ -474,9 +478,23 @@ function GuardianView() {
   const { spacing } = theme;
   const router = useRouter();
   const t = useT();
+  const toast = useToast();
+  const [appealing, setAppealing] = useState<string | null>(null);
 
   const links = useAsync(getGuardianLinks, [], { refetchOnFocus: true });
   const rows = links.data ?? [];
+
+  const requestAgeReview = useCallback(async (minorUserId: string) => {
+    setAppealing(minorUserId);
+    try {
+      await requestUnderageAgeAppeal(minorUserId);
+      toast.success(t('safety.guardianAgeReviewDone'));
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setAppealing(null);
+    }
+  }, [t, toast]);
 
   return (
     <View style={{ paddingTop: spacing.lg, gap: spacing.xl }}>
@@ -521,7 +539,9 @@ function GuardianView() {
                   name={link.minor?.full_name}
                   size="sm"
                   onPress={
-                    link.minor ? () => router.push(Routes.profile(link.minor!.id)) : undefined
+                    link.minor?.is_discoverable
+                      ? () => router.push(Routes.profile(link.minor!.id))
+                      : undefined
                   }
                 />
                 <View style={{ flex: 1 }}>
@@ -571,6 +591,17 @@ function GuardianView() {
                     </>
                   ) : null}
                 </>
+              ) : null}
+              {link.minor?.is_suspended ? (
+                <Button
+                  label={t('safety.guardianAgeReview')}
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
+                  loading={appealing === link.minor_user_id}
+                  onPress={() => requestAgeReview(link.minor_user_id)}
+                  style={{ marginTop: spacing.md }}
+                />
               ) : null}
             </Card>
           ))

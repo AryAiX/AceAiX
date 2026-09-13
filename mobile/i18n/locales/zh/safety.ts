@@ -50,6 +50,16 @@ export const safety = {
   guardianTitle: '家长与监护人',
   guardianAthletesTitle: '你照看的运动员',
   guardianSubtitleMinor: '你资料的授权情况',
+  ageReviewTitle: '需要核实年龄',
+  ageReviewBody: 'AceAiX 仅供年满 13 岁的人使用。核实年龄期间，此账号会暂停使用。',
+  ageReviewCorrection:
+    '如果出生日期填写错误，请申请核实。已关联的父母或监护人也可以代为申请。',
+  ageReviewRequest: '申请年龄核实',
+  ageReviewRequestedButton: '已申请核实',
+  ageReviewRequested: '申请已记录。核实期间账号保持暂停，所有数据都会保留。',
+  ageReviewEmail: '需要帮助？请发邮件至 {{email}}',
+  guardianAgeReview: '申请年龄核实',
+  guardianAgeReviewDone: '已申请年龄核实。',
 
   // 监护人逐项批准的内容
   scopeDiscovery: '出现在球探搜索里',

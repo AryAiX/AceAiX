@@ -333,8 +333,9 @@ the words are read.
 
 ## 8. Animation conventions
 
-Reanimated is stubbed ([10 §7](./10-mobile-app.md)), so everything here is React Native's own
-`Animated`, native driver wherever the property allows it.
+The app has the real Reanimated/Worklets runtime for navigation and gesture dependencies
+([10 §7](./10-mobile-app.md)). The engagement effects themselves deliberately use React Native's
+`Animated`, with the native driver wherever the property allows it.
 
 ### 8.1 Every animation checks `useReducedMotion()`
 

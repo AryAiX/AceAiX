@@ -11,9 +11,12 @@ an AI Talent Score out of 100, post highlight clips, and are found by verified
 coaches and clubs who post trials and scholarships.
 
 **Minimum age is 13, enforced in the database.** A date of birth under 13 is refused
-by a server-side rule, so a modified client cannot create the account. Accounts aged
-13–17 are treated as minors: hidden from discovery until a parent or guardian
-approves them, and contactable only by verified adult professionals.
+by a server-side rule, so a modified client cannot create the account. If an
+existing account is later found to be under 13, access is suspended and the
+profile is hidden; data is kept for a guardian-supported age correction rather
+than deleted automatically. Accounts aged 13–17 are treated as minors: hidden
+from discovery until a parent or guardian approves them, and contactable only by
+verified adult professionals.
 
 ## Demo accounts
 

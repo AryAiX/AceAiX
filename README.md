@@ -50,9 +50,11 @@ local harness: [`docs/14-local-development.md`](docs/14-local-development.md).
 ## Where we stand on young users
 
 A large share of accounts belong to minors, and that shapes every design decision in this
-codebase rather than sitting beside them. Nobody under 13 can hold an account — the database
-refuses the date of birth outright. A 13–17 account is invisible in discovery and reachable by
-no adult at all until a parent or guardian has confirmed consent by e-mail, and consent is
+codebase rather than sitting beside them. New sign-ups under 13 are refused outright. If an
+existing account is later found to be under 13, access is suspended and the profile is hidden;
+the data is kept so a parent can appeal an age correction, and it is not auto-deleted.
+A 13–17 account is invisible in discovery and reachable by no adult at all until a
+parent or guardian has confirmed consent by e-mail, and consent is
 scoped (discovery, messaging, media are three separate switches) and revocable at any time by
 either the young person or the guardian. Only a **verified** adult professional can open a
 conversation with a minor, and only within a granted consent. A minor's exact date of birth,

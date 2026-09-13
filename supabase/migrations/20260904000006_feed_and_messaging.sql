@@ -83,6 +83,18 @@ begin
     not p.is_hidden
     and p.moderation_state = 'visible'
     and not up.is_suspended
+    and (
+      not coalesce(up.is_minor, false)
+      or coalesce(up.is_discoverable, false)
+      or p.author_id = v_viewer
+      or private.is_admin()
+      or exists (
+        select 1 from public.guardian_consents g
+        where g.minor_user_id = p.author_id
+          and g.guardian_user_id = v_viewer
+          and g.status = 'granted'
+      )
+    )
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = v_viewer and b.blocked_id = p.author_id)
@@ -151,6 +163,18 @@ as $$
     and not p.is_hidden
     and p.moderation_state = 'visible'
     and not up.is_suspended
+    and (
+      not coalesce(up.is_minor, false)
+      or coalesce(up.is_discoverable, false)
+      or p.author_id = auth.uid()
+      or private.is_admin()
+      or exists (
+        select 1 from public.guardian_consents g
+        where g.minor_user_id = p.author_id
+          and g.guardian_user_id = auth.uid()
+          and g.status = 'granted'
+      )
+    )
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = auth.uid() and b.blocked_id = p_user)

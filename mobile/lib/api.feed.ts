@@ -1,5 +1,5 @@
 import { AppError } from '@/lib/errors';
-import { Buckets, publicUrl, supabase } from '@/lib/supabase';
+import { Buckets, supabase } from '@/lib/supabase';
 import type { FeedPost, PostMedia, Tier, UserRole } from '@/types/models';
 
 /**
@@ -63,6 +63,26 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     viewerFollows(authorId, viewerId),
   ]);
 
+  const rawMedia = Array.isArray(row.media) ? (row.media as PostMedia[]) : [];
+  const paths = rawMedia
+    .flatMap((item) => [item.url, item.thumbnail])
+    .filter((value): value is string => !!value && !value.startsWith('http'));
+  const { data: signed } = paths.length
+    ? await supabase.storage.from(Buckets.posts).createSignedUrls(Array.from(new Set(paths)), 3600)
+    : { data: [] };
+  const signedByPath = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
+  const media = rawMedia.flatMap((item) => {
+    const url = item.url.startsWith('http') ? item.url : signedByPath.get(item.url);
+    if (!url) return [];
+    return [{
+      ...item,
+      url,
+      thumbnail: !item.thumbnail || item.thumbnail.startsWith('http')
+        ? item.thumbnail
+        : signedByPath.get(item.thumbnail),
+    }];
+  });
+
   return {
     id: row.id as string,
     author_id: authorId,
@@ -76,7 +96,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     athlete_position: athlete.position,
     type: (row.type as string) ?? 'standard',
     caption: (row.caption as string | null) ?? (row.text as string | null) ?? null,
-    media: Array.isArray(row.media) ? (row.media as PostMedia[]) : [],
+    media,
     tags: Array.isArray(row.tags) ? (row.tags as string[]) : [],
     like_count: (row.like_count as number) ?? 0,
     comment_count: (row.comments_count as number) ?? 0,
@@ -99,33 +119,15 @@ interface AthleteFacts {
 async function readAthlete(userId: string): Promise<AthleteFacts> {
   const blank: AthleteFacts = { sport: null, position: null, score: 0, tier: 'rising' };
 
-  const { data: profile, error } = await supabase
-    .from('athlete_profiles')
-    .select('id, sport, position_primary, position')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error || !profile) return blank;
-
-  const row = profile as Record<string, unknown>;
-  const facts: AthleteFacts = {
-    ...blank,
+  const { data, error } = await supabase.rpc('feed_author_facts', { p_user: userId });
+  if (error || !data) return blank;
+  const row = data as Record<string, unknown>;
+  return {
     sport: (row.sport as string | null) ?? null,
-    position:
-      (row.position_primary as string | null) ?? (row.position as string | null) ?? null,
+    position: (row.position as string | null) ?? null,
+    score: (row.score as number) ?? 0,
+    tier: ((row.tier as Tier) ?? 'rising') as Tier,
   };
-
-  const { data: score } = await supabase
-    .from('talent_scores')
-    .select('overall, tier')
-    .eq('athlete_id', row.id as string)
-    .maybeSingle();
-
-  if (score) {
-    const s = score as Record<string, unknown>;
-    facts.score = (s.overall as number) ?? 0;
-    facts.tier = ((s.tier as Tier) ?? 'rising') as Tier;
-  }
-  return facts;
 }
 
 async function viewerHasRow(
@@ -257,11 +259,8 @@ export async function uploadPostMedia(
       .upload(path, body, { contentType, cacheControl: '3600', upsert: false });
     if (error) throw new AppError(error);
 
-    const url = publicUrl(Buckets.posts, path);
-    if (!url) throw new AppError('The upload finished but we could not link it. Try again.');
-
     uploaded.push({
-      url,
+      url: path,
       type: item.type,
       width: item.width && item.width > 0 ? item.width : undefined,
       height: item.height && item.height > 0 ? item.height : undefined,

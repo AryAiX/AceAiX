@@ -270,6 +270,7 @@ export type ApplicationStatus =
   | 'in_review'
   | 'shortlisted'
   | 'invited'
+  | 'accepted'
   | 'rejected'
   | 'withdrawn';
 

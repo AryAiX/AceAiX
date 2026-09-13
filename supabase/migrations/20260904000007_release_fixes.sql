@@ -16,49 +16,64 @@
 -- build plain public URLs — so every image and clip 404'd for every viewer,
 -- including the person who uploaded it.
 --
--- Post media is content people publish to a feed, and object paths carry an
--- unguessable UUID, so the bucket is made public and reads go straight to the
--- CDN. Who can *find* a post is still decided by `posts.audience` and RLS.
--- `stories` stays private: it is ephemeral by design and is not used by the
--- 1.0 client.
+-- Post media remains private. An unguessable URL is not authorization: signed
+-- URL creation must pass the storage policy, which in turn reads the post
+-- through its audience-aware RLS policy.
+-- `stories` stays private as well.
 -- ------------------------------------------------------------
-update storage.buckets set public = true where id = 'posts';
+update storage.buckets set public = false where id = 'posts';
 
 drop policy if exists media_authenticated_read on storage.objects;
-create policy media_posts_public_read
-on storage.objects for select
-to anon, authenticated
-using (bucket_id = 'posts');
-
-create policy media_stories_authenticated_read
+create policy media_authenticated_read
 on storage.objects for select
 to authenticated
-using (bucket_id = 'stories');
+using (
+  (bucket_id in ('posts', 'stories')
+   and (storage.foldername(name))[1] = auth.uid()::text)
+  or (
+    bucket_id = 'posts'
+    and (
+      exists (
+        select 1 from public.posts p
+        where p.image_url = name
+           or exists (
+             select 1
+             from jsonb_array_elements(coalesce(p.media, '[]'::jsonb)) item
+             where item ->> 'url' = name or item ->> 'thumbnail' = name
+           )
+      )
+      or exists (
+        select 1 from public.athlete_media m
+        where m.storage_url = name or m.thumbnail_url = name
+      )
+    )
+  )
+  or (
+    bucket_id = 'stories'
+    and exists (select 1 from public.stories s where s.media_url = name)
+  )
+);
 
 -- ------------------------------------------------------------
 -- 2. Application statuses
 --
--- The constraint allowed applied | viewed | shortlisted | trial_offered |
--- accepted | not_selected. The client speaks applied | in_review |
--- shortlisted | invited | rejected | withdrawn — and had no way at all to
--- record a withdrawal, which App Store reviewers look for as a way out of a
--- submitted form.
---
--- The client vocabulary wins because it is the one people read on screen.
--- Existing rows are translated rather than dropped.
+-- Map only obsolete labels. Accepted is durable history and remains accepted.
 -- ------------------------------------------------------------
 alter table public.applications drop constraint if exists applications_status_check;
 
 update public.applications set status = 'in_review' where status = 'viewed';
-update public.applications set status = 'invited'   where status in ('trial_offered', 'accepted');
-update public.applications set status = 'rejected'  where status = 'not_selected';
+update public.applications set status = 'invited' where status = 'trial_offered';
+update public.applications set status = 'rejected' where status = 'not_selected';
 
 alter table public.applications
   add constraint applications_status_check
-  check (status in ('applied','in_review','shortlisted','invited','rejected','withdrawn'));
+  check (status in (
+    'applied', 'in_review', 'shortlisted', 'invited',
+    'accepted', 'rejected', 'withdrawn'
+  ));
 
 comment on column public.applications.status is
-  'applied → in_review → shortlisted → invited, or rejected. withdrawn is athlete-initiated and terminal until they re-apply.';
+  'V2 workflow. accepted is durable; withdrawn is athlete-initiated.';
 
 -- An athlete may only withdraw; every other transition belongs to the club.
 create or replace function private.guard_application_status()
@@ -67,21 +82,49 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
-declare v_owner uuid;
+declare
+  v_owner uuid;
+  v_org uuid;
+  v_is_reviewer boolean;
 begin
   if auth.role() = 'service_role' or private.is_admin() then return new; end if;
   if new.status is not distinct from old.status then return new; end if;
 
-  select created_by_id into v_owner from public.opportunities where id = new.opportunity_id;
+  select created_by_id, organization_id
+    into v_owner, v_org
+  from public.opportunities
+  where id = new.opportunity_id;
 
-  if auth.uid() = new.athlete_id and new.status not in ('withdrawn', 'applied') then
-    raise exception 'Only the club can change an application''s status'
+  v_is_reviewer := auth.uid() = v_owner
+    or (v_org is not null and private.is_org_member(
+      v_org, array['owner','manager','scout','coach']));
+
+  if auth.uid() = new.athlete_id then
+    if not (
+      (new.status = 'withdrawn'
+       and old.status not in ('accepted','rejected','withdrawn'))
+      or (old.status = 'withdrawn' and new.status = 'applied')
+    ) then
+      raise exception 'Only the club can change an application''s status'
+        using errcode = '42501';
+    end if;
+  elsif not v_is_reviewer then
+    raise exception 'Only the athlete or an authorized organization member can change this application'
       using errcode = '42501';
-  end if;
-
-  if auth.uid() = v_owner and new.status = 'withdrawn' then
+  elsif new.status = 'withdrawn' then
     raise exception 'Only the athlete can withdraw an application'
       using errcode = '42501';
+  elsif old.status = 'withdrawn' then
+    raise exception 'Only the athlete can reapply after withdrawing'
+      using errcode = '42501';
+  elsif not (
+    (old.status = 'applied' and new.status in ('in_review','shortlisted','rejected'))
+    or (old.status = 'in_review' and new.status in ('shortlisted','invited','rejected'))
+    or (old.status = 'shortlisted' and new.status in ('in_review','invited','rejected'))
+    or (old.status = 'invited' and new.status in ('accepted','rejected'))
+  ) then
+    raise exception 'Invalid application status transition'
+      using errcode = '23514';
   end if;
 
   return new;

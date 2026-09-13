@@ -21,7 +21,8 @@ Deliberately absent:
   fetched per screen through `useAsync` and refetched on focus; the only cross-screen state is a
   session and two unread counts, and those are React context. Adding a cache layer would mean a
   second source of truth for data the database already owns.
-- **No Reanimated.** It resolves to a no-op stub (`mobile/stubs/`). See §7.
+- **Real Reanimated/Worklets runtime.** Expo-compatible packages are installed without a Metro
+  stub; the app's lightweight design-system effects still use React Native `Animated`. See §7.
 - **No styling framework.** Styles are plain `StyleSheet` objects built from theme tokens.
 
 The web export (`npm run build:web`) is a real target: it is what the end-to-end walkthrough
@@ -356,20 +357,19 @@ Two consequences worth knowing:
 
 ---
 
-## 7. Reanimated is stubbed
+## 7. Reanimated and Worklets
 
-`react-native-reanimated` is redirected to a local no-op package: a `file:` dependency in
-`package.json` plus a `resolver.extraNodeModules` entry in `metro.config.js`.
+The Expo SDK-compatible `react-native-reanimated` and `react-native-worklets` packages are installed
+as real dependencies. Metro no longer redirects either package to a local stub. `expo install
+--check`, `expo-doctor`, and `npm run test:native-runtime` pin that arrangement in CI.
 
-Expo Go bundles a fixed native `react-native-worklets` version. When the JS version of Reanimated
-disagrees with it — which it does across most SDK/patch combinations — the app crashes on launch
-rather than degrading. Since the design needs no gesture-driven or scroll-linked animation, the
-trade was: lose Reanimated, keep Expo Go, and keep the ability to hand anyone a QR code.
+AceAiX's own motion kit still uses React Native `Animated`: its effects need no worklet and it can
+select the native driver on iOS and Android while avoiding browser-only driver warnings. Native
+navigation and gesture dependencies are free to use the real Reanimated runtime.
 
-The stub exports the whole surface as no-ops (`useSharedValue`, `withTiming`, `FadeIn`, …) so any
-transitive dependency that imports it still loads. **Anything you write against it will not
-animate.** Use `Animated` from `react-native` with `useNativeDriver: true`; `app/(tabs)/_layout.tsx`
-is the working example.
+Web export and package-resolution checks cannot prove the native JSI runtime initialized. Before a
+release, launch a development or store build on both an iOS simulator/device and Android
+emulator/device and exercise tab navigation, a modal, and an interactive back gesture.
 
 ---
 

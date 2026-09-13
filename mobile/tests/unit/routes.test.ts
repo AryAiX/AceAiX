@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { Routes, notificationTarget } from '@/lib/routes';
+import {
+  Routes,
+  isResetPasswordRoute,
+  notificationTarget,
+  routeDecision,
+} from '@/lib/routes';
 import type { AppNotification, NotificationType } from '@/types/models';
 
 /**
@@ -96,6 +101,54 @@ describe('notificationTarget', () => {
   it('returns null when there is genuinely nowhere to go', () => {
     const n = notification({ entity_type: null, entity_id: null, actor_id: null });
     expect(notificationTarget(n)).toBeNull();
+  });
+});
+
+describe('authentication routes', () => {
+  it('keeps reset-password reachable after a recovery session signs the user in', () => {
+    expect(isResetPasswordRoute(['(auth)', 'reset-password'])).toBe(true);
+    expect(isResetPasswordRoute(['(auth)', 'sign-in'])).toBe(false);
+    expect(isResetPasswordRoute(['(tabs)'])).toBe(false);
+  });
+
+  it('sends a signed-out private route to welcome', () => {
+    expect(routeDecision({ hasSession: false, profile: null, segments: ['(tabs)'] })).toBe(
+      Routes.auth.welcome,
+    );
+    expect(routeDecision({ hasSession: false, profile: null, segments: ['(auth)', 'sign-in'] }))
+      .toBeNull();
+  });
+
+  it('sends an authenticated non-recovery auth route to the app', () => {
+    expect(
+      routeDecision({
+        hasSession: true,
+        profile: { onboarding_completed: true },
+        segments: ['(auth)', 'sign-in'],
+      }),
+    ).toBe(Routes.home);
+  });
+
+  it('keeps an authenticated recovery session on reset-password', () => {
+    expect(
+      routeDecision({
+        hasSession: true,
+        profile: { onboarding_completed: true },
+        segments: ['(auth)', 'reset-password'],
+      }),
+    ).toBeNull();
+  });
+
+  it('isolates an under-13 suspended account on age review', () => {
+    const profile = {
+      onboarding_completed: true,
+      is_suspended: true,
+      suspended_reason: 'underage_account_pending_remediation',
+    };
+    expect(routeDecision({ hasSession: true, profile, segments: ['(tabs)'] })).toBe(
+      Routes.ageReview,
+    );
+    expect(routeDecision({ hasSession: true, profile, segments: ['age-review'] })).toBeNull();
   });
 });
 

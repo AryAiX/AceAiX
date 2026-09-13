@@ -10,13 +10,16 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MIGRATIONS="$ROOT/supabase/migrations"
 
-export PGHOST="${PGHOST:-/var/lib/pgtest/run}"
+RUNTIME_DIR="${RUNTIME_DIR:-${ACEAIX_PG_RUNTIME:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/aceaix-pgtest}}"
+export RUNTIME_DIR
+RUNTIME="$RUNTIME_DIR"
+export PGHOST="${PGHOST:-$RUNTIME/run}"
 export PGPORT="${PGPORT:-5433}"
 export PGUSER="${PGUSER:-postgres}"
 DB="${1:-aceaix_test}"
 
 echo "→ recreating database $DB"
-psql -q -d postgres -c "drop database if exists $DB;" >/dev/null
+psql -q -d postgres -c "drop database if exists $DB with (force);" >/dev/null
 psql -q -d postgres -c "create database $DB;" >/dev/null
 
 echo "→ applying Supabase shim"

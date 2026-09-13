@@ -273,14 +273,15 @@ If any age group below 13 were selected, the app would enter Google Play's
 - Open user-to-user messaging and adult-to-minor discovery — the core of the
   product — would be very hard to justify.
 
-The product answers this by simply not allowing under-13 accounts to exist.
+The product answers this by refusing new under-13 sign-ups.
 `private.sync_age_state()` raises
 `AceAiX requires all account holders to be at least 13 years old` on any date of
 birth under 13
-(`supabase/migrations/20260904000002_youth_safety_and_consent.sql:144`). The comment
-above that code says the same thing in plain words: "There is no compliant way to
-run a social product for under-13s without full COPPA verifiable parental consent
-infrastructure, so the account simply cannot exist."
+(`supabase/migrations/20260904000002_youth_safety_and_consent.sql:144`). If an
+existing row is later found to be under 13, it is suspended and hidden, the data
+is preserved, and a guardian-supported age correction can restore access — the
+account is not auto-deleted
+(`20260910000001_source_review_security_hardening.sql`).
 
 Because 13–17 **is** included, the app is subject to Google's requirements for apps
 accessible to teens, including the Child Safety Standards declaration in §7.
@@ -303,7 +304,8 @@ Mandatory for apps in the Social category. Have these ready:
 Supporting facts you can cite in the free-text answers, all enforced in the database
 rather than in the client:
 
-- Under-13 accounts cannot be created.
+- Under-13 accounts cannot be created. Existing under-13 rows are suspended and
+  hidden, with data preserved for a guardian-supported age correction.
 - A 13–17 profile is not discoverable until a guardian grants consent, and consent is
   granular (discovery, messaging, media) and revocable.
 - The consent gate applies to **every** surface that can name a person: the recruiter

@@ -229,7 +229,7 @@ governed by the Community Guidelines and removable.
 | Gambling or contests with prizes | **No** | None. |
 | In-app purchases | **No** | No billing SDK in `mobile/package.json`. Terms §8: athletes are never charged. |
 | Is the app made for kids (Kids Category)? | **No** | The minimum age is 13. Do **not** select the Kids Category — it forbids user-to-user messaging and third-party analytics and would make the product illegal to ship as built. |
-| Age assurance / age verification | Self-declared date of birth at sign-up, enforced server-side | `mobile/app/(auth)/sign-up.tsx` blocks under-13 in the UI; `private.sync_age_state()` raises `age_below_minimum` in the database, so a modified client cannot get past it, and since `20260904000010` editing `athlete_profiles.birth_date` is mirrored back into the private record so it runs through the same check. The date remains **self-declared and re-declarable** — there is no document-based age verification, so do not claim one. |
+| Age assurance / age verification | Self-declared date of birth at sign-up, enforced server-side | `mobile/app/(auth)/sign-up.tsx` blocks under-13 in the UI; `private.sync_age_state()` raises `age_below_minimum` in the database, so a modified client cannot get past it, and since `20260904000010` editing `athlete_profiles.birth_date` is mirrored back into the private record so it runs through the same check. Existing under-13 rows are quarantined (suspended, hidden, data kept) rather than auto-deleted. The date remains **self-declared and re-declarable** — there is no document-based age verification, so do not claim one. |
 
 ### 5.3 Resulting rating
 
