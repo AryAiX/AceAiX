@@ -23,6 +23,43 @@
 -- See docs/25-the-waitlist.md.
 -- ============================================================================
 
+-- ── Prerequisites, for a project that does not have them yet ────────────────
+-- This migration is the one piece of the schema that can usefully be applied on
+-- its own — to a brand-new Supabase project, or to an older one, just to put a
+-- sign-up form on the website. Both of those lack the `private` schema and the
+-- admin predicate that the rest of this repository takes for granted, and a
+-- half-applied migration is worse than one that never ran.
+--
+-- Each statement below is a no-op where the object already exists, so running
+-- this after the full migration set changes nothing.
+
+create schema if not exists private;
+create extension if not exists pgcrypto;   -- gen_random_uuid()
+
+do $$
+begin
+  if to_regprocedure('private.is_admin()') is null then
+    /* The real one reads `public.user_profiles`, which a website-only project
+       does not have. Falling back to "nobody is an admin" is the safe
+       direction: the list stays readable through the service role and the
+       dashboard, and unreadable to every signed-in client. */
+    if to_regclass('public.user_profiles') is null then
+      execute $fn$
+        create function private.is_admin() returns boolean
+        language sql stable security definer set search_path = public, pg_temp
+        as 'select false';
+      $fn$;
+    else
+      execute $fn$
+        create function private.is_admin() returns boolean
+        language sql stable security definer set search_path = public, pg_temp
+        as 'select exists (select 1 from public.user_profiles
+                            where id = auth.uid() and role = ''admin'')';
+      $fn$;
+    end if;
+  end if;
+end $$;
+
 -- ── The list ────────────────────────────────────────────────────────────────
 
 create table if not exists public.waitlist (
