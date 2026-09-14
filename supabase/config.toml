@@ -388,6 +388,26 @@ verify_jwt = true
 [functions.sync-football]
 verify_jwt = true
 
+# The one public endpoint in the project.
+#
+# Every other function here is called by a signed-in app, so `verify_jwt = true`
+# is right for them: Supabase rejects the request before any of our code runs
+# unless a valid JWT is attached. This one is called by a form on the marketing
+# site, by a visitor who has no account and no token — with verification left on
+# (which is the DEFAULT, so leaving this block out is the same as breaking it)
+# every sign-up comes back 401, and it does so only once deployed, never
+# locally.
+#
+# Turning it off does not make the endpoint unguarded. It moves the guarding
+# into the function, which is where it has to be anyway: the honeypot, the
+# per-IP rate limit, the 18+ check and the email validation all run there, and
+# a JWT would prove nothing about a stranger signing up for a mailing list.
+# The service-role key stays server-side either way.
+#
+# See docs/25-the-waitlist.md.
+[functions.waitlist-subscribe]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

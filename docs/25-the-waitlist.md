@@ -139,6 +139,19 @@ supabase secrets set SITE_URL=https://aceaix.com
 supabase secrets set WAITLIST_IP_PEPPER="$(openssl rand -hex 32)"
 ```
 
+**`verify_jwt = false` for this function is load-bearing**, and it is set in
+`supabase/config.toml`. Supabase verifies a JWT *before* any function code runs,
+and the default is on — so with that block missing, every sign-up comes back
+401, and it does so only once deployed, never locally. That is a bad afternoon
+waiting to happen.
+
+It does not leave the endpoint unguarded. It moves the guarding into the
+function, where it has to be anyway: the honeypot, the per-IP rate limit, the
+18+ check and the email validation all run there, and a JWT would prove nothing
+about a stranger signing up for a mailing list. The service-role key stays
+server-side either way. Every *other* function in the project keeps
+`verify_jwt = true`, because they are called by a signed-in app.
+
 Then paste the function URL into the **one** marked place in
 `site/index.html` — a `<script>` block just after `<body>`, with a comment
 block above it saying what to put there.
