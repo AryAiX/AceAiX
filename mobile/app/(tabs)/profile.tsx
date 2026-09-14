@@ -105,6 +105,12 @@ export default function MyProfileScreen() {
 
         <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
 
+        <Button
+          label={t('profile.savedPosts')}
+          variant="secondary"
+          onPress={() => router.push(Routes.savedPosts)}
+        />
+
         {athlete ? (
           <Button
             label={t('profile.playerCard')}

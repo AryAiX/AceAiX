@@ -213,6 +213,15 @@ export async function getFeed(params: {
   return (data ?? []) as FeedPost[];
 }
 
+export async function getSavedPosts(params: { limit?: number; before?: string | null } = {}): Promise<FeedPost[]> {
+  const { data, error } = await supabase.rpc('get_saved_posts', {
+    p_limit: params.limit ?? 20,
+    p_before: params.before ?? null,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as FeedPost[];
+}
+
 export async function getUserPosts(
   userId: string,
   before?: string | null,

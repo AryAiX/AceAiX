@@ -16,6 +16,7 @@ export const Routes = {
   discover: '/(tabs)/discover' as const,
   opportunities: '/(tabs)/opportunities' as const,
   myProfile: '/(tabs)/profile' as const,
+  savedPosts: '/saved' as const,
 
   compose: '/compose' as const,
   notifications: '/notifications' as const,
