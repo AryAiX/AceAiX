@@ -1658,4 +1658,136 @@ exception when insufficient_privilege then
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── the waitlist ──'; end $$;
+
+/*
+ * The waitlist holds email addresses typed in by strangers, and the anon key
+ * that reaches this database is printed in the source of the marketing page.
+ * So the property under test is not "the policy is right" but "neither public
+ * role can touch this table at all".
+ *
+ * Every assertion below drops role for the statement it makes. The suite runs
+ * as the superuser, which bypasses row-level security *and* ignores revoked
+ * privileges — so an assertion written without `set local role` would pass on
+ * a table that is wide open.
+ */
+do $$
+declare
+  v_denied  boolean;
+  v_rows    integer;
+  v_token   uuid;
+  v_status  text;
+begin
+  insert into public.waitlist (email, first_name, consent_text, is_adult)
+  values ('waitlist.test@example.com', 'Test', 'Email me when AceAiX launches.', true)
+  on conflict do nothing;
+
+  select confirm_token into v_token
+    from public.waitlist where email = 'waitlist.test@example.com';
+
+  -- ── anon ────────────────────────────────────────────────────────────────
+  v_denied := false;
+  begin
+    set local role anon;
+    select count(*) into v_rows from public.waitlist;
+    reset role;
+  exception when insufficient_privilege then
+    v_denied := true;
+    reset role;
+  end;
+  perform tests.ok(v_denied, 'anon cannot read the waitlist');
+
+  v_denied := false;
+  begin
+    set local role anon;
+    insert into public.waitlist (email, consent_text, is_adult)
+    values ('anon.injected@example.com', 'x', true);
+    reset role;
+  exception when insufficient_privilege then
+    v_denied := true;
+    reset role;
+  end;
+  perform tests.ok(v_denied, 'anon cannot write to the waitlist');
+
+  /* The two RPCs sit in `public` so PostgREST can reach them for the edge
+     function. That is exactly why EXECUTE has to be revoked explicitly:
+     PostgreSQL grants it to PUBLIC on every new function, and `anon` inherits
+     PUBLIC. Three functions shipped callable by any visitor this way once
+     already — see docs/21. */
+  v_denied := false;
+  begin
+    set local role anon;
+    perform public.confirm_waitlist(v_token);
+    reset role;
+  exception when insufficient_privilege then
+    v_denied := true;
+    reset role;
+  end;
+  perform tests.ok(v_denied, 'anon cannot confirm an arbitrary token');
+
+  v_denied := false;
+  begin
+    set local role anon;
+    perform public.unsubscribe_waitlist(v_token);
+    reset role;
+  exception when insufficient_privilege then
+    v_denied := true;
+    reset role;
+  end;
+  perform tests.ok(v_denied, 'anon cannot unsubscribe somebody else');
+
+  -- ── a signed-in account that is not an admin ────────────────────────────
+  /* This one is granted SELECT and then narrowed by the policy, so it does not
+     raise — it must simply see nothing. An ordinary athlete downloading the
+     mailing list would not look like an error anywhere. */
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  select count(*) into v_rows from public.waitlist;
+  reset role;
+  perform tests.ok(v_rows = 0, 'a signed-in non-admin sees an empty waitlist');
+
+  -- ── the rules the table itself enforces ─────────────────────────────────
+  v_denied := false;
+  begin
+    insert into public.waitlist (email, consent_text, is_adult)
+    values ('under18@example.com', 'Email me when AceAiX launches.', false);
+  exception when check_violation then
+    v_denied := true;
+  end;
+  perform tests.ok(v_denied, 'a row that does not assert 18+ is refused by the database');
+
+  v_denied := false;
+  begin
+    insert into public.waitlist (email, consent_text, is_adult)
+    values ('WAITLIST.TEST@Example.com ', 'Email me when AceAiX launches.', true);
+  exception when unique_violation then
+    v_denied := true;
+  end;
+  perform tests.ok(v_denied, 'the same address in different case is one row, not two');
+
+  -- ── confirm and unsubscribe ─────────────────────────────────────────────
+  select public.confirm_waitlist(v_token) into v_status;
+  perform tests.ok(v_status = 'confirmed', 'a valid token confirms');
+
+  /* Mail clients prefetch links and people double-click. */
+  select public.confirm_waitlist(v_token) into v_status;
+  perform tests.ok(v_status = 'confirmed', 'and confirming twice is still a success');
+
+  perform tests.ok(
+    public.unsubscribe_waitlist(
+      (select unsubscribe_token from public.waitlist where email = 'waitlist.test@example.com')),
+    'unsubscribing works');
+
+  select public.confirm_waitlist(v_token) into v_status;
+  perform tests.ok(v_status = 'unsubscribed',
+    'and confirming afterwards does not resurrect them');
+
+  perform tests.ok(
+    not public.unsubscribe_waitlist('00000000-0000-0000-0000-000000000000'),
+    'an unknown unsubscribe token changes nothing');
+
+  delete from public.waitlist where email like '%@example.com';
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

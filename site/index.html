@@ -1,0 +1,1869 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>AceAiX — Get seen</title>
+<meta name="description" content="AceAiX is where a young athlete builds a proper sporting profile and gets seen by the people who pick teams. Free, 13+, on the App Store and Google Play from 1 October 2026.">
+<link rel="canonical" href="https://aceaix.com/">
+
+<!-- The browser chrome matches whichever theme the page is showing. -->
+<meta name="theme-color" content="#0B0A16" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F7F6FD" media="(prefers-color-scheme: light)">
+
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AceAiX">
+<meta property="og:title" content="AceAiX — Get seen">
+<meta property="og:description" content="Build your profile, get your Talent Score, and let coaches and clubs find you. Free for athletes, 13+, from 1 October 2026.">
+<meta property="og:url" content="https://aceaix.com/">
+<meta property="og:image" content="https://aceaix.com/assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale" content="en">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="AceAiX — Get seen">
+<meta name="twitter:description" content="Build your profile, get your Talent Score, and let coaches and clubs find you. Free for athletes, 13+.">
+<meta name="twitter:image" content="https://aceaix.com/assets/og-image.png">
+
+<!-- Deep links, so a phone that already has the app opens it rather than this page. -->
+<meta name="apple-itunes-app" content="app-id=6785269968">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "AceAiX",
+  "applicationCategory": "SportsApplication",
+  "operatingSystem": "iOS, Android",
+  "url": "https://aceaix.com/",
+  "datePublished": "2026-10-01",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "AED" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "AryAiX FZ-LLC",
+    "url": "https://aryaix.com",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Dilan Tower, Al Jadaf",
+      "addressLocality": "Dubai",
+      "addressCountry": "AE"
+    }
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     THE ONE THING TO SET BEFORE THIS PAGE GOES LIVE
+
+     Paste the deployed waitlist function URL between the quotes. Find it in
+     Supabase → Edge Functions → waitlist-subscribe; it looks like:
+
+       https://<project-ref>.supabase.co/functions/v1/waitlist-subscribe
+
+     Left empty, the sign-up form tells the visitor it is not connected yet
+     rather than pretending to work — which is the right failure, because a
+     form that silently swallows addresses looks identical to one that does
+     not.
+
+     There is deliberately no Supabase key on this page. The page never talks
+     to the database; the function does. See docs/25-the-waitlist.md.
+═══════════════════════════════════════════════════════════════════════ -->
+<script>window.ACEAIX_NOTIFY_URL = '';</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   AceAiX — a stadium at night, and the same pitch in the morning.
+
+   Every colour is lifted from mobile/theme/tokens.ts (the "Pitch &
+   Pulse" scheme the 1.0 app ships in), so the site and the product
+   are the same object rather than two guesses at a brand.
+
+   Dark is the design's home — the app is dark, every screenshot on
+   this page is dark, and the three-stop gradients hold their hue
+   over #0B0A16 in a way they cannot over white. So the bare :root
+   carries dark and light overrides it, which is the dark-first
+   inversion of the usual pattern.
+
+   Three states, not two. Nothing stamped on <html> means follow the
+   operating system; [data-theme] stamps a choice that beats it in
+   either direction. Every colour below is a token declared in the
+   bare :root before anything redefines it, so no value exists only
+   inside a media query — that is the bug where a page renders one
+   theme's text on the other theme's ground.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Dark: the design's home. A stadium at night. ─────────────
+     Values from mobile/theme/tokens.ts, dark scheme.            */
+  --ground:   #0B0A16;
+  --raised:   #17152A;
+  --edge:     #2C2945;
+  --edge-hi:  #3D3960;
+  --edge-soft: rgba(244,243,250,.09);
+
+  --ink:      #F4F3FA;
+  --second:   #ADA8C6;
+  --muted:    #7C769B;
+
+  --flame:    #FF5A1F;
+  --flame-lt: #FF7A45;
+  --volt:     #C9F03C;   /* Talent Score only. Nothing else. */
+  --volt-ink: #C9F03C;   /* the same hue as text — legible on this ground */
+  --azure:    #2E7DF6;
+  --azure-lt: #6BA6FF;
+
+  --g-action: linear-gradient(105deg, #FF7A45 0%, #FF4E8C 52%, #E52C86 100%);
+  --g-score:  linear-gradient(105deg, #A8F03C 0%, #22D3EE 52%, #5B9BFF 100%);
+  --g-hero:   linear-gradient(105deg, #7C7AFF 0%, #B14BF4 52%, #FF4E8C 100%);
+
+  /* Surfaces, as translucency over whatever ground is behind */
+  --panel:    rgba(23,21,42,.6);
+  --panel-hi: rgba(34,31,58,.8);
+  --panel-lo: rgba(11,10,22,.5);
+  --veil:     rgba(11,10,22,.62);
+  --veil-solid: rgba(11,10,22,.9);
+  --band:     rgba(23,21,42,.72);
+  --ghost:    rgba(244,243,250,.05);
+  --ghost-hi: rgba(244,243,250,.1);
+  --track:    rgba(244,243,250,.08);
+
+  /* Atmosphere */
+  --bloom-a:  rgba(255,90,31,.55);
+  --bloom-b:  rgba(155,107,255,.5);
+  --bloom-c:  rgba(46,125,246,.34);
+  --bloom-op: .42;
+  --bloom-op-hi: .6;
+  --pitch-v:  rgba(201,240,60,.10);
+  --pitch-h:  rgba(244,243,250,.22);
+  --phone-glow: rgba(255,78,140,.36);
+  --cta-glow: rgba(255,78,140,.3);
+  --cta-glow-hi: rgba(255,78,140,.42);
+  --sweep:    rgba(201,240,60,.16);
+
+  --tint-flame: rgba(255,90,31,.16);
+  --tint-azure: rgba(46,125,246,.16);
+  --tint-volt:  rgba(201,240,60,.14);
+
+  --shadow-phone: 0 30px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(244,243,250,.07);
+
+  --max: 1240px;
+  --r: 18px;
+  --r-lg: 26px;
+
+  color-scheme: dark;
+}
+
+/* ── Light: morning training, not an inverted night ─────────────
+   Not a mechanical inversion. The blooms drop to a warm haze, the
+   pitch lines become ink on paper rather than light on grass, and
+   volt — #C9F03C, which is illegible on white — steps down to the
+   app's own light accent for anything that has to be read. The
+   phone frames stay dark in both themes: a phone is a dark object
+   sitting on the page, and the screenshots inside it are dark.   */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground:   #F7F6FD;
+    --raised:   #FFFFFF;
+    --edge:     #E6E2F4;
+    --edge-hi:  #D3CDEA;
+    --edge-soft: rgba(22,19,39,.1);
+
+    --ink:      #161327;
+    --second:   #514C6B;
+    --muted:    #847EA0;
+
+    --flame:    #F5451B;
+    --flame-lt: #E03A12;
+    --volt:     #C9F03C;
+    --volt-ink: #5F930A;
+    --azure:    #2E7DF6;
+    --azure-lt: #1C5FCC;
+
+    --g-action: linear-gradient(105deg, #FF6A2C 0%, #FF3D7F 52%, #F0308C 100%);
+    --g-score:  linear-gradient(105deg, #8CE614 0%, #12C2E9 52%, #2E7DF6 100%);
+    --g-hero:   linear-gradient(105deg, #6D6BFF 0%, #B14BF4 52%, #FF3D7F 100%);
+
+    --panel:    rgba(255,255,255,.78);
+    --panel-hi: rgba(255,255,255,.95);
+    --panel-lo: rgba(247,246,253,.8);
+    --veil:     rgba(247,246,253,.72);
+    --veil-solid: rgba(247,246,253,.94);
+    --band:     rgba(255,255,255,.66);
+    --ghost:    rgba(22,19,39,.03);
+    --ghost-hi: rgba(22,19,39,.07);
+    --track:    rgba(22,19,39,.09);
+
+    --bloom-a:  rgba(255,138,92,.4);
+    --bloom-b:  rgba(177,75,244,.22);
+    --bloom-c:  rgba(46,125,246,.16);
+    --bloom-op: .5;
+    --bloom-op-hi: .68;
+    --pitch-v:  rgba(95,147,10,.14);
+    --pitch-h:  rgba(22,19,39,.13);
+    --phone-glow: rgba(255,61,127,.2);
+    --cta-glow: rgba(240,48,140,.26);
+    --cta-glow-hi: rgba(240,48,140,.36);
+    --sweep:    rgba(95,147,10,.14);
+
+    --tint-flame: rgba(245,69,27,.1);
+    --tint-azure: rgba(46,125,246,.1);
+    --tint-volt:  rgba(95,147,10,.12);
+
+    --shadow-phone: 0 26px 60px rgba(31,20,60,.22), 0 0 0 1px rgba(22,19,39,.08);
+
+    color-scheme: light;
+  }
+}
+
+:root[data-theme="light"] {
+  --ground:   #F7F6FD;
+  --raised:   #FFFFFF;
+  --edge:     #E6E2F4;
+  --edge-hi:  #D3CDEA;
+  --edge-soft: rgba(22,19,39,.1);
+
+  --ink:      #161327;
+  --second:   #514C6B;
+  --muted:    #847EA0;
+
+  --flame:    #F5451B;
+  --flame-lt: #E03A12;
+  --volt:     #C9F03C;
+  --volt-ink: #5F930A;
+  --azure:    #2E7DF6;
+  --azure-lt: #1C5FCC;
+
+  --g-action: linear-gradient(105deg, #FF6A2C 0%, #FF3D7F 52%, #F0308C 100%);
+  --g-score:  linear-gradient(105deg, #8CE614 0%, #12C2E9 52%, #2E7DF6 100%);
+  --g-hero:   linear-gradient(105deg, #6D6BFF 0%, #B14BF4 52%, #FF3D7F 100%);
+
+  --panel:    rgba(255,255,255,.78);
+  --panel-hi: rgba(255,255,255,.95);
+  --panel-lo: rgba(247,246,253,.8);
+  --veil:     rgba(247,246,253,.72);
+  --veil-solid: rgba(247,246,253,.94);
+  --band:     rgba(255,255,255,.66);
+  --ghost:    rgba(22,19,39,.03);
+  --ghost-hi: rgba(22,19,39,.07);
+  --track:    rgba(22,19,39,.09);
+
+  --bloom-a:  rgba(255,138,92,.4);
+  --bloom-b:  rgba(177,75,244,.22);
+  --bloom-c:  rgba(46,125,246,.16);
+  --bloom-op: .5;
+  --bloom-op-hi: .68;
+  --pitch-v:  rgba(95,147,10,.14);
+  --pitch-h:  rgba(22,19,39,.13);
+  --phone-glow: rgba(255,61,127,.2);
+  --cta-glow: rgba(240,48,140,.26);
+  --cta-glow-hi: rgba(240,48,140,.36);
+  --sweep:    rgba(95,147,10,.14);
+
+  --tint-flame: rgba(245,69,27,.1);
+  --tint-azure: rgba(46,125,246,.1);
+  --tint-volt:  rgba(95,147,10,.12);
+
+  --shadow-phone: 0 26px 60px rgba(31,20,60,.22), 0 0 0 1px rgba(22,19,39,.08);
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; overflow-x: clip; }
+/* Grid and flex children default to min-width:auto, which lets a long word or
+   a wide child push the whole page sideways. This is the one-line cure. */
+.wrap > *, .hero-grid > *, .split > *, .score-grid > *, .facts > *, .three > *,
+.tiers > *, .perms > *, .foot-grid > * { min-width: 0; }
+.foot-base span { overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+h1, h2, h3, .display {
+  font-family: "Saira Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+  margin: 0;
+}
+p { margin: 0; max-width: 62ch; }
+a { color: inherit; }
+img { max-width: 100%; display: block; }
+
+:focus-visible {
+  outline: 2px solid var(--flame);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── The atmosphere: floodlights and a pitch in perspective ───── */
+.sky {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.bloom {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: .5;
+  will-change: transform, opacity;
+}
+.bloom.a {
+  width: 720px; height: 720px;
+  top: -280px; left: -180px;
+  background: radial-gradient(circle, var(--bloom-a), transparent 68%);
+  animation: breathe 13s ease-in-out infinite;
+}
+.bloom.b {
+  width: 640px; height: 640px;
+  top: -180px; right: -200px;
+  background: radial-gradient(circle, var(--bloom-b), transparent 68%);
+  animation: breathe 17s ease-in-out infinite reverse;
+}
+/* The floor glow the touchlines sit in — a stadium is lit from above the
+   pitch, so the ground is the brightest thing at the bottom of the frame. */
+.bloom.c {
+  width: 1100px; height: 560px;
+  bottom: -330px; left: 26%;
+  background: radial-gradient(circle, var(--bloom-c), transparent 70%);
+  animation: breathe 21s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: translate3d(0,0,0) scale(1); opacity: var(--bloom-op); }
+  50%      { transform: translate3d(0,26px,0) scale(1.09); opacity: var(--bloom-op-hi); }
+}
+
+/* The pitch: receding touchlines, drifting slowly toward the viewer.
+   Drawn with a gradient rather than an image so it costs nothing. */
+.pitch {
+  position: absolute;
+  left: 50%; bottom: -6%;
+  width: 260vw; height: 62vh;
+  transform: translateX(-50%) perspective(340px) rotateX(66deg);
+  transform-origin: 50% 100%;
+  background-image:
+    repeating-linear-gradient(90deg, var(--pitch-v) 0 1px, transparent 1px 84px),
+    repeating-linear-gradient(0deg,  var(--pitch-h) 0 1px, transparent 1px 84px);
+  mask-image: linear-gradient(to top, rgba(0,0,0,.95), rgba(0,0,0,.5) 34%, transparent 78%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,.95), rgba(0,0,0,.5) 34%, transparent 78%);
+  animation: drift 9s linear infinite;
+}
+@keyframes drift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 0 0, 0 84px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bloom, .pitch { animation: none !important; }
+}
+
+/* ── Shell ────────────────────────────────────────────────────── */
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin-inline: auto;
+  padding-inline: 22px;
+  position: relative;
+  z-index: 1;
+}
+section { padding-block: clamp(72px, 9vw, 132px); position: relative; z-index: 1; }
+.band { background: linear-gradient(180deg, transparent 0%, var(--band) 14%, var(--band) 86%, transparent 100%); }
+
+.eyebrow {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--flame-lt);
+  margin: 0 0 16px;
+}
+.eyebrow.cool { color: var(--azure-lt); }
+.eyebrow.volt { color: var(--volt-ink); }
+
+.h2 { font-size: clamp(34px, 5.2vw, 62px); }
+.lede { margin-top: 18px; font-size: 17.5px; color: var(--second); max-width: 56ch; }
+
+/* ── Nav ──────────────────────────────────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 40;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: var(--veil);
+  border-bottom: 1px solid transparent;
+  transition: background .25s, border-color .25s;
+}
+.nav.stuck { background: var(--veil-solid); border-bottom-color: var(--edge); }
+.nav-in {
+  display: flex; align-items: center; gap: 26px;
+  min-height: 70px;
+}
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex: none;
+}
+.mark img { width: 40px; height: auto; flex: none; }
+/* The lockup follows the supplied logo: AceAi in ink, X in the action
+   gradient. Set in type rather than shipped as a second image, so it stays
+   crisp at any size and legible on both grounds — the logo file's own
+   wordmark is white, which disappears on a light page. */
+.mark span {
+  font-family: "Saira Condensed", "Arial Narrow", sans-serif;
+  font-weight: 800;
+  font-size: 25px;
+  line-height: 1;
+  letter-spacing: .004em;
+  color: var(--ink);
+}
+.mark span b {
+  font-weight: 800;
+  background: var(--g-action);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Theme switch ─────────────────────────────────────────────── */
+.theme {
+  width: 38px; height: 38px;
+  display: grid; place-content: center;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: var(--ghost);
+  color: var(--second);
+  cursor: pointer;
+  flex: none;
+  transition: color .18s, border-color .18s, background .18s;
+}
+.theme:hover { color: var(--ink); border-color: var(--edge-hi); background: var(--ghost-hi); }
+.theme svg { width: 17px; height: 17px; display: block; }
+
+/* ── Parent company ───────────────────────────────────────────
+   AceAiX is one product of a studio, and saying so is a trust
+   signal rather than a footnote: a family looking up who holds
+   their child's data should find a company, an address and a
+   licence number without having to dig. The AryAiX wordmark in
+   the supplied file is white, so it is set in type here and only
+   the mark travels as an image — the same reason the AceAiX
+   lockup is built this way. */
+.by {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 15px 9px 11px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--panel);
+  text-decoration: none;
+  transition: border-color .18s, background .18s;
+}
+.by:hover { border-color: var(--edge-hi); background: var(--panel-hi); }
+.by img { width: 26px; height: auto; flex: none; }
+.by .by-t { display: grid; gap: 1px; }
+.by .by-k {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9.5px; font-weight: 700;
+  letter-spacing: .17em; text-transform: uppercase;
+  color: var(--muted);
+}
+.by .by-n {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 800; font-size: 17px; line-height: 1;
+  color: var(--ink);
+}
+/* ── Launch: the pill, the countdown, the store buttons ───────
+   The countdown is to midnight in Dubai, where the company is, and
+   the markup carries the date in plain words as well — a clock is
+   useless to a screen reader and to anyone who arrives after the
+   first of October. When the date passes the block swaps itself to
+   "Out now" rather than counting into negative numbers, which is
+   the failure mode of every launch countdown ever shipped. */
+.launch-pill {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 7px 15px 7px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--flame) 40%, var(--edge));
+  background: var(--tint-flame);
+  font-size: 13px; font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 18px;
+}
+.launch-pill .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--flame);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--flame) 60%, transparent);
+  animation: pulse 2.4s ease-out infinite;
+  flex: none;
+  margin-left: 5px;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--flame) 55%, transparent); }
+  70%  { box-shadow: 0 0 0 9px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .launch-pill .dot { animation: none; } }
+
+.count {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 520px;
+  margin: 30px auto 0;
+}
+.count div {
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  background: var(--panel);
+  padding: 16px 8px 13px;
+  text-align: center;
+}
+.count .n {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 800;
+  font-size: clamp(34px, 6vw, 52px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+.count .l {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 7px;
+  display: block;
+}
+/* ── Notify me ──────────────────────────────────────────────────────────── */
+.sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.notify {
+  max-width: 560px; margin: 38px auto 0; text-align: left;
+  padding: 24px; border-radius: 18px;
+  border: 1px solid var(--edge); background: var(--panel-hi);
+}
+.notify-head { text-align: center; margin-bottom: 18px; }
+.notify-head h3 {
+  margin: 0; font-family: var(--display), system-ui, sans-serif;
+  font-size: 21px; letter-spacing: .2px; color: var(--ink);
+}
+.notify-head p { margin: 5px 0 0; font-size: 13.5px; color: var(--muted); }
+
+.notify-row { display: grid; gap: 10px; }
+.notify-row input[type="text"], .notify-row input[type="email"] {
+  width: 100%; box-sizing: border-box;
+  padding: 13px 15px; border-radius: 12px;
+  border: 1px solid var(--edge); background: var(--panel-lo);
+  color: var(--ink); font: inherit; font-size: 15px;
+  transition: border-color .16s, box-shadow .16s;
+}
+.notify-row input::placeholder { color: var(--muted); }
+.notify-row input:focus-visible {
+  outline: none; border-color: var(--flame-lt);
+  box-shadow: 0 0 0 3px rgba(255,90,31,.22);
+}
+.notify-row input[aria-invalid="true"] { border-color: #FF4E8C; }
+
+.notify-row button {
+  padding: 14px 18px; border: 0; border-radius: 12px;
+  background: var(--g-action); color: #fff;
+  font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .2px;
+  cursor: pointer; transition: transform .16s cubic-bezier(.2,.7,.3,1), filter .16s;
+}
+.notify-row button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.notify-row button:disabled { opacity: .55; cursor: default; }
+
+/* Off-screen rather than display:none — a bot reading the DOM cannot tell,
+   and a person using a screen reader never reaches it (aria-hidden). */
+.nf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.notify-checks { display: grid; gap: 9px; margin-top: 15px; }
+.notify-checks label {
+  display: flex; gap: 10px; align-items: flex-start;
+  font-size: 13.5px; line-height: 1.45; color: var(--second); cursor: pointer;
+}
+.notify-checks input { margin: 2px 0 0; accent-color: var(--flame); flex: none; width: 16px; height: 16px; }
+
+.notify-note {
+  margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--edge-soft);
+  font-size: 12.5px; line-height: 1.5; color: var(--muted);
+}
+.notify-msg { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; min-height: 1px; }
+.notify-msg.ok  { color: var(--ink); font-weight: 600; }
+.notify-msg.bad { color: #FF7FA8; }
+
+@media (min-width: 540px) {
+  .notify-row { grid-template-columns: 1fr 1.25fr auto; align-items: center; }
+}
+
+.stores { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+.store {
+  display: inline-flex; align-items: center; gap: 11px;
+  padding: 12px 22px 12px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--edge);
+  background: var(--panel-hi);
+  text-decoration: none;
+  transition: transform .16s cubic-bezier(.2,.7,.3,1), border-color .18s;
+}
+.store:hover { transform: translateY(-2px); border-color: var(--edge-hi); }
+@media (prefers-reduced-motion: reduce) { .store:hover { transform: none; } }
+.store svg { width: 22px; height: 22px; color: var(--ink); flex: none; }
+.store .st { display: grid; gap: 1px; text-align: left; }
+.store .st small { font-size: 10.5px; color: var(--muted); letter-spacing: .04em; }
+.store .st b {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 800; font-size: 18px; line-height: 1.05; color: var(--ink);
+}
+
+.by .by-n b {
+  font-weight: 800;
+  background: linear-gradient(100deg, #4FB6F0, #8B7BF0 60%, #9B6BFF);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+.nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 14.5px; color: var(--second); }
+.nav-links a { text-decoration: none; transition: color .18s; }
+.nav-links a:hover { color: var(--ink); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 13px 24px;
+  border-radius: 999px;
+  font-weight: 600; font-size: 15px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform .16s cubic-bezier(.2,.7,.3,1), box-shadow .2s, background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--g-action);
+  color: #fff;
+  box-shadow: 0 8px 26px var(--cta-glow);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 14px 38px var(--cta-glow-hi); }
+.btn-quiet {
+  background: var(--ghost);
+  border-color: var(--edge);
+  color: var(--ink);
+}
+.btn-quiet:hover { background: var(--ghost-hi); border-color: var(--edge-hi); transform: translateY(-2px); }
+.btn-sm { padding: 10px 18px; font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { .btn:hover { transform: none; } }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.hero { padding-block: clamp(48px, 7vw, 96px) clamp(56px, 7vw, 104px); }
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, .94fr);
+  gap: clamp(32px, 5vw, 76px);
+  align-items: center;
+}
+.hero h1 {
+  font-size: clamp(58px, 9.4vw, 124px);
+  line-height: .92;
+  letter-spacing: -0.025em;
+}
+.hero h1 .seen {
+  background: var(--g-action);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero .sub {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 700;
+  font-size: clamp(22px, 3vw, 34px);
+  color: var(--second);
+  margin-top: 10px;
+  line-height: 1.1;
+}
+.hero .body { margin-top: 22px; font-size: 17px; color: var(--second); max-width: 44ch; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.hero-note { margin-top: 18px; font-size: 13.5px; color: var(--muted); }
+
+/* The load sequence. Each line arrives, then the phone settles. */
+.rise { animation: rise .82s cubic-bezier(.16,.84,.28,1) backwards; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+.d1 { animation-delay: .05s; } .d2 { animation-delay: .15s; }
+.d3 { animation-delay: .25s; } .d4 { animation-delay: .35s; }
+.d5 { animation-delay: .45s; } .d6 { animation-delay: .55s; }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
+
+.hero-phone { justify-self: end; position: relative; }
+.hero-phone::before {
+  content: "";
+  position: absolute; inset: -14% -20%;
+  background: radial-gradient(ellipse at 50% 42%, var(--phone-glow), transparent 66%);
+  filter: blur(46px);
+  z-index: 0;
+}
+
+/* ── Phones ───────────────────────────────────────────────────── */
+.phone {
+  --w: 300px;
+  width: var(--w);
+  border-radius: calc(var(--w) * .134);
+  padding: 8px;
+  background: linear-gradient(158deg, #3A3660, #16142a 42%, #322E52);
+  box-shadow: var(--shadow-phone);
+  position: relative;
+  z-index: 1;
+  flex: none;
+}
+.phone img {
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--w) * .102);
+  background: var(--ground);
+}
+.hero-phone .phone {
+  --w: min(330px, 74vw);
+  animation: settle 1.1s cubic-bezier(.16,.84,.28,1) .3s backwards;
+}
+@keyframes settle {
+  from { opacity: 0; transform: translateY(40px) rotate(-2.4deg) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .hero-phone .phone { animation: none; } }
+
+/* ── Fact strip ───────────────────────────────────────────────── */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  gap: 1px;
+  background: var(--edge-soft);
+  border: 1px solid var(--edge-soft);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-top: clamp(44px, 6vw, 74px);
+}
+.facts > div { background: var(--panel); padding: 20px 22px; }
+.facts dt { font-size: 12.5px; color: var(--muted); margin: 0 0 6px; }
+.facts dd {
+  margin: 0;
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--ink);
+}
+.facts dd small { font-size: 15px; font-weight: 700; color: var(--second); margin-left: 4px; }
+
+/* ── The score: dial + pillars ────────────────────────────────── */
+.score-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: clamp(30px, 5vw, 64px);
+  align-items: center;
+  margin-top: 46px;
+}
+.dial-wrap {
+  position: relative;
+  aspect-ratio: 1;
+  max-width: 340px;
+  width: 100%;
+  justify-self: center;
+}
+.dial { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-track { stroke: var(--track); }
+.dial-wrap::after {
+  content: "";
+  position: absolute; inset: -8%;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, var(--sweep) 26deg, transparent 62deg);
+  animation: sweep 6s linear infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .dial-wrap::after { animation: none; opacity: 0; } }
+@keyframes sweep { to { transform: rotate(360deg); } }
+.dial-face {
+  position: absolute; inset: 0;
+  display: grid; place-content: center; text-align: center;
+}
+.dial-num {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 800;
+  font-size: clamp(64px, 12vw, 96px);
+  line-height: .9;
+  font-variant-numeric: tabular-nums;
+}
+.dial-tier {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--volt-ink);
+  margin-top: 8px;
+}
+.dial-of { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* Capped, or a 1440 screen stretches a 30-point bar to 800px and the five
+   of them stop reading as a comparison. */
+.pillars { display: grid; gap: 15px; max-width: 620px; }
+.pillar-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; align-items: baseline; }
+.pillar-name { font-size: 15px; font-weight: 500; }
+.pillar-w {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
+}
+.track {
+  grid-column: 1 / -1;
+  height: 7px; border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+.fill {
+  height: 100%; border-radius: 999px;
+  background: var(--g-score);
+  width: 0;
+  transition: width 1.15s cubic-bezier(.2,.8,.25,1);
+}
+.no-anim .fill { transition: none; }
+
+.rules { display: grid; gap: 14px; margin-top: 42px; }
+.rule {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start;
+  padding: 17px 20px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  background: var(--panel);
+}
+.rule .no {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px; font-weight: 700; color: var(--volt-ink);
+  letter-spacing: .1em;
+  padding-top: 3px;
+}
+.rule p { font-size: 15px; color: var(--second); }
+.rule b { color: var(--ink); font-weight: 600; }
+
+/* ── Reveal (added by script; the resting state is visible) ───── */
+.will-reveal { opacity: 0; transform: translateY(18px); }
+.will-reveal.shown {
+  opacity: 1; transform: none;
+  transition: opacity .7s ease, transform .7s cubic-bezier(.16,.84,.28,1);
+}
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.three {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  gap: 18px;
+  margin-top: 44px;
+}
+.card {
+  padding: 26px 24px 28px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-lg);
+  background: linear-gradient(170deg, var(--panel-hi), var(--panel));
+  transition: transform .22s cubic-bezier(.2,.7,.3,1), border-color .22s;
+}
+.card:hover { transform: translateY(-3px); border-color: var(--edge-hi); }
+@media (prefers-reduced-motion: reduce) { .card:hover { transform: none; } }
+.card h3 { font-size: 25px; margin-bottom: 10px; }
+.card p { font-size: 15px; color: var(--second); }
+.card .glyph {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: grid; place-content: center;
+  margin-bottom: 16px;
+  font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 15px;
+  color: var(--ground);
+  background: var(--g-action);
+}
+.card:nth-child(2) .glyph { background: var(--g-score); }
+.card:nth-child(3) .glyph { background: var(--g-hero); color: #fff; }
+
+/* ── The reel ─────────────────────────────────────────────────── */
+.reel {
+  margin-top: 52px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.reel-track {
+  display: flex;
+  gap: 22px;
+  width: max-content;
+  animation: roll 46s linear infinite;
+}
+.reel:hover .reel-track, .reel:focus-within .reel-track { animation-play-state: paused; }
+@keyframes roll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .reel-track { animation: none; } .reel { overflow-x: auto; } }
+.reel figure { margin: 0; display: grid; gap: 11px; }
+.reel .phone { --w: 218px; }
+.reel figcaption { font-size: 13px; color: var(--muted); max-width: 218px; }
+.reel figcaption b { display: block; color: var(--second); font-weight: 600; }
+
+/* ── Split sections ───────────────────────────────────────────── */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(34px, 5vw, 72px);
+  align-items: center;
+}
+.shots { display: flex; gap: 18px; justify-content: center; }
+.shots .phone { --w: min(232px, 42vw); }
+.shots .phone:nth-child(2) { margin-top: 42px; }
+
+ul.plain { list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 17px; }
+ul.plain li { display: grid; grid-template-columns: auto 1fr; gap: 13px; align-items: start; }
+ul.plain p { font-size: 15px; color: var(--second); }
+ul.plain b { color: var(--ink); font-weight: 600; }
+.tick {
+  width: 21px; height: 21px; border-radius: 6px; flex: none;
+  display: grid; place-content: center;
+  font-size: 11px; font-weight: 700;
+  background: var(--tint-flame); color: var(--flame-lt);
+  margin-top: 2px;
+}
+.tick.cool { background: var(--tint-azure); color: var(--azure-lt); }
+.tick.volt { background: var(--tint-volt); color: var(--volt-ink); }
+
+/* ── Spots meter (Play) ───────────────────────────────────────── */
+.spots {
+  margin-top: 26px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  background: var(--panel);
+  max-width: 430px;
+}
+.spots-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.spots-title { font-weight: 600; font-size: 15px; }
+.spots-left { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--volt-ink); }
+.pips { display: flex; gap: 6px; margin-top: 13px; }
+.pip { height: 8px; flex: 1; border-radius: 999px; background: var(--track); }
+.pip.on { background: var(--g-action); }
+
+/* ── Safety: quieter, document-like, azure ────────────────────── */
+.safety { border-top: 1px solid var(--edge); border-bottom: 1px solid var(--edge); background: var(--band); }
+.safety-quote {
+  font-family: "Saira Condensed", sans-serif;
+  font-weight: 700;
+  font-size: clamp(26px, 4.2vw, 40px);
+  line-height: 1.14;
+  border-left: 3px solid var(--azure);
+  padding-left: 22px;
+  margin: 32px 0;
+  max-width: 22ch;
+}
+.perms { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-top: 30px; }
+.perm {
+  border: 1px solid var(--edge);
+  border-radius: var(--r);
+  padding: 18px 19px;
+  background: var(--panel-lo);
+}
+.perm h4 {
+  margin: 0 0 7px; font-size: 15px; font-weight: 600;
+  display: flex; align-items: center; gap: 9px;
+}
+.perm .sw {
+  width: 30px; height: 18px; border-radius: 999px; flex: none;
+  background: var(--azure); position: relative;
+}
+.perm .sw::after {
+  content: ""; position: absolute; top: 2px; right: 2px;
+  width: 14px; height: 14px; border-radius: 50%; background: #fff;
+}
+.perm p { font-size: 13.5px; color: var(--muted); }
+
+/* ── Pricing ──────────────────────────────────────────────────── */
+.tiers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 42px; }
+.tier {
+  border: 1px solid var(--edge);
+  border-radius: var(--r-lg);
+  padding: 28px 26px 30px;
+  background: var(--panel);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.tier.lead { border-color: color-mix(in srgb, var(--flame) 45%, var(--edge)); background: linear-gradient(170deg, var(--tint-flame), var(--panel)); }
+.tier .price { font-family: "Saira Condensed", sans-serif; font-weight: 800; font-size: 44px; line-height: 1; }
+.tier .price small { font-size: 16px; color: var(--muted); font-weight: 700; }
+.tier ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; font-size: 14.5px; color: var(--second); }
+.tier ul li { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.tier .btn { margin-top: auto; }
+
+/* ── Close ────────────────────────────────────────────────────── */
+.close { text-align: center; }
+/* Every paragraph inherits `max-width: 62ch` for readability, which in a
+   centred section leaves the box hugging the left edge and the text centred
+   inside it — reading as misaligned rather than centred. */
+.close p { margin-inline: auto; }
+.close .eyebrow { max-width: none; }
+.close h2 { font-size: clamp(44px, 8vw, 96px); line-height: .94; }
+.close .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+
+footer {
+  border-top: 1px solid var(--edge);
+  padding-block: 44px 56px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.foot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 28px; }
+.foot-grid h5 { margin: 0 0 12px; font-size: 12px; letter-spacing: .13em; text-transform: uppercase; color: var(--second); font-weight: 600; font-family: "JetBrains Mono", monospace; }
+.foot-grid ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.foot-grid a { text-decoration: none; }
+.foot-grid a:hover { color: var(--ink); }
+.foot-base { margin-top: 38px; padding-top: 22px; border-top: 1px solid var(--edge); display: flex; flex-wrap: wrap; gap: 12px 26px; justify-content: space-between; }
+
+/* ── Narrow ───────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .hero-phone { justify-self: center; margin-top: 8px; }
+  .split { grid-template-columns: 1fr; }
+  .score-grid { grid-template-columns: 1fr; }
+  .split .shots { order: 2; }
+}
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+  .shots .phone:nth-child(2) { margin-top: 24px; }
+}
+</style>
+
+<script>
+/* Runs before the page paints, so a returning visitor never sees the other
+   theme flash past. Wrapped because localStorage throws outright in some
+   privacy modes rather than merely returning null. */
+(function () {
+  try {
+    var t = localStorage.getItem('aceaix-theme');
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+})();
+</script>
+
+<div class="sky" aria-hidden="true">
+  <div class="bloom a"></div>
+  <div class="bloom b"></div>
+  <div class="bloom c"></div>
+  <div class="pitch"></div>
+</div>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="mark" href="#top" aria-label="AceAiX, back to top">
+      <img src="assets/aceaix-mark.webp" width="320" height="210" alt="">
+      <span>Ace<b>AiX</b></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#score">Talent Score</a>
+      <a href="#athletes">For athletes</a>
+      <a href="#clubs">For coaches &amp; clubs</a>
+      <a href="#play">Play</a>
+      <a href="#safety">Safety</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+    <button class="theme" id="themeBtn" type="button" aria-label="Switch theme">
+      <svg id="iconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path>
+      </svg>
+      <svg id="iconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"></circle>
+        <path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
+      </svg>
+    </button>
+    <a class="btn btn-primary btn-sm" href="#get">Get the app</a>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- ═══ Hero ═══════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="launch-pill rise d1">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="pillText">Launching 1 October</span>
+      </p>
+      <p class="eyebrow rise d1">For young athletes</p>
+      <h1 class="rise d2">Get <span class="seen">seen.</span></h1>
+      <p class="sub rise d3">Your talent, discovered.</p>
+      <p class="body rise d4">
+        Build your profile, get your Talent Score, and let coaches and clubs
+        find you. AceAiX is where a young athlete builds a proper sporting
+        profile and gets seen by the people who pick teams.
+      </p>
+      <div class="hero-cta rise d5">
+        <a class="btn btn-primary" href="#get">Get the app</a>
+        <a class="btn btn-quiet" href="#score">See how the score works</a>
+      </div>
+      <p class="hero-note rise d6">Free for athletes. 13+. On the App Store and Google Play from 1 October 2026.</p>
+    </div>
+    <div class="hero-phone">
+      <div class="phone">
+        <img src="assets/screen-feed.webp" width="380" height="822"
+             alt="The AceAiX feed: posts from coaches and athletes, a profile-views card and this week's challenge">
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <dl class="facts">
+      <div><dt>Cost to an athlete</dt><dd>Free</dd></div>
+      <div><dt>Minimum age, checked server-side</dt><dd>13<small>+</small></dd></div>
+      <div><dt>Location permission asked for</dt><dd>None</dd></div>
+      <div><dt>Languages, including Arabic</dt><dd>7</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ═══ Talent Score ═══════════════════════════════════════════ -->
+<section id="score" class="band">
+  <div class="wrap">
+    <p class="eyebrow volt">The Talent Score</p>
+    <h2 class="h2">A number you can<br>take apart.</h2>
+    <p class="lede">
+      One score out of 100, from five pillars. It is computed in the database
+      and recomputed every time you add something real — a match, a clip, an
+      endorsement. The score screen in the app lists every input that produced it.
+    </p>
+
+    <div class="score-grid" id="dialBlock">
+      <div class="dial-wrap">
+        <svg class="dial" viewBox="0 0 200 200" role="img" aria-label="An example Talent Score of 74, Gold tier">
+          <defs>
+            <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%"   stop-color="#FFB020"></stop>
+              <stop offset="55%"  stop-color="#FF7A45"></stop>
+              <stop offset="100%" stop-color="#FF3D7F"></stop>
+            </linearGradient>
+          </defs>
+          <circle cx="100" cy="100" r="84" fill="none" class="ring-track" stroke-width="15"></circle>
+          <circle id="ring" cx="100" cy="100" r="84" fill="none" stroke="url(#ringGrad)"
+                  stroke-width="15" stroke-linecap="round"
+                  stroke-dasharray="527.8" stroke-dashoffset="527.8"></circle>
+        </svg>
+        <div class="dial-face">
+          <div class="dial-num" id="dialNum">0</div>
+          <div class="dial-tier">Gold tier</div>
+          <div class="dial-of">an example profile</div>
+        </div>
+      </div>
+
+      <div class="pillars" id="pillars">
+        <div class="pillar-row">
+          <span class="pillar-name">Performance</span><span class="pillar-w mono">30 pts</span>
+          <div class="track"><div class="fill" data-w="30"></div></div>
+        </div>
+        <div class="pillar-row">
+          <span class="pillar-name">Credibility</span><span class="pillar-w mono">20 pts</span>
+          <div class="track"><div class="fill" data-w="20"></div></div>
+        </div>
+        <div class="pillar-row">
+          <span class="pillar-name">Engagement</span><span class="pillar-w mono">20 pts</span>
+          <div class="track"><div class="fill" data-w="20"></div></div>
+        </div>
+        <div class="pillar-row">
+          <span class="pillar-name">Profile</span><span class="pillar-w mono">15 pts</span>
+          <div class="track"><div class="fill" data-w="15"></div></div>
+        </div>
+        <div class="pillar-row">
+          <span class="pillar-name">Media</span><span class="pillar-w mono">15 pts</span>
+          <div class="track"><div class="fill" data-w="15"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rules">
+      <div class="rule">
+        <span class="no">01</span>
+        <p><b>You cannot edit it, and nobody can pay to raise it.</b> The score is
+        derived from rows in the database — matches, clips, endorsements, activity —
+        and there is no field anywhere that sets it directly.</p>
+      </div>
+      <div class="rule">
+        <span class="no">02</span>
+        <p><b>It never ranks you against another person.</b> No projections, no
+        comparison to a named professional, no verdict. It is a measure of your
+        profile, not of you.</p>
+      </div>
+      <div class="rule">
+        <span class="no">03</span>
+        <p><b>Every input is listed.</b> Tap the score and you see what counted,
+        what did not, and the next thing that would move it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ For athletes ═══════════════════════════════════════════ -->
+<section id="athletes">
+  <div class="wrap">
+    <p class="eyebrow">For athletes</p>
+    <h2 class="h2">Everything a coach asks for,<br>in one place.</h2>
+    <p class="lede">
+      Add your sport, position, club and level. Log the matches you have played.
+      Upload a few short clips. That is the profile a scout opens — and it is
+      the same profile the score is built from.
+    </p>
+
+    <div class="three">
+      <div class="card">
+        <div class="glyph">01</div>
+        <h3>A profile with evidence in it</h3>
+        <p>Sport, position, level, club, honours and languages — then match records
+        with minutes, goals and assists, so your form is visible rather than claimed.</p>
+      </div>
+      <div class="card">
+        <div class="glyph">02</div>
+        <h3>Clips, because coaches watch first</h3>
+        <p>Upload highlights and they sit on your profile where a scout will actually
+        look. Coaches watch before they read.</p>
+      </div>
+      <div class="card">
+        <div class="glyph">03</div>
+        <h3>Trials you can apply to</h3>
+        <p>Real trials, academy places and scholarships posted by clubs — with a match
+        percentage against your own profile, and a way to apply without knowing anybody.</p>
+      </div>
+    </div>
+
+    <div class="reel" aria-label="Screens from the app">
+      <div class="reel-track" id="reelTrack">
+        <figure>
+          <div class="phone"><img src="assets/screen-profile.webp" width="380" height="822" alt="An athlete profile: sport, position, club, tier and Talent Score"></div>
+          <figcaption><b>Your profile</b>What a coach opens first.</figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="assets/screen-score.webp" width="380" height="822" alt="The Talent Score screen showing 74, Gold tier, and the breakdown behind it"></div>
+          <figcaption><b>Talent Score</b>The number, and every input behind it.</figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="assets/screen-trials.webp" width="380" height="822" alt="Open trials, scholarships and contracts, each with a match percentage"></div>
+          <figcaption><b>Trials</b>Posted by clubs, matched to you.</figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="assets/screen-discover.webp" width="380" height="822" alt="Browsing clubs, coaches and the leaderboard"></div>
+          <figcaption><b>Discover</b>Clubs, coaches, and where you stand.</figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="assets/screen-play.webp" width="380" height="822" alt="Games near you with spots left"></div>
+          <figcaption><b>Play</b>Games near you, with spots left.</figcaption>
+        </figure>
+        <figure>
+          <div class="phone"><img src="assets/screen-feed.webp" width="380" height="822" alt="The feed, with posts from coaches and athletes you follow"></div>
+          <figcaption><b>Feed</b>Coaches and clubs you follow.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ For coaches and clubs ══════════════════════════════════ -->
+<section id="clubs" class="band">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow cool">For coaches, scouts and clubs</p>
+      <h2 class="h2">Find the player,<br>not the highlight.</h2>
+      <p class="lede">
+        Search by sport, position, level and place. Every profile arrives with the
+        evidence attached, so the first conversation is about the player rather
+        than about what they claim.
+      </p>
+      <ul class="plain">
+        <li><span class="tick cool">→</span><p><b>Post trials, academy places and scholarships.</b> Applicants arrive with their profile, match record, clips and score already attached.</p></li>
+        <li><span class="tick cool">→</span><p><b>Endorsements you sign.</b> Up to six per athlete, each one a skill you name. Your role is written by the server from your verified profile — never typed by you.</p></li>
+        <li><span class="tick cool">→</span><p><b>Watchlists.</b> Shortlist quietly, with your own notes. The athlete is never told they were shortlisted.</p></li>
+      </ul>
+    </div>
+    <div class="shots">
+      <div class="phone"><img src="assets/screen-search.webp" width="380" height="822" alt="Searching clubs and coaches"></div>
+      <div class="phone"><img src="assets/screen-trials-2.webp" width="380" height="822" alt="Trials and scholarships with match percentages"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Play ═══════════════════════════════════════════════════ -->
+<section id="play">
+  <div class="wrap split">
+    <div class="shots">
+      <div class="phone"><img src="assets/screen-play.webp" width="380" height="822" alt="Finding a game to join near you"></div>
+      <div class="phone"><img src="assets/screen-play-detail.webp" width="380" height="822" alt="A five-a-side game with four of ten spots taken"></div>
+    </div>
+    <div>
+      <p class="eyebrow">Play</p>
+      <h2 class="h2">Someone is short<br>a player tonight.</h2>
+      <p class="lede">
+        Host a game or find one — a sport, a place, a time, and how many people
+        are still needed. Asking to join does not take a spot; the host accepting
+        it does.
+      </p>
+      <div class="spots">
+        <div class="spots-top">
+          <span class="spots-title">Saturday five-a-side · Al Jadaf</span>
+          <span class="spots-left mono">6 left</span>
+        </div>
+        <div class="pips" aria-label="Four of ten spots taken">
+          <i class="pip on"></i><i class="pip on"></i><i class="pip on"></i><i class="pip on"></i>
+          <i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i><i class="pip"></i>
+        </div>
+      </div>
+      <p style="margin-top:22px;font-size:14.5px;color:var(--muted);max-width:46ch;">
+        Play is eighteen and over, and the database is what enforces it — not a
+        hidden tab. A named venue at a named time is the exact inverse of how we
+        treat a minor's location, so minors are not in it at all.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Safety ═════════════════════════════════════════════════ -->
+<section id="safety" class="safety">
+  <div class="wrap split">
+    <div>
+      <p class="eyebrow cool">Safety</p>
+      <h2 class="h2">Built for<br>thirteen-year-olds.</h2>
+      <p class="safety-quote">These are rules in our database, not settings in the app.</p>
+      <p style="font-size:15.5px;color:var(--second);max-width:48ch;">
+        A 13–17 profile is hidden from search until a guardian approves it. Only
+        verified coaches, clubs and scouts can open a conversation with a minor.
+        Exact age and date of birth are never shown to anyone — only a band. And
+        no coordinate, address or postcode column exists for a minor anywhere in
+        the schema, because the safest way to hold a child's location is not to
+        hold it.
+      </p>
+    </div>
+    <div>
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:6px;">A guardian approves three things, separately, and can withdraw any of them at any time.</p>
+      <div class="perms">
+        <div class="perm">
+          <h4><span class="sw"></span>Discovery</h4>
+          <p>Whether the profile can appear in search at all.</p>
+        </div>
+        <div class="perm">
+          <h4><span class="sw"></span>Messaging</h4>
+          <p>Whether a verified coach or club may start a conversation.</p>
+        </div>
+        <div class="perm">
+          <h4><span class="sw"></span>Media</h4>
+          <p>Whether clips and photos are visible beyond the account.</p>
+        </div>
+      </div>
+      <ul class="plain" style="margin-top:26px;">
+        <li><span class="tick volt">✓</span><p><b>No adverts, no data selling, no cross-app tracking.</b></p></li>
+        <li><span class="tick volt">✓</span><p><b>No location permission is ever requested.</b> City and country are typed by the user.</p></li>
+        <li><span class="tick volt">✓</span><p><b>Export or delete everything from Settings.</b> No email, no form, no waiting.</p></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ Pricing ════════════════════════════════════════════════ -->
+<section id="pricing">
+  <div class="wrap">
+    <p class="eyebrow">Pricing</p>
+    <h2 class="h2">Free for the people<br>being discovered.</h2>
+    <p class="lede">
+      An athlete never pays to have a profile, appear in search, be contacted or
+      apply to a trial. Charging the person hoping to be seen is how this
+      category goes wrong.
+    </p>
+
+    <div class="tiers">
+      <div class="tier lead">
+        <div>
+          <p class="eyebrow" style="margin-bottom:8px;">Athletes &amp; guardians</p>
+          <div class="price">Free<small> — always</small></div>
+        </div>
+        <ul>
+          <li><span class="tick">✓</span><span>Full profile, clips and match records</span></li>
+          <li><span class="tick">✓</span><span>Talent Score with every input shown</span></li>
+          <li><span class="tick">✓</span><span>Apply to any trial or scholarship</span></li>
+          <li><span class="tick">✓</span><span>Guardian controls, at no cost</span></li>
+        </ul>
+        <a class="btn btn-primary" href="#get">Get the app</a>
+      </div>
+
+      <div class="tier">
+        <div>
+          <p class="eyebrow cool" style="margin-bottom:8px;">Coaches &amp; scouts</p>
+          <div class="price">Talk to us</div>
+        </div>
+        <ul>
+          <li><span class="tick cool">→</span><span>Search, filters and AI recommendations</span></li>
+          <li><span class="tick cool">→</span><span>Watchlists with private notes</span></li>
+          <li><span class="tick cool">→</span><span>Post trials and review applicants</span></li>
+        </ul>
+        <a class="btn btn-quiet" href="mailto:support@aceaix.com?subject=AceAiX%20for%20scouts">Email us</a>
+      </div>
+
+      <div class="tier">
+        <div>
+          <p class="eyebrow cool" style="margin-bottom:8px;">Clubs &amp; federations</p>
+          <div class="price">Talk to us</div>
+        </div>
+        <ul>
+          <li><span class="tick cool">→</span><span>Multi-seat access for your staff</span></li>
+          <li><span class="tick cool">→</span><span>Club page, roster and prospect tracking</span></li>
+          <li><span class="tick cool">→</span><span>Verified badge after review</span></li>
+        </ul>
+        <a class="btn btn-quiet" href="mailto:support@aceaix.com?subject=AceAiX%20for%20clubs">Email us</a>
+      </div>
+    </div>
+
+    <p style="margin-top:30px;font-size:14px;color:var(--muted);max-width:60ch;">
+      One thing worth saying plainly to every family: no genuine club will ever
+      ask you or your child for money to attend a trial. If someone on AceAiX
+      does, report them — the report button is on every profile and every message.
+    </p>
+  </div>
+</section>
+
+<!-- ═══ Close ══════════════════════════════════════════════════ -->
+<section id="get" class="close band">
+  <div class="wrap">
+    <p class="eyebrow" id="getEyebrow">Launching 1 October 2026</p>
+    <h2>Your talent,<br><span style="background:var(--g-action);-webkit-background-clip:text;background-clip:text;color:transparent;">discovered.</span></h2>
+    <p class="lede" style="margin-inline:auto;" id="getLede">
+      Free, in seven languages, on iPhone and Android. Thirteen and over, with a
+      guardian's approval for anyone under eighteen.
+    </p>
+
+    <div class="count" id="count" role="group" aria-label="Time until the first of October 2026">
+      <div><span class="n" id="cD">--</span><span class="l">Days</span></div>
+      <div><span class="n" id="cH">--</span><span class="l">Hours</span></div>
+      <div><span class="n" id="cM">--</span><span class="l">Minutes</span></div>
+      <div><span class="n" id="cS">--</span><span class="l">Seconds</span></div>
+    </div>
+
+    <!-- ── Notify me ────────────────────────────────────────────────────────
+         Placed above the store buttons on purpose: until 1 October both store
+         links lead to a page that does not exist yet, so this is the only
+         thing on the page somebody can actually do.
+
+         It says "tell me when it launches", not "get a discount". The app is
+         free — the line below these buttons says so — and offering a discount
+         on a free product is a promise that cannot be kept.
+    ---------------------------------------------------------------------- -->
+    <form class="notify" id="notify" novalidate>
+      <div class="notify-head">
+        <h3>Be told the day it lands</h3>
+        <p>One email on launch day. Nothing else, ever.</p>
+      </div>
+
+      <div class="notify-row">
+        <label class="sr" for="nfName">First name (optional)</label>
+        <input id="nfName" name="first_name" type="text" autocomplete="given-name"
+               placeholder="First name (optional)" maxlength="80">
+
+        <label class="sr" for="nfEmail">Email address</label>
+        <input id="nfEmail" name="email" type="email" autocomplete="email"
+               placeholder="you@example.com" required maxlength="254">
+
+        <button type="submit" id="nfGo">Notify me</button>
+      </div>
+
+      <!-- The honeypot. Hidden from people and from screen readers; bots fill
+           every field they find, and one that is filled is discarded server
+           side without telling the sender why. -->
+      <div class="nf-hp" aria-hidden="true">
+        <label for="nfSite">Leave this empty</label>
+        <input id="nfSite" name="website" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="notify-checks">
+        <label><input type="checkbox" id="nfAdult"><span>I am 18 or over.</span></label>
+        <label><input type="checkbox" id="nfConsent"><span id="nfConsentText">Email me once when AceAiX launches. I can unsubscribe at any time.</span></label>
+      </div>
+
+      <p class="notify-note">
+        Under 18? Download the app on launch day instead — a parent or guardian
+        approves your account there, which is how it should work.
+      </p>
+
+      <p class="notify-msg" id="nfMsg" role="status" aria-live="polite"></p>
+    </form>
+
+    <div class="stores">
+      <a class="store" href="https://apps.apple.com/ae/app/aceaix/id6785269968">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="5" y="2" width="14" height="20" rx="3"></rect>
+          <path d="M12 6v8m0 0 3-3m-3 3-3-3"></path>
+        </svg>
+        <span class="st"><small>Download on the</small><b>App Store</b></span>
+      </a>
+      <a class="store" href="https://play.google.com/store/apps/details?id=com.aryaix.aceaix.athlete&amp;pcampaignid=web_share">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4.5 3.2v17.6a1 1 0 0 0 1.5.87l13.2-8.8a1 1 0 0 0 0-1.74L6 2.33a1 1 0 0 0-1.5.87Z"></path>
+        </svg>
+        <span class="st"><small>Get it on</small><b>Google Play</b></span>
+      </a>
+    </div>
+
+    <p style="margin:24px auto 0;font-size:13.5px;color:var(--muted);max-width:46ch;">
+      Free to download, free to be discovered. No adverts, no data selling, and
+      no location permission at any point.
+    </p>
+
+    <p style="margin:34px auto 0;font-size:14.5px;color:var(--muted);max-width:52ch;">
+      AceAiX is built by <a href="https://aryaix.com" style="color:var(--ink);text-decoration:none;border-bottom:1px solid var(--edge-hi);">AryAiX</a>,
+      an AI venture studio in Dubai — the same team behind CeenAiX in healthcare
+      and NestAiX in property.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <a class="mark" href="#top" aria-label="AceAiX, back to top">
+          <img src="assets/aceaix-mark.webp" width="320" height="210" alt="">
+          <span style="font-size:21px;">Ace<b>AiX</b></span>
+        </a>
+        <p style="margin-top:14px;font-size:13px;color:var(--muted);max-width:28ch;">
+          A talent-discovery network for young athletes.
+        </p>
+        <a class="by" href="https://aryaix.com" style="margin-top:16px;">
+          <img src="assets/aryaix-mark.webp" width="200" height="162" alt="">
+          <span class="by-t">
+            <span class="by-k">A product of</span>
+            <span class="by-n">Ary<b>AiX</b></span>
+          </span>
+        </a>
+        <p style="margin-top:14px;font-size:12.5px;color:var(--muted);max-width:30ch;">
+          AryAiX FZ-LLC · Dilan Tower, Al Jadaf, Dubai, UAE · Trade Licence 1610838
+        </p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#score">Talent Score</a></li>
+          <li><a href="#athletes">For athletes</a></li>
+          <li><a href="#clubs">For coaches &amp; clubs</a></li>
+          <li><a href="#play">Play</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Trust</h5>
+        <ul>
+          <li><a href="#safety">Safety</a></li>
+          <li><a href="https://aceaix.com/privacy">Privacy</a></li>
+          <li><a href="https://aceaix.com/terms">Terms</a></li>
+          <li><a href="https://aceaix.com/guidelines">Community guidelines</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Contact</h5>
+        <ul>
+          <li><a href="mailto:support@aceaix.com">support@aceaix.com</a></li>
+          <li><a href="mailto:safety@aceaix.com">safety@aceaix.com</a></li>
+          <li><a href="mailto:privacy@aceaix.com">privacy@aceaix.com</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-base">
+      <span>© 2026 AryAiX FZ-LLC. AceAiX is a trademark of AryAiX.</span>
+      <span class="mono" style="font-size:12px;">English · العربية · Español · Français · Deutsch · Русский · 中文</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── Notify me ──────────────────────────────────────────────────────────
+     Posts to a Supabase edge function, never to the database directly. The
+     anon key would have to be in this file for a direct insert, and a public
+     key that can write to a table of email addresses is a table of email
+     addresses anybody can write to. The function holds the service key, and
+     with it the rate limit, the honeypot check and the 18+ check — none of
+     which mean anything if they live here, where anyone can edit them.
+
+     Set this to the deployed function URL. Until it is set the form says so
+     rather than silently doing nothing. */
+  var NOTIFY_URL = window.ACEAIX_NOTIFY_URL || '';
+
+  var form = document.getElementById('notify');
+  if (form) {
+    var msg = document.getElementById('nfMsg');
+    var go = document.getElementById('nfGo');
+    var email = document.getElementById('nfEmail');
+    var adult = document.getElementById('nfAdult');
+    var consent = document.getElementById('nfConsent');
+
+    function say(text, kind) {
+      msg.textContent = text;
+      msg.className = 'notify-msg' + (kind ? ' ' + kind : '');
+    }
+
+    /* Once somebody is on the list, everything that asked them to join is
+       answered — including the note about being under 18. Leaving it up makes
+       the confirmation look like a form that failed. */
+    function done() {
+      form.querySelector('.notify-row').style.display = 'none';
+      form.querySelector('.notify-checks').style.display = 'none';
+      form.querySelector('.notify-note').style.display = 'none';
+      form.querySelector('.notify-head p').style.display = 'none';
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      email.setAttribute('aria-invalid', 'false');
+
+      var value = (email.value || '').trim();
+      if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
+        email.setAttribute('aria-invalid', 'true');
+        email.focus();
+        return say('Please enter an email address we can reach you on.', 'bad');
+      }
+      if (!adult.checked) {
+        return say('This list is for people aged 18 and over. If you are younger, download the app on launch day and ask a parent to approve your account.', 'bad');
+      }
+      if (!consent.checked) {
+        return say('Please tick the box to say we may email you.', 'bad');
+      }
+      if (!NOTIFY_URL) {
+        return say('The sign-up is not connected yet. Please try again shortly.', 'bad');
+      }
+
+      go.disabled = true;
+      say('One moment…');
+
+      fetch(NOTIFY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: value,
+          first_name: (document.getElementById('nfName').value || '').trim() || null,
+          website: document.getElementById('nfSite').value,
+          is_adult: true,
+          consent: true,
+          /* The exact wording agreed to, stored with the row. "They consented"
+             is worth nothing without "to what", and this sentence will change. */
+          consent_text: document.getElementById('nfConsentText').textContent.trim(),
+          locale: document.documentElement.lang || 'en',
+          source: 'site-launch'
+        })
+      })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            go.disabled = false;
+            return say(res.body && res.body.error ? res.body.error : 'That did not go through. Please try again.', 'bad');
+          }
+          if (res.body.status === 'already') {
+            say('You are already on the list — nothing more to do.', 'ok');
+          } else {
+            say('Almost there. Check your inbox and click the link to confirm.', 'ok');
+          }
+          done();
+        })
+        .catch(function () {
+          go.disabled = false;
+          say('We could not reach the server. Please try again.', 'bad');
+        });
+    });
+
+    /* Coming back from the confirmation link. */
+    var q = new URLSearchParams(location.search);
+    if (q.get('subscribed') === '1') {
+      say('Confirmed. We will email you on launch day.', 'ok');
+      done();
+    } else if (q.get('subscribed') === '0') {
+      say('That confirmation link has expired or was already used.', 'bad');
+    } else if (q.get('unsubscribed') === '1') {
+      say('Unsubscribed. You will not hear from us again.', 'ok');
+    }
+  }
+
+  /* ── Launch countdown ───────────────────────────────────────────────────
+     Midnight on 1 October 2026 in Dubai, where the company is — expressed in
+     UTC so it means the same instant to a reader in Lagos or Tehran. */
+  var LAUNCH = Date.UTC(2026, 8, 30, 20, 0, 0);
+  var cD = document.getElementById('cD'), cH = document.getElementById('cH');
+  var cM = document.getElementById('cM'), cS = document.getElementById('cS');
+  var countEl = document.getElementById('count');
+  var pillText = document.getElementById('pillText');
+  var getEyebrow = document.getElementById('getEyebrow');
+  var getLede = document.getElementById('getLede');
+  var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+  var ticker = null;
+
+  function live() {
+    /* The date has passed. Nothing counts down to a moment already gone —
+       the block becomes the announcement it was counting towards. */
+    if (ticker) { clearInterval(ticker); ticker = null; }
+    if (countEl) countEl.hidden = true;
+    if (pillText) pillText.textContent = 'Out now on iPhone and Android';
+    if (getEyebrow) getEyebrow.textContent = 'Out now';
+    if (getLede) {
+      getLede.textContent = 'Free, in seven languages, on iPhone and Android. ' +
+        'Thirteen and over, with a guardian\u2019s approval for anyone under eighteen.';
+    }
+  }
+
+  function tick() {
+    var left = LAUNCH - Date.now();
+    if (left <= 0) { live(); return; }
+    var sec = Math.floor(left / 1000);
+    cD.textContent = String(Math.floor(sec / 86400));
+    cH.textContent = pad(Math.floor(sec / 3600) % 24);
+    cM.textContent = pad(Math.floor(sec / 60) % 60);
+    cS.textContent = pad(sec % 60);
+  }
+
+  if (cD) {
+    tick();
+    if (LAUNCH - Date.now() > 0) ticker = setInterval(tick, 1000);
+  }
+
+  /* Theme. Three states, not two: with nothing stamped on <html> the page
+     follows the operating system, and pressing the button stamps a choice
+     that beats it in either direction. */
+  var root = document.documentElement;
+  var btn = document.getElementById('themeBtn');
+  var moon = document.getElementById('iconMoon');
+  var sun = document.getElementById('iconSun');
+  var sysLight = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
+
+  function current() {
+    var stamped = root.getAttribute('data-theme');
+    if (stamped === 'light' || stamped === 'dark') return stamped;
+    return sysLight && sysLight.matches ? 'light' : 'dark';
+  }
+  function sync() {
+    var dark = current() === 'dark';
+    /* The button offers the other theme, so it shows the other theme's icon. */
+    moon.hidden = dark;
+    sun.hidden = !dark;
+    btn.setAttribute('aria-label', dark ? 'Switch to the light theme' : 'Switch to the dark theme');
+  }
+  sync();
+  btn.addEventListener('click', function () {
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('aceaix-theme', next); } catch (e) {}
+    sync();
+  });
+  if (sysLight && sysLight.addEventListener) {
+    sysLight.addEventListener('change', function () {
+      if (!root.getAttribute('data-theme')) sync();
+    });
+  }
+
+  /* Nav gains a hairline once you have left the top. */
+  var nav = document.getElementById('nav');
+  var onScroll = function () { nav.classList.toggle('stuck', window.scrollY > 8); };
+  onScroll();
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  /* The reel is one list rendered twice, so the loop has no seam. */
+  var track = document.getElementById('reelTrack');
+  if (track && !reduced) {
+    var clone = track.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('img').forEach(function (i) { i.setAttribute('aria-hidden', 'true'); i.alt = ''; });
+    while (clone.firstElementChild) track.appendChild(clone.firstElementChild);
+  }
+
+  /* Reveals are opt-in: the page is fully visible with no script at all,
+     and the class that hides an element is only ever added when we know
+     an observer will arrive to take it off again. */
+  if ('IntersectionObserver' in window && !reduced) {
+    var targets = document.querySelectorAll('section > .wrap > *:not(.hero-grid):not(.facts)');
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('shown'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.06 });
+
+    Array.prototype.forEach.call(targets, function (el, i) {
+      if (el.getBoundingClientRect().top < window.innerHeight) return; /* already on screen */
+      el.classList.add('will-reveal');
+      el.style.transitionDelay = Math.min(i % 4, 3) * 60 + 'ms';
+      io.observe(el);
+    });
+  }
+
+  /* The dial. 74 of 100 — an example profile, and it says so on the face. */
+  var SCORE = 74, CIRC = 527.8;
+  var ring = document.getElementById('ring');
+  var num = document.getElementById('dialNum');
+  var block = document.getElementById('dialBlock');
+  var fills = document.querySelectorAll('.fill');
+
+  function paint(value) {
+    ring.style.strokeDashoffset = String(CIRC - (CIRC * value) / 100);
+    num.textContent = String(Math.round(value));
+  }
+
+  function runDial() {
+    if (reduced) {
+      paint(SCORE);
+      fills.forEach(function (f) { f.style.width = (f.dataset.w / 30 * 100) + '%'; });
+      return;
+    }
+    var t0 = null, DUR = 1250;
+    ring.style.transition = 'none';
+    function step(t) {
+      if (t0 === null) t0 = t;
+      var p = Math.min((t - t0) / DUR, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      paint(SCORE * eased);
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+    fills.forEach(function (f, i) {
+      setTimeout(function () { f.style.width = (f.dataset.w / 30 * 100) + '%'; }, 180 + i * 110);
+    });
+  }
+
+  paint(0);
+  if ('IntersectionObserver' in window) {
+    var dio = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { runDial(); dio.disconnect(); } });
+    }, { threshold: 0.35 });
+    dio.observe(block);
+  } else {
+    runDial();
+  }
+})();
+</script>
+</body>
+</html>
