@@ -321,4 +321,5 @@ export const profile = {
   playerCardFailed: 'Impossible de créer la carte. Réessaie dans un instant.',
   playerCardShare: 'Partager',
   playerCardSave: 'Enregistrer l’image',
+  savedPosts: 'Publications enregistrées',
 };

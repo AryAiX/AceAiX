@@ -11,6 +11,7 @@ import { challenges } from './challenges';
 import { meetups } from './meetups';
 import { teams } from './teams';
 import { views } from './views';
+import { savedPosts } from './savedPosts';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -24,5 +25,5 @@ import { format } from './format';
 
 /** Spanish. Typed against English, so a missing key is a compile error. */
 export const es: Translations = { common, language, auth, onboarding, feed, profile,
-  score, challenges, meetups, teams, views, progress, discover, opportunities, messaging, settings,
+  score, challenges, meetups, teams, views, savedPosts, progress, discover, opportunities, messaging, settings,
   safety, sports, countries, errors, format };

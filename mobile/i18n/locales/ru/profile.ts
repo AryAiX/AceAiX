@@ -330,4 +330,5 @@ export const profile = {
   playerCardFailed: 'Не получилось собрать карточку. Попробуй ещё раз через минуту.',
   playerCardShare: 'Поделиться',
   playerCardSave: 'Сохранить изображение',
+  savedPosts: 'Сохранённые публикации',
 };

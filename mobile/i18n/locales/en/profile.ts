@@ -315,4 +315,5 @@ export const profile = {
   playerCardFailed: 'Could not build the card. Try again in a moment.',
   playerCardShare: 'Share',
   playerCardSave: 'Save image',
+  savedPosts: 'Saved posts',
 };

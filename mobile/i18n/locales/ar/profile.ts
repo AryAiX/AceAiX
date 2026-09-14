@@ -337,4 +337,5 @@ export const profile = {
   playerCardFailed: 'تعذّر إنشاء البطاقة. حاول بعد قليل.',
   playerCardShare: 'مشاركة',
   playerCardSave: 'حفظ الصورة',
+  savedPosts: 'المنشورات المحفوظة',
 };

@@ -9,6 +9,7 @@ import { challenges } from './challenges';
 import { meetups } from './meetups';
 import { teams } from './teams';
 import { views } from './views';
+import { savedPosts } from './savedPosts';
 import { progress } from './progress';
 import { discover } from './discover';
 import { opportunities } from './opportunities';
@@ -38,6 +39,7 @@ export const en = {
   meetups,
   teams,
   views,
+  savedPosts,
   progress,
   discover,
   opportunities,

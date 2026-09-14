@@ -315,4 +315,5 @@ export const profile = {
   playerCardFailed: 'Die Karte ließ sich nicht erstellen. Versuch es gleich noch einmal.',
   playerCardShare: 'Teilen',
   playerCardSave: 'Bild speichern',
+  savedPosts: 'Gespeicherte Beiträge',
 };

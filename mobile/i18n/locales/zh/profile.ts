@@ -304,4 +304,5 @@ export const profile = {
   playerCardFailed: '卡片生成失败，过一会儿再试。',
   playerCardShare: '分享',
   playerCardSave: '保存图片',
+  savedPosts: '已保存的帖子',
 };

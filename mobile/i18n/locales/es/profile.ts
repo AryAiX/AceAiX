@@ -330,4 +330,5 @@ export const profile = {
   playerCardFailed: 'No pudimos crear la tarjeta. Inténtalo de nuevo en un momento.',
   playerCardShare: 'Compartir',
   playerCardSave: 'Guardar imagen',
+  savedPosts: 'Publicaciones guardadas',
 };
