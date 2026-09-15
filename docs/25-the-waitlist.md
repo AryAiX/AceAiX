@@ -7,15 +7,15 @@
 
 ## 1. What it is
 
-Two forms on one page, and the second one only exists because of where the
-first one sits.
+Two forms on one page, and the second exists only because of where the first
+one sits.
 
-It went through three shapes, and the last one is the point. It began as "be
-told the day it lands": a name, an email, two checkboxes, **18+ only** for the
-reasons in §4. Then it grew a page of its own at `/early-access` that asked
-more and admitted minors through a guardian. Now there is no separate page —
-that fuller form simply *is* the site's call to action, standing where the App
-Store and Google Play buttons used to be.
+The **full form** went through three shapes. It began as "be told the day it
+lands": a name, an email, two checkboxes, **18+ only** for the reasons in §4.
+Then it grew a page of its own at `/early-access` that asked more and admitted
+minors through a guardian. Now there is no separate page — that fuller form
+simply *is* the site's call to action, standing where the App Store and Google
+Play buttons used to be.
 
 That last move was not a simplification for its own sake. Those buttons led to
 listings that do not exist until 1 October, so the page's most prominent
@@ -32,10 +32,15 @@ that is the address that is stored and written to; the child's own is never
 collected — choosing "I'm under 18" **relabels the existing field** rather than
 adding a second one, since two boxes invite a child to fill in both.
 
-That full form sits at the bottom of a long page, which is the honest place for
-it — somebody who has read the argument is worth asking properly. It is also
-the place most visitors never reach. So the hero carries a second form of one
+It sits at the bottom of a long page, which is the honest place for it —
+somebody who has read the argument is worth asking properly — and also the
+place most visitors never reach. So the **hero** carries a second form of one
 field: an email address, a button, and a consent sentence under it.
+
+That one has no tick-box. There is no room for one in a hero that would still
+be read, and an unread tick-box is worse evidence of consent than a sentence
+somebody actually sees; the wording sits under the button and is stored with
+the row.
 
 The hero form deliberately does **not** ask the age question. The guardian rule
 cannot be applied to an answer nobody was asked for, so rather than guessing,
@@ -65,15 +70,15 @@ of any analytics script on the page are what make it one that can be kept.
 
 ## 2. Two backends, and neither is a placeholder
 
-The form can post to either of two places, chosen by one line at the top of
-`site/index.html`:
+Both forms post to the same backend, and that backend is one of two, chosen by
+one line at the top of `site/index.html`:
 
 ```html
 <script>window.ACEAIX_NOTIFY_URL = '';</script>
 ```
 
 **Empty: Netlify Forms.** The page posts a normal urlencoded form to its own
-path and Netlify captures it as `early-access`. Nothing is deployed, nothing is configured, no
+path and Netlify captures it, as `early-access` or `early-access-quick`. Nothing is deployed, nothing is configured, no
 database exists. Sign-ups appear under **Forms** in the site dashboard and
 Netlify emails each one to the addresses listed under *Form notifications*.
 This is what runs the moment the folder is dragged onto Netlify.
@@ -128,11 +133,12 @@ Switching is one line and it is reversible. The simple route today does not
 close the door on the strict one later — which is the point, because the
 strict one is what §4 argues is eventually necessary.
 
-One consequence of there being a single page now: the form's Netlify name is
-`early-access`, not the old `launch-notify`. A site deployed before this change
-has submissions filed under the old name; they are not lost, but they are in a
-different list in the dashboard, and the notification rule has to be set again
-on the new one.
+Two consequences for anyone who deployed the site before these changes. The
+full form's Netlify name is `early-access`, not the old `launch-notify`, so
+earlier submissions sit in a list under the old name — not lost, but elsewhere.
+And there are now two forms, so the *Form notifications* rule has to be set on
+both; set it on one and half the sign-ups arrive silently, which looks exactly
+like a quiet week.
 
 ---
 
