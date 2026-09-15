@@ -4,8 +4,12 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 /**
  * The launch waitlist, from the marketing site.
  *
- *   POST   { email, first_name?, is_adult, consent, consent_text, locale?, source?, website? }
+ *   POST   { email, first_name?, is_adult, guardian_confirmed?, consent,
+ *            consent_text, role?, sport?, country?, locale?, source?, website? }
  *     → { ok: true, status: "pending" | "already" }
+ *
+ *   `is_adult: false` requires `guardian_confirmed: true`, and `email` must
+ *   then be the guardian's — see the comment at that check.
  *   GET    ?confirm=<uuid>        → 302 to the site, ?subscribed=1
  *   GET    ?unsubscribe=<uuid>    → 302 to the site, ?unsubscribed=1
  *
@@ -266,14 +270,24 @@ Deno.serve(async (req) => {
   if (body.consent !== true) {
     return json({ error: "Please agree to receive the launch email", field: "consent" }, 400);
   }
-  if (body.is_adult !== true) {
+  /* Under 18 is allowed, on one condition: the address must belong to a
+     parent or guardian, never to the child.
+
+     AceAiX is for 13–25 year-olds, so a sign-up page that refused everybody
+     under eighteen would turn away most of the demand it exists to measure.
+     But we will not hold a child's email address, so a minor signs up by
+     giving a guardian's — and that is the address every later email goes to.
+     The child's own contact details are never asked for and never stored.
+
+     The database says the same thing in `waitlist_guardian_required`, so a
+     future edit to this file cannot quietly start mailing children. */
+  const isAdult = body.is_adult === true;
+  if (!isAdult && body.guardian_confirmed !== true) {
     return json(
       {
-        error: "This list is for people aged 18 and over",
-        field: "is_adult",
-        /* Not a dead end: under-18s belong in the app, where a guardian
-           approves the account properly. See docs/12. */
-        hint: "under_18",
+        error: "Under 18? Use a parent or guardian's email address, and ask them first.",
+        field: "guardian_confirmed",
+        hint: "guardian_required",
       },
       400,
     );
@@ -286,6 +300,19 @@ Deno.serve(async (req) => {
 
   const firstName = typeof body.first_name === "string"
     ? body.first_name.trim().slice(0, 80) || null
+    : null;
+
+  /* Self-declared and used for nothing but deciding which launch email
+     somebody gets. An unknown value is dropped rather than refused — a form
+     that rejects a sign-up over a segmentation field has its priorities
+     backwards. */
+  const ROLES = ["athlete", "parent", "coach", "club", "scout"];
+  const role = typeof body.role === "string" && ROLES.includes(body.role.trim().toLowerCase())
+    ? body.role.trim().toLowerCase()
+    : null;
+  const sport = typeof body.sport === "string" ? body.sport.trim().slice(0, 40) || null : null;
+  const country = typeof body.country === "string"
+    ? body.country.trim().slice(0, 60) || null
     : null;
   const locale = typeof body.locale === "string" ? body.locale.trim().slice(0, 12) : null;
   const source = typeof body.source === "string" ? body.source.trim().slice(0, 40) : "site";
@@ -328,7 +355,13 @@ Deno.serve(async (req) => {
       locale,
       source,
       consent_text: consentText,
-      is_adult: true,
+      is_adult: isAdult,
+      /* Equal to `email` by construction, never a second address. The check
+         constraint refuses the row otherwise. */
+      guardian_email: isAdult ? null : email,
+      role,
+      sport,
+      country,
       ip_hash: ipHash,
     })
     .select("confirm_token")
