@@ -735,8 +735,17 @@ section { padding-block: clamp(72px, 9vw, 132px); position: relative; z-index: 1
 }
 
 .nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 14.5px; color: var(--second); }
-.nav-links a { text-decoration: none; transition: color .18s; }
+.nav-links a { text-decoration: none; transition: color .18s; white-space: nowrap; }
 .nav-links a:hover { color: var(--ink); }
+/* The one nav item that is a destination rather than a chapter heading. Colour
+   alone would be the only thing marking it, and colour alone is not a signal
+   everyone receives — so it also carries a dot. */
+.nav-early { color: var(--flame); font-weight: 600; display: inline-flex; align-items: center; gap: 7px; }
+.nav-early::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--flame); flex: none;
+}
+.nav-early:hover { color: var(--flame-lt); }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 9px;
@@ -1184,8 +1193,15 @@ footer {
   .score-grid { grid-template-columns: 1fr; }
   .split .shots { order: 2; }
 }
-@media (max-width: 720px) {
+/* The nav is one row that cannot wrap, so the links have to leave before they
+   collide with the logo and the button rather than after. They were hidden at
+   720px and were already overflowing at 760 with six of them; "Early access"
+   makes seven. Measured rather than guessed: seven fit at 1024 and not at 960,
+   so they go at 1000. */
+@media (max-width: 1000px) {
   .nav-links { display: none; }
+}
+@media (max-width: 720px) {
   .shots .phone:nth-child(2) { margin-top: 24px; }
 }
 </style>
@@ -1216,6 +1232,11 @@ footer {
       <span>Ace<b>AiX</b></span>
     </a>
     <nav class="nav-links">
+      <!-- First, not last. The nav otherwise reads as six ways to learn about
+           the product and no way to join it — and until 1 October joining is
+           the only thing anybody can actually do here. `live()` removes it on
+           launch day, when "early access" stops meaning anything. -->
+      <a href="#get" class="nav-early" data-early>Early access</a>
       <a href="#score">Talent Score</a>
       <a href="#athletes">For athletes</a>
       <a href="#clubs">For coaches &amp; clubs</a>
@@ -1234,7 +1255,7 @@ footer {
         <path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
       </svg>
     </button>
-    <a class="btn btn-primary btn-sm" href="#get" data-cta>Join early access</a>
+    <a class="btn btn-primary btn-sm" href="#get" data-cta>Join</a>
   </div>
 </header>
 
@@ -2199,6 +2220,12 @@ footer {
     var hs = document.getElementById('heroStores');
     if (hj) hj.hidden = true;
     if (hs) hs.hidden = false;
+
+    /* "Early access" is a thing you can be early to. Once the app is out it is
+       a link to nothing in particular, so it goes. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-early]'), function (el) {
+      el.hidden = true;
+    });
     if (getLede) {
       getLede.textContent = 'Free, in seven languages, on iPhone and Android. ' +
         'Thirteen and over, with a guardian\u2019s approval for anyone under eighteen.';

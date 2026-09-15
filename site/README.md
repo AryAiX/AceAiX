@@ -73,10 +73,17 @@ can appear in both; that is the intended path, not a bug — after the hero
 capture succeeds, the link under it changes to *"Tell us what you play →"* and
 points at the full form.
 
+**"Early access" is the first item in the nav**, in the accent colour and with
+a dot — the dot because colour alone is not a signal everyone receives. It goes
+to the full form. The button beside it now reads just "Join": two controls, one
+destination and the same six words between them read as a mistake rather than
+a choice.
+
 **Nothing is deleted for launch day.** The store buttons are still in the HTML,
 `hidden`; the countdown's `live()` reveals them — in the hero and in the closing
-section — hides both forms, and relabels every "Join early access" button to
-"Get the app" the moment the date passes. Nobody edits anything on 1 October.
+section — hides both forms, drops "Early access" from the nav, and relabels
+every join button to "Get the app" the moment the date passes. Nobody edits
+anything on 1 October.
 
 ---
 
