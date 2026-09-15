@@ -804,61 +804,14 @@ section { padding-block: clamp(72px, 9vw, 132px); position: relative; z-index: 1
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .hero-note { margin-top: 18px; font-size: 13.5px; color: var(--muted); }
 
-/* ── The hero capture ──────────────────────────────────────────
-   One field, because most people never reach the bottom of a page
-   this long and an address with nothing attached is worth far more
-   than no address at all. Everything else the full form asks —
-   role, sport, country, age — is asked down there, by people who
-   read the argument first.
+/* The form is the hero's left column, so it drops the centred-card framing
+   and takes the column's width. Same rules underneath — only the box changes. */
+.notify-hero {
+  margin: 30px 0 0; max-width: 520px; padding: 0;
+  border: 0; background: none; gap: 16px;
+}
+@media (max-width: 900px) { .notify-hero { max-width: none; } }
 
-   It is a separate Netlify form (`early-access-quick`) rather than
-   the same one twice: Netlify keys submissions by form name, so two
-   forms sharing a name land in one list with half the columns empty
-   and no way to tell which came from where. Two names, two lists,
-   one `source` field in each to merge on. */
-.quick {
-  display: grid; gap: 10px; margin-top: 30px; max-width: 480px;
-}
-@media (min-width: 480px) { .quick { grid-template-columns: 1fr auto; } }
-.quick input[type="email"] {
-  width: 100%; box-sizing: border-box;
-  padding: 14px 16px; border-radius: 12px;
-  border: 1px solid var(--edge); background: var(--panel-lo);
-  color: var(--ink); font: inherit; font-size: 16px;
-  transition: border-color .16s, box-shadow .16s;
-}
-.quick input::placeholder { color: var(--muted); }
-.quick input:focus-visible {
-  outline: none; border-color: var(--flame-lt);
-  box-shadow: 0 0 0 3px rgba(255,90,31,.22);
-}
-.quick input[aria-invalid="true"] { border-color: var(--bad); }
-.quick button {
-  padding: 14px 22px; border: 0; border-radius: 12px;
-  background: var(--g-action); color: #fff;
-  font: inherit; font-size: 15.5px; font-weight: 700; letter-spacing: .2px;
-  cursor: pointer; white-space: nowrap;
-  transition: transform .16s cubic-bezier(.2,.7,.3,1), filter .16s;
-}
-.quick button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
-.quick button:disabled { opacity: .55; cursor: default; }
-@media (prefers-reduced-motion: reduce) { .quick button:hover { transform: none; } }
-
-/* No tick-box up here, so the consent has to be readable at the point of
-   collection rather than buried — and the exact sentence is stored with the
-   submission, because "they consented" is worth nothing without "to what". */
-.quick-consent {
-  margin-top: 11px; font-size: 12.5px; line-height: 1.5; color: var(--muted);
-  max-width: 52ch;
-}
-.quick-msg { margin-top: 11px; font-size: 13.5px; line-height: 1.5; min-height: 1px; }
-.quick-msg.ok  { color: var(--ok); font-weight: 600; }
-.quick-msg.bad { color: var(--bad); }
-.quick-more {
-  display: inline-block; margin-top: 8px; font-size: 13.5px;
-  color: var(--ink); text-decoration: none;
-  border-bottom: 1px solid var(--edge-hi);
-}
 
 /* The load sequence. Each line arrives, then the phone settles. */
 .rise { animation: rise .82s cubic-bezier(.16,.84,.28,1) backwards; }
@@ -1171,6 +1124,7 @@ ul.plain b { color: var(--ink); font-weight: 600; }
 .close .eyebrow { max-width: none; }
 .close h2 { font-size: clamp(44px, 8vw, 96px); line-height: .94; }
 .close .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 32px; }
+.close-back { margin-top: 30px; }
 
 footer {
   border-top: 1px solid var(--edge);
@@ -1236,7 +1190,7 @@ footer {
            the product and no way to join it — and until 1 October joining is
            the only thing anybody can actually do here. `live()` removes it on
            launch day, when "early access" stops meaning anything. -->
-      <a href="#get" class="nav-early" data-early>Early access</a>
+      <a href="#join" class="nav-early" data-early>Early access</a>
       <a href="#score">Talent Score</a>
       <a href="#athletes">For athletes</a>
       <a href="#clubs">For coaches &amp; clubs</a>
@@ -1255,7 +1209,7 @@ footer {
         <path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
       </svg>
     </button>
-    <a class="btn btn-primary btn-sm" href="#get" data-cta>Join</a>
+    <a class="btn btn-primary btn-sm" href="#join" data-cta>Join</a>
   </div>
 </header>
 
@@ -1274,32 +1228,140 @@ footer {
       <p class="sub rise d3">Your talent, discovered.</p>
       <p class="body rise d4">
         Build your profile, get your Talent Score, and let coaches and clubs
-        find you. AceAiX is where a young athlete builds a proper sporting
-        profile and gets seen by the people who pick teams.
+        find you. Join the early-access list and you are on it from day one.
       </p>
-      <!-- Before 1 October this is the page's real call to action, so it is a
-           field and not a button that scrolls somewhere. `live()` in the
-           countdown swaps the whole block back to the store buttons on launch
-           day, so nothing here needs editing that morning. -->
       <div id="heroJoin">
-        <form class="quick rise d5" id="quick" name="early-access-quick" method="POST" novalidate
-              data-netlify="true" data-netlify-honeypot="bot-field">
-          <input type="hidden" name="form-name" value="early-access-quick">
-          <input type="hidden" name="source" value="site-hero">
-          <label class="sr" for="qEmail">Email address</label>
-          <input id="qEmail" name="email" type="email" autocomplete="email"
-                 placeholder="you@example.com" required maxlength="254">
-          <div class="nf-hp" aria-hidden="true">
-            <label for="qSite">Leave this empty</label>
-            <input id="qSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
-          </div>
-          <button type="submit" id="qGo">Save my place</button>
-        </form>
-        <p class="quick-consent rise d5" id="qConsentText">
-          One email when AceAiX opens, and nothing before it. Unsubscribe in one click.
+    <!-- ── Early access ─────────────────────────────────────────────────
+         This is the page's call to action and, until 1 October, the only thing
+         on it anybody can actually do — so it is in the hero rather than at
+         the bottom of a long page most visitors never reach.
+
+         It began as one email field up here and the full form down there. Two
+         forms so alike was duplication rather than a funnel: whoever filled in
+         the short one was the same person who would have filled in this one,
+         minus everything that makes the row useful. One form, asked properly,
+         in the place people actually see.
+
+         It asks enough to be worth filling in: a fourteen-year-old goalkeeper
+         in Sharjah and a scout at a Championship club both belong on this list
+         and do not get the same launch email.
+
+         Under-18s are welcome — this is a 13+ product, and a sign-up that
+         turned them away would turn away most of the demand it exists to
+         measure. They sign up with a parent's address, which is the address
+         stored and written to. Their own is never collected.
+
+         `live()` swaps this whole block for the store buttons on launch day.
+    ---------------------------------------------------------------------- -->
+    <!-- Netlify builds this form from the markup at DEPLOY time, not when
+         somebody submits, so `name`, `data-netlify` and the hidden
+         `form-name` have to be present in the file on disk — adding them from
+         script is too late — and every field needs its own `name` or it is
+         dropped from the submission while still showing on screen. -->
+    <form class="notify notify-hero rise d5" id="join" name="early-access" method="POST" novalidate
+          data-netlify="true" data-netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="early-access">
+
+      <div class="fgrp">
+        <span class="flbl" id="nfRoleLabel">I am a…</span>
+        <div class="chips" role="radiogroup" aria-labelledby="nfRoleLabel">
+          <input type="radio" name="role" id="nfRoleAthlete" value="athlete" checked>
+          <label for="nfRoleAthlete">Athlete</label>
+          <input type="radio" name="role" id="nfRoleParent" value="parent">
+          <label for="nfRoleParent">Parent or guardian</label>
+          <input type="radio" name="role" id="nfRoleCoach" value="coach">
+          <label for="nfRoleCoach">Coach</label>
+          <input type="radio" name="role" id="nfRoleClub" value="club">
+          <label for="nfRoleClub">Club or academy</label>
+          <input type="radio" name="role" id="nfRoleScout" value="scout">
+          <label for="nfRoleScout">Scout</label>
+        </div>
+      </div>
+
+      <div class="ftwo">
+        <div class="fgrp">
+          <label class="flbl" for="nfName">First name</label>
+          <input id="nfName" name="first_name" type="text" autocomplete="given-name"
+                 placeholder="Layla" maxlength="80">
+        </div>
+        <div class="fgrp">
+          <label class="flbl" for="nfSport">Sport</label>
+          <select id="nfSport" name="sport">
+            <option value="">Choose a sport</option>
+            <option>Football</option><option>Basketball</option><option>Tennis</option>
+            <option>Athletics</option><option>Swimming</option><option>Cricket</option>
+            <option>Volleyball</option><option>Handball</option><option>Padel</option>
+            <option>Chess</option><option>Esports</option><option>Martial Arts</option>
+            <option value="Other">Something else</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ftwo">
+        <div class="fgrp">
+          <label class="flbl" for="nfCity">City</label>
+          <input id="nfCity" name="city" type="text" autocomplete="address-level2"
+                 placeholder="Dubai" maxlength="80">
+        </div>
+        <div class="fgrp">
+        <label class="flbl" for="nfCountry">Country</label>
+        <input id="nfCountry" name="country" type="text" autocomplete="country-name"
+               placeholder="United Arab Emirates" maxlength="60" list="nfCountries">
+        <!-- A datalist suggests without restricting: somebody in a country not
+             on this list can still type it, which a <select> would not allow. -->
+        <datalist id="nfCountries">
+          <option>United Arab Emirates</option><option>Saudi Arabia</option><option>Qatar</option>
+          <option>Kuwait</option><option>Bahrain</option><option>Oman</option><option>Egypt</option>
+          <option>Jordan</option><option>Lebanon</option><option>Morocco</option><option>Iran</option>
+          <option>Turkey</option><option>United Kingdom</option><option>France</option>
+          <option>Spain</option><option>Germany</option><option>Portugal</option><option>Brazil</option>
+          <option>Nigeria</option><option>India</option><option>Pakistan</option><option>United States</option>
+        </datalist>
+        </div>
+      </div>
+
+      <div class="fgrp">
+        <span class="flbl" id="nfAgeLabel">Your age</span>
+        <div class="chips" role="radiogroup" aria-labelledby="nfAgeLabel">
+          <input type="radio" name="age" id="nfAdult" value="adult" checked>
+          <label for="nfAdult">I'm 18 or over</label>
+          <input type="radio" name="age" id="nfMinor" value="minor">
+          <label for="nfMinor">I'm under 18</label>
+        </div>
+      </div>
+
+      <div class="fgrp">
+        <label class="flbl" for="nfEmail" id="nfEmailLabel">Email address</label>
+        <input id="nfEmail" name="email" type="email" autocomplete="email"
+               placeholder="you@example.com" required maxlength="254">
+        <p class="fhint guard" id="nfGuardNote" hidden>
+          We will not ask for your own email address. Your parent or guardian gets
+          the launch email and sets your account up with you — which is how AceAiX
+          works for under-18s anyway.
         </p>
-        <p class="quick-msg" id="qMsg" role="status" aria-live="polite"></p>
-        <p class="rise d6"><a class="quick-more" href="#score">See how the Talent Score works</a></p>
+      </div>
+
+      <div class="nf-hp" aria-hidden="true">
+        <label for="nfSite">Leave this empty</label>
+        <input id="nfSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <label class="notify-consent">
+        <input type="checkbox" id="nfConsent" name="consent" value="yes">
+        <span id="nfConsentText">Email me when AceAiX opens. One email, and I can unsubscribe at any time.</span>
+      </label>
+
+      <button class="notify-go" type="submit" id="nfGo">Save my place</button>
+
+      <p class="notify-msg" id="nfMsg" role="status" aria-live="polite"></p>
+
+      <!-- "Free" and "13+" are on the line below the form already; saying them
+           twice in fifty words reads as a page that is not sure. -->
+      <p class="notify-note">
+        No adverts, no data selling, and no location permission at any point.
+        One click unsubscribes, from any email we send.
+      </p>
+    </form>
       </div>
 
       <div class="hero-cta rise d5" id="heroStores" hidden>
@@ -1646,129 +1708,12 @@ footer {
       <div><span class="n" id="cS">--</span><span class="l">Seconds</span></div>
     </div>
 
-    <!-- ── Early access ─────────────────────────────────────────────────
-         What used to be here: a two-field "notify me" box, and under it two
-         store buttons pointing at listings that do not exist until 1 October.
-         The buttons were the call to action and they led nowhere, which left
-         the form doing the real work while looking like an afterthought.
-
-         So the form is the call to action now, and it asks enough to be worth
-         filling in: a fourteen-year-old goalkeeper in Sharjah and a scout at a
-         Championship club both belong on this list, and they do not get the
-         same launch email.
-
-         Under-18s are welcome — this is a 13+ product and a sign-up page that
-         turned them away would turn away most of the demand it exists to
-         measure. They sign up with a parent's address, which is the address
-         that is stored and written to. Their own is never collected.
-
-         The store buttons are further down, held back until the date passes.
-    ---------------------------------------------------------------------- -->
-    <!-- Netlify builds this form from the markup at DEPLOY time, not when
-         somebody submits, so `name`, `data-netlify` and the hidden
-         `form-name` have to be present in the file on disk — adding them from
-         script is too late — and every field needs its own `name` or it is
-         dropped from the submission while still showing on screen. -->
-    <form class="notify" id="notify" name="early-access" method="POST" novalidate
-          data-netlify="true" data-netlify-honeypot="bot-field">
-      <input type="hidden" name="form-name" value="early-access">
-
-      <div class="notify-head">
-        <h3>Get in on day one</h3>
-        <p>Join the early-access list. One email when AceAiX opens, and nothing before it.</p>
-      </div>
-
-      <div class="fgrp">
-        <span class="flbl" id="nfRoleLabel">I am a…</span>
-        <div class="chips" role="radiogroup" aria-labelledby="nfRoleLabel">
-          <input type="radio" name="role" id="nfRoleAthlete" value="athlete" checked>
-          <label for="nfRoleAthlete">Athlete</label>
-          <input type="radio" name="role" id="nfRoleParent" value="parent">
-          <label for="nfRoleParent">Parent or guardian</label>
-          <input type="radio" name="role" id="nfRoleCoach" value="coach">
-          <label for="nfRoleCoach">Coach</label>
-          <input type="radio" name="role" id="nfRoleClub" value="club">
-          <label for="nfRoleClub">Club or academy</label>
-          <input type="radio" name="role" id="nfRoleScout" value="scout">
-          <label for="nfRoleScout">Scout</label>
-        </div>
-      </div>
-
-      <div class="ftwo">
-        <div class="fgrp">
-          <label class="flbl" for="nfName">First name</label>
-          <input id="nfName" name="first_name" type="text" autocomplete="given-name"
-                 placeholder="Layla" maxlength="80">
-        </div>
-        <div class="fgrp">
-          <label class="flbl" for="nfSport">Sport</label>
-          <select id="nfSport" name="sport">
-            <option value="">Choose a sport</option>
-            <option>Football</option><option>Basketball</option><option>Tennis</option>
-            <option>Athletics</option><option>Swimming</option><option>Cricket</option>
-            <option>Volleyball</option><option>Handball</option><option>Padel</option>
-            <option>Chess</option><option>Esports</option><option>Martial Arts</option>
-            <option value="Other">Something else</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="fgrp">
-        <label class="flbl" for="nfCountry">Country</label>
-        <input id="nfCountry" name="country" type="text" autocomplete="country-name"
-               placeholder="United Arab Emirates" maxlength="60" list="nfCountries">
-        <!-- A datalist suggests without restricting: somebody in a country not
-             on this list can still type it, which a <select> would not allow. -->
-        <datalist id="nfCountries">
-          <option>United Arab Emirates</option><option>Saudi Arabia</option><option>Qatar</option>
-          <option>Kuwait</option><option>Bahrain</option><option>Oman</option><option>Egypt</option>
-          <option>Jordan</option><option>Lebanon</option><option>Morocco</option><option>Iran</option>
-          <option>Turkey</option><option>United Kingdom</option><option>France</option>
-          <option>Spain</option><option>Germany</option><option>Portugal</option><option>Brazil</option>
-          <option>Nigeria</option><option>India</option><option>Pakistan</option><option>United States</option>
-        </datalist>
-      </div>
-
-      <div class="fgrp">
-        <span class="flbl" id="nfAgeLabel">Your age</span>
-        <div class="chips" role="radiogroup" aria-labelledby="nfAgeLabel">
-          <input type="radio" name="age" id="nfAdult" value="adult" checked>
-          <label for="nfAdult">I'm 18 or over</label>
-          <input type="radio" name="age" id="nfMinor" value="minor">
-          <label for="nfMinor">I'm under 18</label>
-        </div>
-      </div>
-
-      <div class="fgrp">
-        <label class="flbl" for="nfEmail" id="nfEmailLabel">Email address</label>
-        <input id="nfEmail" name="email" type="email" autocomplete="email"
-               placeholder="you@example.com" required maxlength="254">
-        <p class="fhint guard" id="nfGuardNote" hidden>
-          We will not ask for your own email address. Your parent or guardian gets
-          the launch email and sets your account up with you — which is how AceAiX
-          works for under-18s anyway.
-        </p>
-      </div>
-
-      <div class="nf-hp" aria-hidden="true">
-        <label for="nfSite">Leave this empty</label>
-        <input id="nfSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
-      </div>
-
-      <label class="notify-consent">
-        <input type="checkbox" id="nfConsent" name="consent" value="yes">
-        <span id="nfConsentText">Email me when AceAiX opens. One email, and I can unsubscribe at any time.</span>
-      </label>
-
-      <button class="notify-go" type="submit" id="nfGo">Save my place</button>
-
-      <p class="notify-msg" id="nfMsg" role="status" aria-live="polite"></p>
-
-      <p class="notify-note">
-        No adverts, no data selling, and no location permission at any point.
-        One click unsubscribes, from any email we send.
-      </p>
-    </form>
+    <!-- The form is in the hero now. Somebody who has read the whole page and
+         arrived here needs a way back to it that is not the browser's Back
+         button. `live()` hides this along with everything else dated. -->
+    <p class="close-back" data-early>
+      <a class="btn btn-primary" href="#join">Join early access</a>
+    </p>
 
     <!-- Held back until the date passes. Both listings 404 until the app is
          published, and a prominent button to a missing page reads as a broken
@@ -1885,7 +1830,7 @@ footer {
      URL after this script has run still works. */
   function notifyUrl() { return (window.ACEAIX_NOTIFY_URL || '').trim(); }
 
-  var form = document.getElementById('notify');
+  var form = document.getElementById('join');
   if (form) {
     var msg = document.getElementById('nfMsg');
     var go = document.getElementById('nfGo');
@@ -1986,9 +1931,10 @@ footer {
           consent_text: document.getElementById('nfConsentText').textContent.trim(),
           role: picked('role', 'athlete'),
           sport: document.getElementById('nfSport').value || null,
+          city: (document.getElementById('nfCity').value || '').trim() || null,
           country: (document.getElementById('nfCountry').value || '').trim() || null,
           locale: document.documentElement.lang || 'en',
-          source: 'site-early-access'
+          source: 'site-hero'
         })
       })
         .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
@@ -2016,6 +1962,7 @@ footer {
         email: value,
         role: picked('role', 'athlete'),
         sport: document.getElementById('nfSport').value || '',
+        city: (document.getElementById('nfCity').value || '').trim(),
         country: (document.getElementById('nfCountry').value || '').trim(),
         /* Written out rather than left as a raw boolean, because a person
            reads these in an email and "false" beside a child's details is
@@ -2024,7 +1971,7 @@ footer {
           ? 'UNDER 18 — the address above is a parent or guardian'
           : '18 or over',
         consent: document.getElementById('nfConsentText').textContent.trim(),
-        source: 'site-early-access',
+        source: 'site-hero',
         /* Sent empty rather than omitted: Netlify discards a submission whose
            honeypot is filled, and a field never sent can never be filled. */
         'bot-field': document.getElementById('nfSite').value
@@ -2049,122 +1996,6 @@ footer {
         });
     }
 
-  }
-
-  /* ── The hero capture ───────────────────────────────────────────────────
-     One field. Someone who gives only an address is worth far more than
-     someone who gives nothing, and most visitors never reach the full form.
-
-     Two things it does NOT do, on purpose:
-
-     It does not ask the age question. The guardian rule cannot be applied to
-     an answer nobody was asked for, so this form assumes nothing: it collects
-     an address and a consent sentence, and anything that depends on knowing
-     whether the person is a child — which is everything the guardian rule
-     governs — waits for the full form or for the app's own sign-up, where a
-     guardian approves the account anyway.
-
-     It does not use a tick-box. There is no room for one that would still be
-     read, and an unread tick-box is worse than a sentence somebody actually
-     sees: the wording sits under the button and is stored with the row. */
-  var quick = document.getElementById('quick');
-  if (quick) {
-    var qEmail = document.getElementById('qEmail');
-    var qGo = document.getElementById('qGo');
-    var qMsg = document.getElementById('qMsg');
-
-    function qSay(text, kind) {
-      qMsg.textContent = text;
-      qMsg.className = 'quick-msg' + (kind ? ' ' + kind : '');
-    }
-
-    function qDone(already, confirms) {
-      quick.hidden = true;
-      var c = document.getElementById('qConsentText');
-      if (c) c.hidden = true;
-      qSay(already
-        ? 'You are already on the list — nothing more to do.'
-        : confirms
-          ? 'Almost there. Check your inbox and click the link to confirm.'
-          : 'You are on the list. We will email you on launch day.', 'ok');
-      /* The one place a second sign-up is worth inviting: they have committed,
-         and the fuller form is what turns an address into something the launch
-         email can actually be written for. */
-      var more = document.querySelector('.quick-more');
-      if (more) {
-        more.textContent = 'Tell us what you play →';
-        more.setAttribute('href', '#get');
-      }
-    }
-
-    quick.addEventListener('submit', function (e) {
-      e.preventDefault();
-      qEmail.setAttribute('aria-invalid', 'false');
-      var value = (qEmail.value || '').trim();
-      if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
-        qEmail.setAttribute('aria-invalid', 'true');
-        qEmail.focus();
-        return qSay('Please enter an email address we can reach you on.', 'bad');
-      }
-      qGo.disabled = true;
-      qSay('One moment…');
-
-      var qUrl = notifyUrl();
-      var consentText = document.getElementById('qConsentText').textContent.trim();
-
-      if (!qUrl) {
-        var data = {
-          'form-name': 'early-access-quick',
-          email: value,
-          consent: consentText,
-          source: 'site-hero',
-          'bot-field': document.getElementById('qSite').value
-        };
-        return fetch('/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: Object.keys(data)
-            .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]); })
-            .join('&')
-        })
-          .then(function (r) { if (!r.ok) throw new Error(String(r.status)); qDone(false, false); })
-          .catch(function () {
-            qGo.disabled = false;
-            qSay('We could not save that just now. Please try again.', 'bad');
-          });
-      }
-
-      fetch(qUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: value,
-          website: document.getElementById('qSite').value,
-          /* The hero never asks, so it never asserts. The function's own
-             18+ gate decides what to do with a row that claims nothing. */
-          is_adult: true,
-          consent: true,
-          consent_text: consentText,
-          locale: document.documentElement.lang || 'en',
-          source: 'site-hero'
-        })
-      })
-        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
-        .then(function (res) {
-          if (!res.ok) {
-            qGo.disabled = false;
-            return qSay(res.body && res.body.error ? res.body.error : 'That did not go through. Please try again.', 'bad');
-          }
-          qDone(res.body.status === 'already', true);
-        })
-        .catch(function () {
-          qGo.disabled = false;
-          qSay('We could not reach the server. Please try again.', 'bad');
-        });
-    });
-  }
-
-  if (form) {
     /* Coming back from the confirmation link. */
     var q = new URLSearchParams(location.search);
     if (q.get('subscribed') === '1') {
@@ -2205,8 +2036,6 @@ footer {
        because a person mid-signup should not have the form vanish from under
        them: if they have already submitted, the confirmation stays. */
     if (storesEl) storesEl.hidden = false;
-    var f = document.getElementById('notify');
-    if (f && !f.dataset.submitted) f.hidden = true;
 
     /* Every button that says "join early access" now means "get the app". The
        markup carries the pre-launch wording so it is right with no JavaScript
@@ -2218,7 +2047,9 @@ footer {
     /* And the hero goes back to being a pair of store buttons. */
     var hj = document.getElementById('heroJoin');
     var hs = document.getElementById('heroStores');
-    if (hj) hj.hidden = true;
+    /* Unless they are mid-confirmation: somebody reading "you are on the list"
+       should not have it vanish because a timer reached zero while they read. */
+    if (hj && !(form && form.dataset.submitted)) hj.hidden = true;
     if (hs) hs.hidden = false;
 
     /* "Early access" is a thing you can be early to. Once the app is out it is

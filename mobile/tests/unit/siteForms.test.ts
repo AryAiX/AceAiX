@@ -3,9 +3,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /*
- * The two sign-up forms on the marketing site — the one-field capture in the
- * hero and the full form in the closing section — checked for the things that
- * fail *silently*.
+ * The sign-up form on the marketing site, checked for the things that fail
+ * *silently*.
  *
  * Netlify parses form markup at DEPLOY time, not when somebody submits. A form
  * missing `data-netlify`, or its `name`, or the hidden `form-name` input, is
@@ -47,24 +46,14 @@ function functionBody(src: string, signature: string): string {
 
 const PAGES = [
   {
-    label: 'the full form',
+    label: 'the early-access form',
     form: 'early-access',
     /* Every field that must reach the inbox. An entry removed from this list
        is a field silently dropped from the submission. */
-    fields: ['first_name', 'email', 'role', 'sport', 'country', 'consent', 'bot-field'],
+    fields: ['first_name', 'email', 'role', 'sport', 'city', 'country', 'consent', 'bot-field'],
     /* `done(already, confirms)` — the second argument is the whole rule. */
     fn: 'function sendToNetlify',
     netlifySignal: /done\(\s*false\s*,\s*false\s*\)/,
-  },
-  {
-    label: 'the hero capture',
-    form: 'early-access-quick',
-    /* Deliberately short. `source` is hidden markup rather than script-built,
-       so the two lists can be told apart in an export even if the submission
-       arrives without JavaScript having run. */
-    fields: ['email', 'source', 'bot-field'],
-    fn: 'quick.addEventListener',
-    netlifySignal: /qDone\(\s*false\s*,\s*false\s*\)/,
   },
 ] as const;
 
@@ -154,13 +143,23 @@ describe('the page itself', () => {
     expect(FILE).toMatch(/\[hidden\]\s*\{[^}]*display:\s*none\s*!important/);
   });
 
-  it('gives the two forms different Netlify names', () => {
-    /* Two forms sharing a name land in one list with half the columns empty
-       and no way to tell which came from where. */
+  it('has exactly one form, and it is the one Netlify is told about', () => {
+    /* There were briefly two — a short capture in the hero and the full form
+       at the bottom — which was duplication rather than a funnel: whoever
+       filled in the short one was the same person, minus everything that made
+       the row useful. If a second ever comes back it needs its own name, or
+       Netlify files both sets in one list with half the columns empty. */
     const names = [...FILE.matchAll(/<input type="hidden" name="form-name" value="([^"]+)">/g)]
       .map(m => m[1]);
-    expect(names).toEqual(['early-access-quick', 'early-access']);
-    expect(new Set(names).size).toBe(names.length);
+    expect(names).toEqual(['early-access']);
+  });
+
+  it('puts the form where people will see it', () => {
+    /* The form sits inside the hero section. Moved below the fold it still
+       works perfectly and collects far less, which is the kind of regression
+       no error message reports. */
+    const hero = FILE.slice(FILE.indexOf('<section class="hero">'), FILE.indexOf('</section>', FILE.indexOf('<section class="hero">')));
+    expect(hero).toContain('id="join"');
   });
 });
 

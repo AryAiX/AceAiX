@@ -4,7 +4,7 @@ A static site. No build step, no framework, no `npm install` — the whole thing
 is one HTML file plus a folder of images.
 
 ```
-index.html          the site — one page, two forms (see below)
+index.html          the site — one page, one form, in the hero
 assets/             screenshots, logo marks, icons, the social image
 site.webmanifest    icons and colours for "add to home screen"
 robots.txt          crawlers
@@ -41,47 +41,37 @@ straight off your desktop.
 
 ---
 
-## Two forms, on purpose
+## The early-access form
 
-**In the hero:** one field and a button. Most visitors never reach the bottom
-of a page this long, and an address with nothing attached is worth far more
-than no address at all.
+It is the hero. Not a button in the hero that scrolls to a form — the form
+itself, beside the phone, because until 1 October it is the only thing on this
+page anybody can actually do, and the App Store and Google Play buttons that
+used to occupy that role lead to listings that do not exist yet.
 
-It has no tick-box — there is no room for one that would still be read — so the
-consent sentence sits under the button where it cannot be missed, and the exact
-wording shown is stored with the submission. It also asks no age question, on
-purpose: the guardian rule cannot be applied to an answer nobody was asked for,
-so the hero collects an address and nothing that would require knowing whether
-the person is a child.
+It asks role, first name, sport, city, country, age band and email. That is
+more than an email address, deliberately: a fourteen-year-old goalkeeper in
+Sharjah and a scout at a Championship club both belong on this list and do not
+get the same launch email, and a row that is only an address cannot tell you
+which you have.
 
-**In the closing section:** the full form, where the App Store and Google Play
-buttons used to be. Those buttons led to listings that do not exist until 1 October, so
-the page's main call to action pointed at two dead pages while the one thing
-anybody could actually do sat underneath it looking like an afterthought.
+**Under-18s are welcome** — this is a 13+ product. They sign up with a
+**parent's** address, and choosing "I'm under 18" relabels the existing email
+field rather than adding a second one: two boxes invite a child to fill in
+both, and a child's own address is the one thing this form must never hold.
 
-The form asks for role, first name, sport, country, age band and email. Under
-18s are welcome — this is a 13+ product — and they sign up with a **parent's**
-address: choosing "I'm under 18" relabels the email field rather than adding a
-second one, because two boxes invite a child to fill in both, and a child's own
-address is the one thing this form must never hold.
-
-They are **separate Netlify forms** — `early-access-quick` and `early-access` —
-because Netlify keys submissions by form name, and two forms sharing one name
-land in a single list with half the columns empty and no way to tell which came
-from where. Each carries a `source` field, so the two CSVs merge on it. Somebody
-can appear in both; that is the intended path, not a bug — after the hero
-capture succeeds, the link under it changes to *"Tell us what you play →"* and
-points at the full form.
+There was briefly a second, one-field version of this form in the hero with the
+full one at the bottom. That was duplication rather than a funnel — whoever
+filled in the short one was the same person who would have filled in this one,
+minus everything that makes the row useful — so there is one form, asked
+properly, in the place people actually see.
 
 **"Early access" is the first item in the nav**, in the accent colour and with
-a dot — the dot because colour alone is not a signal everyone receives. It goes
-to the full form. The button beside it now reads just "Join": two controls, one
-destination and the same six words between them read as a mistake rather than
-a choice.
+a dot — the dot because colour alone is not a signal everyone receives. It and
+the "Join" button both go to `#join`, the form.
 
 **Nothing is deleted for launch day.** The store buttons are still in the HTML,
-`hidden`; the countdown's `live()` reveals them — in the hero and in the closing
-section — hides both forms, drops "Early access" from the nav, and relabels
+`hidden`, in the hero and in the closing section; the countdown's `live()`
+reveals them, hides the form, drops "Early access" from the nav, and relabels
 every join button to "Get the app" the moment the date passes. Nobody edits
 anything on 1 October.
 
@@ -89,16 +79,14 @@ anything on 1 October.
 
 ## Where the sign-ups go
 
-Both forms post to the same place, and that place can be either of two. **Nothing needs to be configured for
+The form can post to either of two places. **Nothing needs to be configured for
 the simple one.**
 
 **Netlify Forms, the default.** Drag the folder onto Netlify and sign-ups
 start arriving with no further setup: they appear under **Forms** in the site
-dashboard, as `early-access-quick` and `early-access`. Netlify emails each one
-to whoever you list under *Form notifications* — put `masi.k@aryaix.com` there,
-**on both forms**, or half the sign-ups arrive silently. Export each as CSV from
-the same screen. The free tier covers 100 submissions a month across the site,
-not per form.
+dashboard, as `early-access`, and Netlify emails each one to whoever you list
+under *Form notifications* — put `masi.k@aryaix.com` there. Export the list as
+CSV from the same screen. The free tier covers 100 submissions a month.
 
 Netlify reads the form markup **at deploy time**, not when somebody submits, so
 the `name`, `data-netlify` and hidden `form-name` attributes must survive any

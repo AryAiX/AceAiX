@@ -7,53 +7,46 @@
 
 ## 1. What it is
 
-Two forms on one page, and the second exists only because of where the first
-one sits.
+One form, and it is the hero.
 
-The **full form** went through three shapes. It began as "be told the day it
-lands": a name, an email, two checkboxes, **18+ only** for the reasons in §4.
-Then it grew a page of its own at `/early-access` that asked more and admitted
-minors through a guardian. Now there is no separate page — that fuller form
-simply *is* the site's call to action, standing where the App Store and Google
-Play buttons used to be.
+It went through four shapes, and each move was toward the same thing: asking
+properly, where people actually are. It began as "be told the day it lands" at
+the bottom of the page — a name, an email, two checkboxes, **18+ only** for the
+reasons in §4. It grew a page of its own at `/early-access` that asked more and
+admitted minors through a guardian. That page was folded back in, the fuller
+form taking the place of the App Store and Google Play buttons in the closing
+section. Then the form moved to the hero and the closing section kept the
+countdown.
 
-That last move was not a simplification for its own sake. Those buttons led to
-listings that do not exist until 1 October, so the page's most prominent
-control pointed at two dead pages while the only thing a visitor could actually
-do sat beneath it looking like an afterthought. The buttons are not deleted —
-they are `hidden`, and the countdown reveals them and retires the form the
-moment the date passes.
+Two observations drove the last two moves. The store buttons led to listings
+that do not exist until 1 October, so the page's most prominent control pointed
+at two dead pages. And the form that did the real work sat at the bottom of a
+long page, which most visitors never reach. The buttons are not deleted — they
+are `hidden` in both places, and the countdown reveals them and retires the
+form the moment the date passes.
 
 The form asks role (athlete, parent, coach, club, scout), first name, sport,
-country, age band and email. Under-18s are welcome, because a sign-up form for
+city, country, age band and email. Under-18s are welcome, because a sign-up form for
 a youth sports app that turns away everybody under eighteen turns away most of
 the demand it exists to measure. A minor signs up with a parent's address, and
 that is the address that is stored and written to; the child's own is never
 collected — choosing "I'm under 18" **relabels the existing field** rather than
 adding a second one, since two boxes invite a child to fill in both.
 
-It sits at the bottom of a long page, which is the honest place for it —
-somebody who has read the argument is worth asking properly — and also the
-place most visitors never reach. So the **hero** carries a second form of one
-field: an email address, a button, and a consent sentence under it.
+For about an hour there were two forms: this one at the bottom and a one-field
+capture in the hero. That was duplication rather than a funnel. Whoever filled
+in the short one was the same person who would have filled in this one, minus
+role, sport, city and the age answer — which is to say, minus everything that
+makes the row worth having. It also forced two Netlify lists, two notification
+rules to remember, and a consent sentence without a tick-box because there was
+no room for one.
 
-That one has no tick-box. There is no room for one in a hero that would still
-be read, and an unread tick-box is worse evidence of consent than a sentence
-somebody actually sees; the wording sits under the button and is stored with
-the row.
+Moving the full form into the hero solved all of that at once, and the thing it
+was supposed to trade away — friction — turns out to be the wrong thing to
+minimise here. This is a list for a product that does not exist yet. Somebody
+unwilling to name their sport was never going to open the launch email either.
 
-The hero form deliberately does **not** ask the age question. The guardian rule
-cannot be applied to an answer nobody was asked for, so rather than guessing,
-the short form collects an address and nothing that depends on knowing whether
-the person is a child. Anyone who came through it and later wants the launch
-email written for them specifically is pointed at the full form, which asks.
-
-They are separate Netlify forms — `early-access-quick` and `early-access` —
-because Netlify keys submissions by form name and two forms under one name land
-in a single list with half the columns empty. Each carries `source`, so the
-exports merge.
-
-Either puts a row in `public.waitlist`, sends a confirmation link, and — once
+It puts a row in `public.waitlist`, sends a confirmation link, and — once
 that link is clicked — pushes the address to whichever campaign tool is
 configured. Or it does the much simpler thing in §2, which is what happens if
 nothing is set up at all.
@@ -70,15 +63,15 @@ of any analytics script on the page are what make it one that can be kept.
 
 ## 2. Two backends, and neither is a placeholder
 
-Both forms post to the same backend, and that backend is one of two, chosen by
-one line at the top of `site/index.html`:
+The form posts to one of two backends, chosen by one line at the top of
+`site/index.html`:
 
 ```html
 <script>window.ACEAIX_NOTIFY_URL = '';</script>
 ```
 
 **Empty: Netlify Forms.** The page posts a normal urlencoded form to its own
-path and Netlify captures it, as `early-access` or `early-access-quick`. Nothing is deployed, nothing is configured, no
+path and Netlify captures it as `early-access`. Nothing is deployed, nothing is configured, no
 database exists. Sign-ups appear under **Forms** in the site dashboard and
 Netlify emails each one to the addresses listed under *Form notifications*.
 This is what runs the moment the folder is dragged onto Netlify.
@@ -133,12 +126,11 @@ Switching is one line and it is reversible. The simple route today does not
 close the door on the strict one later — which is the point, because the
 strict one is what §4 argues is eventually necessary.
 
-Two consequences for anyone who deployed the site before these changes. The
-full form's Netlify name is `early-access`, not the old `launch-notify`, so
-earlier submissions sit in a list under the old name — not lost, but elsewhere.
-And there are now two forms, so the *Form notifications* rule has to be set on
-both; set it on one and half the sign-ups arrive silently, which looks exactly
-like a quiet week.
+One consequence for anyone who deployed the site earlier today: the form's
+Netlify name is `early-access`, not the old `launch-notify`, and for a short
+window there was also an `early-access-quick`. Earlier submissions sit in lists
+under those names — not lost, but elsewhere, and the *Form notifications* rule
+has to be set again on `early-access`.
 
 ---
 
