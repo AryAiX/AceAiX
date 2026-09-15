@@ -31,9 +31,14 @@
      Paste the deployed waitlist function URL between the quotes:
        https://<project-ref>.supabase.co/functions/v1/waitlist-subscribe
 
-     Left empty, the form says so rather than pretending to work. A form that
-     silently swallows addresses is indistinguishable from one that works,
-     right up until launch day when the list turns out to be empty.
+     LEAVING IT EMPTY IS A VALID CHOICE. The form then posts to Netlify Forms
+     instead, which needs no setup: drag the folder onto Netlify and sign-ups
+     arrive in the dashboard and in your inbox.
+
+     What the Supabase route adds is the part a form cannot do on its own — the
+     database refusing a minor's row that does not carry a guardian's address,
+     and a confirmation email that proves the address is real. Fill this in when
+     you want those; nothing else on the page changes.
 
      There is deliberately no Supabase key on this page. The page never talks
      to the database; the function does. See docs/25-the-waitlist.md.
@@ -239,7 +244,15 @@ input[aria-invalid="true"] { border-color: var(--bad); }
 /* Chips — role and age. Radios underneath, so keyboard and screen
    readers get a real group rather than a row of divs. */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chips input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+/* The radio itself is hidden and the label is the control. `pointer-events:
+   none` is not cosmetic: these are absolutely positioned with no offsets, so
+   all five pile up at the same spot, and a transparent 1px box sitting over a
+   sibling swallows clicks meant for it. Keyboard focus is unaffected — it
+   still lands on the input, and `input:focus-visible + label` draws the ring. */
+.chips input {
+  position: absolute; opacity: 0; width: 1px; height: 1px;
+  pointer-events: none;
+}
 .chips label {
   padding: 9px 15px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--edge); background: var(--ghost);
@@ -411,7 +424,12 @@ footer .sp { margin-left: auto; }
         your profile ready before the first clubs start searching.
       </p>
 
-      <form id="ea" novalidate>
+      <!-- Netlify reads this markup at deploy time and creates the form from it,
+             so `name`, `data-netlify` and the hidden `form-name` below all have to be
+             present in the HTML on disk — adding them from script is too late. -->
+        <form id="ea" name="early-access" method="POST" novalidate
+              data-netlify="true" data-netlify-honeypot="bot-field">
+          <input type="hidden" name="form-name" value="early-access">
         <div class="grp">
           <span class="lbl" id="l-role">I am a…</span>
           <div class="chips" role="radiogroup" aria-labelledby="l-role">
@@ -431,11 +449,11 @@ footer .sp { margin-left: auto; }
         <div class="two">
           <div class="grp">
             <label class="lbl" for="f-name">First name</label>
-            <input id="f-name" type="text" autocomplete="given-name" placeholder="Layla" maxlength="80">
+            <input id="f-name" name="first_name" type="text" autocomplete="given-name" placeholder="Layla" maxlength="80">
           </div>
           <div class="grp">
             <label class="lbl" for="f-sport">Sport</label>
-            <select id="f-sport">
+            <select id="f-sport" name="sport">
               <option value="">Choose a sport</option>
               <option>Football</option><option>Basketball</option><option>Tennis</option>
               <option>Athletics</option><option>Swimming</option><option>Cricket</option>
@@ -448,7 +466,7 @@ footer .sp { margin-left: auto; }
 
         <div class="grp">
           <label class="lbl" for="f-country">Country</label>
-          <input id="f-country" type="text" autocomplete="country-name" placeholder="United Arab Emirates" maxlength="60" list="countries">
+          <input id="f-country" name="country" type="text" autocomplete="country-name" placeholder="United Arab Emirates" maxlength="60" list="countries">
           <datalist id="countries">
             <option>United Arab Emirates</option><option>Saudi Arabia</option><option>Qatar</option>
             <option>Kuwait</option><option>Bahrain</option><option>Oman</option><option>Egypt</option>
@@ -471,7 +489,7 @@ footer .sp { margin-left: auto; }
 
         <div class="grp">
           <label class="lbl" for="f-email" id="l-email">Email address</label>
-          <input id="f-email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">
+          <input id="f-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required maxlength="254">
           <p class="hint guard" id="guard-note" hidden>
             We will not ask for your own email address. Your parent or guardian gets the
             launch email and sets your account up with you — which is how AceAiX works
@@ -480,12 +498,12 @@ footer .sp { margin-left: auto; }
         </div>
 
         <div class="hp" aria-hidden="true">
-          <label for="f-site">Leave this empty</label>
-          <input id="f-site" type="text" tabindex="-1" autocomplete="off">
+          <label for="bot-field">Leave this empty</label>
+          <input id="f-site" name="bot-field" type="text" tabindex="-1" autocomplete="off">
         </div>
 
         <label class="consent">
-          <input type="checkbox" id="f-consent">
+          <input type="checkbox" id="f-consent" name="consent" value="yes">
           <span id="consent-text">Email me when AceAiX opens. One email, and I can unsubscribe at any time.</span>
         </label>
 
@@ -724,13 +742,25 @@ footer .sp { margin-left: auto; }
     if (!document.getElementById('f-consent').checked) {
       return say('Please tick the box so we may email you.', 'bad');
     }
-    var url = notifyUrl();
-    if (!url) {
-      return say('The sign-up is not connected yet. Please try again shortly.', 'bad');
-    }
-
     go.disabled = true;
     say('One moment…');
+
+    var url = notifyUrl();
+
+    /* Two backends, one page.
+
+       With ACEAIX_NOTIFY_URL set, this posts to the Supabase function: the
+       guardian rule is enforced by the database, and a confirmation email
+       makes the address real.
+
+       Left empty, it posts to Netlify Forms instead, which needs no setup at
+       all — the folder is dragged onto Netlify and sign-ups start arriving.
+       What is lost is the enforcement and the confirmation; the form still
+       asks for a guardian's address, but nothing checks it.
+
+       Swapping between them is that one line at the top of this file, so the
+       simple route today does not close the door on the strict one later. */
+    if (!url) return sendToNetlify();
 
     fetch(url, {
       method: 'POST',
@@ -758,7 +788,7 @@ footer .sp { margin-left: auto; }
           go.disabled = false;
           return say(res.body && res.body.error ? res.body.error : 'That did not go through. Please try again.', 'bad');
         }
-        done(res.body.status === 'already');
+        done(res.body.status === 'already', true);
       })
       .catch(function () {
         go.disabled = false;
@@ -766,22 +796,71 @@ footer .sp { margin-left: auto; }
       });
   });
 
-  function done(already) {
+  /* Netlify captures a normal form POST. Sending it by fetch rather than
+     letting the browser navigate keeps the inline confirmation instead of
+     bouncing the person to Netlify's own success page. */
+  function sendToNetlify() {
+    var data = {
+      'form-name': 'early-access',
+      first_name: (els.name.value || '').trim(),
+      email: (els.email.value || '').trim(),
+      role: role(),
+      sport: els.sport.value || '',
+      country: (els.country.value || '').trim(),
+      /* Written out rather than left as a raw boolean, because a human reads
+         these in an email and "false" beside a child's details is worse than
+         useless. */
+      age: isMinor() ? 'UNDER 18 — the address above is a parent or guardian' : '18 or over',
+      consent: document.getElementById('consent-text').textContent.trim(),
+      source: 'early-access',
+      /* Sent empty rather than omitted. Netlify discards a submission whose
+         honeypot is filled; a bot that scripts this form will fill it, and a
+         field that is never sent can never be filled. */
+      'bot-field': document.getElementById('f-site').value
+    };
+    var body = Object.keys(data)
+      .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]); })
+      .join('&');
+
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error(String(r.status));
+        done(false, false);
+      })
+      .catch(function () {
+        go.disabled = false;
+        say('We could not save that just now. Please try again.', 'bad');
+      });
+  }
+
+  /* `confirms` is not decoration. Only the Supabase route sends a confirmation
+     email, so only it may say one is coming. Telling somebody on the Netlify
+     route to go and click a link that will never arrive is the kind of small
+     lie that makes a person think the sign-up failed. */
+  function done(already, confirms) {
     Array.prototype.forEach.call(form.querySelectorAll('.grp, .two, .consent, .go'), function (el) {
       el.style.display = 'none';
     });
     say(already
       ? 'You are already on the list — nothing more to do.'
-      : (isMinor()
-          ? 'Almost there. We have emailed your parent or guardian — they need to click the link to confirm.'
-          : 'Almost there. Check your inbox and click the link to confirm.'), 'ok');
+      : confirms
+        ? (isMinor()
+            ? 'Almost there. We have emailed your parent or guardian — they need to click the link to confirm.'
+            : 'Almost there. Check your inbox and click the link to confirm.')
+        : (isMinor()
+            ? "You are on the list. We will email your parent or guardian on launch day, and nothing before it."
+            : 'You are on the list. We will email you on launch day, and nothing before it.'), 'ok');
     document.getElementById('card-foot').textContent =
       'See you on 1 October. This is the card you will start from.';
   }
 
   /* Coming back from the confirmation link. */
   var q = new URLSearchParams(location.search);
-  if (q.get('subscribed') === '1') { done(false); say('Confirmed. We will email you on launch day.', 'ok'); }
+  if (q.get('subscribed') === '1') { done(false, false); say('Confirmed. We will email you on launch day.', 'ok'); }
   else if (q.get('subscribed') === '0') { say('That confirmation link has expired or was already used.', 'bad'); }
   else if (q.get('unsubscribed') === '1') { say('Unsubscribed. You will not hear from us again.', 'ok'); }
 

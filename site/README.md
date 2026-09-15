@@ -4,13 +4,14 @@ A static site. No build step, no framework, no `npm install` — the whole thing
 is one HTML file plus a folder of images.
 
 ```
-index.html          the site
-assets/             screenshots, logo marks, icons, the social image
-site.webmanifest    icons and colours for "add to home screen"
-robots.txt          crawlers
-sitemap.xml         one page
-_headers            caching, for Netlify and Cloudflare Pages
-vercel.json         caching, for Vercel
+index.html              the site
+early-access/index.html the sign-up page, at /early-access
+assets/                 screenshots, logo marks, icons, the social image
+site.webmanifest        icons and colours for "add to home screen"
+robots.txt              crawlers
+sitemap.xml             the two pages
+_headers                caching, for Netlify and Cloudflare Pages
+vercel.json             caching, for Vercel
 ```
 
 ---
@@ -41,23 +42,46 @@ straight off your desktop.
 
 ---
 
-## The sign-up form needs one setting
+## Where the sign-ups go
 
-The "Be told the day it lands" section posts to a Supabase edge function
-(`supabase/functions/waitlist-subscribe`). Paste its URL into the marked
-`<script>` block just after `<body>` in `index.html`:
+Both forms — "Be told the day it lands" on the front page, and the whole of
+`/early-access` — can post to either of two places. **Nothing needs to be
+configured for the simple one.**
+
+**Netlify Forms, the default.** Drag the folder onto Netlify and sign-ups
+start arriving with no further setup: they appear under **Forms** in the site
+dashboard, as `launch-notify` and `early-access`, and Netlify emails each one
+to whoever you list under *Form notifications* — put `masi.k@aryaix.com` there.
+Export the whole list as CSV from the same screen. The free tier covers 100
+submissions a month.
+
+Netlify reads the form markup **at deploy time**, not when somebody submits, so
+the `name`, `data-netlify` and hidden `form-name` attributes must survive any
+edit to the `<form>` tags. A form that loses them stops being captured
+silently — the page still says thank you and nothing is stored.
+
+**A Supabase edge function, when you want more.** Paste its URL into the marked
+`<script>` block just after `<body>` — in **both** files, they are set
+independently:
 
 ```html
 <script>window.ACEAIX_NOTIFY_URL = 'https://<project-ref>.supabase.co/functions/v1/waitlist-subscribe';</script>
 ```
 
-Left empty, the form tells visitors it is not connected rather than pretending
-to work — a form that silently swallows addresses looks exactly like one that
-works until launch day, when the list turns out to be empty.
+Filling it in switches that page over. Nothing else changes, and it can be
+emptied again. What it adds is the part a form cannot do on its own: a
+confirmation email that proves the address is real, a database that **refuses**
+a minor's row unless it carries a parent's address, and rate limiting. On the
+Netlify route the early-access form still asks whether the person is under 18
+and labels the submission accordingly, but nothing enforces it.
 
-There is no Supabase key on this page and there should never be one: the page
+Because the pages say different things depending on which route is live, the
+confirmation wording follows: only the Supabase route tells somebody to go and
+check their inbox, because only it sends anything.
+
+There is no Supabase key on either page and there should never be one: the page
 never talks to the database, the function does. `docs/25-the-waitlist.md`
-explains why, and covers the 18+ gate and the campaign-tool setup.
+explains why, and covers the guardian rule and the campaign-tool setup.
 
 ---
 

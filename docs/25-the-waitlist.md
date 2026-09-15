@@ -7,10 +7,23 @@
 
 ## 1. What it is
 
-One section at the bottom of the marketing site: a first name (optional), an
-email address, two checkboxes, and a button. It puts a row in
-`public.waitlist`, sends a confirmation link, and — once that link is
-clicked — pushes the address to whichever campaign tool is configured.
+Two forms now, not one.
+
+**The front page** carries a section at the bottom: a first name (optional),
+an email address, two checkboxes, and a button. 18+ only, for the reasons in
+§4.
+
+**`/early-access`** is a page of its own, added later, and it asks more: role
+(athlete, parent, coach, club, scout), sport, country, and whether the person
+is under eighteen — because a sign-up page for a youth sports app that turns
+away everybody under eighteen turns away most of the demand it exists to
+measure. A minor signs up with a parent's address, and that is the address
+that is stored and written to; the child's own is never collected.
+
+Either one puts a row in `public.waitlist`, sends a confirmation link, and —
+once that link is clicked — pushes the address to whichever campaign tool is
+configured. Or it does the much simpler thing in §2, which is what happens if
+nothing is set up at all.
 
 It says **"be told the day it lands"**, not "get a discount". The app is free;
 the line directly below the form says so. A discount on a free product is a
@@ -19,7 +32,75 @@ promise that cannot be kept, and it is the same category of error as the
 
 ---
 
-## 2. Why there is an edge function in the middle
+## 2. Two backends, and neither is a placeholder
+
+Both forms — the one at the bottom of the front page and the whole of
+`/early-access` — can post to either of two places, chosen by one line at the
+top of each file:
+
+```html
+<script>window.ACEAIX_NOTIFY_URL = '';</script>
+```
+
+**Empty: Netlify Forms.** The page posts a normal urlencoded form to its own
+path and Netlify captures it. Nothing is deployed, nothing is configured, no
+database exists. Sign-ups appear under **Forms** in the site dashboard and
+Netlify emails each one to the addresses listed under *Form notifications*.
+This is what runs the moment the folder is dragged onto Netlify.
+
+**Filled in: the edge function.** Everything the rest of this document
+describes.
+
+This was not the original design. The first version said *"the sign-up is not
+connected yet"* when the URL was empty, on the reasoning in §3 — that a form
+which silently swallows addresses is worse than one that admits it is broken.
+That reasoning is still right about *silence*; it was wrong to conclude that
+the only honest alternative was a dead form. Netlify Forms is a real backend.
+It stores the submission, it emails it, and it exports to CSV. What it cannot
+do is the part that needs a database.
+
+So the split is:
+
+|                                            | Netlify Forms | Edge function |
+|--------------------------------------------|---------------|---------------|
+| Address is stored                          | yes           | yes           |
+| Somebody is told about it                  | yes           | yes           |
+| Address is proved real (double opt-in)     | **no**        | yes           |
+| A minor's row is *refused* without a guardian's address | **no** | yes |
+| Rate limited                                | Netlify's own spam filter | per IP, 5/hour |
+| Pushed to the campaign tool                | by hand       | on confirmation |
+
+The consequences of the two "no"s are worth stating plainly rather than
+leaving in a table. On the Netlify route the early-access form still asks
+whether the person is under eighteen and labels the submission
+`UNDER 18 — the address above is a parent or guardian`, but that label is a
+courtesy to whoever reads the email, not an enforcement: nothing stops a
+fifteen-year-old typing their own address and ticking "I'm under 18". The
+database constraint in `20260915000001_waitlist_guardian_and_segments.sql` is
+what actually makes that impossible, and it is not in play until the URL is
+filled in.
+
+Two things follow from that, and both are already in the code:
+
+- **The confirmation wording differs by route.** Only the edge function sends
+  a confirmation email, so only it says "check your inbox and click the link".
+  The Netlify route says "you are on the list". Telling somebody to click a
+  link that will never arrive is a small lie that reads, to them, as a sign-up
+  that failed.
+- **Netlify parses the form markup at deploy time**, not at submit time. The
+  `name`, `data-netlify="true"` and hidden `form-name` on each `<form>`, and a
+  `name` on every field, are load-bearing. An edit that drops one stops the
+  capture **silently** — the page still says thank you, and nothing is stored.
+  `site/early-access/index.html` carries a comment saying so above the form
+  tag, and the deploy-time markup is asserted in the site's test pass.
+
+Switching is one line and it is reversible. The simple route today does not
+close the door on the strict one later — which is the point, because the
+strict one is what §4 argues is eventually necessary.
+
+---
+
+## 3. Why there is an edge function in the middle
 
 The obvious implementation is an `insert` straight from the page with the anon
 key. It is two lines and it is wrong, for one reason that leads to four:
@@ -56,7 +137,7 @@ anon  POST /rest/v1/rpc/confirm_waitlist → 401
 
 ---
 
-## 3. The 18+ gate, and why it is not optional
+## 4. The 18+ gate, and why it is not optional
 
 **AceAiX is a 13+ product.** Minors will fill in this form — that is not a risk,
 it is a certainty, because the whole site is about young athletes.
@@ -84,7 +165,7 @@ rather than a tickbox.
 
 ---
 
-## 4. Double opt-in
+## 5. Double opt-in
 
 Nothing is emailed to an address until somebody clicks the link sent to it.
 `status` goes `pending → confirmed`, and **only `confirmed` rows reach the
@@ -103,7 +184,7 @@ silently resurrect somebody who asked to be left alone.
 
 ---
 
-## 5. The campaign tool
+## 6. The campaign tool
 
 `syncToProvider()` is one function with **Brevo and Mailchimp both written**,
 and neither required. With no key set it answers `provider: "none"`, the row is
@@ -131,7 +212,7 @@ One environment variable. No site deploy, no migration, no client release.
 
 ---
 
-## 6. Deploying it
+## 7. Deploying it
 
 ```bash
 supabase functions deploy waitlist-subscribe
@@ -167,7 +248,7 @@ at all and the rate limit does nothing; with it, the column holds a salted hash
 
 ---
 
-## 7. Who hears about a sign-up
+## 8. Who hears about a sign-up
 
 Set `WAITLIST_NOTIFY_EMAIL` and each sign-up is forwarded to whoever owns
 marketing — name, email address, role, sport, country — so the list reaches a
@@ -199,7 +280,7 @@ oversight: these mails put contact details into an inbox, where a copy cannot
 be revoked the way a Brevo seat or a Supabase login can. That is the trade
 being made for reach.
 
-## 8. Reading the list
+## 9. Reading the list
 
 Admins, in the console or through the API, via the one policy on the table.
 Nobody needs to handle a service key to see who signed up:
@@ -213,7 +294,7 @@ select email, first_name, status, created_at
 
 ---
 
-## 9. What is checked
+## 10. What is checked
 
 Twelve assertions in `supabase/tests/functional.sql`, under "the waitlist".
 Every one of them **drops role for the statement it makes** — the suite runs as
@@ -242,13 +323,21 @@ once already.
 
 ---
 
-## 10. Still outstanding
+## 11. Still outstanding
 
 - **No confirmation email is sent yet.** The row is created and the token
   exists, but nothing delivers it until a campaign provider is configured —
   so until then every row sits at `pending` and the list cannot be mailed.
-  `confirm_sent_at` is null on exactly those rows. **This is the blocker for
-  1 October**, and it is a decision, not code.
+  `confirm_sent_at` is null on exactly those rows. It is a decision, not code.
+
+  This stopped being *the* blocker for 1 October when the Netlify route was
+  added (§2): a site that ships with `ACEAIX_NOTIFY_URL` empty collects
+  sign-ups from the minute it is deployed, with no Supabase project, no
+  migration and no provider key. What is still true is that the Netlify route
+  does not prove an address is real and does not enforce the guardian rule, so
+  this remains the blocker for **the edge-function route specifically** — and
+  that route is the one that has to be live before anything is mailed to a
+  list containing minors' guardians.
 - **No admin screen.** The list is readable by SQL and by the API, but there is
   no page in `web/` that shows it.
 - **No export.** Getting the list into the campaign tool by hand means a query
@@ -258,7 +347,7 @@ once already.
 
 ---
 
-## 11. Related documents
+## 12. Related documents
 
 - [12 — Youth safety](12-youth-safety.md) — why this list is 18+
 - [21 — Meetups and translation](21-meetups-and-translation.md) — the provider boundary this copies, and the `private` schema trap

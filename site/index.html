@@ -1475,7 +1475,14 @@ footer {
          free — the line below these buttons says so — and offering a discount
          on a free product is a promise that cannot be kept.
     ---------------------------------------------------------------------- -->
-    <form class="notify" id="notify" novalidate>
+    <!-- Netlify reads this markup at deploy time, not at run time: the form is
+         only captured if `name`, `data-netlify` and the hidden `form-name`
+         below are present in the file that is uploaded. Every field that
+         should reach the inbox needs its own `name` too — a field without one
+         is invisible to Netlify exactly as it is to any other form handler. -->
+    <form class="notify" id="notify" name="launch-notify" method="POST" novalidate
+          data-netlify="true" data-netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="launch-notify">
       <div class="notify-head">
         <h3>Be told the day it lands</h3>
         <p>One email on launch day. Nothing else, ever.</p>
@@ -1498,12 +1505,12 @@ footer {
            side without telling the sender why. -->
       <div class="nf-hp" aria-hidden="true">
         <label for="nfSite">Leave this empty</label>
-        <input id="nfSite" name="website" type="text" tabindex="-1" autocomplete="off">
+        <input id="nfSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
       </div>
 
       <div class="notify-checks">
-        <label><input type="checkbox" id="nfAdult"><span>I am 18 or over.</span></label>
-        <label><input type="checkbox" id="nfConsent"><span id="nfConsentText">Email me once when AceAiX launches. I can unsubscribe at any time.</span></label>
+        <label><input type="checkbox" id="nfAdult" name="age_confirmed" value="18 or over"><span>I am 18 or over.</span></label>
+        <label><input type="checkbox" id="nfConsent" name="consent" value="yes"><span id="nfConsentText">Email me once when AceAiX launches. I can unsubscribe at any time.</span></label>
       </div>
 
       <p class="notify-note">
@@ -1658,12 +1665,22 @@ footer {
       if (!consent.checked) {
         return say('Please tick the box to say we may email you.', 'bad');
       }
-      if (!NOTIFY_URL) {
-        return say('The sign-up is not connected yet. Please try again shortly.', 'bad');
-      }
-
       go.disabled = true;
       say('One moment…');
+
+      /* Two backends, one page.
+
+         With ACEAIX_NOTIFY_URL set, this posts to the Supabase function, which
+         writes the row and sends a confirmation email that proves the address
+         is real.
+
+         Left empty, it posts to Netlify Forms instead, which needs no setup at
+         all — the folder is dragged onto Netlify and sign-ups start arriving
+         in the dashboard and in the inbox. What is lost is the confirmation
+         email, so the wording below does not promise one.
+
+         Swapping between them is the one line at the top of this file. */
+      if (!NOTIFY_URL) { return sendToNetlify(value); }
 
       fetch(NOTIFY_URL, {
         method: 'POST',
@@ -1699,6 +1716,43 @@ footer {
           say('We could not reach the server. Please try again.', 'bad');
         });
     });
+
+    /* Netlify captures a normal form POST to the page's own path. Sending it
+       by fetch rather than letting the browser navigate keeps the person on
+       the page with the inline confirmation, instead of bouncing them to
+       Netlify's generic success page. */
+    function sendToNetlify(value) {
+      var data = {
+        'form-name': 'launch-notify',
+        first_name: (document.getElementById('nfName').value || '').trim(),
+        email: value,
+        age_confirmed: '18 or over',
+        consent: document.getElementById('nfConsentText').textContent.trim(),
+        source: 'site-launch',
+        /* Sent empty rather than omitted: Netlify discards a submission whose
+           honeypot is filled, and a field that is never sent can never be. */
+        'bot-field': document.getElementById('nfSite').value
+      };
+      var body = Object.keys(data)
+        .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]); })
+        .join('&');
+
+      fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body
+      })
+        .then(function (r) {
+          if (!r.ok) throw new Error(String(r.status));
+          /* No confirmation email on this route, so none is promised. */
+          say('You are on the list. We will email you on launch day, and nothing before it.', 'ok');
+          done();
+        })
+        .catch(function () {
+          go.disabled = false;
+          say('We could not save that just now. Please try again.', 'bad');
+        });
+    }
 
     /* Coming back from the confirmation link. */
     var q = new URLSearchParams(location.search);
