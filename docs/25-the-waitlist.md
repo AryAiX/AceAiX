@@ -167,7 +167,34 @@ at all and the rate limit does nothing; with it, the column holds a salted hash
 
 ---
 
-## 7. Reading the list
+## 7. Who hears about a sign-up
+
+Set `WAITLIST_NOTIFY_EMAIL` and whoever owns marketing gets a one-line note per
+sign-up: the first name, the role, the sport, the country.
+
+**It does not contain the email address, and there is no option to make it.**
+A list of parents' addresses attached to children's names is not something to
+scatter through inboxes. The list stays in Supabase and in the campaign tool,
+where access is a named account somebody can revoke; this is a notification,
+not a delivery.
+
+```bash
+supabase secrets set WAITLIST_NOTIFY_EMAIL=masi.k@aryaix.com
+```
+
+It rides on Brevo's transactional API, so it needs no second vendor and does
+nothing at all until Brevo is configured. It is fire-and-forget and silent on
+failure — **a sign-up must never fail because a notification could not be
+sent**, and the person signing up has no idea it exists. Verified by pointing
+it at a deliberately invalid key: the sign-up returned `ok`, the row landed,
+and the failure appeared only in the log.
+
+The right way to give somebody the list itself is a seat in Brevo, not a CSV in
+an email.
+
+---
+
+## 8. Reading the list
 
 Admins, in the console or through the API, via the one policy on the table.
 Nobody needs to handle a service key to see who signed up:
@@ -181,7 +208,7 @@ select email, first_name, status, created_at
 
 ---
 
-## 8. What is checked
+## 9. What is checked
 
 Twelve assertions in `supabase/tests/functional.sql`, under "the waitlist".
 Every one of them **drops role for the statement it makes** — the suite runs as
@@ -210,7 +237,7 @@ once already.
 
 ---
 
-## 9. Still outstanding
+## 10. Still outstanding
 
 - **No confirmation email is sent yet.** The row is created and the token
   exists, but nothing delivers it until a campaign provider is configured —
@@ -226,7 +253,7 @@ once already.
 
 ---
 
-## 10. Related documents
+## 11. Related documents
 
 - [12 — Youth safety](12-youth-safety.md) — why this list is 18+
 - [21 — Meetups and translation](21-meetups-and-translation.md) — the provider boundary this copies, and the `private` schema trap

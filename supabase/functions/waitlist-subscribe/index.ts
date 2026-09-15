@@ -36,7 +36,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * null so it can be back-filled later. Turning it on is one environment
  * variable — no site deploy, no migration. Same shape as `translate`.
  *
- * See docs/25-the-waitlist.md.
+ * `WAITLIST_NOTIFY_EMAIL` sends a one-line note per sign-up to whoever owns
+ * marketing — without the address. See docs/25-the-waitlist.md.
  */
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -49,7 +50,22 @@ const MAILCHIMP_KEY = Deno.env.get("MAILCHIMP_API_KEY");
 const MAILCHIMP_LIST_ID = Deno.env.get("MAILCHIMP_LIST_ID");
 
 /** Where the confirm and unsubscribe links send people back to. */
-const SITE_URL = Deno.env.get("SITE_URL") ?? "https://aceaix.com";
+const SITE_URL = Deno.env.get("SITE_URL") ?? "https://early.aceaix.com";
+
+/**
+ * Who hears about a new sign-up, if anybody.
+ *
+ * This sends a one-line "somebody joined" note — the name, the role, the
+ * sport, the country. **It does not send the email address**, and there is no
+ * option to make it. A waitlist of parents' addresses attached to children's
+ * names is not a thing to scatter through inboxes; the list itself stays in
+ * Supabase and in the campaign tool, where access is a named account that can
+ * be revoked. This is a notification, not a delivery.
+ *
+ * Unset, nothing is sent and nothing fails.
+ */
+const NOTIFY_EMAIL = Deno.env.get("WAITLIST_NOTIFY_EMAIL");
+const NOTIFY_FROM = Deno.env.get("WAITLIST_NOTIFY_FROM") ?? "noreply@aceaix.com";
 
 /**
  * Peppers the IP before it is stored. Without it the column is a list of IP
@@ -195,6 +211,47 @@ async function syncToProvider(
 
   /* Nothing configured. The row is already saved; this is not a failure. */
   return { provider: "none", ok: true };
+}
+
+/**
+ * Tell the marketing owner that somebody joined.
+ *
+ * Deliberately fire-and-forget and deliberately silent on failure: a sign-up
+ * must never fail because a notification could not be sent. The person who
+ * signed up has no idea this exists and should not be punished for it.
+ *
+ * Rides on Brevo's transactional API, so it needs no second vendor — and it
+ * simply does nothing until Brevo is configured, like everything else here.
+ */
+async function notifyOwner(row: {
+  first_name: string | null; role: string | null;
+  sport: string | null; country: string | null; is_adult: boolean; source: string;
+}): Promise<void> {
+  if (!NOTIFY_EMAIL || !BREVO_KEY) return;
+
+  const who = row.first_name ?? "Someone";
+  const bits = [row.role, row.sport, row.country].filter(Boolean).join(" · ");
+  const via = row.is_adult ? "" : " (signed up through a parent or guardian)";
+
+  try {
+    await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: { "api-key": BREVO_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sender: { email: NOTIFY_FROM, name: "AceAiX waitlist" },
+        to: [{ email: NOTIFY_EMAIL }],
+        subject: `New AceAiX sign-up — ${bits || "no details given"}`,
+        textContent:
+          `${who} joined the waitlist${via}.\n\n` +
+          `${bits || "No role, sport or country given."}\n` +
+          `From: ${row.source}\n\n` +
+          `The address is not in this email on purpose. The list lives in ` +
+          `Supabase and in the Brevo contact list.`,
+      }),
+    });
+  } catch (e) {
+    console.error("waitlist notify failed (sign-up unaffected)", e);
+  }
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
@@ -383,6 +440,12 @@ Deno.serve(async (req) => {
   const confirmUrl =
     `${SUPABASE_URL}/functions/v1/waitlist-subscribe?confirm=${inserted.confirm_token}`;
   console.log(`waitlist: pending confirmation for ${email} → ${confirmUrl}`);
+
+  /* Not awaited: the person is waiting for this response, and a notification
+     is nobody's business but ours. */
+  notifyOwner({
+    first_name: firstName, role, sport, country, is_adult: isAdult, source,
+  });
 
   return json({ ok: true, status: "pending" });
 });
