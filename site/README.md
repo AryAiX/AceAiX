@@ -4,15 +4,23 @@ A static site. No build step, no framework, no `npm install` — the whole thing
 is one HTML file plus a folder of images.
 
 ```
-index.html              the site
-early-access/index.html the sign-up page, at /early-access
-assets/                 screenshots, logo marks, icons, the social image
-site.webmanifest        icons and colours for "add to home screen"
-robots.txt              crawlers
-sitemap.xml             the two pages
-_headers                caching, for Netlify and Cloudflare Pages
-vercel.json             caching, for Vercel
+index.html               the site
+early-access/index.html  the sign-up page, at /early-access
+early-access-standalone/ the same page as a site of its own — see below
+assets/                  screenshots, logo marks, icons, the social image
+site.webmanifest         icons and colours for "add to home screen"
+robots.txt               crawlers
+sitemap.xml              the two pages
+_headers                 caching, for Netlify and Cloudflare Pages
+vercel.json              caching, for Vercel
 ```
+
+**`early-access-standalone/` is generated**, by
+`tools/site/build-early-access-standalone.py`. It is the early-access page
+re-pathed to sit at the root of its own small site, for deploying the sign-up
+page without the marketing site around it. Edit
+`site/early-access/index.html` and re-run the script; never edit the generated
+copy, which is silently overwritten. `--check` fails if the two have drifted.
 
 ---
 
