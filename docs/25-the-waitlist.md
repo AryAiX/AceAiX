@@ -169,30 +169,35 @@ at all and the rate limit does nothing; with it, the column holds a salted hash
 
 ## 7. Who hears about a sign-up
 
-Set `WAITLIST_NOTIFY_EMAIL` and whoever owns marketing gets a one-line note per
-sign-up: the first name, the role, the sport, the country.
-
-**It does not contain the email address, and there is no option to make it.**
-A list of parents' addresses attached to children's names is not something to
-scatter through inboxes. The list stays in Supabase and in the campaign tool,
-where access is a named account somebody can revoke; this is a notification,
-not a delivery.
+Set `WAITLIST_NOTIFY_EMAIL` and each sign-up is forwarded to whoever owns
+marketing — name, email address, role, sport, country — so the list reaches a
+person without anybody opening the database.
 
 ```bash
 supabase secrets set WAITLIST_NOTIFY_EMAIL=masi.k@aryaix.com
 ```
 
+Two details in that mail are deliberate and should stay:
+
+- **A minor's row is labelled as a guardian's address**, in capitals, rather
+  than presented as the athlete's. `Reply-To` is set to the same address. The
+  failure this prevents is somebody replying to what they think is a
+  fifteen-year-old and reaching a parent instead — or worse, assuming the
+  reverse.
+- **The unsubscribe token is never included.** Anybody who is forwarded one of
+  these mails would otherwise be able to unsubscribe the person it is about.
+
 It rides on Brevo's transactional API, so it needs no second vendor and does
-nothing at all until Brevo is configured. It is fire-and-forget and silent on
-failure — **a sign-up must never fail because a notification could not be
-sent**, and the person signing up has no idea it exists. Verified by pointing
-it at a deliberately invalid key: the sign-up returned `ok`, the row landed,
-and the failure appeared only in the log.
+nothing until Brevo is configured. It is fire-and-forget and silent on failure
+— **a sign-up must never fail because a notification could not be sent**, and
+the person signing up has no idea it exists. Verified by pointing it at a
+deliberately invalid key: both the adult and guardian sign-ups returned `ok`,
+both rows landed, and the failures appeared only in the log.
 
-The right way to give somebody the list itself is a seat in Brevo, not a CSV in
-an email.
-
----
+One consequence worth stating plainly, since it is a choice rather than an
+oversight: these mails put contact details into an inbox, where a copy cannot
+be revoked the way a Brevo seat or a Supabase login can. That is the trade
+being made for reach.
 
 ## 8. Reading the list
 

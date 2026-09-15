@@ -36,8 +36,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * null so it can be back-filled later. Turning it on is one environment
  * variable — no site deploy, no migration. Same shape as `translate`.
  *
- * `WAITLIST_NOTIFY_EMAIL` sends a one-line note per sign-up to whoever owns
- * marketing — without the address. See docs/25-the-waitlist.md.
+ * `WAITLIST_NOTIFY_EMAIL` forwards each sign-up to whoever owns marketing.
+ * See docs/25-the-waitlist.md.
  */
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -55,12 +55,14 @@ const SITE_URL = Deno.env.get("SITE_URL") ?? "https://early.aceaix.com";
 /**
  * Who hears about a new sign-up, if anybody.
  *
- * This sends a one-line "somebody joined" note — the name, the role, the
- * sport, the country. **It does not send the email address**, and there is no
- * option to make it. A waitlist of parents' addresses attached to children's
- * names is not a thing to scatter through inboxes; the list itself stays in
- * Supabase and in the campaign tool, where access is a named account that can
- * be revoked. This is a notification, not a delivery.
+ * Sends the sign-up itself — address included — to whoever owns marketing, so
+ * the list reaches a person without anybody opening the database.
+ *
+ * Two things this does not do, and should not be changed to do. A minor's row
+ * is labelled as a guardian's address rather than presented as the child's, so
+ * nobody replies to it thinking they are writing to the athlete. And the
+ * unsubscribe token is never included: somebody forwarding this mail must not
+ * be able to unsubscribe the person it is about.
  *
  * Unset, nothing is sent and nothing fails.
  */
@@ -224,14 +226,20 @@ async function syncToProvider(
  * simply does nothing until Brevo is configured, like everything else here.
  */
 async function notifyOwner(row: {
-  first_name: string | null; role: string | null;
+  email: string; first_name: string | null; role: string | null;
   sport: string | null; country: string | null; is_adult: boolean; source: string;
 }): Promise<void> {
   if (!NOTIFY_EMAIL || !BREVO_KEY) return;
 
   const who = row.first_name ?? "Someone";
   const bits = [row.role, row.sport, row.country].filter(Boolean).join(" · ");
-  const via = row.is_adult ? "" : " (signed up through a parent or guardian)";
+
+  /* Whose address this is, stated rather than implied. For a minor it belongs
+     to a parent or guardian, and a reply goes to them — not to the athlete. */
+  const addressLine = row.is_adult
+    ? `Email: ${row.email}`
+    : `Email: ${row.email}  — this is a PARENT OR GUARDIAN's address.\n` +
+      `${who} is under 18. Any reply goes to the guardian, not to the athlete.`;
 
   try {
     await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -240,13 +248,15 @@ async function notifyOwner(row: {
       body: JSON.stringify({
         sender: { email: NOTIFY_FROM, name: "AceAiX waitlist" },
         to: [{ email: NOTIFY_EMAIL }],
-        subject: `New AceAiX sign-up — ${bits || "no details given"}`,
+        replyTo: { email: row.email },
+        subject: `AceAiX sign-up — ${who}${bits ? " · " + bits : ""}`,
         textContent:
-          `${who} joined the waitlist${via}.\n\n` +
+          `${who} joined the AceAiX waitlist.\n\n` +
+          `${addressLine}\n` +
           `${bits || "No role, sport or country given."}\n` +
-          `From: ${row.source}\n\n` +
-          `The address is not in this email on purpose. The list lives in ` +
-          `Supabase and in the Brevo contact list.`,
+          `Source: ${row.source}\n\n` +
+          `Not yet confirmed — they appear in the Brevo list only once they ` +
+          `click the link in their confirmation email.`,
       }),
     });
   } catch (e) {
@@ -444,7 +454,7 @@ Deno.serve(async (req) => {
   /* Not awaited: the person is waiting for this response, and a notification
      is nobody's business but ours. */
   notifyOwner({
-    first_name: firstName, role, sport, country, is_adult: isAdult, source,
+    email, first_name: firstName, role, sport, country, is_adult: isAdult, source,
   });
 
   return json({ ok: true, status: "pending" });
