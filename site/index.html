@@ -139,6 +139,11 @@
   --ghost-hi: rgba(244,243,250,.1);
   --track:    rgba(244,243,250,.08);
 
+  /* Status. Previously a literal pink sat inline on the error message, which
+     was legible on the dark ground and washed out on the light one. */
+  --ok:       #7BE0A8;
+  --bad:      #FF8FAF;
+
   /* Atmosphere */
   --bloom-a:  rgba(255,90,31,.55);
   --bloom-b:  rgba(155,107,255,.5);
@@ -223,6 +228,9 @@
 
     --shadow-phone: 0 26px 60px rgba(31,20,60,.22), 0 0 0 1px rgba(22,19,39,.08);
 
+    --ok:       #17734A;
+    --bad:      #C2185B;
+
     color-scheme: light;
   }
 }
@@ -259,6 +267,9 @@
   --ghost-hi: rgba(22,19,39,.07);
   --track:    rgba(22,19,39,.09);
 
+  --ok:       #17734A;
+  --bad:      #C2185B;
+
   --bloom-a:  rgba(255,138,92,.4);
   --bloom-b:  rgba(177,75,244,.22);
   --bloom-c:  rgba(46,125,246,.16);
@@ -281,6 +292,17 @@
 }
 
 * { box-sizing: border-box; }
+
+/* `hidden` has to actually hide.
+   The browser's own rule is `[hidden] { display: none }`, which any class that
+   sets `display` outranks — and `.count`, `.notify` and `.stores` all set one.
+   So `el.hidden = true` was changing an attribute and nothing else.
+
+   That was not only a new problem. The countdown has always been hidden this
+   way once the launch date passes, and it would simply have kept counting
+   upward into negative territory on 1 October, on a page nobody would think
+   to check because it had been correct for months. */
+[hidden] { display: none !important; }
 
 html { scroll-behavior: smooth; overflow-x: clip; }
 /* Grid and flex children default to min-width:auto, which lets a long word or
@@ -572,64 +594,119 @@ section { padding-block: clamp(72px, 9vw, 132px); position: relative; z-index: 1
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+/* ── The early-access form ─────────────────────────────────────
+   This replaced a two-field "notify me" box and the store buttons
+   that sat under it. Until 1 October the store links lead to pages
+   that do not exist, so the only thing anybody could actually do
+   here was leave an address — and if they are leaving one anyway,
+   it is worth knowing whether they are a fourteen-year-old
+   goalkeeper or a scout at a Championship club, because those two
+   get a different launch email.
+
+   The store buttons are not deleted, only held back: `live()` in
+   the countdown swaps them in and this form out the moment the
+   date passes, so nobody has to edit anything on launch morning. */
 .notify {
   max-width: 560px; margin: 38px auto 0; text-align: left;
-  padding: 24px; border-radius: 18px;
+  padding: 26px 24px; border-radius: 18px;
   border: 1px solid var(--edge); background: var(--panel-hi);
+  display: grid; gap: 18px;
 }
-.notify-head { text-align: center; margin-bottom: 18px; }
+.notify-head { text-align: center; }
 .notify-head h3 {
-  margin: 0; font-family: var(--display), system-ui, sans-serif;
+  margin: 0; font-family: "Saira Condensed", "Arial Narrow", sans-serif;
   font-size: 21px; letter-spacing: .2px; color: var(--ink);
 }
 .notify-head p { margin: 5px 0 0; font-size: 13.5px; color: var(--muted); }
 
-.notify-row { display: grid; gap: 10px; }
-.notify-row input[type="text"], .notify-row input[type="email"] {
+/* One labelled field, and a pair of them side by side above 520px. */
+.fgrp { display: grid; gap: 8px; }
+.ftwo { display: grid; gap: 18px; }
+@media (min-width: 520px) { .ftwo { grid-template-columns: 1fr 1fr; } }
+
+.flbl {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--muted);
+}
+
+.notify input[type="text"],
+.notify input[type="email"],
+.notify select {
   width: 100%; box-sizing: border-box;
   padding: 13px 15px; border-radius: 12px;
   border: 1px solid var(--edge); background: var(--panel-lo);
-  color: var(--ink); font: inherit; font-size: 15px;
+  color: var(--ink); font: inherit; font-size: 16px;
   transition: border-color .16s, box-shadow .16s;
+  appearance: none;
 }
-.notify-row input::placeholder { color: var(--muted); }
-.notify-row input:focus-visible {
+/* 16px, not 15px, on purpose: iOS Safari zooms the whole page when a field
+   under 16px takes focus, and the page never zooms back out. */
+.notify select { cursor: pointer; }
+.notify input::placeholder { color: var(--muted); }
+.notify input:focus-visible, .notify select:focus-visible {
   outline: none; border-color: var(--flame-lt);
   box-shadow: 0 0 0 3px rgba(255,90,31,.22);
 }
-.notify-row input[aria-invalid="true"] { border-color: #FF4E8C; }
+.notify input[aria-invalid="true"] { border-color: var(--bad); }
 
-.notify-row button {
-  padding: 14px 18px; border: 0; border-radius: 12px;
-  background: var(--g-action); color: #fff;
-  font: inherit; font-size: 15px; font-weight: 700; letter-spacing: .2px;
-  cursor: pointer; transition: transform .16s cubic-bezier(.2,.7,.3,1), filter .16s;
+/* Chips. A real radio sits under each label, so the group is a group to a
+   screen reader and arrow keys work, rather than a row of clickable divs. */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* `pointer-events: none` is not cosmetic. These are absolutely positioned
+   with no offsets, so all five pile up at one spot, and a transparent 1px
+   box over a sibling swallows the click meant for it. Keyboard focus still
+   lands on the input, and `input:focus-visible + label` draws the ring. */
+.chips input {
+  position: absolute; opacity: 0; width: 1px; height: 1px;
+  pointer-events: none;
 }
-.notify-row button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
-.notify-row button:disabled { opacity: .55; cursor: default; }
+.chips label {
+  padding: 9px 15px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--edge); background: var(--ghost);
+  font-size: 14.5px; color: var(--second);
+  transition: border-color .15s, color .15s, background .15s;
+}
+.chips label:hover { color: var(--ink); border-color: var(--edge-hi); }
+.chips input:checked + label {
+  background: var(--g-action); border-color: transparent; color: #fff; font-weight: 600;
+}
+.chips input:focus-visible + label { outline: 2px solid var(--flame); outline-offset: 2px; }
+
+.fhint { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+.fhint.guard {
+  border-left: 2px solid var(--azure-lt); padding-left: 12px; color: var(--second);
+}
 
 /* Off-screen rather than display:none — a bot reading the DOM cannot tell,
    and a person using a screen reader never reaches it (aria-hidden). */
 .nf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 
-.notify-checks { display: grid; gap: 9px; margin-top: 15px; }
-.notify-checks label {
+.notify-consent {
   display: flex; gap: 10px; align-items: flex-start;
   font-size: 13.5px; line-height: 1.45; color: var(--second); cursor: pointer;
 }
-.notify-checks input { margin: 2px 0 0; accent-color: var(--flame); flex: none; width: 16px; height: 16px; }
+.notify-consent input {
+  margin: 2px 0 0; accent-color: var(--flame); flex: none; width: 16px; height: 16px;
+}
+
+.notify-go {
+  padding: 15px 20px; border: 0; border-radius: 13px;
+  background: var(--g-action); color: #fff;
+  font: inherit; font-size: 16px; font-weight: 700; letter-spacing: .2px;
+  cursor: pointer; transition: transform .16s cubic-bezier(.2,.7,.3,1), filter .16s;
+}
+.notify-go:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.notify-go:disabled { opacity: .55; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .notify-go:hover { transform: none; } }
 
 .notify-note {
-  margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--edge-soft);
+  margin: 0; padding-top: 13px; border-top: 1px solid var(--edge-soft);
   font-size: 12.5px; line-height: 1.5; color: var(--muted);
 }
-.notify-msg { margin: 12px 0 0; font-size: 13.5px; line-height: 1.5; min-height: 1px; }
-.notify-msg.ok  { color: var(--ink); font-weight: 600; }
-.notify-msg.bad { color: #FF7FA8; }
-
-@media (min-width: 540px) {
-  .notify-row { grid-template-columns: 1fr 1.25fr auto; align-items: center; }
-}
+.notify-msg { margin: 0; font-size: 13.5px; line-height: 1.5; min-height: 1px; }
+.notify-msg.ok  { color: var(--ok); font-weight: 600; }
+.notify-msg.bad { color: var(--bad); }
 
 .stores { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
 .store {
@@ -1101,7 +1178,7 @@ footer {
         <path d="M12 2.4v2.2M12 19.4v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.4 12h2.2M19.4 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"></path>
       </svg>
     </button>
-    <a class="btn btn-primary btn-sm" href="#get">Get the app</a>
+    <a class="btn btn-primary btn-sm" href="#get" data-cta>Join early access</a>
   </div>
 </header>
 
@@ -1124,7 +1201,7 @@ footer {
         profile and gets seen by the people who pick teams.
       </p>
       <div class="hero-cta rise d5">
-        <a class="btn btn-primary" href="#get">Get the app</a>
+        <a class="btn btn-primary" href="#get" data-cta>Join early access</a>
         <a class="btn btn-quiet" href="#score">See how the score works</a>
       </div>
       <p class="hero-note rise d6">Free for athletes. 13+. On the App Store and Google Play from 1 October 2026.</p>
@@ -1411,7 +1488,7 @@ footer {
           <li><span class="tick">✓</span><span>Apply to any trial or scholarship</span></li>
           <li><span class="tick">✓</span><span>Guardian controls, at no cost</span></li>
         </ul>
-        <a class="btn btn-primary" href="#get">Get the app</a>
+        <a class="btn btn-primary" href="#get" data-cta>Join early access</a>
       </div>
 
       <div class="tier">
@@ -1466,62 +1543,136 @@ footer {
       <div><span class="n" id="cS">--</span><span class="l">Seconds</span></div>
     </div>
 
-    <!-- ── Notify me ────────────────────────────────────────────────────────
-         Placed above the store buttons on purpose: until 1 October both store
-         links lead to a page that does not exist yet, so this is the only
-         thing on the page somebody can actually do.
+    <!-- ── Early access ─────────────────────────────────────────────────
+         What used to be here: a two-field "notify me" box, and under it two
+         store buttons pointing at listings that do not exist until 1 October.
+         The buttons were the call to action and they led nowhere, which left
+         the form doing the real work while looking like an afterthought.
 
-         It says "tell me when it launches", not "get a discount". The app is
-         free — the line below these buttons says so — and offering a discount
-         on a free product is a promise that cannot be kept.
+         So the form is the call to action now, and it asks enough to be worth
+         filling in: a fourteen-year-old goalkeeper in Sharjah and a scout at a
+         Championship club both belong on this list, and they do not get the
+         same launch email.
+
+         Under-18s are welcome — this is a 13+ product and a sign-up page that
+         turned them away would turn away most of the demand it exists to
+         measure. They sign up with a parent's address, which is the address
+         that is stored and written to. Their own is never collected.
+
+         The store buttons are further down, held back until the date passes.
     ---------------------------------------------------------------------- -->
-    <!-- Netlify reads this markup at deploy time, not at run time: the form is
-         only captured if `name`, `data-netlify` and the hidden `form-name`
-         below are present in the file that is uploaded. Every field that
-         should reach the inbox needs its own `name` too — a field without one
-         is invisible to Netlify exactly as it is to any other form handler. -->
-    <form class="notify" id="notify" name="launch-notify" method="POST" novalidate
+    <!-- Netlify builds this form from the markup at DEPLOY time, not when
+         somebody submits, so `name`, `data-netlify` and the hidden
+         `form-name` have to be present in the file on disk — adding them from
+         script is too late — and every field needs its own `name` or it is
+         dropped from the submission while still showing on screen. -->
+    <form class="notify" id="notify" name="early-access" method="POST" novalidate
           data-netlify="true" data-netlify-honeypot="bot-field">
-      <input type="hidden" name="form-name" value="launch-notify">
+      <input type="hidden" name="form-name" value="early-access">
+
       <div class="notify-head">
-        <h3>Be told the day it lands</h3>
-        <p>One email on launch day. Nothing else, ever.</p>
+        <h3>Get in on day one</h3>
+        <p>Join the early-access list. One email when AceAiX opens, and nothing before it.</p>
       </div>
 
-      <div class="notify-row">
-        <label class="sr" for="nfName">First name (optional)</label>
-        <input id="nfName" name="first_name" type="text" autocomplete="given-name"
-               placeholder="First name (optional)" maxlength="80">
+      <div class="fgrp">
+        <span class="flbl" id="nfRoleLabel">I am a…</span>
+        <div class="chips" role="radiogroup" aria-labelledby="nfRoleLabel">
+          <input type="radio" name="role" id="nfRoleAthlete" value="athlete" checked>
+          <label for="nfRoleAthlete">Athlete</label>
+          <input type="radio" name="role" id="nfRoleParent" value="parent">
+          <label for="nfRoleParent">Parent or guardian</label>
+          <input type="radio" name="role" id="nfRoleCoach" value="coach">
+          <label for="nfRoleCoach">Coach</label>
+          <input type="radio" name="role" id="nfRoleClub" value="club">
+          <label for="nfRoleClub">Club or academy</label>
+          <input type="radio" name="role" id="nfRoleScout" value="scout">
+          <label for="nfRoleScout">Scout</label>
+        </div>
+      </div>
 
-        <label class="sr" for="nfEmail">Email address</label>
+      <div class="ftwo">
+        <div class="fgrp">
+          <label class="flbl" for="nfName">First name</label>
+          <input id="nfName" name="first_name" type="text" autocomplete="given-name"
+                 placeholder="Layla" maxlength="80">
+        </div>
+        <div class="fgrp">
+          <label class="flbl" for="nfSport">Sport</label>
+          <select id="nfSport" name="sport">
+            <option value="">Choose a sport</option>
+            <option>Football</option><option>Basketball</option><option>Tennis</option>
+            <option>Athletics</option><option>Swimming</option><option>Cricket</option>
+            <option>Volleyball</option><option>Handball</option><option>Padel</option>
+            <option>Chess</option><option>Esports</option><option>Martial Arts</option>
+            <option value="Other">Something else</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="fgrp">
+        <label class="flbl" for="nfCountry">Country</label>
+        <input id="nfCountry" name="country" type="text" autocomplete="country-name"
+               placeholder="United Arab Emirates" maxlength="60" list="nfCountries">
+        <!-- A datalist suggests without restricting: somebody in a country not
+             on this list can still type it, which a <select> would not allow. -->
+        <datalist id="nfCountries">
+          <option>United Arab Emirates</option><option>Saudi Arabia</option><option>Qatar</option>
+          <option>Kuwait</option><option>Bahrain</option><option>Oman</option><option>Egypt</option>
+          <option>Jordan</option><option>Lebanon</option><option>Morocco</option><option>Iran</option>
+          <option>Turkey</option><option>United Kingdom</option><option>France</option>
+          <option>Spain</option><option>Germany</option><option>Portugal</option><option>Brazil</option>
+          <option>Nigeria</option><option>India</option><option>Pakistan</option><option>United States</option>
+        </datalist>
+      </div>
+
+      <div class="fgrp">
+        <span class="flbl" id="nfAgeLabel">Your age</span>
+        <div class="chips" role="radiogroup" aria-labelledby="nfAgeLabel">
+          <input type="radio" name="age" id="nfAdult" value="adult" checked>
+          <label for="nfAdult">I'm 18 or over</label>
+          <input type="radio" name="age" id="nfMinor" value="minor">
+          <label for="nfMinor">I'm under 18</label>
+        </div>
+      </div>
+
+      <div class="fgrp">
+        <label class="flbl" for="nfEmail" id="nfEmailLabel">Email address</label>
         <input id="nfEmail" name="email" type="email" autocomplete="email"
                placeholder="you@example.com" required maxlength="254">
-
-        <button type="submit" id="nfGo">Notify me</button>
+        <p class="fhint guard" id="nfGuardNote" hidden>
+          We will not ask for your own email address. Your parent or guardian gets
+          the launch email and sets your account up with you — which is how AceAiX
+          works for under-18s anyway.
+        </p>
       </div>
 
-      <!-- The honeypot. Hidden from people and from screen readers; bots fill
-           every field they find, and one that is filled is discarded server
-           side without telling the sender why. -->
       <div class="nf-hp" aria-hidden="true">
         <label for="nfSite">Leave this empty</label>
         <input id="nfSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
       </div>
 
-      <div class="notify-checks">
-        <label><input type="checkbox" id="nfAdult" name="age_confirmed" value="18 or over"><span>I am 18 or over.</span></label>
-        <label><input type="checkbox" id="nfConsent" name="consent" value="yes"><span id="nfConsentText">Email me once when AceAiX launches. I can unsubscribe at any time.</span></label>
-      </div>
+      <label class="notify-consent">
+        <input type="checkbox" id="nfConsent" name="consent" value="yes">
+        <span id="nfConsentText">Email me when AceAiX opens. One email, and I can unsubscribe at any time.</span>
+      </label>
 
-      <p class="notify-note">
-        Under 18? Download the app on launch day instead — a parent or guardian
-        approves your account there, which is how it should work.
-      </p>
+      <button class="notify-go" type="submit" id="nfGo">Save my place</button>
 
       <p class="notify-msg" id="nfMsg" role="status" aria-live="polite"></p>
+
+      <p class="notify-note">
+        No adverts, no data selling, and no location permission at any point.
+        One click unsubscribes, from any email we send.
+      </p>
     </form>
 
-    <div class="stores">
+    <!-- Held back until the date passes. Both listings 404 until the app is
+         published, and a prominent button to a missing page reads as a broken
+         site rather than a product that has not shipped. `live()` in the
+         countdown reveals these and hides the form above, so launch morning
+         needs no edit. -->
+    <div class="stores" id="stores" hidden>
       <a class="store" href="https://apps.apple.com/ae/app/aceaix/id6785269968">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1614,39 +1765,85 @@ footer {
 (function () {
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ── Notify me ──────────────────────────────────────────────────────────
-     Posts to a Supabase edge function, never to the database directly. The
-     anon key would have to be in this file for a direct insert, and a public
-     key that can write to a table of email addresses is a table of email
-     addresses anybody can write to. The function holds the service key, and
-     with it the rate limit, the honeypot check and the 18+ check — none of
-     which mean anything if they live here, where anyone can edit them.
+  /* ── Early access ───────────────────────────────────────────────────────
+     Two backends, one form, chosen by one line at the top of this file.
 
-     Set this to the deployed function URL. Until it is set the form says so
-     rather than silently doing nothing. */
-  var NOTIFY_URL = window.ACEAIX_NOTIFY_URL || '';
+     Left empty — as it ships — this posts to Netlify Forms, which captures
+     the submission, emails it, and exports to CSV with nothing to set up.
+
+     Filled in, it posts to a Supabase edge function instead. That adds what a
+     form cannot do on its own: a confirmation email proving the address is
+     real, a database that REFUSES a minor's row unless it carries a guardian's
+     address, and a rate limit. The function holds the service key; this page
+     holds no key at all, because a public key that can write to a table of
+     email addresses is a table anybody can write to.
+
+     Read at submit time, not captured at load, so a deploy that injects the
+     URL after this script has run still works. */
+  function notifyUrl() { return (window.ACEAIX_NOTIFY_URL || '').trim(); }
 
   var form = document.getElementById('notify');
   if (form) {
     var msg = document.getElementById('nfMsg');
     var go = document.getElementById('nfGo');
     var email = document.getElementById('nfEmail');
-    var adult = document.getElementById('nfAdult');
     var consent = document.getElementById('nfConsent');
+    var guardNote = document.getElementById('nfGuardNote');
+    var emailLabel = document.getElementById('nfEmailLabel');
 
     function say(text, kind) {
       msg.textContent = text;
       msg.className = 'notify-msg' + (kind ? ' ' + kind : '');
     }
 
-    /* Once somebody is on the list, everything that asked them to join is
-       answered — including the note about being under 18. Leaving it up makes
-       the confirmation look like a form that failed. */
-    function done() {
-      form.querySelector('.notify-row').style.display = 'none';
-      form.querySelector('.notify-checks').style.display = 'none';
-      form.querySelector('.notify-note').style.display = 'none';
-      form.querySelector('.notify-head p').style.display = 'none';
+    function picked(name, fallback) {
+      var el = form.querySelector('input[name="' + name + '"]:checked');
+      return el ? el.value : fallback;
+    }
+    function isMinor() { return picked('age', 'adult') === 'minor'; }
+
+    /* When somebody says they are under 18, the field stops being their email
+       and becomes their guardian's — so the label says so. Changing the label
+       rather than adding a second field is deliberate: two boxes invite a
+       child to fill in both, and their address is the one thing this form must
+       never end up holding. */
+    function paintAge() {
+      var minor = isMinor();
+      if (guardNote) guardNote.hidden = !minor;
+      if (emailLabel) {
+        emailLabel.textContent = minor
+          ? "Parent or guardian's email address"
+          : 'Email address';
+      }
+      email.setAttribute('placeholder', minor ? 'parent@example.com' : 'you@example.com');
+    }
+    form.addEventListener('change', function (e) {
+      if (e.target && e.target.name === 'age') paintAge();
+    });
+    paintAge();
+
+    /* Once somebody is on the list, every field that asked them to join is
+       answered. Leaving the form up makes the confirmation look like a
+       submission that failed. */
+    function done(already, confirms) {
+      /* Read by live() below, which otherwise hides the whole form the
+         instant the countdown reaches zero — including from somebody who
+         has just signed up and is reading their confirmation. */
+      form.dataset.submitted = '1';
+      Array.prototype.forEach.call(
+        form.querySelectorAll('.fgrp, .ftwo, .notify-consent, .notify-go, .notify-head p'),
+        function (el) { el.hidden = true; }
+      );
+      say(already
+        ? 'You are already on the list — nothing more to do.'
+        : confirms
+          ? (isMinor()
+              ? 'Almost there. We have emailed your parent or guardian — they need to click the link to confirm.'
+              : 'Almost there. Check your inbox and click the link to confirm.')
+          : (isMinor()
+              ? 'You are on the list. We will email your parent or guardian on launch day, and nothing before it.'
+              : 'You are on the list. We will email you on launch day, and nothing before it.'),
+        'ok');
     }
 
     form.addEventListener('submit', function (e) {
@@ -1657,45 +1854,38 @@ footer {
       if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
         email.setAttribute('aria-invalid', 'true');
         email.focus();
-        return say('Please enter an email address we can reach you on.', 'bad');
-      }
-      if (!adult.checked) {
-        return say('This list is for people aged 18 and over. If you are younger, download the app on launch day and ask a parent to approve your account.', 'bad');
+        return say(isMinor()
+          ? "Please enter a parent or guardian's email address."
+          : 'Please enter an email address we can reach you on.', 'bad');
       }
       if (!consent.checked) {
-        return say('Please tick the box to say we may email you.', 'bad');
+        return say('Please tick the box so we may email you.', 'bad');
       }
+
       go.disabled = true;
       say('One moment…');
 
-      /* Two backends, one page.
+      var url = notifyUrl();
+      if (!url) return sendToNetlify(value);
 
-         With ACEAIX_NOTIFY_URL set, this posts to the Supabase function, which
-         writes the row and sends a confirmation email that proves the address
-         is real.
-
-         Left empty, it posts to Netlify Forms instead, which needs no setup at
-         all — the folder is dragged onto Netlify and sign-ups start arriving
-         in the dashboard and in the inbox. What is lost is the confirmation
-         email, so the wording below does not promise one.
-
-         Swapping between them is the one line at the top of this file. */
-      if (!NOTIFY_URL) { return sendToNetlify(value); }
-
-      fetch(NOTIFY_URL, {
+      fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: value,
           first_name: (document.getElementById('nfName').value || '').trim() || null,
           website: document.getElementById('nfSite').value,
-          is_adult: true,
+          is_adult: !isMinor(),
+          guardian_confirmed: isMinor() ? true : undefined,
           consent: true,
           /* The exact wording agreed to, stored with the row. "They consented"
              is worth nothing without "to what", and this sentence will change. */
           consent_text: document.getElementById('nfConsentText').textContent.trim(),
+          role: picked('role', 'athlete'),
+          sport: document.getElementById('nfSport').value || null,
+          country: (document.getElementById('nfCountry').value || '').trim() || null,
           locale: document.documentElement.lang || 'en',
-          source: 'site-launch'
+          source: 'site-early-access'
         })
       })
         .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
@@ -1704,12 +1894,7 @@ footer {
             go.disabled = false;
             return say(res.body && res.body.error ? res.body.error : 'That did not go through. Please try again.', 'bad');
           }
-          if (res.body.status === 'already') {
-            say('You are already on the list — nothing more to do.', 'ok');
-          } else {
-            say('Almost there. Check your inbox and click the link to confirm.', 'ok');
-          }
-          done();
+          done(res.body.status === 'already', true);
         })
         .catch(function () {
           go.disabled = false;
@@ -1718,19 +1903,27 @@ footer {
     });
 
     /* Netlify captures a normal form POST to the page's own path. Sending it
-       by fetch rather than letting the browser navigate keeps the person on
-       the page with the inline confirmation, instead of bouncing them to
-       Netlify's generic success page. */
+       by fetch rather than letting the browser navigate keeps the person here
+       with the inline confirmation instead of bouncing them to Netlify's
+       generic success page. */
     function sendToNetlify(value) {
       var data = {
-        'form-name': 'launch-notify',
+        'form-name': 'early-access',
         first_name: (document.getElementById('nfName').value || '').trim(),
         email: value,
-        age_confirmed: '18 or over',
+        role: picked('role', 'athlete'),
+        sport: document.getElementById('nfSport').value || '',
+        country: (document.getElementById('nfCountry').value || '').trim(),
+        /* Written out rather than left as a raw boolean, because a person
+           reads these in an email and "false" beside a child's details is
+           worse than useless. */
+        age: isMinor()
+          ? 'UNDER 18 — the address above is a parent or guardian'
+          : '18 or over',
         consent: document.getElementById('nfConsentText').textContent.trim(),
-        source: 'site-launch',
+        source: 'site-early-access',
         /* Sent empty rather than omitted: Netlify discards a submission whose
-           honeypot is filled, and a field that is never sent can never be. */
+           honeypot is filled, and a field never sent can never be filled. */
         'bot-field': document.getElementById('nfSite').value
       };
       var body = Object.keys(data)
@@ -1745,8 +1938,7 @@ footer {
         .then(function (r) {
           if (!r.ok) throw new Error(String(r.status));
           /* No confirmation email on this route, so none is promised. */
-          say('You are on the list. We will email you on launch day, and nothing before it.', 'ok');
-          done();
+          done(false, false);
         })
         .catch(function () {
           go.disabled = false;
@@ -1757,8 +1949,8 @@ footer {
     /* Coming back from the confirmation link. */
     var q = new URLSearchParams(location.search);
     if (q.get('subscribed') === '1') {
+      done(false, false);
       say('Confirmed. We will email you on launch day.', 'ok');
-      done();
     } else if (q.get('subscribed') === '0') {
       say('That confirmation link has expired or was already used.', 'bad');
     } else if (q.get('unsubscribed') === '1') {
@@ -1776,6 +1968,7 @@ footer {
   var pillText = document.getElementById('pillText');
   var getEyebrow = document.getElementById('getEyebrow');
   var getLede = document.getElementById('getLede');
+  var storesEl = document.getElementById('stores');
   var pad = function (n) { return n < 10 ? '0' + n : String(n); };
   var ticker = null;
 
@@ -1786,6 +1979,22 @@ footer {
     if (countEl) countEl.hidden = true;
     if (pillText) pillText.textContent = 'Out now on iPhone and Android';
     if (getEyebrow) getEyebrow.textContent = 'Out now';
+
+    /* The swap. An early-access list stops making sense the moment the thing
+       is out, and the store buttons start working the same moment — so the
+       page performs its own launch rather than waiting to be edited. Guarded
+       because a person mid-signup should not have the form vanish from under
+       them: if they have already submitted, the confirmation stays. */
+    if (storesEl) storesEl.hidden = false;
+    var f = document.getElementById('notify');
+    if (f && !f.dataset.submitted) f.hidden = true;
+
+    /* Every button that says "join early access" now means "get the app". The
+       markup carries the pre-launch wording so it is right with no JavaScript
+       at all; this is the one line that ages it forward. */
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cta]'), function (a) {
+      a.textContent = 'Get the app';
+    });
     if (getLede) {
       getLede.textContent = 'Free, in seven languages, on iPhone and Android. ' +
         'Thirteen and over, with a guardian\u2019s approval for anyone under eighteen.';

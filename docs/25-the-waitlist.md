@@ -7,43 +7,56 @@
 
 ## 1. What it is
 
-Two forms now, not one.
+One form, in the closing section of the marketing site.
 
-**The front page** carries a section at the bottom: a first name (optional),
-an email address, two checkboxes, and a button. 18+ only, for the reasons in
-§4.
+It went through three shapes, and the last one is the point. It began as "be
+told the day it lands": a name, an email, two checkboxes, **18+ only** for the
+reasons in §4. Then it grew a page of its own at `/early-access` that asked
+more and admitted minors through a guardian. Now there is no separate page —
+that fuller form simply *is* the site's call to action, standing where the App
+Store and Google Play buttons used to be.
 
-**`/early-access`** is a page of its own, added later, and it asks more: role
-(athlete, parent, coach, club, scout), sport, country, and whether the person
-is under eighteen — because a sign-up page for a youth sports app that turns
-away everybody under eighteen turns away most of the demand it exists to
-measure. A minor signs up with a parent's address, and that is the address
-that is stored and written to; the child's own is never collected.
+That last move was not a simplification for its own sake. Those buttons led to
+listings that do not exist until 1 October, so the page's most prominent
+control pointed at two dead pages while the only thing a visitor could actually
+do sat beneath it looking like an afterthought. The buttons are not deleted —
+they are `hidden`, and the countdown reveals them and retires the form the
+moment the date passes.
 
-Either one puts a row in `public.waitlist`, sends a confirmation link, and —
-once that link is clicked — pushes the address to whichever campaign tool is
-configured. Or it does the much simpler thing in §2, which is what happens if
-nothing is set up at all.
+The form asks role (athlete, parent, coach, club, scout), first name, sport,
+country, age band and email. Under-18s are welcome, because a sign-up form for
+a youth sports app that turns away everybody under eighteen turns away most of
+the demand it exists to measure. A minor signs up with a parent's address, and
+that is the address that is stored and written to; the child's own is never
+collected — choosing "I'm under 18" **relabels the existing field** rather than
+adding a second one, since two boxes invite a child to fill in both.
 
-It says **"be told the day it lands"**, not "get a discount". The app is free;
-the line directly below the form says so. A discount on a free product is a
-promise that cannot be kept, and it is the same category of error as the
-"12,400+ Athletes" the site used to claim before anybody had signed up.
+It puts a row in `public.waitlist`, sends a confirmation link, and — once that
+link is clicked — pushes the address to whichever campaign tool is configured.
+Or it does the much simpler thing in §2, which is what happens if nothing is
+set up at all.
+
+What it offers is **"get in on day one"**, never "get a discount". The app is
+free; the line directly below the form says so. A discount on a free product is
+a promise that cannot be kept, and it is the same category of error as the
+"12,400+ Athletes" the site used to claim before anybody had signed up. The
+same test applies to the copy that replaced it: "one email when AceAiX opens,
+and nothing before it" is a promise, and the unsubscribe link and the absence
+of any analytics script on the page are what make it one that can be kept.
 
 ---
 
 ## 2. Two backends, and neither is a placeholder
 
-Both forms — the one at the bottom of the front page and the whole of
-`/early-access` — can post to either of two places, chosen by one line at the
-top of each file:
+The form can post to either of two places, chosen by one line at the top of
+`site/index.html`:
 
 ```html
 <script>window.ACEAIX_NOTIFY_URL = '';</script>
 ```
 
 **Empty: Netlify Forms.** The page posts a normal urlencoded form to its own
-path and Netlify captures it. Nothing is deployed, nothing is configured, no
+path and Netlify captures it as `early-access`. Nothing is deployed, nothing is configured, no
 database exists. Sign-ups appear under **Forms** in the site dashboard and
 Netlify emails each one to the addresses listed under *Form notifications*.
 This is what runs the moment the folder is dragged onto Netlify.
@@ -71,8 +84,8 @@ So the split is:
 | Pushed to the campaign tool                | by hand       | on confirmation |
 
 The consequences of the two "no"s are worth stating plainly rather than
-leaving in a table. On the Netlify route the early-access form still asks
-whether the person is under eighteen and labels the submission
+leaving in a table. On the Netlify route the form still asks whether the person
+is under eighteen and labels the submission
 `UNDER 18 — the address above is a parent or guardian`, but that label is a
 courtesy to whoever reads the email, not an enforcement: nothing stops a
 fifteen-year-old typing their own address and ticking "I'm under 18". The
@@ -91,12 +104,18 @@ Two things follow from that, and both are already in the code:
   `name`, `data-netlify="true"` and hidden `form-name` on each `<form>`, and a
   `name` on every field, are load-bearing. An edit that drops one stops the
   capture **silently** — the page still says thank you, and nothing is stored.
-  `site/early-access/index.html` carries a comment saying so above the form
-  tag, and the deploy-time markup is asserted in the site's test pass.
+  `site/index.html` carries a comment saying so above the form tag, and the
+  deploy-time markup is asserted in `mobile/tests/unit/siteForms.test.ts`.
 
 Switching is one line and it is reversible. The simple route today does not
 close the door on the strict one later — which is the point, because the
 strict one is what §4 argues is eventually necessary.
+
+One consequence of there being a single page now: the form's Netlify name is
+`early-access`, not the old `launch-notify`. A site deployed before this change
+has submissions filed under the old name; they are not lost, but they are in a
+different list in the dashboard, and the notification rule has to be set again
+on the new one.
 
 ---
 
