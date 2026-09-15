@@ -127,6 +127,9 @@ export const settings = {
     'Ton téléphone empêche AceAiX d’envoyer des notifications : rien de ce qui suit ne peut te parvenir quand l’app est fermée.',
   turnOnPush: 'Activer les push',
   pushStillOff: 'Les push sont toujours désactivées. Tu peux les activer dans les réglages de ton téléphone.',
+  scoutingRecruiterOnlyBody: 'Les préférences de détection sont réservées aux entraîneurs, clubs et recruteurs. Les athlètes règlent leur sport et leur disponibilité sur leur profil.',
+  scoutingRecruiterOnlyTitle: 'Pour les entraîneurs et clubs',
+  openSystemSettings: 'Ouvrir Réglages',
   autoSaveNote: 'Les changements s’enregistrent tout seuls.',
 
   sectionHowWeReach: 'Comment on te joint',

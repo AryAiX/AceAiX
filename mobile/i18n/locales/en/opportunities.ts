@@ -250,6 +250,8 @@ export const opportunities = {
   // ── Posting an opportunity ──────────────────────────────────────────────────
   post: {
     title: 'Post an opportunity',
+    recruiterOnlyTitle: 'For coaches and clubs',
+    recruiterOnlyBody: 'Only coaches, clubs and scouts can post opportunities. You can still browse and apply from Opportunities.',
     submit: 'Post it',
     posted: 'Posted. Athletes who fit will see it first.',
     checkFields: 'Check the highlighted fields.',

@@ -141,14 +141,35 @@ for (const file of sources(MOBILE)) {
   let m;
   while ((m = rpcRe.exec(src)) !== null) {
     const name = m[1];
-    const after = src.indexOf('{', m.index + m[0].length);
-    const comma = src.indexOf(',', m.index + m[0].length);
-    const closeParen = src.indexOf(')', m.index + m[0].length);
     let args = [];
-    // Only read an object literal that belongs to this call.
-    if (after !== -1 && comma !== -1 && comma < after && after < closeParen + 1e6) {
-      const block = balanced(src, after);
-      if (block) args = topLevelKeys(block.body);
+    /*
+     * Only inspect the current call's second argument. Looking for the next
+     * comma and brace in the file lets `rpc('no_args')` swallow an object from
+     * a later expression (Promise.all and post-processing exposed both cases).
+     */
+    const callOpen = src.indexOf('(', m.index);
+    const call = callOpen === -1 ? null : balanced(src, callOpen, '(', ')');
+    if (call) {
+      let depth = 0;
+      let comma = -1;
+      for (let i = 0; i < call.body.length; i += 1) {
+        const c = call.body[i];
+        if ('{[('.includes(c)) depth += 1;
+        else if ('}])'.includes(c)) depth -= 1;
+        else if (c === ',' && depth === 0) {
+          comma = i;
+          break;
+        }
+      }
+      if (comma !== -1) {
+        const afterComma = call.body.slice(comma + 1);
+        const objectAt = afterComma.search(/\S/);
+        if (objectAt !== -1 && afterComma[objectAt] === '{') {
+          const absoluteObjectAt = callOpen + 1 + comma + 1 + objectAt;
+          const block = balanced(src, absoluteObjectAt);
+          if (block) args = topLevelKeys(block.body);
+        }
+      }
     }
     rpcCalls.push({ file: rel, line: lineOf(src, m.index), name, args });
   }

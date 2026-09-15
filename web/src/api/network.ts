@@ -1,17 +1,20 @@
 import { supabase, unwrap, USER_FIELDS } from './_helpers';
 import type { Follow, Endorsement, Recommendation, UserProfile } from '../types';
+import { isUserProfile } from '../lib/userProfile';
 
 // ---- Follows ----
 export async function listFollowing(userId: string): Promise<Follow[]> {
-  return unwrap(
+  const rows = unwrap(
     await supabase.from('follows').select(`*, following:user_profiles!follows_following_id_fkey(${USER_FIELDS})`).eq('follower_id', userId),
-  ) as Follow[];
+  ) as Array<Follow & { following?: UserProfile | null }>;
+  return rows.filter((row) => isUserProfile(row.following));
 }
 
 export async function listFollowers(userId: string): Promise<Follow[]> {
-  return unwrap(
+  const rows = unwrap(
     await supabase.from('follows').select(`*, follower:user_profiles!follows_follower_id_fkey(${USER_FIELDS})`).eq('following_id', userId),
-  ) as Follow[];
+  ) as Array<Follow & { follower?: UserProfile | null }>;
+  return rows.filter((row) => isUserProfile(row.follower));
 }
 
 export async function followCount(userId: string): Promise<{ followers: number; following: number }> {
@@ -58,18 +61,56 @@ export async function deleteRecommendation(id: string): Promise<void> {
 }
 
 export async function searchUsers(q: string, excludeId?: string, limit = 8): Promise<UserProfile[]> {
-  let query = supabase.from('user_profiles').select(USER_FIELDS).ilike('full_name', `%${q}%`).limit(limit);
-  if (excludeId) query = query.neq('id', excludeId);
-  return unwrap(await query) as UserProfile[];
+  const query = q.trim();
+  const requestedLimit = Math.max(0, Math.min(Math.floor(limit), 50));
+  if (!query || requestedLimit === 0) return [];
+
+  const rows = unwrap(
+    await supabase.rpc('search_people', {
+      p_query: query,
+      p_role: null,
+      p_limit: Math.min(requestedLimit + (excludeId ? 1 : 0), 50),
+    }),
+  ) as unknown;
+  if (!Array.isArray(rows)) return [];
+
+  const validRoles = new Set<UserProfile['role']>([
+    'athlete', 'scout', 'club', 'coach', 'medical_partner', 'federation',
+    'guardian', 'org_admin', 'admin', 'super_admin', 'guest',
+  ]);
+
+  return rows
+    .filter((row): row is Record<string, unknown> => (
+      !!row
+      && typeof row === 'object'
+      && typeof (row as Record<string, unknown>).id === 'string'
+      && validRoles.has((row as Record<string, unknown>).role as UserProfile['role'])
+    ))
+    .filter((row) => !excludeId || row.id !== excludeId)
+    .slice(0, requestedLimit)
+    .map((row) => ({
+      id: row.id as string,
+      role: row.role as UserProfile['role'],
+      full_name: typeof row.full_name === 'string' ? row.full_name : null,
+      avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+      bio: typeof row.bio === 'string' ? row.bio : null,
+      city: typeof row.city === 'string' ? row.city : null,
+      country: typeof row.country === 'string' ? row.country : null,
+      locale: null,
+      is_verified: row.is_verified === true,
+      subscription_tier: 'free',
+      created_at: '',
+      updated_at: '',
+    }));
 }
 
-/** Scouts & clubs to follow/discover. */
+/** Verified recruiting roles to follow/discover. */
 export async function listScouts(limit = 6): Promise<UserProfile[]> {
   return unwrap(
     await supabase
       .from('user_profiles')
       .select(USER_FIELDS)
-      .in('role', ['scout', 'club'])
+      .in('role', ['coach', 'scout', 'club'])
       .order('created_at', { ascending: false })
       .limit(limit),
   ) as UserProfile[];

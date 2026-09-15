@@ -8,6 +8,7 @@ import {
   Button,
   Chip,
   Divider,
+  EmptyState,
   Header,
   Input,
   ListItem,
@@ -18,6 +19,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
 import { PRIORITY_COUNTRIES, SPORTS, sportLabel } from '@/constants/sports';
@@ -61,6 +63,8 @@ export default function NewMeetupScreen() {
   const router = useRouter();
   const t = useT();
   const toast = useToast();
+  const { profile } = useAuth();
+  const canMeet = profile?.is_minor === false;
 
   const [sport, setSport] = useState('');
   const [title, setTitle] = useState('');
@@ -141,6 +145,17 @@ export default function NewMeetupScreen() {
         minute: '2-digit',
       })
     : '';
+
+  if (!canMeet) {
+    return (
+      <Screen header={<Header title={t('meetups.createTitle')} back />}>
+        <EmptyState
+          title={t('meetups.adultsOnlyTitle')}
+          body={t('meetups.adultsOnlyBody')}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen

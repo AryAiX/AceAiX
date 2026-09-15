@@ -124,6 +124,9 @@ export const settings = {
     'Your phone is not letting AceAiX send notifications, so nothing below can reach you while the app is closed.',
   turnOnPush: 'Turn on push',
   pushStillOff: 'Push is still off. You can turn it on in your phone settings.',
+  scoutingRecruiterOnlyBody: 'Scouting preferences are for coaches, clubs and scouts. Athletes set their sport and openness on their profile instead.',
+  scoutingRecruiterOnlyTitle: 'For coaches and clubs',
+  openSystemSettings: 'Open Settings',
   autoSaveNote: 'Changes save on their own.',
 
   sectionHowWeReach: 'How we reach you',

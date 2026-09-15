@@ -54,7 +54,10 @@ export function PeopleList({
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const rows = useMemo(() => people ?? [], [people]);
+  const rows = useMemo(
+    () => (people ?? []).filter((person): person is UserSummary => Boolean(person?.id)),
+    [people],
+  );
   const showSearch = rows.length > 20;
 
   const filtered = useMemo(() => {

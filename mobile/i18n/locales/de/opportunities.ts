@@ -252,6 +252,8 @@ export const opportunities = {
   // ── Eine Chance ausschreiben ────────────────────────────────────────────────
   post: {
     title: 'Chance ausschreiben',
+    recruiterOnlyTitle: 'Für Trainer und Clubs',
+    recruiterOnlyBody: 'Nur Trainer, Clubs und Scouts können Chancen veröffentlichen. Du kannst weiterhin unter Chancen stöbern und dich bewerben.',
     submit: 'Einstellen',
     posted: 'Eingestellt. Passende Sportler sehen es zuerst.',
     checkFields: 'Sieh dir die markierten Felder an.',

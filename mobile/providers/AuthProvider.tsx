@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const mounted = useRef(true);
+  const activeUserId = useRef<string | null>(null);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -106,28 +107,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .getSession()
       .then(async ({ data }) => {
         if (!mounted.current) return;
+        activeUserId.current = data.session?.user?.id ?? null;
         setSession(data.session ?? null);
         if (data.session?.user) {
-          setProfile(await loadProfile(data.session.user.id));
+          const userId = data.session.user.id;
+          const restoredProfile = await loadProfile(userId);
+          if (mounted.current && activeUserId.current === userId) {
+            setProfile(restoredProfile);
+          }
         }
       })
       .finally(() => {
         if (mounted.current) setLoading(false);
       });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, next) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       if (!mounted.current) return;
+      const userId = next?.user?.id ?? null;
+      activeUserId.current = userId;
       setSession(next ?? null);
 
-      if (next?.user) {
-        /* The signup trigger provisions profile rows; on the very first
-           SIGNED_IN they may not be visible yet, so retry briefly. */
-        let p = await loadProfile(next.user.id);
-        if (!p && event === 'SIGNED_IN') {
-          await new Promise((r) => setTimeout(r, 600));
-          p = await loadProfile(next.user.id);
-        }
-        if (mounted.current) setProfile(p);
+      if (userId) {
+        /*
+         * Supabase holds its auth lock while this callback runs. Defer all
+         * database work so sign-out and token refresh cannot deadlock behind
+         * an awaited query in the listener.
+         */
+        setTimeout(() => {
+          void (async () => {
+            let p = await loadProfile(userId);
+            if (!p && event === 'SIGNED_IN') {
+              await new Promise((r) => setTimeout(r, 600));
+              p = await loadProfile(userId);
+            }
+            if (mounted.current && activeUserId.current === userId) setProfile(p);
+          })();
+        }, 0);
       } else {
         setProfile(null);
       }

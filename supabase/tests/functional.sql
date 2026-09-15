@@ -2296,4 +2296,186 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── opportunity and match preference authorization ──'; end $$;
+
+do $$
+declare
+  v_org uuid;
+  v_athlete_raised boolean := false;
+  v_spoof_raised boolean := false;
+  v_coach_opp uuid;
+  v_org_opp uuid;
+  v_admin_opp uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    ('77777777-7777-7777-7777-777777777777', 'policy.admin@test.local',
+     '{"full_name":"Policy Admin","role":"athlete"}'),
+    ('88888888-8888-8888-8888-888888888888', 'policy.club@test.local',
+     '{"full_name":"Policy Club","role":"club"}'),
+    ('99999999-9999-9999-9999-999999999999', 'policy.scout@test.local',
+     '{"full_name":"Policy Scout","role":"scout"}');
+
+  -- Admin is a server-managed database role; signup metadata cannot grant it.
+  update public.user_profiles
+  set role = 'admin'
+  where id = '77777777-7777-7777-7777-777777777777';
+
+  insert into public.organizations (name, type)
+  values ('Opportunity Policy Club', 'club')
+  returning id into v_org;
+
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status
+  ) values (
+    v_org, '88888888-8888-8888-8888-888888888888', 'manager', 'active'
+  );
+
+  -- Direct table writes under the API role exercise the same RLS boundary as
+  -- PostgREST instead of relying only on auth claim impersonation.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  begin
+    insert into public.opportunities (
+      created_by_id, title, description, type, sport, is_active
+    ) values (
+      '11111111-1111-1111-1111-111111111111',
+      'Rejected athlete opportunity', 'Must not be created.',
+      'trial', 'Football', true
+    );
+  exception when insufficient_privilege then
+    v_athlete_raised := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_athlete_raised
+    and not exists (
+      select 1 from public.opportunities
+      where title = 'Rejected athlete opportunity'
+    ),
+    'an athlete direct API-style opportunity insert is rejected');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  insert into public.opportunities (
+    created_by_id, title, description, type, sport, is_active
+  ) values (
+    '33333333-3333-3333-3333-333333333333',
+    'Coach standalone opportunity', 'Authorized standalone posting.',
+    'trial', 'Football', true
+  ) returning id into v_coach_opp;
+  reset role;
+  perform tests.ok(
+    v_coach_opp is not null,
+    'a coach can create a standalone opportunity');
+
+  perform tests.as_user('88888888-8888-8888-8888-888888888888');
+  set local role authenticated;
+  insert into public.opportunities (
+    organization_id, created_by_id, title, description, type, sport, is_active
+  ) values (
+    v_org, '88888888-8888-8888-8888-888888888888',
+    'Organization member opportunity', 'Authorized organization posting.',
+    'trial', 'Football', true
+  ) returning id into v_org_opp;
+  reset role;
+  perform tests.ok(
+    v_org_opp is not null,
+    'an authorized organization member can create its opportunity');
+
+  perform tests.as_user('77777777-7777-7777-7777-777777777777');
+  set local role authenticated;
+  insert into public.opportunities (
+    organization_id, created_by_id, title, description, type, sport, is_active
+  ) values (
+    v_org, '77777777-7777-7777-7777-777777777777',
+    'Admin opportunity', 'Authorized administrative posting.',
+    'trial', 'Football', true
+  ) returning id into v_admin_opp;
+
+  begin
+    insert into public.opportunities (
+      created_by_id, title, description, type, sport, is_active
+    ) values (
+      '33333333-3333-3333-3333-333333333333',
+      'Spoofed admin opportunity', 'Must not be created.',
+      'trial', 'Football', true
+    );
+  exception when insufficient_privilege then
+    v_spoof_raised := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_admin_opp is not null,
+    'an admin can create an opportunity without organization membership');
+  perform tests.ok(
+    v_spoof_raised
+    and not exists (
+      select 1 from public.opportunities
+      where title = 'Spoofed admin opportunity'
+    ),
+    'even an admin must set created_by_id to their own user id');
+end $$;
+
+do $$
+declare
+  v_athlete_raised boolean := false;
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  begin
+    insert into public.match_preferences (user_id, sports)
+    values ('11111111-1111-1111-1111-111111111111', array['Football']);
+  exception when insufficient_privilege then
+    v_athlete_raised := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_athlete_raised
+    and not exists (
+      select 1 from public.match_preferences
+      where user_id = '11111111-1111-1111-1111-111111111111'
+    ),
+    'an athlete cannot write match preferences');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  insert into public.match_preferences (user_id, sports)
+  values ('33333333-3333-3333-3333-333333333333', array['Football']);
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from public.match_preferences
+      where user_id = '33333333-3333-3333-3333-333333333333'
+    ),
+    'a coach can write their own match preferences');
+
+  perform tests.as_user('88888888-8888-8888-8888-888888888888');
+  set local role authenticated;
+  update public.match_preferences
+  set sports = array['Football']
+  where user_id = '88888888-8888-8888-8888-888888888888';
+  reset role;
+  perform tests.ok(
+    (select sports = array['Football']
+     from public.match_preferences
+     where user_id = '88888888-8888-8888-8888-888888888888'),
+    'a club can write their own match preferences');
+
+  perform tests.as_user('99999999-9999-9999-9999-999999999999');
+  set local role authenticated;
+  update public.match_preferences
+  set sports = array['Football']
+  where user_id = '99999999-9999-9999-9999-999999999999';
+  reset role;
+  perform tests.ok(
+    (select sports = array['Football']
+     from public.match_preferences
+     where user_id = '99999999-9999-9999-9999-999999999999'),
+    'a scout can write their own match preferences');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

@@ -120,6 +120,9 @@ export const settings = {
     '你的手机不允许 AceAiX 发送通知，所以应用关闭时，下面这些都到不了你这里。',
   turnOnPush: '打开推送',
   pushStillOff: '推送仍然是关的。你可以在手机的系统设置里打开。',
+  scoutingRecruiterOnlyBody: '球探偏好仅供教练、俱乐部与球探使用。运动员请在个人资料中设置项目与开放状态。',
+  scoutingRecruiterOnlyTitle: '面向教练与俱乐部',
+  openSystemSettings: '打开设置',
   autoSaveNote: '更改会自动保存。',
 
   sectionHowWeReach: '我们怎么联系你',

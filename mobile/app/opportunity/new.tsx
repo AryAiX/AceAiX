@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   Chip,
+  EmptyState,
   Header,
   Input,
   Screen,
@@ -133,7 +134,7 @@ export default function NewOpportunityScreen() {
   const { colors, radii, spacing } = theme;
   const router = useRouter();
   const toast = useToast();
-  const { profile } = useAuth();
+  const { profile, isRecruiter } = useAuth();
 
   const organization = useAsync(() => myOrganization(), []);
 
@@ -222,6 +223,17 @@ export default function NewOpportunityScreen() {
       setSubmitting(false);
     }
   };
+
+  if (!isRecruiter) {
+    return (
+      <Screen header={<Header title={t('opportunities.post.title')} back />}>
+        <EmptyState
+          title={t('opportunities.post.recruiterOnlyTitle')}
+          body={t('opportunities.post.recruiterOnlyBody')}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen

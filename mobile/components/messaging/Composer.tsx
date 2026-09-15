@@ -101,6 +101,7 @@ export function Composer({
             )
           }
           accessibilityLabel={t('common.message')}
+          testID="chat-composer"
           maxLength={4000}
           style={{
             height,
@@ -123,6 +124,7 @@ export function Composer({
         accessibilityRole="button"
         accessibilityLabel={t('messaging.sendMessage')}
         accessibilityState={{ disabled: !canSend }}
+        testID="chat-send"
         hitSlop={6}
         style={({ pressed }) => ({
           width: hit.min,

@@ -32,13 +32,17 @@ import SimilarAthletesRail, { type SimilarAthleteItem } from '../components/prof
 
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import { isRecruiterRole } from '../lib/accessControl';
+import { isUserProfile } from '../lib/userProfile';
 import { getAthleteById, listAthletes } from '../api/athletes';
 import { listMedia, listMatches } from '../api/portfolio';
 import { listEndorsements, listRecommendations } from '../api/network';
 import { latestClearance, listMedicalRecords } from '../api/medical';
 import { listPosts } from '../api/content';
 import {
+  canMessageUser,
   getOrCreateConversation,
+  messagePermissionReason,
   sendMessage as sendConversationMessage,
 } from '../api/messaging';
 import { normalizeAttributes } from '../lib/profileData';
@@ -138,7 +142,7 @@ function FollowersModal({ profileUserId, count, currentUserId, onClose }: {
       ]);
       const followerRows = (fr.data ?? []) as unknown as Array<{ follower: UserProfile | null }>;
       const blockedRows = (br.data ?? []) as Array<{ blocked_id: string }>;
-      setFollowers(followerRows.map(r => r.follower).filter((value): value is UserProfile => value !== null));
+      setFollowers(followerRows.map(r => r.follower).filter(isUserProfile));
       setBlockedIds(new Set(blockedRows.map(r => r.blocked_id)));
       setLoading(false);
     }
@@ -440,9 +444,11 @@ export default function AthletePublicProfilePage() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [followersOpen, setFollowersOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
+  const [msgChecking, setMsgChecking] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
   const [msgError, setMsgError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [shared, setShared] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
 
@@ -517,18 +523,29 @@ export default function AthletePublicProfilePage() {
   async function toggleBlock() {
     if (!user) { navigate('/auth/login'); return; }
     setBlockLoading(true);
-    if (isBlocked) {
-      await supabase.from('user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', profileUserId);
-      setIsBlocked(false);
-    } else {
-      if (isFollowing) {
-        await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
-        setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+    setActionError('');
+    try {
+      if (isBlocked) {
+        const { error } = await supabase.from('user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', profileUserId);
+        if (error) throw new Error(error.message);
+        setIsBlocked(false);
+      } else {
+        if (isFollowing) {
+          const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
+          if (error) throw new Error(error.message);
+          setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+        }
+        const { error } = await supabase.from('user_blocks').insert({ blocker_id: user.id, blocked_id: profileUserId });
+        if (error) throw new Error(error.message);
+        setIsBlocked(true);
       }
-      await supabase.from('user_blocks').insert({ blocker_id: user.id, blocked_id: profileUserId });
-      setIsBlocked(true);
+      setBlockConfirmOpen(false);
+      setMoreMenuOpen(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Block status could not be updated.');
+    } finally {
+      setBlockLoading(false);
     }
-    setBlockLoading(false); setBlockConfirmOpen(false); setMoreMenuOpen(false);
   }
 
   async function handleSendMessage(text: string) {
@@ -539,12 +556,33 @@ export default function AthletePublicProfilePage() {
       const conversation = await getOrCreateConversation(user.id, profileUserId);
       await sendConversationMessage(conversation.id, user.id, text);
       setMsgSent(true); setMsgOpen(false);
-      const base = role === 'scout' || role === 'club' ? '/recruiter' : '/athlete';
+      const base = isRecruiterRole(role) ? '/recruiter' : '/athlete';
       setTimeout(() => navigate(`${base}/messages`), 300);
     } catch (error) {
       setMsgError(error instanceof Error ? error.message : 'Message could not be sent.');
     } finally {
       setMsgSending(false);
+    }
+  }
+
+  async function openMessageModal() {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    setMsgChecking(true);
+    setMsgError('');
+    try {
+      const permission = await canMessageUser(profileUserId);
+      if (!permission.allowed) {
+        setMsgError(messagePermissionReason(permission.reason));
+        return;
+      }
+      setMsgOpen(true);
+    } catch (error) {
+      setMsgError(error instanceof Error ? error.message : 'Messaging availability could not be checked.');
+    } finally {
+      setMsgChecking(false);
     }
   }
 
@@ -613,9 +651,9 @@ export default function AthletePublicProfilePage() {
                 </button>
               )}
               {!isSelf && !isBlocked && (
-                <button onClick={() => { if (user) { setMsgError(''); setMsgOpen(true); } else navigate('/auth/login'); }}
+                <button onClick={openMessageModal} disabled={msgChecking}
                   className="btn-primary px-4 py-1.5 text-xs rounded-lg font-semibold inline-flex items-center gap-1.5">
-                  <MessageSquare size={11} /> Message
+                  {msgChecking ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />} Message
                 </button>
               )}
             </div>
@@ -752,9 +790,9 @@ export default function AthletePublicProfilePage() {
               </MagneticButton>
 
               {!isSelf && !isBlocked && (
-                <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+                <button onClick={openMessageModal} disabled={msgChecking}
                   className={`px-5 py-2 inline-flex items-center gap-2 text-sm rounded-xl font-semibold transition-all ${msgSent ? 'bg-emerald/10 border border-emerald/20 text-emerald' : 'btn-primary'}`}>
-                  <MessageSquare size={14} /> {msgSent ? 'Sent' : 'Message'}
+                  {msgChecking ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} {msgSent ? 'Sent' : 'Message'}
                 </button>
               )}
 
@@ -802,6 +840,9 @@ export default function AthletePublicProfilePage() {
                 <Link to="/auth/register" className="btn-outline px-5 py-2 inline-flex items-center gap-2 text-sm ml-auto">
                   <ShieldCheck size={14} /> Request Full Report
                 </Link>
+              )}
+              {(msgError || actionError) && !msgOpen && (
+                <p role="alert" className="w-full text-xs text-coral">{msgError || actionError}</p>
               )}
             </div>
           </div>
@@ -901,9 +942,9 @@ export default function AthletePublicProfilePage() {
             </button>
           )}
           {!isBlocked && (
-            <button onClick={() => { if (user) { setMsgError(''); setMsgOpen(true); } else navigate('/auth/login'); }}
+            <button onClick={openMessageModal} disabled={msgChecking}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all ${msgSent ? 'bg-emerald/10 border border-emerald/20 text-emerald' : 'btn-primary'}`}>
-              <MessageSquare size={13} /> {msgSent ? 'Sent' : 'Message'}
+              {msgChecking ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} {msgSent ? 'Sent' : 'Message'}
             </button>
           )}
           <button onClick={() => setMoreMenuOpen(o => !o)}

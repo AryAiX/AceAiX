@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight,
-  ChevronLeft, Check, Trophy, Users, Stethoscope,
+  ChevronLeft, Check, Trophy, Users, Stethoscope, CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types';
 import { BrandMark } from '../../components/BrandMark';
+import { validateDateOfBirth } from '../../lib/dateOfBirth';
 
 /* ─────────────────────────────────────────────────────────────
-   Role groups — Coach and Club both map to role='club' in the DB
-   (they share the recruiter dashboard)
+   Role groups — recruiter roles share a dashboard but retain their DB role.
 ───────────────────────────────────────────────────────────── */
 const ROLE_GROUPS = [
   {
@@ -33,7 +33,7 @@ const ROLE_GROUPS = [
     dbRole: 'scout' as UserRole,          // default sub-role
     subRoles: [
       { label: 'Scout / Recruiter', desc: 'Search and track athlete talent intelligently', dbRole: 'scout' as UserRole },
-      { label: 'Coach',             desc: 'Manage players, sessions and development',      dbRole: 'club'  as UserRole },
+      { label: 'Coach',             desc: 'Manage players, sessions and development',      dbRole: 'coach' as UserRole },
       { label: 'Club / Team',       desc: 'Recruitment pipeline and squad analytics',      dbRole: 'club'  as UserRole },
     ],
   },
@@ -72,6 +72,7 @@ export default function RegisterPage() {
   });
 
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -86,8 +87,9 @@ export default function RegisterPage() {
   useEffect(() => {
     // honour ?role= param
     const param = searchParams.get('role') as UserRole | null;
-    if (param === 'scout' || param === 'club') {
-      setSel({ groupId: 'scout-group', dbRole: param, label: param === 'scout' ? 'Scout / Recruiter' : 'Club / Team', color: '#2F80ED', textDark: false });
+    if (param === 'scout' || param === 'club' || param === 'coach') {
+      const label = param === 'scout' ? 'Scout / Recruiter' : param === 'coach' ? 'Coach' : 'Club / Team';
+      setSel({ groupId: 'scout-group', dbRole: param, label, color: '#2F80ED', textDark: false });
       setExpanded('scout-group');
     } else if (param === 'medical_partner') {
       setSel({ groupId: 'medical', dbRole: 'medical_partner', label: 'Medical Partner', color: '#1FB57A', textDark: false });
@@ -98,13 +100,18 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError('');
-    const { error: err } = await signUp(email, password, sel.dbRole, fullName);
+    const dateError = validateDateOfBirth(dateOfBirth);
+    if (dateError) {
+      setError(dateError);
+      return;
+    }
+    setLoading(true);
+    const { error: err } = await signUp(email, password, sel.dbRole, fullName, dateOfBirth);
     if (err) { setError(err.message || 'Registration failed'); setLoading(false); return; }
     setDone(true);
     setLoading(false);
-    setTimeout(() => navigate('/dashboard'), 900);
+    setTimeout(() => navigate('/auth/onboarding'), 900);
   }
 
   const accent = sel.color;
@@ -345,6 +352,29 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
+                {/* date of birth */}
+                <div>
+                  <label htmlFor="date-of-birth" className="block text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">
+                    Date of birth
+                  </label>
+                  <div className="relative">
+                    <CalendarDays size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+                    <input
+                      id="date-of-birth"
+                      type="date"
+                      value={dateOfBirth}
+                      onChange={e => setDateOfBirth(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none transition-all [color-scheme:dark]"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', caretColor: accent }}
+                      required
+                      aria-describedby="date-of-birth-help"
+                    />
+                  </div>
+                  <p id="date-of-birth-help" className="text-[10px] text-white/25 mt-1.5">
+                    Required for age-appropriate safety settings. You must be 13 or older.
+                  </p>
+                </div>
+
                 {/* email */}
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-wider text-white/30 mb-1.5">Email address</label>
@@ -376,7 +406,7 @@ export default function RegisterPage() {
                 </div>
 
                 {error && (
-                  <div className="rounded-xl px-4 py-3 text-sm flex items-start gap-2.5"
+                  <div role="alert" aria-live="polite" className="rounded-xl px-4 py-3 text-sm flex items-start gap-2.5"
                     style={{ background: 'rgba(239,83,80,0.08)', border: '1px solid rgba(239,83,80,0.25)', color: '#EF5350' }}>
                     <span className="flex-shrink-0 mt-0.5">!</span>{error}
                   </div>

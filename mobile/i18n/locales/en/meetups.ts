@@ -16,6 +16,8 @@ export const meetups = {
   // ── The tab ────────────────────────────────────────────────────────────────
   title: 'Play',
   subtitle: 'Find people to play with, wherever you are',
+  adultsOnlyBody: 'Finding people to play with is only available once you are 18. Until then, use Discover, Challenges and Opportunities.',
+  adultsOnlyTitle: 'Play is for adults',
 
   // ── Searching ──────────────────────────────────────────────────────────────
   searchPlace: 'Where? City, area or venue',

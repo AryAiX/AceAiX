@@ -8,7 +8,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { SafeAreaView, Edge } from 'react-native-safe-area-context';
+import { SafeAreaView, Edge, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -47,6 +47,7 @@ export function Screen({
 }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
+  const insets = useSafeAreaInsets();
 
   const bg = background === 'surface' ? colors.surface : colors.bg;
 
@@ -93,7 +94,7 @@ export function Screen({
               borderTopColor: colors.divider,
               paddingHorizontal: spacing.lg,
               paddingTop: spacing.md,
-              paddingBottom: Platform.OS === 'ios' ? spacing.xxl : spacing.lg,
+              paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm,
             },
           ]}
         >

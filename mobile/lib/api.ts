@@ -335,6 +335,14 @@ export async function toggleFollow(userId: string) {
   return data as { following: boolean; followers_count: number };
 }
 
+/** Joined profiles can be null (deleted / RLS-hidden); never return those rows. */
+function asUserSummary(value: unknown): UserSummary | null {
+  const row = Array.isArray(value) ? value[0] : value;
+  if (!row || typeof row !== 'object') return null;
+  const id = (row as { id?: unknown }).id;
+  return typeof id === 'string' && id.length > 0 ? (row as UserSummary) : null;
+}
+
 export async function getFollowers(userId: string): Promise<UserSummary[]> {
   const { data, error } = await supabase
     .from('follows')
@@ -342,9 +350,9 @@ export async function getFollowers(userId: string): Promise<UserSummary[]> {
     .eq('following_id', userId)
     .limit(200);
   if (error) throw new AppError(error);
-  return (data ?? []).map((r) =>
-    Array.isArray(r.follower) ? r.follower[0] : r.follower,
-  ) as UserSummary[];
+  return (data ?? [])
+    .map((r) => asUserSummary(r.follower))
+    .filter((person): person is UserSummary => person != null);
 }
 
 export async function getFollowing(userId: string): Promise<UserSummary[]> {
@@ -354,9 +362,9 @@ export async function getFollowing(userId: string): Promise<UserSummary[]> {
     .eq('follower_id', userId)
     .limit(200);
   if (error) throw new AppError(error);
-  return (data ?? []).map((r) =>
-    Array.isArray(r.following) ? r.following[0] : r.following,
-  ) as UserSummary[];
+  return (data ?? [])
+    .map((r) => asUserSummary(r.following))
+    .filter((person): person is UserSummary => person != null);
 }
 
 // ── Discovery ────────────────────────────────────────────────────────────────

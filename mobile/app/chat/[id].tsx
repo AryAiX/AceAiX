@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Keyboard, Platform, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Ban } from 'lucide-react-native';
 
@@ -279,6 +279,26 @@ export default function ChatScreen() {
      from offering to message nobody. */
   const peerFirstName = (peer.data?.full_name ?? '').trim().split(/\s+/)[0] ?? '';
 
+  /* KeyboardAvoidingView is unreliable with an inverted FlatList. Android 15
+     edge-to-edge windows also no longer reliably resize, so lift the thread
+     from keyboard events on both platforms. */
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+
   if (!conversationId) {
     return (
       <Screen scroll={false} padded={false}>
@@ -295,7 +315,8 @@ export default function ChatScreen() {
   }
 
   return (
-    <Screen scroll={false} padded={false} keyboardAvoiding testID="chat-screen">
+    <Screen scroll={false} padded={false} testID="chat-screen">
+      <View style={{ flex: 1, paddingBottom: keyboardHeight }}>
       <ChatHeader
         peer={peer.data}
         loading={peer.loading}
@@ -401,6 +422,7 @@ export default function ChatScreen() {
           toast.info(t('messaging.blockedFromThread'));
         }}
       />
+      </View>
     </Screen>
   );
 }

@@ -26,7 +26,12 @@ export default function FollowersScreen() {
   const mine = useAsync(() => getFollowing(myId as string), [myId], { enabled: !!myId });
 
   const followingIds = useMemo(
-    () => new Set((mine.data ?? []).map((person) => person.id)),
+    () =>
+      new Set(
+        (mine.data ?? [])
+          .map((person) => person?.id)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
     [mine.data],
   );
 

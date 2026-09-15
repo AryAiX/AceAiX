@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useMyAthlete } from '../hooks/useAthlete';
 import { safeInternalPath } from '../lib/navigation';
+import { isRecruiterRole } from '../lib/accessControl';
 import { listNotifications, unreadCount as fetchUnreadCount, markNotificationRead } from '../api/notifications';
 import type { Notification } from '../types';
 import { BrandMark } from './BrandMark';
@@ -48,7 +49,7 @@ function getNav(role: string | null, basePath: string): NavItem[] {
     { label: 'Messages',      path: `${basePath}/messages`,      icon: <MessageSquare size={18} /> },
     { label: 'Settings',      path: `${basePath}/settings`,      icon: <Settings size={18} /> },
   ];
-  if (role === 'scout' || role === 'club') return [
+  if (isRecruiterRole(role)) return [
     { label: 'Dashboard',  path: `${basePath}/dashboard`,  icon: <LayoutDashboard size={18} /> },
     { label: 'Search',     path: `${basePath}/search`,     icon: <Search size={18} /> },
     { label: 'Watchlists', path: `${basePath}/watchlists`, icon: <Users size={18} /> },
@@ -82,7 +83,7 @@ function getNav(role: string | null, basePath: string): NavItem[] {
 
 function getBasePath(role: string | null) {
   if (role === 'athlete') return '/athlete';
-  if (role === 'scout' || role === 'club') return '/recruiter';
+  if (isRecruiterRole(role)) return '/recruiter';
   if (role === 'medical_partner') return '/partner';
   if (role === 'admin' || role === 'super_admin') return '/admin';
   return '/athlete';
@@ -277,7 +278,7 @@ export default function AppLayout() {
               event.preventDefault();
               const value = (new FormData(event.currentTarget).get('q') as string | null)?.trim();
               if (!value) return;
-              navigate(role === 'scout' || role === 'club'
+              navigate(isRecruiterRole(role)
                 ? `/recruiter/search?q=${encodeURIComponent(value)}`
                 : `/athletes?q=${encodeURIComponent(value)}`);
             }}

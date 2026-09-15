@@ -285,4 +285,4 @@ export {
   hasPushPermission,
 } from '@/hooks/usePushNotifications';
 
-export { pushSupported } from '@/lib/push';
+export { pushSupported, getPermission as getPushPermissionState } from '@/lib/push';

@@ -6,6 +6,7 @@ import {
   Trophy, Stethoscope, Check,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { isRecruiterRole } from '../../lib/accessControl';
 import { BrandMark } from '../../components/BrandMark';
 
 /* ── login role groups ──────────────────────────────────────── */
@@ -98,7 +99,7 @@ export default function LoginPage() {
     if (!redirecting || !user || !profile) return;
     const role = profile.role;
     if (role === 'athlete') navigate('/athlete/dashboard');
-    else if (role === 'scout' || role === 'club') navigate('/recruiter/dashboard');
+    else if (isRecruiterRole(role)) navigate('/recruiter/dashboard');
     else if (role === 'medical_partner') navigate('/partner/dashboard');
     else if (role === 'admin' || role === 'super_admin') navigate('/admin/dashboard');
     else navigate('/athlete/dashboard');

@@ -19,6 +19,12 @@ import SectionCard from '../components/profile/SectionCard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { getCoachById, listCoaches } from '../api/coaches';
+import {
+  canMessageUser,
+  getOrCreateConversation,
+  messagePermissionReason,
+  sendMessage,
+} from '../api/messaging';
 
 const DEFAULT_COVER = 'https://images.pexels.com/photos/399187/pexels-photo-399187.jpeg?auto=compress&cs=tinysrgb&w=1400';
 
@@ -101,8 +107,9 @@ function BlockModal({ name, isBlocked, onConfirm, onCancel, loading }: {
 }
 
 /* ─── Message Modal ─── */
-function MessageModal({ name, onClose, onSend, sending, isAuth }: {
-  name: string; onClose: () => void; onSend: (t: string) => Promise<void>; sending: boolean; isAuth: boolean;
+function MessageModal({ name, onClose, onSend, sending, error, isAuth }: {
+  name: string; onClose: () => void; onSend: (t: string) => Promise<void>;
+  sending: boolean; error: string; isAuth: boolean;
 }) {
   const [text, setText] = useState('');
   useEffect(() => {
@@ -129,9 +136,10 @@ function MessageModal({ name, onClose, onSend, sending, isAuth }: {
         ) : (
           <>
             <textarea value={text} onChange={e => setText(e.target.value)} placeholder={`Write a message…`} rows={4} className="input-dark resize-none mb-4 text-sm" autoFocus />
+            {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted">{text.length}/500</span>
-              <button onClick={() => text.trim() && onSend(text)} disabled={!text.trim() || sending}
+              <button onClick={() => text.trim() && onSend(text)} disabled={!text.trim() || sending || text.length > 500}
                 className="btn-primary px-5 py-2.5 text-sm inline-flex items-center gap-2 disabled:opacity-50">
                 {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Send
               </button>
@@ -319,8 +327,11 @@ export default function CoachPublicProfilePage() {
   const [blockConfirmOpen, setBlockConfirmOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [msgOpen, setMsgOpen] = useState(false);
+  const [msgChecking, setMsgChecking] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [msgSent, setMsgSent] = useState(false);
+  const [msgError, setMsgError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [shared, setShared] = useState(false);
   const [endorsedAttrs, setEndorsedAttrs] = useState<Set<string>>(new Set());
   const [expandedSpells, setExpandedSpells] = useState<Set<number>>(new Set([0]));
@@ -388,45 +399,87 @@ export default function CoachPublicProfilePage() {
   async function toggleFollow() {
     if (!user) { navigate('/auth/login'); return; }
     setFollowLoading(true);
-    if (isFollowing) {
-      await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
-      setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
-    } else {
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: profileUserId });
-      setIsFollowing(true); setFollowerCount(c => c + 1);
+    setActionError('');
+    try {
+      if (isFollowing) {
+        const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
+        if (error) throw new Error(error.message);
+        setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+      } else {
+        const { error } = await supabase.from('follows').insert({ follower_id: user.id, following_id: profileUserId });
+        if (error) throw new Error(error.message);
+        setIsFollowing(true); setFollowerCount(c => c + 1);
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Follow status could not be updated.');
+    } finally {
+      setFollowLoading(false);
     }
-    setFollowLoading(false);
   }
 
   async function toggleBlock() {
     if (!user) { navigate('/auth/login'); return; }
     setBlockLoading(true);
-    if (isBlocked) {
-      await supabase.from('user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', profileUserId);
-      setIsBlocked(false);
-    } else {
-      if (isFollowing) {
-        await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
-        setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+    setActionError('');
+    try {
+      if (isBlocked) {
+        const { error } = await supabase.from('user_blocks').delete().eq('blocker_id', user.id).eq('blocked_id', profileUserId);
+        if (error) throw new Error(error.message);
+        setIsBlocked(false);
+      } else {
+        if (isFollowing) {
+          const { error } = await supabase.from('follows').delete().eq('follower_id', user.id).eq('following_id', profileUserId);
+          if (error) throw new Error(error.message);
+          setIsFollowing(false); setFollowerCount(c => Math.max(0, c - 1));
+        }
+        const { error } = await supabase.from('user_blocks').insert({ blocker_id: user.id, blocked_id: profileUserId });
+        if (error) throw new Error(error.message);
+        setIsBlocked(true);
       }
-      await supabase.from('user_blocks').insert({ blocker_id: user.id, blocked_id: profileUserId });
-      setIsBlocked(true);
+      setBlockConfirmOpen(false);
+      setMoreMenuOpen(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Block status could not be updated.');
+    } finally {
+      setBlockLoading(false);
     }
-    setBlockLoading(false); setBlockConfirmOpen(false); setMoreMenuOpen(false);
   }
 
   async function handleSendMessage(text: string) {
     if (!user) return;
     setMsgSending(true);
-    const { data: existing } = await supabase.from('conversations').select('id')
-      .or(`and(participant_1_id.eq.${user.id},participant_2_id.eq.${profileUserId}),and(participant_1_id.eq.${profileUserId},participant_2_id.eq.${user.id})`).maybeSingle();
-    let convId = existing?.id;
-    if (!convId) {
-      const { data: nc } = await supabase.from('conversations').insert({ participant_1_id: user.id, participant_2_id: profileUserId }).select('id').single();
-      convId = nc?.id;
+    setMsgError('');
+    try {
+      const conversation = await getOrCreateConversation(user.id, profileUserId);
+      await sendMessage(conversation.id, user.id, text);
+      setMsgSent(true);
+      setMsgOpen(false);
+    } catch (error) {
+      setMsgError(error instanceof Error ? error.message : 'Message could not be sent.');
+    } finally {
+      setMsgSending(false);
     }
-    if (convId) await supabase.from('messages').insert({ conversation_id: convId, sender_id: user.id, content: text });
-    setMsgSending(false); setMsgSent(true); setMsgOpen(false);
+  }
+
+  async function openMessageModal() {
+    if (!user) {
+      navigate('/auth/login');
+      return;
+    }
+    setMsgChecking(true);
+    setMsgError('');
+    try {
+      const permission = await canMessageUser(profileUserId);
+      if (!permission.allowed) {
+        setMsgError(messagePermissionReason(permission.reason));
+        return;
+      }
+      setMsgOpen(true);
+    } catch (error) {
+      setMsgError(error instanceof Error ? error.message : 'Messaging availability could not be checked.');
+    } finally {
+      setMsgChecking(false);
+    }
   }
 
   const totalWins = coach.coachingSpells.reduce((s, c) => s + c.wins, 0);
@@ -482,9 +535,9 @@ export default function CoachPublicProfilePage() {
                 </button>
               )}
               {!isSelf && !isBlocked && (
-                <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+                <button onClick={openMessageModal} disabled={msgChecking}
                   className="btn-primary px-4 py-1.5 text-xs rounded-lg font-semibold inline-flex items-center gap-1.5">
-                  <MessageSquare size={11} /> Message
+                  {msgChecking ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />} Message
                 </button>
               )}
             </div>
@@ -577,9 +630,9 @@ export default function CoachPublicProfilePage() {
                 <Star size={13} className="text-ink" /> Endorse
               </MagneticButton>
               {!isSelf && !isBlocked && (
-                <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+                <button onClick={openMessageModal} disabled={msgChecking}
                   className={`px-5 py-2 inline-flex items-center gap-2 text-sm rounded-xl font-semibold transition-all ${msgSent ? 'bg-emerald/10 border border-emerald/20 text-emerald' : 'btn-primary'}`}>
-                  <MessageSquare size={14} /> {msgSent ? 'Sent' : 'Message'}
+                  {msgChecking ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />} {msgSent ? 'Sent' : 'Message'}
                 </button>
               )}
               {isBlocked && !isSelf && (
@@ -612,6 +665,9 @@ export default function CoachPublicProfilePage() {
                     </div>
                   )}
                 </div>
+              )}
+              {(msgError || actionError) && !msgOpen && (
+                <p role="alert" className="w-full text-xs text-coral">{msgError || actionError}</p>
               )}
             </div>
           </div>
@@ -918,16 +974,16 @@ export default function CoachPublicProfilePage() {
             </button>
           )}
           {!isBlocked && (
-            <button onClick={() => user ? setMsgOpen(true) : navigate('/auth/login')}
+            <button onClick={openMessageModal} disabled={msgChecking}
               className={`flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 ${msgSent ? 'bg-emerald/10 border border-emerald/20 text-emerald' : 'btn-primary'}`}>
-              <MessageSquare size={13} /> Message
+              {msgChecking ? <Loader2 size={13} className="animate-spin" /> : <MessageSquare size={13} />} Message
             </button>
           )}
         </div>
       )}
 
       {blockConfirmOpen && <BlockModal name={coach.name} isBlocked={isBlocked} onConfirm={toggleBlock} onCancel={() => setBlockConfirmOpen(false)} loading={blockLoading} />}
-      {msgOpen && <MessageModal name={coach.name} onClose={() => setMsgOpen(false)} onSend={handleSendMessage} sending={msgSending} isAuth={!!user} />}
+      {msgOpen && <MessageModal name={coach.name} onClose={() => setMsgOpen(false)} onSend={handleSendMessage} sending={msgSending} error={msgError} isAuth={!!user} />}
     </div>
   );
 }

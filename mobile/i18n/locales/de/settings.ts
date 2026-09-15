@@ -126,6 +126,9 @@ export const settings = {
     'Dein Handy lässt AceAiX keine Mitteilungen senden, deshalb erreicht dich nichts davon, solange die App zu ist.',
   turnOnPush: 'Push einschalten',
   pushStillOff: 'Push ist weiterhin aus. Du kannst es in den Einstellungen deines Handys anschalten.',
+  scoutingRecruiterOnlyBody: 'Scouting-Einstellungen sind für Trainer, Clubs und Scouts. Athletinnen und Athleten legen Sport und Offenheit in ihrem Profil fest.',
+  scoutingRecruiterOnlyTitle: 'Für Trainer und Clubs',
+  openSystemSettings: 'Einstellungen öffnen',
   autoSaveNote: 'Änderungen speichern sich von selbst.',
 
   sectionHowWeReach: 'Wie wir dich erreichen',

@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   Divider,
+  EmptyState,
   ErrorState,
   Header,
   Screen,
@@ -20,6 +21,7 @@ import { Stepper } from '@/components/settings/Stepper';
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { getMatchPreferences, saveMatchPreferences } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import {
@@ -83,6 +85,7 @@ export default function ScoutingPreferencesScreen() {
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const { isRecruiter } = useAuth();
 
   const loaded = useAsync(getMatchPreferences, []);
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -137,6 +140,17 @@ export default function ScoutingPreferencesScreen() {
       setSaving(false);
     }
   }, [draft, toast, t]);
+
+  if (!isRecruiter) {
+    return (
+      <Screen header={<Header title={t('settings.scoutingTitle')} back bordered />}>
+        <EmptyState
+          title={t('settings.scoutingRecruiterOnlyTitle')}
+          body={t('settings.scoutingRecruiterOnlyBody')}
+        />
+      </Screen>
+    );
+  }
 
   if (loaded.loading) {
     return (

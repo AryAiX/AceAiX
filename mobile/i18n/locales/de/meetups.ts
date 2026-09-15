@@ -25,6 +25,8 @@ export const meetups = {
   // ── Der Tab ────────────────────────────────────────────────────────────────
   title: 'Spielen',
   subtitle: 'Finde Leute zum Spielen, egal wo du gerade bist',
+  adultsOnlyBody: 'Mitspieler finden ist erst ab 18 möglich. Bis dahin nutze Entdecken, Challenges und Chancen.',
+  adultsOnlyTitle: 'Spielen ist für Erwachsene',
 
   // ── Suche ──────────────────────────────────────────────────────────────────
   searchPlace: 'Wo? Stadt, Gegend oder Anlage',

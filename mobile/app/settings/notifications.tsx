@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import {
   Award,
   Bell,
@@ -21,6 +21,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotificationPreferences, saveNotificationPreferences } from '@/lib/api';
 import {
+  getPushPermissionState,
   hasPushPermission,
   pushSupported,
   requestPushPermissionSafely,
@@ -57,6 +58,7 @@ export default function NotificationSettingsScreen() {
   const [saved, setSaved] = useState(false);
 
   const [pushGranted, setPushGranted] = useState(true);
+  const [pushBlocked, setPushBlocked] = useState(false);
   const [asking, setAsking] = useState(false);
 
   const pending = useRef<Partial<Prefs>>({});
@@ -72,8 +74,10 @@ export default function NotificationSettingsScreen() {
   useEffect(() => {
     if (!pushSupported) return;
     let cancelled = false;
-    hasPushPermission().then((granted) => {
-      if (!cancelled) setPushGranted(granted);
+    Promise.all([hasPushPermission(), getPushPermissionState()]).then(([granted, state]) => {
+      if (cancelled) return;
+      setPushGranted(granted);
+      setPushBlocked(state === 'blocked');
     });
     return () => {
       cancelled = true;
@@ -122,6 +126,12 @@ export default function NotificationSettingsScreen() {
   const enablePush = useCallback(async () => {
     setAsking(true);
     try {
+      const state = await getPushPermissionState();
+      if (state === 'blocked') {
+        await Linking.openSettings();
+        toast.info(t('settings.pushStillOff'));
+        return;
+      }
       const granted = await requestPushPermissionSafely();
       setPushGranted(granted);
       if (granted) {
@@ -194,7 +204,7 @@ export default function NotificationSettingsScreen() {
                   {t('settings.pushOffBody')}
                 </Text>
                 <Button
-                  label={t('settings.turnOnPush')}
+                  label={t(pushBlocked ? 'settings.openSystemSettings' : 'settings.turnOnPush')}
                   size="sm"
                   loading={asking}
                   onPress={enablePush}

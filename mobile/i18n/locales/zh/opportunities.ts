@@ -246,6 +246,8 @@ export const opportunities = {
   // ── 发布一条机会 ────────────────────────────────────────────────────────────
   post: {
     title: '发布一条机会',
+    recruiterOnlyTitle: '面向教练与俱乐部',
+    recruiterOnlyBody: '仅教练、俱乐部与球探可以发布机会。你仍可在「机会」中浏览并申请。',
     submit: '发布',
     posted: '已发布。符合条件的运动员会最先看到。',
     checkFields: '请检查标红的字段。',

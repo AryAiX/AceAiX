@@ -1,7 +1,19 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 import { Brand } from '@/theme/tokens';
+
+/*
+ * Expo Go removed Android remote-notification support in SDK 53 and importing
+ * expo-notifications there raises a fatal development overlay. A development
+ * or store build still loads the real native module; Expo Go gets a truthful
+ * unsupported implementation so the rest of the app remains testable.
+ */
+const isAndroidExpoGo =
+  Platform.OS === 'android' && Constants.appOwnership === 'expo';
+const Notifications: typeof import('expo-notifications') | null = isAndroidExpoGo
+  ? null
+  : require('expo-notifications');
 
 /**
  * Everything in the app that touches `expo-notifications`, in one file.
@@ -29,12 +41,14 @@ import { Brand } from '@/theme/tokens';
  */
 
 /** Whether this platform can do push at all. */
-export const pushSupported = Platform.OS === 'ios' || Platform.OS === 'android';
+export const pushSupported =
+  Platform.OS === 'ios' || (Platform.OS === 'android' && !isAndroidExpoGo);
 
 const ANDROID_CHANNEL_ID = 'default';
 
 /** Notifications that arrive while the app is open still get shown. */
 export function configureForeground(): void {
+  if (!Notifications) return;
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -51,7 +65,7 @@ export function configureForeground(): void {
 
 /** Android will not display anything without a channel. Safe to call repeatedly. */
 export async function ensureAndroidChannel(): Promise<void> {
-  if (Platform.OS !== 'android') return;
+  if (Platform.OS !== 'android' || !Notifications) return;
   try {
     await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
       name: 'AceAiX',
@@ -73,6 +87,7 @@ export type PermissionState = 'granted' | 'denied' | 'blocked' | 'undetermined';
  * appearing on screen, which looks like a broken button.
  */
 export async function getPermission(): Promise<PermissionState> {
+  if (!Notifications) return 'undetermined';
   try {
     const current = await Notifications.getPermissionsAsync();
     if (
@@ -88,6 +103,7 @@ export async function getPermission(): Promise<PermissionState> {
 }
 
 export async function requestPermission(): Promise<boolean> {
+  if (!Notifications) return false;
   try {
     const next = await Notifications.requestPermissionsAsync({
       ios: { allowAlert: true, allowBadge: true, allowSound: true },
@@ -103,6 +119,7 @@ export async function requestPermission(): Promise<boolean> {
 
 /** The Expo push token, or null when this build cannot mint one. */
 export async function getExpoToken(projectId: string): Promise<string | null> {
+  if (!Notifications) return null;
   try {
     const token = await Notifications.getExpoPushTokenAsync({ projectId });
     return token?.data ?? null;
@@ -115,6 +132,7 @@ export type PushPayload = Record<string, unknown> | undefined;
 
 /** Subscribe to taps on a notification. Returns an unsubscribe. */
 export function onNotificationTap(handler: (data: PushPayload) => void): () => void {
+  if (!Notifications) return () => {};
   try {
     const subscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
@@ -135,6 +153,7 @@ export function onNotificationTap(handler: (data: PushPayload) => void): () => v
 
 /** A tap that launched the app from cold has no live listener to catch it. */
 export async function coldStartTap(): Promise<PushPayload> {
+  if (!Notifications) return undefined;
   try {
     const response = await Notifications.getLastNotificationResponseAsync();
     return response?.notification.request.content.data as PushPayload;

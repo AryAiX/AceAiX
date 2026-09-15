@@ -132,6 +132,9 @@ export const settings = {
   turnOnPush: 'Activar las push',
   pushStillOff:
     'Las push siguen desactivadas. Puedes activarlas en los ajustes de tu teléfono.',
+  scoutingRecruiterOnlyBody: 'Las preferencias de scouting son para entrenadores, clubes y ojeadores. Los atletas configuran su deporte y disponibilidad en su perfil.',
+  scoutingRecruiterOnlyTitle: 'Para entrenadores y clubes',
+  openSystemSettings: 'Abrir ajustes',
   autoSaveNote: 'Los cambios se guardan solos.',
 
   sectionHowWeReach: 'Cómo te avisamos',

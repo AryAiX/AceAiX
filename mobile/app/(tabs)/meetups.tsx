@@ -20,6 +20,7 @@ import {
 import { MeetupRow } from '@/components/meetups/MeetupCard';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { findMeetups, myMeetups, type MeetupCard } from '@/lib/api.meetups';
@@ -31,9 +32,9 @@ import { findMeetups, myMeetups, type MeetupCard } from '@/lib/api.meetups';
  * "what have I signed up for". Searching is the default, since the second
  * question is only interesting once you have answered the first.
  *
- * The eighteen-plus rule is not implemented here. `find_meetups` returns
- * nothing to a minor and this screen renders its ordinary empty state — but a
- * minor never reaches it, because the tab is not in their tab bar.
+ * Meetups are eighteen-plus. The database returns nothing to a minor, the tab
+ * is hidden from their bar, and this screen also gates deep links so a minor
+ * who arrives here sees an adults-only message rather than an empty list.
  */
 
 type Tab = 'find' | 'mine';
@@ -54,6 +55,8 @@ export default function MeetupsScreen() {
   const { colors, spacing } = theme;
   const router = useRouter();
   const t = useT();
+  const { profile } = useAuth();
+  const canMeet = profile?.is_minor === false;
 
   const [tab, setTab] = useState<Tab>('find');
   const [place, setPlace] = useState('');
@@ -185,6 +188,18 @@ export default function MeetupsScreen() {
       ) : null}
     </View>
   );
+
+  if (!canMeet) {
+    return (
+      <Screen header={<Header title={t('meetups.title')} />}>
+        <EmptyState
+          icon={<Users size={26} color={colors.textMuted} />}
+          title={t('meetups.adultsOnlyTitle')}
+          body={t('meetups.adultsOnlyBody')}
+        />
+      </Screen>
+    );
+  }
 
   if (tab === 'mine') {
     return (

@@ -9,6 +9,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 import { Directory, File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -112,13 +113,19 @@ export default function PlayerCardScreen() {
       file.create({ overwrite: true });
       file.write(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
 
-      /* React Native's own share sheet — no extra native module. iOS attaches
-         the file; Android takes the text and ignores the url, which is why the
-         message stands on its own. */
-      await Share.share({
-        url: file.uri,
-        message: `${card.name} — ${card.overall}/100 on AceAiX`,
-      });
+      /* iOS attaches the file via Share.url; Android ignores url, so use
+         expo-sharing there to actually hand the PNG to the share sheet. */
+      if (Platform.OS === 'android' && (await Sharing.isAvailableAsync())) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'image/png',
+          dialogTitle: t('profile.playerCardShare'),
+        });
+      } else {
+        await Share.share({
+          url: file.uri,
+          message: `${card.name} — ${card.overall}/100 on AceAiX`,
+        });
+      }
       toast.success(t('profile.playerCardShared'));
     } catch {
       toast.error(t('profile.playerCardFailed'));

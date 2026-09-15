@@ -2,7 +2,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { UserRole } from './types';
-import { canAccessRole } from './lib/accessControl';
+import {
+  RECRUITER_ROLES,
+  canAccessRole,
+  isRecruiterRole,
+  requiresAgeReview,
+} from './lib/accessControl';
 
 import AppLayout from './components/AppLayout';
 
@@ -36,6 +41,10 @@ import RegisterPage from './pages/auth/RegisterPage';
 import OnboardingPage from './pages/auth/OnboardingPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import {
+  AgeReviewPage,
+  SuspendedAccountPage,
+} from './pages/auth/RestrictedAccountPages';
 
 // Athlete
 import AthleteDashboard from './pages/athlete/DashboardPage';
@@ -81,14 +90,14 @@ import AdminSystem from './pages/admin/SystemConfigPage';
 function RoleRedirect() {
   const { role } = useAuth();
   if (role === 'athlete') return <Navigate to="/athlete/dashboard" replace />;
-  if (role === 'scout' || role === 'club') return <Navigate to="/recruiter/dashboard" replace />;
+  if (isRecruiterRole(role)) return <Navigate to="/recruiter/dashboard" replace />;
   if (role === 'medical_partner') return <Navigate to="/partner/dashboard" replace />;
   if (role === 'admin' || role === 'super_admin') return <Navigate to="/admin/dashboard" replace />;
   return <Navigate to="/" replace />;
 }
 
-function RequireAuth({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: UserRole[] }) {
-  const { user, loading, role } = useAuth();
+function RequireAuth({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: readonly UserRole[] }) {
+  const { user, loading, profile, role } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -103,6 +112,36 @@ function RequireAuth({ children, allowedRoles }: { children: React.ReactNode; al
   }
 
   if (!user) return <Navigate to="/auth/login" state={{ from: location }} replace />;
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-page flex items-center justify-center">
+        <p className="text-muted text-sm">Your account profile could not be loaded.</p>
+      </div>
+    );
+  }
+
+  const inOnboarding = location.pathname === '/auth/onboarding';
+  const inAgeReview = location.pathname === '/age-review';
+  const inSuspendedAccount = location.pathname === '/account-paused';
+  const needsAgeReview = requiresAgeReview(profile);
+
+  if (needsAgeReview && !inAgeReview) return <Navigate to="/age-review" replace />;
+  if (profile.is_suspended && !needsAgeReview && !inSuspendedAccount) {
+    return <Navigate to="/account-paused" replace />;
+  }
+  if (inAgeReview && !needsAgeReview) return <Navigate to="/dashboard" replace />;
+  if (inSuspendedAccount && !profile.is_suspended) return <Navigate to="/dashboard" replace />;
+  if (
+    profile.onboarding_completed === false &&
+    !inOnboarding &&
+    !inAgeReview &&
+    !inSuspendedAccount
+  ) {
+    return <Navigate to="/auth/onboarding" replace />;
+  }
+  if (profile.onboarding_completed !== false && inOnboarding) {
+    return <Navigate to="/dashboard" replace />;
+  }
   if (allowedRoles && !canAccessRole(role, allowedRoles)) return <Navigate to="/dashboard" replace />;
 
   return <>{children}</>;
@@ -138,6 +177,8 @@ export default function Router() {
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/onboarding" element={<RequireAuth><OnboardingPage /></RequireAuth>} />
+        <Route path="/age-review" element={<RequireAuth><AgeReviewPage /></RequireAuth>} />
+        <Route path="/account-paused" element={<RequireAuth><SuspendedAccountPage /></RequireAuth>} />
 
         {/* Role-based redirect */}
         <Route path="/dashboard" element={<RequireAuth><RoleRedirect /></RequireAuth>} />
@@ -162,7 +203,7 @@ export default function Router() {
         </Route>
 
         {/* Recruiter routes */}
-        <Route path="/recruiter" element={<RequireAuth allowedRoles={['scout', 'club']}><AppLayout /></RequireAuth>}>
+        <Route path="/recruiter" element={<RequireAuth allowedRoles={RECRUITER_ROLES}><AppLayout /></RequireAuth>}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<RecruiterDashboard />} />
           <Route path="search" element={<RecruiterSearch />} />

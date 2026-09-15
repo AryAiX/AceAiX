@@ -11,6 +11,7 @@ import {
   Card,
   ConfirmSheet,
   Divider,
+  EmptyState,
   ErrorState,
   Header,
   Input,
@@ -25,6 +26,7 @@ import {
 import { TranslatableText } from '@/components/common/TranslatableText';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
@@ -53,6 +55,8 @@ export default function MeetupScreen() {
   const router = useRouter();
   const t = useT();
   const toast = useToast();
+  const { profile } = useAuth();
+  const canMeet = profile?.is_minor === false;
 
   const detail = useAsync(() => getMeetup(id!), [id], { refetchOnFocus: true });
 
@@ -126,6 +130,17 @@ export default function MeetupScreen() {
   }, [detail, id, t, toast]);
 
   const header = <Header back title={meetup?.title ?? t('meetups.title')} />;
+
+  if (!canMeet) {
+    return (
+      <Screen header={<Header title={t('meetups.title')} back />}>
+        <EmptyState
+          title={t('meetups.adultsOnlyTitle')}
+          body={t('meetups.adultsOnlyBody')}
+        />
+      </Screen>
+    );
+  }
 
   if (detail.error && !data) {
     return (

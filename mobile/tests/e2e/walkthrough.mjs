@@ -65,7 +65,7 @@ const IGNORE =
 
 const results = [];
 
-async function visit(page, name, url, { wait = 1600, expect = [] } = {}) {
+async function visit(page, name, url, { wait = 1600, expect = [], minChars = 60 } = {}) {
   const errors = [];
   page.removeAllListeners('console');
   page.removeAllListeners('pageerror');
@@ -91,6 +91,7 @@ async function visit(page, name, url, { wait = 1600, expect = [] } = {}) {
     head: text.slice(0, 110).replace(/\n/g, ' | '),
     errors,
     missing,
+    minChars,
   });
 }
 
@@ -171,7 +172,8 @@ const TOUR = [
   ['score', '/score', {}],
   ['achievements', '/achievements', {}],
   ['notifications', '/notifications', {}],
-  ['inbox', '/inbox', {}],
+  // A valid inbox with one short conversation is intentionally sparse.
+  ['inbox', '/inbox', { expect: ['Messages'], minChars: 40 }],
   ['search', '/search', {}],
   ['edit-profile', '/edit-profile', {}],
   ['settings', '/settings', {}],
@@ -204,7 +206,7 @@ server.close();
 let failures = 0;
 console.log(`\n  ${ROLE} · ${SCHEME} · ${LANG}\n`);
 for (const r of results) {
-  const thin = r.chars < 60;
+  const thin = r.chars < r.minChars;
   const bad = r.errors.length > 0 || r.missing.length > 0 || thin;
   if (bad) failures += 1;
   console.log(`  ${bad ? 'FAIL' : 'ok  '} ${r.name.padEnd(24)} ${String(r.chars).padStart(5)} chars  ${r.head}`);

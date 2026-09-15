@@ -11,7 +11,13 @@ interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, role: UserRole, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    role: UserRole,
+    fullName: string,
+    dateOfBirth: string,
+  ) => Promise<{ error: Error | null }>;
   requestPasswordReset: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -98,7 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }
 
-  async function signUp(email: string, password: string, role: UserRole, fullName: string) {
+  async function signUp(
+    email: string,
+    password: string,
+    role: UserRole,
+    fullName: string,
+    dateOfBirth: string,
+  ) {
     if (session) {
       profileRequest.current += 1;
       setSession(null);
@@ -106,10 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       await supabase.auth.signOut();
     }
-    // The Edge Function creates a confirmed user server-side; then the browser
-    // signs in normally so signup lands inside the app with a real session.
+    // The Edge Function confirms the user only after profile and DOB persistence.
     const { error: signupError } = await supabase.functions.invoke('signup-user', {
-      body: { email, password, role, fullName },
+      body: { email, password, role, fullName, dateOfBirth },
     });
     if (signupError) {
       let message = signupError.message;

@@ -252,6 +252,8 @@ export const opportunities = {
   // ── Publier une opportunité ─────────────────────────────────────────────────
   post: {
     title: 'Publier une opportunité',
+    recruiterOnlyTitle: 'Pour les entraîneurs et clubs',
+    recruiterOnlyBody: 'Seuls les entraîneurs, clubs et recruteurs peuvent publier des opportunités. Vous pouvez toujours parcourir et postuler depuis Opportunités.',
     submit: 'Publier',
     posted: 'Publié. Les athlètes qui correspondent le verront en premier.',
     checkFields: 'Vérifie les champs signalés.',

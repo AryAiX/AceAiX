@@ -29,7 +29,11 @@ export default function FollowingScreen() {
 
   const followingIds = useMemo(() => {
     const source = isMe ? following.data : mine.data;
-    return new Set((source ?? []).map((person) => person.id));
+    return new Set(
+      (source ?? [])
+        .map((person) => person?.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
+    );
   }, [isMe, following.data, mine.data]);
 
   return (
