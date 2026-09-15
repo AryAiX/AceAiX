@@ -795,6 +795,62 @@ section { padding-block: clamp(72px, 9vw, 132px); position: relative; z-index: 1
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
 .hero-note { margin-top: 18px; font-size: 13.5px; color: var(--muted); }
 
+/* ── The hero capture ──────────────────────────────────────────
+   One field, because most people never reach the bottom of a page
+   this long and an address with nothing attached is worth far more
+   than no address at all. Everything else the full form asks —
+   role, sport, country, age — is asked down there, by people who
+   read the argument first.
+
+   It is a separate Netlify form (`early-access-quick`) rather than
+   the same one twice: Netlify keys submissions by form name, so two
+   forms sharing a name land in one list with half the columns empty
+   and no way to tell which came from where. Two names, two lists,
+   one `source` field in each to merge on. */
+.quick {
+  display: grid; gap: 10px; margin-top: 30px; max-width: 480px;
+}
+@media (min-width: 480px) { .quick { grid-template-columns: 1fr auto; } }
+.quick input[type="email"] {
+  width: 100%; box-sizing: border-box;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--edge); background: var(--panel-lo);
+  color: var(--ink); font: inherit; font-size: 16px;
+  transition: border-color .16s, box-shadow .16s;
+}
+.quick input::placeholder { color: var(--muted); }
+.quick input:focus-visible {
+  outline: none; border-color: var(--flame-lt);
+  box-shadow: 0 0 0 3px rgba(255,90,31,.22);
+}
+.quick input[aria-invalid="true"] { border-color: var(--bad); }
+.quick button {
+  padding: 14px 22px; border: 0; border-radius: 12px;
+  background: var(--g-action); color: #fff;
+  font: inherit; font-size: 15.5px; font-weight: 700; letter-spacing: .2px;
+  cursor: pointer; white-space: nowrap;
+  transition: transform .16s cubic-bezier(.2,.7,.3,1), filter .16s;
+}
+.quick button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+.quick button:disabled { opacity: .55; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .quick button:hover { transform: none; } }
+
+/* No tick-box up here, so the consent has to be readable at the point of
+   collection rather than buried — and the exact sentence is stored with the
+   submission, because "they consented" is worth nothing without "to what". */
+.quick-consent {
+  margin-top: 11px; font-size: 12.5px; line-height: 1.5; color: var(--muted);
+  max-width: 52ch;
+}
+.quick-msg { margin-top: 11px; font-size: 13.5px; line-height: 1.5; min-height: 1px; }
+.quick-msg.ok  { color: var(--ok); font-weight: 600; }
+.quick-msg.bad { color: var(--bad); }
+.quick-more {
+  display: inline-block; margin-top: 8px; font-size: 13.5px;
+  color: var(--ink); text-decoration: none;
+  border-bottom: 1px solid var(--edge-hi);
+}
+
 /* The load sequence. Each line arrives, then the phone settles. */
 .rise { animation: rise .82s cubic-bezier(.16,.84,.28,1) backwards; }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
@@ -1200,10 +1256,36 @@ footer {
         find you. AceAiX is where a young athlete builds a proper sporting
         profile and gets seen by the people who pick teams.
       </p>
-      <div class="hero-cta rise d5">
-        <a class="btn btn-primary" href="#get" data-cta>Join early access</a>
+      <!-- Before 1 October this is the page's real call to action, so it is a
+           field and not a button that scrolls somewhere. `live()` in the
+           countdown swaps the whole block back to the store buttons on launch
+           day, so nothing here needs editing that morning. -->
+      <div id="heroJoin">
+        <form class="quick rise d5" id="quick" name="early-access-quick" method="POST" novalidate
+              data-netlify="true" data-netlify-honeypot="bot-field">
+          <input type="hidden" name="form-name" value="early-access-quick">
+          <input type="hidden" name="source" value="site-hero">
+          <label class="sr" for="qEmail">Email address</label>
+          <input id="qEmail" name="email" type="email" autocomplete="email"
+                 placeholder="you@example.com" required maxlength="254">
+          <div class="nf-hp" aria-hidden="true">
+            <label for="qSite">Leave this empty</label>
+            <input id="qSite" name="bot-field" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <button type="submit" id="qGo">Save my place</button>
+        </form>
+        <p class="quick-consent rise d5" id="qConsentText">
+          One email when AceAiX opens, and nothing before it. Unsubscribe in one click.
+        </p>
+        <p class="quick-msg" id="qMsg" role="status" aria-live="polite"></p>
+        <p class="rise d6"><a class="quick-more" href="#score">See how the Talent Score works</a></p>
+      </div>
+
+      <div class="hero-cta rise d5" id="heroStores" hidden>
+        <a class="btn btn-primary" href="#get" data-cta>Get the app</a>
         <a class="btn btn-quiet" href="#score">See how the score works</a>
       </div>
+
       <p class="hero-note rise d6">Free for athletes. 13+. On the App Store and Google Play from 1 October 2026.</p>
     </div>
     <div class="hero-phone">
@@ -1946,6 +2028,122 @@ footer {
         });
     }
 
+  }
+
+  /* ── The hero capture ───────────────────────────────────────────────────
+     One field. Someone who gives only an address is worth far more than
+     someone who gives nothing, and most visitors never reach the full form.
+
+     Two things it does NOT do, on purpose:
+
+     It does not ask the age question. The guardian rule cannot be applied to
+     an answer nobody was asked for, so this form assumes nothing: it collects
+     an address and a consent sentence, and anything that depends on knowing
+     whether the person is a child — which is everything the guardian rule
+     governs — waits for the full form or for the app's own sign-up, where a
+     guardian approves the account anyway.
+
+     It does not use a tick-box. There is no room for one that would still be
+     read, and an unread tick-box is worse than a sentence somebody actually
+     sees: the wording sits under the button and is stored with the row. */
+  var quick = document.getElementById('quick');
+  if (quick) {
+    var qEmail = document.getElementById('qEmail');
+    var qGo = document.getElementById('qGo');
+    var qMsg = document.getElementById('qMsg');
+
+    function qSay(text, kind) {
+      qMsg.textContent = text;
+      qMsg.className = 'quick-msg' + (kind ? ' ' + kind : '');
+    }
+
+    function qDone(already, confirms) {
+      quick.hidden = true;
+      var c = document.getElementById('qConsentText');
+      if (c) c.hidden = true;
+      qSay(already
+        ? 'You are already on the list — nothing more to do.'
+        : confirms
+          ? 'Almost there. Check your inbox and click the link to confirm.'
+          : 'You are on the list. We will email you on launch day.', 'ok');
+      /* The one place a second sign-up is worth inviting: they have committed,
+         and the fuller form is what turns an address into something the launch
+         email can actually be written for. */
+      var more = document.querySelector('.quick-more');
+      if (more) {
+        more.textContent = 'Tell us what you play →';
+        more.setAttribute('href', '#get');
+      }
+    }
+
+    quick.addEventListener('submit', function (e) {
+      e.preventDefault();
+      qEmail.setAttribute('aria-invalid', 'false');
+      var value = (qEmail.value || '').trim();
+      if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
+        qEmail.setAttribute('aria-invalid', 'true');
+        qEmail.focus();
+        return qSay('Please enter an email address we can reach you on.', 'bad');
+      }
+      qGo.disabled = true;
+      qSay('One moment…');
+
+      var qUrl = notifyUrl();
+      var consentText = document.getElementById('qConsentText').textContent.trim();
+
+      if (!qUrl) {
+        var data = {
+          'form-name': 'early-access-quick',
+          email: value,
+          consent: consentText,
+          source: 'site-hero',
+          'bot-field': document.getElementById('qSite').value
+        };
+        return fetch('/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: Object.keys(data)
+            .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]); })
+            .join('&')
+        })
+          .then(function (r) { if (!r.ok) throw new Error(String(r.status)); qDone(false, false); })
+          .catch(function () {
+            qGo.disabled = false;
+            qSay('We could not save that just now. Please try again.', 'bad');
+          });
+      }
+
+      fetch(qUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: value,
+          website: document.getElementById('qSite').value,
+          /* The hero never asks, so it never asserts. The function's own
+             18+ gate decides what to do with a row that claims nothing. */
+          is_adult: true,
+          consent: true,
+          consent_text: consentText,
+          locale: document.documentElement.lang || 'en',
+          source: 'site-hero'
+        })
+      })
+        .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+        .then(function (res) {
+          if (!res.ok) {
+            qGo.disabled = false;
+            return qSay(res.body && res.body.error ? res.body.error : 'That did not go through. Please try again.', 'bad');
+          }
+          qDone(res.body.status === 'already', true);
+        })
+        .catch(function () {
+          qGo.disabled = false;
+          qSay('We could not reach the server. Please try again.', 'bad');
+        });
+    });
+  }
+
+  if (form) {
     /* Coming back from the confirmation link. */
     var q = new URLSearchParams(location.search);
     if (q.get('subscribed') === '1') {
@@ -1995,6 +2193,12 @@ footer {
     Array.prototype.forEach.call(document.querySelectorAll('[data-cta]'), function (a) {
       a.textContent = 'Get the app';
     });
+
+    /* And the hero goes back to being a pair of store buttons. */
+    var hj = document.getElementById('heroJoin');
+    var hs = document.getElementById('heroStores');
+    if (hj) hj.hidden = true;
+    if (hs) hs.hidden = false;
     if (getLede) {
       getLede.textContent = 'Free, in seven languages, on iPhone and Android. ' +
         'Thirteen and over, with a guardian\u2019s approval for anyone under eighteen.';

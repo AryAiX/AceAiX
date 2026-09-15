@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 /*
- * The sign-up form on the marketing site, checked for the things that fail
- * *silently*.
+ * The two sign-up forms on the marketing site — the one-field capture in the
+ * hero and the full form in the closing section — checked for the things that
+ * fail *silently*.
  *
  * Netlify parses form markup at DEPLOY time, not when somebody submits. A form
  * missing `data-netlify`, or its `name`, or the hidden `form-name` input, is
@@ -46,52 +47,73 @@ function functionBody(src: string, signature: string): string {
 
 const PAGES = [
   {
-    file: 'index.html',
-    label: 'the site',
+    label: 'the full form',
     form: 'early-access',
     /* Every field that must reach the inbox. An entry removed from this list
        is a field silently dropped from the submission. */
     fields: ['first_name', 'email', 'role', 'sport', 'country', 'consent', 'bot-field'],
     /* `done(already, confirms)` — the second argument is the whole rule. */
+    fn: 'function sendToNetlify',
     netlifySignal: /done\(\s*false\s*,\s*false\s*\)/,
+  },
+  {
+    label: 'the hero capture',
+    form: 'early-access-quick',
+    /* Deliberately short. `source` is hidden markup rather than script-built,
+       so the two lists can be told apart in an export even if the submission
+       arrives without JavaScript having run. */
+    fields: ['email', 'source', 'bot-field'],
+    fn: 'quick.addEventListener',
+    netlifySignal: /qDone\(\s*false\s*,\s*false\s*\)/,
   },
 ] as const;
 
+/**
+ * The markup of one named form, so a field found in the other does not count.
+ *
+ * Called inside each `it` rather than once per describe: at describe time a
+ * throw aborts collection and vitest reports the file as "no tests", which
+ * tells whoever hit it nothing about what broke. Inside a test it is an
+ * ordinary failure with the message attached.
+ */
+function formMarkup(src: string, name: string): string {
+  const open = src.indexOf(`name="${name}"`);
+  if (open < 0) {
+    throw new Error(
+      `No form named "${name}" in site/index.html. If a form was renamed, ` +
+      `rename it in PAGES too — and check the two forms still have different ` +
+      `names, or Netlify files both sets of submissions in one list.`
+    );
+  }
+  const start = src.lastIndexOf('<form', open);
+  const end = src.indexOf('</form>', start);
+  if (start < 0 || end < 0) throw new Error(`unbalanced <form> around "${name}"`);
+  return src.slice(start, end + '</form>'.length);
+}
+
+const FILE = readFileSync(resolve(SITE, 'index.html'), 'utf8');
+
 describe.each(PAGES)('$label', (page) => {
-  const html = readFileSync(resolve(SITE, page.file), 'utf8');
+  const markup = () => formMarkup(FILE, page.form);
 
   it('declares itself to Netlify', () => {
-    expect(html).toContain(`name="${page.form}"`);
-    expect(html).toContain('data-netlify="true"');
+    expect(markup()).toContain(`name="${page.form}"`);
+    expect(markup()).toContain('data-netlify="true"');
   });
 
   it('carries the hidden form-name the AJAX post needs', () => {
     /* Netlify identifies the submission by this field, not by the URL. A
        fetch() to '/' without it is accepted and then discarded. */
-    expect(html).toContain(`<input type="hidden" name="form-name" value="${page.form}">`);
+    expect(markup()).toContain(`<input type="hidden" name="form-name" value="${page.form}">`);
   });
 
   it('has a honeypot, declared and present', () => {
-    expect(html).toContain('data-netlify-honeypot="bot-field"');
-    expect(html).toContain('name="bot-field"');
+    expect(markup()).toContain('data-netlify-honeypot="bot-field"');
+    expect(markup()).toContain('name="bot-field"');
   });
 
   it.each(page.fields)('field %s has a name attribute', (field) => {
-    expect(html).toContain(`name="${field}"`);
-  });
-
-  it('ships with the Supabase URL empty', () => {
-    /* The file in the repository must never carry a project URL: it would be
-       deployed to whoever drags the folder, pointing their sign-ups at
-       somebody else's project. Filling it in is a deploy-time decision. */
-    expect(html).toMatch(/window\.ACEAIX_NOTIFY_URL\s*=\s*''\s*;/);
-  });
-
-  it('carries no Supabase key of any kind', () => {
-    /* The anon key is public, but publishing it here would invite exactly the
-       direct-insert design the edge function exists to avoid (docs/25 §3). */
-    expect(html).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}\./); // a JWT
-    expect(html).not.toMatch(/supabase[_-]?anon[_-]?key/i);
+    expect(markup()).toContain(`name="${field}"`);
   });
 
   it('promises a confirmation email only on the route that sends one', () => {
@@ -100,11 +122,45 @@ describe.each(PAGES)('$label', (page) => {
        that talks to the function, never in the Netlify branch — telling
        somebody to click a link that will never arrive reads, to them, as a
        sign-up that failed. */
-    const netlifyBranch = functionBody(html, 'function sendToNetlify');
+    const netlifyBranch = functionBody(FILE, page.fn);
     expect(netlifyBranch.length).toBeGreaterThan(200); // the branch exists at all
     expect(netlifyBranch).not.toMatch(/check your inbox/i);
     expect(netlifyBranch).not.toMatch(/click the link/i);
     expect(netlifyBranch).toMatch(page.netlifySignal);
+  });
+});
+
+describe('the page itself', () => {
+  it('ships with the Supabase URL empty', () => {
+    /* The file in the repository must never carry a project URL: it would be
+       deployed to whoever drags the folder, pointing their sign-ups at
+       somebody else's project. Filling it in is a deploy-time decision. */
+    expect(FILE).toMatch(/window\.ACEAIX_NOTIFY_URL\s*=\s*''\s*;/);
+  });
+
+  it('carries no Supabase key of any kind', () => {
+    /* The anon key is public, but publishing it here would invite exactly the
+       direct-insert design the edge function exists to avoid (docs/25 §3). */
+    expect(FILE).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}\./); // a JWT
+    expect(FILE).not.toMatch(/supabase[_-]?anon[_-]?key/i);
+  });
+
+  it('makes the hidden attribute actually hide', () => {
+    /* `.count`, `.notify`, `.quick` and `.stores` all set `display` from a
+       class, which outranks the browser's own `[hidden] { display: none }`.
+       Without this rule `el.hidden = true` sets an attribute and nothing
+       else, and every swap on this page silently stops working — including
+       the countdown's, which has to fire unattended on launch morning. */
+    expect(FILE).toMatch(/\[hidden\]\s*\{[^}]*display:\s*none\s*!important/);
+  });
+
+  it('gives the two forms different Netlify names', () => {
+    /* Two forms sharing a name land in one list with half the columns empty
+       and no way to tell which came from where. */
+    const names = [...FILE.matchAll(/<input type="hidden" name="form-name" value="([^"]+)">/g)]
+      .map(m => m[1]);
+    expect(names).toEqual(['early-access-quick', 'early-access']);
+    expect(new Set(names).size).toBe(names.length);
   });
 });
 
@@ -113,8 +169,7 @@ describe('the confirmation wording is gated, not merely absent', () => {
      that sendToNetlify passes `false` is only half the story — it means
      nothing unless done() actually branches on it. Both halves, or neither
      is worth having. */
-  const html = readFileSync(resolve(SITE, 'index.html'), 'utf8');
-  const done = functionBody(html, 'function done(');
+  const done = functionBody(FILE, 'function done(');
 
   it('the inbox wording sits behind the confirms flag', () => {
     expect(done).toMatch(/confirms/);
@@ -122,7 +177,7 @@ describe('the confirmation wording is gated, not merely absent', () => {
   });
 
   it('the function route asks for it and the Netlify route does not', () => {
-    expect(html).toMatch(/done\(res\.body\.status === 'already', true\)/);
-    expect(functionBody(html, 'function sendToNetlify')).toMatch(/done\(false, false\)/);
+    expect(FILE).toMatch(/done\(res\.body\.status === 'already', true\)/);
+    expect(functionBody(FILE, 'function sendToNetlify')).toMatch(/done\(false, false\)/);
   });
 });

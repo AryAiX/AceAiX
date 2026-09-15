@@ -4,7 +4,7 @@ A static site. No build step, no framework, no `npm install` — the whole thing
 is one HTML file plus a folder of images.
 
 ```
-index.html          the site — one page, one form
+index.html          the site — one page, two forms (see below)
 assets/             screenshots, logo marks, icons, the social image
 site.webmanifest    icons and colours for "add to home screen"
 robots.txt          crawlers
@@ -41,10 +41,21 @@ straight off your desktop.
 
 ---
 
-## The early-access form
+## Two forms, on purpose
 
-It sits in the closing section, where the App Store and Google Play buttons
-used to be. Those buttons led to listings that do not exist until 1 October, so
+**In the hero:** one field and a button. Most visitors never reach the bottom
+of a page this long, and an address with nothing attached is worth far more
+than no address at all.
+
+It has no tick-box — there is no room for one that would still be read — so the
+consent sentence sits under the button where it cannot be missed, and the exact
+wording shown is stored with the submission. It also asks no age question, on
+purpose: the guardian rule cannot be applied to an answer nobody was asked for,
+so the hero collects an address and nothing that would require knowing whether
+the person is a child.
+
+**In the closing section:** the full form, where the App Store and Google Play
+buttons used to be. Those buttons led to listings that do not exist until 1 October, so
 the page's main call to action pointed at two dead pages while the one thing
 anybody could actually do sat underneath it looking like an afterthought.
 
@@ -54,24 +65,33 @@ address: choosing "I'm under 18" relabels the email field rather than adding a
 second one, because two boxes invite a child to fill in both, and a child's own
 address is the one thing this form must never hold.
 
+They are **separate Netlify forms** — `early-access-quick` and `early-access` —
+because Netlify keys submissions by form name, and two forms sharing one name
+land in a single list with half the columns empty and no way to tell which came
+from where. Each carries a `source` field, so the two CSVs merge on it. Somebody
+can appear in both; that is the intended path, not a bug — after the hero
+capture succeeds, the link under it changes to *"Tell us what you play →"* and
+points at the full form.
+
 **Nothing is deleted for launch day.** The store buttons are still in the HTML,
-`hidden`; the countdown's `live()` reveals them, hides the form and relabels
-every "Join early access" button to "Get the app" the moment the date passes.
-Nobody edits anything on 1 October.
+`hidden`; the countdown's `live()` reveals them — in the hero and in the closing
+section — hides both forms, and relabels every "Join early access" button to
+"Get the app" the moment the date passes. Nobody edits anything on 1 October.
 
 ---
 
 ## Where the sign-ups go
 
-The form can post to either of two places. **Nothing needs to be configured for
+Both forms post to the same place, and that place can be either of two. **Nothing needs to be configured for
 the simple one.**
 
 **Netlify Forms, the default.** Drag the folder onto Netlify and sign-ups
 start arriving with no further setup: they appear under **Forms** in the site
-dashboard, as `early-access`, and Netlify emails each one to whoever you list
-under *Form notifications* — put `masi.k@aryaix.com` there. Export the whole
-list as CSV from the same screen. The free tier covers 100 submissions a
-month.
+dashboard, as `early-access-quick` and `early-access`. Netlify emails each one
+to whoever you list under *Form notifications* — put `masi.k@aryaix.com` there,
+**on both forms**, or half the sign-ups arrive silently. Export each as CSV from
+the same screen. The free tier covers 100 submissions a month across the site,
+not per form.
 
 Netlify reads the form markup **at deploy time**, not when somebody submits, so
 the `name`, `data-netlify` and hidden `form-name` attributes must survive any

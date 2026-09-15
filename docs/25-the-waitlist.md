@@ -7,7 +7,8 @@
 
 ## 1. What it is
 
-One form, in the closing section of the marketing site.
+Two forms on one page, and the second one only exists because of where the
+first one sits.
 
 It went through three shapes, and the last one is the point. It began as "be
 told the day it lands": a name, an email, two checkboxes, **18+ only** for the
@@ -31,10 +32,26 @@ that is the address that is stored and written to; the child's own is never
 collected — choosing "I'm under 18" **relabels the existing field** rather than
 adding a second one, since two boxes invite a child to fill in both.
 
-It puts a row in `public.waitlist`, sends a confirmation link, and — once that
-link is clicked — pushes the address to whichever campaign tool is configured.
-Or it does the much simpler thing in §2, which is what happens if nothing is
-set up at all.
+That full form sits at the bottom of a long page, which is the honest place for
+it — somebody who has read the argument is worth asking properly. It is also
+the place most visitors never reach. So the hero carries a second form of one
+field: an email address, a button, and a consent sentence under it.
+
+The hero form deliberately does **not** ask the age question. The guardian rule
+cannot be applied to an answer nobody was asked for, so rather than guessing,
+the short form collects an address and nothing that depends on knowing whether
+the person is a child. Anyone who came through it and later wants the launch
+email written for them specifically is pointed at the full form, which asks.
+
+They are separate Netlify forms — `early-access-quick` and `early-access` —
+because Netlify keys submissions by form name and two forms under one name land
+in a single list with half the columns empty. Each carries `source`, so the
+exports merge.
+
+Either puts a row in `public.waitlist`, sends a confirmation link, and — once
+that link is clicked — pushes the address to whichever campaign tool is
+configured. Or it does the much simpler thing in §2, which is what happens if
+nothing is set up at all.
 
 What it offers is **"get in on day one"**, never "get a discount". The app is
 free; the line directly below the form says so. A discount on a free product is
