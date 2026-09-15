@@ -55,6 +55,8 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
   const { width, height } = useWindowDimensions();
 
   const enter = useRef(new Animated.Value(0)).current;
+  const closeRef = useRef<View>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!visible) {
@@ -97,6 +99,32 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
       if (finished) onClose();
     });
   }, [enter, onClose, reduced]);
+  const dismissRef = useRef(dismiss);
+
+  useEffect(() => {
+    dismissRef.current = dismiss;
+  }, [dismiss]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return;
+    previousFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const timer = window.setTimeout(() => {
+      (closeRef.current as unknown as HTMLElement | null)?.focus();
+    }, 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      dismissRef.current();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('keydown', onKeyDown);
+      previousFocus.current?.focus();
+      previousFocus.current = null;
+    };
+  }, [visible]);
 
   /*
    * No photo is still something to look at. Most accounts in a young network
@@ -115,6 +143,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
       statusBarTranslucent
     >
       <Animated.View
+        accessibilityViewIsModal
         style={[
           StyleSheet.absoluteFill,
           {
@@ -128,6 +157,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
         {/* Anywhere outside the picture closes it. */}
         <Pressable
           style={StyleSheet.absoluteFill}
+          focusable={false}
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
           onPress={dismiss}
@@ -153,6 +183,12 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
                 backgroundColor: colors.surfaceAlt,
               }}
               resizeMode="cover"
+              accessible
+              accessibilityLabel={
+                caption
+                  ? t('profile.viewPhotoA11y', { name: caption })
+                  : t('profile.photoA11y')
+              }
               accessibilityIgnoresInvertColors
               testID="lightbox-image"
             />
@@ -189,6 +225,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
         </Animated.View>
 
         <Pressable
+          ref={closeRef}
           accessibilityRole="button"
           accessibilityLabel={t('common.close')}
           onPress={dismiss}

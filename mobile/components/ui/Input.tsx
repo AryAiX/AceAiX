@@ -9,6 +9,7 @@ import {
 import { Eye, EyeOff } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useT } from '@/i18n';
 import { Text } from './Text';
 
 interface Props extends Omit<TextInputProps, 'style'> {
@@ -41,6 +42,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   ref,
 ) {
   const theme = useTheme();
+  const t = useT();
   const { colors, radii, spacing, font, size } = theme;
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
@@ -91,10 +93,10 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             fontSize: size.md,
             paddingVertical: multiline ? spacing.md : 0,
             textAlignVertical: multiline ? 'top' : 'center',
-            // RN web needs this to kill the default focus ring
-            ...(({ outlineStyle: 'none' } as unknown) as object),
           }}
           accessibilityLabel={label ?? rest.placeholder}
+          accessibilityState={{ ...rest.accessibilityState, disabled: rest.editable === false }}
+          aria-invalid={Boolean(error)}
           {...rest}
         />
 
@@ -103,7 +105,9 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             onPress={() => setHidden((v) => !v)}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={hidden ? 'Show password' : 'Hide password'}
+            accessibilityLabel={
+              hidden ? t('common.showPassword') : t('common.hidePassword')
+            }
           >
             {hidden ? (
               <EyeOff size={20} color={colors.textMuted} />
@@ -117,7 +121,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
       </View>
 
       {error ? (
-        <Text variant="caption" tone="danger">
+        <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
           {error}
         </Text>
       ) : hint ? (

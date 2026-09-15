@@ -432,5 +432,11 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabItem: { alignItems: 'center', justifyContent: 'center', width: 72 },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    maxWidth: 72,
+    minWidth: 0,
+  },
 });

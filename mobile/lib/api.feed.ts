@@ -1,5 +1,6 @@
 import { AppError } from '@/lib/errors';
 import { Buckets, supabase } from '@/lib/supabase';
+import { webAppLink } from '@/lib/webLinks';
 import type { FeedPost, PostMedia, Tier, UserRole } from '@/types/models';
 
 /**
@@ -273,5 +274,5 @@ export async function uploadPostMedia(
 
 /** The canonical shareable link for a post. */
 export function postLink(postId: string): string {
-  return `https://aceaix.com/app/post/${postId}`;
+  return webAppLink(`/post/${postId}`);
 }

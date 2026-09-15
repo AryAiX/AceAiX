@@ -4,7 +4,6 @@ import {
   Dimensions,
   Modal,
   Platform,
-  Share,
   View,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -13,10 +12,11 @@ import { Flame } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { TierColors, type Tier } from '@/theme/tokens';
-import { Button, ScoreRing, Text } from '@/components/ui';
+import { Button, ScoreRing, Text, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { AchievementKey } from '@/types/models';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { shareContent } from '@/lib/share';
 import { AchievementBadge } from './AchievementBadge';
 import { Confetti } from './Confetti';
 import { achievementFor } from './achievements';
@@ -45,13 +45,6 @@ const TIER_NAME_KEYS: Record<Tier, string> = {
   gold: 'common.tierGold',
   elite: 'common.tierElite',
 };
-
-/** Web only has a share sheet if the browser gives us one. */
-function canShare(): boolean {
-  if (Platform.OS !== 'web') return true;
-  const nav = (globalThis as { navigator?: { share?: unknown } }).navigator;
-  return typeof nav?.share === 'function';
-}
 
 /**
  * The moment itself.
@@ -167,7 +160,7 @@ export function CelebrationOverlay({ items, onDone, maxInARow = 3 }: Props) {
                 onPress={advance}
                 testID="celebration-dismiss"
               />
-              {current.kind === 'tier' && canShare() ? (
+              {current.kind === 'tier' ? (
                 <ShareTierButton tier={current.tier} score={current.to} />
               ) : null}
             </View>
@@ -378,20 +371,22 @@ function StreakCard({ days }: { days: number }) {
  */
 function ShareTierButton({ tier, score }: { tier: Tier; score: number }) {
   const t = useT();
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
 
   const onPress = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await Share.share({
+      const outcome = await shareContent({
         message: t('progress.shareTierMessage', {
           tier: t(TIER_NAME_KEYS[tier]),
           score,
         }),
       });
+      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
     } catch {
-      /* Dismissed, or no share sheet on this platform. Either way, silence. */
+      toast.error(t('common.somethingWentWrong'));
     } finally {
       setBusy(false);
     }

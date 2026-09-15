@@ -7,10 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { emailConfirmationRedirect, passwordResetRedirect } from '@/lib/authRedirect';
 import { AppError } from '@/lib/errors';
 import type { SignupRole, UserRole, AgeBand } from '@/types/models';
 
@@ -177,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: input.email.trim().toLowerCase(),
       password: input.password,
       options: {
+        emailRedirectTo: emailConfirmationRedirect(Platform.OS),
         data: {
           role: input.role,
           first_name: input.firstName.trim(),
@@ -198,7 +200,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sendPasswordReset = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(
       email.trim().toLowerCase(),
-      { redirectTo: 'aceaix://reset-password' },
+      { redirectTo: passwordResetRedirect(Platform.OS) },
     );
     if (error) throw new AppError(error);
   }, []);

@@ -3,9 +3,10 @@
  * Signed-in walkthrough.
  *
  * Serves the exported web build, signs in as a demo account against the local
- * backend, walks every major screen, and reports anything that renders empty
- * or logs an error. Screenshots land in tests/e2e/shots/ so the run can be
- * reviewed by eye as well as by assertion.
+ * backend, walks a smoke subset, and reports anything that renders empty or
+ * logs an error. It is deliberately not the parity gate: the exhaustive route,
+ * state and action inventory lives in tests/parity/screenManifest.ts.
+ * Screenshots land in tests/e2e/shots/ for visual review.
  *
  *   node tests/e2e/walkthrough.mjs [--role athlete|coach] [--scheme light|dark]
  *

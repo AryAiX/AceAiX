@@ -149,7 +149,7 @@ loop something to demand attention. The full convention is in
 | Unit | `npm run test:unit` | Vitest over `tests/unit/` — error mapping, formatters, route/notification targeting, theme-token parity, i18n catalogue parity. Pure functions only; no React renderer, no network. |
 | One unit file | `npx vitest run tests/unit/i18n.test.ts` | The translation checks on their own — see below. |
 | All three | `npm test` | Typecheck → lint → unit. This is the pre-commit bar. |
-| Walkthrough | `npm run test:walkthrough` | Exports the web build, then `tests/e2e/walkthrough.mjs` signs in as a demo account and visits 27 screens, failing on a console error, a missing expected string, or a screen that rendered almost nothing. Screenshots land in `tests/e2e/shots/`. Requires the local backend to be running. |
+| Walkthrough | `npm run test:walkthrough` | Exports the web build, signs in as a demo account and directly visits 28 URLs, failing on a console error, missing expected string, or nearly empty render. This is a smoke tour, **not** proof of web parity: the exhaustive 54-screen/state/action release inventory is `tests/parity/screenManifest.ts`. Screenshots land in `tests/e2e/shots/`. Requires the local backend. |
 | Database | `npm run db:test` | Runs `../supabase/tests/run-all.sh`: applies every migration to a throwaway database, then asserts the safety and scoring rules in SQL. |
 
 **`npx vitest run tests/unit/i18n.test.ts`** measures all six translated catalogues against English

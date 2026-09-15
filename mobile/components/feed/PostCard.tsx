@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, Share, View } from 'react-native';
+import { Animated, Easing, Platform, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Heart, MoreHorizontal } from 'lucide-react-native';
 
@@ -14,6 +14,7 @@ import { postLink } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { displayName, metaLine, relativeTime } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { shareContent } from '@/lib/share';
 import type { FeedPost } from '@/types/models';
 import { MediaCarousel } from './MediaCarousel';
 import { PostActions } from './PostActions';
@@ -125,13 +126,12 @@ function PostCardBase({
   const handleShare = useCallback(async () => {
     const link = postLink(post.id);
     try {
-      await Share.share(
-        Platform.OS === 'ios' ? { url: link, message: link } : { message: link },
-      );
+      const outcome = await shareContent({ message: link, url: link });
+      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
     } catch {
-      /* the user backed out of the share sheet */
+      toast.error(t('common.somethingWentWrong'));
     }
-  }, [post.id]);
+  }, [post.id, t, toast]);
 
   const burst = useCallback(() => {
     burstOpacity.setValue(0);

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, Share, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   AlertTriangle,
@@ -61,6 +61,8 @@ import {
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
 import { Routes } from '@/lib/routes';
+import { shareContent } from '@/lib/share';
+import { webAppLink } from '@/lib/webLinks';
 import { useAuth } from '@/providers/AuthProvider';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -157,7 +159,7 @@ export default function OpportunityDetailScreen() {
     });
   }, [t, opportunity, match.data]);
 
-  const link = id ? `https://aceaix.com/app/opportunity/${id}` : null;
+  const link = id ? webAppLink(`/opportunity/${id}`) : null;
 
   const onShare = useCallback(async () => {
     if (!link || !opportunity) return;
@@ -168,11 +170,12 @@ export default function OpportunityDetailScreen() {
         club: opportunity.org_name ?? t('opportunities.detail.shareClubFallback'),
       });
       const text = `${headline}\n${link}`;
-      await Share.share(Platform.OS === 'ios' ? { url: link, message: text } : { message: text });
+      const outcome = await shareContent({ message: text, url: link, title: opportunity.title });
+      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
     } catch {
-      /* the user backed out of the share sheet */
+      toast.error(t('common.somethingWentWrong'));
     }
-  }, [t, link, opportunity]);
+  }, [t, link, opportunity, toast]);
 
   const onToggleSave = useCallback(async () => {
     if (!opportunity) return;

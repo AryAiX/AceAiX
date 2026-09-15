@@ -63,6 +63,17 @@ function startOfToday(): Date {
   return now;
 }
 
+function fromIsoDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : null;
+}
+
 /**
  * The child-safety notice is one sentence with a link inside it, so the
  * catalogue keeps it whole — a translator has to be free to put "Community
@@ -365,105 +376,125 @@ export default function NewOpportunityScreen() {
           error={errors.location}
         />
 
-        {/* Deadline */}
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="captionStrong" tone="secondary">
-            {t('opportunities.post.deadlineLabel')}
-          </Text>
-          <Pressable
-            onPress={() => setPicking(true)}
-            accessibilityRole="button"
-            accessibilityLabel={
-              deadline
-                ? t('opportunities.post.deadlineChange', {
-                    date: fullDate(toIsoDate(deadline)),
-                  })
-                : t('opportunities.post.deadlineChoose')
-            }
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.md,
-              minHeight: 52,
-              paddingHorizontal: spacing.lg,
-              borderRadius: radii.md,
-              borderWidth: 1.5,
-              borderColor: errors.deadline
-                ? colors.danger
-                : deadline
-                  ? colors.primary
-                  : colors.border,
-              backgroundColor: colors.surface,
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <CalendarDays size={20} color={deadline ? colors.primary : colors.textMuted} />
-            <Text variant="body" tone={deadline ? 'default' : 'muted'} style={{ flex: 1 }}>
-              {deadline ? fullDate(toIsoDate(deadline)) : t('opportunities.post.deadlineNone')}
-            </Text>
-            {deadline ? (
-              <Pressable
-                onPress={() => setDeadline(null)}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel={t('opportunities.post.deadlineClearA11y')}
-              >
-                <Text variant="captionStrong" tone="primary">
-                  {t('common.clear')}
-                </Text>
-              </Pressable>
-            ) : null}
-          </Pressable>
-
-          {errors.deadline ? (
-            <Text variant="caption" tone="danger">
-              {errors.deadline}
-            </Text>
-          ) : null}
-
-          {picking ? (
-            <View
-              style={
-                Platform.OS === 'ios'
-                  ? {
-                      borderRadius: radii.lg,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      backgroundColor: colors.surface,
-                      overflow: 'hidden',
-                    }
-                  : undefined
+        {/* Deadline. RN's community picker has no browser implementation, so
+            web uses the native HTML date control through TextInput. */}
+        {Platform.OS === 'web' ? (
+          <Input
+            label={t('opportunities.post.deadlineLabel')}
+            value={deadline ? toIsoDate(deadline) : ''}
+            onChangeText={(value) => {
+              setDeadline(value ? fromIsoDate(value) : null);
+              if (errors.deadline) {
+                setErrors((current) => ({ ...current, deadline: undefined }));
               }
+            }}
+            error={errors.deadline}
+            testID="opportunity-deadline"
+            {...({
+              type: 'date',
+              min: toIsoDate(startOfToday()),
+            } as object)}
+          />
+        ) : (
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('opportunities.post.deadlineLabel')}
+            </Text>
+            <Pressable
+              onPress={() => setPicking(true)}
+              accessibilityRole="button"
+              accessibilityLabel={
+                deadline
+                  ? t('opportunities.post.deadlineChange', {
+                      date: fullDate(toIsoDate(deadline)),
+                    })
+                  : t('opportunities.post.deadlineChoose')
+              }
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                minHeight: 52,
+                paddingHorizontal: spacing.lg,
+                borderRadius: radii.md,
+                borderWidth: 1.5,
+                borderColor: errors.deadline
+                  ? colors.danger
+                  : deadline
+                    ? colors.primary
+                    : colors.border,
+                backgroundColor: colors.surface,
+                opacity: pressed ? 0.85 : 1,
+              })}
             >
-              <DateTimePicker
-                value={deadline ?? startOfToday()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                minimumDate={startOfToday()}
-                themeVariant={theme.scheme}
-                onChange={(event, selected) => {
-                  // Android shows a dialog and closes itself; iOS stays inline.
-                  if (Platform.OS !== 'ios') setPicking(false);
-                  // 'dismissed' still carries a date on Android — cancelling
-                  // must not quietly pick one.
-                  if (event.type === 'set' && selected) {
-                    setDeadline(selected);
-                    setErrors((e) => ({ ...e, deadline: undefined }));
-                  }
-                }}
-              />
-              {Platform.OS === 'ios' ? (
-                <Button
-                  label={t('common.done')}
-                  variant="ghost"
-                  fullWidth
-                  size="sm"
-                  onPress={() => setPicking(false)}
-                />
+              <CalendarDays size={20} color={deadline ? colors.primary : colors.textMuted} />
+              <Text variant="body" tone={deadline ? 'default' : 'muted'} style={{ flex: 1 }}>
+                {deadline ? fullDate(toIsoDate(deadline)) : t('opportunities.post.deadlineNone')}
+              </Text>
+              {deadline ? (
+                <Pressable
+                  onPress={() => setDeadline(null)}
+                  hitSlop={12}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('opportunities.post.deadlineClearA11y')}
+                >
+                  <Text variant="captionStrong" tone="primary">
+                    {t('common.clear')}
+                  </Text>
+                </Pressable>
               ) : null}
-            </View>
-          ) : null}
-        </View>
+            </Pressable>
+
+            {errors.deadline ? (
+              <Text variant="caption" tone="danger">
+                {errors.deadline}
+              </Text>
+            ) : null}
+
+            {picking ? (
+              <View
+                style={
+                  Platform.OS === 'ios'
+                    ? {
+                        borderRadius: radii.lg,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        backgroundColor: colors.surface,
+                        overflow: 'hidden',
+                      }
+                    : undefined
+                }
+              >
+                <DateTimePicker
+                  value={deadline ?? startOfToday()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={startOfToday()}
+                  themeVariant={theme.scheme}
+                  onChange={(event, selected) => {
+                    // Android shows a dialog and closes itself; iOS stays inline.
+                    if (Platform.OS !== 'ios') setPicking(false);
+                    // 'dismissed' still carries a date on Android — cancelling
+                    // must not quietly pick one.
+                    if (event.type === 'set' && selected) {
+                      setDeadline(selected);
+                      setErrors((current) => ({ ...current, deadline: undefined }));
+                    }
+                  }}
+                />
+                {Platform.OS === 'ios' ? (
+                  <Button
+                    label={t('common.done')}
+                    variant="ghost"
+                    fullWidth
+                    size="sm"
+                    onPress={() => setPicking(false)}
+                  />
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        )}
 
         <Input
           label={t('opportunities.post.detailsLabel')}

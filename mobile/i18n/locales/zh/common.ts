@@ -21,6 +21,8 @@ export const common = {
   showOriginal: '查看原文',
   tabMeetups: '开赛',
   close: '关闭',
+  showPassword: '显示密码',
+  hidePassword: '隐藏密码',
   confirm: '确认',
   delete: '删除',
   remove: '移除',

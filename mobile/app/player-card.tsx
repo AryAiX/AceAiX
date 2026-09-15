@@ -8,7 +8,7 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
-import { Directory, File, Paths } from 'expo-file-system';
+import { Directory, File as FsFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -33,6 +33,70 @@ import { useT } from '@/i18n';
 const CARD_W = 1080;
 const CARD_H = 1350;
 
+async function webPngFromSvg(ref: Svg | null): Promise<Blob> {
+  const element = ref as unknown as SVGSVGElement | null;
+  if (!element || element.tagName.toLowerCase() !== 'svg') {
+    throw new Error('Player card SVG is unavailable');
+  }
+
+  const source = new XMLSerializer().serializeToString(element);
+  const sourceUrl = URL.createObjectURL(
+    new Blob([source], { type: 'image/svg+xml;charset=utf-8' }),
+  );
+
+  try {
+    const image = new Image();
+    image.decoding = 'async';
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Player card SVG could not be rendered'));
+      image.src = sourceUrl;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = CARD_W;
+    canvas.height = CARD_H;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas is unavailable');
+    context.drawImage(image, 0, 0, CARD_W, CARD_H);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/png');
+    });
+    if (!blob) throw new Error('Player card PNG could not be created');
+    return blob;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
+async function shareOrDownloadWebCard(blob: Blob, name: string, message: string): Promise<void> {
+  const file = new globalThis.File([blob], 'aceaix-card.png', { type: 'image/png' });
+  const shareData = { files: [file], title: name, text: message };
+
+  if (
+    typeof navigator.share === 'function' &&
+    (typeof navigator.canShare !== 'function' || navigator.canShare(shareData))
+  ) {
+    await navigator.share(shareData);
+    return;
+  }
+
+  const uri = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = uri;
+    link.download = file.name;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } finally {
+    // Firefox and Safari may not consume the Blob until a later task.
+    setTimeout(() => URL.revokeObjectURL(uri), 10_000);
+  }
+}
+
 /**
  * A card of somebody's profile, drawn as vector and exported as an image.
  *
@@ -41,9 +105,9 @@ const CARD_H = 1350;
  * has, and every card carries the score, the tier and the wordmark.
  *
  * Why SVG rather than a screenshot library: `react-native-svg` is already a
- * dependency and gives a data URL without a new native module, which keeps the
- * app running in Expo Go. On web `toDataURL` is not implemented, so the export
- * button says so instead of failing silently.
+ * dependency and gives native a data URL without a new module. Browsers
+ * serialize the same SVG into a canvas-backed PNG, then use Web Share where
+ * available and a download everywhere else.
  */
 export default function PlayerCardScreen() {
   const theme = useTheme();
@@ -86,7 +150,22 @@ export default function PlayerCardScreen() {
 
   const exportCard = useCallback(async () => {
     if (Platform.OS === 'web') {
-      toast.info(t('profile.playerCardFailed'));
+      setBusy(true);
+      try {
+        const blob = await webPngFromSvg(svgRef.current);
+        await shareOrDownloadWebCard(
+          blob,
+          card.name,
+          `${card.name} — ${card.overall}/100 on AceAiX`,
+        );
+        toast.success(t('profile.playerCardShared'));
+      } catch (error) {
+        // Closing the system share sheet is a cancellation, not a broken card.
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        toast.error(t('profile.playerCardFailed'));
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     const ref = svgRef.current as unknown as {
@@ -109,7 +188,7 @@ export default function PlayerCardScreen() {
 
       const folder = new Directory(Paths.cache, 'cards');
       if (!folder.exists) folder.create({ intermediates: true });
-      const file = new File(folder, 'aceaix-card.png');
+      const file = new FsFile(folder, 'aceaix-card.png');
       file.create({ overwrite: true });
       file.write(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
 

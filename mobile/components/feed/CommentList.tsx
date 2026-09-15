@@ -303,7 +303,6 @@ export function CommentComposer({
               fontSize: theme.size.sm,
               maxHeight: 96,
               padding: 0,
-              ...(({ outlineStyle: 'none' } as unknown) as object),
             }}
           />
         </View>

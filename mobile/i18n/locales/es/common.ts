@@ -21,6 +21,8 @@ export const common = {
   showOriginal: 'Ver original',
   tabMeetups: 'Jugar',
   close: 'Cerrar',
+  showPassword: 'Mostrar contraseña',
+  hidePassword: 'Ocultar contraseña',
   confirm: 'Confirmar',
   delete: 'Eliminar',
   remove: 'Quitar',

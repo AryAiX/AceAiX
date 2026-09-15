@@ -38,6 +38,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 23 | [`23-backend-pipelines.md`](./23-backend-pipelines.md) | Whether a write by one person actually reaches another: the two suites that check delivery rather than rules, what they found, and the fact that the SQL suite was never in CI | Backend + Eng |
 | 22 | [`22-endorsements-and-edges.md`](./22-endorsements-and-edges.md) | The endorsement write path the score had been advertising, the two rules that only mattered once anyone could reach the table — plus three layout defects that all read as "the margins are wrong", and the two console warnings that had to be fixed at the import rather than the call | Mobile + Backend |
 | 24 | [`24-the-logo.md`](./24-the-logo.md) | The brand assets, generated from one file rather than exported eight times: why the app icon must have no alpha channel, why the splash needs two images, and the launch sequence that used to blink through two empty screens | Mobile + Web + Design |
+| 25 | [`25-web-mobile-parity.md`](./25-web-mobile-parity.md) | The exact web/mobile V2 parity contract, shared-source boundary, platform adapters, viewport matrix and zero-unverified release gate | Mobile + Web + QA |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–24 describe the product as it stands** after the September 2026
@@ -76,6 +77,8 @@ seven languages today, with no i18n library. See 16.
   note that none of them may move the Talent Score's weights.
 - **Starting fresh on the product itself?** Read 01 → 02 → 03 → 07 → 08.
 - **Building a web screen?** Read 04 → 05, then the relevant section of 01.
+- **Changing a product screen that ships on web?** Read [25](./25-web-mobile-parity.md); product
+  screens live in `mobile/` and are shared, not recreated in Vite.
 - **Wiring data?** Read 03 → 06.
 
 ## Source inputs

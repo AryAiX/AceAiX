@@ -258,10 +258,15 @@ node tests/e2e/walkthrough.mjs --lang ar                  # right-to-left
 ```
 
 Exports the web build, serves `dist/` on `:8792`, launches Chromium at 414×896, signs in as a demo
-account, and visits 27 screens. A screen **fails** if it logs an uncaught console error, is missing
+account, and directly visits 28 smoke-tour URLs. A screen **fails** if it logs an uncaught console error, is missing
 a string the tour expects, or renders under 60 characters of text — the last being the check that
 catches a screen that silently rendered nothing, which is the failure mode that shipped in the
 previous build.
+
+This walkthrough is not the web-parity release gate. It does not exercise every
+route, role, state or mutation. The exhaustive 54-screen inventory is
+`mobile/tests/parity/screenManifest.ts`, enforced by
+`tests/unit/screenParity.test.ts`; see [25](./25-web-mobile-parity.md).
 
 Three flags: `--role athlete|coach|club|guardian`, `--scheme light|dark`, `--lang en|ar|es|fr|de|ru|zh`.
 

@@ -311,7 +311,6 @@ export default function ComposeScreen() {
           lineHeight: theme.size.lg * theme.lineHeight.normal,
           textAlignVertical: 'top',
           padding: 0,
-          ...(({ outlineStyle: 'none' } as unknown) as object),
         }}
       />
 

@@ -1,6 +1,7 @@
 import type { Href } from 'expo-router';
 
 import type { AppNotification } from '@/types/models';
+import { WEB_APP_ORIGIN } from '@/lib/webLinks';
 
 /**
  * Every navigation target in one place.
@@ -170,7 +171,7 @@ export function notificationTarget(n: AppNotification): Href | null {
 }
 
 /** Deep-link paths the app answers to (`aceaix://…` and https links). */
-export const DEEP_LINK_PREFIXES = ['aceaix://', 'https://aceaix.com/app'];
+export const DEEP_LINK_PREFIXES = ['aceaix://', WEB_APP_ORIGIN];
 
 /** Recovery must remain reachable after Supabase establishes a recovery session. */
 export function isResetPasswordRoute(segments: readonly string[]): boolean {

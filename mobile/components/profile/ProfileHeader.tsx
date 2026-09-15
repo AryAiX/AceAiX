@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Image, Pressable, Share, StyleSheet, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -37,6 +37,8 @@ import { Routes } from '@/lib/routes';
 import { levelLabelI18n, positionLabel, sportLabel } from '@/constants/sports';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
+import { shareContent } from '@/lib/share';
+import { webAppLink } from '@/lib/webLinks';
 import { useT } from '@/i18n';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
 
@@ -194,17 +196,18 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
 
   const onShare = useCallback(async () => {
     setMenuOpen(false);
+    const url = webAppLink(`/u/${user.id}`);
     try {
-      await Share.share({
-        message: t('profile.shareMessage', {
-          name,
-          url: `https://aceaix.com/app/u/${user.id}`,
-        }),
+      const message = t('profile.shareMessage', {
+        name,
+        url,
       });
+      const outcome = await shareContent({ message, url, title: name });
+      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
     } catch {
-      /* the person dismissed the share sheet */
+      toast.error(t('common.somethingWentWrong'));
     }
-  }, [name, t, user.id]);
+  }, [name, t, toast, user.id]);
 
   const onReport = useCallback(
     async (reason: string) => {

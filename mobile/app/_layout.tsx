@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -31,6 +31,8 @@ import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
 import { routeDecision } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const WEB_APP_MAX_WIDTH = 840;
 
 /* Set the layout direction from last launch's choice before React renders, so
    an Arabic install comes up mirrored rather than flipping a beat later. */
@@ -80,6 +82,12 @@ function Shell() {
     if (!loading && !languageLoading) onReady();
   }, [loading, languageLoading, onReady]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    document.documentElement.style.backgroundColor = theme.colors.bg;
+    document.body.style.backgroundColor = theme.colors.bg;
+  }, [theme.colors.bg]);
+
   if (!configured) return <ConfigMissing />;
 
   /* Language comes before everything, including the session check: there is no
@@ -90,7 +98,21 @@ function Shell() {
   if (!hasChosen) return <LanguageGate />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+    <View
+      style={[
+        { flex: 1, backgroundColor: theme.colors.bg },
+        Platform.OS === 'web'
+          ? {
+              width: '100%',
+              maxWidth: WEB_APP_MAX_WIDTH,
+              alignSelf: 'center',
+              borderLeftWidth: 1,
+              borderRightWidth: 1,
+              borderColor: theme.colors.border,
+            }
+          : null,
+      ]}
+    >
       <RouteGuard>
         <Stack
           screenOptions={{

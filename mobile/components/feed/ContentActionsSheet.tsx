@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Clipboard, Platform, Share, View } from 'react-native';
+import { Clipboard, View } from 'react-native';
 import {
   AlertTriangle,
   Ban,
@@ -23,6 +23,7 @@ import {
 import { useT } from '@/i18n';
 import { blockUser, deleteComment, deletePost, reportContent } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
+import { shareContent } from '@/lib/share';
 import { displayName } from '@/lib/format';
 
 /**
@@ -116,13 +117,10 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
     if (!target?.link) return;
     close();
     try {
-      await Share.share(
-        Platform.OS === 'ios'
-          ? { url: target.link, message: target.link }
-          : { message: target.link },
-      );
+      const outcome = await shareContent({ message: target.link, url: target.link });
+      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
     } catch {
-      /* the user backed out of the share sheet */
+      toast.error(t('common.somethingWentWrong'));
     }
   };
 

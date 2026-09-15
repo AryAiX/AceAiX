@@ -112,8 +112,6 @@ export function Composer({
             paddingTop: spacing.md,
             paddingBottom: spacing.md,
             textAlignVertical: 'top',
-            // React Native Web draws its own focus ring otherwise.
-            ...(({ outlineStyle: 'none' } as unknown) as object),
           }}
         />
       </Pressable>

@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
-  Dimensions,
   Easing,
   KeyboardAvoidingView,
   Modal,
@@ -10,11 +9,13 @@ import {
   ScrollView,
   View,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { Button } from './Button';
 import { Text } from './Text';
@@ -50,12 +51,20 @@ export function Sheet({
   testID,
 }: Props) {
   const theme = useTheme();
+  const t = useT();
   const { colors, radii, spacing } = theme;
   const insets = useSafeAreaInsets();
-  const screenH = Dimensions.get('window').height;
+  const { height: screenH } = useWindowDimensions();
 
   const translate = useRef(new Animated.Value(screenH)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+  const sheetRef = useRef<View>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (visible) {
@@ -74,6 +83,52 @@ export function Sheet({
     }
   }, [visible, translate, backdrop, screenH]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !visible) return;
+
+    previousFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const root = sheetRef.current as unknown as HTMLElement | null;
+    const focusable = () =>
+      Array.from(
+        root?.querySelectorAll<HTMLElement>(
+          'button, input, textarea, select, a[href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => !element.hasAttribute('disabled'));
+
+    const focusTimer = window.setTimeout(() => focusable()[0]?.focus(), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (items.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener('keydown', onKeyDown);
+      previousFocus.current?.focus();
+      previousFocus.current = null;
+    };
+  }, [visible]);
+
   const maxHeight = height ? screenH * height : screenH * 0.88;
 
   const body = (
@@ -89,7 +144,11 @@ export function Sheet({
       statusBarTranslucent
       testID={testID}
     >
-      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+      <View
+        ref={sheetRef}
+        style={{ flex: 1, justifyContent: 'flex-end' }}
+        accessibilityViewIsModal
+      >
         <Animated.View
           style={{
             ...({ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const),
@@ -100,8 +159,9 @@ export function Sheet({
           <Pressable
             style={{ flex: 1 }}
             onPress={onClose}
+            focusable={false}
             accessibilityRole="button"
-            accessibilityLabel="Close"
+            accessibilityLabel={t('common.close')}
           />
         </Animated.View>
 
@@ -151,7 +211,7 @@ export function Sheet({
                   onPress={onClose}
                   hitSlop={12}
                   accessibilityRole="button"
-                  accessibilityLabel="Close"
+                  accessibilityLabel={t('common.close')}
                   style={{
                     width: 32,
                     height: 32,
@@ -213,14 +273,15 @@ export function ConfirmSheet({
   visible,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   destructive,
   loading,
   onConfirm,
   onCancel,
 }: ConfirmProps) {
   const theme = useTheme();
+  const t = useT();
 
   return (
     <Sheet visible={visible} onClose={onCancel} title={title} scrollable={false}>
@@ -229,13 +290,18 @@ export function ConfirmSheet({
       </Text>
       <View style={{ gap: theme.spacing.sm }}>
         <Button
-          label={confirmLabel}
+          label={confirmLabel ?? t('common.confirm')}
           variant={destructive ? 'danger' : 'primary'}
           fullWidth
           loading={loading}
           onPress={onConfirm}
         />
-        <Button label={cancelLabel} variant="ghost" fullWidth onPress={onCancel} />
+        <Button
+          label={cancelLabel ?? t('common.cancel')}
+          variant="ghost"
+          fullWidth
+          onPress={onCancel}
+        />
       </View>
     </Sheet>
   );

@@ -50,7 +50,9 @@ app/
 └─ +not-found.tsx
 ```
 
-44 screens and 6 layouts.
+54 routable screen files and 6 layouts. The complete, CI-enforced inventory is
+`mobile/tests/parity/screenManifest.ts`; see [25 — Web / Mobile V2
+Parity](./25-web-mobile-parity.md).
 
 ### 2.0 The language gate comes first
 
