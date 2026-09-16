@@ -97,3 +97,50 @@ mobile, browser, database and accessibility regression suites. The platform
 manifest must also contain zero `blocked` and zero `unverified` entries. A
 walkthrough count smaller than the route manifest is a failure, not a release
 note.
+
+## 7. Dev and production promotion
+
+The final `deploy-web` job in `.github/workflows/ci.yml` owns
+`dev.aceaix.com`:
+
+- a same-repository pull request is deployed only after Source hygiene, Web,
+  Mobile and Backend all pass; the most recently green PR becomes the stable
+  dev deployment;
+- fork pull requests run CI without receiving deployment credentials;
+- a push to `main` follows the same gate, creates a Vercel production
+  deployment and pins `dev.aceaix.com` back to that main commit;
+- the deployed PR artifact is GitHub's tested merge commit, not an untested
+  branch tip.
+
+CI needs the following GitHub repository secrets, all set against the `aryaix`
+Vercel team:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+The deployment job is skipped unless the GitHub repository variable
+`VERCEL_DEPLOY_ENABLED` is `true`, so the workflow can never make an otherwise
+valid pull request fail while the credentials are being rotated.
+
+### Project separation
+
+The Expo build deploys to the `aceaix-v2` Vercel project, which is deliberately
+separate from the `aceaix` project:
+
+- `aceaix-v2` owns `dev.aceaix.com` only. Its Root Directory is empty because
+  CI runs the Vercel CLI from inside `mobile/`, and `mobile/vercel.json`
+  supplies the build command, output directory and SPA rewrites.
+- `aceaix` still owns `aceaix.com` and `www.aceaix.com` and still serves the
+  Vite web app. Nothing in this workflow deploys to it.
+
+Because the two are separate projects, a push to `main` promotes the Expo build
+to production within `aceaix-v2` and cannot replace the live marketing site.
+Retiring the Vite app on `aceaix.com` is a separate, explicit decision.
+
+`aceaix-v2` defines `EXPO_PUBLIC_SUPABASE_URL` and
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` for Production, Preview and Development. Its
+deployment protection is `all_except_custom_domains`, so raw `*.vercel.app`
+preview URLs require team login while `dev.aceaix.com` stays public. No Git
+repository is connected to either project, because GitHub Actions owns both
+promotion and the stable alias.

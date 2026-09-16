@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -190,3 +191,111 @@ jobs:
         run: |
           echo '── postgrest ──'; tail -50 "$RUNTIME_DIR/postgrest.log" || true
           echo '── api ──';       tail -50 "$RUNTIME_DIR/api.log" || true
+
+  deploy-web:
+    name: Pin tested web build to dev
+    needs:
+      - source-hygiene
+      - web
+      - mobile
+      - backend
+    if: >-
+      vars.VERCEL_DEPLOY_ENABLED == 'true' &&
+      (
+        github.event_name == 'push' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: aceaix-dev-deployment
+      cancel-in-progress: true
+    environment:
+      name: ${{ github.event_name == 'push' && 'production' || 'development' }}
+      url: ${{ steps.deploy.outputs.url }}
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      # On pull_request this is GitHub's tested merge commit, not an untested
+      # branch tip. On main it is the exact commit that passed the four jobs.
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+
+      - name: Verify deployment configuration
+        run: |
+          missing=()
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository deployment secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.18.0
+
+      - name: Pull Vercel project and environment
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            environment=production
+          else
+            environment=preview
+          fi
+          vercel pull --yes --environment="$environment" --token="$VERCEL_TOKEN"
+
+      - name: Build tested deployment artifact
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy tested artifact
+        id: deploy
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
+          else
+            url="$(vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN")"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed ${{ github.sha }} to $url"
+
+      # One stable staging hostname always follows whichever tested commit
+      # became green most recently. A green main build takes it back from PRs.
+      - name: Pin dev.aceaix.com to this deployment
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" dev.aceaix.com --token="$VERCEL_TOKEN"
+
+      # The alias is the artifact users actually load, so failing here is the
+      # difference between a bad build and a bad build nobody noticed.
+      - name: Verify the pinned dev host serves this build
+        run: |
+          for attempt in 1 2 3 4 5; do
+            body="$(curl -fsS --max-time 30 https://dev.aceaix.com/ || true)"
+            if printf '%s' "$body" | grep -q '/_expo/static/js/web/entry-'; then
+              echo "dev.aceaix.com serves the Expo web build"
+              curl -fsS -o /dev/null --max-time 30 https://dev.aceaix.com/sign-in
+              echo "dev.aceaix.com resolves client-side routes"
+              exit 0
+            fi
+            echo "attempt $attempt: dev.aceaix.com not serving the build yet"
+            sleep 10
+          done
+          echo "::error::dev.aceaix.com did not serve the deployed Expo build"
+          exit 1
