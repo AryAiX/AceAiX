@@ -10,7 +10,13 @@ if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
 elif [[ -n "${GITHUB_ACTIONS:-}" ]] && git rev-parse --verify HEAD^ >/dev/null 2>&1; then
   git diff --check HEAD^ HEAD
 else
+  # Check committed work too, not just the working tree. Checking only unstaged
+  # changes reports success the moment a bad commit is made, which is exactly
+  # when the branch starts failing CI.
   git diff --check
+  if git rev-parse --verify --quiet origin/main >/dev/null; then
+    git diff --check "origin/main...HEAD"
+  fi
 fi
 
 echo "→ checking tracked sources and generated artifacts"
