@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -33,10 +33,6 @@ import { routeDecision } from '@/lib/routes';
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const WEB_APP_MAX_WIDTH = 840;
-
-/* Set the layout direction from last launch's choice before React renders, so
-   an Arabic install comes up mirrored rather than flipping a beat later. */
-primeLayoutDirection();
 
 /**
  * Routing gate.
@@ -145,6 +141,7 @@ function Shell() {
 }
 
 export default function RootLayout() {
+  const [layoutDirectionReady, setLayoutDirectionReady] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -156,8 +153,12 @@ export default function RootLayout() {
     SairaCondensed_800ExtraBold,
   });
 
+  useEffect(() => {
+    primeLayoutDirection().then(() => setLayoutDirectionReady(true));
+  }, []);
+
   // A missing font file must not leave the user staring at a splash screen.
-  if (!fontsLoaded && !fontError) return null;
+  if ((!fontsLoaded && !fontError) || !layoutDirectionReady) return null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
