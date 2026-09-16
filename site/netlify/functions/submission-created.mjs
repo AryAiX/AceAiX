@@ -29,7 +29,7 @@ const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 /* Set in Netlify under Site configuration → Environment variables. */
 const API_KEY = process.env.BREVO_API_KEY;
 const FROM_EMAIL = process.env.SENDER_EMAIL || 'masi.k@aryaix.com';
-const FROM_NAME = process.env.SENDER_NAME || 'Masi Katry · AceAiX';
+const FROM_NAME = process.env.SENDER_NAME || 'Masi Komeili · AceAiX';
 const SITE = (process.env.SITE_URL || 'https://aceaix.com').replace(/\/$/, '');
 
 /** HTML-escape. Names arrive from a public form and end up inside markup. */
@@ -147,7 +147,7 @@ function render({ name, isMinor, role, sport, city, country }) {
       <tr><td style="padding:10px 30px 26px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0">
           <tr><td style="border-top:1px solid #E6E2F4;padding-top:16px;">
-            <div style="font-size:15px;font-weight:700;color:#161327;">Masi Katry</div>
+            <div style="font-size:15px;font-weight:700;color:#161327;">Masi Komeili</div>
             <div style="font-size:13.5px;color:#6B6588;margin-top:2px;">
               Head of Marketing &amp; Branding, AceAiX
             </div>
@@ -193,7 +193,7 @@ function renderText({ name, isMinor }) {
     '',
     'See you on the first.',
     '',
-    'Masi Katry',
+    'Masi Komeili',
     'Head of Marketing & Branding, AceAiX',
     'masi.k@aryaix.com',
     '',
@@ -252,7 +252,7 @@ export default async (req) => {
 
   const body = {
     sender: { email: FROM_EMAIL, name: FROM_NAME },
-    replyTo: { email: FROM_EMAIL, name: 'Masi Katry' },
+    replyTo: { email: FROM_EMAIL, name: 'Masi Komeili' },
     to: [{ email: to, ...(fields.name ? { name: fields.name } : {}) }],
     subject: isMinor
       ? 'Your young athlete is on the AceAiX early-access list'
