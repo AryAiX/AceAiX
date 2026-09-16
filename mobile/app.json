@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aceaix",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "primaryColor": "#FF5A1F",
     "description": "AceAiX is where young athletes get discovered. Build a sporting profile, get an AI Talent Score, share your highlights, and be found by verified coaches and clubs.",
     "githubUrl": "https://github.com/AryAiX/AceAiX",
@@ -194,8 +193,7 @@
             "DEFAULT"
           ]
         }
-      ],
-      "edgeToEdgeEnabled": true
+      ]
     },
     "web": {
       "bundler": "metro",
