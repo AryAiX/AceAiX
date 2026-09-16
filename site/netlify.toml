@@ -1,0 +1,13 @@
+# Netlify reads this from the root of whatever is deployed.
+#
+# Dragging this folder onto Netlify: it is found automatically.
+# Deploying from GitHub: set the site's **base directory** to `site`, and this
+# file is found there. Publish directory stays `.` relative to that base.
+#
+# The only thing it is here for is the functions directory. Without it Netlify
+# has no reason to look for `netlify/functions`, and the sign-up reply below
+# never runs — silently, because nothing is wrong with the form itself.
+
+[build]
+  publish = "."
+  functions = "netlify/functions"

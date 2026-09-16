@@ -93,6 +93,36 @@ the `name`, `data-netlify` and hidden `form-name` attributes must survive any
 edit to the `<form>` tags. A form that loses them stops being captured
 silently — the page still says thank you and nothing is stored.
 
+**Form detection is off on a site that has never had a form.** Netlify →
+**Forms** → *Enable form detection*, and then **deploy again**. Enabling it does
+not go back and read the deploy that is already live, so until a new deploy the
+Forms page stays empty and nothing is wrong.
+
+### The reply the person gets
+
+Netlify tells *you* about a submission; it has no autoresponder. So
+`netlify/functions/submission-created.mjs` sends one. Netlify calls a function
+with that exact filename on every verified submission — the name is the wiring,
+there is nothing to configure.
+
+It writes back from Masi, as Head of Marketing & Branding, in the site's
+colours. A parent who signed a child up gets different words: it tells them
+plainly that we will write to them and not to their child.
+
+**It needs one environment variable.** Netlify → **Site configuration** →
+**Environment variables** → `BREVO_API_KEY`. Optionally `SENDER_EMAIL`,
+`SENDER_NAME` and `SITE_URL`. Without the key the function logs that it is
+missing and returns success anyway — a courtesy email that cannot be sent must
+never fail a sign-up that worked.
+
+The sender address has to be **verified in Brevo** (Senders & Domains), or
+Brevo refuses it and the reason is in the function log.
+
+**This is not verification.** Nobody clicks anything, so the address is not
+proved real, and the wording is careful not to imply otherwise — it welcomes,
+it does not ask anybody to confirm. Double opt-in needs somewhere to keep a
+token, which is the Supabase route below.
+
 **A Supabase edge function, when you want more.** Paste its URL into the marked
 `<script>` block just after `<body>`:
 
