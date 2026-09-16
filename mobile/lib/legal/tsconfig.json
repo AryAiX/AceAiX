@@ -1,0 +1,33 @@
+{
+  /* This file exists to stop a tsconfig lookup, not to compile anything.
+   *
+   * The web app reads the legal documents straight out of this folder rather
+   * than keeping its own copy — `web/vite.config.ts` aliases `@legal` here, so
+   * that a privacy policy can never say one thing in the app and another on
+   * the website. That is the right arrangement and it should stay.
+   *
+   * The cost of it is this: when Vite transforms these files it looks for the
+   * nearest tsconfig, walks up, and finds `mobile/tsconfig.json`, which
+   * extends `expo/tsconfig.base`. That package is installed in
+   * `mobile/node_modules`, which the web build has no reason to install — so
+   * `npm run build` in `web/` fails with "Tsconfig not found
+   * expo/tsconfig.base" on any machine where the mobile dependencies are
+   * absent. On a laptop where both are installed it passes, which is why it
+   * reached CI before anybody saw it.
+   *
+   * Being the nearest tsconfig ends the walk here. It inherits nothing, needs
+   * nothing installed, and applies only to this folder.
+   *
+   * `tsc -p mobile/tsconfig.json` is unaffected: a project build uses the
+   * project file it was given and ignores nested ones.
+   */
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "types": []
+  },
+  "include": ["."]
+}
