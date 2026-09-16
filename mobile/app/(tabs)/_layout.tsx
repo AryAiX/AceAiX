@@ -89,7 +89,7 @@ function TabIcon({
         <Animated.View
           pointerEvents="none"
           style={{
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             borderRadius: 999,
             backgroundColor: theme.alpha(colors.primary, 0.14),
             opacity: lift,

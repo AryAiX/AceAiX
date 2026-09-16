@@ -234,7 +234,7 @@ export function Shine({ width = 0.35, every = 5, color, radius }: ShineProps) {
     <Animated.View
       pointerEvents="none"
       style={{
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         borderRadius: radius,
         overflow: 'hidden',
       }}
