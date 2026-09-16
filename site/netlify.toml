@@ -1,0 +1,35 @@
+# Netlify reads this from the root of whatever is deployed.
+#
+# ── Read this before wondering why the sign-up reply never arrives ───────────
+#
+# **Functions do not run on a drag-and-drop deploy.** Netlify's own support
+# says so plainly: functions only work when the site is deployed from Git or
+# with the Netlify CLI. Dropping a folder that contains `netlify/functions`
+# uploads the file and does nothing with it — no error, no entry under
+# Functions, and the form itself keeps working perfectly, which is what makes
+# it confusing. The submission is stored, the team is notified, and the person
+# who signed up hears nothing.
+#
+# So one of these two, not the Drop page:
+#
+#   • Connect the site to the repository (Site configuration → Build & deploy →
+#     link repository). Set **base directory** to `site`. Publish directory
+#     stays `.` relative to that base. Every push deploys.
+#
+#   • Or, from a terminal in this folder:
+#         npx netlify login
+#         npx netlify link          # pick the existing site
+#         npx netlify deploy --prod
+#
+# ── The functions directory ─────────────────────────────────────────────────
+#
+# `[functions] directory` is the key Netlify documents. An older `[build]
+# functions` was accepted historically and is not what the docs describe, so
+# this file uses the current one — a functions directory that is silently not
+# read looks exactly like a function that is silently not called.
+
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"

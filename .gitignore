@@ -42,3 +42,6 @@ npm-debug.log*
 # Keep the original prototype archive out of the repo
 project-bolt-*.zip
 .vercel
+
+# e2e walkthrough screenshots — regenerated on every run
+mobile/tests/e2e/shots/

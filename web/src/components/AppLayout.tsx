@@ -14,6 +14,7 @@ import { useMyAthlete } from '../hooks/useAthlete';
 import { safeInternalPath } from '../lib/navigation';
 import { listNotifications, unreadCount as fetchUnreadCount, markNotificationRead } from '../api/notifications';
 import type { Notification } from '../types';
+import { BrandMark } from './BrandMark';
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -163,9 +164,7 @@ export default function AppLayout() {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className={`flex items-center px-4 py-5 border-b border-white/[0.09] ${collapsed && !mobile ? 'justify-center' : 'gap-3'}`}>
-        <div className="w-8 h-8 bg-azure rounded-lg flex items-center justify-center flex-shrink-0 shadow-azure-sm">
-          <Zap size={16} className="text-white" fill="white" />
-        </div>
+        <BrandMark size={28} />
         {(!collapsed || mobile) && (
           <span className="font-bold text-white text-base font-display">
             AceAi<span className="text-azure">X</span>

@@ -1,4 +1,21 @@
-import type { PostComment } from '@/lib/postsService';
+/*
+ * These helpers arrived on `main` in "Fix cross-platform flows and performance
+ * sync" (#9), written against `lib/postsService` — part of the service layer
+ * this rebuild replaces with `lib/api.*`. The logic is sound and tested, so it
+ * survives the merge; only the type it borrowed had to go.
+ *
+ * The shape is declared structurally rather than imported from
+ * `@/types/models`, for two reasons: nothing in the rebuild threads replies
+ * yet, so `PostComment` there has no `replies` field and adding one to a shared
+ * model to satisfy an unused module would be the tail wagging the dog; and
+ * declared this way the helpers accept the rebuild's `PostComment` unchanged
+ * the day someone does wire threading into `CommentSheet`.
+ */
+export interface PostComment {
+  id: string;
+  parent_id?: string | null;
+  replies?: PostComment[];
+}
 
 export function commentReplyParentId(replyTo: PostComment | null): string | undefined {
   return replyTo ? (replyTo.parent_id ?? replyTo.id) : undefined;

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Zap, Mail, Lock, User, Eye, EyeOff, ArrowRight,
+  Mail, Lock, User, Eye, EyeOff, ArrowRight,
   ChevronLeft, Check, Trophy, Users, Stethoscope,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types';
+import { BrandMark } from '../../components/BrandMark';
 
 /* ─────────────────────────────────────────────────────────────
    Role groups — Coach and Club both map to role='club' in the DB
@@ -143,10 +144,7 @@ export default function RegisterPage() {
 
         <div className="relative z-10 flex flex-col h-full px-10 xl:px-14 py-10">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-auto">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: '#2F80ED', boxShadow: '0 0 20px rgba(47,128,237,0.4)' }}>
-              <Zap size={16} className="text-white" fill="white" />
-            </div>
+            <BrandMark size={32} />
             <span className="font-display font-bold text-white">AceAi<span style={{ color: '#2F80ED' }}>X</span></span>
           </Link>
 
@@ -211,9 +209,7 @@ export default function RegisterPage() {
 
           {/* mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#2F80ED' }}>
-              <Zap size={16} className="text-white" fill="white" />
-            </div>
+            <BrandMark size={32} />
             <span className="font-display font-bold text-white">AceAi<span className="text-azure">X</span></span>
           </div>
 

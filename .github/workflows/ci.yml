@@ -84,3 +84,68 @@ jobs:
 
       - name: Export web bundle
         run: npm run build:web
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      # The local stack is deliberately Docker-free (see docs/14), so the two
+      # pieces it needs are installed the same way here as on a laptop.
+      - name: Install PostgreSQL 16 and pgvector
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-16-pgvector
+
+      - name: Install PostgREST
+        run: |
+          curl -fsSL -o /tmp/postgrest.tar.xz \
+            https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
+          tar -xJf /tmp/postgrest.tar.xz -C /usr/local/bin
+          postgrest --version
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      # All 43 migrations from scratch, then the assertions that need a
+      # superuser: RLS, the youth-safety gates, the whole-schema invariants.
+      - name: Migrations and SQL suite
+        run: ./supabase/tests/run-all.sh
+
+      - name: Bring the stack up
+        run: |
+          sudo mkdir -p /var/lib/pgtest && sudo chown "$USER" /var/lib/pgtest
+          ./tools/local-supabase/start.sh | tee /tmp/stack.log
+          grep -E '^\s+EXPO_PUBLIC_' /tmp/stack.log | sed 's/^ *//' > mobile/.env
+          cat mobile/.env | sed 's/\(ANON_KEY=\).*/\1<redacted>/'
+
+      # Does every call the client makes exist on the other end? A renamed
+      # function or argument is a string mismatch TypeScript cannot see.
+      - name: Client ↔ database contract
+        working-directory: mobile
+        run: npm run test:contract
+
+      # Does a write by one person reach another person? The SQL suite runs
+      # inside Postgres as the superuser; this signs in over HTTP with the anon
+      # key, as the app does, and checks the result lands for somebody else.
+      - name: Write pipelines
+        working-directory: mobile
+        run: npm run test:pipelines
+
+      - name: Stack logs on failure
+        if: failure()
+        run: |
+          echo '── postgrest ──'; tail -50 /var/lib/pgtest/postgrest.log || true
+          echo '── api ──';       tail -50 /var/lib/pgtest/api.log || true

@@ -15,6 +15,7 @@ import {
   markAllNotificationsReadInState,
   markNotificationReadInState,
 } from '../lib/notificationState';
+import { BrandMark } from './BrandMark';
 
 type NavItem = { label: string; path: string; Icon: React.ElementType };
 
@@ -174,9 +175,7 @@ export default function PublicHeader() {
         {/* ── Logo + Search ─────────────────────────── */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 bg-azure rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110 shadow-azure-sm">
-              <Zap size={14} className="text-white" fill="white" />
-            </div>
+            <BrandMark size={26} className="transition-transform duration-200 group-hover:scale-110" />
             <span className="font-display font-bold text-white text-[15px] hidden sm:block">
               AceAi<span className="text-azure">X</span>
             </span>

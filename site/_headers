@@ -1,0 +1,17 @@
+# Netlify and Cloudflare Pages read this file. Vercel uses vercel.json instead.
+#
+# The HTML must never be cached hard: the launch date, the copy and the store
+# links all live inside it, and a page pinned in a CDN for a year is a page you
+# cannot correct. The assets are content-addressed by name and never change in
+# place, so they can be cached forever.
+
+/
+  Cache-Control: public, max-age=0, must-revalidate
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
