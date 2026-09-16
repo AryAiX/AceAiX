@@ -196,4 +196,3 @@ export const discover = {
     clearSearch: 'Clear search',
   },
 };
-
