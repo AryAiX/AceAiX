@@ -23,17 +23,54 @@ API_PORT="${API_PORT:-8790}"
 PGRST_PORT="${PGRST_PORT:-3010}"
 JWT_SECRET="${JWT_SECRET:-aceaix-local-development-jwt-secret-not-for-production}"
 
-RUNTIME=/var/lib/pgtest
-mkdir -p "$RUNTIME"
+RUNTIME="${RUNTIME:-/var/lib/pgtest}"
+
+# The cluster lives under /var/lib and belongs to the postgres user, so setting
+# it up needs root. In a container the invoking user often IS root and sudo may
+# not exist; on a laptop or a CI runner it is the other way round. Same reasoning
+# as supabase/tests/run-all.sh, and for the same reason: assuming one of them
+# works everywhere it was tried and fails where it was not.
+if [ "$(id -u)" -eq 0 ]; then
+  as_root()     { "$@"; }
+  as_postgres() { su postgres -c "$1"; }
+elif command -v sudo >/dev/null 2>&1; then
+  as_root()     { sudo "$@"; }
+  as_postgres() { sudo -u postgres bash -c "$1"; }
+else
+  echo "start.sh needs to create $RUNTIME and run initdb as the postgres user," >&2
+  echo "which requires root. Re-run as root, or install sudo." >&2
+  exit 1
+fi
+
+# Two owners under one directory, and both matter:
+#   $RUNTIME/data and the socket directory belong to the postgres user, because
+#   that is who initdb and the server run as;
+#   $RUNTIME itself belongs to whoever ran this, because the PostgREST config
+#   and the logs are written by them, not by postgres.
+# Handing the whole tree to postgres — which is what this used to do — makes
+# the second impossible, and it surfaces as "Permission denied" on a config
+# file several steps later, nowhere near the chown that caused it.
+as_root mkdir -p "$RUNTIME"
+as_root chown "$(id -u):$(id -g)" "$RUNTIME"
+as_root chmod 755 "$RUNTIME"
 
 # ---- database ----------------------------------------------------------------
 if ! pg_isready -q 2>/dev/null; then
   echo "→ starting PostgreSQL"
-  rm -rf "$RUNTIME/data"
-  mkdir -p "$RUNTIME/data" "$PGHOST"
-  chown -R postgres:postgres "$RUNTIME"
-  su postgres -c "PATH=$PGBIN:\$PATH initdb -D $RUNTIME/data -A trust -U postgres" >/dev/null
-  su postgres -c "PATH=$PGBIN:\$PATH pg_ctl -D $RUNTIME/data -o '-k $PGHOST -p $PGPORT -c listen_addresses= -c wal_level=logical' -l $RUNTIME/pg.log start" >/dev/null
+  as_root rm -rf "$RUNTIME/data"
+  as_root mkdir -p "$RUNTIME/data" "$PGHOST"
+  as_root chown -R postgres:postgres "$RUNTIME/data" "$PGHOST"
+  # The caller is not postgres, so the socket directory has to be traversable
+  # by them or nothing can connect to it.
+  as_root chmod 755 "$PGHOST"
+  # pg_ctl writes this log as postgres, into a directory the caller owns, so
+  # the file has to exist with the right owner before the server starts. The
+  # alternative — putting the log inside data/ — hides it somewhere nobody
+  # looks when the server fails to come up, which is exactly when it is read.
+  as_root touch "$RUNTIME/pg.log"
+  as_root chown postgres:postgres "$RUNTIME/pg.log"
+  as_postgres "PATH=$PGBIN:\$PATH initdb -D $RUNTIME/data -A trust -U postgres" >/dev/null
+  as_postgres "PATH=$PGBIN:\$PATH pg_ctl -D $RUNTIME/data -o '-k $PGHOST -p $PGPORT -c listen_addresses= -c wal_level=logical' -l $RUNTIME/pg.log start" >/dev/null
   sleep 2
 fi
 
