@@ -252,8 +252,18 @@ export interface NewHighlight {
   durationSeconds?: number | null;
 }
 
+export const MAX_HIGHLIGHT_VIDEO_SECONDS = 90;
+
 /** Uploads the file, then records it so the Talent Score trigger picks it up. */
 export async function addAthleteMedia(input: NewHighlight): Promise<void> {
+  if (
+    input.isVideo &&
+    input.durationSeconds &&
+    input.durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
+  ) {
+    throw new AppError('That highlight is too long. Highlights need to be 90 seconds or shorter.');
+  }
+
   const uid = await currentUserId();
   const path = `${uid}/highlights/${Date.now()}.${extensionFor(input.uri, input.contentType)}`;
   await upload(Buckets.posts, path, input.uri, input.contentType);
@@ -266,7 +276,16 @@ export async function addAthleteMedia(input: NewHighlight): Promise<void> {
     duration_seconds: input.durationSeconds ?? null,
     is_public: true,
   });
-  if (error) throw new AppError(error);
+  if (error) {
+    // The database row and object are one user action. Roll back the object if
+    // the row cannot be created so failed browser uploads do not leak storage.
+    try {
+      await supabase.storage.from(Buckets.posts).remove([path]);
+    } catch {
+      // Preserve the insert error; cleanup can be retried independently.
+    }
+    throw new AppError(error);
+  }
 }
 
 export async function deleteAthleteMedia(mediaId: string): Promise<void> {

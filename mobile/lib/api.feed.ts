@@ -168,6 +168,8 @@ export interface PendingMedia {
   mimeType?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
+  /** Picker metadata normalized to seconds for platform-independent checks. */
+  durationSeconds?: number | null;
 }
 
 /** The `posts` bucket rejects anything else, so we never try. */
@@ -182,6 +184,7 @@ const ALLOWED_MIME: Record<string, string> = {
 
 /** Matches the bucket's file_size_limit. */
 export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+export const MAX_POST_VIDEO_SECONDS = 180;
 
 function resolveType(item: PendingMedia): { ext: string; contentType: string } {
   const declared = (item.mimeType ?? '').toLowerCase();
@@ -237,6 +240,13 @@ export async function uploadPostMedia(
 
       if (item.fileSize && item.fileSize > MAX_UPLOAD_BYTES) {
         throw new AppError('That file is too big. Videos need to be under 100 MB.');
+      }
+      if (
+        item.type === 'video' &&
+        item.durationSeconds &&
+        item.durationSeconds > MAX_POST_VIDEO_SECONDS
+      ) {
+        throw new AppError('That video is too long. Videos need to be 3 minutes or shorter.');
       }
 
       const { ext, contentType } = resolveType(item);

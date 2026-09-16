@@ -22,6 +22,7 @@ import {
   AthleteMediaItem,
   deleteAthleteMedia,
   getAthleteMedia,
+  MAX_HIGHLIGHT_VIDEO_SECONDS,
 } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
@@ -89,12 +90,21 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
 
       const asset = result.assets[0];
       const isVideo = asset.type === 'video';
+      const durationSeconds = asset.duration ? Math.round(asset.duration / 1000) : null;
+      if (
+        isVideo &&
+        durationSeconds &&
+        durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
+      ) {
+        toast.error('Highlights need to be 90 seconds or shorter.');
+        return;
+      }
       setPicked({
         uri: asset.uri,
         isVideo,
         contentType: asset.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg'),
         title: '',
-        durationSeconds: asset.duration ? Math.round(asset.duration / 1000) : null,
+        durationSeconds,
       });
     } catch (err) {
       toast.error(errorMessage(err));

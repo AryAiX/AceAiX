@@ -70,4 +70,24 @@ describe('post media upload', () => {
 
     expect(remove).not.toHaveBeenCalled();
   });
+
+  it('rejects an overlong browser video before reading or uploading it', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    await expect(
+      uploadPostMedia([
+        {
+          uri: 'blob:long-video',
+          type: 'video',
+          mimeType: 'video/mp4',
+          durationSeconds: 181,
+        },
+      ]),
+    ).rejects.toThrow('3 minutes or shorter');
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(upload).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
 });

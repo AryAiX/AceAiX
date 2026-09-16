@@ -34,7 +34,11 @@ import {
 } from '@/components/ui';
 import { useT } from '@/i18n';
 import { createPost } from '@/lib/api';
-import { uploadPostMedia, type PendingMedia } from '@/lib/api.feed';
+import {
+  MAX_POST_VIDEO_SECONDS,
+  uploadPostMedia,
+  type PendingMedia,
+} from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import type { PostAudience, PostMedia } from '@/types/models';
@@ -144,6 +148,17 @@ export default function ComposeScreen() {
     });
     if (result.canceled) return;
 
+    const tooLong = result.assets.find(
+      (asset) =>
+        asset.type === 'video' &&
+        asset.duration &&
+        asset.duration / 1000 > MAX_POST_VIDEO_SECONDS,
+    );
+    if (tooLong) {
+      toast.error('Videos need to be 3 minutes or shorter.');
+      return;
+    }
+
     const picked: PendingMedia[] = result.assets.slice(0, remaining).map((asset) => ({
       uri: asset.uri,
       type: asset.type === 'video' ? 'video' : 'photo',
@@ -152,6 +167,7 @@ export default function ComposeScreen() {
       mimeType: asset.mimeType ?? null,
       fileName: asset.fileName ?? null,
       fileSize: asset.fileSize ?? null,
+      durationSeconds: asset.duration ? Math.round(asset.duration / 1000) : null,
     }));
 
     setMedia((current) => [...current, ...picked].slice(0, MAX_MEDIA));
