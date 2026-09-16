@@ -76,6 +76,8 @@ export interface AttributeData {
 export interface HighlightClip {
   id: string;
   thumbnail: string;
+  mediaUrl?: string;
+  mediaType?: 'video' | 'image' | 'highlight_reel' | 'document';
   title: string;
   duration: string;
   tags: string[];

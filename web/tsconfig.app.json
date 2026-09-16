@@ -18,7 +18,10 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Shared with the mobile app so the published policies cannot drift. */
+    "paths": { "@legal": ["../mobile/lib/legal/index.ts"] }
   },
-  "include": ["src"]
+  "include": ["src", "../mobile/lib/legal"]
 }

@@ -17,6 +17,13 @@ export interface UserProfile {
   country: string | null;
   locale: string | null;
   is_verified: boolean;
+  is_minor?: boolean;
+  age_band?: '13_15' | '16_17' | '18_24' | '25_plus' | null;
+  is_discoverable?: boolean;
+  is_suspended?: boolean;
+  suspended_reason?: string | null;
+  allow_messages_from?: 'everyone' | 'verified' | 'following' | 'nobody';
+  onboarding_completed?: boolean;
   subscription_tier: SubscriptionTier;
   created_at: string;
   updated_at: string;

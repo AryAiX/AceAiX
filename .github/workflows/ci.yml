@@ -8,12 +8,25 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  source-hygiene:
+    name: Source hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check tracked source
+        run: ./tools/ci/source-hygiene.sh
+
   web:
     name: Web
     runs-on: ubuntu-latest
@@ -73,6 +86,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify Expo and native runtime
+        run: |
+          npm run doctor
+          npm run test:native-runtime
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -82,5 +100,209 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Export web bundle
-        run: npm run build:web
+      - name: Provision Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Expo-web public and recovery smoke
+        run: npm run test:smoke:web
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    steps:
+      # The runner context is unavailable in a job-level env block, so these
+      # paths are exported here instead. Defining them there silently
+      # invalidates the whole workflow file and no job runs at all.
+      - name: Resolve runtime paths
+        run: |
+          {
+            echo "RUNTIME_DIR=$RUNNER_TEMP/aceaix-pgtest"
+            echo "PGHOST=$RUNNER_TEMP/aceaix-pgtest/run"
+            echo "TOOLS_BIN=$RUNNER_TEMP/aceaix-tools/bin"
+            echo "POSTGREST=$RUNNER_TEMP/aceaix-tools/bin/postgrest"
+          } >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      # The local stack is deliberately Docker-free (see docs/14), so the two
+      # pieces it needs are installed the same way here as on a laptop.
+      - name: Install PostgreSQL 16 and pgvector
+        run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-16-pgvector
+
+      - name: Install PostgREST
+        run: |
+          mkdir -p "$TOOLS_BIN"
+          curl -fsSL -o "${RUNNER_TEMP}/aceaix-tools/postgrest.tar.xz" \
+            https://github.com/PostgREST/postgrest/releases/download/v12.2.3/postgrest-v12.2.3-linux-static-x64.tar.xz
+          tar -xJf "${RUNNER_TEMP}/aceaix-tools/postgrest.tar.xz" -C "$TOOLS_BIN"
+          echo "$TOOLS_BIN" >> "$GITHUB_PATH"
+          "$POSTGREST" --version
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Provision Chromium
+        working-directory: mobile
+        run: npx playwright install --with-deps chromium
+
+      # All migrations from scratch, then the assertions that need a
+      # superuser: RLS, the youth-safety gates, the whole-schema invariants.
+      - name: Fresh database and SQL suite
+        run: ./supabase/tests/run-all.sh
+
+      - name: V1 archive upgrade proof
+        run: ./supabase/tests/run-upgrade.sh
+
+      - name: Bring the stack up
+        run: |
+          ./tools/local-supabase/start.sh | tee "$RUNTIME_DIR/stack.log"
+          grep -E '^\s+EXPO_PUBLIC_' "$RUNTIME_DIR/stack.log" | sed 's/^ *//' > mobile/.env
+          cat mobile/.env | sed 's/\(ANON_KEY=\).*/\1<redacted>/'
+
+      # Does every call the client makes exist on the other end? A renamed
+      # function or argument is a string mismatch TypeScript cannot see.
+      - name: Client ↔ database contract
+        working-directory: mobile
+        run: npm run test:contract
+
+      # Does a write by one person reach another person? The SQL suite runs
+      # inside Postgres as the superuser; this signs in over HTTP with the anon
+      # key, as the app does, and checks the result lands for somebody else.
+      - name: Write pipelines
+        working-directory: mobile
+        run: npm run test:pipelines
+
+      # A signed-in browser tour of the rewritten Expo app. This intentionally
+      # checks the V2 screens rather than restoring the deleted V1 suites.
+      - name: Browser smoke
+        working-directory: mobile
+        run: npm run test:walkthrough
+
+      - name: Stack logs on failure
+        if: failure()
+        run: |
+          echo '── postgrest ──'; tail -50 "$RUNTIME_DIR/postgrest.log" || true
+          echo '── api ──';       tail -50 "$RUNTIME_DIR/api.log" || true
+
+  deploy-web:
+    name: Pin tested web build to dev
+    needs:
+      - source-hygiene
+      - web
+      - mobile
+      - backend
+    if: >-
+      vars.VERCEL_DEPLOY_ENABLED == 'true' &&
+      (
+        github.event_name == 'push' ||
+        github.event.pull_request.head.repo.full_name == github.repository
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: aceaix-dev-deployment
+      cancel-in-progress: true
+    environment:
+      name: ${{ github.event_name == 'push' && 'production' || 'development' }}
+      url: ${{ steps.deploy.outputs.url }}
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      # On pull_request this is GitHub's tested merge commit, not an untested
+      # branch tip. On main it is the exact commit that passed the four jobs.
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+
+      - name: Verify deployment configuration
+        run: |
+          missing=()
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository deployment secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.18.0
+
+      - name: Pull Vercel project and environment
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            environment=production
+          else
+            environment=preview
+          fi
+          vercel pull --yes --environment="$environment" --token="$VERCEL_TOKEN"
+
+      - name: Build tested deployment artifact
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            vercel build --prod --token="$VERCEL_TOKEN"
+          else
+            vercel build --token="$VERCEL_TOKEN"
+          fi
+
+      - name: Deploy tested artifact
+        id: deploy
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
+          else
+            url="$(vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN")"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed ${{ github.sha }} to $url"
+
+      # One stable staging hostname always follows whichever tested commit
+      # became green most recently. A green main build takes it back from PRs.
+      - name: Pin dev.aceaix.com to this deployment
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" dev.aceaix.com --token="$VERCEL_TOKEN"
+
+      # The alias is the artifact users actually load, so failing here is the
+      # difference between a bad build and a bad build nobody noticed.
+      - name: Verify the pinned dev host serves this build
+        run: |
+          for attempt in 1 2 3 4 5; do
+            body="$(curl -fsS --max-time 30 https://dev.aceaix.com/ || true)"
+            if printf '%s' "$body" | grep -q '/_expo/static/js/web/entry-'; then
+              echo "dev.aceaix.com serves the Expo web build"
+              curl -fsS -o /dev/null --max-time 30 https://dev.aceaix.com/sign-in
+              echo "dev.aceaix.com resolves client-side routes"
+              exit 0
+            fi
+            echo "attempt $attempt: dev.aceaix.com not serving the build yet"
+            sleep 10
+          done
+          echo "::error::dev.aceaix.com did not serve the deployed Expo build"
+          exit 1

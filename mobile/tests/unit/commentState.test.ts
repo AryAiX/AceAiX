@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PostComment } from '@/lib/postsService';
+import type { PostComment } from '@/lib/commentState';
 import {
   appendCommentResult,
   attachCommentReplies,
@@ -8,23 +8,17 @@ import {
   isSameCommentRequestIdentity,
 } from '@/lib/commentState';
 
+/*
+ * Trimmed to the three fields these helpers read, when the module stopped
+ * importing its type from the retired `postsService`. Every assertion below is
+ * unchanged — the author, body and like count were never part of what is being
+ * tested here, only of the shape the old service happened to return.
+ */
 function comment(
   id: string,
   parentId: string | null = null,
 ): PostComment {
-  return {
-    id,
-    post_id: 'post-1',
-    author_id: 'user-1',
-    body: id,
-    parent_id: parentId,
-    like_count: 0,
-    created_at: '2026-09-08T00:00:00.000Z',
-    author_name: 'Athlete',
-    author_avatar: null,
-    liked: false,
-    replies: [],
-  };
+  return { id, parent_id: parentId, replies: [] };
 }
 
 describe('flattened comment replies', () => {
