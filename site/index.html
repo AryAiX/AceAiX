@@ -1278,23 +1278,33 @@ footer {
         </div>
       </div>
 
+      <!-- Both halves of the name, in their own fields rather than one "Full
+           name" box. The email opens "Hi Layla", a list sorts by surname, and
+           neither is recoverable from a single string once somebody types
+           "layla haddad-al mansouri" or puts the family name first. -->
       <div class="ftwo">
         <div class="fgrp">
           <label class="flbl" for="nfName">First name</label>
           <input id="nfName" name="first_name" type="text" autocomplete="given-name"
-                 placeholder="Layla" maxlength="80">
+                 placeholder="Layla" maxlength="80" required>
         </div>
         <div class="fgrp">
-          <label class="flbl" for="nfSport">Sport</label>
-          <select id="nfSport" name="sport">
-            <option value="">Choose a sport</option>
-            <option>Football</option><option>Basketball</option><option>Tennis</option>
-            <option>Athletics</option><option>Swimming</option><option>Cricket</option>
-            <option>Volleyball</option><option>Handball</option><option>Padel</option>
-            <option>Chess</option><option>Esports</option><option>Martial Arts</option>
-            <option value="Other">Something else</option>
-          </select>
+          <label class="flbl" for="nfLast">Last name</label>
+          <input id="nfLast" name="last_name" type="text" autocomplete="family-name"
+                 placeholder="Haddad" maxlength="80" required>
         </div>
+      </div>
+
+      <div class="fgrp">
+        <label class="flbl" for="nfSport">Sport</label>
+        <select id="nfSport" name="sport">
+          <option value="">Choose a sport</option>
+          <option>Football</option><option>Basketball</option><option>Tennis</option>
+          <option>Athletics</option><option>Swimming</option><option>Cricket</option>
+          <option>Volleyball</option><option>Handball</option><option>Padel</option>
+          <option>Chess</option><option>Esports</option><option>Martial Arts</option>
+          <option value="Other">Something else</option>
+        </select>
       </div>
 
       <div class="ftwo">
@@ -1402,7 +1412,13 @@ footer {
 
     <div class="score-grid" id="dialBlock">
       <div class="dial-wrap">
-        <svg class="dial" viewBox="0 0 200 200" role="img" aria-label="An example Talent Score of 74, Gold tier">
+        <!-- This dial and the score screenshot further down are the same
+             profile, and have to stay that way. A visitor sees both without
+             scrolling; two different numbers side by side reads as a page
+             that does not know its own product. The number comes from the
+             app's demo data — change that and reshoot, rather than editing
+             this by hand. -->
+        <svg class="dial" viewBox="0 0 200 200" role="img" aria-label="An example Talent Score of 64, Silver tier">
           <defs>
             <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
               <stop offset="0%"   stop-color="#FFB020"></stop>
@@ -1417,7 +1433,7 @@ footer {
         </svg>
         <div class="dial-face">
           <div class="dial-num" id="dialNum">0</div>
-          <div class="dial-tier">Gold tier</div>
+          <div class="dial-tier">Silver tier</div>
           <div class="dial-of">an example profile</div>
         </div>
       </div>
@@ -1507,7 +1523,7 @@ footer {
           <figcaption><b>Your profile</b>What a coach opens first.</figcaption>
         </figure>
         <figure>
-          <div class="phone"><img src="assets/screen-score.webp" width="380" height="822" alt="The Talent Score screen showing 74, Gold tier, and the breakdown behind it"></div>
+          <div class="phone"><img src="assets/screen-score.webp" width="380" height="822" alt="The Talent Score screen showing 64, Silver tier, and the breakdown behind it"></div>
           <figcaption><b>Talent Score</b>The number, and every input behind it.</figcaption>
         </figure>
         <figure>
@@ -1898,6 +1914,24 @@ footer {
       e.preventDefault();
       email.setAttribute('aria-invalid', 'false');
 
+      /* `novalidate` is on the form, so the browser will not enforce `required`
+         for us — it is there for assistive technology and for the asterisk-free
+         visual cue, and the check has to be written out. Names are asked for
+         before the email because that is the order they appear in. */
+      var nameFields = [
+        [document.getElementById('nfName'), 'Please tell us your first name.'],
+        [document.getElementById('nfLast'), 'Please tell us your last name.']
+      ];
+      for (var i = 0; i < nameFields.length; i += 1) {
+        var el = nameFields[i][0];
+        el.setAttribute('aria-invalid', 'false');
+        if (!(el.value || '').trim()) {
+          el.setAttribute('aria-invalid', 'true');
+          el.focus();
+          return say(nameFields[i][1], 'bad');
+        }
+      }
+
       var value = (email.value || '').trim();
       if (!value || value.indexOf('@') < 1 || value.indexOf('.') < 0) {
         email.setAttribute('aria-invalid', 'true');
@@ -1922,6 +1956,7 @@ footer {
         body: JSON.stringify({
           email: value,
           first_name: (document.getElementById('nfName').value || '').trim() || null,
+          last_name: (document.getElementById('nfLast').value || '').trim() || null,
           website: document.getElementById('nfSite').value,
           is_adult: !isMinor(),
           guardian_confirmed: isMinor() ? true : undefined,
@@ -1959,6 +1994,7 @@ footer {
       var data = {
         'form-name': 'early-access',
         first_name: (document.getElementById('nfName').value || '').trim(),
+        last_name: (document.getElementById('nfLast').value || '').trim(),
         email: value,
         role: picked('role', 'athlete'),
         sport: document.getElementById('nfSport').value || '',
@@ -2146,8 +2182,10 @@ footer {
     });
   }
 
-  /* The dial. 74 of 100 — an example profile, and it says so on the face. */
-  var SCORE = 74, CIRC = 527.8;
+  /* The dial. 64 of 100 — an example profile, and it says so on the face.
+     Kept equal to the app's demo athlete, whose score screen is shown in a
+     phone a few hundred pixels below this one. */
+  var SCORE = 64, CIRC = 527.8;
   var ring = document.getElementById('ring');
   var num = document.getElementById('dialNum');
   var block = document.getElementById('dialBlock');

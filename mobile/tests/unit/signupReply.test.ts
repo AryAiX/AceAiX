@@ -37,6 +37,7 @@ const submit = async (data: Record<string, string>, form = 'early-access') => {
 const ADULT = {
   email: 'sam@example.com',
   first_name: 'Sam',
+  last_name: 'Okoro',
   role: 'scout',
   sport: 'Tennis',
   city: 'Doha',
@@ -47,6 +48,7 @@ const ADULT = {
 const GUARDIAN = {
   email: 'parent@example.com',
   first_name: 'Layla',
+  last_name: 'Haddad',
   role: 'parent',
   age: 'UNDER 18 — the address above is a parent or guardian',
 };
@@ -102,14 +104,59 @@ describe('a parent signs a child up', () => {
   it('is addressed to the parent, and says so', async () => {
     await submit(GUARDIAN);
     const b = sent[0].body;
-    expect(b.subject).toMatch(/young athlete/i);
-    expect(b.htmlContent).toMatch(/We will write to you, not to them/);
+    expect(b.htmlContent).toMatch(/we\s*\n?\s*will write to you, not to them/i);
     expect(b.tags).toContain('guardian');
+  });
+
+  it('never greets the parent by the child’s name', async () => {
+    /* On the under-18 path the form is filled in by the young athlete, who
+       gives a parent's address — so the name on the submission is the child's.
+       Opening "Hi Layla," to the parent would be calling them by their
+       daughter's name, in the first line of the first email they ever get
+       from us. The athlete is named in the sentence instead. */
+    await submit(GUARDIAN);
+    const b = sent[0].body;
+    expect(b.htmlContent).not.toMatch(/Hi Layla/);
+    expect(b.textContent).not.toMatch(/Hi Layla/);
+    expect(b.htmlContent).toContain('Layla Haddad has asked to hear');
+    /* And not on the envelope either. */
+    expect(b.to[0].name).toBeUndefined();
   });
 
   it('never implies we hold the child’s address', async () => {
     await submit(GUARDIAN);
     expect(sent[0].body.to[0].email).toBe('parent@example.com');
+  });
+
+  it('still works when only a first name was given', async () => {
+    const { last_name, ...noSurname } = GUARDIAN;
+    await submit(noSurname);
+    const b = sent[0].body;
+    expect(b.subject).toMatch(/Layla is on the AceAiX/);
+    expect(b.htmlContent).toContain('Layla has asked to hear');
+  });
+
+  it('falls back to no name at all', async () => {
+    const { first_name, last_name, ...anonymous } = GUARDIAN;
+    await submit(anonymous);
+    const b = sent[0].body;
+    expect(b.subject).toMatch(/young athlete/i);
+    expect(b.htmlContent).toContain('A young athlete has asked to hear');
+    expect(b.htmlContent).not.toMatch(/undefined|null/);
+  });
+});
+
+describe('the surname', () => {
+  it('is carried on the adult envelope, in full', async () => {
+    await submit(ADULT);
+    expect(sent[0].body.to[0].name).toBe('Sam Okoro');
+  });
+
+  it('is escaped like everything else typed into a public form', async () => {
+    await submit({ ...GUARDIAN, last_name: '<b>Haddad</b>' });
+    const html = sent[0].body.htmlContent;
+    expect(html).not.toContain('<b>Haddad</b>');
+    expect(html).toContain('&lt;b&gt;Haddad&lt;/b&gt;');
   });
 });
 

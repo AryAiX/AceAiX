@@ -50,7 +50,17 @@ const PAGES = [
     form: 'early-access',
     /* Every field that must reach the inbox. An entry removed from this list
        is a field silently dropped from the submission. */
-    fields: ['first_name', 'email', 'role', 'sport', 'city', 'country', 'consent', 'bot-field'],
+    fields: [
+      'first_name',
+      'last_name',
+      'email',
+      'role',
+      'sport',
+      'city',
+      'country',
+      'consent',
+      'bot-field',
+    ],
     /* `done(already, confirms)` — the second argument is the whole rule. */
     fn: 'function sendToNetlify',
     netlifySignal: /done\(\s*false\s*,\s*false\s*\)/,
@@ -178,5 +188,95 @@ describe('the confirmation wording is gated, not merely absent', () => {
   it('the function route asks for it and the Netlify route does not', () => {
     expect(FILE).toMatch(/done\(res\.body\.status === 'already', true\)/);
     expect(functionBody(FILE, 'function sendToNetlify')).toMatch(/done\(false, false\)/);
+  });
+});
+
+describe('the name is asked for in two halves, and enforced', () => {
+  /* A list of first names is not a list you can do anything with — you cannot
+     introduce somebody to a club from it, and you cannot sort it. Both halves
+     are collected, and both are required. */
+
+  it('has a field for each half, with the right autocomplete', () => {
+    const markup = formMarkup(FILE, 'early-access');
+    expect(markup).toMatch(/name="first_name"[^>]*autocomplete="given-name"|autocomplete="given-name"[^>]*name="first_name"/s);
+    expect(markup).toMatch(/name="last_name"[^>]*autocomplete="family-name"|autocomplete="family-name"[^>]*name="last_name"/s);
+  });
+
+  it('both halves reach both backends', () => {
+    /* A field can carry `name`, appear on screen, validate, and still be left
+       out of the object that is actually posted. That is invisible until
+       somebody reads the spreadsheet a month later. */
+    const netlify = functionBody(FILE, 'function sendToNetlify');
+    expect(netlify).toMatch(/first_name:/);
+    expect(netlify).toMatch(/last_name:/);
+
+    const submit = FILE.slice(FILE.indexOf("form.addEventListener('submit'"));
+    const supabase = submit.slice(0, submit.indexOf('function sendToNetlify'));
+    expect(supabase).toMatch(/first_name:/);
+    expect(supabase).toMatch(/last_name:/);
+  });
+
+  it('is enforced in script, not only by the required attribute', () => {
+    /* The form carries `novalidate`, so the browser does not enforce
+       `required` at all — it is there for assistive technology. Marking a
+       field required and relying on the browser to act on it would produce a
+       form that silently accepts blank names. */
+    expect(formMarkup(FILE, 'early-access')).toContain('novalidate');
+    const submit = functionBodyOfSubmitHandler();
+    expect(submit).toMatch(/nfName/);
+    expect(submit).toMatch(/nfLast/);
+    expect(submit).toMatch(/first name/i);
+    expect(submit).toMatch(/last name/i);
+  });
+
+  /** The submit handler is an anonymous function, so it needs its own reader. */
+  function functionBodyOfSubmitHandler(): string {
+    const at = FILE.indexOf("form.addEventListener('submit'");
+    if (at < 0) throw new Error('no submit handler on the form');
+    return FILE.slice(at, FILE.indexOf('function sendToNetlify', at));
+  }
+});
+
+describe('the example score is one profile, not two', () => {
+  /* The page draws its own dial and, a few hundred pixels below it, shows a
+     photograph of the app's score screen. A visitor sees both without
+     scrolling. They drifted once already — the screenshots were taken before a
+     change to the demo data and the dial was left where it was, so the page
+     said 74 Gold in one place and 64 Silver in the other.
+     The screenshot is the ground truth: it comes out of the real app. If this
+     fails, reshoot and move the dial to match, rather than the reverse. */
+  const alt = FILE.match(/alt="The Talent Score screen showing (\d+), (\w+) tier/);
+
+  it('the screenshot says what its alt text says', () => {
+    expect(alt).not.toBeNull();
+  });
+
+  it('the dial shows the same number and tier', () => {
+    const [, score, tier] = alt!;
+    expect(FILE).toMatch(new RegExp(`var SCORE = ${score}\\b`));
+    expect(FILE).toContain(`<div class="dial-tier">${tier} tier</div>`);
+    expect(FILE).toContain(`aria-label="An example Talent Score of ${score}, ${tier} tier"`);
+  });
+});
+
+describe('the deploy configuration', () => {
+  const TOML = readFileSync(resolve(SITE, 'netlify.toml'), 'utf8');
+
+  it('names the functions directory with the key Netlify documents', () => {
+    /* `[build] functions` was accepted historically; `[functions] directory`
+       is what the docs describe. A functions directory that is silently not
+       read looks exactly like a function that is silently not called, which
+       is a day of looking in the wrong place. */
+    expect(TOML).toMatch(/\[functions\][\s\S]*?directory\s*=\s*"netlify\/functions"/);
+  });
+
+  it('warns that drag-and-drop will not run the function', () => {
+    /* Netlify support: functions only work when deployed from Git or with the
+       CLI. Dropping a folder uploads the file and does nothing with it — no
+       error anywhere, the form still works, and the person who signed up just
+       never hears back. Whoever deploys this next needs to read that before
+       they lose an afternoon to it. */
+    expect(TOML).toMatch(/drag-and-drop/i);
+    expect(TOML).toMatch(/netlify deploy --prod|Git/);
   });
 });

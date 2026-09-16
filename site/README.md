@@ -23,6 +23,12 @@ Any host that serves files will do. Three that need nothing else:
 about ten seconds, on a `*.netlify.app` address. Add `aceaix.com` under
 Domain settings when you are ready.
 
+> **Not if you want the sign-up reply to work.** Netlify does not run functions
+> on a drag-and-drop deploy — only on a deploy from Git or from the CLI. The
+> page, the form and the notification to Masi all work perfectly either way,
+> which is what makes it hard to spot: the only symptom is that the person who
+> signed up never hears back. See *Where the sign-ups go* below.
+
 **Vercel** — from a terminal, in this folder:
 
 ```bash
@@ -48,11 +54,17 @@ itself, beside the phone, because until 1 October it is the only thing on this
 page anybody can actually do, and the App Store and Google Play buttons that
 used to occupy that role lead to listings that do not exist yet.
 
-It asks role, first name, sport, city, country, age band and email. That is
-more than an email address, deliberately: a fourteen-year-old goalkeeper in
-Sharjah and a scout at a Championship club both belong on this list and do not
-get the same launch email, and a row that is only an address cannot tell you
+It asks role, first and last name, sport, city, country, age band and email.
+That is more than an email address, deliberately: a fourteen-year-old goalkeeper
+in Sharjah and a scout at a Championship club both belong on this list and do
+not get the same launch email, and a row that is only an address cannot tell you
 which you have.
+
+**The name is asked in two fields, not one.** The reply email opens "Hi Layla",
+a list sorts by surname, and neither is recoverable from a single "Full name"
+box once somebody types `layla haddad-al mansouri` or puts the family name
+first. Both halves are required — enforced in script, because the form carries
+`novalidate` and the browser will not enforce `required` for us.
 
 **Under-18s are welcome** — this is a 13+ product. They sign up with a
 **parent's** address, and choosing "I'm under 18" relabels the existing email
@@ -105,9 +117,42 @@ Netlify tells *you* about a submission; it has no autoresponder. So
 with that exact filename on every verified submission — the name is the wiring,
 there is nothing to configure.
 
+**But the site has to be deployed in a way that runs functions at all.** This is
+the one that costs an afternoon, so it is worth stating flatly:
+
+> A drag-and-drop deploy does not run functions. Netlify's own support says
+> functions work "only when deployed via git or CLI". Dropping a folder that
+> contains `netlify/functions` uploads the file and does nothing with it. There
+> is no error, nothing appears under **Functions**, and the form keeps working —
+> the submission is stored and Masi is emailed. The only thing missing is the
+> reply, which is the half nobody is watching.
+
+So either of these, instead of the Drop page:
+
+- **Connect the site to the repository.** Site configuration → Build & deploy →
+  link repository. **Base directory `site`**, publish directory `.`, build
+  command empty. Every push deploys, and the zip-shuttling stops for good.
+- **Or deploy from a terminal in this folder:**
+
+  ```bash
+  npx netlify login
+  npx netlify link          # pick the existing site
+  npx netlify deploy --prod
+  ```
+
+After either one, Netlify → **Functions** lists `submission-created`. If that
+list is empty, nothing below this line matters yet.
+
 It writes back from Masi, as Head of Marketing & Branding, in the site's
-colours. A parent who signed a child up gets different words: it tells them
-plainly that we will write to them and not to their child.
+colours. A parent gets different words: it tells them plainly that we will write
+to them and not to their child.
+
+**And it does not greet the parent by the child's name.** On the under-18 path
+the form is filled in by the young athlete, who gives a parent's address — so
+the name on the submission is the child's. Opening "Hi Layla," to the parent
+would be calling them by their daughter's name in the first line of the first
+email they ever get from us. The adult path is greeted by name; the guardian
+path opens "Hi," and names the athlete in the sentence instead.
 
 **It needs one environment variable.** Netlify → **Site configuration** →
 **Environment variables** → `BREVO_API_KEY`. Optionally `SENDER_EMAIL`,

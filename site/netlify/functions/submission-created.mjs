@@ -53,13 +53,19 @@ const esc = (s) =>
  * ignores the gradient and gets the solid pink underneath it, which is why
  * `background-color` is set as well as `background-image`.
  */
-function render({ name, isMinor, role, sport, city, country }) {
-  const hi = name ? `Hi ${esc(name)},` : 'Hi,';
+function render({ name, fullName, isMinor, role, sport, city, country }) {
+  /* An adult is greeted by their own name. A guardian is not: on the under-18
+     path the form is filled in by the young athlete, who gives a parent's
+     address — so the name on the submission is the child's, and opening "Hi
+     Layla," to the parent would be addressing them by their child's name.
+     Hence a plain "Hi," and the athlete named in the sentence instead. */
+  const hi = !isMinor && name ? `Hi ${esc(name)},` : 'Hi,';
 
+  const who = fullName ? esc(fullName) : 'A young athlete';
   const opening = isMinor
-    ? `Thank you for signing your young athlete up for early access to AceAiX.
-       You are receiving this because the address given was yours — that is how
-       it should be, and how it will stay. We will write to you, not to them.`
+    ? `${who} has asked to hear when AceAiX opens, and gave your address because
+       they are under 18. That is how it should be, and how it will stay — we
+       will write to you, not to them.`
     : `Thank you for joining the early-access list for AceAiX.`;
 
   const detail = [
@@ -179,12 +185,12 @@ function render({ name, isMinor, role, sport, city, country }) {
 }
 
 /** Plain text, for clients that ask for it and for anybody who prefers it. */
-function renderText({ name, isMinor }) {
+function renderText({ name, fullName, isMinor }) {
   return [
-    name ? `Hi ${name},` : 'Hi,',
+    !isMinor && name ? `Hi ${name},` : 'Hi,',
     '',
     isMinor
-      ? 'Thank you for signing your young athlete up for early access to AceAiX. You are receiving this because the address given was yours — that is how it should be, and how it will stay. We will write to you, not to them.'
+      ? `${fullName || 'A young athlete'} has asked to hear when AceAiX opens, and gave your address because they are under 18. That is how it should be, and how it will stay — we will write to you, not to them.`
       : 'Thank you for joining the early-access list for AceAiX.',
     '',
     'AceAiX opens on 1 October 2026. You will hear from us on that day, and not before it.',
@@ -241,8 +247,12 @@ export default async (req) => {
      person reading the notification is not left interpreting `false`. */
   const isMinor = /under 18/i.test(String(d.age ?? ''));
 
+  const first = String(d.first_name ?? '').trim();
+  const last = String(d.last_name ?? '').trim();
+
   const fields = {
-    name: (d.first_name ?? '').trim(),
+    name: first,
+    fullName: [first, last].filter(Boolean).join(' '),
     isMinor,
     role: (d.role ?? '').trim(),
     sport: (d.sport ?? '').trim(),
@@ -253,9 +263,14 @@ export default async (req) => {
   const body = {
     sender: { email: FROM_EMAIL, name: FROM_NAME },
     replyTo: { email: FROM_EMAIL, name: 'Masi Komeili' },
-    to: [{ email: to, ...(fields.name ? { name: fields.name } : {}) }],
+    /* The display name on an under-18 submission belongs to the child, not to
+       the parent whose inbox this lands in, so it is not attached to the
+       recipient there. */
+    to: [{ email: to, ...(!isMinor && fields.fullName ? { name: fields.fullName } : {}) }],
     subject: isMinor
-      ? 'Your young athlete is on the AceAiX early-access list'
+      ? fields.fullName
+        ? `${fields.fullName} is on the AceAiX early-access list`
+        : 'Your young athlete is on the AceAiX early-access list'
       : "You're on the AceAiX early-access list",
     htmlContent: render(fields),
     textContent: renderText(fields),
