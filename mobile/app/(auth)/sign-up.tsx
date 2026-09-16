@@ -9,6 +9,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
 import { stashPendingDateOfBirth } from '@/lib/api.auth';
+import { supabase } from '@/lib/supabase';
 import type { SignupRole } from '@/types/models';
 import {
   MIN_PASSWORD_LENGTH,
@@ -110,6 +111,16 @@ export default function SignUpScreen() {
     // stale state slip an under-13 account past.
     if (calculateAge(dob) < MINIMUM_AGE) {
       setBlockedByAge(true);
+      return;
+    }
+
+    const { data: emailExists } = await supabase.rpc('check_email_exists', {
+      p_email: email,
+    });
+    if (emailExists) {
+      const message = t('errors.emailInUse');
+      setEmailError(message);
+      toast.error(message);
       return;
     }
 
