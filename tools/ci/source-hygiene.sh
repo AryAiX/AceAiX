@@ -69,3 +69,47 @@ if errors:
     sys.exit(1)
 print(f"✓ {len(tracked)} tracked paths checked")
 PY
+
+# A workflow that references an out-of-scope context is rejected whole by
+# GitHub, so no job runs and no check is reported. CI cannot catch that itself;
+# the run never starts. This check only has teeth before the push.
+echo "→ checking workflow context scope"
+python3 <<'PY'
+import pathlib
+import re
+import sys
+
+# Contexts that only exist once a step is running, so they cannot appear in
+# any job-level key.
+STEP_ONLY = ("runner", "steps", "env", "job")
+JOB_LEVEL_KEYS = ("env", "runs-on", "concurrency", "services", "container", "timeout-minutes")
+
+errors = []
+for path in sorted(pathlib.Path(".github/workflows").glob("*.y*ml")):
+    lines = path.read_text().splitlines()
+    in_job_key = False
+    for number, line in enumerate(lines, start=1):
+        indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        # Job-level keys sit at four spaces; steps sit deeper under `steps:`.
+        if indent == 4:
+            key = stripped.split(":", 1)[0]
+            in_job_key = key in JOB_LEVEL_KEYS
+        elif indent <= 2:
+            in_job_key = False
+        if not in_job_key:
+            continue
+        for context in re.findall(r"\$\{\{\s*([a-z]+)\.", line):
+            if context in STEP_ONLY:
+                errors.append(
+                    f"{path}:{number}: job-level key uses the '{context}' context, "
+                    "which GitHub rejects at parse time"
+                )
+
+if errors:
+    print("\n".join(f"✗ {error}" for error in errors), file=sys.stderr)
+    sys.exit(1)
+print("✓ workflow contexts are in scope")
+PY

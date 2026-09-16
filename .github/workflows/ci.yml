@@ -109,12 +109,19 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    env:
-      RUNTIME_DIR: ${{ runner.temp }}/aceaix-pgtest
-      PGHOST: ${{ runner.temp }}/aceaix-pgtest/run
-      TOOLS_BIN: ${{ runner.temp }}/aceaix-tools/bin
-      POSTGREST: ${{ runner.temp }}/aceaix-tools/bin/postgrest
     steps:
+      # The runner context is unavailable in a job-level env block, so these
+      # paths are exported here instead. Defining them there silently
+      # invalidates the whole workflow file and no job runs at all.
+      - name: Resolve runtime paths
+        run: |
+          {
+            echo "RUNTIME_DIR=$RUNNER_TEMP/aceaix-pgtest"
+            echo "PGHOST=$RUNNER_TEMP/aceaix-pgtest/run"
+            echo "TOOLS_BIN=$RUNNER_TEMP/aceaix-tools/bin"
+            echo "POSTGREST=$RUNNER_TEMP/aceaix-tools/bin/postgrest"
+          } >> "$GITHUB_ENV"
+
       - name: Check out repository
         uses: actions/checkout@v4
         with:
