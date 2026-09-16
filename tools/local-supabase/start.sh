@@ -106,10 +106,31 @@ JWT_SECRET="$JWT_SECRET" \
 PGDATABASE="$DB" PGHOST="$PGHOST" PGPORT="$PGPORT" PGUSER="$PGUSER" PSQL="$PGBIN/psql" \
   node "$ROOT/tools/local-supabase/server.mjs" > "$RUNTIME/api.log" 2>&1 &
 
-for _ in $(seq 1 30); do
+# Wait for BOTH, not just the API.
+#
+# /health on the API answers `ok` without touching PostgREST — it is a liveness
+# check on one Node process. PostgREST takes noticeably longer, because on boot
+# it reads the whole schema to build its cache, and this schema is 72 tables.
+#
+# So waiting only on /health returns while PostgREST is still starting, and
+# whatever runs next gets a 502. On a laptop the gap closes before anybody
+# types the next command; in CI the next step begins immediately, which is why
+# `test:contract` failed there and passed everywhere else.
+ready=""
+for _ in $(seq 1 60); do
   sleep 0.5
-  if curl -fsS "http://localhost:${API_PORT}/health" >/dev/null 2>&1; then break; fi
+  curl -fsS "http://localhost:${API_PORT}/health" >/dev/null 2>&1 || continue
+  # Through the API, so this proves the path the client actually uses.
+  curl -fsS "http://localhost:${API_PORT}/rest/v1/" >/dev/null 2>&1 || continue
+  ready=yes; break
 done
+if [ -z "$ready" ]; then
+  echo "The stack did not come up within 30s." >&2
+  echo "  api:       $RUNTIME/api.log" >&2
+  echo "  postgrest: $RUNTIME/postgrest.log" >&2
+  tail -20 "$RUNTIME/postgrest.log" >&2 2>/dev/null || true
+  exit 1
+fi
 
 ANON=$(curl -fsS "http://localhost:${API_PORT}/health" | sed 's/.*"anonKey":"\([^"]*\)".*/\1/')
 

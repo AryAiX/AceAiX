@@ -223,15 +223,40 @@ if (signInError) {
  * functions instead of 80 and reports most of the app as missing — a false
  * alarm that looks exactly like a catastrophe.
  */
-const spec = await (
-  await fetch(`${URL_}/rest/v1/`, {
-    headers: {
-      apikey: KEY,
-      Authorization: `Bearer ${session.session.access_token}`,
-      Accept: 'application/openapi+json',
-    },
-  })
-).json();
+const specRes = await fetch(`${URL_}/rest/v1/`, {
+  headers: {
+    apikey: KEY,
+    Authorization: `Bearer ${session.session.access_token}`,
+    Accept: 'application/openapi+json',
+  },
+});
+const specBody = await specRes.text();
+
+/* Fail here, loudly, rather than three hundred lines later.
+ *
+ * Without this, a spec request that comes back 502 — PostgREST still starting,
+ * or not running at all — parses into an object with no `paths`, which makes
+ * `functions` and `tables` empty, which makes every single call the client
+ * makes look absent. The report then says "90 mismatch(es)" and lists
+ * `user_profiles` and `posts` among the tables the database does not have.
+ *
+ * That is a false alarm that reads exactly like a catastrophe, and it points
+ * at the client rather than at the stack that failed to come up. It cost real
+ * time to chase once; it should not cost it twice. */
+let spec;
+try {
+  spec = JSON.parse(specBody);
+} catch {
+  spec = null;
+}
+if (!specRes.ok || !spec?.paths) {
+  console.error(`\n  Could not read the schema from ${URL_}/rest/v1/`);
+  console.error(`  HTTP ${specRes.status}${specRes.ok ? ' but no "paths" in the response' : ''}`);
+  console.error(`  ${specBody.slice(0, 300)}`);
+  console.error('\n  This is the stack, not the client. PostgREST is probably not up —');
+  console.error('  check postgrest.log, and that start.sh finished without error.\n');
+  process.exit(2);
+}
 
 const functions = new Map(); // name -> Set(argument names)
 const tables = new Map(); // name -> Set(column names)
