@@ -376,25 +376,87 @@ export default function NewOpportunityScreen() {
           error={errors.location}
         />
 
-        {/* Deadline. RN's community picker has no browser implementation, so
-            web uses the native HTML date control through TextInput. */}
+        {/* The browser's date input is transparent over the same visible
+            control as native, preserving both V2 UI and browser validation. */}
         {Platform.OS === 'web' ? (
-          <Input
-            label={t('opportunities.post.deadlineLabel')}
-            value={deadline ? toIsoDate(deadline) : ''}
-            onChangeText={(value) => {
-              setDeadline(value ? fromIsoDate(value) : null);
-              if (errors.deadline) {
-                setErrors((current) => ({ ...current, deadline: undefined }));
-              }
-            }}
-            error={errors.deadline}
-            testID="opportunity-deadline"
-            {...({
-              type: 'date',
-              min: toIsoDate(startOfToday()),
-            } as object)}
-          />
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('opportunities.post.deadlineLabel')}
+            </Text>
+            <View
+              style={{
+                minHeight: 52,
+                justifyContent: 'center',
+                borderRadius: radii.md,
+                borderWidth: 1.5,
+                borderColor: errors.deadline
+                  ? colors.danger
+                  : deadline
+                    ? colors.primary
+                    : colors.border,
+                backgroundColor: colors.surface,
+                overflow: 'hidden',
+              }}
+            >
+              <View
+                pointerEvents="none"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.md,
+                  paddingHorizontal: spacing.lg,
+                }}
+              >
+                <CalendarDays
+                  size={20}
+                  color={deadline ? colors.primary : colors.textMuted}
+                />
+                <Text
+                  variant="body"
+                  tone={deadline ? 'default' : 'muted'}
+                  style={{ flex: 1 }}
+                >
+                  {deadline
+                    ? fullDate(toIsoDate(deadline))
+                    : t('opportunities.post.deadlineNone')}
+                </Text>
+              </View>
+              <input
+                type="date"
+                min={toIsoDate(startOfToday())}
+                value={deadline ? toIsoDate(deadline) : ''}
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setDeadline(value ? fromIsoDate(value) : null);
+                  if (errors.deadline) {
+                    setErrors((current) => ({ ...current, deadline: undefined }));
+                  }
+                }}
+                aria-label={
+                  deadline
+                    ? t('opportunities.post.deadlineChange', {
+                        date: fullDate(toIsoDate(deadline)),
+                      })
+                    : t('opportunities.post.deadlineChoose')
+                }
+                data-testid="opportunity-deadline"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                  opacity: 0.01,
+                  cursor: 'pointer',
+                }}
+              />
+            </View>
+            {errors.deadline ? (
+              <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+                {errors.deadline}
+              </Text>
+            ) : null}
+          </View>
         ) : (
           <View style={{ gap: spacing.sm }}>
             <Text variant="captionStrong" tone="secondary">

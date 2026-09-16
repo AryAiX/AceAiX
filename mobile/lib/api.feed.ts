@@ -217,7 +217,8 @@ function randomId(): string {
  *
  * Files go up one at a time: storage gives no byte-level progress, so
  * "3 of 4 done" is the most honest thing we can show, and a failure part-way
- * through leaves the rest unattempted instead of half-uploaded in parallel.
+ * through leaves the rest unattempted. Any completed objects are removed
+ * before the original error is returned, so a failed post cannot orphan media.
  */
 export async function uploadPostMedia(
   items: PendingMedia[],
@@ -230,43 +231,57 @@ export async function uploadPostMedia(
   const uploaded: PostMedia[] = [];
   onProgress?.(0, items.length);
 
-  for (let i = 0; i < items.length; i += 1) {
-    const item = items[i];
+  try {
+    for (let i = 0; i < items.length; i += 1) {
+      const item = items[i];
 
-    if (item.fileSize && item.fileSize > MAX_UPLOAD_BYTES) {
-      throw new AppError('That file is too big. Videos need to be under 100 MB.');
+      if (item.fileSize && item.fileSize > MAX_UPLOAD_BYTES) {
+        throw new AppError('That file is too big. Videos need to be under 100 MB.');
+      }
+
+      const { ext, contentType } = resolveType(item);
+      const path = `${uid}/${randomId()}.${ext}`;
+
+      let body: ArrayBuffer;
+      try {
+        const response = await fetch(item.uri);
+        body = await response.arrayBuffer();
+      } catch {
+        throw new AppError('We could not read that file. Pick it again and retry.');
+      }
+
+      if (body.byteLength === 0) {
+        throw new AppError('That file looks empty. Pick it again and retry.');
+      }
+      if (body.byteLength > MAX_UPLOAD_BYTES) {
+        throw new AppError('That file is too big. Videos need to be under 100 MB.');
+      }
+
+      const { error } = await supabase.storage
+        .from(Buckets.posts)
+        .upload(path, body, { contentType, cacheControl: '3600', upsert: false });
+      if (error) throw new AppError(error);
+
+      uploaded.push({
+        url: path,
+        type: item.type,
+        width: item.width && item.width > 0 ? item.width : undefined,
+        height: item.height && item.height > 0 ? item.height : undefined,
+      });
+      onProgress?.(i + 1, items.length);
     }
-
-    const { ext, contentType } = resolveType(item);
-    const path = `${uid}/${randomId()}.${ext}`;
-
-    let body: ArrayBuffer;
-    try {
-      const response = await fetch(item.uri);
-      body = await response.arrayBuffer();
-    } catch {
-      throw new AppError('We could not read that file. Pick it again and retry.');
+  } catch (error) {
+    const paths = uploaded.map(({ url }) => url);
+    if (paths.length > 0) {
+      // Cleanup is best effort. The upload error is the actionable failure and
+      // must not be hidden if storage cleanup is temporarily unavailable.
+      try {
+        await supabase.storage.from(Buckets.posts).remove(paths);
+      } catch {
+        // The server can remove stale objects independently if this also fails.
+      }
     }
-
-    if (body.byteLength === 0) {
-      throw new AppError('That file looks empty. Pick it again and retry.');
-    }
-    if (body.byteLength > MAX_UPLOAD_BYTES) {
-      throw new AppError('That file is too big. Videos need to be under 100 MB.');
-    }
-
-    const { error } = await supabase.storage
-      .from(Buckets.posts)
-      .upload(path, body, { contentType, cacheControl: '3600', upsert: false });
-    if (error) throw new AppError(error);
-
-    uploaded.push({
-      url: path,
-      type: item.type,
-      width: item.width && item.width > 0 ? item.width : undefined,
-      height: item.height && item.height > 0 ? item.height : undefined,
-    });
-    onProgress?.(i + 1, items.length);
+    throw error;
   }
 
   return uploaded;

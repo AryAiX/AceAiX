@@ -1,4 +1,4 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useId, useState } from 'react';
 import {
   Pressable,
   TextInput,
@@ -46,6 +46,7 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   const { colors, radii, spacing, font, size } = theme;
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
+  const descriptionId = useId();
 
   const borderColor = error ? colors.danger : focused ? colors.primary : colors.border;
 
@@ -96,7 +97,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           }}
           accessibilityLabel={label ?? rest.placeholder}
           accessibilityState={{ ...rest.accessibilityState, disabled: rest.editable === false }}
-          aria-invalid={Boolean(error)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error || hint ? descriptionId : undefined}
           {...rest}
         />
 
@@ -121,11 +123,16 @@ export const Input = forwardRef<TextInput, Props>(function Input(
       </View>
 
       {error ? (
-        <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+        <Text
+          nativeID={descriptionId}
+          variant="caption"
+          tone="danger"
+          accessibilityLiveRegion="polite"
+        >
           {error}
         </Text>
       ) : hint ? (
-        <Text variant="caption" tone="muted">
+        <Text nativeID={descriptionId} variant="caption" tone="muted">
           {hint}
         </Text>
       ) : null}

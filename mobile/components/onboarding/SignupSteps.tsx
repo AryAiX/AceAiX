@@ -161,8 +161,30 @@ function defaultDobStart(): Date {
   return d;
 }
 
-/** Day / month / year entry. The native picker has no web build. */
-function WebDateFields({
+function localIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function dateFromLocalIso(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+    ? date
+    : null;
+}
+
+/**
+ * The browser picker is transparent over the same visible control used on
+ * native. This preserves Mobile V2's UI while retaining the browser's date
+ * validation and keyboard support.
+ */
+function WebDateField({
   value,
   onChange,
 }: {
@@ -171,81 +193,65 @@ function WebDateFields({
 }) {
   const theme = useTheme();
   const t = useT();
-  const [day, setDay] = useState(value ? String(value.getDate()) : '');
-  const [month, setMonth] = useState(value ? String(value.getMonth() + 1) : '');
-  const [year, setYear] = useState(value ? String(value.getFullYear()) : '');
-
-  const push = (d: string, m: string, y: string) => {
-    const dayNum = Number(d);
-    const monthNum = Number(m);
-    const yearNum = Number(y);
-    const thisYear = new Date().getFullYear();
-
-    const complete =
-      d.length > 0 &&
-      m.length > 0 &&
-      y.length === 4 &&
-      dayNum >= 1 &&
-      dayNum <= 31 &&
-      monthNum >= 1 &&
-      monthNum <= 12 &&
-      yearNum >= thisYear - 100 &&
-      yearNum <= thisYear;
-
-    if (!complete) {
-      onChange(null);
-      return;
-    }
-
-    const candidate = new Date(yearNum, monthNum - 1, dayNum);
-    // Rejects the 31st of February and friends, which Date happily rolls over.
-    const real =
-      candidate.getDate() === dayNum &&
-      candidate.getMonth() === monthNum - 1 &&
-      candidate.getFullYear() === yearNum;
-    onChange(real && candidate.getTime() <= Date.now() ? candidate : null);
-  };
+  const { colors, radii, spacing } = theme;
+  const minimum = new Date();
+  minimum.setFullYear(minimum.getFullYear() - 100);
 
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-      <Input
-        label={t('auth.signUp.dobDayLabel')}
-        containerStyle={{ flex: 1 }}
-        value={day}
-        onChangeText={(t) => {
-          const next = t.replace(/\D/g, '').slice(0, 2);
-          setDay(next);
-          push(next, month, year);
+    <View
+      style={{
+        minHeight: 60,
+        justifyContent: 'center',
+        borderRadius: radii.md,
+        borderWidth: 1.5,
+        borderColor: value ? colors.primary : colors.border,
+        backgroundColor: colors.surface,
+        overflow: 'hidden',
+      }}
+    >
+      <View
+        pointerEvents="none"
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.md,
+          paddingHorizontal: spacing.lg,
         }}
-        placeholder={t('auth.signUp.dobDayPlaceholder')}
-        keyboardType="number-pad"
-        testID="signup-dob-day"
-      />
-      <Input
-        label={t('auth.signUp.dobMonthLabel')}
-        containerStyle={{ flex: 1 }}
-        value={month}
-        onChangeText={(t) => {
-          const next = t.replace(/\D/g, '').slice(0, 2);
-          setMonth(next);
-          push(day, next, year);
+      >
+        <CalendarDays size={20} color={value ? colors.primary : colors.textMuted} />
+        <Text variant="bodyStrong" tone={value ? 'default' : 'muted'} style={{ flex: 1 }}>
+          {value ? formatDate(value) : t('auth.signUp.dobChoose')}
+        </Text>
+        {value ? (
+          <Text variant="captionStrong" tone="primary">
+            {t('auth.signUp.dobChange')}
+          </Text>
+        ) : null}
+      </View>
+      <input
+        type="date"
+        min={localIsoDate(minimum)}
+        max={localIsoDate(new Date())}
+        value={value ? localIsoDate(value) : ''}
+        onChange={(event) => {
+          const next = event.currentTarget.value;
+          onChange(next ? dateFromLocalIso(next) : null);
         }}
-        placeholder={t('auth.signUp.dobMonthPlaceholder')}
-        keyboardType="number-pad"
-        testID="signup-dob-month"
-      />
-      <Input
-        label={t('auth.signUp.dobYearLabel')}
-        containerStyle={{ flex: 1.4 }}
-        value={year}
-        onChangeText={(t) => {
-          const next = t.replace(/\D/g, '').slice(0, 4);
-          setYear(next);
-          push(day, month, next);
+        aria-label={
+          value
+            ? t('auth.signUp.dobSelectedA11y', { date: formatDate(value) })
+            : t('auth.signUp.dobChoose')
+        }
+        data-testid="signup-dob-field"
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          left: 0,
+          opacity: 0.01,
+          cursor: 'pointer',
         }}
-        placeholder={t('auth.signUp.dobYearPlaceholder')}
-        keyboardType="number-pad"
-        testID="signup-dob-year"
       />
     </View>
   );
@@ -280,7 +286,7 @@ export function DateOfBirthStep({
 
       <View style={{ gap: spacing.lg }}>
         {Platform.OS === 'web' ? (
-          <WebDateFields value={value} onChange={onChange} />
+          <WebDateField value={value} onChange={onChange} />
         ) : (
           <>
             <Pressable

@@ -113,9 +113,17 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
       (closeRef.current as unknown as HTMLElement | null)?.focus();
     }, 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      dismissRef.current();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        dismissRef.current();
+        return;
+      }
+      // Close is the lightbox's only interactive control. Keep keyboard focus
+      // on it instead of allowing Tab to reach the obscured page underneath.
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        (closeRef.current as unknown as HTMLElement | null)?.focus();
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
