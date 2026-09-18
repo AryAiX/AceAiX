@@ -12,7 +12,7 @@ export default function NotFound() {
   const t = useT();
 
   return (
-    <Screen>
+    <Screen contentStyle={{ flexGrow: 1, justifyContent: 'center' }}>
       <EmptyState
         icon={<Compass size={28} color={theme.colors.textMuted} />}
         title={t('feed.notFoundTitle')}
