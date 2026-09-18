@@ -109,7 +109,11 @@ export function toFriendlyError(error: unknown): FriendlyError {
     return { message: say(AUTH_MESSAGES[e.message]), raw: error };
   }
 
-  if (e.name === 'AuthRetryableFetchError' || e.message?.includes('Network request failed')) {
+  if (
+    e.name === 'AuthRetryableFetchError' ||
+    e.message?.includes('Network request failed') ||
+    /internet connection appears to be offline/i.test(e.message ?? '')
+  ) {
     return { message: say('errors.offline'), raw: error };
   }
 
