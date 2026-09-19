@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   BadgeCheck,
+  Bookmark,
   Flag,
   Lock,
   MapPin,
@@ -402,6 +403,12 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
                 label={t('profile.settings')}
                 size={52}
                 onPress={() => router.push(Routes.settings)}
+              />
+              <IconButton
+                icon={<Bookmark size={20} color={colors.text} />}
+                label={t('feed.savedTitle')}
+                size={52}
+                onPress={() => router.push(Routes.savedPosts)}
               />
             </>
           ) : (
