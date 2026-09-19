@@ -44,6 +44,7 @@ export const Routes = {
   newChallenge: '/challenge/new' as const,
   playerCard: '/player-card' as const,
   profileViews: '/views' as const,
+  savedPosts: '/saved' as const,
   team: (id: string) => `/team/${id}` as const,
 
   settings: '/settings' as const,
