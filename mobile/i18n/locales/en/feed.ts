@@ -29,6 +29,12 @@ export const feed = {
     'Follow a few athletes to fill it, or post your own update to get started.',
   emptyForYouAction: 'Find people',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── Post card ──────────────────────────────────────────────────────────────
   openProfileOf: "Open {{name}}'s profile",
   postMoreOptions: "More options for {{name}}'s post, including report and block",

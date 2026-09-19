@@ -37,6 +37,12 @@ export const feed = {
     'تابع بعض اللاعبين لتمتلئ، أو انشر تحديثًا خاصًا بك للبداية.',
   emptyForYouAction: 'ابحث عن أشخاص',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── بطاقة المنشور ─────────────────────────────────────────────────────────
   openProfileOf: 'فتح ملف {{name}}',
   postMoreOptions: 'خيارات أخرى لمنشور {{name}}، منها الإبلاغ والحظر',

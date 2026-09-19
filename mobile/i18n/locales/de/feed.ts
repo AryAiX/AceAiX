@@ -29,6 +29,12 @@ export const feed = {
     'Folge ein paar Sportlern, um ihn zu füllen, oder poste selbst etwas.',
   emptyForYouAction: 'Leute finden',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── Beitragskarte ──────────────────────────────────────────────────────────
   openProfileOf: 'Profil von {{name}} öffnen',
   postMoreOptions: 'Mehr Optionen zum Beitrag von {{name}}, auch melden und blockieren',

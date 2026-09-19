@@ -33,6 +33,12 @@ export const feed = {
     'Подпишись на нескольких спортсменов или выложи свой пост, чтобы начать.',
   emptyForYouAction: 'Найти людей',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── Карточка поста ─────────────────────────────────────────────────────────
   openProfileOf: 'Открыть профиль: {{name}}',
   postMoreOptions: 'Ещё действия для поста {{name}}, включая жалобу и блокировку',

@@ -32,6 +32,12 @@ export const feed = {
     'Abonne-toi à quelques athlètes pour le remplir, ou poste ta propre actu pour lancer les choses.',
   emptyForYouAction: 'Trouver des gens',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── Carte de post ──────────────────────────────────────────────────────────
   openProfileOf: 'Ouvrir le profil de {{name}}',
   postMoreOptions: 'Plus d’options pour le post de {{name}}, dont signaler et bloquer',

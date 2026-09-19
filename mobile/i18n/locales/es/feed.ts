@@ -33,6 +33,12 @@ export const feed = {
     'Sigue a unos cuantos deportistas para llenarlo, o publica algo tuyo para empezar.',
   emptyForYouAction: 'Buscar gente',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── Tarjeta de publicación ─────────────────────────────────────────────────
   openProfileOf: 'Abrir el perfil de {{name}}',
   postMoreOptions:

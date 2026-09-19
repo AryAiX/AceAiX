@@ -26,6 +26,12 @@ export const feed = {
     '关注几位运动员把它填满，或者先发一条自己的动态。',
   emptyForYouAction: '找人',
 
+  // PLACEHOLDER: needs real translation per locale for savedTitle,
+  // savedEmptyTitle, savedEmptyBody.
+  savedTitle: 'Saved',
+  savedEmptyTitle: 'Nothing saved yet',
+  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+
   // ── 动态卡片 ───────────────────────────────────────────────────────────────
   openProfileOf: '打开{{name}}的主页',
   postMoreOptions: '{{name}}这条动态的更多选项，包括举报和拉黑',
