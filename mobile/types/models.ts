@@ -182,6 +182,10 @@ export interface FeedPost {
   created_at: string;
 }
 
+export interface SavedPost extends FeedPost {
+  saved_at: string;
+}
+
 export interface UserPost {
   id: string;
   type: string;

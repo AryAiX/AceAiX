@@ -12,6 +12,7 @@ import type {
   DiscoveredAthlete,
   DiscoveryFilters,
   FeedPost,
+  SavedPost,
   FullTalentScore,
   GuardianConsent,
   MatchPreferences,
@@ -238,6 +239,18 @@ export async function getFeed(params: {
   });
   if (error) throw new AppError(error);
   return signPostMedia((data ?? []) as FeedPost[]);
+}
+
+export async function getSavedPosts(params: {
+  limit?: number;
+  before?: string | null;
+}): Promise<SavedPost[]> {
+  const { data, error } = await supabase.rpc('get_saved_posts', {
+    p_limit: params.limit ?? 20,
+    p_before: params.before ?? null,
+  });
+  if (error) throw new AppError(error);
+  return signPostMedia((data ?? []) as SavedPost[]);
 }
 
 export async function getUserPosts(
