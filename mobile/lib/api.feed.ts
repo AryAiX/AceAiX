@@ -72,13 +72,15 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     ? await supabase.storage.from(Buckets.posts).createSignedUrls(Array.from(new Set(paths)), 3600)
     : { data: [] };
   const signedByPath = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
-  const media = rawMedia.flatMap((item) => {
+  const media: PostMedia[] = rawMedia.flatMap((item) => {
     const url = item.url.startsWith('http') ? item.url : signedByPath.get(item.url);
     if (!url) return [];
     return [{
       ...item,
       url,
-      thumbnail: !item.thumbnail || item.thumbnail.startsWith('http')
+      thumbnail: !item.thumbnail
+        ? undefined
+        : item.thumbnail.startsWith('http')
         ? item.thumbnail
         : signedByPath.get(item.thumbnail),
     }];

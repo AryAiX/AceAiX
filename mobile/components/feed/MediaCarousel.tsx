@@ -275,7 +275,7 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
         style={{ width, height }}
         contentFit="cover"
         nativeControls={false}
-        allowsFullscreen={false}
+        fullscreenOptions={{ enable: false }}
         allowsPictureInPicture={false}
         onFirstFrameRender={() => setReady(true)}
         accessibilityLabel={t('feed.videoClip')}

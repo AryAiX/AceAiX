@@ -341,7 +341,7 @@ function VideoPreview({ uri }: { uri: string }) {
       player={player}
       nativeControls
       contentFit="contain"
-      allowsFullscreen
+      fullscreenOptions={{ enable: true }}
       style={{
         width: '100%',
         height: 240,

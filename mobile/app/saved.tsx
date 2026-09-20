@@ -25,7 +25,7 @@ import { getSavedPosts } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
-import type { SavedPost } from '@/types/models';
+import type { FeedPost, SavedPost } from '@/types/models';
 
 const PAGE_SIZE = 20;
 
@@ -40,7 +40,7 @@ export default function SavedPostsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [reachedEnd, setReachedEnd] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [commentsFor, setCommentsFor] = useState<SavedPost | null>(null);
+  const [commentsFor, setCommentsFor] = useState<FeedPost | null>(null);
   const [actionTarget, setActionTarget] = useState<ContentTarget | null>(null);
 
   const feed = useAsync<SavedPost[]>(
@@ -128,12 +128,12 @@ export default function SavedPostsScreen() {
   );
 
   const openPost = useCallback(
-    (post: SavedPost) => router.push(Routes.post(post.id)),
+    (post: FeedPost) => router.push(Routes.post(post.id)),
     [router],
   );
 
   const openActions = useCallback(
-    (post: SavedPost) => {
+    (post: FeedPost) => {
       setActionTarget({
         kind: 'post',
         id: post.id,
