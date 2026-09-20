@@ -374,7 +374,7 @@ export default function ChatScreen() {
                component by composing a transform onto this element's `style`,
                which a custom component would swallow. */
             ListEmptyComponent={
-              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', paddingBottom: spacing.xxl }}>
                 {loadingThread ? (
                   <Loader label={t('messaging.loadingMessages')} />
                 ) : history.error ? (
