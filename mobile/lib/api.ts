@@ -62,7 +62,8 @@ export async function getProfile(userId: string): Promise<ProfileBundle> {
 }
 
 export async function getMyProfile(): Promise<ProfileBundle> {
-  const { data: auth } = await supabase.auth.getUser();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new AppError(authError);
   if (!auth.user) throw new AppError('Not signed in');
   return getProfile(auth.user.id);
 }
