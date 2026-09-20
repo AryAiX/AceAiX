@@ -156,5 +156,8 @@ export const auth = {
     submit: '保存新密码',
     success: '密码已更改，你已经登录了。',
     expiredHint: '如果这个链接已经过期，可以在登录页面重新申请一个。',
+    noLinkTitle: '这个重置链接无效',
+    noLinkBody: '请在本设备上打开最新的重置邮件，或者重新申请一个链接。链接只能使用一次，过一段时间会失效。',
+    noLinkCta: '重新申请链接',
   },
 };

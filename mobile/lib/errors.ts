@@ -72,11 +72,11 @@ const CODES: Record<string, string> = {
 };
 
 const AUTH_MESSAGES: Record<string, string> = {
-  'Invalid login credentials': 'errors.invalidCredentials',
-  'Email not confirmed': 'errors.emailNotConfirmed',
-  'User already registered': 'errors.emailInUse',
-  'Password should be at least 6 characters': 'errors.passwordTooShort',
-  'Email rate limit exceeded': 'errors.tooManyAttempts',
+  'invalid login credentials': 'errors.invalidCredentials',
+  'email not confirmed': 'errors.emailNotConfirmed',
+  'user already registered': 'errors.emailInUse',
+  'password should be at least 6 characters': 'errors.passwordTooShort',
+  'email rate limit exceeded': 'errors.tooManyAttempts',
 };
 
 export interface FriendlyError {
@@ -105,8 +105,9 @@ export function toFriendlyError(error: unknown): FriendlyError {
     return { message: say(CODES[e.code]), hint: e.hint ?? undefined, raw: error };
   }
 
-  if (e.message && AUTH_MESSAGES[e.message]) {
-    return { message: say(AUTH_MESSAGES[e.message]), raw: error };
+  const authMessage = e.message ? AUTH_MESSAGES[e.message.toLowerCase()] : undefined;
+  if (authMessage) {
+    return { message: say(authMessage), raw: error };
   }
 
   if (

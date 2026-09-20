@@ -44,6 +44,9 @@ describe('auth messages', () => {
       'That email or password is not right.',
     );
     expect(errorMessage({ message: 'User already registered' })).toContain('already uses that email');
+    expect(errorMessage({ message: 'email rate limit exceeded' })).toContain(
+      'Too many attempts',
+    );
   });
 });
 

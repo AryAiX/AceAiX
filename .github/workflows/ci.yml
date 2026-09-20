@@ -200,7 +200,7 @@ jobs:
           echo '── api ──';       tail -50 "$RUNTIME_DIR/api.log" || true
 
   deploy-web:
-    name: Pin tested web build to dev
+    name: Deploy tested web build
     needs:
       - source-hygiene
       - web
@@ -214,7 +214,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     concurrency:
-      group: aceaix-dev-deployment
+      group: aceaix-${{ github.event_name == 'push' && 'production' || 'development' }}-deployment
       cancel-in-progress: true
     environment:
       name: ${{ github.event_name == 'push' && 'production' || 'development' }}
@@ -284,25 +284,29 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed ${{ github.sha }} to $url"
 
-      # One stable staging hostname always follows whichever tested commit
-      # became green most recently. A green main build takes it back from PRs.
-      - name: Pin dev.aceaix.com to this deployment
-        run: vercel alias set "${{ steps.deploy.outputs.url }}" dev.aceaix.com --token="$VERCEL_TOKEN"
+      # Pull requests are promoted to the development app. Only a tested push
+      # to main may update the production app and aceaix.com.
+      - name: Pin the environment domain to this deployment
+        env:
+          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'aceaix.com' || 'dev.aceaix.com' }}
+        run: vercel alias set "${{ steps.deploy.outputs.url }}" "$TARGET_DOMAIN" --token="$VERCEL_TOKEN"
 
       # The alias is the artifact users actually load, so failing here is the
       # difference between a bad build and a bad build nobody noticed.
-      - name: Verify the pinned dev host serves this build
+      - name: Verify the pinned environment host serves this build
+        env:
+          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'aceaix.com' || 'dev.aceaix.com' }}
         run: |
           for attempt in 1 2 3 4 5; do
-            body="$(curl -fsS --max-time 30 https://dev.aceaix.com/ || true)"
+            body="$(curl -fsS --max-time 30 "https://${TARGET_DOMAIN}/" || true)"
             if printf '%s' "$body" | grep -q '/_expo/static/js/web/entry-'; then
-              echo "dev.aceaix.com serves the Expo web build"
-              curl -fsS -o /dev/null --max-time 30 https://dev.aceaix.com/sign-in
-              echo "dev.aceaix.com resolves client-side routes"
+              echo "${TARGET_DOMAIN} serves the Expo web build"
+              curl -fsS -o /dev/null --max-time 30 "https://${TARGET_DOMAIN}/sign-in"
+              echo "${TARGET_DOMAIN} resolves client-side routes"
               exit 0
             fi
-            echo "attempt $attempt: dev.aceaix.com not serving the build yet"
+            echo "attempt $attempt: ${TARGET_DOMAIN} not serving the build yet"
             sleep 10
           done
-          echo "::error::dev.aceaix.com did not serve the deployed Expo build"
+          echo "::error::${TARGET_DOMAIN} did not serve the deployed Expo build"
           exit 1

@@ -49,6 +49,7 @@ function fromEnvFile() {
 const env = { ...fromEnvFile(), ...process.env };
 const URL_ = env.EXPO_PUBLIC_SUPABASE_URL;
 const KEY = env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const CATALOGUE_KEY = env.SUPABASE_SERVICE_ROLE_KEY ?? KEY;
 if (!URL_ || !KEY) {
   console.error('\n  No EXPO_PUBLIC_SUPABASE_URL / _ANON_KEY. Start the local backend first.\n');
   process.exit(2);
@@ -243,16 +244,33 @@ if (signInError) {
  * to `authenticated` only. Asked with the anon key alone it answers with 26
  * functions instead of 80 and reports most of the app as missing — a false
  * alarm that looks exactly like a catastrophe.
+ *
+ * Hosted projects using Supabase's newer publishable keys require a secret key
+ * in `apikey` to expose the OpenAPI catalogue at all. The user's JWT remains in
+ * `Authorization`, so PostgREST still describes the authenticated role rather
+ * than granting the test service-role access to app data.
  */
-const spec = await (
-  await fetch(`${URL_}/rest/v1/`, {
+const specResponse = await fetch(`${URL_}/rest/v1/`, {
     headers: {
-      apikey: KEY,
+      apikey: CATALOGUE_KEY,
       Authorization: `Bearer ${session.session.access_token}`,
       Accept: 'application/openapi+json',
     },
-  })
-).json();
+  });
+const spec = await specResponse.json();
+if (!specResponse.ok) {
+  console.error(
+    `\n  could not read the PostgREST catalogue (${specResponse.status}): ` +
+      `${spec.message ?? JSON.stringify(spec)}\n`,
+  );
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error(
+      '  Hosted projects with publishable keys require SUPABASE_SERVICE_ROLE_KEY ' +
+        'for this read-only catalogue check.\n',
+    );
+  }
+  process.exit(2);
+}
 
 const functions = new Map(); // name -> Set(argument names)
 const tables = new Map(); // name -> Set(column names)

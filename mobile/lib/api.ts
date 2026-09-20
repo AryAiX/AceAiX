@@ -827,7 +827,7 @@ export async function setDiscoverable(value: boolean) {
 }
 
 export async function deleteOwnAccount(): Promise<void> {
-  const { error } = await supabase.rpc('delete_own_account');
+  const { error } = await supabase.functions.invoke('delete-account', { body: {} });
   if (error) throw new AppError(error);
   await supabase.auth.signOut();
 }

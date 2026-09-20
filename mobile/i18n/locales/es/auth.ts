@@ -168,5 +168,9 @@ export const auth = {
     success: 'Contraseña cambiada. Ya estás dentro.',
     expiredHint:
       'Si este enlace caducó, pide uno nuevo desde la pantalla de inicio de sesión.',
+    noLinkTitle: 'Este enlace no es válido',
+    noLinkBody:
+      'Abre en este dispositivo el correo de restablecimiento más reciente, o pide un enlace nuevo. Cada enlace funciona una vez y caduca al cabo de un rato.',
+    noLinkCta: 'Pedir un enlace nuevo',
   },
 };

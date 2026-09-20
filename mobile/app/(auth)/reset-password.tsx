@@ -50,6 +50,17 @@ export default function ResetPasswordScreen() {
   const asString = (value: string | string[] | undefined): string | undefined =>
     typeof value === 'string' && value.length > 0 ? value : undefined;
 
+  /* A recovery link carries one of these. Landing here without any of them —
+     a typed URL, a stale bookmark, a link opened in a different browser —
+     used to present the full form, which could only ever fail, and only after
+     the person had chosen and repeated a new password. Say so up front. */
+  const hasRecoveryCredentials = Boolean(
+    asString(params.code) ??
+      asString(params.token_hash) ??
+      asString(params.access_token) ??
+      asString(params.refresh_token),
+  );
+
   const submit = async () => {
     if (saving) return;
 
@@ -101,6 +112,39 @@ export default function ResetPasswordScreen() {
       }
       testID="reset-password-screen"
     >
+      {!hasRecoveryCredentials ? (
+        <View style={{ gap: spacing.xl }}>
+          <View
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: radii.xl,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.primarySoft,
+            }}
+          >
+            <KeyRound size={28} color={colors.primary} />
+          </View>
+
+          <View style={{ gap: spacing.xs }}>
+            <Text variant="title" accessibilityRole="header">
+              {t('auth.resetPassword.noLinkTitle')}
+            </Text>
+            <Text variant="body" tone="secondary">
+              {t('auth.resetPassword.noLinkBody')}
+            </Text>
+          </View>
+
+          <Button
+            label={t('auth.resetPassword.noLinkCta')}
+            size="lg"
+            fullWidth
+            onPress={() => router.replace(Routes.auth.forgotPassword)}
+            testID="reset-password-request-new"
+          />
+        </View>
+      ) : (
       <View style={{ gap: spacing.xl }}>
         <View
           style={{
@@ -183,6 +227,7 @@ export default function ResetPasswordScreen() {
           {t('auth.resetPassword.expiredHint')}
         </Text>
       </View>
+      )}
     </Screen>
   );
 }

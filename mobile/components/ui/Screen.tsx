@@ -105,7 +105,17 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: bg }} edges={edges} testID={testID}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: bg }}
+      edges={edges}
+      testID={testID}
+      /* On web a screen is the page's main region. Without it there is no
+         landmark to jump to, so a screen-reader user walks the header and the
+         tab bar again on every screen. Hidden screens carry the role too, but
+         they are `aria-hidden`, so assistive tech only ever sees the live one.
+         Native has no landmarks and ignores the prop. */
+      {...(Platform.OS === 'web' ? { role: 'main' as const } : null)}
+    >
       <StatusBar style={colors.statusBar} />
       {keyboardAvoiding ? (
         <KeyboardAvoidingView

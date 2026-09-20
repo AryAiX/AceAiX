@@ -19,7 +19,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, X-Application-Name, Apikey",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";

@@ -162,5 +162,9 @@ export const auth = {
     submit: 'Neues Passwort speichern',
     success: 'Passwort geändert. Du bist angemeldet.',
     expiredHint: 'Falls dieser Link abgelaufen ist, fordere auf dem Anmeldebildschirm einen neuen an.',
+    noLinkTitle: 'Dieser Link ist nicht gültig',
+    noLinkBody:
+      'Öffne die neueste E-Mail zum Zurücksetzen auf diesem Gerät oder fordere einen neuen Link an. Ein Link funktioniert einmal und läuft nach einer Weile ab.',
+    noLinkCta: 'Neuen Link anfordern',
   },
 };

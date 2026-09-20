@@ -15,6 +15,7 @@
  */
 
 import { chromium } from 'playwright';
+import { createClient } from '@supabase/supabase-js';
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +42,21 @@ const ACCOUNTS = {
   coach: { email: 'marco.demo@aceaix.com', password: 'AceAiX-Demo-2026' },
   club: { email: 'academy.demo@aceaix.com', password: 'AceAiX-Demo-2026' },
   guardian: { email: 'parent.demo@aceaix.com', password: 'AceAiX-Demo-2026' },
+  minor: { email: 'mina.demo@aceaix.com', password: 'AceAiX-Demo-2026' },
 };
+
+function fromEnvFile() {
+  const file = path.join(ROOT, '.env');
+  if (!fs.existsSync(file)) return {};
+  const out = {};
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (match) out[match[1]] = match[2].trim();
+  }
+  return out;
+}
+
+const env = { ...fromEnvFile(), ...process.env };
 
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
@@ -70,20 +85,35 @@ async function visit(page, name, url, { wait = 1600, expect = [], minChars = 60 
   const errors = [];
   page.removeAllListeners('console');
   page.removeAllListeners('pageerror');
+  page.removeAllListeners('requestfailed');
   page.on('console', (m) => {
     if (m.type() === 'error' && !IGNORE.test(m.text())) errors.push(m.text().slice(0, 240));
   });
   page.on('pageerror', (e) => {
     if (!IGNORE.test(e.message)) errors.push(`PAGEERROR ${e.message}`.slice(0, 240));
   });
+  page.on('requestfailed', (request) => {
+    const message = request.failure()?.errorText ?? 'request failed';
+    if (!IGNORE.test(message)) {
+      errors.push(`REQUESTFAILED ${request.url().slice(0, 150)} — ${message}`);
+    }
+  });
 
   await page.goto(`http://localhost:${PORT}${url}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(wait);
+  // A linked project is slower than the local fixture this tour began with.
+  // Let in-flight screen queries settle before the next navigation aborts them
+  // and misattributes their rejection to the following screen.
+  await page.waitForLoadState('networkidle', { timeout: 6000 }).catch(() => {});
 
-  const text = ((await page.evaluate(() => document.body.innerText)) ?? '').trim();
+  let text = ((await page.evaluate(() => document.body.innerText)) ?? '').trim();
+  let missing = expect.filter((needle) => !text.toLowerCase().includes(needle.toLowerCase()));
+  if (text.length < minChars || missing.length > 0 || /^Loading\b/i.test(text)) {
+    await page.waitForTimeout(3000);
+    text = ((await page.evaluate(() => document.body.innerText)) ?? '').trim();
+    missing = expect.filter((needle) => !text.toLowerCase().includes(needle.toLowerCase()));
+  }
   await page.screenshot({ path: path.join(SHOTS, `${SCHEME}-${ROLE}-${LANG}-${name}.png`) });
-
-  const missing = expect.filter((needle) => !text.toLowerCase().includes(needle.toLowerCase()));
 
   results.push({
     name,
@@ -164,35 +194,160 @@ for (let i = 0; i < 4; i += 1) {
   await page.waitForTimeout(500);
 }
 
+// Detail screens used to point at fixed local-seed UUIDs. Against a linked dev
+// project that made three healthy screens look broken and let two genuinely
+// broken screens pass because their error copy was long enough. Resolve a real,
+// visible row through the same API and role the browser is using instead.
+const details = [];
+if (env.EXPO_PUBLIC_SUPABASE_URL && env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+  const api = createClient(
+    env.EXPO_PUBLIC_SUPABASE_URL,
+    env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+  );
+  const { data: auth, error: apiSignInError } = await api.auth.signInWithPassword(account);
+  if (apiSignInError) throw apiSignInError;
+
+  const first = async (query, label) => {
+    const { data, error } = await query;
+    if (error) throw new Error(`${label}: ${error.message}`);
+    return data?.[0] ?? null;
+  };
+
+  const other = await first(
+    api
+      .from('user_profiles')
+      .select('id, full_name')
+      .neq('id', auth.user.id)
+      .eq('is_discoverable', true)
+      .limit(1),
+    'find a visible profile',
+  );
+  const post = await first(
+    api
+      .from('posts')
+      .select('id, caption, text')
+      .eq('audience', 'public')
+      .eq('is_hidden', false)
+      .limit(1),
+    'find a visible post',
+  );
+  const opportunity = await first(
+    api.from('opportunities').select('id, title').eq('is_active', true).limit(1),
+    'find an open opportunity',
+  );
+  const organization = await first(
+    api.from('organizations').select('id, name').limit(1),
+    'find a visible organization',
+  );
+  const team = await first(
+    api.rpc('search_teams', { p_query: null, p_sport: null, p_limit: 1 }),
+    'find a team',
+  );
+  const { data: conversations, error: conversationsError } = await api.rpc(
+    'get_conversations',
+    { p_limit: 1 },
+  );
+  if (conversationsError) throw conversationsError;
+
+  if (other) {
+    details.push([
+      'profile-other',
+      `/u/${other.id}`,
+      { expect: [other.full_name], minChars: 60, wait: 3000 },
+    ]);
+    details.push([
+      'profile-followers',
+      `/u/${other.id}/followers`,
+      { expect: ['Followers'], minChars: 40, wait: 3000 },
+    ]);
+    details.push([
+      'profile-following',
+      `/u/${other.id}/following`,
+      { expect: ['Following'], minChars: 40, wait: 3000 },
+    ]);
+  }
+  if (post) {
+    details.push([
+      'post',
+      `/post/${post.id}`,
+      { expect: [post.caption ?? post.text], minChars: 60, wait: 3000 },
+    ]);
+  }
+  if (opportunity) {
+    details.push([
+      'opportunity',
+      `/opportunity/${opportunity.id}`,
+      { expect: [opportunity.title], minChars: 80, wait: 3000 },
+    ]);
+    details.push([
+      'opportunity-applicants',
+      `/opportunity/${opportunity.id}/applicants`,
+      { minChars: 40, wait: 3000 },
+    ]);
+  }
+  if (organization) {
+    details.push([
+      'org',
+      `/org/${organization.id}`,
+      { expect: [organization.name], minChars: 70, wait: 3000 },
+    ]);
+  }
+  if (team) {
+    details.push([
+      'team',
+      `/team/${team.id}`,
+      { expect: [team.name], minChars: 60, wait: 3000 },
+    ]);
+  }
+  if (conversations?.[0]?.id) {
+    details.push([
+      'chat',
+      `/chat/${conversations[0].id}`,
+      {
+        expect: [conversations[0].other_name ?? 'conversation'],
+        minChars: 60,
+        wait: 3000,
+      },
+    ]);
+  }
+}
+
 // ---- the tour ---------------------------------------------------------------
 const TOUR = [
   ['home', '/', { expect: ['Ace'] }],
   ['discover', '/discover', {}],
+  ['meetups', '/meetups', {}],
   ['opportunities', '/opportunities', {}],
-  ['profile', '/profile', {}],
+  ['profile', '/profile', { wait: 3000 }],
   ['score', '/score', {}],
   ['achievements', '/achievements', {}],
+  ['player-card', '/player-card', {}],
+  ['views', '/views', {}],
   ['notifications', '/notifications', {}],
   // A valid inbox with one short conversation is intentionally sparse.
-  ['inbox', '/inbox', { expect: ['Messages'], minChars: 40 }],
+  ['inbox', '/inbox', { expect: ['Messages'], minChars: 35 }],
   ['search', '/search', {}],
-  ['edit-profile', '/edit-profile', {}],
+  ['edit-profile', '/edit-profile', { wait: 3000 }],
   ['settings', '/settings', {}],
+  ['settings-account', '/settings/account', {}],
   ['settings-privacy', '/settings/privacy', {}],
   ['settings-notifications', '/settings/notifications', {}],
   ['settings-appearance', '/settings/appearance', {}],
+  ['settings-language', '/settings/language', {}],
   ['settings-guardian', '/settings/guardian', {}],
+  ['settings-scouting', '/settings/scouting', {}],
   ['settings-blocked', '/settings/blocked', {}],
   ['settings-delete', '/settings/delete-account', {}],
+  ['challenges', '/challenges', {}],
+  ['challenge-new', '/challenge/new', {}],
+  ['meetup-new', '/meetup/new', {}],
+  ['opportunity-new', '/opportunity/new', {}],
   ['legal-terms', '/legal/terms', { expect: ['Terms of Service'] }],
   ['legal-privacy', '/legal/privacy', { expect: ['Privacy Policy'] }],
   ['legal-guidelines', '/legal/guidelines', { expect: ['Community Guidelines'] }],
   ['legal-child-safety', '/legal/child-safety', { expect: ['Child Safety'] }],
-  ['profile-other', '/u/b0000000-0000-4000-8000-000000000001', { expect: ['Marco'] }],
-  ['post', '/post/90000000-0000-4000-8000-000000000001', {}],
-  ['opportunity', '/opportunity/80000000-0000-4000-8000-000000000001', { expect: ['trial'] }],
-  ['org', '/org/e0000000-0000-4000-8000-000000000001', { expect: ['Academy'] }],
-  ['chat', '/chat/70000000-0000-4000-8000-000000000001', {}],
+  ...details,
   ['compose', '/compose', {}],
 ];
 

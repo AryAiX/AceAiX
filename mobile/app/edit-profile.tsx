@@ -102,9 +102,10 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!bundle.data || form) return;
     const { user, athlete } = bundle.data;
+    const [fallbackFirst = '', ...fallbackLast] = (user.full_name ?? '').trim().split(/\s+/);
     const seed: FormState = {
-      firstName: user.first_name ?? '',
-      lastName: user.last_name ?? '',
+      firstName: user.first_name?.trim() || fallbackFirst,
+      lastName: user.last_name?.trim() || fallbackLast.join(' '),
       bio: user.bio ?? '',
       city: user.city ?? '',
       country: user.country ?? '',

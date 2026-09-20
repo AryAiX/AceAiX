@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
+  EmptyState,
   Header,
   Input,
   Screen,
@@ -38,6 +39,9 @@ export default function NewChallengeScreen() {
   const router = useRouter();
   const toast = useToast();
   const { profile } = useAuth();
+  const canCreate =
+    profile?.is_verified === true &&
+    (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout');
 
   const [sport, setSport] = useState<string>(SPORTS[0]?.key ?? 'Football');
   const sports = useMemo(() => SPORTS.map((s) => ({ value: s.key, label: s.label })), []);
@@ -76,6 +80,20 @@ export default function NewChallengeScreen() {
       ageMax: ageMax.trim() ? Number(ageMax) : null,
     });
   });
+
+  if (!canCreate) {
+    return (
+      <Screen
+        header={<Header title={t('challenges.newTitle')} back bordered />}
+        testID="challenge-new-restricted"
+      >
+        <EmptyState
+          title={t('challenges.newTitle')}
+          body={t('errors.challengeNotAllowed')}
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen
@@ -202,13 +220,6 @@ export default function NewChallengeScreen() {
           />
         </View>
 
-        {profile?.is_verified ? null : (
-          <Card padded tone="alt">
-            <Text variant="caption" tone="warning">
-              {t('errors.challengeNotAllowed')}
-            </Text>
-          </Card>
-        )}
       </View>
     </Screen>
   );

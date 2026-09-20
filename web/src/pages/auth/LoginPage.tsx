@@ -325,11 +325,8 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
+                    <div className="relative mb-1.5">
                       <label htmlFor="login-password" className="text-[11px] font-semibold text-white/35 uppercase tracking-wider">Password</label>
-                      <button type="button" onClick={() => navigate('/auth/forgot-password')}
-                        className="text-[11px] hover:underline"
-                        style={{ color: `${accent}90` }}>Forgot password?</button>
                     </div>
                     <div className="relative rounded-xl transition-all duration-200"
                       style={{ boxShadow: focusedField === 'password' ? `0 0 0 2px ${accent}50` : '0 0 0 1px rgba(255,255,255,0.09)' }}>
@@ -345,6 +342,9 @@ export default function LoginPage() {
                         {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
+                    <button type="button" onClick={() => navigate('/auth/forgot-password')}
+                      className="block ml-auto mt-1.5 text-[11px] hover:underline"
+                      style={{ color: `${accent}90` }}>Forgot password?</button>
                   </div>
 
                   {error && (

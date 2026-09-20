@@ -1,10 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Header, Screen, Sheet, Text } from '@/components/ui';
 import { LanguageList } from '@/components/common/LanguageList';
 import { LanguageCode, tryRestartApp, useI18n } from '@/i18n';
+import { Routes } from '@/lib/routes';
 
 /**
  * Changing language after the first launch.
@@ -17,6 +19,7 @@ export default function LanguageSettingsScreen() {
   const theme = useTheme();
   const { spacing } = theme;
   const { language, setLanguage, t } = useI18n();
+  const router = useRouter();
 
   const [busy, setBusy] = useState<LanguageCode | null>(null);
   const [restartPrompt, setRestartPrompt] = useState(false);
@@ -34,7 +37,14 @@ export default function LanguageSettingsScreen() {
 
   return (
     <Screen
-      header={<Header title={t('language.settingsTitle')} back bordered />}
+      header={
+        <Header
+          title={t('language.settingsTitle')}
+          back
+          onBack={() => router.replace(Routes.settings)}
+          bordered
+        />
+      }
       testID="settings-language"
     >
       <View style={{ paddingTop: spacing.lg, gap: spacing.xl }}>

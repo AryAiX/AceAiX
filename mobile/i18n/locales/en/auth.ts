@@ -162,5 +162,9 @@ export const auth = {
     submit: 'Save new password',
     success: 'Password changed. You are signed in.',
     expiredHint: 'If this link has expired, ask for a new one from the sign-in screen.',
+    noLinkTitle: 'This reset link is not valid',
+    noLinkBody:
+      'Open the newest reset email on this device, or ask for a new link. Links work once and expire after a while.',
+    noLinkCta: 'Ask for a new link',
   },
 };

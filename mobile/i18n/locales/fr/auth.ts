@@ -165,5 +165,9 @@ export const auth = {
     submit: 'Enregistrer le mot de passe',
     success: 'Mot de passe changé. Tu es connecté.',
     expiredHint: 'Si ce lien a expiré, demandes-en un nouveau depuis l’écran de connexion.',
+    noLinkTitle: 'Ce lien n’est pas valide',
+    noLinkBody:
+      'Ouvre le dernier e-mail de réinitialisation sur cet appareil, ou demande un nouveau lien. Un lien ne sert qu’une fois et expire au bout d’un moment.',
+    noLinkCta: 'Demander un nouveau lien',
   },
 };

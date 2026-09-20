@@ -26,6 +26,7 @@ import { ProgressProvider } from '@/providers/ProgressProvider';
 import { BrandSplash } from '@/components/common/BrandSplash';
 import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
+import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
 import { routeDecision } from '@/lib/routes';
@@ -69,6 +70,10 @@ function Shell() {
      notification tap. It never *asks* for permission here — that request is
      made from Settings, after the person has a reason to say yes. */
   usePushNotifications();
+
+  /* Screens the navigator has hidden keep their place in the tab order until
+     something tells the browser otherwise. */
+  useInertInactiveScreens();
 
   const onReady = useCallback(async () => {
     await SplashScreen.hideAsync().catch(() => {});

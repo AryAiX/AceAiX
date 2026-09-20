@@ -25,7 +25,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, X-Client-Info, X-Application-Name, Apikey",
 };
 
 const FROM = Deno.env.get("CONSENT_FROM_EMAIL") ?? "AceAiX <safety@aceaix.com>";
