@@ -86,7 +86,8 @@ export type ApplicantsResult =
   | { allowed: false };
 
 async function requireUserId(): Promise<string> {
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw new AppError(error);
   if (!data.user) throw new AppError('Not signed in');
   return data.user.id;
 }
