@@ -45,6 +45,14 @@ export default function TeamScreen() {
   const team = useAsync<Team | null>(() => teamDetail(id!), [id], { enabled: !!id });
   const fans = useAsync<TeamFan[]>(() => fansOfTeam(id!, 50, 0), [id], { enabled: !!id });
 
+  if (team.error && !team.data) {
+    return (
+      <Screen header={<Header title={t('common.club')} back bordered />}>
+        <ErrorState message={team.error} onRetry={team.reload} />
+      </Screen>
+    );
+  }
+
   const name = team.data?.name ?? '';
 
   return (
