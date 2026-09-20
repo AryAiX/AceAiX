@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarDays, Check, ShieldAlert } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import {
   Button,
   Card,
   Chip,
+  ConfirmSheet,
   EmptyState,
   Header,
   Input,
@@ -161,6 +162,40 @@ export default function NewOpportunityScreen() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
 
+  const hasContent =
+    title.trim().length > 0 ||
+    location.trim().length > 0 ||
+    description.trim().length > 0 ||
+    type !== null ||
+    sport !== null ||
+    position !== null ||
+    deadline !== null;
+
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace(Routes.home);
+  }, [router]);
+
+  const requestClose = useCallback(() => {
+    if (submitting) return;
+    if (hasContent) setDiscardOpen(true);
+    else close();
+  }, [submitting, hasContent, close]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (submitting) return true;
+      if (hasContent) {
+        setDiscardOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [hasContent, submitting]);
+
   const positions = useMemo(() => positionsFor(sport), [sport]);
 
   const [safetyBefore, ...safetyRest] = t('opportunities.post.safetyBody', {
@@ -237,7 +272,7 @@ export default function NewOpportunityScreen() {
 
   if (!isRecruiter) {
     return (
-      <Screen header={<Header title={t('opportunities.post.title')} back />}>
+      <Screen header={<Header title={t('opportunities.post.title')} back onBack={requestClose} />}>
         <EmptyState
           title={t('opportunities.post.recruiterOnlyTitle')}
           body={t('opportunities.post.recruiterOnlyBody')}
@@ -248,7 +283,7 @@ export default function NewOpportunityScreen() {
 
   return (
     <Screen
-      header={<Header back title={t('opportunities.post.title')} />}
+      header={<Header back title={t('opportunities.post.title')} onBack={requestClose} />}
       keyboardAvoiding
       footer={
         <Button
@@ -603,6 +638,20 @@ export default function NewOpportunityScreen() {
           </Text>
         </Card>
       </View>
+
+      <ConfirmSheet
+        visible={discardOpen}
+        title={t('feed.discardTitle')}
+        message={t('feed.discardBody')}
+        confirmLabel={t('feed.discard')}
+        cancelLabel={t('feed.keepWriting')}
+        destructive
+        onConfirm={() => {
+          setDiscardOpen(false);
+          close();
+        }}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </Screen>
   );
 }
