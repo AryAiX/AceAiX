@@ -78,6 +78,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@playwright/test": "^1.61.1",
+    "@react-native/metro-config": "^0.86.3",
     "@types/react": "~19.2.10",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
