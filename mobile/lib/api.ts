@@ -542,7 +542,8 @@ export async function createOpportunity(input: {
   deadline?: string | null;
   organizationId?: string | null;
 }) {
-  const { data: auth } = await supabase.auth.getUser();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new AppError(authError);
   if (!auth.user) throw new AppError('Not signed in');
   const { data, error } = await supabase
     .from('opportunities')
