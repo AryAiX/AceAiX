@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Check, Minus, Plus, Search } from 'lucide-react-native';
 
@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Chip,
+  ConfirmSheet,
   Divider,
   EmptyState,
   Header,
@@ -85,6 +86,44 @@ export default function NewMeetupScreen() {
   const [whenSheet, setWhenSheet] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const hasContent =
+    sport !== '' ||
+    title.trim().length > 0 ||
+    country !== '' ||
+    city !== '' ||
+    area.trim().length > 0 ||
+    venue.trim().length > 0 ||
+    day !== null ||
+    hour !== null ||
+    spots !== 2 ||
+    level !== 'any' ||
+    note.trim().length > 0 ||
+    cost.trim().length > 0;
+
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+  }, [router]);
+
+  const requestClose = useCallback(() => {
+    if (saving) return;
+    if (hasContent) setDiscardOpen(true);
+    else close();
+  }, [saving, hasContent, close]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (saving) return true;
+      if (hasContent) {
+        setDiscardOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [hasContent, saving]);
+
   const days = useMemo(() => nextDays(), []);
 
   const startsAt = useMemo(() => {
@@ -162,6 +201,7 @@ export default function NewMeetupScreen() {
       header={
         <Header
           back
+          onBack={requestClose}
           title={t('meetups.createTitle')}
           right={
             <Button
@@ -399,6 +439,20 @@ export default function NewMeetupScreen() {
           onPress={() => setWhenSheet(false)}
         />
       </Sheet>
+
+      <ConfirmSheet
+        visible={discardOpen}
+        title={t('feed.discardTitle')}
+        message={t('feed.discardBody')}
+        confirmLabel={t('feed.discard')}
+        cancelLabel={t('feed.keepWriting')}
+        destructive
+        onConfirm={() => {
+          setDiscardOpen(false);
+          close();
+        }}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </Screen>
   );
 }
