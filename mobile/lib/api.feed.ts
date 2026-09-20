@@ -227,7 +227,8 @@ export async function uploadPostMedia(
   items: PendingMedia[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<PostMedia[]> {
-  const { data: auth } = await supabase.auth.getUser();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw new AppError(authError);
   if (!auth.user) throw new AppError('Not signed in');
   const uid = auth.user.id;
 
