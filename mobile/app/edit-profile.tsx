@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,6 +12,7 @@ import {
   Button,
   Card,
   Chip,
+  ConfirmSheet,
   Divider,
   ErrorState,
   Header,
@@ -127,6 +128,30 @@ export default function EditProfileScreen() {
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),
     [form, initial],
   );
+
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+  }, [router]);
+
+  const requestClose = useCallback(() => {
+    if (saving) return;
+    if (dirty) setDiscardOpen(true);
+    else close();
+  }, [saving, dirty, close]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (saving) return true;
+      if (dirty) {
+        setDiscardOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [dirty, saving]);
 
   const set = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -265,6 +290,7 @@ export default function EditProfileScreen() {
   const header = (
     <Header
       back
+      onBack={requestClose}
       title={t('profile.editProfile')}
       right={
         <Button
@@ -746,6 +772,20 @@ export default function EditProfileScreen() {
           </Text>
         ) : null}
       </Sheet>
+
+      <ConfirmSheet
+        visible={discardOpen}
+        title={t('feed.discardTitle')}
+        message={t('feed.discardBody')}
+        confirmLabel={t('feed.discard')}
+        cancelLabel={t('feed.keepWriting')}
+        destructive
+        onConfirm={() => {
+          setDiscardOpen(false);
+          close();
+        }}
+        onCancel={() => setDiscardOpen(false)}
+      />
     </Screen>
   );
 }
