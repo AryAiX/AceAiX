@@ -50,3 +50,4 @@ builds/
 *.aab
 *.apk
 *.ipa
+.vercel

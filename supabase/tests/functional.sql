@@ -480,6 +480,22 @@ begin
      d where d.user_id = '44444444-4444-4444-4444-444444444444') = 0,
     'a blocked account never appears in discovery');
 
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  begin
+    set local role authenticated;
+    insert into public.follows (follower_id, following_id)
+    values (
+      '44444444-4444-4444-4444-444444444444',
+      '11111111-1111-1111-1111-111111111111'
+    );
+    reset role;
+    perform tests.ok(false, 'a blocked account cannot recreate a follow directly');
+  exception when insufficient_privilege then
+    reset role;
+    perform tests.ok(true, 'a blocked account cannot recreate a follow directly');
+  end;
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
   perform public.unblock_user('44444444-4444-4444-4444-444444444444');
 end $$;
 
@@ -1692,7 +1708,10 @@ begin
       'may_meet',
       /* Named in posts RLS. Must bypass profile RLS or hidden minors fail open. */
       'viewer_can_see_author',
-      'viewer_can_see_public_media'
+      'viewer_can_see_public_media',
+      /* Named in follows INSERT RLS. It must see blocks in either direction,
+         including rows the follower cannot select directly. */
+      'users_are_blocked'
     );
 
   perform tests.ok(

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { listAthletes } from '../../api/athletes';
 import { addAthleteToWatchlist, getOrCreateWatchlist, listWatchlists, removeAthleteFromWatchlist } from '../../api/watchlists';
@@ -380,9 +380,15 @@ export default function SearchPage() {
   const [pendingWatchlistIds, setPendingWatchlistIds] = useState<Set<string>>(new Set());
   const pendingWatchlistIdsRef = useRef(new Set<string>());
   const [watchlistError, setWatchlistError] = useState('');
+  const [watchlistNotice, setWatchlistNotice] = useState('');
   const [filtersOpen,  setFiltersOpen]  = useState(true);
   const [mounted,      setMounted]      = useState(false);
   useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+  useEffect(() => {
+    if (!watchlistNotice) return;
+    const t = setTimeout(() => setWatchlistNotice(''), 6000);
+    return () => clearTimeout(t);
+  }, [watchlistNotice]);
   useEffect(() => {
     if (!user) return;
     void listWatchlists(user.id)
@@ -476,15 +482,22 @@ export default function SearchPage() {
     pendingWatchlistIdsRef.current.add(id);
     setPendingWatchlistIds((current) => new Set(current).add(id));
     setWatchlistError('');
+    setWatchlistNotice('');
+    const athleteName = athletes.find((a) => a.id === id)?.name ?? 'Athlete';
     try {
       const lists = await listWatchlists(user.id);
       const existingRowId = findDefaultWatchlistAthleteRow(lists, id);
       if (existingRowId) {
         await removeAthleteFromWatchlist(existingRowId);
+        setWatchlistNotice(`Removed ${athleteName} from “${DEFAULT_WATCHLIST_NAME}”.`);
       } else {
-        const list = findDefaultWatchlist(lists)
-          ?? await getOrCreateWatchlist(user.id, DEFAULT_WATCHLIST_NAME);
+        const existing = findDefaultWatchlist(lists);
+        const list = existing ?? await getOrCreateWatchlist(user.id, DEFAULT_WATCHLIST_NAME);
         await addAthleteToWatchlist(list.id, id);
+        // Never create a list silently: say what happened and where to find it.
+        setWatchlistNotice(existing
+          ? `Added ${athleteName} to “${DEFAULT_WATCHLIST_NAME}”.`
+          : `Created your “${DEFAULT_WATCHLIST_NAME}” watchlist and added ${athleteName}.`);
       }
       const refreshed = await listWatchlists(user.id);
       setWatchlisted(new Set(
@@ -696,6 +709,22 @@ export default function SearchPage() {
       </div>
 
       {watchlistError && <p role="alert" className="text-xs text-coral">{watchlistError}</p>}
+      <div role="status" aria-live="polite" aria-atomic="true">
+        {watchlistNotice && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 text-sm"
+            style={{ background: 'rgba(245,166,35,0.10)', border: '1px solid rgba(245,166,35,0.30)', color: '#F5A623', animation: 'slideUp 0.3s ease both' }}>
+            <Star size={13} fill="currentColor" />
+            <span className="flex-1 text-white/85">{watchlistNotice}</span>
+            <Link to="/recruiter/watchlists" className="font-semibold underline underline-offset-2 hover:text-white transition-colors">
+              View watchlists
+            </Link>
+            <button type="button" onClick={() => setWatchlistNotice('')} aria-label="Dismiss"
+              className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/10 transition-colors">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* RESULTS HEADER */}
       <div className="flex items-center justify-between" style={{ animation: 'slideUp 0.4s ease 0.25s both' }}>
