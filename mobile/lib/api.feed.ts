@@ -82,7 +82,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
         ? undefined
         : item.thumbnail.startsWith('http')
         ? item.thumbnail
-        : signedByPath.get(item.thumbnail),
+        : signedByPath.get(item.thumbnail) ?? undefined,
     }];
   });
 
