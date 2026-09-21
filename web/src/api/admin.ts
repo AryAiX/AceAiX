@@ -54,6 +54,17 @@ async function countRows(table: string, build?: (query: CountQuery) => CountQuer
   return res.count ?? 0;
 }
 
+async function optionalCountRows(
+  table: string,
+  build?: (query: CountQuery) => CountQuery,
+): Promise<number> {
+  try {
+    return await countRows(table, build);
+  } catch {
+    return 0;
+  }
+}
+
 async function currentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
@@ -423,10 +434,10 @@ export async function aiAdminStats(): Promise<AiAdminStats> {
   const todayIso = today.toISOString();
 
   const [sessionsToday, messagesToday, assistantMessagesToday, taggedMedia, recentSessions] = await Promise.all([
-    countRows('ai_chat_sessions', (q) => q.gte('created_at', todayIso)),
-    countRows('ai_chat_messages', (q) => q.gte('created_at', todayIso)),
-    countRows('ai_chat_messages', (q) => q.gte('created_at', todayIso).eq('sender_role', 'assistant')),
-    countRows('athlete_media', (q) => q.not('ai_tags', 'eq', '[]')),
+    optionalCountRows('ai_chat_sessions', (q) => q.gte('created_at', todayIso)),
+    optionalCountRows('ai_chat_messages', (q) => q.gte('created_at', todayIso)),
+    optionalCountRows('ai_chat_messages', (q) => q.gte('created_at', todayIso).eq('sender_role', 'assistant')),
+    optionalCountRows('athlete_media', (q) => q.not('ai_tags', 'eq', '[]')),
     optionalRows(
       await supabase
         .from('ai_chat_sessions')

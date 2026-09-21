@@ -53,7 +53,7 @@ export default function AdminAnalyticsPage() {
     const top = sorted.slice(0, 4);
     const otherCount = sorted.slice(4).reduce((s, [, c]) => s + c, 0);
     const rows = top.map(([sport, count]) => ({ sport, count, pct: Math.round((count / total) * 100) }));
-    if (otherCount) rows.push({ sport: 'Other', count: otherCount, pct: Math.round((otherCount / total) * 100) });
+    if (otherCount) rows.push({ sport: 'Other sports', count: otherCount, pct: Math.round((otherCount / total) * 100) });
     return rows;
   }, [athletes]);
 
@@ -68,7 +68,7 @@ export default function AdminAnalyticsPage() {
     const top = sorted.slice(0, 5);
     const otherCount = sorted.slice(5).reduce((s, [, c]) => s + c, 0);
     const rows = top.map(([country, count]) => ({ country, count, pct: Math.round((count / total) * 100) }));
-    if (otherCount) rows.push({ country: 'Other', count: otherCount, pct: Math.round((otherCount / total) * 100) });
+    if (otherCount) rows.push({ country: 'Other countries', count: otherCount, pct: Math.round((otherCount / total) * 100) });
     return rows;
   }, [users]);
 

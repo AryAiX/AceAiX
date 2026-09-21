@@ -41,23 +41,32 @@ function Avatar({ user, size = 10 }: { user: Partial<UserProfile> | null | undef
 }
 
 /* ─── New Conversation Modal ───────────────────────────────── */
-function NewConversationModal({ onClose, onSelect }: {
+function NewConversationModal({ currentUserId, error, onClose, onSelect }: {
+  currentUserId: string; error: string;
   onClose: () => void; onSelect: (user: UserProfile) => void;
 }) {
   const [query, setQuery]   = useState('');
   const [results, setResults] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return; }
     const tid = setTimeout(async () => {
       setLoading(true);
-      const data = await searchUsers(query, undefined, 10);
-      setResults(data);
-      setLoading(false);
+      setSearchError('');
+      try {
+        const data = await searchUsers(query, currentUserId, 10);
+        setResults(data);
+      } catch (requestError) {
+        setResults([]);
+        setSearchError(requestError instanceof Error ? requestError.message : 'People search could not be loaded.');
+      } finally {
+        setLoading(false);
+      }
     }, 300);
     return () => clearTimeout(tid);
-  }, [query]);
+  }, [currentUserId, query]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -70,6 +79,7 @@ function NewConversationModal({ onClose, onSelect }: {
             placeholder="Search by name..." className="input-dark w-full pl-9 text-sm" />
         </div>
         <div className="space-y-1 max-h-64 overflow-y-auto">
+          {(error || searchError) && <p role="alert" className="text-xs text-coral px-3 py-2">{error || searchError}</p>}
           {loading && <div className="flex items-center justify-center py-6"><Loader2 size={16} className="text-azure animate-spin" /></div>}
           {!loading && results.length === 0 && query.trim() && (
             <p className="text-sm text-muted text-center py-6">No users found</p>
@@ -194,17 +204,27 @@ export default function MessagesPage() {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   async function openConvWith(otherUser: UserProfile) {
-    setShowNew(false);
     if (!user) return;
+    setSendError('');
     const existing = conversations.find(c =>
       (c.participant_1_id === user.id && c.participant_2_id === otherUser.id) ||
       (c.participant_2_id === user.id && c.participant_1_id === otherUser.id)
     );
-    if (existing) { setActiveConvId(existing.id); setMobileView('chat'); return; }
-    const conv = await getOrCreateConversation(user.id, otherUser.id);
-    setConversations(prev => [{ ...conv, other_user: otherUser } as Conversation, ...prev]);
-    setActiveConvId(conv.id);
-    setMobileView('chat');
+    if (existing) {
+      setShowNew(false);
+      setActiveConvId(existing.id);
+      setMobileView('chat');
+      return;
+    }
+    try {
+      const conv = await getOrCreateConversation(user.id, otherUser.id);
+      setConversations(prev => [{ ...conv, other_user: otherUser } as Conversation, ...prev]);
+      setShowNew(false);
+      setActiveConvId(conv.id);
+      setMobileView('chat');
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Conversation could not be opened.');
+    }
   }
 
   async function sendMessage() {
@@ -426,7 +446,14 @@ export default function MessagesPage() {
         </div>
       </div>
 
-      {showNew && <NewConversationModal onClose={() => setShowNew(false)} onSelect={openConvWith} />}
+      {showNew && user && (
+        <NewConversationModal
+          currentUserId={user.id}
+          error={sendError}
+          onClose={() => setShowNew(false)}
+          onSelect={openConvWith}
+        />
+      )}
     </div>
   );
 }

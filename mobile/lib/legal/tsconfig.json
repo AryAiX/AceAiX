@@ -1,0 +1,10 @@
+{
+  "//": "The web build aliases @legal into this directory. Without a config here, its bundler walks up to mobile/tsconfig.json and tries to resolve expo/tsconfig.base, which the web workspace does not install. These files are plain string modules, so they need nothing from the Expo preset.",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true
+  },
+  "include": ["**/*.ts"]
+}

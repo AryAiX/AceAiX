@@ -24,6 +24,9 @@ export default function OnboardingPage() {
   const [level, setLevel] = useState('amateur');
   const [club, setClub] = useState('');
   const [nationality, setNationality] = useState('');
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
+  const [guardianRelationship, setGuardianRelationship] = useState('parent');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,28 +35,71 @@ export default function OnboardingPage() {
       navigate(user ? '/dashboard' : '/auth/login');
       return;
     }
-    if (!position) {
+    const isAthlete = profile.role === 'athlete';
+    const needsGuardian = isAthlete && profile.is_minor;
+    if (isAthlete && !position) {
       setError('Choose a position before finishing setup.');
       return;
     }
-    setLoading(true);
-    setError('');
-    const { error: updateError } = await supabase
-      .from('athlete_profiles')
-      .update({ sport, position_primary: position, level, current_club: club, nationality })
-      .eq('user_id', profile.id);
-    if (updateError) {
-      setLoading(false);
-      setError(updateError.message);
+    if (needsGuardian && !guardianName.trim()) {
+      setError('Enter your parent or guardian’s full name.');
       return;
     }
-    await refreshProfile();
-    setLoading(false);
-    navigate('/dashboard', { replace: true });
-  }
+    if (needsGuardian && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardianEmail.trim())) {
+      setError('Enter a valid parent or guardian email address.');
+      return;
+    }
 
-  function skipToRole() {
-    navigate(profile ? '/dashboard' : '/auth/login', { replace: true });
+    setLoading(true);
+    setError('');
+    try {
+      if (needsGuardian) {
+        const { data: consent, error: consentError } = await supabase.rpc('request_guardian_consent', {
+          p_guardian_name: guardianName.trim(),
+          p_guardian_email: guardianEmail.trim().toLowerCase(),
+          p_relationship: guardianRelationship,
+        });
+        if (consentError) throw consentError;
+
+        const consentRow = Array.isArray(consent) ? consent[0] : consent;
+        if (!consentRow?.id) throw new Error('Guardian consent request could not be created.');
+
+        const { data: delivery, error: deliveryError } = await supabase.functions.invoke(
+          'guardian-consent',
+          { body: { consent_id: consentRow.id } },
+        );
+        if (deliveryError || delivery?.sent !== true) {
+          throw new Error(
+            'Your guardian request was saved, but the email could not be sent. Please try again.',
+          );
+        }
+      }
+
+      if (isAthlete) {
+        const { error: athleteError } = await supabase
+          .from('athlete_profiles')
+          .update({ sport, position_primary: position, level, current_club: club, nationality })
+          .eq('user_id', profile.id);
+        if (athleteError) throw athleteError;
+      }
+
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', profile.id);
+      if (profileError) throw profileError;
+
+      await refreshProfile();
+      setLoading(false);
+      navigate('/dashboard', { replace: true });
+    } catch (completionError) {
+      setLoading(false);
+      setError(
+        completionError instanceof Error
+          ? completionError.message
+          : 'We could not finish your profile setup. Please try again.',
+      );
+    }
   }
 
   if (authLoading || (user && !profile)) {
@@ -159,6 +205,53 @@ export default function OnboardingPage() {
                 />
               </div>
 
+              {profile.is_minor && (
+                <fieldset className="space-y-4 rounded-xl border border-blue-500/30 bg-blue-500/5 p-4">
+                  <legend className="px-1 text-sm font-semibold text-white">Parent or guardian consent</legend>
+                  <p className="text-xs text-slate-400">
+                    Because you are under 18, we need to email a parent or guardian before profile setup can finish.
+                  </p>
+                  <div>
+                    <label htmlFor="guardian-name" className="label">Parent or guardian name</label>
+                    <input
+                      id="guardian-name"
+                      type="text"
+                      value={guardianName}
+                      onChange={(event) => setGuardianName(event.target.value)}
+                      className="input-field"
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="guardian-email" className="label">Parent or guardian email</label>
+                    <input
+                      id="guardian-email"
+                      type="email"
+                      value={guardianEmail}
+                      onChange={(event) => setGuardianEmail(event.target.value)}
+                      className="input-field"
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="guardian-relationship" className="label">Relationship</label>
+                    <select
+                      id="guardian-relationship"
+                      value={guardianRelationship}
+                      onChange={(event) => setGuardianRelationship(event.target.value)}
+                      className="input-field"
+                    >
+                      <option value="parent">Parent</option>
+                      <option value="guardian">Legal guardian</option>
+                      <option value="coach_guardian">Coach acting as guardian</option>
+                      <option value="other">Other guardian</option>
+                    </select>
+                  </div>
+                </fieldset>
+              )}
+
               {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
               <button
                 onClick={handleComplete}
@@ -175,8 +268,17 @@ export default function OnboardingPage() {
           ) : (
             <div className="text-center py-4">
               <p className="text-slate-400 mb-6">Welcome aboard! Your account is ready. You can complete your profile from the dashboard.</p>
-              <button onClick={skipToRole} className="btn-primary justify-center px-8 py-3 text-base">
-                Go to Dashboard <ArrowRight size={16} />
+              {error && <p role="alert" className="text-xs text-coral mb-3">{error}</p>}
+              <button
+                onClick={handleComplete}
+                disabled={loading}
+                className="btn-primary justify-center px-8 py-3 text-base"
+              >
+                {loading ? (
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>Go to Dashboard <ArrowRight size={16} /></>
+                )}
               </button>
             </div>
           )}

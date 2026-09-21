@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import { isRecruiterRole } from '../lib/accessControl';
 import { useMyAthlete } from '../hooks/useAthlete';
 import { listNotifications, markNotificationRead, markAllNotificationsRead } from '../api/notifications';
 import { safeInternalPath } from '../lib/navigation';
@@ -15,6 +16,7 @@ import {
   markAllNotificationsReadInState,
   markNotificationReadInState,
 } from '../lib/notificationState';
+import { BrandMark } from './BrandMark';
 
 type NavItem = { label: string; path: string; Icon: React.ElementType };
 
@@ -44,7 +46,7 @@ function getNavItems(role: string | null): NavItem[] {
     { label: 'Opportunities', Icon: Briefcase,     path: '/athlete/opportunities' },
     { label: 'Messages',      Icon: MessageSquare, path: '/athlete/messages'      },
   ];
-  if (role === 'scout' || role === 'club') return [
+  if (isRecruiterRole(role)) return [
     { label: 'Home',       Icon: Home,          path: '/feed'                 },
     { label: 'Search',     Icon: Search,        path: '/recruiter/search'     },
     { label: 'Watchlists', Icon: Bookmark,      path: '/recruiter/watchlists' },
@@ -64,7 +66,7 @@ function getNavItems(role: string | null): NavItem[] {
 
 function dashPath(role: string | null) {
   if (role === 'athlete')                  return '/athlete/dashboard';
-  if (role === 'scout' || role === 'club') return '/recruiter/dashboard';
+  if (isRecruiterRole(role)) return '/recruiter/dashboard';
   if (role === 'medical_partner')          return '/partner/dashboard';
   if (role === 'admin' || role === 'super_admin') return '/admin/dashboard';
   return '/auth/login';
@@ -72,7 +74,7 @@ function dashPath(role: string | null) {
 
 function settingsPath(role: string | null) {
   if (role === 'athlete')                  return '/athlete/settings';
-  if (role === 'scout' || role === 'club') return '/recruiter/settings';
+  if (isRecruiterRole(role)) return '/recruiter/settings';
   if (role === 'medical_partner')          return '/partner/settings';
   if (role === 'admin' || role === 'super_admin') return '/admin/settings';
   return '/auth/login';
@@ -80,7 +82,7 @@ function settingsPath(role: string | null) {
 
 function profilePath(role: string | null) {
   if (role === 'athlete')                  return '/athlete/profile';
-  if (role === 'scout' || role === 'club') return '/recruiter/dashboard';
+  if (isRecruiterRole(role)) return '/recruiter/dashboard';
   return null;
 }
 
@@ -174,9 +176,7 @@ export default function PublicHeader() {
         {/* ── Logo + Search ─────────────────────────── */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 bg-azure rounded-lg flex items-center justify-center transition-transform duration-200 group-hover:scale-110 shadow-azure-sm">
-              <Zap size={14} className="text-white" fill="white" />
-            </div>
+            <BrandMark size={26} className="transition-transform duration-200 group-hover:scale-110" />
             <span className="font-display font-bold text-white text-[15px] hidden sm:block">
               AceAi<span className="text-azure">X</span>
             </span>

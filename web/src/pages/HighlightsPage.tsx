@@ -16,6 +16,37 @@ function formatViews(n: number): string {
   return String(n);
 }
 
+function HighlightMedia({
+  clip,
+  className,
+}: {
+  clip: PublicHighlight;
+  className: string;
+}) {
+  if (
+    !clip.thumbnail_url
+    && (clip.media_type === 'video' || clip.media_type === 'highlight_reel')
+  ) {
+    return (
+      <video
+        src={clip.storage_url}
+        aria-label={clip.title}
+        className={className}
+        muted
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+  return (
+    <img
+      src={clip.thumbnail_url ?? clip.storage_url}
+      alt={clip.title}
+      className={className}
+    />
+  );
+}
+
 export default function HighlightsPage() {
   const { data: clips = [], isLoading } = useQuery({
     queryKey: ['public-highlights', 12],
@@ -63,7 +94,7 @@ export default function HighlightsPage() {
                   <p className="text-sm font-semibold text-white">Featured Clip</p>
                 </div>
                 <div className="relative rounded-2xl overflow-hidden group cursor-pointer">
-                  <img src={featured.thumbnail_url ?? featured.storage_url} alt={featured.title} className="w-full h-80 object-cover" />
+                  <HighlightMedia clip={featured} className="w-full h-80 object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-navy-900 via-navy-900/40 to-transparent" />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <Link to="/auth/register" className="w-16 h-16 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 rounded-full flex items-center justify-center transition-all group-hover:scale-110">
@@ -93,7 +124,7 @@ export default function HighlightsPage() {
               {clips.slice(1).map((clip) => (
                 <Link to="/auth/register" key={clip.id} className="card-hover group p-0 overflow-hidden block">
                   <div className="relative">
-                    <img src={clip.thumbnail_url ?? clip.storage_url} alt={clip.title} className="w-full h-44 object-cover" />
+                    <HighlightMedia clip={clip} className="w-full h-44 object-cover" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-navy-900/40">
                       <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center border border-white/30">
                         <Play size={16} className="text-white ml-0.5" fill="white" />

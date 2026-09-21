@@ -388,6 +388,12 @@ verify_jwt = true
 [functions.sync-football]
 verify_jwt = true
 
+# The emailed guardian link and its HTML form do not carry a Supabase JWT.
+# The handler validates that one-time token on those routes and validates the
+# app caller's bearer token with auth.getUser() on the JSON POST route.
+[functions.guardian-consent]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

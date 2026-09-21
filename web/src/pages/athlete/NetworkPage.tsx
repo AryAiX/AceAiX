@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { listAthletes } from '../../api/athletes';
 import { listProfileViews, profileViewCount } from '../../api/analytics';
+import { isUserProfile } from '../../lib/userProfile';
 import RecommendationCard from '../../components/ui/RecommendationCard';
 import type { Recommendation, UserProfile, RecommendationRelationship } from '../../types';
 
@@ -319,7 +320,7 @@ export default function NetworkPage() {
       .eq('following_id', user.id);
     if (data) {
       const rows = data as unknown as FollowRow[];
-      setFollowers(rows.map(r => r.follower).filter((value): value is UserProfile => Boolean(value)));
+      setFollowers(rows.map(r => r.follower).filter(isUserProfile));
     }
   }, [user]);
 
@@ -330,7 +331,7 @@ export default function NetworkPage() {
       .eq('follower_id', user.id);
     if (data) {
       const rows = data as unknown as FollowRow[];
-      const users = rows.map(r => r.following).filter((value): value is UserProfile => Boolean(value));
+      const users = rows.map(r => r.following).filter(isUserProfile);
       setFollowing(users);
       setMyFollowingIds(new Set(users.map(u => u.id)));
     }

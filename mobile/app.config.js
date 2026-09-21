@@ -10,5 +10,11 @@ module.exports = ({ config }) => {
       supabaseUrl: clean(process.env.EXPO_PUBLIC_SUPABASE_URL),
       supabaseAnonKey: clean(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY),
     },
+    plugins: [
+      ...(config.plugins || []),
+      "@react-native-community/datetimepicker",
+      "expo-sharing",
+      "expo-status-bar",
+    ],
   };
 };

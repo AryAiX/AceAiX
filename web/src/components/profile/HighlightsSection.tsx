@@ -43,6 +43,8 @@ function HighlightCard({ clip, featured }: { clip?: AthleteProfileData['highligh
   const ref = useRef<HTMLDivElement>(null);
 
   if (!clip) return null;
+  const isVideo = clip.mediaType === 'video' || clip.mediaType === 'highlight_reel';
+  const mediaClass = `w-full object-cover ${featured ? 'h-56' : 'h-32'}`;
 
   return (
     <div
@@ -56,11 +58,22 @@ function HighlightCard({ clip, featured }: { clip?: AthleteProfileData['highligh
         boxShadow: hovered ? '0 12px 40px rgba(0,0,0,0.6)' : '0 2px 8px rgba(0,0,0,0.3)',
       }}
     >
-      <img
-        src={clip.thumbnail}
-        alt={clip.title}
-        className={`w-full object-cover ${featured ? 'h-56' : 'h-32'}`}
-      />
+      {clip.thumbnail ? (
+        <img src={clip.thumbnail} alt={clip.title} className={mediaClass} />
+      ) : isVideo && clip.mediaUrl ? (
+        <video
+          src={clip.mediaUrl}
+          aria-label={clip.title}
+          className={mediaClass}
+          muted
+          playsInline
+          preload="metadata"
+        />
+      ) : clip.mediaUrl ? (
+        <img src={clip.mediaUrl} alt={clip.title} className={mediaClass} />
+      ) : (
+        <div className={`${mediaClass} bg-navy-800`} aria-label={clip.title} />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
 
       {/* Play button */}

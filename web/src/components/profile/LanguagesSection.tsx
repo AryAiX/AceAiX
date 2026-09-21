@@ -27,8 +27,8 @@ export default function LanguagesSection({ athlete, isOwner }: LanguagesSectionP
   return (
     <SectionCard title="Languages" icon={<Languages size={15} />} isOwner={isOwner}>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {athlete.languages.map(lang => (
-          <div key={lang.name} className="space-y-2">
+        {athlete.languages.map((lang, index) => (
+          <div key={`${lang.name}-${lang.level}-${index}`} className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-white">{lang.name}</p>
               <p className="text-xs text-muted">{lang.level}</p>

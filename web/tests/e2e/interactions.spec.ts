@@ -1,22 +1,53 @@
 import { expect, test } from '@playwright/test';
 import { login } from './helpers';
 
+async function deleteCurrentTestAccount(page: import('@playwright/test').Page) {
+  const accessToken = await page.evaluate(() => {
+    const entry = Object.entries(localStorage).find(
+      ([key]) => key.startsWith('sb-') && key.endsWith('-auth-token'),
+    );
+    if (!entry) return null;
+    return (JSON.parse(entry[1]) as { access_token?: string }).access_token ?? null;
+  });
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!accessToken || !url || !key) return;
+
+  const response = await page.request.post(`${url}/functions/v1/delete-account`, {
+    headers: { apikey: key, Authorization: `Bearer ${accessToken}` },
+    data: {},
+  });
+  expect(
+    response.ok(),
+    `temporary signup account should be deleted (${response.status()}: ${await response.text()})`,
+  ).toBe(true);
+}
+
 test.describe('critical button interactions', () => {
-  test('fresh athlete signup creates a session and lands on the dashboard', async ({ page }) => {
+  test('fresh athlete signup completes onboarding and lands on the dashboard', async ({ page }) => {
     const stamp = Date.now();
     const fullName = `Signup Athlete ${stamp}`;
     const email = `signup-athlete-${stamp}@aryaix.com`;
 
-    await page.goto('/auth/register');
-    await page.getByRole('button', { name: /continue as athlete/i }).click({ force: true });
-    await page.locator('input[placeholder="Your full name"]').fill(fullName);
-    await page.locator('input[type="email"]').fill(email);
-    await page.locator('input[type="password"]').fill('1234567!');
-    await page.getByRole('button', { name: /create account/i }).click();
+    try {
+      await page.goto('/auth/register');
+      await page.getByRole('button', { name: /continue as athlete/i }).click({ force: true });
+      await page.locator('input[placeholder="Your full name"]').fill(fullName);
+      await page.locator('input[type="date"]').fill('2000-05-10');
+      await page.locator('input[type="email"]').fill(email);
+      await page.locator('input[type="password"]').fill('1234567!');
+      await page.getByRole('button', { name: /create account/i }).click();
 
-    await page.waitForURL('**/athlete/dashboard', { timeout: 30_000 });
-    await expect(page.locator('main')).toContainText(fullName);
-    await expect(page.locator('main')).not.toContainText(/I'm joining as|Continue as Athlete|Create your account/);
+      await page.waitForURL('**/auth/onboarding', { timeout: 30_000 });
+      await page.getByRole('combobox').selectOption('Midfielder');
+      await page.getByPlaceholder('e.g. UAE').fill('UAE');
+      await page.getByRole('button', { name: /complete setup/i }).click();
+      await page.waitForURL('**/athlete/dashboard', { timeout: 30_000 });
+      await expect(page.locator('main')).toContainText(fullName);
+      await expect(page.locator('main')).not.toContainText(/I'm joining as|Continue as Athlete|Create your account/);
+    } finally {
+      await deleteCurrentTestAccount(page);
+    }
   });
 
   test('generic athlete login does not show seeded athlete identity', async ({ page }) => {
@@ -38,7 +69,7 @@ test.describe('critical button interactions', () => {
     await expect(page.locator('main')).not.toContainText(/I'm joining as|Continue as Athlete|Fresh Athlete|Karim|Al-Hassan/);
   });
 
-  test('onboarding dashboard button routes non-athlete roles correctly', async ({ page }) => {
+  test('completed non-athlete roles cannot return to onboarding', async ({ page }) => {
     const roles = [
       { role: 'scout' as const, expected: /\/recruiter\/dashboard$/ },
       { role: 'admin' as const, expected: /\/admin\/dashboard$/ },
@@ -48,7 +79,6 @@ test.describe('critical button interactions', () => {
     for (const { role, expected } of roles) {
       await login(page, role);
       await page.goto('/auth/onboarding');
-      await page.getByRole('button', { name: /go to dashboard/i }).click();
       await expect(page).toHaveURL(expected);
     }
   });

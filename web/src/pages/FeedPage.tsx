@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Users, Briefcase, MessageSquare, Search, Bookmark, FileText, BarChart3 } from 'lucide-react';
 import { useLenis } from '../hooks/useLenis';
+import { isRecruiterRole } from '../lib/accessControl';
 
 type NavItem = { label: string; Icon: React.ElementType; path: string };
 
@@ -17,7 +18,7 @@ function getNavItems(role: string | null): NavItem[] {
     { label: 'Opportunities', Icon: Briefcase,     path: '/athlete/opportunities' },
     { label: 'Messages',      Icon: MessageSquare, path: '/athlete/messages'      },
   ];
-  if (role === 'scout' || role === 'club') return [
+  if (isRecruiterRole(role)) return [
     { label: 'Home',       Icon: Home,          path: '/feed'                 },
     { label: 'Search',     Icon: Search,        path: '/recruiter/search'     },
     { label: 'Watchlists', Icon: Bookmark,      path: '/recruiter/watchlists' },
