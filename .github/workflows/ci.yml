@@ -285,17 +285,18 @@ jobs:
           echo "Deployed ${{ github.sha }} to $url"
 
       # Pull requests are promoted to the development app. Only a tested push
-      # to main may update the production app and aceaix.com.
+      # to main may update the production app at app.aceaix.com. The apex and
+      # www hosts remain on the separate launch/join site.
       - name: Pin the environment domain to this deployment
         env:
-          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'aceaix.com' || 'dev.aceaix.com' }}
+          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'app.aceaix.com' || 'dev.aceaix.com' }}
         run: vercel alias set "${{ steps.deploy.outputs.url }}" "$TARGET_DOMAIN" --token="$VERCEL_TOKEN"
 
       # The alias is the artifact users actually load, so failing here is the
       # difference between a bad build and a bad build nobody noticed.
       - name: Verify the pinned environment host serves this build
         env:
-          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'aceaix.com' || 'dev.aceaix.com' }}
+          TARGET_DOMAIN: ${{ github.event_name == 'push' && 'app.aceaix.com' || 'dev.aceaix.com' }}
         run: |
           for attempt in 1 2 3 4 5; do
             body="$(curl -fsS --max-time 30 "https://${TARGET_DOMAIN}/" || true)"
