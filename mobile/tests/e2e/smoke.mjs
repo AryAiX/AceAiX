@@ -118,9 +118,17 @@ try {
     await page.getByRole('textbox', { name: 'First name' }).fill('Browser');
     await page.getByRole('textbox', { name: 'Last name' }).fill('Smoke');
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.getByTestId('signup-dob-day').pressSequentially('04');
-    await page.getByTestId('signup-dob-month').pressSequentially('09');
-    await page.getByTestId('signup-dob-year').pressSequentially('2010');
+    const dobDay = page.getByTestId('signup-dob-day');
+    const dobMonth = page.getByTestId('signup-dob-month');
+    const dobYear = page.getByTestId('signup-dob-year');
+    await dobDay.pressSequentially('31');
+    await dobMonth.pressSequentially('02');
+    await dobYear.pressSequentially('2010');
+    if (await page.getByRole('button', { name: 'Continue' }).isEnabled()) {
+      throw new Error(`${viewport.name} impossible DOB enabled Continue`);
+    }
+    await dobDay.fill('');
+    await dobDay.pressSequentially('28');
     if (!(await page.getByRole('button', { name: 'Continue' }).isEnabled())) {
       throw new Error(`${viewport.name} valid DOB did not enable Continue`);
     }
