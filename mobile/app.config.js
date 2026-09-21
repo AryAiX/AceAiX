@@ -12,6 +12,14 @@ module.exports = ({ config }) => {
     },
     plugins: [
       ...(config.plugins || []),
+      [
+        "expo-build-properties",
+        {
+          ios: {
+            deploymentTarget: "16.4",
+          },
+        },
+      ],
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "expo-status-bar",

@@ -46,6 +46,7 @@
     "country-state-city": "^3.2.1",
     "expo": "~57.0.24",
     "expo-blur": "~57.0.3",
+    "expo-build-properties": "~57.0.21",
     "expo-camera": "~57.0.5",
     "expo-constants": "~57.0.19",
     "expo-file-system": "~57.0.7",

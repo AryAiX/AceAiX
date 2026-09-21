@@ -77,7 +77,9 @@ try {
   await page.getByTestId('signup-first-name').fill('Browser');
   await page.getByTestId('signup-last-name').fill('Auth');
   await page.getByTestId('signup-continue').click();
-  await page.getByTestId('signup-dob-field').fill('2000-05-10');
+  await page.getByTestId('signup-dob-day').pressSequentially('10');
+  await page.getByTestId('signup-dob-month').pressSequentially('05');
+  await page.getByTestId('signup-dob-year').pressSequentially('2000');
   await page.getByTestId('signup-continue').click();
   await page.getByTestId('signup-email').fill(email);
   await page.getByTestId('signup-password').fill(password);
