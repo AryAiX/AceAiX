@@ -6,6 +6,19 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
+    rules: {
+      /*
+       * Expo SDK 57 enables React Compiler diagnostics in the preset. This app
+       * has not enabled the compiler and still uses established React Native
+       * patterns such as `useRef(new Animated.Value()).current`. Keep the
+       * normal Hooks rules while deferring compiler-specific migration rules.
+       */
+      "react-hooks/immutability": "off",
+      "react-hooks/preserve-manual-memoization": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
   },
   {
     /*
