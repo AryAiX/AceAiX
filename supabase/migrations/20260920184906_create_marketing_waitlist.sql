@@ -1,4 +1,4 @@
-create table public.marketing_waitlist (
+create table if not exists public.marketing_waitlist (
   id uuid primary key default gen_random_uuid(),
   email text not null unique,
   first_name text,
@@ -28,7 +28,7 @@ alter table public.marketing_waitlist enable row level security;
 revoke all on table public.marketing_waitlist from anon, authenticated;
 grant all on table public.marketing_waitlist to service_role;
 
-create index marketing_waitlist_ip_updated_idx
+create index if not exists marketing_waitlist_ip_updated_idx
   on public.marketing_waitlist (ip_hash, updated_at desc)
   where ip_hash is not null;
 
