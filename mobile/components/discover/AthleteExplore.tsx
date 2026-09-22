@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Building2, Check, Search, Trophy, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { TierColors, tierForScore } from '@/theme/tokens';
 import {
+  Avatar,
+  Badge,
   Chip,
   EmptyState,
   ErrorState,
@@ -15,10 +19,10 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { PRIORITY_COUNTRIES, SPORTS, sportLabel } from '@/constants/sports';
+import { PRIORITY_COUNTRIES, SPORTS, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { searchOrganizations, toggleFollow } from '@/lib/api';
+import { searchOrganizations, searchPeople, toggleFollow } from '@/lib/api';
 import {
   followedOrganizationIds,
   followedUserIds,
@@ -28,10 +32,14 @@ import {
 } from '@/lib/api.discover';
 import type { LeaderboardEntry } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
+import { displayName, metaLine } from '@/lib/format';
+import { Routes } from '@/lib/routes';
+import { useAuth } from '@/providers/AuthProvider';
 import type { Organization, PersonResult } from '@/types/models';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
 import { LeaderboardRow } from './LeaderboardRow';
+import { tierLabel } from './MatchBadge';
 
 type Tab = 'clubs' | 'coaches' | 'leaderboard';
 
@@ -54,6 +62,84 @@ interface Props {
   viewerId: string | null;
 }
 
+/** Same case-insensitive equality the talent_leaderboard RPC uses via `ilike`. */
+function matchesChip(value: string | null | undefined, selected: string | undefined): boolean {
+  if (!selected) return true;
+  return (value ?? '').toLowerCase() === selected.toLowerCase();
+}
+
+/**
+ * Leaderboard-shaped row for name-search hits. Rank is omitted on purpose —
+ * these are not a ranking. Keep this local; LeaderboardRow stays for the board.
+ */
+function AthleteSearchRow({ person, isYou }: { person: PersonResult; isYou: boolean }) {
+  const theme = useTheme();
+  const t = useT();
+  const { colors, radii, spacing } = theme;
+  const router = useRouter();
+
+  const name = displayName(person.full_name);
+  const tier = tierForScore(person.talent_score);
+  const tierColor = TierColors[tier];
+  const tierName = tierLabel(t, tier);
+  const meta = metaLine(
+    sportLabel(t, person.sport),
+    positionLabel(t, person.position),
+    person.country,
+  );
+
+  return (
+    <Pressable
+      onPress={() => router.push(Routes.profile(person.id))}
+      accessibilityRole="button"
+      accessibilityLabel={metaLine(
+        isYou ? t('discover.board.youA11y', { name }) : name,
+        meta,
+        t('discover.board.scoreA11y', { score: person.talent_score, tier: tierName }),
+      )}
+      accessibilityHint={t('discover.card.openProfile')}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        minHeight: 64,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm,
+        borderRadius: radii.md,
+        borderWidth: isYou ? 1.5 : 1,
+        borderColor: isYou ? colors.primaryBorder : colors.border,
+        backgroundColor: isYou ? colors.primarySoft : colors.surface,
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      <Avatar uri={person.avatar_url} name={name} size="sm" score={person.talent_score} />
+
+      <View style={{ flex: 1, gap: 1 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+          <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {name}
+          </Text>
+          {isYou ? <Badge label={t('discover.board.you')} tone="primary" /> : null}
+        </View>
+        {meta ? (
+          <Text variant="caption" tone="muted" numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text variant="stat" color={tierColor} style={{ fontSize: 20 }}>
+          {Math.round(person.talent_score)}
+        </Text>
+        <Text variant="overline" color={tierColor} style={{ fontSize: 9 }}>
+          {tierName}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /**
  * The athlete's side of Discover: who to follow, and where they stand.
  *
@@ -65,6 +151,8 @@ export function AthleteExplore({ viewerId }: Props) {
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
+  const { profile } = useAuth();
+  const canSearchBoard = profile?.is_minor === false;
 
   const [tab, setTab] = useState<Tab>('clubs');
   const [query, setQuery] = useState('');
@@ -91,10 +179,25 @@ export function AthleteExplore({ viewerId }: Props) {
     { enabled: tab === 'coaches' },
   );
   const boardScope = `${sport ?? ''}|${country ?? ''}`;
+  const searchingBoard = tab === 'leaderboard' && canSearchBoard && !!debounced;
   const board = useAsync<Page<LeaderboardEntry>>(
     async () => ({ term: boardScope, rows: await leaderboard(sport, country, BOARD_SIZE) }),
     [sport, country],
-    { enabled: tab === 'leaderboard' },
+    { enabled: tab === 'leaderboard' && !searchingBoard },
+  );
+  const athletes = useAsync<Page<PersonResult>>(
+    async () => ({ term: debounced, rows: await searchPeople(debounced, 'athlete', 30) }),
+    [debounced],
+    { enabled: searchingBoard },
+  );
+  /* Client-side only: search_people is capped at 30 and has no sport/country
+     args, so chip filters may drop matches that sit past that cap. */
+  const athleteHits = useMemo(
+    () =>
+      (athletes.data?.rows ?? []).filter(
+        (row) => matchesChip(row.sport, sport) && matchesChip(row.country, country),
+      ),
+    [athletes.data?.rows, sport, country],
   );
 
   const orgFollows = useAsync(() => followedOrganizationIds(), []);
@@ -164,7 +267,9 @@ export function AthleteExplore({ viewerId }: Props) {
       placeholder={
         tab === 'clubs'
           ? t('discover.explore.searchClubsPlaceholder')
-          : t('discover.explore.searchCoachesPlaceholder')
+          : tab === 'coaches'
+            ? t('discover.explore.searchCoachesPlaceholder')
+            : t('discover.queryLabel')
       }
       autoCorrect={false}
       autoCapitalize="none"
@@ -173,7 +278,9 @@ export function AthleteExplore({ viewerId }: Props) {
       accessibilityLabel={
         tab === 'clubs'
           ? t('discover.explore.searchClubsA11y')
-          : t('discover.explore.searchCoachesA11y')
+          : tab === 'coaches'
+            ? t('discover.explore.searchCoachesA11y')
+            : t('discover.queryLabel')
       }
       icon={<Search size={18} color={colors.textMuted} />}
     />
@@ -299,7 +406,42 @@ export function AthleteExplore({ viewerId }: Props) {
     );
   }
 
+  function renderBoardSearch() {
+    if (athletes.error) return <ErrorState message={athletes.error} onRetry={athletes.reload} />;
+    if (athletes.loading || athletes.data?.term !== debounced) return busy(4);
+
+    return (
+      <FlatList<PersonResult>
+        style={{ flex: 1 }}
+        data={athleteHits}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={listStyle}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={athletes.refreshing}
+            onRefresh={athletes.refresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+        renderItem={({ item }) => (
+          <AthleteSearchRow person={item} isYou={item.id === viewerId} />
+        )}
+        ListEmptyComponent={
+          <EmptyState
+            icon={<Users size={26} color={colors.textMuted} />}
+            title={t('discover.search.emptyTitle', { term: debounced })}
+            body={t('discover.search.emptyBody')}
+          />
+        }
+      />
+    );
+  }
+
   function renderBoard() {
+    if (searchingBoard) return renderBoardSearch();
+
     if (board.error) return <ErrorState message={board.error} onRetry={board.reload} />;
     if (board.loading || board.data?.term !== boardScope) return busy(5);
 
@@ -374,12 +516,11 @@ export function AthleteExplore({ viewerId }: Props) {
         />
       </View>
 
-      <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md }}>
-        {tab === 'leaderboard' ? (
-          boardFilters
-        ) : (
+      <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md, gap: spacing.md }}>
+        {tab !== 'leaderboard' || canSearchBoard ? (
           <View style={{ paddingRight: spacing.lg }}>{searchField}</View>
-        )}
+        ) : null}
+        {tab === 'leaderboard' ? boardFilters : null}
       </View>
 
       {tab === 'clubs' ? renderClubs() : tab === 'coaches' ? renderCoaches() : renderBoard()}
