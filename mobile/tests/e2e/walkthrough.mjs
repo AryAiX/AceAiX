@@ -25,7 +25,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
 const DIST = path.join(ROOT, 'dist');
 const SHOTS = path.join(HERE, 'shots');
-const PORT = 8792;
+const PORT = Number(process.env.WALKTHROUGH_PORT ?? 8792);
 
 const args = process.argv.slice(2);
 const argOf = (name, fallback) => {
@@ -82,6 +82,11 @@ const IGNORE =
 const results = [];
 
 async function visit(page, name, url, { wait = 1600, expect = [], minChars = 60 } = {}) {
+  // A character count is only a smoke proxy for an empty screen. Chinese
+  // expresses the same UI copy in materially fewer code points than the
+  // alphabetic catalogues, so use a proportional threshold rather than
+  // treating concise translated copy as a blank page.
+  const effectiveMinChars = LANG === 'zh' ? Math.ceil(minChars * 0.5) : minChars;
   const errors = [];
   page.removeAllListeners('console');
   page.removeAllListeners('pageerror');
@@ -108,7 +113,7 @@ async function visit(page, name, url, { wait = 1600, expect = [], minChars = 60 
 
   let text = ((await page.evaluate(() => document.body.innerText)) ?? '').trim();
   let missing = expect.filter((needle) => !text.toLowerCase().includes(needle.toLowerCase()));
-  if (text.length < minChars || missing.length > 0 || /^Loading\b/i.test(text)) {
+  if (text.length < effectiveMinChars || missing.length > 0 || /^Loading\b/i.test(text)) {
     await page.waitForTimeout(3000);
     text = ((await page.evaluate(() => document.body.innerText)) ?? '').trim();
     missing = expect.filter((needle) => !text.toLowerCase().includes(needle.toLowerCase()));
@@ -122,7 +127,7 @@ async function visit(page, name, url, { wait = 1600, expect = [], minChars = 60 
     head: text.slice(0, 110).replace(/\n/g, ' | '),
     errors,
     missing,
-    minChars,
+    minChars: effectiveMinChars,
   });
 }
 
@@ -174,10 +179,9 @@ const fields = page.locator('input');
 await fields.nth(0).fill(account.email);
 await fields.nth(1).fill(account.password);
 await page.getByRole('button').last().click();
-await page.waitForTimeout(3600);
+await page.waitForURL((url) => !url.pathname.includes('sign-in'), { timeout: 10_000 }).catch(() => {});
 
-const signedIn = !(await page.evaluate(() => document.body.innerText)).includes('Welcome back');
-if (!signedIn) {
+if (new URL(page.url()).pathname.includes('sign-in')) {
   console.error(`✗ could not sign in as ${account.email}`);
   await page.screenshot({ path: path.join(SHOTS, `${SCHEME}-${ROLE}-signin-failed.png`) });
   await browser.close();
@@ -259,12 +263,12 @@ if (env.EXPO_PUBLIC_SUPABASE_URL && env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
     details.push([
       'profile-followers',
       `/u/${other.id}/followers`,
-      { expect: ['Followers'], minChars: 40, wait: 3000 },
+      { expect: LANG === 'en' ? ['Followers'] : [], minChars: 40, wait: 3000 },
     ]);
     details.push([
       'profile-following',
       `/u/${other.id}/following`,
-      { expect: ['Following'], minChars: 40, wait: 3000 },
+      { expect: LANG === 'en' ? ['Following'] : [], minChars: 40, wait: 3000 },
     ]);
   }
   if (post) {
@@ -326,7 +330,7 @@ const TOUR = [
   ['views', '/views', {}],
   ['notifications', '/notifications', {}],
   // A valid inbox with one short conversation is intentionally sparse.
-  ['inbox', '/inbox', { expect: ['Messages'], minChars: 35 }],
+  ['inbox', '/inbox', { expect: LANG === 'en' ? ['Messages'] : [], minChars: 35 }],
   ['search', '/search', {}],
   ['edit-profile', '/edit-profile', { wait: 3000 }],
   ['settings', '/settings', {}],
@@ -343,10 +347,10 @@ const TOUR = [
   ['challenge-new', '/challenge/new', {}],
   ['meetup-new', '/meetup/new', {}],
   ['opportunity-new', '/opportunity/new', {}],
-  ['legal-terms', '/legal/terms', { expect: ['Terms of Service'] }],
-  ['legal-privacy', '/legal/privacy', { expect: ['Privacy Policy'] }],
-  ['legal-guidelines', '/legal/guidelines', { expect: ['Community Guidelines'] }],
-  ['legal-child-safety', '/legal/child-safety', { expect: ['Child Safety'] }],
+  ['legal-terms', '/legal/terms', { expect: LANG === 'en' ? ['Terms of Service'] : [] }],
+  ['legal-privacy', '/legal/privacy', { expect: LANG === 'en' ? ['Privacy Policy'] : [] }],
+  ['legal-guidelines', '/legal/guidelines', { expect: LANG === 'en' ? ['Community Guidelines'] : [] }],
+  ['legal-child-safety', '/legal/child-safety', { expect: LANG === 'en' ? ['Child Safety'] : [] }],
   ...details,
   ['compose', '/compose', {}],
 ];

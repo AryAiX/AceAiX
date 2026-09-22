@@ -56,7 +56,18 @@ if (!URL_ || !KEY) {
 }
 
 // ── Reading the client ───────────────────────────────────────────────────────
-const SKIP_DIRS = new Set(['node_modules', '.expo', 'dist', 'web-build', '.git', 'tests']);
+// `ios` and `android` are generated output with no client calls in them, and
+// CocoaPods leaves dangling header symlinks that make statSync throw.
+const SKIP_DIRS = new Set([
+  'node_modules',
+  '.expo',
+  'dist',
+  'web-build',
+  '.git',
+  'tests',
+  'ios',
+  'android',
+]);
 
 function sources(dir, out = []) {
   for (const entry of fs.readdirSync(dir)) {

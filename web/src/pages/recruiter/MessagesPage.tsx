@@ -156,27 +156,29 @@ export default function RecruiterMessagesPage() {
             {filtered.map((conv) => {
               const other = conv.other_user;
               return (
-                <div
+                <button
                   key={conv.id}
+                  type="button"
                   onClick={() => setActiveId(conv.id)}
-                  className={`p-3 flex items-center gap-3 cursor-pointer hover:bg-navy-600 transition-colors border-b border-slate-700/30 last:border-0 ${activeId === conv.id ? 'bg-blue-600/15' : ''}`}
+                  aria-current={activeId === conv.id ? 'true' : undefined}
+                  className={`w-full text-left p-3 flex items-center gap-3 cursor-pointer hover:bg-navy-600 transition-colors border-b border-slate-700/30 last:border-0 ${activeId === conv.id ? 'bg-blue-600/15' : ''}`}
                 >
-                  <div className="relative flex-shrink-0">
+                  <span className="relative block flex-shrink-0">
                     <Avatar user={other} size={40} />
                     {other?.is_verified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-navy-700">
+                      <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-navy-700">
                         <ShieldCheck size={7} className="text-white" />
-                      </div>
+                      </span>
                     )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-white truncate">{other?.full_name ?? 'Unknown'}</p>
-                      <p className="text-xs text-slate-500 flex-shrink-0 ml-1">{timeLabel(conv.last_message_at)}</p>
-                    </div>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">{conv.last_message_preview ?? 'No messages yet'}</p>
-                  </div>
-                </div>
+                  </span>
+                  <span className="flex-1 min-w-0 block">
+                    <span className="flex items-center justify-between">
+                      <span className="block text-sm font-medium text-white truncate">{other?.full_name ?? 'Unknown'}</span>
+                      <span className="block text-xs text-slate-500 flex-shrink-0 ml-1">{timeLabel(conv.last_message_at)}</span>
+                    </span>
+                    <span className="block text-xs text-slate-400 truncate mt-0.5">{conv.last_message_preview ?? 'No messages yet'}</span>
+                  </span>
+                </button>
               );
             })}
           </div>

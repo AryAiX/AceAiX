@@ -600,9 +600,9 @@ export default function AthletePublicProfilePage() {
     return (
       <div className="min-h-screen bg-page">
         <PublicHeader />
-        <div className="flex items-center justify-center py-40">
+        <main className="flex items-center justify-center py-40">
           <Loader2 size={28} className="text-azure animate-spin" />
-        </div>
+        </main>
       </div>
     );
   }
@@ -611,14 +611,14 @@ export default function AthletePublicProfilePage() {
     return (
       <div className="min-h-screen bg-page">
         <PublicHeader />
-        <div className="max-w-md mx-auto text-center py-40 px-4">
+        <main className="max-w-md mx-auto text-center py-40 px-4">
           <UserX size={40} className="text-muted mx-auto mb-4" />
           <h1 className="font-display font-bold text-white text-xl mb-2">Athlete not found</h1>
           <p className="text-sm text-muted mb-6">This profile doesn't exist or is no longer available.</p>
           <Link to="/athletes" className="btn-outline px-5 py-2.5 text-sm inline-flex items-center gap-2">
             <ChevronLeft size={14} /> Browse athletes
           </Link>
-        </div>
+        </main>
       </div>
     );
   }
@@ -626,6 +626,7 @@ export default function AthletePublicProfilePage() {
   return (
     <div className="min-h-screen bg-page">
       <PublicHeader />
+      <main>
 
       {/* Sticky mini-bar */}
       {showStickyBar && (
@@ -958,6 +959,7 @@ export default function AthletePublicProfilePage() {
       {followersOpen && <FollowersModal profileUserId={profileUserId} count={followerCount} currentUserId={user?.id} onClose={() => setFollowersOpen(false)} />}
       {blockConfirmOpen && <BlockConfirmModal name={athlete.name} isBlocked={isBlocked} onConfirm={toggleBlock} onCancel={() => setBlockConfirmOpen(false)} loading={blockLoading} />}
       {msgOpen && <MessageModal athleteName={athlete.name} onClose={() => setMsgOpen(false)} onSend={handleSendMessage} sending={msgSending} error={msgError} isAuth={!!user} />}
+      </main>
     </div>
   );
 }

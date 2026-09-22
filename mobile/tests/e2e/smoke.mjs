@@ -110,20 +110,25 @@ try {
     }
     console.log(`✓ ${viewport.name} form error accessibility`);
 
-    // The date adapter must be a real browser date input under the same
-    // single-field UI as native. React Native Web silently strips `type=date`
-    // from TextInput, so this interaction protects against that regression.
+    // Type each DOB segment with keyboard events. Programmatically filling a
+    // hidden date input previously passed while real users could not type it.
     await page.goto(`http://127.0.0.1:${PORT}/sign-up`);
     await page.getByRole('radio', { name: /I'm an athlete/ }).click();
     await page.getByRole('button', { name: 'Continue' }).click();
     await page.getByRole('textbox', { name: 'First name' }).fill('Browser');
     await page.getByRole('textbox', { name: 'Last name' }).fill('Smoke');
     await page.getByRole('button', { name: 'Continue' }).click();
-    const dob = page.getByTestId('signup-dob-field');
-    if ((await dob.getAttribute('type')) !== 'date') {
-      throw new Error(`${viewport.name} DOB control is not a browser date input`);
+    const dobDay = page.getByTestId('signup-dob-day');
+    const dobMonth = page.getByTestId('signup-dob-month');
+    const dobYear = page.getByTestId('signup-dob-year');
+    await dobDay.pressSequentially('31');
+    await dobMonth.pressSequentially('02');
+    await dobYear.pressSequentially('2010');
+    if (await page.getByRole('button', { name: 'Continue' }).isEnabled()) {
+      throw new Error(`${viewport.name} impossible DOB enabled Continue`);
     }
-    await dob.fill('2010-09-04');
+    await dobDay.fill('');
+    await dobDay.pressSequentially('28');
     if (!(await page.getByRole('button', { name: 'Continue' }).isEnabled())) {
       throw new Error(`${viewport.name} valid DOB did not enable Continue`);
     }

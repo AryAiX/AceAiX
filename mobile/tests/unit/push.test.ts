@@ -19,7 +19,18 @@ import path from 'node:path';
 const ROOT = path.resolve(__dirname, '../..');
 const read = (file: string) => readFileSync(path.join(ROOT, 'lib', file), 'utf8');
 
-const SKIP = new Set(['node_modules', '.expo', 'dist', 'web-build', '.git']);
+// Native projects and dependency trees are generated output. Apart from making
+// this source guard unnecessarily expensive, CocoaPods can contain dangling
+// header symlinks while pods are being refreshed, which makes statSync throw.
+const SKIP = new Set([
+  'node_modules',
+  '.expo',
+  'dist',
+  'web-build',
+  '.git',
+  'ios',
+  'android',
+]);
 
 function readdirRecursive(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {

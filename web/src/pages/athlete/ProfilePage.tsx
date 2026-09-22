@@ -10,6 +10,14 @@ import { useAuth } from '../../context/AuthContext';
 import { useMyAthlete } from '../../hooks/useAthlete';
 import { updateAthlete } from '../../api/athletes';
 import { updateUserProfile } from '../../api/profiles';
+import {
+  friendlySaveError,
+  HEIGHT_CM_RANGE,
+  validateFullName,
+  validateHeightCm,
+  validateWeightKg,
+  WEIGHT_KG_RANGE,
+} from '../../lib/formValidation';
 
 /* ── tiny animated completeness ring ───────────────────────── */
 function CompletenessRing({ pct }: { pct: number }) {
@@ -82,6 +90,14 @@ function Field({ label, icon: Icon, children, delay = 0 }: {
   );
 }
 
+/** Inline, screen-reader announced field error. */
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return <p id={id} role="alert" className="mt-1.5 text-xs text-coral">{message}</p>;
+}
+
+type FieldErrors = Partial<Record<'full_name' | 'height_cm' | 'weight_kg', string>>;
+
 /* ── tab definition ──────────────────────────────────────── */
 const TABS = [
   { id: 'identity', label: 'Identity',  icon: User,      color: '#2F80ED' },
@@ -108,6 +124,7 @@ export default function AthleteProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [activeTab, setActiveTab] = useState('identity');
   const [mounted, setMounted] = useState(false);
 
@@ -155,13 +172,31 @@ export default function AthleteProfilePage() {
     (CHECKLIST_FIELDS.filter(f => !!(form as Record<string, string>)[f.key]).length / CHECKLIST_FIELDS.length) * 100
   );
 
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {};
+    const nameError = validateFullName(form.full_name);
+    if (nameError) errors.full_name = nameError;
+    const heightError = validateHeightCm(form.height_cm);
+    if (heightError) errors.height_cm = heightError;
+    const weightError = validateWeightKg(form.weight_kg);
+    if (weightError) errors.weight_kg = weightError;
+    return errors;
+  }
+
   async function handleSave() {
     if (!profile) return;
-    setSaving(true);
     setSaveError('');
+    const errors = validate();
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      // Bring the first invalid field into view instead of failing silently.
+      setActiveTab(errors.full_name ? 'identity' : 'physical');
+      return;
+    }
+    setSaving(true);
     try {
       await updateUserProfile(profile.id, {
-        full_name: form.full_name, bio: form.bio, city: form.city, country: form.country,
+        full_name: form.full_name.trim(), bio: form.bio, city: form.city, country: form.country,
       });
       if (athlete) {
         await updateAthlete(athlete.id, {
@@ -178,7 +213,7 @@ export default function AthleteProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : 'Profile could not be saved.');
+      setSaveError(friendlySaveError(error, 'Your profile could not be saved. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -186,6 +221,13 @@ export default function AthleteProfilePage() {
 
   function set(key: string, val: string) {
     setForm(f => ({ ...f, [key]: val }));
+    if (key in fieldErrors) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[key as keyof FieldErrors];
+        return next;
+      });
+    }
   }
 
   if (loading) {
@@ -375,7 +417,11 @@ export default function AthleteProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field label="Full Name" icon={User} delay={0}>
               <input value={form.full_name} onChange={e => set('full_name', e.target.value)}
-                className="input-field pl-9" placeholder="Your full name" />
+                className="input-field pl-9" placeholder="Your full name"
+                required
+                aria-invalid={!!fieldErrors.full_name}
+                aria-describedby={fieldErrors.full_name ? 'profile-full-name-error' : undefined} />
+              <FieldError id="profile-full-name-error" message={fieldErrors.full_name} />
             </Field>
 
             <Field label="Nationality" icon={Flag} delay={40}>
@@ -493,12 +539,20 @@ export default function AthleteProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <Field label="Height (cm)" icon={Ruler} delay={0}>
               <input type="number" value={form.height_cm} onChange={e => set('height_cm', e.target.value)}
-                className="input-field pl-9" placeholder="e.g. 180" min={140} max={220} />
+                className="input-field pl-9" placeholder="e.g. 180"
+                min={HEIGHT_CM_RANGE.min} max={HEIGHT_CM_RANGE.max}
+                aria-invalid={!!fieldErrors.height_cm}
+                aria-describedby={fieldErrors.height_cm ? 'profile-height-error' : undefined} />
+              <FieldError id="profile-height-error" message={fieldErrors.height_cm} />
             </Field>
 
             <Field label="Weight (kg)" icon={Weight} delay={40}>
               <input type="number" value={form.weight_kg} onChange={e => set('weight_kg', e.target.value)}
-                className="input-field pl-9" placeholder="e.g. 75" min={50} max={120} />
+                className="input-field pl-9" placeholder="e.g. 75"
+                min={WEIGHT_KG_RANGE.min} max={WEIGHT_KG_RANGE.max}
+                aria-invalid={!!fieldErrors.weight_kg}
+                aria-describedby={fieldErrors.weight_kg ? 'profile-weight-error' : undefined} />
+              <FieldError id="profile-weight-error" message={fieldErrors.weight_kg} />
             </Field>
           </div>
 
