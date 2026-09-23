@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { File as FsFile } from 'expo-file-system';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { supabase, Buckets, publicUrl } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
@@ -33,6 +34,8 @@ export interface AthleteMediaItem {
   created_at: string;
   /** Signed and ready to render. Null when the file could not be resolved. */
   display_url: string | null;
+  /** Signed storage object — the video (or photo) file itself, not the still. */
+  video_url: string | null;
 }
 
 export interface MatchRecordRow {
@@ -232,14 +235,18 @@ export async function getAthleteMedia(athleteId: string): Promise<AthleteMediaIt
     .limit(60);
   if (error) throw new AppError(error);
 
-  const rows = (data ?? []) as Omit<AthleteMediaItem, 'display_url'>[];
+  const rows = (data ?? []) as Omit<AthleteMediaItem, 'display_url' | 'video_url'>[];
   const urls = await resolveMediaUrls(
-    rows.map((row) => row.thumbnail_url ?? row.storage_url).filter(Boolean) as string[],
+    rows.flatMap((row) => [row.thumbnail_url ?? row.storage_url, row.storage_url]).filter(Boolean),
   );
 
   return rows.map((row) => {
     const key = row.thumbnail_url ?? row.storage_url;
-    return { ...row, display_url: (key && urls[key]) ?? null };
+    return {
+      ...row,
+      display_url: (key && urls[key]) ?? null,
+      video_url: urls[row.storage_url] ?? null,
+    };
   });
 }
 
@@ -268,6 +275,19 @@ export async function addAthleteMedia(input: NewHighlight): Promise<void> {
   const path = `${uid}/highlights/${Date.now()}.${extensionFor(input.uri, input.contentType)}`;
   await upload(Buckets.posts, path, input.uri, input.contentType);
 
+  let thumbnailUrl: string | undefined;
+  if (input.isVideo) {
+    try {
+      const still = await VideoThumbnails.getThumbnailAsync(input.uri, { time: 0 });
+      const thumbPath = path.replace(/\.[^.]+$/, '_thumb.jpg');
+      await upload(Buckets.posts, thumbPath, still.uri, 'image/jpeg');
+      thumbnailUrl = thumbPath;
+    } catch (thumbFailure) {
+      // A missing still must not undo a clip that already landed.
+      console.warn('Could not generate a highlight thumbnail', thumbFailure);
+    }
+  }
+
   const { error } = await supabase.from('athlete_media').insert({
     athlete_id: input.athleteId,
     title: input.title.trim() || 'Highlight',
@@ -275,12 +295,15 @@ export async function addAthleteMedia(input: NewHighlight): Promise<void> {
     storage_url: path,
     duration_seconds: input.durationSeconds ?? null,
     is_public: true,
+    ...(thumbnailUrl ? { thumbnail_url: thumbnailUrl } : {}),
   });
   if (error) {
     // The database row and object are one user action. Roll back the object if
     // the row cannot be created so failed browser uploads do not leak storage.
     try {
-      await supabase.storage.from(Buckets.posts).remove([path]);
+      await supabase.storage
+        .from(Buckets.posts)
+        .remove(thumbnailUrl ? [path, thumbnailUrl] : [path]);
     } catch {
       // Preserve the insert error; cleanup can be retried independently.
     }
