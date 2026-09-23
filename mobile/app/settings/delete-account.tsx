@@ -99,6 +99,7 @@ export default function DeleteAccountScreen() {
     <Screen
       header={<Header title={t('settings.deleteAccountTitle')} back bordered />}
       testID="settings-delete"
+      keyboardAvoiding
     >
       <View style={{ paddingTop: spacing.lg, gap: spacing.xl }}>
         <View style={{ gap: spacing.sm }}>
