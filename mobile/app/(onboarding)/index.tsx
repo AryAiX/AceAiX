@@ -407,8 +407,14 @@ export default function OnboardingScreen() {
         return positionsFor(sport).length === 0 || position !== null;
       case 'level':
         return level !== null;
+      case 'place':
+        return !!country && country.trim().length > 0;
       case 'physical':
-        return !heightError && !weightError;
+        return !heightError && !weightError && (!!height || !!weight || side !== null);
+      case 'photo':
+        return !!avatarUri;
+      case 'teams':
+        return favoriteTeams.length > 0 || venue.trim().length > 0;
       case 'guardian':
         return guardianName.trim().length >= 2 && isValidEmail(guardianEmail);
       case 'sports':
@@ -475,6 +481,20 @@ export default function OnboardingScreen() {
   const skipGuardian = () => {
     setConfirmingSkip(false);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+  };
+
+  const removePhoto = async () => {
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      await updateUserProfile({ avatar_url: null });
+      setAvatarUri(null);
+      await refreshProfile();
+    } catch (err) {
+      setPhotoError(errorMessage(err));
+    } finally {
+      setUploading(false);
+    }
   };
 
   const pickPhoto = async (photo: PickedPhoto) => {
@@ -657,6 +677,7 @@ export default function OnboardingScreen() {
             uploading={uploading}
             error={photoError}
             onPicked={(photo) => void pickPhoto(photo)}
+            onRemove={() => void removePhoto()}
             onError={setPhotoError}
           />
         ) : null}
