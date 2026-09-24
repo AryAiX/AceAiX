@@ -695,3 +695,48 @@ insert into public.meetup_participants (meetup_id, user_id, status, decided_at) 
   ('e1000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-000000000001', 'joined', now())
 on conflict (meetup_id, user_id) do nothing;
+
+-- ------------------------------------------------------------
+-- Game Intelligence (0924/01)
+--
+-- Layla has played all six games, twice over a fortnight, and shares the
+-- result with clubs — so Marco's recruiter view of her profile has something
+-- to show. Omar (17) has played nothing: he consents for himself at the
+-- default age of 15 and sees the intro. Mina (14) sees the guardian gate.
+-- ------------------------------------------------------------
+do $$
+declare
+  v_user    uuid := 'a0000000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+  v_s1      uuid := 'f1000000-0000-4000-8000-000000000001';
+  v_s2      uuid := 'f1000000-0000-4000-8000-000000000002';
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_user;
+  if v_athlete is null then return; end if;
+
+  insert into public.gi_sessions (id, user_id, athlete_id, status, device_class, baseline_ms,
+                                  fatigue, started_at, completed_at)
+  values
+    (v_s1, v_user, v_athlete, 'completed', 'ios:phone', 262, 2,
+     now() - interval '12 days', now() - interval '12 days' + interval '11 minutes'),
+    (v_s2, v_user, v_athlete, 'completed', 'ios:phone', 255, 2,
+     now() - interval '2 days', now() - interval '2 days' + interval '9 minutes')
+  on conflict (id) do nothing;
+
+  insert into public.gi_results (session_id, user_id, test_key, metrics, score, valid, created_at) values
+    (v_s1, v_user, 'pitch_decision', '{"choices":[]}', 71, true, now() - interval '12 days'),
+    (v_s1, v_user, 'anticipation',   '{"trials":10,"answered":10,"mean_error":0.07}', 77, true, now() - interval '12 days'),
+    (v_s1, v_user, 'tracking',       '{"rounds":6,"targets_total":20,"targets_found":17,"max_level":5}', 71, true, now() - interval '12 days'),
+    (v_s1, v_user, 'go_no_go',       '{"go_trials":30,"go_hits":29,"go_median_ms":402,"nogo_trials":10,"nogo_withheld":8}', 78, true, now() - interval '12 days'),
+    (v_s2, v_user, 'pitch_decision', '{"choices":[]}', 79, true, now() - interval '2 days'),
+    (v_s2, v_user, 'flanker',        '{"trials":24,"correct":23,"congruent_ms":540,"incongruent_ms":605}', 64, true, now() - interval '2 days'),
+    (v_s2, v_user, 'reaction',       '{"trials":16,"correct":16,"median_ms":468,"anticipations":0}', 74, true, now() - interval '2 days')
+  on conflict (session_id, test_key) do nothing;
+
+  perform private.gi_refresh(v_athlete);
+  update public.gi_profiles set share_with_clubs = true, show_badge = true where athlete_id = v_athlete;
+
+  insert into public.gi_history (athlete_id, recorded_on, overall, subscores)
+  values (v_athlete, current_date - 12, 72, '{}')
+  on conflict do nothing;
+end $$;

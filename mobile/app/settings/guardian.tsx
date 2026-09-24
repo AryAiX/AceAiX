@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  Brain,
   Check,
   Clock,
   Mail,
@@ -87,6 +88,12 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
       label: t('safety.scopeMedia'),
       off: t('safety.scopeMediaOff'),
     },
+    {
+      granted: !!consent.allow_assessments,
+      Icon: Brain,
+      label: t('intelligence.scopeAssessments'),
+      off: t('intelligence.scopeAssessmentsOff'),
+    },
   ];
 
   return (
@@ -121,6 +128,10 @@ function MinorView() {
   const { refreshProfile } = useAuth();
 
   const consents = useAsync(getGuardianConsents, [], { refetchOnFocus: true });
+  /* `/settings/guardian?add=assessments` — sent here from Game Intelligence
+     when a guardian approved the profile but not the games. */
+  const params = useLocalSearchParams<{ add?: string }>();
+  const [asking, setAsking] = useState(params.add === 'assessments');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -141,6 +152,25 @@ function MinorView() {
   const pending = useMemo(() => rows.find((c) => c.status === 'pending') ?? null, [rows]);
   const lastRevoked = useMemo(() => rows.find((c) => c.status === 'revoked') ?? null, [rows]);
   const current = granted ?? pending;
+  const needsAssessments = !!granted && !granted.allow_assessments;
+
+  /* Arriving from Game Intelligence opens the form straight away; fill it
+     with the guardian who already approved, the likely person to ask again. */
+  useEffect(() => {
+    if (asking && granted && !name && !email) {
+      setName(granted.guardian_name);
+      setEmail(granted.guardian_email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asking, granted]);
+
+  const askToAdd = useCallback(() => {
+    if (granted) {
+      setName(granted.guardian_name);
+      setEmail(granted.guardian_email);
+    }
+    setAsking(true);
+  }, [granted]);
 
   const send = useCallback(async () => {
     const trimmedName = name.trim();
@@ -161,6 +191,7 @@ function MinorView() {
       await requestGuardianConsent(trimmedName, trimmedEmail, relationship);
       setName('');
       setEmail('');
+      setAsking(false);
       await consents.reload();
       toast.success(t('safety.requestSentToast'));
     } catch (err) {
@@ -255,6 +286,25 @@ function MinorView() {
             })}
           </Text>
 
+          {needsAssessments && pending ? (
+            <Text variant="caption" tone="muted" style={{ marginTop: spacing.md }}>
+              {t('intelligence.addAssessmentsSent', { email: pending.guardian_email })}
+            </Text>
+          ) : null}
+
+          {needsAssessments && !pending && !asking ? (
+            <Button
+              label={t('intelligence.addAssessments')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<Brain size={16} color={colors.text} />}
+              onPress={askToAdd}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-assessments"
+            />
+          ) : null}
+
           <Button
             label={t('safety.withdrawPermission')}
             variant="danger"
@@ -315,14 +365,18 @@ function MinorView() {
       ) : null}
 
       {/* ── The request form ────────────────────────────────────────── */}
-      {!granted ? (
+      {!granted || (needsAssessments && asking && !pending) ? (
         <View style={{ gap: spacing.md }}>
           <View style={{ gap: 2 }}>
             <Text variant="heading">
-              {pending ? t('safety.askSomeoneElse') : t('safety.askForPermission')}
+              {granted
+                ? t('intelligence.addAssessments')
+                : pending
+                  ? t('safety.askSomeoneElse')
+                  : t('safety.askForPermission')}
             </Text>
             <Text variant="caption" tone="muted">
-              {t('safety.requestFormHint')}
+              {granted ? t('intelligence.addAssessmentsHint') : t('safety.requestFormHint')}
             </Text>
           </View>
 

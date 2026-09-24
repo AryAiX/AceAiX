@@ -108,20 +108,46 @@ function page(inner: string, title = "AceAiX — Parent or guardian approval"): 
 </div></body></html>`;
 }
 
-function decisionForm(token: string, childName: string, guardianName: string): string {
+/** What the guardian already approved, when this request adds to a live consent. */
+interface CurrentScopes {
+  allow_discovery: boolean;
+  allow_messaging: boolean;
+  allow_media: boolean;
+  allow_assessments: boolean;
+}
+
+/*
+ * A request can arrive while this guardian's earlier approval is still in
+ * force — a minor asking to add the Game Intelligence games, say. Submitting
+ * the form replaces that approval, so the boxes must start as the guardian
+ * left them. Pre-ticking
+ * everything would quietly re-grant a scope the guardian had refused.
+ */
+function decisionForm(
+  token: string,
+  childName: string,
+  guardianName: string,
+  current: CurrentScopes | null,
+): string {
+  const on = (scope: keyof CurrentScopes, fresh: boolean) =>
+    (current ? current[scope] : fresh) ? "checked" : "";
+  const intro = current
+    ? `<p>${escape(childName)} is asking you to review what you approved on AceAiX. The boxes
+       below show your current choices — change only what you want to change.</p>`
+    : `<p>Because they are under 18, nothing happens until you say so. Their profile is
+     currently <strong>hidden</strong> and nobody can message them.</p>`;
   return `
   <h1>${escape(guardianName || "Hello")} — ${escape(childName)} would like your approval</h1>
   <p>${escape(childName)} has created an AceAiX profile. AceAiX is where young athletes
      build a sporting profile and are found by coaches and clubs.</p>
-  <p>Because they are under 18, nothing happens until you say so. Their profile is
-     currently <strong>hidden</strong> and nobody can message them.</p>
+  ${intro}
 
   <h2>What you are approving</h2>
   <form method="POST" action="${escape(consentUrl(token))}">
     <input type="hidden" name="token" value="${escape(token)}">
 
     <label>
-      <input type="checkbox" name="allow_discovery" value="1" checked>
+      <input type="checkbox" name="allow_discovery" value="1" ${on("allow_discovery", true)}>
       <span>
         <span class="opt-title">Let coaches and clubs find them</span>
         <span class="opt-body">Their profile can appear in searches by verified coaches,
@@ -130,7 +156,7 @@ function decisionForm(token: string, childName: string, guardianName: string): s
     </label>
 
     <label>
-      <input type="checkbox" name="allow_messaging" value="1" checked>
+      <input type="checkbox" name="allow_messaging" value="1" ${on("allow_messaging", true)}>
       <span>
         <span class="opt-title">Let verified coaches and clubs message them</span>
         <span class="opt-body">Only accounts AceAiX has verified can start a conversation.
@@ -139,10 +165,20 @@ function decisionForm(token: string, childName: string, guardianName: string): s
     </label>
 
     <label>
-      <input type="checkbox" name="allow_media" value="1" checked>
+      <input type="checkbox" name="allow_media" value="1" ${on("allow_media", true)}>
       <span>
         <span class="opt-title">Let them share photos and clips</span>
         <span class="opt-body">Highlights and posts they choose to publish.</span>
+      </span>
+    </label>
+
+    <label>
+      <input type="checkbox" name="allow_assessments" value="1" ${on("allow_assessments", false)}>
+      <span>
+        <span class="opt-title">Let them take the Game Intelligence games</span>
+        <span class="opt-body">Short timed games that measure reaction, focus and football
+        decision-making. Results stay private unless they choose to share them with clubs.
+        Not a medical or psychological assessment.</span>
       </span>
     </label>
 
@@ -238,7 +274,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: consent } = await admin
       .from("guardian_consents")
-      .select("id, status, guardian_name, minor_user_id, token_expires_at")
+      .select("id, status, guardian_name, guardian_email, minor_user_id, token_expires_at")
       .eq("token", token)
       .maybeSingle();
 
@@ -272,8 +308,28 @@ Deno.serve(async (req: Request) => {
       .eq("id", consent.minor_user_id)
       .maybeSingle();
 
+    /* This guardian's own live approval, if any — submitting replaces it
+       (confirm_guardian_consent, 0924/01). Another guardian's is not theirs
+       to see or change. */
+    const { data: current } = await admin
+      .from("guardian_consents")
+      .select("allow_discovery, allow_messaging, allow_media, allow_assessments")
+      .eq("minor_user_id", consent.minor_user_id)
+      .eq("guardian_email", consent.guardian_email)
+      .eq("status", "granted")
+      .order("granted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     return html(
-      page(decisionForm(token, child?.full_name ?? "Your child", consent.guardian_name ?? "")),
+      page(
+        decisionForm(
+          token,
+          child?.full_name ?? "Your child",
+          consent.guardian_name ?? "",
+          (current as CurrentScopes | null) ?? null,
+        ),
+      ),
     );
   }
 
@@ -325,6 +381,7 @@ Deno.serve(async (req: Request) => {
       p_allow_discovery: form.get("allow_discovery") === "1",
       p_allow_messaging: form.get("allow_messaging") === "1",
       p_allow_media: form.get("allow_media") === "1",
+      p_allow_assessments: form.get("allow_assessments") === "1",
     });
 
     if (error || !data?.ok) {

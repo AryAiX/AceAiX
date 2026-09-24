@@ -44,4 +44,8 @@ export const errors = {
 
   endorseSelf: 'Tu ne peux pas te recommander toi-même.',
   endorseLimit: 'Tu as déjà recommandé six choses chez ce joueur.',
+  giConsentRequired: 'Un parent ou tuteur doit d’abord autoriser les jeux Intelligence de jeu.',
+  giAttemptLimit: 'Tu as déjà fait deux essais à ce jeu ces deux dernières semaines. Ton meilleur compte.',
+  giSessionClosed: 'Cette session est terminée. Lances-en une nouvelle pour continuer à jouer.',
+  giAlreadyDone: 'Tu as déjà joué à ce jeu pendant cette session.',
 };

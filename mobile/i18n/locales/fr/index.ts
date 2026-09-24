@@ -9,6 +9,7 @@ import { profile } from './profile';
 import { score } from './score';
 import { challenges } from './challenges';
 import { meetups } from './meetups';
+import { intelligence } from './intelligence';
 import { teams } from './teams';
 import { views } from './views';
 import { progress } from './progress';
@@ -25,7 +26,7 @@ import { format } from './format';
 
 /** French. Typed against English, so a missing key is a compile error. */
 const catalogue: Translations = { common, language, auth, onboarding, feed, profile,
-  score, challenges, meetups, teams, views, progress, discover, opportunities, messaging, settings,
+  score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
   safety, sports, countries, errors, format };
 
 export const fr = catalogue as Translations;

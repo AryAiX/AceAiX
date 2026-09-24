@@ -33,6 +33,7 @@
 | 10 | Anything reported as a child-safety concern comes down immediately | `public.report_content()` sets `moderation_state = 'under_review'` |
 | 11 | A compromised account cannot flood the network | `private.enforce_rate_limit()` triggers |
 | 12 | Deleting an account deletes the files it uploaded | `public.delete_own_account()` clears `storage.objects` under the account's folder in `avatars`, `posts` and `stories` |
+| 13 | Game Intelligence needs a guardian's separate yes below the self-consent age (15 by default, per country), and a minor's result is never shown past the discovery gate | `private.gi_consent_state()`, `guardian_consents.allow_assessments`, `get_game_intelligence()` — see [26](./26-game-intelligence.md) |
 
 ---
 

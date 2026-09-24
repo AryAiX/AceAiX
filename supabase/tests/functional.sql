@@ -37,6 +37,19 @@ begin
 end;
 $$;
 
+/* Request consent as the impersonated minor and hand back the token the
+   guardian would receive by e-mail. The request never returns it (0904/02);
+   the suite reads it from the table as the superuser it is. */
+create or replace function tests.request_consent(p_name text, p_email text, p_rel text)
+returns text language plpgsql as $$
+declare v_req jsonb; v_token text;
+begin
+  v_req := public.request_guardian_consent(p_name, p_email, p_rel);
+  select token into v_token from public.guardian_consents where id = (v_req ->> 'id')::uuid;
+  return v_token;
+end;
+$$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n── seeding ──'; end $$;
 
@@ -1619,6 +1632,275 @@ begin
 
   perform tests.ok(v_after > v_before,
     'an endorsement from a verified coach moves the credibility score');
+end $$;
+
+-- ------------------------------------------------------------
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── game intelligence ──'; end $$;
+
+/*
+ * docs/26. The rules worth pinning: consent is decided by age and country
+ * before any test starts; the pitch-decision answer key never leaves the
+ * database; a result outside human limits is stored but not scored; two
+ * attempts per test per fortnight; and nobody sees a result the athlete has
+ * not chosen to share — a minor's, only past the discovery gate as well.
+ */
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_other   uuid := '44444444-4444-4444-4444-444444444444';
+  v_session uuid;
+  v_second  uuid;
+  v_scen    jsonb;
+  v_choices jsonb := '[]';
+  v_best    text;
+  v_res     jsonb;
+  v_state   jsonb;
+  v_prof    public.gi_profiles;
+  v_err     text;
+  v_hint    text;
+  v_rows    integer;
+  v_token   text;
+  v_disc    boolean;
+  r         record;
+begin
+  -- ── consent ──
+  perform tests.as_user(v_adult);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'an adult athlete can consent for themselves');
+
+  /* The minor in this suite is fifteen: at the product default of 15 she
+     decides for herself… */
+  perform tests.as_user(v_minor);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'a fifteen-year-old consents for herself at the default age');
+
+  /* …but not in a country whose law says sixteen. */
+  update public.user_profiles set country = 'Germany' where id = v_minor;
+  perform tests.ok((public.gi_my_state()->>'consent') = 'guardian_required',
+    'in Germany the same fifteen-year-old needs a guardian');
+  perform tests.ok((public.gi_my_state()->>'self_consent_age')::int = 16,
+    'and the screen is told the age that applies');
+
+  v_hint := null;
+  begin
+    perform public.gi_start_session('test', 250, 2);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_consent_required',
+    'the database, not the screen, refuses to start a session without consent');
+
+  /* A guardian ticks the new scope on a fresh request. Granting it must
+     supersede the consent already in force rather than collide with it. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  v_res := public.confirm_guardian_consent(v_token, true, true, true, true);
+  perform tests.ok((v_res->>'ok')::boolean,
+    'a second approval is accepted while an earlier one is in force');
+  select count(*) into v_rows from public.guardian_consents
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(v_rows = 1, 'and exactly one consent is live afterwards');
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'with assessments approved, she can take the games');
+
+  /* The new scope is readable by the app, which names its columns. */
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_assessments', 'SELECT'),
+    'the app can read the new consent scope');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    update public.guardian_consents set allow_assessments = true
+     where minor_user_id = v_minor;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_minor);
+  perform tests.ok(v_err is not null, 'and the minor cannot tick it herself');
+
+  /* A second guardian's approval sits beside the first rather than replacing it. */
+  v_token := tests.request_consent('Other Parent', 'other.parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, false, false, false);
+  select count(*) into v_rows from public.guardian_consents
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(v_rows = 2 and (public.gi_my_state()->>'consent') = 'ok',
+    'another guardian''s narrower approval does not undo the first');
+  update public.guardian_consents set status = 'revoked'
+   where minor_user_id = v_minor and guardian_email = 'other.parent@test.local';
+
+  /* Approving discovery two weeks ago is not approving testing. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'guardian_required',
+    'a guardian who leaves the box unticked has not approved assessments');
+  update public.user_profiles set country = null where id = v_minor;
+
+  -- ── the answer key ──
+  perform tests.as_user(v_adult);
+  v_session := public.gi_start_session('ios:phone', 245, 2);
+  v_scen := public.gi_scenarios_for_session(v_session, 8);
+  perform tests.ok(jsonb_array_length(v_scen) = 8, 'a session is handed eight scenarios');
+  perform tests.ok(not (v_scen::text like '%answer_key%'),
+    'and none of them carries the answer key');
+  perform tests.ok(not (v_scen::text like '%"title"%'),
+    'nor the authoring label, which names the answer');
+  perform tests.ok(public.gi_scenarios_for_session(v_session, 8) = v_scen,
+    'asking again returns the same eight, not a fresh draw to shop from');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    perform count(*) from public.gi_scenarios;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_adult);
+  perform tests.ok(v_err is not null,
+    'a client cannot read the scenario table directly');
+
+  -- ── scoring ──
+  v_res := public.gi_submit_result(v_session, 'reaction',
+    '{"trials":16,"correct":16,"median_ms":120,"anticipations":0}');
+  perform tests.ok(not (v_res->>'valid')::boolean and v_res->>'reason' = 'implausible',
+    'a reaction time faster than a human hand is stored as invalid, not scored');
+
+  v_hint := null;
+  begin
+    perform public.gi_submit_result(v_session, 'reaction',
+      '{"trials":16,"correct":15,"median_ms":480,"anticipations":0}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_already_done', 'one result per test per session');
+
+  v_res := public.gi_submit_result(v_session, 'go_no_go',
+    '{"go_trials":30,"go_hits":29,"go_median_ms":390,"nogo_trials":10,"nogo_withheld":9}');
+  perform tests.ok((v_res->>'valid')::boolean and (v_res->>'score')::numeric between 0 and 100,
+    'go/no-go scores between 0 and 100');
+
+  v_res := public.gi_submit_result(v_session, 'flanker',
+    '{"trials":24,"correct":23,"congruent_ms":520,"incongruent_ms":590}');
+  perform tests.ok((v_res->>'valid')::boolean, 'flanker scores');
+
+  v_res := public.gi_submit_result(v_session, 'tracking',
+    '{"rounds":5,"targets_total":17,"targets_found":15,"max_level":5}');
+  perform tests.ok((v_res->>'valid')::boolean, 'tracking scores');
+
+  v_res := public.gi_submit_result(v_session, 'anticipation',
+    '{"trials":10,"answered":10,"mean_error":0.06}');
+  perform tests.ok((v_res->>'valid')::boolean, 'anticipation scores');
+
+  /* Pick the best option for every issued scenario, plus one that was never
+     issued: the stray must not count. */
+  for r in
+    select (e->>'id')::uuid as id from jsonb_array_elements(v_scen) e
+  loop
+    select k.key into v_best from public.gi_scenarios s, jsonb_each_text(s.answer_key) k
+     where s.id = r.id order by k.value::numeric desc limit 1;
+    v_choices := v_choices || jsonb_build_object('scenario', r.id, 'option', v_best, 'ms', 1200);
+  end loop;
+  v_choices := v_choices || jsonb_build_object(
+    'scenario', (select id from public.gi_scenarios
+                  where not (id = any(array(select (e->>'id')::uuid from jsonb_array_elements(v_scen) e)))
+                  limit 1),
+    'option', 'a', 'ms', 900);
+
+  v_res := public.gi_submit_result(v_session, 'pitch_decision',
+    jsonb_build_object('choices', v_choices));
+  perform tests.ok((v_res->>'valid')::boolean and (v_res->>'score')::numeric >= 85,
+    'the best answer to every scenario scores high, scored on the server');
+
+  v_res := public.gi_finish_session(v_session);
+  select * into v_prof from public.gi_profiles where user_id = v_adult;
+  perform tests.ok(v_prof.tests_completed = 5 and v_prof.overall is not null,
+    'five valid tests of six make an overall; the invalid one is not in it');
+  perform tests.ok(not (v_prof.subscores ? 'reaction'),
+    'and the invalid reaction result is not a sub-score');
+  perform tests.ok(v_prof.confidence = 'medium', 'five of six is medium confidence');
+  perform tests.ok(v_prof.percentile is null,
+    'no percentile from a cohort of one');
+
+  -- ── attempts ──
+  v_second := public.gi_start_session('ios:phone', 250, 2);
+  v_res := public.gi_submit_result(v_second, 'reaction',
+    '{"trials":16,"correct":16,"median_ms":470,"anticipations":0}');
+
+  /* Leaving a field out must not slip past the range checks: a NULL compares
+     as "not out of range", and least(100, NULL) is 100. */
+  v_res := public.gi_submit_result(v_second, 'tracking',
+    '{"rounds":6,"targets_total":20,"max_level":8}');
+  perform tests.ok(not (v_res->>'valid')::boolean,
+    'a result with a metric missing is invalid, not a perfect score');
+  perform public.gi_finish_session(v_second);
+  select * into v_prof from public.gi_profiles where user_id = v_adult;
+  perform tests.ok(v_prof.tests_completed = 6 and v_prof.confidence = 'high',
+    'a retake fills the gap and the best-of window now holds all six');
+
+  v_second := public.gi_start_session('ios:phone', 250, 2);
+  v_hint := null;
+  begin
+    perform public.gi_submit_result(v_second, 'reaction',
+      '{"trials":16,"correct":16,"median_ms":400,"anticipations":0}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_attempt_limit',
+    'a third attempt at the same test inside fourteen days is refused');
+
+  -- ── nobody writes a score ──
+  v_err := null;
+  begin
+    set local role authenticated;
+    update public.gi_profiles set overall = 99 where user_id = v_adult;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'an athlete cannot write their own result');
+
+  -- ── who sees what ──
+  perform tests.as_user(v_coach);
+  perform tests.ok(public.get_game_intelligence(v_adult) is null,
+    'a coach sees nothing until the athlete shares');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(true, false);
+
+  perform tests.as_user(v_coach);
+  v_res := public.get_game_intelligence(v_adult);
+  perform tests.ok(v_res->>'view' = 'recruiter' and v_res ? 'subscores',
+    'once shared, a coach sees the overall and the sub-scores');
+
+  perform tests.as_user(v_other);
+  perform tests.ok(public.get_game_intelligence(v_adult) is null,
+    'another athlete sees nothing while the badge is off');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(true, true);
+  perform tests.as_user(v_other);
+  v_res := public.get_game_intelligence(v_adult);
+  perform tests.ok(v_res->>'view' = 'badge' and not (v_res ? 'subscores'),
+    'with the badge on, another athlete sees the badge and nothing else');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(false, true);
+  perform tests.ok(not (select show_badge from public.gi_profiles where user_id = v_adult),
+    'turning sharing off takes the badge with it');
+
+  /* A minor's shared result stays behind the discovery gate. */
+  insert into public.gi_profiles (athlete_id, user_id, overall, subscores, tests_completed,
+                                  share_with_clubs, show_badge)
+  select id, v_minor, 61, '{"tracking":61}', 4, true, true
+    from public.athlete_profiles where user_id = v_minor
+  on conflict (athlete_id) do update set overall = 61, share_with_clubs = true;
+
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(public.get_game_intelligence(v_minor) is null,
+    'a minor''s shared result is invisible while discovery is not approved');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  delete from public.gi_profiles where user_id = v_minor;
 end $$;
 
 -- ------------------------------------------------------------

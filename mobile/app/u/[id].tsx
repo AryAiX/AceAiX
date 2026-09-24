@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { TheirGiCard } from '@/components/intelligence/GiCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
@@ -170,6 +171,7 @@ export default function PublicProfileScreen() {
         }}
       >
         {athlete ? <ScoreCard score={data.score} /> : null}
+        {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}
 
         <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
 

@@ -9,6 +9,7 @@ import { profile } from './profile';
 import { score } from './score';
 import { challenges } from './challenges';
 import { meetups } from './meetups';
+import { intelligence } from './intelligence';
 import { teams } from './teams';
 import { views } from './views';
 import { progress } from './progress';
@@ -25,5 +26,5 @@ import { format } from './format';
 
 /** العربية. مُقيَّدة بأنواع الإنجليزية، فأي مفتاح ناقص خطأ في الترجمة البرمجية. */
 export const ar: Translations = { common, language, auth, onboarding, feed, profile,
-  score, challenges, meetups, teams, views, progress, discover, opportunities, messaging, settings,
+  score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
   safety, sports, countries, errors, format };

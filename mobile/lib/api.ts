@@ -772,7 +772,7 @@ export async function getGuardianConsents(): Promise<GuardianConsent[]> {
   const { data, error } = await supabase
     .from('guardian_consents')
     .select(
-      'id, minor_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, granted_at, created_at',
+      'id, minor_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, allow_assessments, granted_at, created_at',
     )
     .order('created_at', { ascending: false });
   if (error) throw new AppError(error);

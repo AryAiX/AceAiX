@@ -400,6 +400,8 @@ export interface LinkedMinor {
   allow_discovery: boolean;
   allow_messaging: boolean;
   allow_media: boolean;
+  /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
+  allow_assessments?: boolean;
   granted_at: string | null;
 }
 
@@ -426,6 +428,8 @@ export interface GuardianConsent {
   allow_discovery: boolean;
   allow_messaging: boolean;
   allow_media: boolean;
+  /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
+  allow_assessments?: boolean;
   granted_at: string | null;
   created_at: string;
 }

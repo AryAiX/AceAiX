@@ -33,6 +33,10 @@ const EN: Record<string, string> = {
   'errors.notFound': 'We could not find that.',
   'errors.endorseSelf': 'You cannot endorse yourself.',
   'errors.endorseLimit': 'You have already endorsed six things about this player.',
+  'errors.giConsentRequired': 'A parent or guardian needs to approve the Game Intelligence games first.',
+  'errors.giAttemptLimit': 'You have had two tries at this game in the last two weeks. Your best one counts.',
+  'errors.giSessionClosed': 'That session has ended. Start a new one to keep playing.',
+  'errors.giAlreadyDone': 'You have already played this game in this session.',
   'errors.invalidCredentials': 'That email or password is not right.',
   'errors.emailNotConfirmed': 'Check your inbox and confirm your email address first.',
   'errors.emailInUse': 'An account already uses that email. Try signing in.',
@@ -59,6 +63,10 @@ const HINTS: Record<string, string> = {
   not_an_athlete: 'errors.notAnAthlete',
   endorse_self: 'errors.endorseSelf',
   endorse_limit: 'errors.endorseLimit',
+  gi_consent_required: 'errors.giConsentRequired',
+  gi_attempt_limit: 'errors.giAttemptLimit',
+  gi_session_closed: 'errors.giSessionClosed',
+  gi_already_done: 'errors.giAlreadyDone',
 };
 
 const CODES: Record<string, string> = {

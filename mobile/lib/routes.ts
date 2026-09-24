@@ -23,6 +23,8 @@ export const Routes = {
   inbox: '/inbox' as const,
   search: '/search' as const,
   score: '/score' as const,
+  intelligence: '/intelligence' as const,
+  intelligenceSession: '/intelligence/session' as const,
   achievements: '/achievements' as const,
   editProfile: '/edit-profile' as const,
 

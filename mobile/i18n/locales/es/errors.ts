@@ -44,4 +44,8 @@ export const errors = {
 
   endorseSelf: 'No puedes avalarte a ti mismo.',
   endorseLimit: 'Ya has avalado seis cosas de este jugador.',
+  giConsentRequired: 'Tu madre, padre o tutor tiene que aprobar antes los juegos de Inteligencia de juego.',
+  giAttemptLimit: 'Ya has tenido dos intentos en este juego en las últimas dos semanas. Cuenta el mejor.',
+  giSessionClosed: 'Esa sesión ha terminado. Empieza una nueva para seguir jugando.',
+  giAlreadyDone: 'Ya has jugado a este juego en esta sesión.',
 };

@@ -110,7 +110,7 @@ export async function getGuardianLinks(): Promise<GuardianLink[]> {
     supabase
       .from('guardian_consents')
       .select(
-        'id, minor_user_id, guardian_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, granted_at, revoked_at, created_at, updated_at',
+        'id, minor_user_id, guardian_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, allow_assessments, granted_at, revoked_at, created_at, updated_at',
       )
       .eq('guardian_user_id', auth.user.id)
       .order('created_at', { ascending: false }),

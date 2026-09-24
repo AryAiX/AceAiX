@@ -634,6 +634,91 @@ async function main() {
     return `${digest.total} views, ${digest.named?.length ?? 0} named`;
   });
 
+  // ── 8. Game Intelligence ──────────────────────────────────────────────────
+  section('a game result reaches a coach only once it is shared');
+
+  /* Rerunnable against the same database: a game with no attempts left in the
+     fortnight is skipped rather than refused, so the second and third run of
+     this suite still exercise the path. */
+  const GI_METRICS = {
+    reaction: { trials: 16, correct: 15, median_ms: 470, anticipations: 0 },
+    go_no_go: { go_trials: 30, go_hits: 29, go_median_ms: 400, nogo_trials: 10, nogo_withheld: 9 },
+    flanker: { trials: 24, correct: 23, congruent_ms: 530, incongruent_ms: 600 },
+    tracking: { rounds: 6, targets_total: 20, targets_found: 17, max_level: 5 },
+    anticipation: { trials: 10, answered: 10, mean_error: 0.08 },
+  };
+
+  await step('daniel plays the games, scored by the server', async () => {
+    const state = unwrap(await clients.daniel.rpc('gi_my_state'), 'gi_my_state');
+    expect(state.consent === 'ok', `consent was ${state.consent}`);
+    const session = unwrap(
+      await clients.daniel.rpc('gi_start_session', {
+        p_device_class: 'test', p_baseline_ms: 250, p_fatigue: 2,
+      }),
+      'gi_start_session',
+    );
+    const scenarios = unwrap(
+      await clients.daniel.rpc('gi_scenarios_for_session', { p_session: session, p_count: 8 }),
+      'gi_scenarios_for_session',
+    );
+    expect(scenarios.length === 8, `${scenarios.length} scenarios`);
+    expect(!JSON.stringify(scenarios).includes('answer_key'), 'the answer key reached the phone');
+
+    let played = 0;
+    const tests = { ...GI_METRICS, pitch_decision: {
+      choices: scenarios.map((sc) => ({ scenario: sc.id, option: 'a', ms: 1300 })),
+    } };
+    for (const [test, metrics] of Object.entries(tests)) {
+      if ((state.attempts_left?.[test] ?? 0) <= 0) continue;
+      const res = unwrap(
+        await clients.daniel.rpc('gi_submit_result', { p_session: session, p_test: test, p_metrics: metrics }),
+        `gi_submit_result ${test}`,
+      );
+      expect(res.valid === true, `${test} came back ${JSON.stringify(res)}`);
+      played += 1;
+    }
+    if (played > 0) {
+      unwrap(await clients.daniel.rpc('gi_finish_session', { p_session: session }), 'gi_finish_session');
+    }
+    const after = unwrap(await clients.daniel.rpc('gi_my_state'), 'gi_my_state');
+    expect(after.profile?.overall != null, 'no overall after six games');
+    return `${played} played now · overall ${after.profile.overall}`;
+  });
+
+  await step('marco sees nothing while it is private', async () => {
+    unwrap(
+      await clients.daniel.rpc('gi_set_sharing', { p_share_with_clubs: false, p_show_badge: false }),
+      'gi_set_sharing',
+    );
+    const seen = unwrap(
+      await clients.marco.rpc('get_game_intelligence', { p_user: ids.daniel }),
+      'get_game_intelligence',
+    );
+    expect(seen == null, `marco saw ${JSON.stringify(seen)}`);
+  });
+
+  await step('and the sub-scores once daniel shares', async () => {
+    unwrap(
+      await clients.daniel.rpc('gi_set_sharing', { p_share_with_clubs: true, p_show_badge: false }),
+      'gi_set_sharing',
+    );
+    const seen = unwrap(
+      await clients.marco.rpc('get_game_intelligence', { p_user: ids.daniel }),
+      'get_game_intelligence',
+    );
+    expect(seen?.view === 'recruiter' && seen.subscores, `marco saw ${JSON.stringify(seen)}`);
+    return `overall ${seen.overall}, ${Object.keys(seen.subscores).length} games`;
+  });
+
+  await step('a fourteen-year-old without a guardian’s yes cannot start', async () => {
+    const res = await clients.mina.rpc('gi_start_session', {
+      p_device_class: 'test', p_baseline_ms: 250, p_fatigue: 2,
+    });
+    expect(res.error, 'the session started');
+    expect(res.error.hint === 'gi_consent_required', `hint was ${res.error.hint}`);
+    return 'refused by the database';
+  });
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n  ${results.length - failed.length}/${results.length} steps passed`);

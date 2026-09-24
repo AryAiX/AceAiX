@@ -43,4 +43,8 @@ export const errors = {
 
   endorseSelf: '不能推荐你自己。',
   endorseLimit: '你已经推荐了这名球员的六项特点。',
+  giConsentRequired: '需要家长或监护人先同意你玩球商游戏。',
+  giAttemptLimit: '最近两周你已经玩过这个游戏两次了，按最好的一次算。',
+  giSessionClosed: '这一轮已经结束了。开始新的一轮就能接着玩。',
+  giAlreadyDone: '这一轮里你已经玩过这个游戏了。',
 };

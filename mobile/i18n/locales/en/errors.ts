@@ -43,4 +43,9 @@ export const errors = {
 
   endorseSelf: 'You cannot endorse yourself.',
   endorseLimit: 'You have already endorsed six things about this player.',
+
+  giConsentRequired: 'A parent or guardian needs to approve the Game Intelligence games first.',
+  giAttemptLimit: 'You have had two tries at this game in the last two weeks. Your best one counts.',
+  giSessionClosed: 'That session has ended. Start a new one to keep playing.',
+  giAlreadyDone: 'You have already played this game in this session.',
 };
