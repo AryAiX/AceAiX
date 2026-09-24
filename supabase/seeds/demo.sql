@@ -699,8 +699,9 @@ on conflict (meetup_id, user_id) do nothing;
 -- ------------------------------------------------------------
 -- Game Intelligence (0924/01)
 --
--- Layla has played all six games, twice over a fortnight, and shares the
--- result with clubs — so Marco's recruiter view of her profile has something
+-- Layla has played all six games across two sittings, and shares the
+-- result with clubs. One attempt at each game is left, so the preview can
+-- play a sitting — so Marco's recruiter view of her profile has something
 -- to show. Omar (17) has played nothing: he consents for himself at the
 -- default age of 15 and sees the intro. Mina (14) sees the guardian gate.
 -- ------------------------------------------------------------
@@ -724,7 +725,6 @@ begin
   on conflict (id) do nothing;
 
   insert into public.gi_results (session_id, user_id, test_key, metrics, score, valid, created_at) values
-    (v_s1, v_user, 'pitch_decision', '{"choices":[]}', 71, true, now() - interval '12 days'),
     (v_s1, v_user, 'anticipation',   '{"trials":10,"answered":10,"mean_error":0.07}', 77, true, now() - interval '12 days'),
     (v_s1, v_user, 'tracking',       '{"rounds":6,"targets_total":20,"targets_found":17,"max_level":5}', 71, true, now() - interval '12 days'),
     (v_s1, v_user, 'go_no_go',       '{"go_trials":30,"go_hits":29,"go_median_ms":402,"nogo_trials":10,"nogo_withheld":8}', 78, true, now() - interval '12 days'),

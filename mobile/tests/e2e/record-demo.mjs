@@ -205,7 +205,51 @@ const TOUR = [
   '/meetup/e1000000-0000-4000-8000-000000000001',
   '/meetup/e1000000-0000-4000-8000-000000000002',
   '/meetup/new',
+  /* Game Intelligence. Layla has a shared result, Marco reads it from her
+     profile above, and Mina records the guardian gate. */
+  '/intelligence',
 ];
+
+/*
+ * One sitting of Game Intelligence, played for real as the athlete, so the
+ * preview can walk get-ready → warm-up → hub → a game → results. Only the
+ * write *shapes* matter: submissions are keyed by body, and the replay falls
+ * back to the same caller and path, so one recorded answer serves every game.
+ */
+async function playGameIntelligence(page) {
+  await page.goto(`http://localhost:${PORT}/intelligence/session`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  if (!(await page.getByTestId('gi-ready').count())) return 'no ready screen';
+  await page.getByTestId('fatigue-2').click();
+  await page.getByTestId('gi-ready-continue').click();
+  await page.waitForTimeout(600);
+  for (let i = 0; i < 20 && !(await page.getByTestId('gi-hub').count()); i += 1) {
+    await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="warmup-circle"]');
+      return !el || getComputedStyle(el).backgroundColor.includes('16, 213');
+    }, null, { timeout: 4000 }).catch(() => {});
+    await page.getByTestId('warmup-circle').click({ timeout: 800 }).catch(() => {});
+    await page.waitForTimeout(400);
+  }
+  await page.waitForTimeout(1500);
+  await page.getByTestId('gi-tile-pitch_decision').click();
+  await page.waitForTimeout(1500);
+  await page.getByTestId('gi-practice').click();
+  await page.waitForTimeout(2400);
+  await page.getByTestId('mate-a').click({ timeout: 1500 }).catch(() => {});
+  await page.waitForTimeout(1800);
+  await page.getByTestId('gi-start-scored').click();
+  for (let i = 0; i < 8; i += 1) {
+    await page.waitForTimeout(2300);
+    await page.getByTestId('mate-a').click({ timeout: 1000 }).catch(() => {});
+  }
+  await page.waitForTimeout(3000);
+  await page.getByTestId('gi-back-hub').click().catch(() => {});
+  await page.waitForTimeout(1200);
+  await page.getByTestId('gi-finish').click().catch(() => {});
+  await page.waitForTimeout(3500);
+  return 'played';
+}
 
 const server = await serve();
 const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -252,6 +296,11 @@ for (const account of ACCOUNTS) {
     await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'domcontentloaded' }).catch(() => {});
     await page.waitForTimeout(900);
     visited += 1;
+  }
+
+  if (account.role === 'athlete') {
+    const outcome = await playGameIntelligence(page).catch((err) => `stopped: ${err.message.split('\n')[0]}`);
+    console.log(`  · game intelligence: ${outcome}`);
   }
 
   // Pull the search and discovery screens through their filters, so a tap in

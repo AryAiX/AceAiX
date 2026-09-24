@@ -343,19 +343,22 @@ export default function GiSessionScreen() {
                           ? t('intelligence.hubMinutes', { n: Math.round(info.seconds / 60) })
                           : t('intelligence.hubSeconds', { n: info.seconds })}
                       </Text>
+                      {/* Status sits under the name, not beside it: a long
+                          label in a narrow column squeezes the game's name. */}
+                      {result && !result.valid ? (
+                        <Badge label={t('intelligence.hubRetry')} tone="warning" style={{ alignSelf: 'flex-start', marginTop: 4 }} />
+                      ) : blocked ? (
+                        <Badge label={t('intelligence.hubNoAttempts')} tone="neutral" style={{ alignSelf: 'flex-start', marginTop: 4 }} />
+                      ) : null}
                     </View>
                     {result?.valid ? (
                       <View style={{ alignItems: 'flex-end' }}>
                         <Check size={18} color={colors.success} strokeWidth={3} />
                         <Text variant="captionStrong">{Math.round(result.score ?? 0)}</Text>
                       </View>
-                    ) : result ? (
-                      <Badge label={t('intelligence.hubRetry')} tone="warning" />
-                    ) : blocked ? (
-                      <Badge label={t('intelligence.hubNoAttempts')} tone="neutral" />
-                    ) : (
+                    ) : !result && !blocked ? (
                       <ChevronRight size={20} color={colors.textMuted} />
-                    )}
+                    ) : null}
                   </View>
                 </Card>
               </Tappable>
