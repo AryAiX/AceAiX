@@ -56,6 +56,8 @@ export const meetups = {
 
   // ── Posting one ────────────────────────────────────────────────────────────
   createTitle: 'Post a game',
+  discardTitle: 'Discard this meetup?',
+  discardBody: "What you've filled in won't be saved.",
   createSubtitle: 'Say what you want to play, where and when. People ask to join, and you decide.',
   fieldSport: 'Sport',
   fieldTitle: 'What is it?',

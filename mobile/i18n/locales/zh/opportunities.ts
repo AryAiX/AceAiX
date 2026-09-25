@@ -246,6 +246,8 @@ export const opportunities = {
   // ── 发布一条机会 ────────────────────────────────────────────────────────────
   post: {
     title: '发布一条机会',
+    discardTitle: '放弃这条机会？',
+    discardBody: '你填写的内容不会保存。',
     recruiterOnlyTitle: '面向教练与俱乐部',
     recruiterOnlyBody: '仅教练、俱乐部与球探可以发布机会。你仍可在「机会」中浏览并申请。',
     submit: '发布',

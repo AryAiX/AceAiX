@@ -443,10 +443,10 @@ export default function NewMeetupScreen() {
 
       <ConfirmSheet
         visible={discardOpen}
-        title={t('feed.discardTitle')}
-        message={t('feed.discardBody')}
+        title={t('meetups.discardTitle')}
+        message={t('meetups.discardBody')}
         confirmLabel={t('feed.discard')}
-        cancelLabel={t('feed.keepWriting')}
+        cancelLabel={t('settings.keepEditing')}
         destructive
         onConfirm={() => {
           setDiscardOpen(false);

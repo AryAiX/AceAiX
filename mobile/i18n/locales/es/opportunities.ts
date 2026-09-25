@@ -255,6 +255,8 @@ export const opportunities = {
   // ── Publicar una oportunidad ────────────────────────────────────────────────
   post: {
     title: 'Publicar una oportunidad',
+    discardTitle: '¿Descartar esta oportunidad?',
+    discardBody: 'No se guardará lo que hayas rellenado.',
     recruiterOnlyTitle: 'Para entrenadores y clubes',
     recruiterOnlyBody: 'Solo entrenadores, clubes y ojeadores pueden publicar oportunidades. Aún puedes explorar y postularte desde Oportunidades.',
     submit: 'Publicar',

@@ -642,10 +642,10 @@ export default function NewOpportunityScreen() {
 
       <ConfirmSheet
         visible={discardOpen}
-        title={t('feed.discardTitle')}
-        message={t('feed.discardBody')}
+        title={t('opportunities.post.discardTitle')}
+        message={t('opportunities.post.discardBody')}
         confirmLabel={t('feed.discard')}
-        cancelLabel={t('feed.keepWriting')}
+        cancelLabel={t('settings.keepEditing')}
         destructive
         onConfirm={() => {
           setDiscardOpen(false);
