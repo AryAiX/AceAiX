@@ -185,6 +185,9 @@ export const settings = {
 
   savePreferences: 'Сохранить настройки',
   preferencesSaved: 'Сохранено. Поиск будет учитывать это дальше.',
+  discardChangesTitle: 'Отменить изменения?',
+  discardChangesBody: 'Изменения в том, кого ты ищешь, не сохранятся.',
+  keepEditing: 'Продолжить правку',
 
   // ── Оформление (app/settings/appearance.tsx) ───────────────────────────────
   themeHeading: 'Тема',

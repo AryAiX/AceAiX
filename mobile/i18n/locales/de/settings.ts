@@ -183,6 +183,9 @@ export const settings = {
 
   savePreferences: 'Einstellungen speichern',
   preferencesSaved: 'Gespeichert. Entdecken nutzt das ab jetzt.',
+  discardChangesTitle: 'Änderungen verwerfen?',
+  discardChangesBody: 'Deine Änderungen daran, wen du suchst, werden nicht gespeichert.',
+  keepEditing: 'Weiter bearbeiten',
 
   // ── Darstellung (app/settings/appearance.tsx) ──────────────────────────────
   themeHeading: 'Erscheinungsbild',

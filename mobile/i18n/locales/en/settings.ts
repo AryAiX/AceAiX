@@ -181,6 +181,9 @@ export const settings = {
 
   savePreferences: 'Save preferences',
   preferencesSaved: 'Saved. Discover will use this from now on.',
+  discardChangesTitle: 'Discard your changes?',
+  discardChangesBody: "Your changes to what you're looking for won't be saved.",
+  keepEditing: 'Keep editing',
 
   // ── Appearance (app/settings/appearance.tsx) ───────────────────────────────
   themeHeading: 'Theme',

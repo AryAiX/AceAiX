@@ -190,6 +190,9 @@ export const settings = {
 
   savePreferences: 'Guardar preferencias',
   preferencesSaved: 'Guardado. Descubrir lo usará a partir de ahora.',
+  discardChangesTitle: '¿Descartar los cambios?',
+  discardChangesBody: 'No se guardarán los cambios en lo que estás buscando.',
+  keepEditing: 'Seguir editando',
 
   // ── Apariencia (app/settings/appearance.tsx) ───────────────────────────────
   themeHeading: 'Tema',

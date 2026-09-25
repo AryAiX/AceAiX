@@ -184,6 +184,9 @@ export const settings = {
 
   savePreferences: 'Enregistrer les préférences',
   preferencesSaved: 'Enregistré. Découvrir s’appuiera là-dessus à partir de maintenant.',
+  discardChangesTitle: 'Abandonner tes modifications ?',
+  discardChangesBody: 'Tes modifications sur ce que tu cherches ne seront pas enregistrées.',
+  keepEditing: 'Continuer à modifier',
 
   // ── Apparence (app/settings/appearance.tsx) ────────────────────────────────
   themeHeading: 'Thème',

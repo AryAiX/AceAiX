@@ -177,6 +177,9 @@ export const settings = {
 
   savePreferences: '保存偏好',
   preferencesSaved: '已保存。“发现”从现在起会按这个来。',
+  discardChangesTitle: '放弃更改？',
+  discardChangesBody: '你对「你在找什么样的人」所做的更改不会保存。',
+  keepEditing: '继续编辑',
 
   // ── 外观（app/settings/appearance.tsx） ────────────────────────────────────
   themeHeading: '主题',

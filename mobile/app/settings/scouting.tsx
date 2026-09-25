@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { BackHandler, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { BellRing, Cake, Handshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
+  ConfirmSheet,
   Divider,
   EmptyState,
   ErrorState,
@@ -89,6 +91,7 @@ export default function ScoutingPreferencesScreen() {
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const router = useRouter();
   const { isRecruiter } = useAuth();
 
   const loaded = useAsync(getMatchPreferences, []);
@@ -105,6 +108,29 @@ export default function ScoutingPreferencesScreen() {
 
   const dirty = JSON.stringify(draft) !== baseline;
   const anyAge = draft.age_min == null && draft.age_max == null;
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+  }, [router]);
+
+  const requestClose = useCallback(() => {
+    if (saving) return;
+    if (dirty) setDiscardOpen(true);
+    else close();
+  }, [saving, dirty, close]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (saving) return true;
+      if (dirty) {
+        setDiscardOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [dirty, saving]);
 
   /* Only offer the positions that belong to the sports actually chosen —
      "Wicket-keeper" under Football is noise a scout has to scroll past. */
@@ -146,12 +172,13 @@ export default function ScoutingPreferencesScreen() {
       await saveMatchPreferences(draft);
       setBaseline(JSON.stringify(draft));
       toast.success(t('settings.preferencesSaved'));
+      if (router.canGoBack()) router.back();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
       setSaving(false);
     }
-  }, [draft, toast, t]);
+  }, [draft, router, toast, t]);
 
   if (!isRecruiter) {
     return (
@@ -185,8 +212,9 @@ export default function ScoutingPreferencesScreen() {
   }
 
   return (
+    <>
     <Screen
-      header={<Header title={t('settings.scoutingTitle')} back bordered />}
+      header={<Header title={t('settings.scoutingTitle')} back onBack={requestClose} bordered />}
       testID="settings-scouting"
       footer={
         <Button
@@ -372,5 +400,20 @@ export default function ScoutingPreferencesScreen() {
         </View>
       </View>
     </Screen>
+
+    <ConfirmSheet
+      visible={discardOpen}
+      title={t('settings.discardChangesTitle')}
+      message={t('settings.discardChangesBody')}
+      confirmLabel={t('feed.discard')}
+      cancelLabel={t('settings.keepEditing')}
+      destructive
+      onConfirm={() => {
+        setDiscardOpen(false);
+        close();
+      }}
+      onCancel={() => setDiscardOpen(false)}
+    />
+    </>
   );
 }

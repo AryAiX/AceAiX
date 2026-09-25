@@ -189,6 +189,9 @@ export const settings = {
 
   savePreferences: 'حفظ التفضيلات',
   preferencesSaved: 'تم الحفظ. سيعتمد الاستكشاف عليها من الآن.',
+  discardChangesTitle: 'تجاهل التغييرات؟',
+  discardChangesBody: 'لن تُحفظ تغييراتك على ما تبحث عنه.',
+  keepEditing: 'متابعة التعديل',
 
   // ── المظهر (app/settings/appearance.tsx) ──────────────────────────────────
   themeHeading: 'السمة',
