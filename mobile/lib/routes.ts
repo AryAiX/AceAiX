@@ -45,6 +45,7 @@ export const Routes = {
   playerCard: '/player-card' as const,
   profileViews: '/views' as const,
   savedPosts: '/saved' as const,
+  shortlist: '/shortlist' as const,
   team: (id: string) => `/team/${id}` as const,
 
   settings: '/settings' as const,

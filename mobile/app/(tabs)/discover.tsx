@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowUpDown, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
+import { ArrowUpDown, Bookmark, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -171,9 +171,13 @@ function RecruiterDiscover() {
   }, [load]);
 
   // ── Shortlist ──
-  const shortlist = useAsync(() => shortlistedAthleteIds(), []);
+  const shortlist = useAsync(() => shortlistedAthleteIds(), [], { refetchOnFocus: true });
   const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
   const savedSet = useMemo(() => new Set(shortlist.data ?? []), [shortlist.data]);
+
+  useEffect(() => {
+    setSavedOverrides({});
+  }, [shortlist.data]);
   const isSaved = (athleteId: string) => savedOverrides[athleteId] ?? savedSet.has(athleteId);
 
   const onToggleSave = useCallback(
@@ -356,6 +360,13 @@ function RecruiterDiscover() {
         large
         right={
           <>
+            <IconButton
+              icon={<Bookmark size={20} color={colors.text} />}
+              label={t('discover.shortlist.open')}
+              size={theme.hit.min}
+              onPress={() => router.push(Routes.shortlist)}
+              testID="discover-shortlist"
+            />
             <IconButton
               icon={<Search size={20} color={colors.text} />}
               label={t('discover.searchPeople')}

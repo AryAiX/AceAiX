@@ -45,6 +45,13 @@ export const discover = {
   rankedByFit: 'Ranked by fit. Every card shows the reasons behind its match.',
   rankedByScore: 'Ranked by talent score. Add a filter to see how well each athlete fits you.',
   savedToShortlist: 'Saved to your shortlist',
+  shortlist: {
+    title: 'Shortlist',
+    open: 'Open your shortlist',
+    emptyTitle: 'No one saved yet',
+    emptyBody: 'Tap the bookmark on an athlete in Discover to keep them here.',
+    emptyAction: 'Back to Discover',
+  },
   emptyTitle: 'No athletes match that',
   emptyFilteredBody: 'Try widening the age range, adding a country, or clearing the search.',
   emptyOpenBody: 'Athletes appear here as they complete their profiles.',
