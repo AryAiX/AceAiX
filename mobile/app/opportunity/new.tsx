@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Platform, Pressable, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarDays, Check, ShieldAlert } from 'lucide-react-native';
 
@@ -296,6 +296,7 @@ export default function NewOpportunityScreen() {
       }
       testID="new-opportunity-screen"
     >
+      <Stack.Screen options={{ gestureEnabled: !hasContent }} />
       <View style={{ gap: spacing.xl }}>
         <Input
           label={t('opportunities.post.titleLabel')}
