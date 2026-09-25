@@ -37,7 +37,9 @@ import {
 } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, roleLabel } from '@/lib/format';
+import { toIsoDate } from '@/components/onboarding/Shared';
 import { useT } from '@/i18n';
+import { MatchDateField } from '@/components/profile/MatchDateField';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface Props {
@@ -99,6 +101,11 @@ export function CareerTab({
 
   const [matchForm, setMatchForm] = useState<typeof EMPTY_MATCH | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
+  type MatchField =
+    | 'match_date' | 'competition' | 'opponent' | 'result'
+    | 'minutes_played' | 'goals' | 'assists';
+  const [matchFieldErrors, setMatchFieldErrors] =
+    useState<Partial<Record<MatchField, string>>>({});
   const [honorError, setHonorError] = useState<string | null>(null);
   const [certError, setCertError] = useState<string | null>(null);
   const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
@@ -171,10 +178,27 @@ export function CareerTab({
 
   const submitMatch = useCallback(async () => {
     if (!matchForm || !athleteId) return;
-    if (!ISO_DATE.test(matchForm.match_date.trim())) {
-      setMatchError(t('profile.matchDateInvalid'));
+    const errors: Partial<Record<MatchField, string>> = {};
+    const date = matchForm.match_date.trim();
+    if (!date) errors.match_date = t('profile.matchDateRequired');
+    else if (!ISO_DATE.test(date)) errors.match_date = t('profile.matchDateInvalid');
+    else if (date > toIsoDate(new Date())) errors.match_date = t('profile.matchDateFuture');
+
+    (['competition', 'opponent', 'result'] as const).forEach((key) => {
+      if (!matchForm[key].trim()) errors[key] = t('profile.matchFieldRequired');
+    });
+    (['minutes_played', 'goals', 'assists'] as const).forEach((key) => {
+      const value = matchForm[key].trim();
+      if (!value) errors[key] = t('profile.matchFieldRequired');
+      else if (!/^\d+$/.test(value)) errors[key] = t('profile.matchNumberInvalid');
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setMatchFieldErrors(errors);
+      setMatchError(null);
       return;
     }
+    setMatchFieldErrors({});
     setMatchError(null);
     setSaving(true);
     try {
@@ -188,6 +212,7 @@ export function CareerTab({
         assists: toNumber(matchForm.assists) ?? 0,
       });
       setMatchError(null);
+      setMatchFieldErrors({});
       setMatchForm(null);
       toast.success(t('profile.matchAddedToast'));
       matches.reload();
@@ -282,6 +307,7 @@ export function CareerTab({
             isSelf
               ? () => {
                   setMatchError(null);
+                  setMatchFieldErrors({});
                   setMatchForm({ ...EMPTY_MATCH });
                 }
               : undefined
@@ -306,6 +332,7 @@ export function CareerTab({
               isSelf
                 ? () => {
                     setMatchError(null);
+                    setMatchFieldErrors({});
                     setMatchForm({ ...EMPTY_MATCH });
                   }
                 : undefined
@@ -659,39 +686,57 @@ export function CareerTab({
         onClose={() => {
           if (saving) return;
           setMatchError(null);
+          setMatchFieldErrors({});
           setMatchForm(null);
         }}
         title={t('profile.logMatchTitle')}
         subtitle={t('profile.logMatchSubtitle')}
       >
         <View style={{ gap: spacing.md }}>
-          <Input
+          <MatchDateField
+            key={matchForm ? 'open' : 'closed'}
             label={t('profile.matchDate')}
             required
-            /* The stored format is fixed, so the example stays as it is typed. */
-            placeholder="2026-03-14"
             value={matchForm?.match_date ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, match_date: text } : f))}
-            keyboardType="numbers-and-punctuation"
-            hint={t('profile.matchDateHint')}
+            error={matchFieldErrors.match_date}
+            onChange={(iso) => {
+              setMatchForm((f) => (f ? { ...f, match_date: iso } : f));
+              setMatchError(null);
+              setMatchFieldErrors((e) => ({ ...e, match_date: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchCompetition')}
+            required
             placeholder={t('profile.matchCompetitionPlaceholder')}
             value={matchForm?.competition ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, competition: text } : f))}
+            error={matchFieldErrors.competition}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, competition: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, competition: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchOpponent')}
+            required
             placeholder={t('profile.matchOpponentPlaceholder')}
             value={matchForm?.opponent ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, opponent: text } : f))}
+            error={matchFieldErrors.opponent}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, opponent: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, opponent: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchResult')}
+            required
             placeholder={t('profile.matchResultPlaceholder')}
             value={matchForm?.result ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, result: text } : f))}
+            error={matchFieldErrors.result}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, result: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, result: undefined }));
+            }}
             maxLength={20}
           />
           {/* The three placeholders below are bare numerals on a number pad —
@@ -700,28 +745,41 @@ export function CareerTab({
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchMinutesLabel')}
+              required
               placeholder="90"
               keyboardType="number-pad"
               value={matchForm?.minutes_played ?? ''}
-              onChangeText={(text) =>
-                setMatchForm((f) => (f ? { ...f, minutes_played: text } : f))
-              }
+              error={matchFieldErrors.minutes_played}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, minutes_played: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, minutes_played: undefined }));
+              }}
             />
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchGoalsLabel')}
+              required
               placeholder="0"
               keyboardType="number-pad"
               value={matchForm?.goals ?? ''}
-              onChangeText={(text) => setMatchForm((f) => (f ? { ...f, goals: text } : f))}
+              error={matchFieldErrors.goals}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, goals: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, goals: undefined }));
+              }}
             />
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchAssistsLabel')}
+              required
               placeholder="0"
               keyboardType="number-pad"
               value={matchForm?.assists ?? ''}
-              onChangeText={(text) => setMatchForm((f) => (f ? { ...f, assists: text } : f))}
+              error={matchFieldErrors.assists}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, assists: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, assists: undefined }));
+              }}
             />
           </View>
           {matchError ? (

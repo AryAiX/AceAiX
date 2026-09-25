@@ -193,7 +193,7 @@ export const profile = {
 
 
   logMatchTitle: 'Spiel eintragen',
-  logMatchSubtitle: 'Nur das, woran du dich erinnerst — mehr geht später.',
+  logMatchSubtitle: 'Fülle jedes Feld aus, um das Spiel einzutragen.',
   matchDate: 'Datum',
   matchDateHint: 'Jahr-Monat-Tag',
   matchCompetition: 'Wettbewerb',
@@ -207,6 +207,13 @@ export const profile = {
   matchAssistsLabel: 'Vorlagen',
   saveMatch: 'Spiel speichern',
   matchDateInvalid: 'Nimm das Format JJJJ-MM-TT, zum Beispiel 2026-03-14.',
+  matchFieldRequired: 'Fülle das aus.',
+  matchNumberInvalid: 'Nimm eine ganze Zahl.',
+  matchDay: 'Tag',
+  matchMonth: 'Monat',
+  matchYear: 'Jahr',
+  matchDateRequired: 'Wähle Tag, Monat und Jahr.',
+  matchDateFuture: 'Das Spieldatum kann nicht in der Zukunft liegen.',
   matchAddedToast: 'Spiel eingetragen.',
 
   addHonourTitle: 'Titel hinzufügen',

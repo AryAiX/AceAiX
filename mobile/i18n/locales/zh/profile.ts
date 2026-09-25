@@ -184,7 +184,7 @@ export const profile = {
 
 
   logMatchTitle: '记录一场比赛',
-  logMatchSubtitle: '记得多少写多少 —— 之后还能补。',
+  logMatchSubtitle: '填写每一项才能记录这场比赛。',
   matchDate: '日期',
   matchDateHint: '年-月-日',
   matchCompetition: '赛事',
@@ -198,6 +198,13 @@ export const profile = {
   matchAssistsLabel: '助攻',
   saveMatch: '保存比赛',
   matchDateInvalid: '请按 YYYY-MM-DD 的格式填写日期，例如 2026-03-14。',
+  matchFieldRequired: '请填写此项。',
+  matchNumberInvalid: '请填写整数。',
+  matchDay: '日',
+  matchMonth: '月',
+  matchYear: '年',
+  matchDateRequired: '请选择日、月和年。',
+  matchDateFuture: '比赛日期不能是将来的日期。',
   matchAddedToast: '比赛已添加。',
 
   addHonourTitle: '添加一项荣誉',

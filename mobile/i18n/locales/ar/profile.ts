@@ -207,7 +207,7 @@ export const profile = {
 
 
   logMatchTitle: 'تسجيل مباراة',
-  logMatchSubtitle: 'ما تتذكّره فقط — يمكنك إضافة المزيد لاحقًا.',
+  logMatchSubtitle: 'املأ كل الحقول لتسجيل المباراة.',
   matchDate: 'التاريخ',
   matchDateHint: 'سنة-شهر-يوم',
   matchCompetition: 'البطولة',
@@ -221,6 +221,13 @@ export const profile = {
   matchAssistsLabel: 'التمريرات الحاسمة',
   saveMatch: 'حفظ المباراة',
   matchDateInvalid: 'استخدم صيغة التاريخ YYYY-MM-DD، مثل 2026-03-14.',
+  matchFieldRequired: 'املأ هذا الحقل.',
+  matchNumberInvalid: 'استخدم عددًا صحيحًا.',
+  matchDay: 'اليوم',
+  matchMonth: 'الشهر',
+  matchYear: 'السنة',
+  matchDateRequired: 'اختر اليوم والشهر والسنة.',
+  matchDateFuture: 'لا يمكن أن يكون تاريخ المباراة في المستقبل.',
   matchAddedToast: 'أُضيفت المباراة.',
 
   addHonourTitle: 'إضافة لقب',

@@ -197,7 +197,7 @@ export const profile = {
 
 
   logMatchTitle: 'Noter un match',
-  logMatchSubtitle: 'Juste ce dont tu te souviens — tu pourras compléter plus tard.',
+  logMatchSubtitle: 'Remplis chaque champ pour enregistrer le match.',
   matchDate: 'Date',
   matchDateHint: 'Année-mois-jour',
   matchCompetition: 'Compétition',
@@ -211,6 +211,13 @@ export const profile = {
   matchAssistsLabel: 'Passes décisives',
   saveMatch: 'Enregistrer le match',
   matchDateInvalid: 'Utilise le format AAAA-MM-JJ, par exemple 2026-03-14.',
+  matchFieldRequired: 'Remplis ce champ.',
+  matchNumberInvalid: 'Utilise un nombre entier.',
+  matchDay: 'Jour',
+  matchMonth: 'Mois',
+  matchYear: 'Année',
+  matchDateRequired: 'Choisis le jour, le mois et l’année.',
+  matchDateFuture: 'La date du match ne peut pas être dans le futur.',
   matchAddedToast: 'Match ajouté.',
 
   addHonourTitle: 'Ajouter un titre',

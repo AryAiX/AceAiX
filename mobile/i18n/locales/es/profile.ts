@@ -204,7 +204,7 @@ export const profile = {
 
 
   logMatchTitle: 'Registrar un partido',
-  logMatchSubtitle: 'Solo lo que recuerdes: puedes añadir más después.',
+  logMatchSubtitle: 'Rellena todos los campos para registrar el partido.',
   matchDate: 'Fecha',
   matchDateHint: 'Año-mes-día',
   matchCompetition: 'Competición',
@@ -218,6 +218,13 @@ export const profile = {
   matchAssistsLabel: 'Asistencias',
   saveMatch: 'Guardar partido',
   matchDateInvalid: 'Usa el formato AAAA-MM-DD, por ejemplo 2026-03-14.',
+  matchFieldRequired: 'Rellena esto.',
+  matchNumberInvalid: 'Usa un número entero.',
+  matchDay: 'Día',
+  matchMonth: 'Mes',
+  matchYear: 'Año',
+  matchDateRequired: 'Elige el día, el mes y el año.',
+  matchDateFuture: 'La fecha del partido no puede ser futura.',
   matchAddedToast: 'Partido añadido.',
 
   addHonourTitle: 'Añadir un título',

@@ -204,7 +204,7 @@ export const profile = {
 
 
   logMatchTitle: 'Записать матч',
-  logMatchSubtitle: 'Только то, что помнишь, — остальное добавишь позже.',
+  logMatchSubtitle: 'Заполни каждое поле, чтобы записать матч.',
   matchDate: 'Дата',
   matchDateHint: 'Год-месяц-день',
   matchCompetition: 'Турнир',
@@ -218,6 +218,13 @@ export const profile = {
   matchAssistsLabel: 'Ассисты',
   saveMatch: 'Сохранить матч',
   matchDateInvalid: 'Используй формат даты ГГГГ-ММ-ДД, например 2026-03-14.',
+  matchFieldRequired: 'Заполни это.',
+  matchNumberInvalid: 'Используй целое число.',
+  matchDay: 'День',
+  matchMonth: 'Месяц',
+  matchYear: 'Год',
+  matchDateRequired: 'Выбери день, месяц и год.',
+  matchDateFuture: 'Дата матча не может быть в будущем.',
   matchAddedToast: 'Матч добавлен.',
 
   addHonourTitle: 'Добавить награду',
