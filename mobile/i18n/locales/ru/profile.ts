@@ -266,6 +266,8 @@ export const profile = {
   // ── Редактирование профиля (app/edit-profile.tsx) ──────────────────────────
   /* `editProfile` выше — и заголовок этого экрана, и кнопка, которая его открывает. */
   firstNameRequired: 'Имя не может быть пустым.',
+  discardChangesTitle: 'Отменить изменения?',
+  discardChangesBody: 'Изменения в твоём профиле не сохранятся.',
   savedScoreUp_one: 'Сохранено — оценка таланта выросла на {{count}} балл.',
   savedScoreUp_few: 'Сохранено — оценка таланта выросла на {{count}} балла.',
   savedScoreUp_many: 'Сохранено — оценка таланта выросла на {{count}} баллов.',

@@ -268,6 +268,8 @@ export const profile = {
   // ── Editar perfil (app/edit-profile.tsx) ───────────────────────────────────
   /* `editProfile`, arriba, es el título de esta pantalla y también el botón que la abre. */
   firstNameRequired: 'Tu nombre no puede quedar vacío.',
+  discardChangesTitle: '¿Descartar los cambios?',
+  discardChangesBody: 'No se guardarán los cambios de tu perfil.',
   savedScoreUp_one: 'Guardado. Tu Puntuación de talento subió {{count}} punto.',
   savedScoreUp_many: 'Guardado. Tu Puntuación de talento subió {{count}} puntos.',
   savedScoreUp_other: 'Guardado. Tu Puntuación de talento subió {{count}} puntos.',

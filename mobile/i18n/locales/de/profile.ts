@@ -255,6 +255,8 @@ export const profile = {
   // ── Profil bearbeiten (app/edit-profile.tsx) ───────────────────────────────
   /* `editProfile` oben ist der Titel dieses Bildschirms und der Knopf dorthin. */
   firstNameRequired: 'Dein Vorname darf nicht leer sein.',
+  discardChangesTitle: 'Änderungen verwerfen?',
+  discardChangesBody: 'Deine Änderungen an deinem Profil werden nicht gespeichert.',
   savedScoreUp_one: 'Gespeichert — dein Talent Score ist um {{count}} Punkt gestiegen.',
   savedScoreUp_other: 'Gespeichert — dein Talent Score ist um {{count}} Punkte gestiegen.',
   savedScoreDown_one: 'Gespeichert — dein Talent Score ist um {{count}} Punkt gesunken.',

@@ -776,10 +776,10 @@ export default function EditProfileScreen() {
 
       <ConfirmSheet
         visible={discardOpen}
-        title={t('feed.discardTitle')}
-        message={t('feed.discardBody')}
+        title={t('profile.discardChangesTitle')}
+        message={t('profile.discardChangesBody')}
         confirmLabel={t('feed.discard')}
-        cancelLabel={t('feed.keepWriting')}
+        cancelLabel={t('settings.keepEditing')}
         destructive
         onConfirm={() => {
           setDiscardOpen(false);

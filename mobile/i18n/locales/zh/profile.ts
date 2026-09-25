@@ -246,6 +246,8 @@ export const profile = {
   // ── 编辑资料（app/edit-profile.tsx） ───────────────────────────────────────
   /* 上面的 `editProfile` 既是这个页面的标题，也是打开它的按钮。 */
   firstNameRequired: '名字不能为空。',
+  discardChangesTitle: '放弃更改？',
+  discardChangesBody: '你对个人资料所做的更改不会保存。',
   savedScoreUp_other: '已保存 —— 你的天赋分涨了{{count}}分。',
   savedScoreDown_other: '已保存 —— 你的天赋分掉了{{count}}分。',
 

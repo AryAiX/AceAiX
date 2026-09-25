@@ -269,6 +269,8 @@ export const profile = {
   // ── تعديل الملف (app/edit-profile.tsx) ────────────────────────────────────
   /* `editProfile` أعلاه هو عنوان هذه الشاشة وزر فتحها معًا. */
   firstNameRequired: 'لا يمكن ترك الاسم الأول فارغًا.',
+  discardChangesTitle: 'تجاهل التغييرات؟',
+  discardChangesBody: 'لن تُحفظ تغييراتك على ملفك.',
   savedScoreUp_zero: 'تم الحفظ — لم تتغيّر درجة موهبتك.',
   savedScoreUp_one: 'تم الحفظ — ارتفعت درجة موهبتك نقطة واحدة.',
   savedScoreUp_two: 'تم الحفظ — ارتفعت درجة موهبتك نقطتين.',

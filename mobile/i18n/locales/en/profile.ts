@@ -255,6 +255,8 @@ export const profile = {
   // ── Edit profile (app/edit-profile.tsx) ────────────────────────────────────
   /* `editProfile` above is this screen's title as well as the button that opens it. */
   firstNameRequired: 'Your first name cannot be empty.',
+  discardChangesTitle: 'Discard your changes?',
+  discardChangesBody: "Your changes to your profile won't be saved.",
   savedScoreUp_one: 'Saved — your Talent Score went up {{count}} point.',
   savedScoreUp_other: 'Saved — your Talent Score went up {{count}} points.',
   savedScoreDown_one: 'Saved — your Talent Score went down {{count}} point.',
