@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { BellRing, Cake, Handshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -213,6 +213,7 @@ export default function ScoutingPreferencesScreen() {
 
   return (
     <>
+    <Stack.Screen options={{ gestureEnabled: !dirty }} />
     <Screen
       header={<Header title={t('settings.scoutingTitle')} back onBack={requestClose} bordered />}
       testID="settings-scouting"
