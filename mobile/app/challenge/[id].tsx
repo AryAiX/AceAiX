@@ -301,7 +301,7 @@ export default function ChallengeScreen() {
             actionLabel={t('challenges.noClipsAction')}
             onAction={() => {
               setEntering(false);
-              router.push(Routes.editProfile);
+              router.push(`${Routes.myProfile}?tab=highlights`);
             }}
           />
         ) : (

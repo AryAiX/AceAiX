@@ -163,7 +163,7 @@ export const settings = {
   scoutingIntro:
     'هذه تحدّد من يضعه الاستكشاف أمامك أولًا، وأي اللاعبين نخبرك عنهم. اترك أي حقل فارغًا لتقول «لا تفضيل».',
   scoutingSports: 'الرياضات',
-  scoutingSportsHint: 'اختر كل رياضة تبحث فيها عن لاعبين.',
+  scoutingSportsHint: 'اختر الرياضة الوحيدة التي تبحث فيها عن لاعبين.',
   scoutingPositions: 'المراكز',
   scoutingPositionsHint: 'مراكز الرياضات التي اخترتها فقط.',
   scoutingPositionsEmpty: 'اختر رياضة أولًا وستظهر مراكزها هنا.',
@@ -189,6 +189,9 @@ export const settings = {
 
   savePreferences: 'حفظ التفضيلات',
   preferencesSaved: 'تم الحفظ. سيعتمد الاستكشاف عليها من الآن.',
+  discardChangesTitle: 'تجاهل التغييرات؟',
+  discardChangesBody: 'لن تُحفظ تغييراتك على ما تبحث عنه.',
+  keepEditing: 'متابعة التعديل',
 
   // ── المظهر (app/settings/appearance.tsx) ──────────────────────────────────
   themeHeading: 'السمة',

@@ -193,7 +193,7 @@ export const profile = {
 
 
   logMatchTitle: 'Log a match',
-  logMatchSubtitle: 'Only what you remember — you can add more later.',
+  logMatchSubtitle: 'Fill in every field to log the match.',
   matchDate: 'Date',
   matchDateHint: 'Year-month-day',
   matchCompetition: 'Competition',
@@ -207,6 +207,13 @@ export const profile = {
   matchAssistsLabel: 'Assists',
   saveMatch: 'Save match',
   matchDateInvalid: 'Use the date format YYYY-MM-DD, for example 2026-03-14.',
+  matchFieldRequired: 'Fill this in.',
+  matchNumberInvalid: 'Use a whole number.',
+  matchDay: 'Day',
+  matchMonth: 'Month',
+  matchYear: 'Year',
+  matchDateRequired: 'Choose the day, month and year.',
+  matchDateFuture: "The match date can't be in the future.",
   matchAddedToast: 'Match added.',
 
   addHonourTitle: 'Add an honour',
@@ -217,6 +224,7 @@ export const profile = {
   honourYearLabel: 'Year',
   saveHonour: 'Save honour',
   honourTitleRequired: 'Give the honour a name.',
+  yearInvalid: 'Enter a year between {{min}} and {{max}}.',
   honourAddedToast: 'Honour added.',
 
   addCertificateTitle: 'Add a certificate',
@@ -247,6 +255,8 @@ export const profile = {
   // ── Edit profile (app/edit-profile.tsx) ────────────────────────────────────
   /* `editProfile` above is this screen's title as well as the button that opens it. */
   firstNameRequired: 'Your first name cannot be empty.',
+  discardChangesTitle: 'Discard your changes?',
+  discardChangesBody: "Your changes to your profile won't be saved.",
   savedScoreUp_one: 'Saved — your Talent Score went up {{count}} point.',
   savedScoreUp_other: 'Saved — your Talent Score went up {{count}} points.',
   savedScoreDown_one: 'Saved — your Talent Score went down {{count}} point.',

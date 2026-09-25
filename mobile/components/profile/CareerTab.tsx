@@ -37,7 +37,9 @@ import {
 } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, roleLabel } from '@/lib/format';
+import { toIsoDate } from '@/components/onboarding/Shared';
 import { useT } from '@/i18n';
+import { MatchDateField } from '@/components/profile/MatchDateField';
 import { useAuth } from '@/providers/AuthProvider';
 
 interface Props {
@@ -61,6 +63,13 @@ const EMPTY_MATCH = {
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+const MIN_YEAR = 1950;
+function isValidYear(value: string): boolean {
+  if (!/^\d{4}$/.test(value)) return false;
+  const year = Number(value);
+  return year >= MIN_YEAR && year <= new Date().getFullYear();
+}
 
 export function CareerTab({
   athleteId,
@@ -98,6 +107,16 @@ export function CareerTab({
   useEffect(() => setCertList(normaliseCertifications(certifications)), [certifications]);
 
   const [matchForm, setMatchForm] = useState<typeof EMPTY_MATCH | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
+  type MatchField =
+    | 'match_date' | 'competition' | 'opponent' | 'result'
+    | 'minutes_played' | 'goals' | 'assists';
+  const [matchFieldErrors, setMatchFieldErrors] =
+    useState<Partial<Record<MatchField, string>>>({});
+  const [honorError, setHonorError] = useState<string | null>(null);
+  const [certError, setCertError] = useState<string | null>(null);
+  const [honorYearError, setHonorYearError] = useState<string | null>(null);
+  const [certYearError, setCertYearError] = useState<string | null>(null);
   const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
     null,
   );
@@ -168,10 +187,28 @@ export function CareerTab({
 
   const submitMatch = useCallback(async () => {
     if (!matchForm || !athleteId) return;
-    if (!ISO_DATE.test(matchForm.match_date.trim())) {
-      toast.error(t('profile.matchDateInvalid'));
+    const errors: Partial<Record<MatchField, string>> = {};
+    const date = matchForm.match_date.trim();
+    if (!date) errors.match_date = t('profile.matchDateRequired');
+    else if (!ISO_DATE.test(date)) errors.match_date = t('profile.matchDateInvalid');
+    else if (date > toIsoDate(new Date())) errors.match_date = t('profile.matchDateFuture');
+
+    (['competition', 'opponent', 'result'] as const).forEach((key) => {
+      if (!matchForm[key].trim()) errors[key] = t('profile.matchFieldRequired');
+    });
+    (['minutes_played', 'goals', 'assists'] as const).forEach((key) => {
+      const value = matchForm[key].trim();
+      if (!value) errors[key] = t('profile.matchFieldRequired');
+      else if (!/^\d+$/.test(value)) errors[key] = t('profile.matchNumberInvalid');
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setMatchFieldErrors(errors);
+      setMatchError(null);
       return;
     }
+    setMatchFieldErrors({});
+    setMatchError(null);
     setSaving(true);
     try {
       await addMatchRecord(athleteId, {
@@ -183,12 +220,14 @@ export function CareerTab({
         goals: toNumber(matchForm.goals) ?? 0,
         assists: toNumber(matchForm.assists) ?? 0,
       });
+      setMatchError(null);
+      setMatchFieldErrors({});
       setMatchForm(null);
       toast.success(t('profile.matchAddedToast'));
       matches.reload();
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setMatchError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -196,10 +235,17 @@ export function CareerTab({
 
   const submitHonor = useCallback(async () => {
     if (!honorForm) return;
-    if (!honorForm.title.trim()) {
-      toast.error(t('profile.honourTitleRequired'));
-      return;
-    }
+    const titleMissing = !honorForm.title.trim();
+    const year = honorForm.year.trim();
+    const yearBad = year !== '' && !isValidYear(year);
+    setHonorError(titleMissing ? t('profile.honourTitleRequired') : null);
+    setHonorYearError(
+      yearBad
+        ? t('profile.yearInvalid', { min: MIN_YEAR, max: new Date().getFullYear() })
+        : null,
+    );
+    if (titleMissing || yearBad) return;
+    setHonorError(null);
     const next: HonorEntry[] = [
       {
         title: honorForm.title.trim(),
@@ -213,11 +259,13 @@ export function CareerTab({
     try {
       await saveHonors(next);
       setHonorList(next);
+      setHonorError(null);
+      setHonorYearError(null);
       setHonorForm(null);
       toast.success(t('profile.honourAddedToast'));
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setHonorError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -225,10 +273,17 @@ export function CareerTab({
 
   const submitCert = useCallback(async () => {
     if (!certForm) return;
-    if (!certForm.title.trim()) {
-      toast.error(t('profile.certificateTitleRequired'));
-      return;
-    }
+    const titleMissing = !certForm.title.trim();
+    const year = certForm.date.trim();
+    const yearBad = year !== '' && !isValidYear(year);
+    setCertError(titleMissing ? t('profile.certificateTitleRequired') : null);
+    setCertYearError(
+      yearBad
+        ? t('profile.yearInvalid', { min: MIN_YEAR, max: new Date().getFullYear() })
+        : null,
+    );
+    if (titleMissing || yearBad) return;
+    setCertError(null);
     const next: CertificationEntry[] = [
       {
         title: certForm.title.trim(),
@@ -242,11 +297,13 @@ export function CareerTab({
     try {
       await saveCertifications(next);
       setCertList(next);
+      setCertError(null);
+      setCertYearError(null);
       setCertForm(null);
       toast.success(t('profile.certificateAddedToast'));
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setCertError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -269,7 +326,15 @@ export function CareerTab({
         <SectionHeader
           title={t('common.matches')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setMatchForm({ ...EMPTY_MATCH }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setMatchError(null);
+                  setMatchFieldErrors({});
+                  setMatchForm({ ...EMPTY_MATCH });
+                }
+              : undefined
+          }
         />
         {matches.loading ? (
           <Skeleton height={72} />
@@ -286,7 +351,15 @@ export function CareerTab({
               isSelf ? 'profile.matchesEmptyBodySelf' : 'profile.matchesEmptyBodyOther',
             )}
             actionLabel={isSelf ? t('profile.logMatchTitle') : undefined}
-            onAction={isSelf ? () => setMatchForm({ ...EMPTY_MATCH }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setMatchError(null);
+                    setMatchFieldErrors({});
+                    setMatchForm({ ...EMPTY_MATCH });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -336,7 +409,15 @@ export function CareerTab({
         <SectionHeader
           title={t('profile.honoursTitle')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setHonorForm({ title: '', org: '', year: '' }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setHonorError(null);
+                  setHonorYearError(null);
+                  setHonorForm({ title: '', org: '', year: '' });
+                }
+              : undefined
+          }
         />
         {honorList.length === 0 ? (
           <EmptyState
@@ -347,7 +428,15 @@ export function CareerTab({
             )}
             body={isSelf ? t('profile.honoursEmptyBodySelf') : undefined}
             actionLabel={isSelf ? t('profile.addHonourTitle') : undefined}
-            onAction={isSelf ? () => setHonorForm({ title: '', org: '', year: '' }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setHonorError(null);
+                    setHonorYearError(null);
+                    setHonorForm({ title: '', org: '', year: '' });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -385,7 +474,15 @@ export function CareerTab({
         <SectionHeader
           title={t('profile.certificatesTitle')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setCertForm({ title: '', issuer: '', date: '' }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setCertError(null);
+                  setCertYearError(null);
+                  setCertForm({ title: '', issuer: '', date: '' });
+                }
+              : undefined
+          }
         />
         {certList.length === 0 ? (
           <EmptyState
@@ -398,7 +495,15 @@ export function CareerTab({
             )}
             body={isSelf ? t('profile.certificatesEmptyBodySelf') : undefined}
             actionLabel={isSelf ? t('profile.addCertificateTitle') : undefined}
-            onAction={isSelf ? () => setCertForm({ title: '', issuer: '', date: '' }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setCertError(null);
+                    setCertYearError(null);
+                    setCertForm({ title: '', issuer: '', date: '' });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -605,38 +710,60 @@ export function CareerTab({
       {/* ── Add a match ── */}
       <Sheet
         visible={matchForm !== null}
-        onClose={() => (saving ? undefined : setMatchForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setMatchError(null);
+          setMatchFieldErrors({});
+          setMatchForm(null);
+        }}
         title={t('profile.logMatchTitle')}
         subtitle={t('profile.logMatchSubtitle')}
       >
         <View style={{ gap: spacing.md }}>
-          <Input
+          <MatchDateField
+            key={matchForm ? 'open' : 'closed'}
             label={t('profile.matchDate')}
             required
-            /* The stored format is fixed, so the example stays as it is typed. */
-            placeholder="2026-03-14"
             value={matchForm?.match_date ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, match_date: text } : f))}
-            keyboardType="numbers-and-punctuation"
-            hint={t('profile.matchDateHint')}
+            error={matchFieldErrors.match_date}
+            onChange={(iso) => {
+              setMatchForm((f) => (f ? { ...f, match_date: iso } : f));
+              setMatchError(null);
+              setMatchFieldErrors((e) => ({ ...e, match_date: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchCompetition')}
+            required
             placeholder={t('profile.matchCompetitionPlaceholder')}
             value={matchForm?.competition ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, competition: text } : f))}
+            error={matchFieldErrors.competition}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, competition: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, competition: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchOpponent')}
+            required
             placeholder={t('profile.matchOpponentPlaceholder')}
             value={matchForm?.opponent ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, opponent: text } : f))}
+            error={matchFieldErrors.opponent}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, opponent: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, opponent: undefined }));
+            }}
           />
           <Input
             label={t('profile.matchResult')}
+            required
             placeholder={t('profile.matchResultPlaceholder')}
             value={matchForm?.result ?? ''}
-            onChangeText={(text) => setMatchForm((f) => (f ? { ...f, result: text } : f))}
+            error={matchFieldErrors.result}
+            onChangeText={(text) => {
+              setMatchForm((f) => (f ? { ...f, result: text } : f));
+              setMatchFieldErrors((e) => ({ ...e, result: undefined }));
+            }}
             maxLength={20}
           />
           {/* The three placeholders below are bare numerals on a number pad —
@@ -645,30 +772,48 @@ export function CareerTab({
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchMinutesLabel')}
+              required
               placeholder="90"
               keyboardType="number-pad"
               value={matchForm?.minutes_played ?? ''}
-              onChangeText={(text) =>
-                setMatchForm((f) => (f ? { ...f, minutes_played: text } : f))
-              }
+              error={matchFieldErrors.minutes_played}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, minutes_played: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, minutes_played: undefined }));
+              }}
             />
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchGoalsLabel')}
+              required
               placeholder="0"
               keyboardType="number-pad"
               value={matchForm?.goals ?? ''}
-              onChangeText={(text) => setMatchForm((f) => (f ? { ...f, goals: text } : f))}
+              error={matchFieldErrors.goals}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, goals: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, goals: undefined }));
+              }}
             />
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.matchAssistsLabel')}
+              required
               placeholder="0"
               keyboardType="number-pad"
               value={matchForm?.assists ?? ''}
-              onChangeText={(text) => setMatchForm((f) => (f ? { ...f, assists: text } : f))}
+              error={matchFieldErrors.assists}
+              onChangeText={(text) => {
+                setMatchForm((f) => (f ? { ...f, assists: text } : f));
+                setMatchFieldErrors((e) => ({ ...e, assists: undefined }));
+              }}
             />
           </View>
+          {matchError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {matchError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveMatch')}
             fullWidth
@@ -682,7 +827,12 @@ export function CareerTab({
       {/* ── Add an honour ── */}
       <Sheet
         visible={honorForm !== null}
-        onClose={() => (saving ? undefined : setHonorForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setHonorError(null);
+          setHonorYearError(null);
+          setHonorForm(null);
+        }}
         title={t('profile.addHonourTitle')}
       >
         <View style={{ gap: spacing.md }}>
@@ -705,8 +855,17 @@ export function CareerTab({
             keyboardType="number-pad"
             maxLength={4}
             value={honorForm?.year ?? ''}
-            onChangeText={(text) => setHonorForm((f) => (f ? { ...f, year: text } : f))}
+            error={honorYearError}
+            onChangeText={(text) => {
+              setHonorYearError(null);
+              setHonorForm((f) => (f ? { ...f, year: text } : f));
+            }}
           />
+          {honorError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {honorError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveHonour')}
             fullWidth
@@ -720,7 +879,12 @@ export function CareerTab({
       {/* ── Add a certificate ── */}
       <Sheet
         visible={certForm !== null}
-        onClose={() => (saving ? undefined : setCertForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setCertError(null);
+          setCertYearError(null);
+          setCertForm(null);
+        }}
         title={t('profile.addCertificateTitle')}
       >
         <View style={{ gap: spacing.md }}>
@@ -743,8 +907,17 @@ export function CareerTab({
             keyboardType="number-pad"
             maxLength={4}
             value={certForm?.date ?? ''}
-            onChangeText={(text) => setCertForm((f) => (f ? { ...f, date: text } : f))}
+            error={certYearError}
+            onChangeText={(text) => {
+              setCertYearError(null);
+              setCertForm((f) => (f ? { ...f, date: text } : f));
+            }}
           />
+          {certError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {certError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveCertificate')}
             fullWidth

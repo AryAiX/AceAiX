@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useT } from '@/i18n';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -295,12 +296,13 @@ export function ErrorState({
   onRetry?: () => void;
   compact?: boolean;
 }) {
+  const t = useT();
   return (
     <EmptyState
       compact={compact}
-      title="Something went wrong"
-      body={message ?? 'Check your connection and try again.'}
-      actionLabel={onRetry ? 'Try again' : undefined}
+      title={t('common.somethingWentWrong')}
+      body={message ?? t('common.tryAgainLater')}
+      actionLabel={onRetry ? t('common.retry') : undefined}
       onAction={onRetry}
     />
   );

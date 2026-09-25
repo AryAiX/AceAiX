@@ -97,6 +97,7 @@ export const onboarding = {
   photoChoose: '从相册中选择',
   photoChooseAnother: '换一张照片',
   photoTake: '拍一张',
+  photoRemove: '移除照片',
   photoUnreadable: '这张照片读取不了，换一张试试。',
   photoLibraryDenied:
     '{{app}} 需要访问相册的权限。你可以在系统设置里打开。',

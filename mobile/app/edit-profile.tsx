@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, ImagePlus, Search, Trash2 } from 'lucide-react-native';
@@ -327,6 +327,7 @@ export default function EditProfileScreen() {
 
   return (
     <Screen header={header} keyboardAvoiding contentStyle={{ gap: spacing.xxl }}>
+      <Stack.Screen options={{ gestureEnabled: !dirty }} />
       {/* ── You ── */}
       <View style={{ marginTop: spacing.md }}>
         <SectionHeader title={t('profile.sectionYou')} />
@@ -776,10 +777,10 @@ export default function EditProfileScreen() {
 
       <ConfirmSheet
         visible={discardOpen}
-        title={t('feed.discardTitle')}
-        message={t('feed.discardBody')}
+        title={t('profile.discardChangesTitle')}
+        message={t('profile.discardChangesBody')}
         confirmLabel={t('feed.discard')}
-        cancelLabel={t('feed.keepWriting')}
+        cancelLabel={t('settings.keepEditing')}
         destructive
         onConfirm={() => {
           setDiscardOpen(false);

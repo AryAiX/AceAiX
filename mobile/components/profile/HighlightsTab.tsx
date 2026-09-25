@@ -305,6 +305,17 @@ function MediaPreview({ item }: { item: AthleteMediaItem }) {
   const t = useT();
   const isVideo = item.media_type === 'video' || item.media_type === 'highlight_reel';
 
+  if (isVideo) {
+    if (!item.video_url) {
+      return (
+        <Text variant="caption" tone="muted">
+          {t('profile.mediaLoadFailed')}
+        </Text>
+      );
+    }
+    return <VideoPreview uri={item.video_url} />;
+  }
+
   if (!item.display_url) {
     return (
       <Text variant="caption" tone="muted">
@@ -313,9 +324,7 @@ function MediaPreview({ item }: { item: AthleteMediaItem }) {
     );
   }
 
-  return isVideo ? (
-    <VideoPreview uri={item.display_url} />
-  ) : (
+  return (
     <Image
       source={{ uri: item.display_url }}
       style={{

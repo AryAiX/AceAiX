@@ -151,7 +151,7 @@ export const settings = {
   scoutingIntro:
     '这些决定“发现”优先把谁推到你面前，以及我们会把哪些运动员告诉你。留空就表示“没有偏好”。',
   scoutingSports: '项目',
-  scoutingSportsHint: '把你招募的项目都选上。',
+  scoutingSportsHint: '只选你负责球探的那一个项目。',
   scoutingPositions: '位置',
   scoutingPositionsHint: '只包含你所选项目里的位置。',
   scoutingPositionsEmpty: '先选一个项目，它的位置就会出现在这里。',
@@ -177,6 +177,9 @@ export const settings = {
 
   savePreferences: '保存偏好',
   preferencesSaved: '已保存。“发现”从现在起会按这个来。',
+  discardChangesTitle: '放弃更改？',
+  discardChangesBody: '你对「你在找什么样的人」所做的更改不会保存。',
+  keepEditing: '继续编辑',
 
   // ── 外观（app/settings/appearance.tsx） ────────────────────────────────────
   themeHeading: '主题',

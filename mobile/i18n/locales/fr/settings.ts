@@ -158,7 +158,7 @@ export const settings = {
   scoutingIntro:
     'Cela détermine qui Découvrir te montre en premier, et de quels athlètes on te parle. Laisse vide pour dire « peu importe ».',
   scoutingSports: 'Sports',
-  scoutingSportsHint: 'Choisis tous les sports pour lesquels tu recrutes.',
+  scoutingSportsHint: 'Choisis le seul sport pour lequel tu recrutes.',
   scoutingPositions: 'Postes',
   scoutingPositionsHint: 'Seulement les postes des sports que tu as choisis.',
   scoutingPositionsEmpty: 'Choisis d’abord un sport et ses postes apparaîtront ici.',
@@ -184,6 +184,9 @@ export const settings = {
 
   savePreferences: 'Enregistrer les préférences',
   preferencesSaved: 'Enregistré. Découvrir s’appuiera là-dessus à partir de maintenant.',
+  discardChangesTitle: 'Abandonner tes modifications ?',
+  discardChangesBody: 'Tes modifications sur ce que tu cherches ne seront pas enregistrées.',
+  keepEditing: 'Continuer à modifier',
 
   // ── Apparence (app/settings/appearance.tsx) ────────────────────────────────
   themeHeading: 'Thème',

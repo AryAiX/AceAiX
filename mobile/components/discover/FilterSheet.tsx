@@ -23,10 +23,10 @@ import { tierLabel } from './MatchBadge';
 
 export type FilterSheetMode = 'filter' | 'preferences';
 
-/** Matches the age check constraint on `match_preferences`. */
-const AGE_FLOOR = 8;
+/** Coaches may not search below 13, matching the platform's minimum signup age. */
+const AGE_FLOOR = 13;
 const AGE_CEILING = 60;
-const DEFAULT_AGE_MIN = 12;
+const DEFAULT_AGE_MIN = 13;
 const DEFAULT_AGE_MAX = 25;
 const SCORE_STEP = 5;
 const SCORE_CEILING = 90;

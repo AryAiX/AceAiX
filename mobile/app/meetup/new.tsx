@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Check, Minus, Plus, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -218,6 +218,7 @@ export default function NewMeetupScreen() {
       contentStyle={{ gap: spacing.xl }}
       testID="new-meetup-screen"
     >
+      <Stack.Screen options={{ gestureEnabled: !hasContent }} />
       <Text variant="caption" tone="muted" style={{ marginTop: spacing.md }}>
         {t('meetups.createSubtitle')}
       </Text>
@@ -442,10 +443,10 @@ export default function NewMeetupScreen() {
 
       <ConfirmSheet
         visible={discardOpen}
-        title={t('feed.discardTitle')}
-        message={t('feed.discardBody')}
+        title={t('meetups.discardTitle')}
+        message={t('meetups.discardBody')}
         confirmLabel={t('feed.discard')}
-        cancelLabel={t('feed.keepWriting')}
+        cancelLabel={t('settings.keepEditing')}
         destructive
         onConfirm={() => {
           setDiscardOpen(false);

@@ -128,6 +128,7 @@ export default function PublicProfileScreen() {
               variant="secondary"
               loading={unblocking}
               onPress={onUnblock}
+              style={{ alignSelf: 'center' }}
             />
           </View>
         ) : null}

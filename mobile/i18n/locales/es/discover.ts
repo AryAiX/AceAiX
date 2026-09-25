@@ -48,6 +48,13 @@ export const discover = {
   rankedByScore:
     'Ordenados por puntuación de talento. Añade un filtro para ver cuánto encaja cada deportista contigo.',
   savedToShortlist: 'Guardado en tu preselección',
+  shortlist: {
+    title: 'Preselección',
+    open: 'Abrir tu preselección',
+    emptyTitle: 'Nadie guardado todavía',
+    emptyBody: 'Toca la marca de un deportista en Descubrir para tenerlo aquí.',
+    emptyAction: 'Volver a Descubrir',
+  },
   emptyTitle: 'Ningún deportista coincide',
   emptyFilteredBody:
     'Prueba a ampliar el rango de edad, añadir un país o borrar la búsqueda.',

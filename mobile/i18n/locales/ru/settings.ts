@@ -159,7 +159,7 @@ export const settings = {
   scoutingIntro:
     'От этого зависит, кого поиск покажет тебе первым и о каких спортсменах мы сообщим. Оставь поле пустым — это значит «без предпочтений».',
   scoutingSports: 'Виды спорта',
-  scoutingSportsHint: 'Отметь все виды спорта, по которым набираешь.',
+  scoutingSportsHint: 'Выбери один вид спорта, по которому набираешь.',
   scoutingPositions: 'Позиции',
   scoutingPositionsHint: 'Только позиции из выбранных видов спорта.',
   scoutingPositionsEmpty: 'Сначала выбери вид спорта — его позиции появятся здесь.',
@@ -185,6 +185,9 @@ export const settings = {
 
   savePreferences: 'Сохранить настройки',
   preferencesSaved: 'Сохранено. Поиск будет учитывать это дальше.',
+  discardChangesTitle: 'Отменить изменения?',
+  discardChangesBody: 'Изменения в том, кого ты ищешь, не сохранятся.',
+  keepEditing: 'Продолжить правку',
 
   // ── Оформление (app/settings/appearance.tsx) ───────────────────────────────
   themeHeading: 'Тема',

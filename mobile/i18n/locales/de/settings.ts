@@ -157,7 +157,7 @@ export const settings = {
   scoutingIntro:
     'Das bestimmt, wen Entdecken dir zuerst zeigt und über welche Sportler wir dich informieren. Lass etwas leer, wenn es dir egal ist.',
   scoutingSports: 'Sportarten',
-  scoutingSportsHint: 'Wähle jede Sportart, für die du sichtest.',
+  scoutingSportsHint: 'Wähle die eine Sportart, für die du sichtest.',
   scoutingPositions: 'Positionen',
   scoutingPositionsHint: 'Nur die Positionen der gewählten Sportarten.',
   scoutingPositionsEmpty: 'Wähle zuerst eine Sportart, dann erscheinen hier ihre Positionen.',
@@ -183,6 +183,9 @@ export const settings = {
 
   savePreferences: 'Einstellungen speichern',
   preferencesSaved: 'Gespeichert. Entdecken nutzt das ab jetzt.',
+  discardChangesTitle: 'Änderungen verwerfen?',
+  discardChangesBody: 'Deine Änderungen daran, wen du suchst, werden nicht gespeichert.',
+  keepEditing: 'Weiter bearbeiten',
 
   // ── Darstellung (app/settings/appearance.tsx) ──────────────────────────────
   themeHeading: 'Erscheinungsbild',

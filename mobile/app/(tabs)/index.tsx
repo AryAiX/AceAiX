@@ -303,42 +303,48 @@ export default function HomeScreen() {
         />
       </View>
 
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        extraData={activeId}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.giant,
-          gap: spacing.md,
-          flexGrow: 1,
-        }}
-        ListHeaderComponent={<HomeSpotlight />}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={5}
-        maxToRenderPerBatch={5}
-        windowSize={7}
-        removeClippedSubviews
-        viewabilityConfig={viewabilityConfig}
-        onViewableItemsChanged={onViewableItemsChanged}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.6}
-        refreshControl={
-          <RefreshControl
-            refreshing={feed.refreshing}
-            onRefresh={refresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-            progressBackgroundColor={colors.surface}
-          />
-        }
-        ListEmptyComponent={renderEmpty()}
-        ListFooterComponent={
-          loadingMore ? <Loader /> : <View style={{ height: spacing.sm }} />
-        }
-        testID="home-feed"
-      />
+      {feed.error ? (
+        <View style={{ flex: 1 }}>
+          <ErrorState message={feed.error} onRetry={feed.reload} />
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          extraData={activeId}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.giant,
+            gap: spacing.md,
+            flexGrow: 1,
+          }}
+          ListHeaderComponent={<HomeSpotlight />}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
+          windowSize={7}
+          removeClippedSubviews
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.6}
+          refreshControl={
+            <RefreshControl
+              refreshing={feed.refreshing}
+              onRefresh={refresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+              progressBackgroundColor={colors.surface}
+            />
+          }
+          ListEmptyComponent={renderEmpty()}
+          ListFooterComponent={
+            loadingMore ? <Loader /> : <View style={{ height: spacing.sm }} />
+          }
+          testID="home-feed"
+        />
+      )}
 
       {/* Mounted only while open, and keyed on the post, so one post's
           comments can never appear under another's header. */}

@@ -66,6 +66,8 @@ export const meetups = {
 
   // ── Eintragen ──────────────────────────────────────────────────────────────
   createTitle: 'Spiel eintragen',
+  discardTitle: 'Dieses Spiel verwerfen?',
+  discardBody: 'Was du ausgefüllt hast, wird nicht gespeichert.',
   createSubtitle:
     'Sag, was du spielen willst, wo und wann. Leute fragen an, und du entscheidest.',
   fieldSport: 'Sportart',
