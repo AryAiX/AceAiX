@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -44,13 +44,16 @@ export function SegmentedControl<T extends string>({
     indicator.setValue((index * widthRef.current) / options.length);
   };
 
-  const moveTo = (i: number) =>
+  useEffect(() => {
+    // Not measured yet: onLayout will place the indicator.
+    if (widthRef.current === 0) return;
     Animated.timing(indicator, {
-      toValue: (i * widthRef.current) / options.length,
+      toValue: (index * widthRef.current) / options.length,
       duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: NATIVE_DRIVER,
     }).start();
+  }, [index, options.length, indicator]);
 
   return (
     <View
@@ -81,7 +84,7 @@ export function SegmentedControl<T extends string>({
           ...theme.elevation(1),
         }}
       />
-      {options.map((opt, i) => {
+      {options.map((opt) => {
         const active = opt.value === value;
         return (
           <Pressable
@@ -89,7 +92,6 @@ export function SegmentedControl<T extends string>({
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => {
-              moveTo(i);
               onChange(opt.value);
             }}
             style={{
