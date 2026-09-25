@@ -99,6 +99,8 @@ export function CareerTab({
 
   const [matchForm, setMatchForm] = useState<typeof EMPTY_MATCH | null>(null);
   const [matchError, setMatchError] = useState<string | null>(null);
+  const [honorError, setHonorError] = useState<string | null>(null);
+  const [certError, setCertError] = useState<string | null>(null);
   const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
     null,
   );
@@ -200,9 +202,10 @@ export function CareerTab({
   const submitHonor = useCallback(async () => {
     if (!honorForm) return;
     if (!honorForm.title.trim()) {
-      toast.error(t('profile.honourTitleRequired'));
+      setHonorError(t('profile.honourTitleRequired'));
       return;
     }
+    setHonorError(null);
     const next: HonorEntry[] = [
       {
         title: honorForm.title.trim(),
@@ -216,11 +219,12 @@ export function CareerTab({
     try {
       await saveHonors(next);
       setHonorList(next);
+      setHonorError(null);
       setHonorForm(null);
       toast.success(t('profile.honourAddedToast'));
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setHonorError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -229,9 +233,10 @@ export function CareerTab({
   const submitCert = useCallback(async () => {
     if (!certForm) return;
     if (!certForm.title.trim()) {
-      toast.error(t('profile.certificateTitleRequired'));
+      setCertError(t('profile.certificateTitleRequired'));
       return;
     }
+    setCertError(null);
     const next: CertificationEntry[] = [
       {
         title: certForm.title.trim(),
@@ -245,11 +250,12 @@ export function CareerTab({
     try {
       await saveCertifications(next);
       setCertList(next);
+      setCertError(null);
       setCertForm(null);
       toast.success(t('profile.certificateAddedToast'));
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setCertError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -353,7 +359,14 @@ export function CareerTab({
         <SectionHeader
           title={t('profile.honoursTitle')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setHonorForm({ title: '', org: '', year: '' }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setHonorError(null);
+                  setHonorForm({ title: '', org: '', year: '' });
+                }
+              : undefined
+          }
         />
         {honorList.length === 0 ? (
           <EmptyState
@@ -364,7 +377,14 @@ export function CareerTab({
             )}
             body={isSelf ? t('profile.honoursEmptyBodySelf') : undefined}
             actionLabel={isSelf ? t('profile.addHonourTitle') : undefined}
-            onAction={isSelf ? () => setHonorForm({ title: '', org: '', year: '' }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setHonorError(null);
+                    setHonorForm({ title: '', org: '', year: '' });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -402,7 +422,14 @@ export function CareerTab({
         <SectionHeader
           title={t('profile.certificatesTitle')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setCertForm({ title: '', issuer: '', date: '' }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setCertError(null);
+                  setCertForm({ title: '', issuer: '', date: '' });
+                }
+              : undefined
+          }
         />
         {certList.length === 0 ? (
           <EmptyState
@@ -415,7 +442,14 @@ export function CareerTab({
             )}
             body={isSelf ? t('profile.certificatesEmptyBodySelf') : undefined}
             actionLabel={isSelf ? t('profile.addCertificateTitle') : undefined}
-            onAction={isSelf ? () => setCertForm({ title: '', issuer: '', date: '' }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setCertError(null);
+                    setCertForm({ title: '', issuer: '', date: '' });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -708,7 +742,11 @@ export function CareerTab({
       {/* ── Add an honour ── */}
       <Sheet
         visible={honorForm !== null}
-        onClose={() => (saving ? undefined : setHonorForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setHonorError(null);
+          setHonorForm(null);
+        }}
         title={t('profile.addHonourTitle')}
       >
         <View style={{ gap: spacing.md }}>
@@ -733,6 +771,11 @@ export function CareerTab({
             value={honorForm?.year ?? ''}
             onChangeText={(text) => setHonorForm((f) => (f ? { ...f, year: text } : f))}
           />
+          {honorError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {honorError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveHonour')}
             fullWidth
@@ -746,7 +789,11 @@ export function CareerTab({
       {/* ── Add a certificate ── */}
       <Sheet
         visible={certForm !== null}
-        onClose={() => (saving ? undefined : setCertForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setCertError(null);
+          setCertForm(null);
+        }}
         title={t('profile.addCertificateTitle')}
       >
         <View style={{ gap: spacing.md }}>
@@ -771,6 +818,11 @@ export function CareerTab({
             value={certForm?.date ?? ''}
             onChangeText={(text) => setCertForm((f) => (f ? { ...f, date: text } : f))}
           />
+          {certError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {certError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveCertificate')}
             fullWidth
