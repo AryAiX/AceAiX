@@ -111,6 +111,13 @@ export async function shortlistedAthletes(): Promise<DiscoveredAthlete[]> {
   const listIds = await myWatchlistIds();
   if (listIds.length === 0) return [];
 
+  const { data: blockedRows, error: blockedError } =
+    await supabase.rpc('get_blocked_user_ids');
+  if (blockedError) throw new AppError(blockedError);
+  const blocked = new Set(
+    (blockedRows ?? []).map((row: { blocked_user_id: string }) => row.blocked_user_id),
+  );
+
   const { data: saves, error: savesError } = await supabase
     .from('watchlist_athletes')
     .select('athlete_id, added_at')
@@ -150,6 +157,7 @@ export async function shortlistedAthletes(): Promise<DiscoveredAthlete[]> {
     const u = a ? userById.get(a.user_id as string) : undefined;
     if (!a || !u) continue; // not visible to this viewer
     if (u.is_minor) continue; // belt and braces: never list a minor here
+    if (blocked.has(a.user_id as string)) continue; // blocked either way
     const s = scoreById.get(id);
     out.push({
       athlete_id: id,
