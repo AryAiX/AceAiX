@@ -294,7 +294,15 @@ export function ScoreRing({
         ) : (
           <Text
             variant={size >= 120 ? 'display' : 'stat'}
-            style={size >= 120 ? undefined : { fontSize: size * 0.28 }}
+            style={
+              size >= 120
+                ? undefined
+                : {
+                    fontSize: size * 0.28,
+                    lineHeight: size * 0.28 * 1.15,
+                    transform: [{ translateY: size * 0.04 }],
+                  }
+            }
           >
             {displayed}
           </Text>
