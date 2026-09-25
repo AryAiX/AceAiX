@@ -67,9 +67,11 @@ const LEVEL_KEYS = LEVELS.map((l) => l.key as string);
 
 function toDraft(prefs: MatchPreferences | null): Draft {
   if (!prefs) return EMPTY;
+  const sports = (prefs.sports ?? []).slice(0, 1);
+  const allowed = new Set(sports.flatMap((sport) => positionsFor(sport)));
   return {
-    sports: prefs.sports ?? [],
-    positions: prefs.positions ?? [],
+    sports,
+    positions: (prefs.positions ?? []).filter((p) => allowed.has(p)),
     levels: prefs.levels ?? [],
     countries: prefs.countries ?? [],
     age_min: prefs.age_min ?? EMPTY.age_min,
@@ -112,7 +114,14 @@ export default function ScoutingPreferencesScreen() {
   const toggle = useCallback((key: 'sports' | 'positions' | 'levels' | 'countries', value: string) => {
     setDraft((current) => {
       const list = current[key];
-      const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+      const next =
+        key === 'sports'
+          ? list.includes(value)
+            ? []
+            : [value]
+          : list.includes(value)
+            ? list.filter((v) => v !== value)
+            : [...list, value];
 
       if (key === 'sports') {
         // Drop positions that no longer belong to any selected sport.

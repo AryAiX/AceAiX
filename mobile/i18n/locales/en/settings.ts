@@ -155,7 +155,7 @@ export const settings = {
   scoutingIntro:
     'These shape who Discover puts in front of you first, and which athletes we tell you about. Leave anything blank to say “no preference”.',
   scoutingSports: 'Sports',
-  scoutingSportsHint: 'Pick every sport you recruit for.',
+  scoutingSportsHint: 'Pick the one sport you scout for.',
   scoutingPositions: 'Positions',
   scoutingPositionsHint: 'Only the positions from the sports you chose.',
   scoutingPositionsEmpty: 'Choose a sport first and its positions will appear here.',

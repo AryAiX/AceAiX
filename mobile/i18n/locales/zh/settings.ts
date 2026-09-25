@@ -151,7 +151,7 @@ export const settings = {
   scoutingIntro:
     '这些决定“发现”优先把谁推到你面前，以及我们会把哪些运动员告诉你。留空就表示“没有偏好”。',
   scoutingSports: '项目',
-  scoutingSportsHint: '把你招募的项目都选上。',
+  scoutingSportsHint: '只选你负责球探的那一个项目。',
   scoutingPositions: '位置',
   scoutingPositionsHint: '只包含你所选项目里的位置。',
   scoutingPositionsEmpty: '先选一个项目，它的位置就会出现在这里。',

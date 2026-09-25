@@ -157,7 +157,7 @@ export const settings = {
   scoutingIntro:
     'Das bestimmt, wen Entdecken dir zuerst zeigt und über welche Sportler wir dich informieren. Lass etwas leer, wenn es dir egal ist.',
   scoutingSports: 'Sportarten',
-  scoutingSportsHint: 'Wähle jede Sportart, für die du sichtest.',
+  scoutingSportsHint: 'Wähle die eine Sportart, für die du sichtest.',
   scoutingPositions: 'Positionen',
   scoutingPositionsHint: 'Nur die Positionen der gewählten Sportarten.',
   scoutingPositionsEmpty: 'Wähle zuerst eine Sportart, dann erscheinen hier ihre Positionen.',
