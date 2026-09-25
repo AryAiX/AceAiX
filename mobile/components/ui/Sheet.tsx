@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -55,6 +56,23 @@ export function Sheet({
   const { colors, radii, spacing } = theme;
   const insets = useSafeAreaInsets();
   const { height: screenH } = useWindowDimensions();
+
+  const [keyboardH, setKeyboardH] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !visible) {
+      setKeyboardH(0);
+      return;
+    }
+    const show = Keyboard.addListener('keyboardWillShow', (e) =>
+      setKeyboardH(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardH(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [visible]);
 
   const translate = useRef(new Animated.Value(screenH)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
@@ -129,7 +147,11 @@ export function Sheet({
     };
   }, [visible]);
 
-  const maxHeight = height ? screenH * height : screenH * 0.88;
+  const baseMaxHeight = height ? screenH * height : screenH * 0.88;
+  const maxHeight =
+    keyboardH > 0
+      ? Math.min(baseMaxHeight, screenH - keyboardH - insets.top - spacing.md)
+      : baseMaxHeight;
 
   const body = (
     <View style={[{ paddingHorizontal: spacing.lg }, contentStyle]}>{children}</View>
@@ -173,7 +195,7 @@ export function Sheet({
               borderTopLeftRadius: radii.xxl,
               borderTopRightRadius: radii.xxl,
               maxHeight,
-              paddingBottom: insets.bottom + spacing.lg,
+              paddingBottom: keyboardH > 0 ? spacing.lg : insets.bottom + spacing.lg,
               ...theme.elevation(3),
             }}
           >
