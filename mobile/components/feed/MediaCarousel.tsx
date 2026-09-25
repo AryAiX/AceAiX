@@ -15,6 +15,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { PostMedia } from '@/types/models';
+import { useFeedMute } from './feedMute';
 
 /**
  * Post media: one photo, one clip, or up to four of either in a pager.
@@ -49,7 +50,7 @@ export function MediaCarousel({ media, isActive = false, onPress }: Props) {
 
   const [width, setWidth] = useState(0);
   const [page, setPage] = useState(0);
-  const [muted, setMuted] = useState(true);
+  const [muted, toggleMuted] = useFeedMute();
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     setWidth(Math.round(e.nativeEvent.layout.width));
@@ -99,7 +100,7 @@ export function MediaCarousel({ media, isActive = false, onPress }: Props) {
               width={width}
               height={height}
               muted={muted}
-              onToggleMute={() => setMuted((m) => !m)}
+              onToggleMute={toggleMuted}
               isActive={isActive && index === page}
               onPress={onPress}
             />
