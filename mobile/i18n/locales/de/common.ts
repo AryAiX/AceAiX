@@ -122,7 +122,7 @@ export const common = {
   tabHome: 'Start',
   tabDiscover: 'Entdecken',
   tabTrials: 'Chancen',
-  tabYou: 'Du',
+  tabYou: 'Profil',
   tabCreate: 'Neu',
 
   // Rechtliches

@@ -3,11 +3,13 @@ import { Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { now, seededRng } from '@/lib/gi/random';
 import { reactionPlan } from '@/lib/gi/trials';
 import { reactionMetrics, type ReactionMetrics, type ReactionRow } from '@/lib/gi/metrics';
-import { FAST_PRESS, RoundBar, useTimers, type GameProps } from './shared';
+import { FAST_PRESS, RoundBar, useArenaWidth, useTimers, type GameProps } from './shared';
+import { GoalFront, PitchInk, Ripple } from './art';
 
 /** How long a lit pad waits for a tap before the round counts as missed. */
 const WINDOW_MS = 1500;
@@ -24,6 +26,7 @@ export function ReactionGame({ mode, seed, onDone }: GameProps<ReactionMetrics>)
   const { colors, spacing, radii } = theme;
   const t = useT();
   const { later, cancel } = useTimers();
+  const { width, onLayout } = useArenaWidth();
 
   const plan = useMemo(() => reactionPlan(seededRng(seed), mode), [seed, mode]);
   const [index, setIndex] = useState(0);
@@ -83,7 +86,14 @@ export function ReactionGame({ mode, seed, onDone }: GameProps<ReactionMetrics>)
     record({ rt, correct: pad === target });
   };
 
-  const size = 132;
+  // The goal: posts, bar and net; the four pads are its four corners.
+  const post = 10;
+  const pad = 14;
+  const gw = Math.max(200, width - 2 * pad - 6); // 6: the 3-point flash border
+  const gh = Math.round(gw * 0.62);
+  const cellW = (gw - 2 * post) / 2;
+  const cellH = (gh - post) / 2;
+  const target = Math.min(88, Math.round(cellH * 0.78));
 
   return (
     <View style={{ gap: spacing.xl }}>
@@ -92,40 +102,85 @@ export function ReactionGame({ mode, seed, onDone }: GameProps<ReactionMetrics>)
         total={plan.length}
         label={t(mode === 'practice' ? 'intelligence.practice' : 'intelligence.scoredLabel')}
       />
+      <Text variant="subheading" style={{ textAlign: 'center' }}>
+        {t('intelligence.tests.reaction.tapCorner')}
+      </Text>
       <View
+        onLayout={onLayout}
+        testID="reaction-goal"
         style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: spacing.lg,
-          paddingVertical: spacing.xl,
+          width: '100%',
+          paddingTop: pad,
+          paddingHorizontal: pad,
+          paddingBottom: pad * 2,
           borderRadius: radii.xl,
-          backgroundColor:
-            flash === 'miss' ? colors.dangerSoft : flash === 'hit' ? colors.successSoft : 'transparent',
+          overflow: 'hidden',
+          backgroundColor: PitchInk.grass,
+          borderWidth: 3,
+          borderColor: flash === 'miss' ? colors.danger : flash === 'hit' ? colors.success : 'transparent',
         }}
       >
-        {[0, 1, 2, 3].map((pad) => {
-          const on = lit === pad;
-          return (
-            <Pressable
-              {...FAST_PRESS}
-              key={pad}
-              onPressIn={() => press(pad)}
-              accessibilityRole="button"
-              accessibilityLabel={`pad ${pad + 1}`}
-              testID={`reaction-pad-${pad}`}
-              style={{
-                width: size,
-                height: size,
-                borderRadius: radii.xl,
-                backgroundColor: on ? colors.play.azure : colors.surfaceAlt,
-                borderWidth: 2,
-                borderColor: on ? colors.play.cyan : colors.border,
-                transform: [{ scale: on ? 1.04 : 1 }],
-              }}
-            />
-          );
-        })}
+        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: pad * 2 + 4, backgroundColor: PitchInk.grassDark }} />
+        <View style={{ width: gw, height: gh }}>
+          <GoalFront width={gw} height={gh} post={post} />
+          {[0, 1, 2, 3].map((padIndex) => {
+            const on = lit === padIndex;
+            const col = padIndex % 2;
+            const row = padIndex < 2 ? 0 : 1;
+            return (
+              <Pressable
+                {...FAST_PRESS}
+                key={padIndex}
+                onPressIn={() => press(padIndex)}
+                accessibilityRole="button"
+                accessibilityLabel={`pad ${padIndex + 1}`}
+                testID={`reaction-pad-${padIndex}`}
+                style={{
+                  position: 'absolute',
+                  left: post + col * cellW,
+                  top: post + row * cellH,
+                  width: cellW,
+                  height: cellH,
+                  alignItems: col === 0 ? 'flex-start' : 'flex-end',
+                  justifyContent: row === 0 ? 'flex-start' : 'flex-end',
+                  padding: 10,
+                }}
+              >
+                <View style={{ width: target, height: target, alignItems: 'center', justifyContent: 'center' }}>
+                  {on ? <Ripple key={index} color={colors.play.cyan} size={target} loop period={700} width={4} /> : null}
+                  <View
+                    style={{
+                      width: target,
+                      height: target,
+                      borderRadius: target / 2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 3,
+                      borderColor: on ? '#FFFFFF' : PitchInk.chalkSoft,
+                      backgroundColor: on ? colors.play.azure : 'rgba(255,255,255,0.08)',
+                      transform: [{ scale: on ? 1.06 : 1 }],
+                      shadowColor: colors.play.cyan,
+                      shadowOpacity: on ? 0.9 : 0,
+                      shadowRadius: on ? 18 : 0,
+                      shadowOffset: { width: 0, height: 0 },
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: target * 0.5,
+                        height: target * 0.5,
+                        borderRadius: target * 0.25,
+                        borderWidth: 3,
+                        borderColor: on ? colors.play.cyan : PitchInk.chalkSoft,
+                        backgroundColor: on ? '#FFFFFF' : 'transparent',
+                      }}
+                    />
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -8,10 +10,16 @@ import { useT } from '@/i18n';
 import { now, seededRng } from '@/lib/gi/random';
 import { goNoGoPlan } from '@/lib/gi/trials';
 import { goNoGoMetrics, type GoNoGoMetrics, type GoNoGoRow } from '@/lib/gi/metrics';
+import { alpha } from '@/theme/tokens';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { NATIVE_DRIVER } from '@/lib/motion';
 import { FAST_PRESS, RoundBar, useTimers, type GameProps } from './shared';
+import { Football, StopSign, useSvgId } from './art';
 
 /** A ball stays up this long; not tapping by then is a decision. */
 const WINDOW_MS = 800;
+const STIM = 128;
+const RING = 176;
 
 /**
  * Go / Stop — response inhibition.
@@ -24,7 +32,12 @@ export function GoNoGoGame({ mode, seed, onDone }: GameProps<GoNoGoMetrics>) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
+  const reduced = useReducedMotion();
   const { later, cancel } = useTimers();
+  /* Decoration only: the ring that shrinks over the window, and the pop-in.
+     Neither decides anything — the window is still the timeout below. */
+  const ring = useRef(new Animated.Value(1)).current;
+  const pop = useRef(new Animated.Value(1)).current;
 
   const plan = useMemo(() => goNoGoPlan(seededRng(seed), mode), [seed, mode]);
   const [index, setIndex] = useState(0);
@@ -71,6 +84,23 @@ export function GoNoGoGame({ mode, seed, onDone }: GameProps<GoNoGoMetrics>) {
       shownAt.current = now();
       setBall(plan[index].go ? 'go' : 'stop');
       windowTimer.current = later(() => finishTrial(null), WINDOW_MS);
+      ring.stopAnimation();
+      ring.setValue(1);
+      if (!reduced) {
+        Animated.timing(ring, {
+          toValue: 0,
+          duration: WINDOW_MS,
+          easing: Easing.linear,
+          useNativeDriver: NATIVE_DRIVER,
+        }).start();
+        pop.setValue(0.75);
+        Animated.timing(pop, {
+          toValue: 1,
+          duration: 110,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: NATIVE_DRIVER,
+        }).start();
+      }
     }, plan[index].gap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
@@ -96,40 +126,85 @@ export function GoNoGoGame({ mode, seed, onDone }: GameProps<GoNoGoMetrics>) {
         style={{
           height: 320,
           borderRadius: radii.xl,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor:
-            flash === 'bad' ? colors.dangerSoft : flash === 'good' ? colors.successSoft : colors.surfaceAlt,
+          overflow: 'hidden',
+          backgroundColor: colors.surfaceAlt,
           borderWidth: 1,
           borderColor: colors.border,
         }}
       >
-        {ball ? (
+        {/* Stadium light: a glow from above, two floodlights in the corners. */}
+        <LinearGradient
+          colors={[alpha(colors.play.mint, 0.22), alpha(colors.play.cyan, 0.06), 'transparent']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+        <Floodlights glow={colors.scheme === 'dark' ? 0.16 : 0.75} />
+        {flash ? (
           <View
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: 60,
-              backgroundColor: ball === 'go' ? colors.play.mint : colors.danger,
-              borderWidth: 6,
-              borderColor: ball === 'go' ? '#0A9E77' : '#B3261E',
-            }}
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: flash === 'bad' ? colors.dangerSoft : colors.successSoft }]}
           />
         ) : null}
+        <View pointerEvents="none" style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          {ball ? (
+            <>
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  width: RING,
+                  height: RING,
+                  borderRadius: RING / 2,
+                  borderWidth: 5,
+                  borderColor: ball === 'go' ? colors.play.mint : colors.danger,
+                  opacity: ring.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.9] }),
+                  transform: [{ scale: ring.interpolate({ inputRange: [0, 1], outputRange: [STIM / RING, 1] }) }],
+                }}
+              />
+              <Animated.View style={{ transform: [{ scale: pop }] }} testID={`gonogo-${ball}`}>
+                {ball === 'go' ? (
+                  <Football size={STIM} fill={colors.play.mint} patch="#0A7F5F" stroke="#0A7F5F" />
+                ) : (
+                  <StopSign size={STIM} color={colors.danger} label={t('intelligence.tests.goNoGo.stopSign')} />
+                )}
+              </Animated.View>
+            </>
+          ) : (
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.textMuted, opacity: 0.5 }} />
+          )}
+        </View>
       </Pressable>
       <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.xl }}>
-        <Legend color={colors.play.mint} label={t('intelligence.tests.goNoGo.go')} />
-        <Legend color={colors.danger} label={t('intelligence.tests.goNoGo.stop')} />
+        <Legend icon={<Football size={22} fill={colors.play.mint} patch="#0A7F5F" stroke="#0A7F5F" />} label={t('intelligence.tests.goNoGo.go')} />
+        <Legend icon={<StopSign size={24} color={colors.danger} label="" />} label={t('intelligence.tests.goNoGo.stop')} />
       </View>
     </View>
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
+/** Two soft floodlights in the top corners — radial, so they fade instead of ending. */
+function Floodlights({ glow }: { glow: number }) {
+  const id = useSvgId('flood');
+  return (
+    <Svg width="100%" height={200} style={{ position: 'absolute', top: 0, left: 0 }} pointerEvents="none">
+      <Defs>
+        <RadialGradient id={id} cx="50%" cy="50%" r="50%">
+          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={glow} />
+          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Circle cx="6%" cy={0} r={120} fill={`url(#${id})`} />
+      <Circle cx="94%" cy={0} r={120} fill={`url(#${id})`} />
+    </Svg>
+  );
+}
+
+function Legend({ icon, label }: { icon: React.ReactNode; label: string }) {
   const { spacing } = useTheme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-      <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: color }} />
+      {icon}
       <Text variant="caption" tone="secondary">
         {label}
       </Text>

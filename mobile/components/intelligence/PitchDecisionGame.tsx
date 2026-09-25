@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Footprints, Goal } from 'lucide-react-native';
+import Svg, { Circle, Line } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -12,10 +13,14 @@ import type { GiScenario, GiScenarioEntity } from '@/lib/api.intelligence';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { FAST_PRESS, BigChoice, RoundBar, useArenaWidth, useTimers } from './shared';
 import { Pitch, PITCH_ASPECT } from './Pitch';
+import { Football, Jersey, Ripple } from './art';
 
 const PLAY_MS = 1500;
 const CHOOSE_MS = 3000;
-const DOT = 26;
+const DOT = 32;
+/** Shirt numbers for teammates, in layout order. Decoration — the id is the answer. */
+const MATE_NUMBERS = [7, 9, 11, 8, 6];
+const token = { position: 'absolute' as const, width: DOT, height: DOT };
 
 type Phase = 'wait' | 'play' | 'choose' | 'chosen';
 
@@ -148,8 +153,12 @@ export function PitchDecisionGame({ mode, scenarios, onDone }: Props) {
   });
 
   const canChoose = phase === 'choose';
+  const frozen = phase === 'choose' || phase === 'chosen';
   const practiceRight =
     mode === 'practice' && phase === 'chosen' && chosen === PRACTICE_ANSWER[scenario?.id ?? ''];
+  const px = (x: number) => x * width;
+  const py = (y: number) => y * h;
+  const everyone: GiScenarioEntity[] = lay ? [lay.you, ...lay.mates, ...lay.opps, lay.keeper] : [];
 
   return (
     <View style={{ gap: spacing.md }}>
@@ -172,14 +181,83 @@ export function PitchDecisionGame({ mode, scenarios, onDone }: Props) {
       <View onLayout={onLayout} style={{ width: '100%' }} testID="pitch-decision">
         {lay ? (
           <Pitch width={width}>
+            {/* Where everyone ran from: faint trails that fade in with the run. */}
+            <Animated.View
+              pointerEvents="none"
+              style={{ position: 'absolute', left: 0, top: 0, opacity: phase === 'wait' ? 0 : progress }}
+            >
+              <Svg width={width} height={h}>
+                {everyone.map((e, i) => (
+                  <React.Fragment key={i}>
+                    <Line
+                      x1={px(e.x)}
+                      y1={py(e.y)}
+                      x2={px(e.tx)}
+                      y2={py(e.ty)}
+                      stroke="rgba(255,255,255,0.45)"
+                      strokeWidth={3}
+                      strokeDasharray="1 7"
+                      strokeLinecap="round"
+                    />
+                    <Circle cx={px(e.x)} cy={py(e.y)} r={3} fill="rgba(255,255,255,0.35)" />
+                  </React.Fragment>
+                ))}
+              </Svg>
+            </Animated.View>
+
+            {/* When it freezes, a lane from you to every teammate. */}
+            {frozen ? (
+              <Svg width={width} height={h} style={{ position: 'absolute' }} pointerEvents="none">
+                {lay.mates.map((m) => {
+                  const picked = chosen === m.id;
+                  return (
+                    <Line
+                      key={m.id}
+                      x1={px(lay.you.tx)}
+                      y1={py(lay.you.ty)}
+                      x2={px(m.tx)}
+                      y2={py(m.ty)}
+                      stroke={picked ? colors.play.lime : 'rgba(255,255,255,0.85)'}
+                      strokeWidth={picked ? 4 : 2.5}
+                      strokeDasharray="8 7"
+                      strokeLinecap="round"
+                      opacity={phase === 'chosen' && !picked ? 0.35 : 1}
+                    />
+                  );
+                })}
+              </Svg>
+            ) : null}
+
             {lay.opps.map((o, i) => (
-              <Animated.View key={`o${i}`} pointerEvents="none" style={[dot(colors.danger, '#7A1010'), at(o)]} />
+              <Animated.View key={`o${i}`} pointerEvents="none" style={[token, at(o)]}>
+                <Jersey size={DOT} fill={colors.danger} />
+              </Animated.View>
             ))}
-            <Animated.View pointerEvents="none" style={[dot('#FFC83D', '#8A6A00'), at(lay.keeper)]} />
-            {lay.mates.map((m) => {
+            <Animated.View pointerEvents="none" style={[token, at(lay.keeper)]}>
+              <Jersey size={DOT} fill={colors.play.amber} number={1} numberColor="#14161A" />
+            </Animated.View>
+            {lay.mates.map((m, i) => {
               const picked = chosen === m.id;
               return (
-                <Animated.View key={m.id} style={[{ position: 'absolute' }, at(m)]}>
+                <Animated.View key={m.id} style={[token, at(m)]}>
+                  {canChoose ? (
+                    <Ripple color="#FFFFFF" size={DOT + 12} loop period={1000} style={{ left: -6, top: -6 }} />
+                  ) : null}
+                  {canChoose || picked ? (
+                    <View
+                      pointerEvents="none"
+                      style={{
+                        position: 'absolute',
+                        left: -6,
+                        top: -6,
+                        width: DOT + 12,
+                        height: DOT + 12,
+                        borderRadius: (DOT + 12) / 2,
+                        borderWidth: 3,
+                        borderColor: picked ? colors.play.lime : '#FFFFFF',
+                      }}
+                    />
+                  ) : null}
                   <Pressable
                     {...FAST_PRESS}
                     onPressIn={() => choose(m.id ?? null)}
@@ -188,30 +266,53 @@ export function PitchDecisionGame({ mode, scenarios, onDone }: Props) {
                     accessibilityRole="button"
                     accessibilityLabel={t('intelligence.tests.pitchDecision.pass')}
                     testID={`mate-${m.id}`}
-                    style={[
-                      dot(colors.play.azure, '#0B3E8F'),
-                      { position: 'relative' },
-                      canChoose ? { borderColor: '#FFFFFF' } : null,
-                      picked ? { borderColor: colors.play.lime, transform: [{ scale: 1.2 }] } : null,
-                    ]}
-                  />
+                    style={{
+                      width: DOT,
+                      height: DOT,
+                      transform: picked ? [{ scale: 1.2 }] : undefined,
+                    }}
+                  >
+                    <Jersey size={DOT} fill={colors.play.azure} number={MATE_NUMBERS[i % MATE_NUMBERS.length]} />
+                  </Pressable>
                 </Animated.View>
               );
             })}
-            <Animated.View pointerEvents="none" style={[dot(colors.play.flame, '#FFFFFF'), at(lay.you)]}>
+            <Animated.View pointerEvents="none" style={[token, at(lay.you)]}>
+              <Jersey size={DOT} fill={colors.play.flame} number={10} />
+              {/* The ball, glowing at your feet — you are the one on it. */}
+              <View style={{ position: 'absolute', right: -9, bottom: -7, width: 16, height: 16 }}>
+                <View
+                  style={{
+                    position: 'absolute',
+                    left: -5,
+                    top: -5,
+                    width: 26,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: 'rgba(255,255,255,0.35)',
+                    shadowColor: '#FFFFFF',
+                    shadowOpacity: 0.9,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 0 },
+                  }}
+                />
+                <Football size={16} />
+              </View>
               <View
                 style={{
                   position: 'absolute',
-                  right: -7,
-                  bottom: -5,
-                  width: 12,
-                  height: 12,
-                  borderRadius: 6,
-                  backgroundColor: '#FFFFFF',
-                  borderWidth: 2,
-                  borderColor: '#14161A',
+                  top: DOT + 2,
+                  left: -14,
+                  width: DOT + 28,
+                  alignItems: 'center',
                 }}
-              />
+              >
+                <View style={{ paddingHorizontal: 5, borderRadius: 4, backgroundColor: colors.play.flame }}>
+                  <Text variant="captionStrong" color="#FFFFFF" style={{ fontSize: 10, lineHeight: 14 }}>
+                    {t('intelligence.tests.pitchDecision.you')}
+                  </Text>
+                </View>
+              </View>
             </Animated.View>
           </Pitch>
         ) : null}
@@ -247,14 +348,3 @@ export function PitchDecisionGame({ mode, scenarios, onDone }: Props) {
   );
 }
 
-function dot(fill: string, border: string) {
-  return {
-    position: 'absolute' as const,
-    width: DOT,
-    height: DOT,
-    borderRadius: DOT / 2,
-    backgroundColor: fill,
-    borderWidth: 3,
-    borderColor: border,
-  };
-}

@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { AppError } from './errors';
+import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import type {
   ActivityResult,
   AchievementKey,
@@ -200,25 +201,27 @@ export async function getScoreHistory(athleteId: string) {
 }
 
 // ── Feed ─────────────────────────────────────────────────────────────────────
-async function signPostMedia<T extends { media: PostMedia[] }>(rows: T[]): Promise<T[]> {
+export async function signPostMedia<T extends { media: PostMedia[] }>(rows: T[]): Promise<T[]> {
   const paths = Array.from(
     new Set(
       rows
         .flatMap((row) => row.media ?? [])
         .flatMap((item) => [item.url, item.thumbnail])
-        .filter((value): value is string => !!value && !value.startsWith('http')),
+        .filter((value): value is string => !!value && !isAbsoluteMediaUrl(value)),
     ),
   );
   if (paths.length === 0) return rows;
   const { data, error } = await supabase.storage.from('posts').createSignedUrls(paths, 3600);
-  if (error || !data) return rows.map((row) => ({ ...row, media: [] }));
+  /* Anything but a list back (a proxy error page, an old storage server) is a
+     signing failure, and degrades to no media rather than a broken feed. */
+  if (error || !Array.isArray(data)) return rows.map((row) => ({ ...row, media: [] }));
   const signed = new Map(data.map((item) => [item.path, item.signedUrl]));
   return rows.map((row) => ({
     ...row,
     media: (row.media ?? []).flatMap((item) => {
-      const url = item.url.startsWith('http') ? item.url : signed.get(item.url);
+      const url = isAbsoluteMediaUrl(item.url) ? item.url : signed.get(item.url);
       if (!url) return [];
-      const thumbnail = !item.thumbnail || item.thumbnail.startsWith('http')
+      const thumbnail = !item.thumbnail || isAbsoluteMediaUrl(item.thumbnail)
         ? item.thumbnail
         : signed.get(item.thumbnail);
       return [{ ...item, url, thumbnail }];
@@ -973,7 +976,7 @@ export async function challengeLeaderboard(
   const paths = Array.from(new Set(
     rows
       .flatMap((row) => [row.media_url, row.thumbnail_url])
-      .filter((value): value is string => !!value && !value.startsWith('http')),
+      .filter((value): value is string => !!value && !isAbsoluteMediaUrl(value)),
   ));
   if (paths.length === 0) return rows;
   const { data: signed, error: signError } = await supabase.storage
@@ -985,10 +988,10 @@ export async function challengeLeaderboard(
   const urls = new Map(signed.map((item) => [item.path, item.signedUrl]));
   return rows.map((row) => ({
     ...row,
-    media_url: row.media_url?.startsWith('http')
+    media_url: isAbsoluteMediaUrl(row.media_url)
       ? row.media_url
       : (row.media_url ? urls.get(row.media_url) ?? null : null),
-    thumbnail_url: row.thumbnail_url?.startsWith('http')
+    thumbnail_url: isAbsoluteMediaUrl(row.thumbnail_url)
       ? row.thumbnail_url
       : (row.thumbnail_url ? urls.get(row.thumbnail_url) ?? null : null),
   }));
@@ -1082,7 +1085,7 @@ export async function myClips(): Promise<MyClip[]> {
   const paths = Array.from(new Set(
     rows
       .flatMap((row) => [row.storage_url, row.thumbnail_url])
-      .filter((value): value is string => !!value && !value.startsWith('http')),
+      .filter((value): value is string => !!value && !isAbsoluteMediaUrl(value)),
   ));
   if (paths.length === 0) return rows;
   const { data: signed, error: signError } = await supabase.storage
@@ -1091,14 +1094,14 @@ export async function myClips(): Promise<MyClip[]> {
   if (signError || !signed) return [];
   const urls = new Map(signed.map((item) => [item.path, item.signedUrl]));
   return rows.flatMap((row) => {
-    const storageUrl = row.storage_url.startsWith('http')
+    const storageUrl = isAbsoluteMediaUrl(row.storage_url)
       ? row.storage_url
       : urls.get(row.storage_url);
     if (!storageUrl) return [];
     return [{
       ...row,
       storage_url: storageUrl,
-      thumbnail_url: row.thumbnail_url?.startsWith('http')
+      thumbnail_url: isAbsoluteMediaUrl(row.thumbnail_url)
         ? row.thumbnail_url
         : (row.thumbnail_url ? urls.get(row.thumbnail_url) ?? null : null),
     }];

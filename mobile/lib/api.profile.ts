@@ -3,6 +3,7 @@ import { File as FsFile } from 'expo-file-system';
 
 import { supabase, Buckets, publicUrl } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
+import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { getUserPosts } from '@/lib/api';
 import type { UserPost } from '@/types/models';
 
@@ -122,7 +123,7 @@ export async function resolveMediaUrls(
 
   for (const path of paths) {
     if (!path) continue;
-    if (path.startsWith('http')) resolved[path] = path;
+    if (isAbsoluteMediaUrl(path)) resolved[path] = path;
     else if (!toSign.includes(path)) toSign.push(path);
   }
   if (toSign.length === 0) return resolved;
@@ -132,7 +133,7 @@ export async function resolveMediaUrls(
     .createSignedUrls(toSign, expiresInSeconds);
 
   // A signing failure must degrade to "no thumbnail", never to a broken screen.
-  if (error || !data) return resolved;
+  if (error || !Array.isArray(data)) return resolved;
 
   for (const row of data) {
     if (row.signedUrl && row.path) resolved[row.path] = row.signedUrl;

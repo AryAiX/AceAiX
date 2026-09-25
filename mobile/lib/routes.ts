@@ -28,6 +28,13 @@ export const Routes = {
   achievements: '/achievements' as const,
   editProfile: '/edit-profile' as const,
 
+  /** Full-screen story viewer; pass `userId` and the rail's `queue` as params. */
+  story: '/stories/[userId]' as const,
+  storyOf: (userId: string) => `/stories/${userId}` as const,
+  newStory: '/stories/new' as const,
+  /** Full-screen reels; pass `start` (a post id) as a param to open at it. */
+  reels: '/reels' as const,
+
   profile: (userId: string) => `/u/${userId}` as const,
   post: (postId: string) => `/post/${postId}` as const,
   chat: (conversationId: string) => `/chat/${conversationId}` as const,

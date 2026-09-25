@@ -1904,6 +1904,108 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── stories and reels ──'; end $$;
+
+/*
+ * 0925/01. A story is a 24-hour post, so it carries every gate a post does:
+ * a hidden minor's story reaches nobody, audience and blocks are honoured,
+ * and the only way in is create_story, which checks what a policy cannot.
+ */
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  v_other uuid := '44444444-4444-4444-4444-444444444444';
+  v_story uuid;
+  v_minor_story uuid;
+  v_err   text;
+  v_hint  text;
+  v_disc  boolean;
+  v_rows  integer;
+begin
+  perform tests.as_user(v_adult);
+  v_story := public.create_story('card', null, null,
+    '{"text":"New PB","background":"warm","sticker":"pb","stat":"2:09","extra":"dropped"}', 'public');
+  perform tests.ok(v_story is not null, 'an athlete can post a card story');
+  perform tests.ok(
+    (select not (card ? 'extra') from public.stories where id = v_story),
+    'only the card keys the app renders are kept');
+
+  v_hint := null;
+  begin
+    perform public.create_story('photo', v_other::text || '/x.jpg', null, '{}', 'public');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'story_media_missing',
+    'a photo story must point at the author''s own upload');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.stories (author_id, media_type, card, audience)
+    values (v_adult, 'card', '{"text":"sneaky"}', 'public');
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'stories cannot be written around create_story');
+
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_adult)) = 1,
+    'a public story is visible to another account');
+  perform public.mark_story_viewed(v_story);
+  perform tests.ok(
+    (select seen from public.user_stories(v_adult)) = true,
+    'and viewing it is remembered');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select view_count from public.user_stories(v_adult)) = 1,
+    'the author sees how many people watched');
+
+  /* A minor whose guardian has not approved discovery reaches nobody. */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  perform tests.as_user(v_minor);
+  v_minor_story := public.create_story('card', null, null, '{"text":"Match day","background":"hero"}', 'public');
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_minor)) = 0,
+    'a hidden minor''s story is visible to no one else');
+  v_err := null;
+  begin
+    set local role authenticated;
+    select count(*) into v_rows from public.stories where author_id = v_minor;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_coach);
+  perform tests.ok(coalesce(v_rows, 0) = 0, 'not even by reading the table directly');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* Blocking hides stories both ways. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_other)
+  on conflict do nothing;
+  perform tests.as_user(v_other);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_adult)) = 0,
+    'someone the author blocked does not see their stories');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_other;
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from public.story_rail(30) where is_self) = 1,
+    'my own stories lead the rail');
+  perform public.delete_story(v_story);
+  perform tests.ok(
+    not exists (select 1 from public.stories where id = v_story),
+    'and I can take one down');
+
+  perform tests.ok((select count(*) from public.get_reels(12, null)) >= 0, 'get_reels executes');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*
@@ -1993,7 +2095,9 @@ begin
       'viewer_can_see_public_media',
       /* Named in follows INSERT RLS. It must see blocks in either direction,
          including rows the follower cannot select directly. */
-      'users_are_blocked'
+      'users_are_blocked',
+      /* 0925/01. Named in the stories read policy. */
+      'viewer_can_see_story'
     );
 
   perform tests.ok(

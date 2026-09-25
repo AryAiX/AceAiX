@@ -46,6 +46,8 @@ export function PostActions({
   const reduced = useReducedMotion();
 
   const pop = useRef(new Animated.Value(1)).current;
+  /* A ring that spreads out from the heart as it fills — the "pop". */
+  const ping = useRef(new Animated.Value(0)).current;
   const wasLiked = useRef(liked);
   const fill = useRef(new Animated.Value(saved ? 1 : 0)).current;
   const wasSaved = useRef(saved);
@@ -60,9 +62,19 @@ export function PostActions({
     }
 
     if (liked) {
-      Animated.sequence([
-        Animated.spring(pop, { toValue: 1.3, useNativeDriver: NATIVE_DRIVER, speed: 60, bounciness: 12 }),
-        Animated.spring(pop, { toValue: 1, useNativeDriver: NATIVE_DRIVER, speed: 30, bounciness: 8 }),
+      ping.setValue(0);
+      Animated.parallel([
+        Animated.sequence([
+          Animated.spring(pop, { toValue: 0.72, useNativeDriver: NATIVE_DRIVER, speed: 80, bounciness: 0 }),
+          Animated.spring(pop, { toValue: 1.35, useNativeDriver: NATIVE_DRIVER, speed: 40, bounciness: 14 }),
+          Animated.spring(pop, { toValue: 1, useNativeDriver: NATIVE_DRIVER, speed: 24, bounciness: 12 }),
+        ]),
+        Animated.timing(ping, {
+          toValue: 1,
+          duration: 520,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: NATIVE_DRIVER,
+        }),
       ]).start();
       return;
     }
@@ -83,7 +95,7 @@ export function PostActions({
         useNativeDriver: NATIVE_DRIVER,
       }),
     ]).start();
-  }, [liked, pop, reduced, theme.duration.fast, theme.duration.base]);
+  }, [liked, pop, ping, reduced, theme.duration.fast, theme.duration.base]);
 
   useEffect(() => {
     if (saved === wasSaved.current) return;
@@ -127,7 +139,28 @@ export function PostActions({
         selected={liked}
         count={likeCount}
         icon={
-          <Animated.View style={{ transform: [{ scale: pop }] }}>
+          <Animated.View
+            style={{
+              width: ICON,
+              height: ICON,
+              alignItems: 'center',
+              justifyContent: 'center',
+              transform: [{ scale: pop }],
+            }}
+          >
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                width: ICON + 8,
+                height: ICON + 8,
+                borderRadius: (ICON + 8) / 2,
+                borderWidth: 2,
+                borderColor: colors.primary,
+                opacity: ping.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.7, 0] }),
+                transform: [{ scale: ping.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.9] }) }],
+              }}
+            />
             <Heart
               size={ICON}
               color={liked ? colors.primary : colors.textSecondary}

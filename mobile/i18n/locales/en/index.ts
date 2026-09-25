@@ -19,6 +19,8 @@ import { safety } from './safety';
 import { sports } from './sports';
 import { errors } from './errors';
 import { format } from './format';
+import { stories } from './stories';
+import { reels } from './reels';
 import { countries } from './countries';
 
 /**
@@ -50,6 +52,8 @@ export const en = {
   errors,
   format,
   countries,
+  stories,
+  reels,
 };
 
 export type Translations = typeof en;

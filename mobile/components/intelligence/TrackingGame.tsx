@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Pressable, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import Svg, { Circle, Line, Rect } from 'react-native-svg';
+import { Check, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -16,6 +18,7 @@ import {
 } from '@/lib/gi/trials';
 import { trackingMetrics, type TrackingMetrics, type TrackingRow } from '@/lib/gi/metrics';
 import { FAST_PRESS, RoundBar, useArenaWidth, useTimers, type GameProps } from './shared';
+import { Jersey, PitchInk, Ripple } from './art';
 
 const RADIUS = 0.06;
 const SHOW_MS = 2000;
@@ -139,12 +142,15 @@ export function TrackingGame({ mode, seed, onDone }: GameProps<TrackingMetrics>)
   };
 
   const ballSize = RADIUS * 2 * size;
+  const found = picked.filter((p) => targets.includes(p)).length;
   const caption =
     phase === 'show'
       ? t('intelligence.tests.tracking.watch')
       : phase === 'move'
         ? t('intelligence.tests.tracking.follow')
-        : t('intelligence.tests.tracking.pick', { found: picked.length, count: targets.length });
+        : phase === 'reveal'
+          ? t('intelligence.tests.tracking.found', { found, count: targets.length })
+          : t('intelligence.tests.tracking.pick', { found: picked.length, count: targets.length });
 
   return (
     <View style={{ gap: spacing.lg }}>
@@ -156,7 +162,11 @@ export function TrackingGame({ mode, seed, onDone }: GameProps<TrackingMetrics>)
           { n: level },
         )}`}
       />
-      <Text variant="subheading" style={{ textAlign: 'center' }}>
+      <Text
+        variant="subheading"
+        style={{ textAlign: 'center' }}
+        color={phase === 'reveal' ? (found === targets.length ? colors.success : colors.text) : undefined}
+      >
         {caption}
       </Text>
       <View
@@ -166,24 +176,50 @@ export function TrackingGame({ mode, seed, onDone }: GameProps<TrackingMetrics>)
           width: '100%',
           aspectRatio: 1,
           borderRadius: radii.xl,
-          backgroundColor: colors.surfaceAlt,
-          borderWidth: 1,
-          borderColor: colors.border,
+          backgroundColor: PitchInk.grass,
           overflow: 'hidden',
         }}
       >
-        {xy.map((pos, i) => {
+        {/* Mown stripes, the halfway line and the centre circle. */}
+        <Svg width={size} height={size} style={{ position: 'absolute' }} pointerEvents="none">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Rect key={i} x={(i * 2 * size) / 8} y={0} width={size / 8} height={size} fill="rgba(255,255,255,0.045)" />
+          ))}
+          <Rect x={3} y={3} width={size - 6} height={size - 6} stroke={PitchInk.chalkSoft} strokeWidth={2} fill="none" rx={radii.xl - 4} />
+          <Line x1={0} y1={size / 2} x2={size} y2={size / 2} stroke={PitchInk.chalkSoft} strokeWidth={2} />
+          <Circle cx={size / 2} cy={size / 2} r={size * 0.17} stroke={PitchInk.chalkSoft} strokeWidth={2} fill="none" />
+          <Circle cx={size / 2} cy={size / 2} r={4} fill={PitchInk.chalkSoft} />
+        </Svg>
+        {/* On reveal the targets are drawn last, so a missed one is never hidden under another. */}
+        {(phase === 'reveal'
+          ? [...xy.keys()].sort((a, b) => Number(targets.includes(a)) - Number(targets.includes(b)))
+          : [...xy.keys()]
+        ).map((i) => {
+          const pos = xy[i];
           const isTarget = targets.includes(i);
           const isPicked = picked.includes(i);
+          /* The balls are identical on purpose — no numbers — so the only way
+             to find the targets again is to have followed them. */
           let fill: string = colors.play.azure;
           let ring = 'transparent';
-          if (phase === 'show' && isTarget) fill = colors.play.amber;
-          if (phase === 'pick' && isPicked) ring = colors.text;
-          if (phase === 'reveal') {
-            if (isTarget) ring = colors.success;
-            if (isPicked && !isTarget) ring = colors.danger;
-            if (isTarget) fill = colors.play.amber;
+          if (phase === 'show' && isTarget) {
+            fill = colors.play.amber;
+            ring = colors.play.amber;
           }
+          if (phase === 'pick' && isPicked) ring = '#FFFFFF';
+          if (phase === 'reveal') {
+            if (isTarget) {
+              fill = colors.play.amber;
+              ring = isPicked ? colors.success : '#FFFFFF';
+            } else if (isPicked) ring = colors.danger;
+          }
+          const mark =
+            (phase === 'pick' && isPicked) || (phase === 'reveal' && isPicked)
+              ? phase === 'reveal' && !isTarget
+                ? 'wrong'
+                : 'right'
+              : null;
+          const halo = ballSize + 10;
           return (
             <Animated.View
               key={i}
@@ -194,6 +230,23 @@ export function TrackingGame({ mode, seed, onDone }: GameProps<TrackingMetrics>)
                 transform: pos.getTranslateTransform(),
               }}
             >
+              {phase === 'show' && isTarget ? (
+                <Ripple color={colors.play.amber} size={ballSize} loop period={900} width={4} />
+              ) : null}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: -5,
+                  top: -5,
+                  width: halo,
+                  height: halo,
+                  borderRadius: halo / 2,
+                  borderWidth: 3,
+                  borderColor: ring,
+                  borderStyle: phase === 'reveal' && isTarget && !isPicked ? 'dashed' : 'solid',
+                }}
+              />
               <Pressable
                 {...FAST_PRESS}
                 onPressIn={() => tapBall(i)}
@@ -202,14 +255,35 @@ export function TrackingGame({ mode, seed, onDone }: GameProps<TrackingMetrics>)
                 accessibilityLabel={`ball ${i + 1}`}
                 testID={`tracking-ball-${i}`}
                 hitSlop={8}
-                style={{
-                  flex: 1,
-                  borderRadius: ballSize / 2,
-                  backgroundColor: fill,
-                  borderWidth: 4,
-                  borderColor: ring,
-                }}
-              />
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Jersey size={ballSize} fill={fill} />
+              </Pressable>
+              {mark ? (
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    right: -6,
+                    top: -6,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor:
+                      mark === 'wrong' ? colors.danger : phase === 'reveal' ? colors.success : colors.play.violet,
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                  }}
+                >
+                  {mark === 'wrong' ? (
+                    <X size={12} color="#FFFFFF" strokeWidth={4} />
+                  ) : (
+                    <Check size={12} color="#FFFFFF" strokeWidth={4} />
+                  )}
+                </View>
+              ) : null}
             </Animated.View>
           );
         })}

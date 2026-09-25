@@ -1,11 +1,10 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Heart, MoreHorizontal } from 'lucide-react-native';
+import { MoreHorizontal } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Tappable, Text, useToast } from '@/components/ui';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
@@ -13,9 +12,9 @@ import { toggleLike, toggleSave } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { displayName, metaLine, relativeTime } from '@/lib/format';
-import { NATIVE_DRIVER } from '@/lib/motion';
 import { shareContent } from '@/lib/share';
 import type { FeedPost } from '@/types/models';
+import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
 import { PostActions } from './PostActions';
 
@@ -65,12 +64,9 @@ function PostCardBase({
   const { colors, radii, spacing } = theme;
   const toast = useToast();
   const t = useT();
-  const reduced = useReducedMotion();
 
   const [showAll, setShowAll] = useState(expanded);
 
-  const burstScale = useRef(new Animated.Value(0)).current;
-  const burstOpacity = useRef(new Animated.Value(0)).current;
   const lastMediaTap = useRef(0);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,46 +129,9 @@ function PostCardBase({
     }
   }, [post.id, t, toast]);
 
-  const burst = useCallback(() => {
-    burstOpacity.setValue(0);
-    burstScale.setValue(reduced ? 1 : 0.4);
-
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(burstOpacity, {
-          toValue: 1,
-          duration: reduced ? theme.duration.fast : 130,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: NATIVE_DRIVER,
-        }),
-        reduced
-          ? Animated.delay(0)
-          : Animated.spring(burstScale, {
-              toValue: 1.1,
-              useNativeDriver: NATIVE_DRIVER,
-              speed: 18,
-              bounciness: 14,
-            }),
-      ]),
-      Animated.delay(reduced ? 240 : 150),
-      Animated.parallel([
-        Animated.timing(burstOpacity, {
-          toValue: 0,
-          duration: theme.duration.base,
-          easing: Easing.in(Easing.quad),
-          useNativeDriver: NATIVE_DRIVER,
-        }),
-        reduced
-          ? Animated.delay(0)
-          : Animated.timing(burstScale, {
-              toValue: 1.35,
-              duration: theme.duration.base,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: NATIVE_DRIVER,
-            }),
-      ]),
-    ]).start();
-  }, [burstOpacity, burstScale, reduced, theme.duration.fast, theme.duration.base]);
+  /* Each double tap bumps this and the burst plays once. */
+  const [bursts, setBursts] = useState(0);
+  const burst = useCallback(() => setBursts((n) => n + 1), []);
 
   const openPost = onOpenPost ? () => onOpenPost(post) : undefined;
 
@@ -203,6 +162,8 @@ function PostCardBase({
     }
 
     lastMediaTap.current = now;
+    /* On the single-post screen a lone tap has nowhere to go; the second one
+       of a pair still likes. */
     if (!onOpenPost) return;
     openTimer.current = setTimeout(() => {
       openTimer.current = null;
@@ -308,35 +269,11 @@ function PostCardBase({
           <MediaCarousel
             media={post.media}
             isActive={isActive}
-            onPress={openPost ? handleMediaTap : undefined}
+            onPress={handleMediaTap}
           />
           {/* Announced nowhere and touchable nowhere: the like it stands for is
               already announced by the heart button below. */}
-          {openPost ? (
-            <Animated.View
-              pointerEvents="none"
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: burstOpacity,
-                transform: [{ scale: burstScale }],
-              }}
-            >
-              <Heart
-                size={theme.hit.comfortable * 2}
-                color={colors.textOnBrand}
-                fill={colors.primary}
-                strokeWidth={1.4}
-              />
-            </Animated.View>
-          ) : null}
+          <HeartBurst trigger={bursts} size={theme.hit.comfortable * 2} />
         </View>
       ) : null}
 

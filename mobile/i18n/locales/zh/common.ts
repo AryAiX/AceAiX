@@ -116,7 +116,7 @@ export const common = {
   tabHome: '首页',
   tabDiscover: '发现',
   tabTrials: '试训',
-  tabYou: '我',
+  tabYou: '主页',
   tabCreate: '发布',
 
   // 法律文件

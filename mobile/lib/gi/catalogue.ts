@@ -50,3 +50,18 @@ export const GI_MIN_TESTS_FOR_OVERALL = 4;
 export function topPercent(percentile: number | null | undefined): number | null {
   return percentile == null ? null : Math.max(1, 100 - percentile);
 }
+
+/**
+ * The medal one game's score earns, shown the moment a round ends and on its
+ * hub tile. A reward for the round, not a band on the player: the thresholds
+ * are the product's, and nothing on the server reads them.
+ */
+export type GiMedal = 'keepGoing' | 'bronze' | 'silver' | 'gold';
+
+export function giMedal(score: number | null | undefined): GiMedal | null {
+  if (score == null || !Number.isFinite(score)) return null;
+  if (score >= 85) return 'gold';
+  if (score >= 70) return 'silver';
+  if (score >= 50) return 'bronze';
+  return 'keepGoing';
+}

@@ -26,6 +26,8 @@ const EN: Record<string, string> = {
     "You can't message this account. They may only accept messages from verified coaches and clubs.",
   'errors.rateLimited': 'You are doing that too quickly. Wait a moment and try again.',
   'errors.ageBelowMinimum': 'You need to be at least 13 years old to use AceAiX.',
+  'errors.storyCardText': 'A story card needs some text, up to 140 characters.',
+  'errors.storyMediaMissing': 'Upload the photo first, then share the story.',
   'errors.alreadyExists': 'That already exists.',
   'errors.missingReference': 'Something this depends on is missing. Try refreshing.',
   'errors.invalidDetails': 'Some of those details are not valid.',
@@ -51,6 +53,8 @@ function say(key: string): string {
 /** `raise … using hint = '…'` in SQL — the most specific signal we get. */
 const HINTS: Record<string, string> = {
   guardian_consent_required: 'errors.guardianConsentRequired',
+  story_card_text: 'errors.storyCardText',
+  story_media_missing: 'errors.storyMediaMissing',
   messaging_not_permitted: 'errors.messagingNotPermitted',
   rate_limited: 'errors.rateLimited',
   age_below_minimum: 'errors.ageBelowMinimum',

@@ -208,6 +208,16 @@ const TOUR = [
   /* Game Intelligence. Layla has a shared result, Marco reads it from her
      profile above, and Mina records the guardian gate. */
   '/intelligence',
+  /* Stories and reels (0925/01). One stop per author with a live story, so
+     the viewer opened from the rail has something to play. */
+  '/reels',
+  '/stories/new',
+  '/stories/a0000000-0000-4000-8000-000000000001',
+  '/stories/a0000000-0000-4000-8000-000000000002',
+  '/stories/a0000000-0000-4000-8000-000000000004',
+  '/stories/a0000000-0000-4000-8000-000000000005',
+  '/stories/b0000000-0000-4000-8000-000000000001',
+  '/stories/c0000000-0000-4000-8000-000000000001',
 ];
 
 /*
@@ -235,10 +245,11 @@ async function playGameIntelligence(page) {
   await page.getByTestId('gi-tile-pitch_decision').click();
   await page.waitForTimeout(1500);
   await page.getByTestId('gi-practice').click();
-  await page.waitForTimeout(2400);
+  await page.waitForTimeout(2400 + 2600);   // 3-2-1-GO, then the clip
   await page.getByTestId('mate-a').click({ timeout: 1500 }).catch(() => {});
   await page.waitForTimeout(1800);
   await page.getByTestId('gi-start-scored').click();
+  await page.waitForTimeout(2600);           // 3-2-1-GO
   for (let i = 0; i < 8; i += 1) {
     await page.waitForTimeout(2300);
     await page.getByTestId('mate-a').click({ timeout: 1000 }).catch(() => {});

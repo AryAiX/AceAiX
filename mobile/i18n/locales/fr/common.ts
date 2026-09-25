@@ -127,7 +127,7 @@ export const common = {
   tabHome: 'Accueil',
   tabDiscover: 'Découvrir',
   tabTrials: 'Essais',
-  tabYou: 'Toi',
+  tabYou: 'Profil',
   tabCreate: 'Créer',
 
   // Mentions légales

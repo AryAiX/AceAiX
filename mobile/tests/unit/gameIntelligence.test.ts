@@ -14,6 +14,7 @@ import {
 } from '@/lib/gi/trials';
 import {
   anticipationMetrics,
+  anticipationVerdict,
   decisionMetrics,
   flankerMetrics,
   goNoGoMetrics,
@@ -22,7 +23,7 @@ import {
   reactionMetrics,
   trackingMetrics,
 } from '@/lib/gi/metrics';
-import { GI_TESTS, topPercent } from '@/lib/gi/catalogue';
+import { GI_TESTS, giMedal, topPercent } from '@/lib/gi/catalogue';
 
 /**
  * Game Intelligence — the parts that decide what a player is shown and what is
@@ -186,5 +187,29 @@ describe('catalogue', () => {
     expect(topPercent(100)).toBe(1);
     expect(topPercent(71)).toBe(29);
     expect(topPercent(null)).toBeNull();
+  });
+});
+
+describe('result moments', () => {
+  it('awards a medal by score band', () => {
+    expect(giMedal(null)).toBeNull();
+    expect(giMedal(Number.NaN)).toBeNull();
+    expect(giMedal(0)).toBe('keepGoing');
+    expect(giMedal(49.9)).toBe('keepGoing');
+    expect(giMedal(50)).toBe('bronze');
+    expect(giMedal(69)).toBe('bronze');
+    expect(giMedal(70)).toBe('silver');
+    expect(giMedal(84)).toBe('silver');
+    expect(giMedal(85)).toBe('gold');
+    expect(giMedal(100)).toBe('gold');
+  });
+
+  it('calls a Read the Ball guess by how far off it was', () => {
+    expect(anticipationVerdict(null)).toBe('missed');
+    expect(anticipationVerdict(0)).toBe('spotOn');
+    expect(anticipationVerdict(0.05)).toBe('spotOn');
+    expect(anticipationVerdict(0.1)).toBe('close');
+    expect(anticipationVerdict(0.15)).toBe('close');
+    expect(anticipationVerdict(0.3)).toBe('missed');
   });
 });

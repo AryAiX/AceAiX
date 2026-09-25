@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, View, useWindowDimensions } from 'react-native';
+import { AppState, Dimensions, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   BatteryFull,
@@ -12,6 +12,8 @@ import {
   RotateCcw,
 } from 'lucide-react-native';
 
+import { alpha } from '@/theme/tokens';
+
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Badge,
@@ -23,6 +25,7 @@ import {
   Loader,
   Reveal,
   Screen,
+  Shine,
   Tappable,
   Text,
   useToast,
@@ -51,6 +54,10 @@ import { TrackingGame } from '@/components/intelligence/TrackingGame';
 import { AnticipationGame } from '@/components/intelligence/AnticipationGame';
 import { PitchDecisionGame } from '@/components/intelligence/PitchDecisionGame';
 import { TestIcon } from '@/components/intelligence/TestIcon';
+import { CountdownGate } from '@/components/intelligence/Countdown';
+import { HowToPlay } from '@/components/intelligence/HowTo';
+import { MedalChip, ResultMoment } from '@/components/intelligence/Result';
+import { Confetti } from '@/components/celebrate/Confetti';
 
 type Step = 'loading' | 'ready' | 'warmup' | 'starting' | 'hub' | 'game' | 'finishing' | 'error';
 
@@ -98,6 +105,8 @@ export default function GiSessionScreen() {
   const [fatigue, setFatigue] = useState<number | null>(null);
   const [game, setGame] = useState<GameState | null>(null);
   const [scenarios, setScenarios] = useState<GiScenario[] | null>(null);
+  /* Confetti for a silver or gold, owned here so it can fall over the whole screen. */
+  const [burst, setBurst] = useState<string[] | null>(null);
   const baseline = useRef<number | null>(null);
 
   // ── Load: resume an open session, or start from "get ready". ──
@@ -211,6 +220,7 @@ export default function GiSessionScreen() {
   }, [sessionId, router, toast]);
 
   const backToHub = () => {
+    setBurst(null);
     setGame(null);
     setStep('hub');
   };
@@ -308,6 +318,9 @@ export default function GiSessionScreen() {
     const valid = GI_TESTS.filter((x) => done[x.key]?.valid).length;
     const anyPlayed = Object.keys(done).length > 0;
     const remaining = Math.max(0, GI_MIN_TESTS_FOR_OVERALL - valid);
+    /* The next game to play: the first in order not yet played with attempts
+       left. It gets the shine and an "Up next" badge. */
+    const next = GI_TESTS.find((x) => !done[x.key] && (left[x.key] ?? 2) > 0)?.key;
     return (
       <Screen header={header} scroll contentStyle={{ gap: spacing.lg }} testID="gi-hub">
         <View style={{ gap: spacing.xs }}>
@@ -327,7 +340,12 @@ export default function GiSessionScreen() {
                 disabled={!!result || blocked}
                 testID={`gi-tile-${info.key}`}
               >
-                <Card padded level={1}>
+                <Card
+                  padded
+                  level={1}
+                  style={next === info.key ? { borderWidth: 1.5, borderColor: alpha(hue, 0.55) } : undefined}
+                >
+                  {next === info.key ? <Shine color={alpha(hue, 0.2)} radius={theme.radii.lg} every={3.5} /> : null}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
                     <TestIcon test={info.key} color={hue} />
                     <View style={{ flex: 1, gap: 2 }}>
@@ -336,6 +354,7 @@ export default function GiSessionScreen() {
                         {info.weight >= 0.3 ? (
                           <Badge label={t('intelligence.hubCountsMost')} tone="primary" />
                         ) : null}
+                        {next === info.key ? <Badge label={t('intelligence.hubNext')} tone="info" /> : null}
                       </View>
                       <Text variant="caption" tone="muted">
                         {t(`intelligence.tests.${info.i18n}.what`)} ·{' '}
@@ -352,9 +371,12 @@ export default function GiSessionScreen() {
                       ) : null}
                     </View>
                     {result?.valid ? (
-                      <View style={{ alignItems: 'flex-end' }}>
-                        <Check size={18} color={colors.success} strokeWidth={3} />
-                        <Text variant="captionStrong">{Math.round(result.score ?? 0)}</Text>
+                      <View style={{ alignItems: 'center', minWidth: 40 }} testID={`gi-tile-medal-${info.key}`}>
+                        <MedalChip score={result.score} size={34} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                          <Check size={12} color={colors.success} strokeWidth={3} />
+                          <Text variant="captionStrong">{Math.round(result.score ?? 0)}</Text>
+                        </View>
                       </View>
                     ) : !result && !blocked ? (
                       <ChevronRight size={20} color={colors.textMuted} />
@@ -431,7 +453,9 @@ export default function GiSessionScreen() {
   return (
     <Screen header={header} scroll={!playing} contentStyle={{ gap: spacing.xl }} testID="gi-game">
       {playing ? (
-        renderGame()
+        <CountdownGate key={key} hue={hue}>
+          {renderGame()}
+        </CountdownGate>
       ) : (
         <Reveal>
           <Card padded style={{ gap: spacing.lg, alignItems: 'center' }}>
@@ -447,10 +471,8 @@ export default function GiSessionScreen() {
 
             {game.phase === 'intro' ? (
               <>
-                <Text tone="secondary" style={{ textAlign: 'center' }}>
-                  {t(`${stem}.how`)}
-                </Text>
-                <Text variant="caption" tone="muted">
+                <HowToPlay test={game.test} />
+                <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
                   {t('intelligence.practiceBody')}
                 </Text>
                 <Button
@@ -484,10 +506,8 @@ export default function GiSessionScreen() {
             {game.phase === 'result' && game.result ? (
               game.result.valid ? (
                 <>
-                  <Text variant="display" color={hue}>
-                    {Math.round(game.result.score ?? 0)}
-                  </Text>
                   <Text variant="heading">{t('intelligence.gameDone')}</Text>
+                  <ResultMoment score={game.result.score ?? 0} hue={hue} onBurst={setBurst} />
                   <Button label={t('intelligence.backToHub')} fullWidth size="lg" onPress={backToHub} testID="gi-back-hub" />
                 </>
               ) : (
@@ -528,6 +548,16 @@ export default function GiSessionScreen() {
           </Card>
         </Reveal>
       )}
+      {burst && game.phase === 'result' ? (
+        <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 }}>
+          <Confetti
+            origin={{ x: Dimensions.get('window').width / 2, y: 200 }}
+            colors={burst}
+            count={40}
+            onDone={() => setBurst(null)}
+          />
+        </View>
+      ) : null}
     </Screen>
   );
 }

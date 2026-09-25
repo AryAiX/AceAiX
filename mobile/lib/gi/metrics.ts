@@ -211,3 +211,15 @@ export function looksComplete(test: string, m: GiMetrics): boolean {
       return false;
   }
 }
+
+/**
+ * What the player is told after one Read the Ball guess. Feedback only — the
+ * score is the server's, from `mean_error`. `error` is a share of the pitch
+ * width; null is no guess.
+ */
+export function anticipationVerdict(error: number | null): 'spotOn' | 'close' | 'missed' {
+  if (error == null) return 'missed';
+  if (error <= 0.05) return 'spotOn';
+  if (error <= 0.15) return 'close';
+  return 'missed';
+}

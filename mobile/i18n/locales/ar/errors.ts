@@ -19,6 +19,8 @@ export const errors = {
   ageBelowMinimum: 'يجب ألّا يقل عمرك عن 13 سنة لاستخدام AceAiX.',
 
   // أكواد قاعدة البيانات
+  storyCardText: 'تحتاج بطاقة القصة إلى نص، حتى 140 حرفًا.',
+  storyMediaMissing: 'ارفع الصورة أولًا، ثم شارك القصة.',
   alreadyExists: 'هذا موجود بالفعل.',
   missingReference: 'هناك عنصر يعتمد عليه هذا الإجراء مفقود. جرّب التحديث.',
   invalidDetails: 'بعض هذه البيانات غير صحيحة.',

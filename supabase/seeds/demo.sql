@@ -740,3 +740,61 @@ begin
   values (v_athlete, current_date - 12, 72, '{}')
   on conflict do nothing;
 end $$;
+
+-- ------------------------------------------------------------
+-- Stories and reels (0925/01)
+--
+-- Media files live in tools/local-supabase/demo-media and are served by the
+-- local storage stand-in; generate.py draws them from scratch.
+-- ------------------------------------------------------------
+insert into public.stories (id, author_id, media_type, media_url, caption, card, audience, created_at, expires_at) values
+  ('5a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'photo',
+   'a0000000-0000-4000-8000-000000000001/demo-story-1.jpg', 'Under the lights tonight', '{}', 'followers',
+   now() - interval '5 hours', now() + interval '19 hours'),
+  ('5a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001', 'card', null, null,
+   '{"text":"Two goals away. Third win in a row.","background":"action","sticker":"goal","stat":"2–1"}', 'followers',
+   now() - interval '3 hours', now() + interval '21 hours'),
+  ('5a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001', 'photo',
+   'b0000000-0000-4000-8000-000000000001/demo-story-2.jpg', 'Cone drills, 6am. Who is in?', '{}', 'public',
+   now() - interval '8 hours', now() + interval '16 hours'),
+  ('5a000000-0000-4000-8000-000000000004', 'c0000000-0000-4000-8000-000000000001', 'card', null, null,
+   '{"text":"Open trial on the 20th. 2008–2010 born. Boots and water, nothing else.","background":"cool","sticker":"trial","stat":""}', 'public',
+   now() - interval '2 hours', now() + interval '22 hours'),
+  ('5a000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000004', 'card', null, null,
+   '{"text":"New PB over 800m","background":"warm","sticker":"pb","stat":"2:09"}', 'followers',
+   now() - interval '6 hours', now() + interval '18 hours'),
+  ('5a000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000005', 'card', null, null,
+   '{"text":"Game IQ just went up. Decision-making 81.","background":"party","sticker":"gameiq","stat":"78"}', 'followers',
+   now() - interval '1 hour', now() + interval '23 hours'),
+  ('5a000000-0000-4000-8000-000000000007', 'a0000000-0000-4000-8000-000000000002', 'card', null, null,
+   '{"text":"First start for the U18s this weekend","background":"hero","sticker":"star","stat":""}', 'followers',
+   now() - interval '10 hours', now() + interval '14 hours')
+on conflict (id) do nothing;
+
+/* Marco has already watched Layla's first story, so her ring shows one new. */
+insert into public.story_views (story_id, viewer_id) values
+  ('5a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001')
+on conflict do nothing;
+
+insert into public.posts (id, author_id, type, caption, text, audience, media, created_at) values
+  ('9a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'video',
+   'The one-two, then the top corner. Watch the run off the ball.',
+   'The one-two, then the top corner. Watch the run off the ball.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000001/demo-reel-1.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000001/demo-reel-1.jpg","width":360,"height":640}]',
+   now() - interval '90 minutes'),
+  ('9a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000004', 'video',
+   'Last 200 of the 800. Lane four.',
+   'Last 200 of the 800. Lane four.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000004/demo-reel-2.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000004/demo-reel-2.jpg","width":360,"height":640}]',
+   now() - interval '4 hours'),
+  ('9a000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000005', 'video',
+   'Pull-up from the wing. Working on the release.',
+   'Pull-up from the wing. Working on the release.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000005/demo-reel-3.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000005/demo-reel-3.jpg","width":360,"height":640}]',
+   now() - interval '7 hours'),
+  ('9a000000-0000-4000-8000-000000000004', 'c0000000-0000-4000-8000-000000000001', 'standard',
+   'New season, new kit, same pitch. Trials open on the 20th.',
+   'New season, new kit, same pitch. Trials open on the 20th.', 'public',
+   '[{"url":"c0000000-0000-4000-8000-000000000001/demo-photo-1.jpg","type":"photo","width":720,"height":1280}]',
+   now() - interval '5 hours')
+on conflict (id) do nothing;

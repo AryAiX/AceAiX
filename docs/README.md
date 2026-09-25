@@ -40,6 +40,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 24 | [`24-the-logo.md`](./24-the-logo.md) | The brand assets, generated from one file rather than exported eight times: why the app icon must have no alpha channel, why the splash needs two images, and the launch sequence that used to blink through two empty screens | Mobile + Web + Design |
 | 25 | [`25-web-mobile-parity.md`](./25-web-mobile-parity.md) | The exact web/mobile V2 parity contract, shared-source boundary, platform adapters, viewport matrix and zero-unverified release gate | Mobile + Web + QA |
 | 26 | [`26-game-intelligence.md`](./26-game-intelligence.md) | Game Intelligence — six timed games beside the Talent Score: consent by age and country, the answer key that never leaves the database, best-of scoring, and who may see a result | Mobile + Backend |
+| 27 | [`27-stories-and-reels.md`](./27-stories-and-reels.md) | Stories and Reels — the 24-hour rail and its visibility predicate, card stories that need no upload, reels read through the feed's own gates, and the demo media behind the preview | Mobile + Backend |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–24 describe the product as it stands** after the September 2026

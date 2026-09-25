@@ -22,6 +22,8 @@ import { sports } from './sports';
 import { countries } from './countries';
 import { errors } from './errors';
 import { format } from './format';
+import { stories } from './stories';
+import { reels } from './reels';
 
 /**
  * 中文只有一种复数形式。
@@ -48,6 +50,6 @@ type SingleFormPlurals<T> = {
 /** 简体中文。以英文为类型基准，少一个键就是编译错误。 */
 const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onboarding,
   feed, profile, score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging,
-  settings, safety, sports, countries, errors, format };
+  settings, safety, sports, countries, errors, format, stories, reels };
 
 export const zh = catalogue as Translations;

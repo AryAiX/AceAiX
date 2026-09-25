@@ -20,6 +20,8 @@ export const errors = {
   ageBelowMinimum: 'Il faut avoir au moins 13 ans pour utiliser AceAiX.',
 
   // Codes de la base
+  storyCardText: "Une carte de story a besoin d'un texte, jusqu'à 140 caractères.",
+  storyMediaMissing: "Importe d'abord la photo, puis partage la story.",
   alreadyExists: 'Cela existe déjà.',
   missingReference: 'Un élément nécessaire est manquant. Essaie d’actualiser.',
   invalidDetails: 'Certaines de ces informations ne sont pas valides.',

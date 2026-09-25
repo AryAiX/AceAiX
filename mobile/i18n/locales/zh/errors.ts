@@ -19,6 +19,8 @@ export const errors = {
   ageBelowMinimum: '年满13岁才能使用 AceAiX。',
 
   // 数据库返回码
+  storyCardText: '快拍卡片需要填写文字，最多 140 个字符。',
+  storyMediaMissing: '请先上传照片，再分享快拍。',
   alreadyExists: '这个已经存在了。',
   missingReference: '所依赖的内容不见了，刷新一下试试。',
   invalidDetails: '其中有些信息不符合要求。',

@@ -8,6 +8,7 @@ import { useT } from '@/i18n';
 import { now } from '@/lib/gi/random';
 import { median } from '@/lib/gi/metrics';
 import { FAST_PRESS, RoundBar, useTimers } from './shared';
+import { Ripple } from './art';
 
 const TRIALS = 5;
 
@@ -86,6 +87,14 @@ export function Warmup({ onDone }: { onDone: (baselineMs: number | null) => void
       <View style={{ alignSelf: 'stretch' }}>
         <RoundBar index={index} total={TRIALS} label={t('intelligence.warmupTitle')} />
       </View>
+      <View style={{ width: 220, height: 220, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Two rings burst out as it turns green: the cue arrives, it does not just appear. */}
+      {state === 'go' ? (
+        <>
+          <Ripple key={`a${index}`} color={colors.play.mint} size={220} width={6} period={700} />
+          <Ripple key={`b${index}`} color={colors.play.mint} size={220} width={3} period={1100} />
+        </>
+      ) : null}
       <Pressable
         {...FAST_PRESS}
         onPressIn={press}
@@ -107,6 +116,7 @@ export function Warmup({ onDone }: { onDone: (baselineMs: number | null) => void
           {label}
         </Text>
       </Pressable>
+      </View>
     </View>
   );
 }

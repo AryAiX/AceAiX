@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
 import { now, seededRng } from '@/lib/gi/random';
 import { flankerPlan } from '@/lib/gi/trials';
 import { flankerMetrics, type FlankerMetrics, type FlankerRow } from '@/lib/gi/metrics';
+import { alpha } from '@/theme/tokens';
 import { BigChoice, RoundBar, useTimers, type GameProps } from './shared';
+import { Chevron } from './art';
 
 const WINDOW_MS = 1500;
 
@@ -91,34 +92,61 @@ export function FlankerGame({ mode, seed, onDone }: GameProps<FlankerMetrics>) {
           borderRadius: radii.xl,
           alignItems: 'center',
           justifyContent: 'center',
-          flexDirection: 'row',
-          gap: spacing.xs,
           backgroundColor:
             flash === 'bad' ? colors.dangerSoft : flash === 'good' ? colors.successSoft : colors.surfaceAlt,
           borderWidth: 1,
           borderColor: colors.border,
+          overflow: 'hidden',
         }}
       >
-        {showing ? (
-          <>
-            <Arrow dir={flankDir} color={colors.textSecondary} />
-            <Arrow dir={flankDir} color={colors.textSecondary} />
-            <Arrow dir={trial.dir} color={colors.text} centre />
-            <Arrow dir={flankDir} color={colors.textSecondary} />
-            <Arrow dir={flankDir} color={colors.textSecondary} />
-          </>
-        ) : null}
+        {/* The lane: a strip the five arrows run along, with a spotlight on the middle. */}
+        <View
+          style={{
+            position: 'absolute',
+            left: spacing.md,
+            right: spacing.md,
+            height: 84,
+            borderRadius: 42,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            width: 104,
+            height: 104,
+            borderRadius: 52,
+            backgroundColor: alpha(colors.play.cyan, 0.16),
+            borderWidth: 3,
+            borderColor: showing ? colors.play.cyan : alpha(colors.play.cyan, 0.35),
+          }}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+          {showing ? (
+            <>
+              <Arrow dir={flankDir} color={colors.textMuted} />
+              <Arrow dir={flankDir} color={colors.textMuted} />
+              <Arrow dir={trial.dir} color={colors.text} centre />
+              <Arrow dir={flankDir} color={colors.textMuted} />
+              <Arrow dir={flankDir} color={colors.textMuted} />
+            </>
+          ) : (
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: colors.play.cyan }} />
+          )}
+        </View>
       </View>
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
         <BigChoice
           label={t('intelligence.tests.flanker.left')}
-          icon={<ArrowLeft size={22} color={colors.text} />}
+          icon={<Chevron dir="left" size={26} color={colors.text} weight={14} />}
           onPress={() => answer('left')}
           testID="flanker-left"
         />
         <BigChoice
           label={t('intelligence.tests.flanker.right')}
-          iconRight={<ArrowRight size={22} color={colors.text} />}
+          iconRight={<Chevron dir="right" size={26} color={colors.text} weight={14} />}
           onPress={() => answer('right')}
           testID="flanker-right"
         />
@@ -127,7 +155,11 @@ export function FlankerGame({ mode, seed, onDone }: GameProps<FlankerMetrics>) {
   );
 }
 
+/** A bold chevron; the middle one is bigger and sits in the spotlight. */
 function Arrow({ dir, color, centre }: { dir: 'left' | 'right'; color: string; centre?: boolean }) {
-  const Icon = dir === 'left' ? ArrowLeft : ArrowRight;
-  return <Icon size={centre ? 48 : 40} color={color} strokeWidth={3} />;
+  return (
+    <View style={{ width: centre ? 110 : 46, alignItems: 'center' }}>
+      <Chevron dir={dir} size={centre ? 72 : 44} color={color} weight={centre ? 15 : 12} />
+    </View>
+  );
 }

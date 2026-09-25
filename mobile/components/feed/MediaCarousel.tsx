@@ -252,6 +252,16 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
     return () => safely(() => player.pause());
   }, [isActive, player, safely]);
 
+  /* A clip the platform cannot decode keeps its poster rather than showing
+     an empty frame. */
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const sub = player.addListener('statusChange', ({ status }) => {
+      if (status === 'error') setFailed(true);
+    });
+    return () => sub.remove();
+  }, [player]);
+
   useEffect(() => {
     // Safety net: if the first-frame callback never arrives we still need to
     // stop covering the video with its poster.
@@ -259,17 +269,10 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
     return () => clearTimeout(timer);
   }, []);
 
+  const showPoster = !!item.thumbnail && (!ready || failed);
+
   return (
     <View style={{ width, height }}>
-      {item.thumbnail && !ready ? (
-        <Image
-          source={{ uri: item.thumbnail }}
-          style={{ position: 'absolute', width, height }}
-          resizeMode="cover"
-          accessibilityIgnoresInvertColors
-        />
-      ) : null}
-
       <VideoView
         player={player}
         style={{ width, height }}
@@ -280,6 +283,17 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
         onFirstFrameRender={() => setReady(true)}
         accessibilityLabel={t('feed.videoClip')}
       />
+
+      {showPoster ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
+          <Image
+            source={{ uri: item.thumbnail }}
+            style={{ width, height }}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+          />
+        </View>
+      ) : null}
 
       {!isActive ? (
         <View

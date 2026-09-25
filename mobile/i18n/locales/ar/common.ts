@@ -141,7 +141,7 @@ export const common = {
   tabHome: 'الرئيسية',
   tabDiscover: 'استكشاف',
   tabTrials: 'التجارب',
-  tabYou: 'حسابك',
+  tabYou: 'الملف الشخصي',
   tabCreate: 'إنشاء',
 
   // القانوني
