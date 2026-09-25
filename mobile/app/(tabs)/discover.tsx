@@ -195,10 +195,19 @@ function RecruiterDiscover() {
   );
 
   // ── Saved brief and the carousel it drives ──
-  const prefs = useAsync(() => getMatchPreferences(), []);
+  const prefs = useAsync(() => getMatchPreferences(), [], { refetchOnFocus: true });
   const prefCriteria = useMemo(() => criteriaFromPreferences(prefs.data), [prefs.data]);
   const hasBrief = hasAnyCriteria(prefCriteria);
-  const recommended = useAsync(() => recommendedAthletes(12), [hasBrief], { enabled: hasBrief });
+  const prefsKey = useMemo(() => {
+    const p = prefs.data;
+    if (!p) return 'none';
+    return JSON.stringify([
+      p.sports, p.positions, p.levels, p.countries,
+      p.age_min, p.age_max, p.min_score, p.open_to_offers_only,
+    ]);
+  }, [prefs.data]);
+
+  const recommended = useAsync(() => recommendedAthletes(12), [prefsKey], { enabled: hasBrief });
 
   const filterCriteria = useMemo(() => criteriaFromFilters(filters), [filters]);
   const explained = hasAnyCriteria(filterCriteria);
