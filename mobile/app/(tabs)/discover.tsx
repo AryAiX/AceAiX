@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpDown, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -493,6 +493,8 @@ export default function DiscoverScreen() {
   const theme = useTheme();
   const t = useT();
   const { profile, loading, isRecruiter } = useAuth();
+  const { tab: requestedTab, at: tabRequestKey } =
+    useLocalSearchParams<{ tab?: string; at?: string }>();
 
   if (loading && !profile) {
     return (
@@ -516,7 +518,11 @@ export default function DiscoverScreen() {
             subtitle={t('discover.athleteSubtitle')}
             large
           />
-          <AthleteExplore viewerId={profile?.id ?? null} />
+          <AthleteExplore
+            viewerId={profile?.id ?? null}
+            requestedTab={requestedTab}
+            tabRequestKey={tabRequestKey}
+          />
         </>
       )}
     </Screen>

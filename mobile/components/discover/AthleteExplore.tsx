@@ -60,6 +60,8 @@ const TABS: { value: Tab; labelKey: string }[] = [
 interface Props {
   /** The signed-in athlete, so their own leaderboard row can be highlighted. */
   viewerId: string | null;
+  requestedTab?: string;
+  tabRequestKey?: string;
 }
 
 /** Same case-insensitive equality the talent_leaderboard RPC uses via `ilike`. */
@@ -146,7 +148,7 @@ function AthleteSearchRow({ person, isYou }: { person: PersonResult; isYou: bool
  * The leaderboard is read by teenagers, so it only ever names positions people
  * already hold. It never tells anyone they are behind.
  */
-export function AthleteExplore({ viewerId }: Props) {
+export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -155,6 +157,20 @@ export function AthleteExplore({ viewerId }: Props) {
   const canSearchBoard = profile?.is_minor === false;
 
   const [tab, setTab] = useState<Tab>('clubs');
+
+  useEffect(() => {
+    if (!tabRequestKey) return;
+    if (
+      requestedTab === 'clubs' ||
+      requestedTab === 'coaches' ||
+      requestedTab === 'leaderboard'
+    ) {
+      setTab(requestedTab);
+      setQuery('');
+      setDebounced('');
+    }
+  }, [tabRequestKey, requestedTab]);
+
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [sport, setSport] = useState<string | undefined>(undefined);
