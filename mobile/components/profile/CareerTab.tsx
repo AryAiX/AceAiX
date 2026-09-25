@@ -98,6 +98,7 @@ export function CareerTab({
   useEffect(() => setCertList(normaliseCertifications(certifications)), [certifications]);
 
   const [matchForm, setMatchForm] = useState<typeof EMPTY_MATCH | null>(null);
+  const [matchError, setMatchError] = useState<string | null>(null);
   const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
     null,
   );
@@ -169,9 +170,10 @@ export function CareerTab({
   const submitMatch = useCallback(async () => {
     if (!matchForm || !athleteId) return;
     if (!ISO_DATE.test(matchForm.match_date.trim())) {
-      toast.error(t('profile.matchDateInvalid'));
+      setMatchError(t('profile.matchDateInvalid'));
       return;
     }
+    setMatchError(null);
     setSaving(true);
     try {
       await addMatchRecord(athleteId, {
@@ -183,12 +185,13 @@ export function CareerTab({
         goals: toNumber(matchForm.goals) ?? 0,
         assists: toNumber(matchForm.assists) ?? 0,
       });
+      setMatchError(null);
       setMatchForm(null);
       toast.success(t('profile.matchAddedToast'));
       matches.reload();
       onChanged?.();
     } catch (err) {
-      toast.error(errorMessage(err));
+      setMatchError(errorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -269,7 +272,14 @@ export function CareerTab({
         <SectionHeader
           title={t('common.matches')}
           action={isSelf ? t('profile.add') : undefined}
-          onAction={isSelf ? () => setMatchForm({ ...EMPTY_MATCH }) : undefined}
+          onAction={
+            isSelf
+              ? () => {
+                  setMatchError(null);
+                  setMatchForm({ ...EMPTY_MATCH });
+                }
+              : undefined
+          }
         />
         {matches.loading ? (
           <Skeleton height={72} />
@@ -286,7 +296,14 @@ export function CareerTab({
               isSelf ? 'profile.matchesEmptyBodySelf' : 'profile.matchesEmptyBodyOther',
             )}
             actionLabel={isSelf ? t('profile.logMatchTitle') : undefined}
-            onAction={isSelf ? () => setMatchForm({ ...EMPTY_MATCH }) : undefined}
+            onAction={
+              isSelf
+                ? () => {
+                    setMatchError(null);
+                    setMatchForm({ ...EMPTY_MATCH });
+                  }
+                : undefined
+            }
           />
         ) : (
           <Card padded={false}>
@@ -605,7 +622,11 @@ export function CareerTab({
       {/* ── Add a match ── */}
       <Sheet
         visible={matchForm !== null}
-        onClose={() => (saving ? undefined : setMatchForm(null))}
+        onClose={() => {
+          if (saving) return;
+          setMatchError(null);
+          setMatchForm(null);
+        }}
         title={t('profile.logMatchTitle')}
         subtitle={t('profile.logMatchSubtitle')}
       >
@@ -669,6 +690,11 @@ export function CareerTab({
               onChangeText={(text) => setMatchForm((f) => (f ? { ...f, assists: text } : f))}
             />
           </View>
+          {matchError ? (
+            <Text variant="caption" style={{ color: colors.danger }}>
+              {matchError}
+            </Text>
+          ) : null}
           <Button
             label={t('profile.saveMatch')}
             fullWidth
