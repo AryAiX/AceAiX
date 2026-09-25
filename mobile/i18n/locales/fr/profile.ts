@@ -228,6 +228,7 @@ export const profile = {
   honourYearLabel: 'Année',
   saveHonour: 'Enregistrer le titre',
   honourTitleRequired: 'Donne un nom à ce titre.',
+  yearInvalid: 'Saisis une année entre {{min}} et {{max}}.',
   honourAddedToast: 'Titre ajouté.',
 
   addCertificateTitle: 'Ajouter un diplôme',

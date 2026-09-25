@@ -224,6 +224,7 @@ export const profile = {
   honourYearLabel: 'Year',
   saveHonour: 'Save honour',
   honourTitleRequired: 'Give the honour a name.',
+  yearInvalid: 'Enter a year between {{min}} and {{max}}.',
   honourAddedToast: 'Honour added.',
 
   addCertificateTitle: 'Add a certificate',

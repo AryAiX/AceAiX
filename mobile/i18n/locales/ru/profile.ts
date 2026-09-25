@@ -235,6 +235,7 @@ export const profile = {
   honourYearLabel: 'Год',
   saveHonour: 'Сохранить награду',
   honourTitleRequired: 'Дай награде название.',
+  yearInvalid: 'Укажи год от {{min}} до {{max}}.',
   honourAddedToast: 'Награда добавлена.',
 
   addCertificateTitle: 'Добавить сертификат',

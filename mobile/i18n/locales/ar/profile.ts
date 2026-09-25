@@ -238,6 +238,7 @@ export const profile = {
   honourYearLabel: 'السنة',
   saveHonour: 'حفظ اللقب',
   honourTitleRequired: 'أعطِ اللقب اسمًا.',
+  yearInvalid: 'أدخل سنة بين {{min}} و{{max}}.',
   honourAddedToast: 'أُضيف اللقب.',
 
   addCertificateTitle: 'إضافة شهادة',

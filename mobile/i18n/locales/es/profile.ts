@@ -235,6 +235,7 @@ export const profile = {
   honourYearLabel: 'Año',
   saveHonour: 'Guardar título',
   honourTitleRequired: 'Ponle un nombre al título.',
+  yearInvalid: 'Escribe un año entre {{min}} y {{max}}.',
   honourAddedToast: 'Título añadido.',
 
   addCertificateTitle: 'Añadir un certificado',

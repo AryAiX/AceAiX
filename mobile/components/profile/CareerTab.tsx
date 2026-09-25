@@ -64,6 +64,13 @@ const EMPTY_MATCH = {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+const MIN_YEAR = 1950;
+function isValidYear(value: string): boolean {
+  if (!/^\d{4}$/.test(value)) return false;
+  const year = Number(value);
+  return year >= MIN_YEAR && year <= new Date().getFullYear();
+}
+
 export function CareerTab({
   athleteId,
   isSelf,
@@ -108,6 +115,8 @@ export function CareerTab({
     useState<Partial<Record<MatchField, string>>>({});
   const [honorError, setHonorError] = useState<string | null>(null);
   const [certError, setCertError] = useState<string | null>(null);
+  const [honorYearError, setHonorYearError] = useState<string | null>(null);
+  const [certYearError, setCertYearError] = useState<string | null>(null);
   const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
     null,
   );
@@ -226,10 +235,16 @@ export function CareerTab({
 
   const submitHonor = useCallback(async () => {
     if (!honorForm) return;
-    if (!honorForm.title.trim()) {
-      setHonorError(t('profile.honourTitleRequired'));
-      return;
-    }
+    const titleMissing = !honorForm.title.trim();
+    const year = honorForm.year.trim();
+    const yearBad = year !== '' && !isValidYear(year);
+    setHonorError(titleMissing ? t('profile.honourTitleRequired') : null);
+    setHonorYearError(
+      yearBad
+        ? t('profile.yearInvalid', { min: MIN_YEAR, max: new Date().getFullYear() })
+        : null,
+    );
+    if (titleMissing || yearBad) return;
     setHonorError(null);
     const next: HonorEntry[] = [
       {
@@ -245,6 +260,7 @@ export function CareerTab({
       await saveHonors(next);
       setHonorList(next);
       setHonorError(null);
+      setHonorYearError(null);
       setHonorForm(null);
       toast.success(t('profile.honourAddedToast'));
       onChanged?.();
@@ -257,10 +273,16 @@ export function CareerTab({
 
   const submitCert = useCallback(async () => {
     if (!certForm) return;
-    if (!certForm.title.trim()) {
-      setCertError(t('profile.certificateTitleRequired'));
-      return;
-    }
+    const titleMissing = !certForm.title.trim();
+    const year = certForm.date.trim();
+    const yearBad = year !== '' && !isValidYear(year);
+    setCertError(titleMissing ? t('profile.certificateTitleRequired') : null);
+    setCertYearError(
+      yearBad
+        ? t('profile.yearInvalid', { min: MIN_YEAR, max: new Date().getFullYear() })
+        : null,
+    );
+    if (titleMissing || yearBad) return;
     setCertError(null);
     const next: CertificationEntry[] = [
       {
@@ -276,6 +298,7 @@ export function CareerTab({
       await saveCertifications(next);
       setCertList(next);
       setCertError(null);
+      setCertYearError(null);
       setCertForm(null);
       toast.success(t('profile.certificateAddedToast'));
       onChanged?.();
@@ -390,6 +413,7 @@ export function CareerTab({
             isSelf
               ? () => {
                   setHonorError(null);
+                  setHonorYearError(null);
                   setHonorForm({ title: '', org: '', year: '' });
                 }
               : undefined
@@ -408,6 +432,7 @@ export function CareerTab({
               isSelf
                 ? () => {
                     setHonorError(null);
+                    setHonorYearError(null);
                     setHonorForm({ title: '', org: '', year: '' });
                   }
                 : undefined
@@ -453,6 +478,7 @@ export function CareerTab({
             isSelf
               ? () => {
                   setCertError(null);
+                  setCertYearError(null);
                   setCertForm({ title: '', issuer: '', date: '' });
                 }
               : undefined
@@ -473,6 +499,7 @@ export function CareerTab({
               isSelf
                 ? () => {
                     setCertError(null);
+                    setCertYearError(null);
                     setCertForm({ title: '', issuer: '', date: '' });
                   }
                 : undefined
@@ -803,6 +830,7 @@ export function CareerTab({
         onClose={() => {
           if (saving) return;
           setHonorError(null);
+          setHonorYearError(null);
           setHonorForm(null);
         }}
         title={t('profile.addHonourTitle')}
@@ -827,7 +855,11 @@ export function CareerTab({
             keyboardType="number-pad"
             maxLength={4}
             value={honorForm?.year ?? ''}
-            onChangeText={(text) => setHonorForm((f) => (f ? { ...f, year: text } : f))}
+            error={honorYearError}
+            onChangeText={(text) => {
+              setHonorYearError(null);
+              setHonorForm((f) => (f ? { ...f, year: text } : f));
+            }}
           />
           {honorError ? (
             <Text variant="caption" style={{ color: colors.danger }}>
@@ -850,6 +882,7 @@ export function CareerTab({
         onClose={() => {
           if (saving) return;
           setCertError(null);
+          setCertYearError(null);
           setCertForm(null);
         }}
         title={t('profile.addCertificateTitle')}
@@ -874,7 +907,11 @@ export function CareerTab({
             keyboardType="number-pad"
             maxLength={4}
             value={certForm?.date ?? ''}
-            onChangeText={(text) => setCertForm((f) => (f ? { ...f, date: text } : f))}
+            error={certYearError}
+            onChangeText={(text) => {
+              setCertYearError(null);
+              setCertForm((f) => (f ? { ...f, date: text } : f));
+            }}
           />
           {certError ? (
             <Text variant="caption" style={{ color: colors.danger }}>

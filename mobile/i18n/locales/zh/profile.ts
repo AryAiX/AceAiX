@@ -215,6 +215,7 @@ export const profile = {
   honourYearLabel: '年份',
   saveHonour: '保存荣誉',
   honourTitleRequired: '给这项荣誉起个名字。',
+  yearInvalid: '请填写{{min}}到{{max}}之间的年份。',
   honourAddedToast: '荣誉已添加。',
 
   addCertificateTitle: '添加一份证书',
