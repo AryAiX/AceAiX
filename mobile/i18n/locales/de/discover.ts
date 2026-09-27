@@ -46,6 +46,13 @@ export const discover = {
   rankedByFit: 'Nach Passung sortiert. Jede Karte zeigt die Gründe dafür.',
   rankedByScore: 'Nach Talent Score sortiert. Setz einen Filter, um zu sehen, wie gut jemand passt.',
   savedToShortlist: 'Auf deiner Merkliste',
+  shortlist: {
+    title: 'Merkliste',
+    open: 'Deine Merkliste öffnen',
+    emptyTitle: 'Noch niemand gespeichert',
+    emptyBody: 'Tippe in Entdecken auf das Lesezeichen eines Sportlers, um ihn hier zu behalten.',
+    emptyAction: 'Zurück zu Entdecken',
+  },
   emptyTitle: 'Dazu passt niemand',
   emptyFilteredBody: 'Erweitere die Altersspanne, nimm ein Land dazu oder leere die Suche.',
   emptyOpenBody: 'Sportler erscheinen hier, sobald sie ihr Profil ausfüllen.',

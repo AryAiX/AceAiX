@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
 import { discoverAthletes, searchPeople, talentLeaderboard } from '@/lib/api';
-import type { DiscoveryFilters, PersonResult, Tier } from '@/types/models';
+import type { DiscoveredAthlete, DiscoveryFilters, PersonResult, Tier } from '@/types/models';
 
 /**
  * Discovery-only calls that lib/api.ts does not cover.
@@ -102,6 +102,89 @@ export async function removeFromShortlist(athleteId: string): Promise<void> {
     .eq('athlete_id', athleteId)
     .in('watchlist_id', listIds);
   if (error) throw new AppError(error);
+}
+
+/** The viewer's saved athletes as cards, newest first. RLS decides who is
+    visible: a minor's athlete_profiles row is only readable by the owner,
+    an admin or a consenting guardian, so hidden minors never come back. */
+export async function shortlistedAthletes(): Promise<DiscoveredAthlete[]> {
+  const listIds = await myWatchlistIds();
+  if (listIds.length === 0) return [];
+
+  const { data: blockedRows, error: blockedError } =
+    await supabase.rpc('get_blocked_user_ids');
+  if (blockedError) throw new AppError(blockedError);
+  const blocked = new Set(
+    (blockedRows ?? []).map((row: { blocked_user_id: string }) => row.blocked_user_id),
+  );
+
+  const { data: saves, error: savesError } = await supabase
+    .from('watchlist_athletes')
+    .select('athlete_id, added_at')
+    .in('watchlist_id', listIds)
+    .order('added_at', { ascending: false });
+  if (savesError) throw new AppError(savesError);
+
+  const ids = Array.from(new Set((saves ?? []).map((s) => s.athlete_id as string)));
+  if (ids.length === 0) return [];
+
+  const { data: athletes, error: aError } = await supabase
+    .from('athlete_profiles')
+    .select('id, user_id, sport, position, position_primary, level, league, current_club, height_cm, is_open_to_offers')
+    .in('id', ids);
+  if (aError) throw new AppError(aError);
+
+  const userIds = (athletes ?? []).map((a) => a.user_id as string);
+  if (userIds.length === 0) return [];
+
+  const [{ data: users, error: uError }, { data: scores, error: sError }] = await Promise.all([
+    supabase
+      .from('user_profiles')
+      .select('id, full_name, avatar_url, country, is_verified, is_minor, age_band')
+      .in('id', userIds),
+    supabase.from('talent_scores').select('athlete_id, overall, tier').in('athlete_id', ids),
+  ]);
+  if (uError) throw new AppError(uError);
+  if (sError) throw new AppError(sError);
+
+  const athleteById = new Map((athletes ?? []).map((a) => [a.id as string, a]));
+  const userById = new Map((users ?? []).map((u) => [u.id as string, u]));
+  const scoreById = new Map((scores ?? []).map((s) => [s.athlete_id as string, s]));
+
+  const out: DiscoveredAthlete[] = [];
+  for (const id of ids) {
+    const a = athleteById.get(id);
+    const u = a ? userById.get(a.user_id as string) : undefined;
+    if (!a || !u) continue; // not visible to this viewer
+    if (u.is_minor) continue; // belt and braces: never list a minor here
+    if (blocked.has(a.user_id as string)) continue; // blocked either way
+    const s = scoreById.get(id);
+    out.push({
+      athlete_id: id,
+      user_id: a.user_id,
+      full_name: u.full_name ?? null,
+      avatar_url: u.avatar_url ?? null,
+      sport: a.sport ?? null,
+      position: a.position_primary ?? a.position ?? null,
+      level: a.level ?? null,
+      league: a.league ?? null,
+      club: a.current_club ?? null,
+      city: null,
+      country: u.country ?? null,
+      age: null,
+      age_band: u.age_band ?? null,
+      height_cm: a.height_cm ?? null,
+      is_verified: !!u.is_verified,
+      is_minor: !!u.is_minor,
+      open_to_offers: !!a.is_open_to_offers,
+      talent_score: s?.overall ?? 0,
+      tier: (s?.tier ?? 'rising') as DiscoveredAthlete['tier'],
+      match_percent: 0,
+      reasons: [],
+      total_count: 0,
+    });
+  }
+  return out;
 }
 
 // ── Follow state ─────────────────────────────────────────────────────────────

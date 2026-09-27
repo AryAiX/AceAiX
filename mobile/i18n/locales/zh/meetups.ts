@@ -63,6 +63,8 @@ export const meetups = {
 
   // ── 发起一场 ───────────────────────────────────────────────────────────────
   createTitle: '发起球局',
+  discardTitle: '放弃这场球局？',
+  discardBody: '你填写的内容不会保存。',
   createSubtitle: '写清楚你想打什么、在哪儿、什么时候。别人来申请，你来定。',
   fieldSport: '项目',
   fieldTitle: '这是什么局？',

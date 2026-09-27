@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ArrowUpDown, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowUpDown, Bookmark, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -171,9 +171,13 @@ function RecruiterDiscover() {
   }, [load]);
 
   // ── Shortlist ──
-  const shortlist = useAsync(() => shortlistedAthleteIds(), []);
+  const shortlist = useAsync(() => shortlistedAthleteIds(), [], { refetchOnFocus: true });
   const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
   const savedSet = useMemo(() => new Set(shortlist.data ?? []), [shortlist.data]);
+
+  useEffect(() => {
+    setSavedOverrides({});
+  }, [shortlist.data]);
   const isSaved = (athleteId: string) => savedOverrides[athleteId] ?? savedSet.has(athleteId);
 
   const onToggleSave = useCallback(
@@ -195,10 +199,19 @@ function RecruiterDiscover() {
   );
 
   // ── Saved brief and the carousel it drives ──
-  const prefs = useAsync(() => getMatchPreferences(), []);
+  const prefs = useAsync(() => getMatchPreferences(), [], { refetchOnFocus: true });
   const prefCriteria = useMemo(() => criteriaFromPreferences(prefs.data), [prefs.data]);
   const hasBrief = hasAnyCriteria(prefCriteria);
-  const recommended = useAsync(() => recommendedAthletes(12), [hasBrief], { enabled: hasBrief });
+  const prefsKey = useMemo(() => {
+    const p = prefs.data;
+    if (!p) return 'none';
+    return JSON.stringify([
+      p.sports, p.positions, p.levels, p.countries,
+      p.age_min, p.age_max, p.min_score, p.open_to_offers_only,
+    ]);
+  }, [prefs.data]);
+
+  const recommended = useAsync(() => recommendedAthletes(12), [prefsKey], { enabled: hasBrief });
 
   const filterCriteria = useMemo(() => criteriaFromFilters(filters), [filters]);
   const explained = hasAnyCriteria(filterCriteria);
@@ -348,6 +361,13 @@ function RecruiterDiscover() {
         right={
           <>
             <IconButton
+              icon={<Bookmark size={20} color={colors.text} />}
+              label={t('discover.shortlist.open')}
+              size={theme.hit.min}
+              onPress={() => router.push(Routes.shortlist)}
+              testID="discover-shortlist"
+            />
+            <IconButton
               icon={<Search size={20} color={colors.text} />}
               label={t('discover.searchPeople')}
               size={theme.hit.min}
@@ -493,6 +513,8 @@ export default function DiscoverScreen() {
   const theme = useTheme();
   const t = useT();
   const { profile, loading, isRecruiter } = useAuth();
+  const { tab: requestedTab, at: tabRequestKey } =
+    useLocalSearchParams<{ tab?: string; at?: string }>();
 
   if (loading && !profile) {
     return (
@@ -516,7 +538,11 @@ export default function DiscoverScreen() {
             subtitle={t('discover.athleteSubtitle')}
             large
           />
-          <AthleteExplore viewerId={profile?.id ?? null} />
+          <AthleteExplore
+            viewerId={profile?.id ?? null}
+            requestedTab={requestedTab}
+            tabRequestKey={tabRequestKey}
+          />
         </>
       )}
     </Screen>

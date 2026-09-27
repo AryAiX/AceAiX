@@ -204,7 +204,7 @@ export const profile = {
 
 
   logMatchTitle: 'Записать матч',
-  logMatchSubtitle: 'Только то, что помнишь, — остальное добавишь позже.',
+  logMatchSubtitle: 'Заполни каждое поле, чтобы записать матч.',
   matchDate: 'Дата',
   matchDateHint: 'Год-месяц-день',
   matchCompetition: 'Турнир',
@@ -218,6 +218,13 @@ export const profile = {
   matchAssistsLabel: 'Ассисты',
   saveMatch: 'Сохранить матч',
   matchDateInvalid: 'Используй формат даты ГГГГ-ММ-ДД, например 2026-03-14.',
+  matchFieldRequired: 'Заполни это.',
+  matchNumberInvalid: 'Используй целое число.',
+  matchDay: 'День',
+  matchMonth: 'Месяц',
+  matchYear: 'Год',
+  matchDateRequired: 'Выбери день, месяц и год.',
+  matchDateFuture: 'Дата матча не может быть в будущем.',
   matchAddedToast: 'Матч добавлен.',
 
   addHonourTitle: 'Добавить награду',
@@ -228,6 +235,7 @@ export const profile = {
   honourYearLabel: 'Год',
   saveHonour: 'Сохранить награду',
   honourTitleRequired: 'Дай награде название.',
+  yearInvalid: 'Укажи год от {{min}} до {{max}}.',
   honourAddedToast: 'Награда добавлена.',
 
   addCertificateTitle: 'Добавить сертификат',
@@ -258,6 +266,8 @@ export const profile = {
   // ── Редактирование профиля (app/edit-profile.tsx) ──────────────────────────
   /* `editProfile` выше — и заголовок этого экрана, и кнопка, которая его открывает. */
   firstNameRequired: 'Имя не может быть пустым.',
+  discardChangesTitle: 'Отменить изменения?',
+  discardChangesBody: 'Изменения в твоём профиле не сохранятся.',
   savedScoreUp_one: 'Сохранено — оценка таланта выросла на {{count}} балл.',
   savedScoreUp_few: 'Сохранено — оценка таланта выросла на {{count}} балла.',
   savedScoreUp_many: 'Сохранено — оценка таланта выросла на {{count}} баллов.',

@@ -250,6 +250,8 @@ export const opportunities = {
   // ── Posting an opportunity ──────────────────────────────────────────────────
   post: {
     title: 'Post an opportunity',
+    discardTitle: 'Discard this opportunity?',
+    discardBody: "What you've filled in won't be saved.",
     recruiterOnlyTitle: 'For coaches and clubs',
     recruiterOnlyBody: 'Only coaches, clubs and scouts can post opportunities. You can still browse and apply from Opportunities.',
     submit: 'Post it',

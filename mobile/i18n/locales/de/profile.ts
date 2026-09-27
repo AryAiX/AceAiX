@@ -193,7 +193,7 @@ export const profile = {
 
 
   logMatchTitle: 'Spiel eintragen',
-  logMatchSubtitle: 'Nur das, woran du dich erinnerst — mehr geht später.',
+  logMatchSubtitle: 'Fülle jedes Feld aus, um das Spiel einzutragen.',
   matchDate: 'Datum',
   matchDateHint: 'Jahr-Monat-Tag',
   matchCompetition: 'Wettbewerb',
@@ -207,6 +207,13 @@ export const profile = {
   matchAssistsLabel: 'Vorlagen',
   saveMatch: 'Spiel speichern',
   matchDateInvalid: 'Nimm das Format JJJJ-MM-TT, zum Beispiel 2026-03-14.',
+  matchFieldRequired: 'Fülle das aus.',
+  matchNumberInvalid: 'Nimm eine ganze Zahl.',
+  matchDay: 'Tag',
+  matchMonth: 'Monat',
+  matchYear: 'Jahr',
+  matchDateRequired: 'Wähle Tag, Monat und Jahr.',
+  matchDateFuture: 'Das Spieldatum kann nicht in der Zukunft liegen.',
   matchAddedToast: 'Spiel eingetragen.',
 
   addHonourTitle: 'Titel hinzufügen',
@@ -217,6 +224,7 @@ export const profile = {
   honourYearLabel: 'Jahr',
   saveHonour: 'Titel speichern',
   honourTitleRequired: 'Gib dem Titel einen Namen.',
+  yearInvalid: 'Gib ein Jahr zwischen {{min}} und {{max}} ein.',
   honourAddedToast: 'Titel hinzugefügt.',
 
   addCertificateTitle: 'Zertifikat hinzufügen',
@@ -247,6 +255,8 @@ export const profile = {
   // ── Profil bearbeiten (app/edit-profile.tsx) ───────────────────────────────
   /* `editProfile` oben ist der Titel dieses Bildschirms und der Knopf dorthin. */
   firstNameRequired: 'Dein Vorname darf nicht leer sein.',
+  discardChangesTitle: 'Änderungen verwerfen?',
+  discardChangesBody: 'Deine Änderungen an deinem Profil werden nicht gespeichert.',
   savedScoreUp_one: 'Gespeichert — dein Talent Score ist um {{count}} Punkt gestiegen.',
   savedScoreUp_other: 'Gespeichert — dein Talent Score ist um {{count}} Punkte gestiegen.',
   savedScoreDown_one: 'Gespeichert — dein Talent Score ist um {{count}} Punkt gesunken.',

@@ -340,6 +340,7 @@ export default function TabsLayout() {
           elevation: 0,
         },
         tabBarItemStyle: { paddingTop: 2 },
+        tabBarIconStyle: { width: '100%' },
       }}
     >
       <Tabs.Screen

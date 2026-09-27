@@ -19,6 +19,10 @@ vi.mock('@/lib/supabase', () => ({
   },
 }));
 
+vi.mock('expo-video-thumbnails', () => ({
+  getThumbnailAsync: vi.fn(),
+}));
+
 import { uploadPostMedia } from '@/lib/api.feed';
 
 describe('post media upload', () => {

@@ -164,7 +164,7 @@ export const settings = {
   scoutingIntro:
     'Esto define a quién te pone Descubrir delante primero y de qué deportistas te avisamos. Deja algo en blanco para decir «sin preferencia».',
   scoutingSports: 'Deportes',
-  scoutingSportsHint: 'Elige todos los deportes para los que reclutas.',
+  scoutingSportsHint: 'Elige el único deporte para el que ojeas.',
   scoutingPositions: 'Posiciones',
   scoutingPositionsHint: 'Solo las posiciones de los deportes que elegiste.',
   scoutingPositionsEmpty: 'Elige primero un deporte y aparecerán aquí sus posiciones.',
@@ -190,6 +190,9 @@ export const settings = {
 
   savePreferences: 'Guardar preferencias',
   preferencesSaved: 'Guardado. Descubrir lo usará a partir de ahora.',
+  discardChangesTitle: '¿Descartar los cambios?',
+  discardChangesBody: 'No se guardarán los cambios en lo que estás buscando.',
+  keepEditing: 'Seguir editando',
 
   // ── Apariencia (app/settings/appearance.tsx) ───────────────────────────────
   themeHeading: 'Tema',

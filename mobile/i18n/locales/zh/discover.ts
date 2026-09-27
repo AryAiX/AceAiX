@@ -44,6 +44,13 @@ export const discover = {
   rankedByFit: '按契合度排序。每张卡片都写着匹配背后的理由。',
   rankedByScore: '按天赋分排序。加一个筛选条件，就能看到每位运动员和你有多契合。',
   savedToShortlist: '已加入你的候选名单',
+  shortlist: {
+    title: '候选名单',
+    open: '打开你的候选名单',
+    emptyTitle: '还没有保存任何人',
+    emptyBody: '在「发现」里点运动员卡片上的书签，他们就会留在这里。',
+    emptyAction: '返回发现',
+  },
   emptyTitle: '没有运动员符合',
   emptyFilteredBody: '试试放宽年龄范围、加一个国家，或者清空搜索词。',
   emptyOpenBody: '运动员完善资料后会出现在这里。',

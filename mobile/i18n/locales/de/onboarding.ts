@@ -99,6 +99,7 @@ export const onboarding = {
   photoChoose: 'Aus Fotos wählen',
   photoChooseAnother: 'Anderes Foto wählen',
   photoTake: 'Foto aufnehmen',
+  photoRemove: 'Foto entfernen',
   photoUnreadable: 'Dieses Foto konnten wir nicht lesen. Nimm ein anderes.',
   photoLibraryDenied:
     '{{app}} braucht die Erlaubnis, deine Fotos zu öffnen. Du kannst sie in den Einstellungen geben.',

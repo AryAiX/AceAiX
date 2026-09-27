@@ -3,6 +3,7 @@ import { Clipboard, View } from 'react-native';
 import {
   AlertTriangle,
   Ban,
+  Check,
   Flag,
   Link2,
   Share2,
@@ -79,6 +80,7 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
 
   const [step, setStep] = useState<Step>(null);
   const [details, setDetails] = useState('');
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,6 +88,7 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
     if (target) {
       setStep('menu');
       setDetails('');
+      setSelectedReason(null);
     } else {
       setStep(null);
     }
@@ -136,11 +139,11 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
     }
   };
 
-  const handleReport = async (reason: string) => {
-    if (!target || busy) return;
+  const handleReport = async () => {
+    if (!target || busy || !selectedReason) return;
     setBusy(true);
     try {
-      await reportContent(target.kind, target.id, reason, details.trim() || undefined);
+      await reportContent(target.kind, target.id, selectedReason, details.trim() || undefined);
       close();
       toast.success(t('feed.reportThanks'));
     } catch (err) {
@@ -261,7 +264,16 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
         subtitle={t('feed.reportReasonPrompt')}
         height={0.88}
         footer={
-          <Button label={t('common.cancel')} variant="ghost" fullWidth onPress={close} />
+          <View style={{ gap: spacing.sm }}>
+            <Button
+              label={t('common.report')}
+              fullWidth
+              disabled={!selectedReason}
+              loading={busy}
+              onPress={handleReport}
+            />
+            <Button label={t('common.cancel')} variant="ghost" fullWidth onPress={close} />
+          </View>
         }
       >
         <View>
@@ -277,7 +289,12 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
                     <Flag size={20} color={colors.textSecondary} />
                   )
                 }
-                onPress={() => handleReport(reason.value)}
+                right={
+                  selectedReason === reason.value ? (
+                    <Check size={20} color={colors.primary} />
+                  ) : undefined
+                }
+                onPress={() => setSelectedReason(reason.value)}
                 disabled={busy}
                 showChevron={false}
               />

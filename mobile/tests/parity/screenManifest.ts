@@ -52,6 +52,7 @@ export const SCREEN_PARITY: ScreenParity[] = [
   screen('search.tsx', '/search', ['completed account'], ['recent', 'suggestions', 'loading', 'error', 'no results'], ['change scope', 'type query', 'open result', 'clear recent']),
   screen('post/[id].tsx', '/post/:postId', ['visible-post viewer'], ['invalid ID', 'loading', 'unavailable', 'comments loading', 'comments error', 'comments empty', 'sending'], ['comment', 'reply', 'share', 'report', 'delete', 'block', 'play media']),
   screen('saved.tsx', '/saved', ['completed account'], ['loading', 'error', 'empty', 'loading more'], ['refresh', 'open post', 'comment', 'share', 'unsave', 'report', 'delete', 'block']),
+  screen('shortlist.tsx', '/shortlist', ['recruiter'], ['loading', 'error', 'empty', 'populated'], ['refresh', 'open athlete', 'remove', 'return to discover']),
   screen('u/[id].tsx', '/u/:userId', ['completed account'], ['invalid ID', 'loading', 'error', 'blocked by self', 'blocked by other', 'suspended'], ['follow', 'message', 'share', 'unblock', 'change profile tab']),
   screen('u/[id]/followers.tsx', '/u/:userId/followers', ['completed account'], ['loading', 'error', 'self empty', 'other empty'], ['open profile', 'follow', 'unfollow']),
   screen('u/[id]/following.tsx', '/u/:userId/following', ['completed account'], ['loading', 'error', 'self empty', 'other empty'], ['open profile', 'follow', 'unfollow']),

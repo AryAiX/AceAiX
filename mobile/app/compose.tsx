@@ -7,7 +7,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Check,
@@ -282,6 +282,7 @@ export default function ComposeScreen() {
       }
       contentStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}
     >
+      <Stack.Screen options={{ gestureEnabled: !hasContent }} />
       <Pressable
         onPress={() => setAudienceOpen(true)}
         disabled={posting}

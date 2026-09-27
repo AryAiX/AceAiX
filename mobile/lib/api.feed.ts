@@ -1,3 +1,5 @@
+import * as VideoThumbnails from 'expo-video-thumbnails';
+
 import { AppError } from '@/lib/errors';
 import { Buckets, supabase } from '@/lib/supabase';
 import { webAppLink } from '@/lib/webLinks';
@@ -275,16 +277,41 @@ export async function uploadPostMedia(
         .upload(path, body, { contentType, cacheControl: '3600', upsert: false });
       if (error) throw new AppError(error);
 
+      let thumbnail: string | undefined;
+      if (item.type === 'video') {
+        try {
+          const still = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 0 });
+          const thumbPath = path.replace(/\.[^.]+$/, '_thumb.jpg');
+          const thumbResponse = await fetch(still.uri);
+          const thumbBody = await thumbResponse.arrayBuffer();
+          const { error: thumbError } = await supabase.storage
+            .from(Buckets.posts)
+            .upload(thumbPath, thumbBody, {
+              contentType: 'image/jpeg',
+              cacheControl: '3600',
+              upsert: false,
+            });
+          if (thumbError) throw thumbError;
+          thumbnail = thumbPath;
+        } catch (thumbFailure) {
+          // A missing still must not undo a video that already landed.
+          console.warn('Could not generate a video thumbnail', thumbFailure);
+        }
+      }
+
       uploaded.push({
         url: path,
         type: item.type,
         width: item.width && item.width > 0 ? item.width : undefined,
         height: item.height && item.height > 0 ? item.height : undefined,
+        ...(thumbnail ? { thumbnail } : {}),
       });
       onProgress?.(i + 1, items.length);
     }
   } catch (error) {
-    const paths = uploaded.map(({ url }) => url);
+    const paths = uploaded.flatMap(({ url, thumbnail }) =>
+      thumbnail ? [url, thumbnail] : [url],
+    );
     if (paths.length > 0) {
       // Cleanup is best effort. The upload error is the actionable failure and
       // must not be hidden if storage cleanup is temporarily unavailable.

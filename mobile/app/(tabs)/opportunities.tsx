@@ -223,7 +223,12 @@ function AthleteOpportunities() {
               title={t('opportunities.athlete.openEmptyTitle')}
               body={t('opportunities.athlete.openEmptyBody')}
               actionLabel={t('opportunities.athlete.findClubs')}
-              onAction={() => router.push(Routes.discover)}
+              onAction={() =>
+                router.navigate({
+                  pathname: Routes.discover,
+                  params: { tab: 'clubs', at: String(Date.now()) },
+                })
+              }
             />
           )
         }

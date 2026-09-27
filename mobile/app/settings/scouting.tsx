@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { BellRing, Handshake } from 'lucide-react-native';
+import { BackHandler, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { BellRing, Cake, Handshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
+  ConfirmSheet,
   Divider,
   EmptyState,
   ErrorState,
@@ -41,23 +43,25 @@ type Draft = {
   positions: string[];
   levels: string[];
   countries: string[];
-  age_min: number;
-  age_max: number;
+  age_min: number | null;
+  age_max: number | null;
   min_score: number;
   open_to_offers_only: boolean;
   notify_on_match: boolean;
 };
 
 const AGE_FLOOR = 13;
-const AGE_CEILING = 40;
+const AGE_CEILING = 60;
+const DEFAULT_AGE_MIN = 13;
+const DEFAULT_AGE_MAX = 25;
 
 const EMPTY: Draft = {
   sports: [],
   positions: [],
   levels: [],
   countries: [],
-  age_min: AGE_FLOOR,
-  age_max: 23,
+  age_min: null,
+  age_max: null,
   min_score: 0,
   open_to_offers_only: false,
   notify_on_match: true,
@@ -67,13 +71,15 @@ const LEVEL_KEYS = LEVELS.map((l) => l.key as string);
 
 function toDraft(prefs: MatchPreferences | null): Draft {
   if (!prefs) return EMPTY;
+  const sports = (prefs.sports ?? []).slice(0, 1);
+  const allowed = new Set(sports.flatMap((sport) => positionsFor(sport)));
   return {
-    sports: prefs.sports ?? [],
-    positions: prefs.positions ?? [],
+    sports,
+    positions: (prefs.positions ?? []).filter((p) => allowed.has(p)),
     levels: prefs.levels ?? [],
     countries: prefs.countries ?? [],
-    age_min: prefs.age_min ?? EMPTY.age_min,
-    age_max: prefs.age_max ?? EMPTY.age_max,
+    age_min: prefs.age_min ?? null,
+    age_max: prefs.age_max ?? null,
     min_score: prefs.min_score ?? 0,
     open_to_offers_only: prefs.open_to_offers_only ?? false,
     notify_on_match: prefs.notify_on_match ?? true,
@@ -85,6 +91,7 @@ export default function ScoutingPreferencesScreen() {
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const router = useRouter();
   const { isRecruiter } = useAuth();
 
   const loaded = useAsync(getMatchPreferences, []);
@@ -100,6 +107,30 @@ export default function ScoutingPreferencesScreen() {
   }, [loaded.data, loaded.loading]);
 
   const dirty = JSON.stringify(draft) !== baseline;
+  const anyAge = draft.age_min == null && draft.age_max == null;
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  const close = useCallback(() => {
+    if (router.canGoBack()) router.back();
+  }, [router]);
+
+  const requestClose = useCallback(() => {
+    if (saving) return;
+    if (dirty) setDiscardOpen(true);
+    else close();
+  }, [saving, dirty, close]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (saving) return true;
+      if (dirty) {
+        setDiscardOpen(true);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [dirty, saving]);
 
   /* Only offer the positions that belong to the sports actually chosen —
      "Wicket-keeper" under Football is noise a scout has to scroll past. */
@@ -112,7 +143,14 @@ export default function ScoutingPreferencesScreen() {
   const toggle = useCallback((key: 'sports' | 'positions' | 'levels' | 'countries', value: string) => {
     setDraft((current) => {
       const list = current[key];
-      const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
+      const next =
+        key === 'sports'
+          ? list.includes(value)
+            ? []
+            : [value]
+          : list.includes(value)
+            ? list.filter((v) => v !== value)
+            : [...list, value];
 
       if (key === 'sports') {
         // Drop positions that no longer belong to any selected sport.
@@ -134,12 +172,13 @@ export default function ScoutingPreferencesScreen() {
       await saveMatchPreferences(draft);
       setBaseline(JSON.stringify(draft));
       toast.success(t('settings.preferencesSaved'));
+      if (router.canGoBack()) router.back();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
       setSaving(false);
     }
-  }, [draft, toast, t]);
+  }, [draft, router, toast, t]);
 
   if (!isRecruiter) {
     return (
@@ -173,8 +212,10 @@ export default function ScoutingPreferencesScreen() {
   }
 
   return (
+    <>
+    <Stack.Screen options={{ gestureEnabled: !dirty }} />
     <Screen
-      header={<Header title={t('settings.scoutingTitle')} back bordered />}
+      header={<Header title={t('settings.scoutingTitle')} back onBack={requestClose} bordered />}
       testID="settings-scouting"
       footer={
         <Button
@@ -233,23 +274,52 @@ export default function ScoutingPreferencesScreen() {
             {t('settings.ageRange')}
           </Text>
           <Card padded="sm">
-            <Stepper
-              label={t('settings.youngest')}
-              value={draft.age_min}
-              min={AGE_FLOOR}
-              max={draft.age_max}
-              suffix={t('settings.yearsSuffix')}
-              onChange={(v) => setDraft((c) => ({ ...c, age_min: v }))}
-            />
-            <Divider style={{ marginVertical: spacing.sm }} />
-            <Stepper
-              label={t('settings.oldest')}
-              value={draft.age_max}
-              min={draft.age_min}
-              max={AGE_CEILING}
-              suffix={t('settings.yearsSuffix')}
-              onChange={(v) => setDraft((c) => ({ ...c, age_max: v }))}
-            />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                minHeight: theme.hit.min,
+              }}
+            >
+              <Cake size={18} color={colors.textSecondary} />
+              <View style={{ flex: 1 }}>
+                <Text variant="bodyStrong">{t('discover.filters.anyAge')}</Text>
+              </View>
+              <Switch
+                value={anyAge}
+                onValueChange={(on) =>
+                  setDraft((c) => ({
+                    ...c,
+                    age_min: on ? null : DEFAULT_AGE_MIN,
+                    age_max: on ? null : DEFAULT_AGE_MAX,
+                  }))
+                }
+                accessibilityLabel={t('discover.filters.anyAge')}
+              />
+            </View>
+            {!anyAge ? (
+              <>
+                <Divider style={{ marginVertical: spacing.sm }} />
+                <Stepper
+                  label={t('settings.youngest')}
+                  value={draft.age_min ?? DEFAULT_AGE_MIN}
+                  min={AGE_FLOOR}
+                  max={draft.age_max ?? DEFAULT_AGE_MAX}
+                  suffix={t('settings.yearsSuffix')}
+                  onChange={(v) => setDraft((c) => ({ ...c, age_min: v }))}
+                />
+                <Divider style={{ marginVertical: spacing.sm }} />
+                <Stepper
+                  label={t('settings.oldest')}
+                  value={draft.age_max ?? DEFAULT_AGE_MAX}
+                  min={draft.age_min ?? DEFAULT_AGE_MIN}
+                  max={AGE_CEILING}
+                  suffix={t('settings.yearsSuffix')}
+                  onChange={(v) => setDraft((c) => ({ ...c, age_max: v }))}
+                />
+              </>
+            ) : null}
           </Card>
           <InfoNote tone="neutral" icon="shield">
             {t('safety.scoutingMinorNote')}
@@ -331,5 +401,20 @@ export default function ScoutingPreferencesScreen() {
         </View>
       </View>
     </Screen>
+
+    <ConfirmSheet
+      visible={discardOpen}
+      title={t('settings.discardChangesTitle')}
+      message={t('settings.discardChangesBody')}
+      confirmLabel={t('feed.discard')}
+      cancelLabel={t('settings.keepEditing')}
+      destructive
+      onConfirm={() => {
+        setDiscardOpen(false);
+        close();
+      }}
+      onCancel={() => setDiscardOpen(false)}
+    />
+    </>
   );
 }

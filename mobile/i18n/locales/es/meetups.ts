@@ -64,6 +64,8 @@ export const meetups = {
 
   // ── Publicar uno ───────────────────────────────────────────────────────────
   createTitle: 'Publicar un partido',
+  discardTitle: '¿Descartar este partido?',
+  discardBody: 'No se guardará lo que hayas rellenado.',
   createSubtitle:
     'Di a qué quieres jugar, dónde y cuándo. La gente pide entrar y tú decides.',
   fieldSport: 'Deporte',

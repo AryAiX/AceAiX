@@ -101,6 +101,7 @@ export const onboarding = {
   photoChoose: 'Выбрать из галереи',
   photoChooseAnother: 'Выбрать другое фото',
   photoTake: 'Сделать фото',
+  photoRemove: 'Удалить фото',
   photoUnreadable: 'Не удалось прочитать это фото. Попробуй другое.',
   photoLibraryDenied:
     '{{app}} нужен доступ к твоим фото. Включить его можно в настройках телефона.',

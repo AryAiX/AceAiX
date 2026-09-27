@@ -207,7 +207,7 @@ export const profile = {
 
 
   logMatchTitle: 'تسجيل مباراة',
-  logMatchSubtitle: 'ما تتذكّره فقط — يمكنك إضافة المزيد لاحقًا.',
+  logMatchSubtitle: 'املأ كل الحقول لتسجيل المباراة.',
   matchDate: 'التاريخ',
   matchDateHint: 'سنة-شهر-يوم',
   matchCompetition: 'البطولة',
@@ -221,6 +221,13 @@ export const profile = {
   matchAssistsLabel: 'التمريرات الحاسمة',
   saveMatch: 'حفظ المباراة',
   matchDateInvalid: 'استخدم صيغة التاريخ YYYY-MM-DD، مثل 2026-03-14.',
+  matchFieldRequired: 'املأ هذا الحقل.',
+  matchNumberInvalid: 'استخدم عددًا صحيحًا.',
+  matchDay: 'اليوم',
+  matchMonth: 'الشهر',
+  matchYear: 'السنة',
+  matchDateRequired: 'اختر اليوم والشهر والسنة.',
+  matchDateFuture: 'لا يمكن أن يكون تاريخ المباراة في المستقبل.',
   matchAddedToast: 'أُضيفت المباراة.',
 
   addHonourTitle: 'إضافة لقب',
@@ -231,6 +238,7 @@ export const profile = {
   honourYearLabel: 'السنة',
   saveHonour: 'حفظ اللقب',
   honourTitleRequired: 'أعطِ اللقب اسمًا.',
+  yearInvalid: 'أدخل سنة بين {{min}} و{{max}}.',
   honourAddedToast: 'أُضيف اللقب.',
 
   addCertificateTitle: 'إضافة شهادة',
@@ -261,6 +269,8 @@ export const profile = {
   // ── تعديل الملف (app/edit-profile.tsx) ────────────────────────────────────
   /* `editProfile` أعلاه هو عنوان هذه الشاشة وزر فتحها معًا. */
   firstNameRequired: 'لا يمكن ترك الاسم الأول فارغًا.',
+  discardChangesTitle: 'تجاهل التغييرات؟',
+  discardChangesBody: 'لن تُحفظ تغييراتك على ملفك.',
   savedScoreUp_zero: 'تم الحفظ — لم تتغيّر درجة موهبتك.',
   savedScoreUp_one: 'تم الحفظ — ارتفعت درجة موهبتك نقطة واحدة.',
   savedScoreUp_two: 'تم الحفظ — ارتفعت درجة موهبتك نقطتين.',

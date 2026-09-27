@@ -47,6 +47,13 @@ export const discover = {
   rankedByFit: 'Classé par correspondance. Chaque carte montre les raisons de son affinité.',
   rankedByScore: 'Classé par score talent. Ajoute un filtre pour voir à quel point chaque athlète te correspond.',
   savedToShortlist: 'Ajouté à ta liste',
+  shortlist: {
+    title: 'Liste',
+    open: 'Ouvrir ta liste',
+    emptyTitle: 'Aucun athlète enregistré',
+    emptyBody: 'Touche le signet d’un athlète dans Découvrir pour le garder ici.',
+    emptyAction: 'Retour à Découvrir',
+  },
   emptyTitle: 'Aucun athlète ne correspond',
   emptyFilteredBody: 'Essaie d’élargir la tranche d’âge, d’ajouter un pays ou d’effacer la recherche.',
   emptyOpenBody: 'Les athlètes apparaissent ici au fur et à mesure qu’ils complètent leur profil.',

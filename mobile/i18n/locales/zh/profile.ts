@@ -184,7 +184,7 @@ export const profile = {
 
 
   logMatchTitle: '记录一场比赛',
-  logMatchSubtitle: '记得多少写多少 —— 之后还能补。',
+  logMatchSubtitle: '填写每一项才能记录这场比赛。',
   matchDate: '日期',
   matchDateHint: '年-月-日',
   matchCompetition: '赛事',
@@ -198,6 +198,13 @@ export const profile = {
   matchAssistsLabel: '助攻',
   saveMatch: '保存比赛',
   matchDateInvalid: '请按 YYYY-MM-DD 的格式填写日期，例如 2026-03-14。',
+  matchFieldRequired: '请填写此项。',
+  matchNumberInvalid: '请填写整数。',
+  matchDay: '日',
+  matchMonth: '月',
+  matchYear: '年',
+  matchDateRequired: '请选择日、月和年。',
+  matchDateFuture: '比赛日期不能是将来的日期。',
   matchAddedToast: '比赛已添加。',
 
   addHonourTitle: '添加一项荣誉',
@@ -208,6 +215,7 @@ export const profile = {
   honourYearLabel: '年份',
   saveHonour: '保存荣誉',
   honourTitleRequired: '给这项荣誉起个名字。',
+  yearInvalid: '请填写{{min}}到{{max}}之间的年份。',
   honourAddedToast: '荣誉已添加。',
 
   addCertificateTitle: '添加一份证书',
@@ -238,6 +246,8 @@ export const profile = {
   // ── 编辑资料（app/edit-profile.tsx） ───────────────────────────────────────
   /* 上面的 `editProfile` 既是这个页面的标题，也是打开它的按钮。 */
   firstNameRequired: '名字不能为空。',
+  discardChangesTitle: '放弃更改？',
+  discardChangesBody: '你对个人资料所做的更改不会保存。',
   savedScoreUp_other: '已保存 —— 你的天赋分涨了{{count}}分。',
   savedScoreDown_other: '已保存 —— 你的天赋分掉了{{count}}分。',
 

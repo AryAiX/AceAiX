@@ -30,6 +30,7 @@ export function PhotoStep({
   uploading,
   error,
   onPicked,
+  onRemove,
   onError,
 }: {
   name: string | null;
@@ -38,6 +39,7 @@ export function PhotoStep({
   uploading: boolean;
   error: string | null;
   onPicked: (photo: PickedPhoto) => void;
+  onRemove: () => void;
   onError: (message: string) => void;
 }) {
   const theme = useTheme();
@@ -156,6 +158,16 @@ export function PhotoStep({
             onPress={fromCamera}
             testID="onboarding-photo-camera"
           />
+          {previewUri ? (
+            <Button
+              label={t('onboarding.photoRemove')}
+              variant="danger"
+              fullWidth
+              disabled={uploading || opening}
+              onPress={onRemove}
+              testID="onboarding-photo-remove"
+            />
+          ) : null}
         </View>
       </View>
     </View>
