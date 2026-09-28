@@ -87,6 +87,16 @@ export const common = {
     performance_analyst: 'Leistungsanalyst',
     other: 'Andere Trainerrolle',
   },
+  clubRoles: {
+    academy_director: 'Akademieleiter',
+    club_president_owner: 'Vereinspräsident / Eigentümer',
+    technical_director: 'Technischer Direktor',
+    sporting_director: 'Sportdirektor',
+    head_of_recruitment: 'Leiter Scouting',
+    head_of_youth_development: 'Leiter Nachwuchsentwicklung',
+    club_administrator: 'Vereinsadministrator',
+    other: 'Andere Vereinsrolle',
+  },
 
   // Zahlen
   followers: 'Follower',

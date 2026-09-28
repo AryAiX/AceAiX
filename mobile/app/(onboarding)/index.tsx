@@ -56,6 +56,7 @@ import { PhotoStep, type PickedPhoto } from '@/components/onboarding/PhotoStep';
 import { TeamsStep } from '@/components/onboarding/TeamsStep';
 import { AthleteFinishStep, SimpleFinishStep } from '@/components/onboarding/FinishStep';
 import {
+  CLUB_ROLE_KEYS,
   COACH_ROLE_KEYS,
   RECRUITER_AGE_BANDS,
   RecruiterPlaceStep,
@@ -422,7 +423,7 @@ export default function OnboardingScreen() {
         return sports.length > 0;
       case 'role':
         return isClub
-          ? specialty.trim().length >= 2
+          ? (CLUB_ROLE_KEYS as readonly string[]).includes(specialty)
           : (COACH_ROLE_KEYS as readonly string[]).includes(specialty);
       default:
         return true;
@@ -444,7 +445,7 @@ export default function OnboardingScreen() {
     }
     if (step === 'role') {
       const valid = isClub
-        ? specialty.trim().length >= 2
+        ? (CLUB_ROLE_KEYS as readonly string[]).includes(specialty)
         : (COACH_ROLE_KEYS as readonly string[]).includes(specialty);
       const error = valid ? null : t('onboarding.recruiterRoleRequired');
       setSpecialtyError(error);

@@ -86,6 +86,16 @@ export const common = {
     performance_analyst: 'محلل أداء',
     other: 'دور تدريبي آخر',
   },
+  clubRoles: {
+    academy_director: 'مدير الأكاديمية',
+    club_president_owner: 'رئيس / مالك النادي',
+    technical_director: 'المدير الفني',
+    sporting_director: 'المدير الرياضي',
+    head_of_recruitment: 'رئيس قسم استقطاب المواهب',
+    head_of_youth_development: 'رئيس قسم تطوير الناشئين',
+    club_administrator: 'إداري النادي',
+    other: 'دور آخر في النادي',
+  },
 
   // الأعداد
   followers: 'المتابِعون',

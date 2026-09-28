@@ -87,6 +87,16 @@ export const common = {
     performance_analyst: 'Спортивный аналитик',
     other: 'Другая тренерская роль',
   },
+  clubRoles: {
+    academy_director: 'Директор академии',
+    club_president_owner: 'Президент / владелец клуба',
+    technical_director: 'Технический директор',
+    sporting_director: 'Спортивный директор',
+    head_of_recruitment: 'Руководитель селекционной службы',
+    head_of_youth_development: 'Руководитель детско-юношеского направления',
+    club_administrator: 'Администратор клуба',
+    other: 'Другая роль в клубе',
+  },
 
   // Счётчики
   followers: 'Подписчики',
