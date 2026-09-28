@@ -34,7 +34,9 @@ import {
   updateAthleteProfile,
   updateUserProfile,
 } from '@/lib/api';
+import { updateCoachProfile } from '@/lib/api.auth';
 import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
   LEVELS,
@@ -70,6 +72,8 @@ interface FormState {
   weightKg: string;
   dominant: string;
   openToOffers: boolean;
+  coachRole: string;
+  coachClub: string;
 }
 
 /**
@@ -101,7 +105,7 @@ export default function EditProfileScreen() {
   // Seed the form once, the first time the bundle lands.
   useEffect(() => {
     if (!bundle.data || form) return;
-    const { user, athlete } = bundle.data;
+    const { user, athlete, coach } = bundle.data;
     const [fallbackFirst = '', ...fallbackLast] = (user.full_name ?? '').trim().split(/\s+/);
     const seed: FormState = {
       firstName: user.first_name?.trim() || fallbackFirst,
@@ -120,6 +124,8 @@ export default function EditProfileScreen() {
       weightKg: athlete?.weight_kg != null ? String(athlete.weight_kg) : '',
       dominant: athlete?.dominant_foot ?? '',
       openToOffers: athlete?.is_open_to_offers ?? true,
+      coachRole: coach?.specialty ?? '',
+      coachClub: coach?.current_club ?? '',
     };
     setForm(seed);
     setInitial(seed);
@@ -245,6 +251,13 @@ export default function EditProfileScreen() {
         });
       }
 
+      if (bundle.data.coach) {
+        await updateCoachProfile({
+          specialty: form.coachRole || null,
+          current_club: form.coachClub.trim() || null,
+        });
+      }
+
       await refreshProfile();
 
       let message = t('common.saved');
@@ -322,6 +335,7 @@ export default function EditProfileScreen() {
   }
 
   const hasAthlete = !!bundle.data?.athlete;
+  const hasCoach = !!bundle.data?.coach;
   const positions = positionsFor(form.sport);
   const selectedSport = SPORTS.find((sport) => sport.key === form.sport);
 
@@ -686,6 +700,48 @@ export default function EditProfileScreen() {
             </Card>
           </View>
         </>
+      ) : null}
+
+      {hasCoach ? (
+        <View>
+          <SectionHeader title={t('profile.sectionCoaching')} />
+          <View style={{ gap: spacing.md }}>
+            <View style={{ gap: 6 }}>
+              <Text variant="captionStrong" tone="secondary">
+                {t('onboarding.recruiterRoleLabel')}
+                <Text variant="captionStrong" tone="danger">
+                  {' *'}
+                </Text>
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: spacing.sm,
+                }}
+              >
+                {COACH_ROLE_KEYS.map((key) => (
+                  <Chip
+                    key={key}
+                    label={t(`common.coachRoles.${key}`)}
+                    selected={form.coachRole === key}
+                    onPress={() => set('coachRole', key)}
+                    testID={`edit-coach-role-${key}`}
+                    style={{ minHeight: theme.hit.min }}
+                  />
+                ))}
+              </View>
+            </View>
+            <Input
+              label={t('onboarding.clubLabel')}
+              placeholder={t('onboarding.clubPlaceholder')}
+              hint={t('onboarding.recruiterClubHintCoach')}
+              value={form.coachClub}
+              onChangeText={(text) => set('coachClub', text)}
+              testID="edit-coach-club"
+            />
+          </View>
+        </View>
       ) : null}
 
       {/* ── Sport picker ── */}

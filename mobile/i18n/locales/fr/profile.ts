@@ -291,6 +291,7 @@ export const profile = {
   notSet: 'non renseigné',
 
   sectionSport: 'Ton sport',
+  sectionCoaching: "Activité d'entraîneur",
   sport: 'Sport',
   sportPlaceholder: 'Choisis ton sport',
   sportA11y: 'Sport. Actuellement {{value}}. Ouvre un sélecteur.',

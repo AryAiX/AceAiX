@@ -307,6 +307,7 @@ export const profile = {
   notSet: 'غير محدّدة',
 
   sectionSport: 'رياضتك',
+  sectionCoaching: 'العمل التدريبي',
   sport: 'الرياضة',
   sportPlaceholder: 'اختر رياضتك',
   sportA11y: 'الرياضة. حاليًا {{value}}. يفتح قائمة اختيار.',

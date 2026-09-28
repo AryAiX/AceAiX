@@ -285,6 +285,7 @@ export const profile = {
   notSet: 'nicht gesetzt',
 
   sectionSport: 'Deine Sportart',
+  sectionCoaching: 'Trainertätigkeit',
   sport: 'Sportart',
   sportPlaceholder: 'Sportart wählen',
   sportA11y: 'Sportart. Aktuell {{value}}. Öffnet eine Auswahl.',

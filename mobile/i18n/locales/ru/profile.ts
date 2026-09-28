@@ -300,6 +300,7 @@ export const profile = {
   notSet: 'не указано',
 
   sectionSport: 'Твой спорт',
+  sectionCoaching: 'Тренерская деятельность',
   sport: 'Вид спорта',
   sportPlaceholder: 'Выбери вид спорта',
   sportA11y: 'Вид спорта. Сейчас: {{value}}. Открывает выбор.',
