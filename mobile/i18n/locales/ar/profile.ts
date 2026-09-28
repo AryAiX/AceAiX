@@ -308,6 +308,7 @@ export const profile = {
 
   sectionSport: 'رياضتك',
   sectionCoaching: 'العمل التدريبي',
+  sectionClub: 'النادي',
   sport: 'الرياضة',
   sportPlaceholder: 'اختر رياضتك',
   sportA11y: 'الرياضة. حاليًا {{value}}. يفتح قائمة اختيار.',

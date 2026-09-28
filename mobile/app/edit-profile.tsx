@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,9 +34,9 @@ import {
   updateAthleteProfile,
   updateUserProfile,
 } from '@/lib/api';
-import { updateCoachProfile } from '@/lib/api.auth';
+import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
 import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
-import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
+import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
   LEVELS,
@@ -54,6 +54,18 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 
 const BIO_MAX = 300;
+const CLUB_CREDENTIALS_SEPARATOR = ' — ';
+
+/** "roleKey — Club name". No separator means the whole string is the role. */
+function splitClubCredentials(value: string | null): { role: string; name: string } {
+  if (!value) return { role: '', name: '' };
+  const at = value.indexOf(CLUB_CREDENTIALS_SEPARATOR);
+  if (at === -1) return { role: value, name: '' };
+  return {
+    role: value.slice(0, at).trim(),
+    name: value.slice(at + CLUB_CREDENTIALS_SEPARATOR.length).trim(),
+  };
+}
 
 interface FormState {
   firstName: string;
@@ -74,6 +86,8 @@ interface FormState {
   openToOffers: boolean;
   coachRole: string;
   coachClub: string;
+  clubRole: string;
+  clubName: string;
 }
 
 /**
@@ -88,9 +102,21 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const toast = useToast();
   const t = useT();
-  const { refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
 
   const bundle = useAsync(() => getMyProfile(), []);
+  // Prefer the profile bundle's role once it has loaded. Until then, the
+  // signed-in account from auth is enough to start the credentials read.
+  const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
+  const scoutCreds = useAsync(() => getMyScoutCredentials(), [isClubAccount], {
+    enabled: isClubAccount,
+  });
+  // `loading: false` with null data is also the state before the request
+  // starts. Only a request that has been in flight counts as finished.
+  const scoutPhase = useRef<'idle' | 'loading' | 'done'>('idle');
+  if (!isClubAccount) scoutPhase.current = 'idle';
+  else if (scoutCreds.loading) scoutPhase.current = 'loading';
+  else if (scoutPhase.current === 'loading') scoutPhase.current = 'done';
 
   const [form, setForm] = useState<FormState | null>(null);
   const [initial, setInitial] = useState<FormState | null>(null);
@@ -101,12 +127,27 @@ export default function EditProfileScreen() {
   const [sportSheet, setSportSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
+  const [clubLoadFailed, setClubLoadFailed] = useState(false);
 
-  // Seed the form once, the first time the bundle lands.
+  // Seed the form once, the first time the bundle lands. A club waits until
+  // the credentials read has finished, so an empty result is a real answer.
   useEffect(() => {
     if (!bundle.data || form) return;
+    if (isClubAccount && scoutPhase.current !== 'done') return;
     const { user, athlete, coach } = bundle.data;
     const [fallbackFirst = '', ...fallbackLast] = (user.full_name ?? '').trim().split(/\s+/);
+    let clubRole = '';
+    let clubName = '';
+    let failed = false;
+    if (isClubAccount) {
+      if (scoutCreds.error) failed = true;
+      else {
+        const parsed = splitClubCredentials(scoutCreds.data);
+        clubRole = parsed.role;
+        clubName = parsed.name;
+      }
+    }
+    setClubLoadFailed(failed);
     const seed: FormState = {
       firstName: user.first_name?.trim() || fallbackFirst,
       lastName: user.last_name?.trim() || fallbackLast.join(' '),
@@ -126,10 +167,12 @@ export default function EditProfileScreen() {
       openToOffers: athlete?.is_open_to_offers ?? true,
       coachRole: coach?.specialty ?? '',
       coachClub: coach?.current_club ?? '',
+      clubRole,
+      clubName,
     };
     setForm(seed);
     setInitial(seed);
-  }, [bundle.data, form]);
+  }, [bundle.data, form, isClubAccount, scoutCreds.data, scoutCreds.error, scoutCreds.loading]);
 
   const dirty = useMemo(
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),
@@ -258,6 +301,13 @@ export default function EditProfileScreen() {
         });
       }
 
+      if (isClubAccount && !clubLoadFailed) {
+        await updateScoutProfile({
+          credentials:
+            [form.clubRole.trim(), form.clubName.trim()].filter(Boolean).join(' — ') || null,
+        });
+      }
+
       await refreshProfile();
 
       let message = t('common.saved');
@@ -283,7 +333,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, form, refreshProfile, router, t, toast]);
+  }, [bundle.data, clubLoadFailed, form, isClubAccount, refreshProfile, router, t, toast]);
 
   const countries = useMemo(() => {
     const term = countryQuery.trim().toLowerCase();
@@ -739,6 +789,48 @@ export default function EditProfileScreen() {
               value={form.coachClub}
               onChangeText={(text) => set('coachClub', text)}
               testID="edit-coach-club"
+            />
+          </View>
+        </View>
+      ) : null}
+
+      {isClubAccount && !clubLoadFailed ? (
+        <View>
+          <SectionHeader title={t('profile.sectionClub')} />
+          <View style={{ gap: spacing.md }}>
+            <View style={{ gap: 6 }}>
+              <Text variant="captionStrong" tone="secondary">
+                {t('onboarding.recruiterRoleLabel')}
+                <Text variant="captionStrong" tone="danger">
+                  {' *'}
+                </Text>
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: spacing.sm,
+                }}
+              >
+                {CLUB_ROLE_KEYS.map((key) => (
+                  <Chip
+                    key={key}
+                    label={t(`common.clubRoles.${key}`)}
+                    selected={form.clubRole === key}
+                    onPress={() => set('clubRole', key)}
+                    testID={`edit-club-role-${key}`}
+                    style={{ minHeight: theme.hit.min }}
+                  />
+                ))}
+              </View>
+            </View>
+            <Input
+              label={t('onboarding.recruiterClubLabel')}
+              placeholder={t('onboarding.clubPlaceholder')}
+              hint={t('onboarding.recruiterClubHintClub')}
+              value={form.clubName}
+              onChangeText={(text) => set('clubName', text)}
+              testID="edit-club-name"
             />
           </View>
         </View>

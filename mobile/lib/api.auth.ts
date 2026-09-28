@@ -186,6 +186,19 @@ export async function updateScoutProfile(patch: ScoutUpdate): Promise<void> {
   if (error) throw new AppError(error);
 }
 
+/** The signed-in club's role and name, stored together in `credentials`. */
+export async function getMyScoutCredentials(): Promise<string | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) throw new AppError('Not signed in');
+  const { data, error } = await supabase
+    .from('scout_profiles')
+    .select('credentials')
+    .eq('user_id', auth.user.id)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  return data?.credentials ?? null;
+}
+
 // ── Avatar upload ────────────────────────────────────────────────────────────
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',

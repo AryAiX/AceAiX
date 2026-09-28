@@ -292,6 +292,7 @@ export const profile = {
 
   sectionSport: 'Ton sport',
   sectionCoaching: "Activité d'entraîneur",
+  sectionClub: 'Club',
   sport: 'Sport',
   sportPlaceholder: 'Choisis ton sport',
   sportA11y: 'Sport. Actuellement {{value}}. Ouvre un sélecteur.',

@@ -301,6 +301,7 @@ export const profile = {
 
   sectionSport: 'Твой спорт',
   sectionCoaching: 'Тренерская деятельность',
+  sectionClub: 'Клуб',
   sport: 'Вид спорта',
   sportPlaceholder: 'Выбери вид спорта',
   sportA11y: 'Вид спорта. Сейчас: {{value}}. Открывает выбор.',
