@@ -76,6 +76,16 @@ export const common = {
   aceaixTeam: 'AceAiX 团队',
   verified: '已认证',
   under18: '未满18岁',
+  coachRoles: {
+    head_coach: '主教练',
+    assistant_coach: '助理教练',
+    youth_academy_coach: '青训 / 学院教练',
+    strength_conditioning_coach: '体能教练',
+    technical_skills_coach: '技术教练',
+    scout: '球探',
+    performance_analyst: '表现分析师',
+    other: '其他教练角色',
+  },
 
   // 计数
   followers: '粉丝',

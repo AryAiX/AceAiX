@@ -76,6 +76,16 @@ export const common = {
   aceaixTeam: 'فريق AceAiX',
   verified: 'موثّق',
   under18: 'دون 18',
+  coachRoles: {
+    head_coach: 'مدرب رئيسي',
+    assistant_coach: 'مدرب مساعد',
+    youth_academy_coach: 'مدرب فئات سنية / أكاديمية',
+    strength_conditioning_coach: 'مدرب اللياقة البدنية',
+    technical_skills_coach: 'مدرب مهارات فنية',
+    scout: 'كشّاف مواهب',
+    performance_analyst: 'محلل أداء',
+    other: 'دور تدريبي آخر',
+  },
 
   // الأعداد
   followers: 'المتابِعون',

@@ -77,6 +77,16 @@ export const common = {
   aceaixTeam: 'AceAiX-Team',
   verified: 'Geprüft',
   under18: 'Unter 18',
+  coachRoles: {
+    head_coach: 'Cheftrainer',
+    assistant_coach: 'Co-Trainer',
+    youth_academy_coach: 'Jugend- / Akademietrainer',
+    strength_conditioning_coach: 'Athletiktrainer',
+    technical_skills_coach: 'Techniktrainer',
+    scout: 'Scout',
+    performance_analyst: 'Leistungsanalyst',
+    other: 'Andere Trainerrolle',
+  },
 
   // Zahlen
   followers: 'Follower',

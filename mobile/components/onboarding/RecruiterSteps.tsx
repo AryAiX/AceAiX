@@ -9,6 +9,18 @@ import { CountryPicker, SportTile, StepHeading } from './Shared';
 
 /** The coach and club path. Short: who they are, and who they are looking for. */
 
+/** Fixed roles a coach picks. Stored as the key; the label is translated. */
+export const COACH_ROLE_KEYS = [
+  'head_coach',
+  'assistant_coach',
+  'youth_academy_coach',
+  'strength_conditioning_coach',
+  'technical_skills_coach',
+  'scout',
+  'performance_analyst',
+  'other',
+] as const;
+
 // ── Sports they work in ──────────────────────────────────────────────────────
 export function RecruiterSportsStep({
   value,
@@ -75,22 +87,56 @@ export function RecruiterRoleStep({
         subtitle={t('onboarding.recruiterRoleSubtitle')}
       />
       <View style={{ gap: theme.spacing.xl }}>
-        <Input
-          label={t('onboarding.recruiterRoleLabel')}
-          required
-          value={specialty}
-          onChangeText={onChangeSpecialty}
-          error={specialtyError}
-          placeholder={t(
-            isClub
-              ? 'onboarding.recruiterRolePlaceholderClub'
-              : 'onboarding.recruiterRolePlaceholderCoach',
-          )}
-          autoCapitalize="sentences"
-          returnKeyType="next"
-          onSubmitEditing={() => clubRef.current?.focus()}
-          testID="recruiter-specialty"
-        />
+        {isClub ? (
+          <Input
+            label={t('onboarding.recruiterRoleLabel')}
+            required
+            value={specialty}
+            onChangeText={onChangeSpecialty}
+            error={specialtyError}
+            placeholder={t('onboarding.recruiterRolePlaceholderClub')}
+            autoCapitalize="sentences"
+            returnKeyType="next"
+            onSubmitEditing={() => clubRef.current?.focus()}
+            testID="recruiter-specialty"
+          />
+        ) : (
+          <View style={{ gap: 6 }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('onboarding.recruiterRoleLabel')}
+              <Text variant="captionStrong" tone="danger">
+                {' *'}
+              </Text>
+            </Text>
+            <View
+              testID="recruiter-specialty"
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: theme.spacing.sm,
+              }}
+            >
+              {COACH_ROLE_KEYS.map((key) => {
+                const selected = specialty === key;
+                return (
+                  <Chip
+                    key={key}
+                    label={t(`common.coachRoles.${key}`)}
+                    selected={selected}
+                    onPress={() => onChangeSpecialty(key)}
+                    testID={`recruiter-role-${key}`}
+                    style={{ minHeight: theme.hit.min }}
+                  />
+                );
+              })}
+            </View>
+            {specialtyError ? (
+              <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+                {specialtyError}
+              </Text>
+            ) : null}
+          </View>
+        )}
         <Input
           ref={clubRef}
           label={t(isClub ? 'onboarding.recruiterClubLabel' : 'onboarding.clubLabel')}
