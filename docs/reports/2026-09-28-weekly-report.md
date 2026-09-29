@@ -1,6 +1,7 @@
 # AceAiX Weekly Report
 
-**Week Ending:** September 28, 2026  
+**Week Ending:** September 28, 2026
+
 **Focus:** Store sign-up was broken for every new user on 2.0.0. The crash, the confirmation link, and the QA findings behind them are fixed on `main` and in production config. The **2.0.1** binary is ready to submit; this report does not cover the store upload itself.
 
 ## Executive Summary
