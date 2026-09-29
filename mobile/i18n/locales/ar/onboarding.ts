@@ -161,9 +161,9 @@ export const onboarding = {
     'ملفك محفوظ في كل الأحوال — يمكنك المتابعة والاطلاع على درجتك لاحقًا.',
   athleteDoneTitle: 'أحسنت',
   athleteDoneTitleNamed: 'أحسنت يا {{name}}',
-  athleteDoneScored: 'ملفك أصبح ظاهرًا. هذه نقطة انطلاقك — {{tier}}.',
+  athleteDoneScored: 'كل شيء جاهز. هذه نقطة انطلاقك — {{tier}}.',
   athleteDoneNoScore:
-    'ملفك أصبح ظاهرًا. أضف القليل بعد وستظهر درجة موهبتك على ملفك.',
+    'كل شيء جاهز. أضف القليل بعد وستظهر درجة موهبتك على ملفك.',
   tipsTitle: 'كيف ترفعها',
   tipPoints: '+{{points}}',
   tipsEmpty:

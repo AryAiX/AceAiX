@@ -315,6 +315,17 @@ export default function OnboardingScreen() {
           });
           break;
         case 'guardian': {
+          /* Re-requesting replaces the pending link and emails the guardian
+             again, so walking back through the wizard must not do it. */
+          const unchanged =
+            guardianConsent?.status === 'pending' &&
+            guardianConsent.guardian_email.toLowerCase() === guardianEmail.trim().toLowerCase() &&
+            guardianConsent.guardian_name === guardianName.trim() &&
+            guardianConsent.relationship === guardianRelationship;
+          if (unchanged) {
+            setGuardianRequested(true);
+            break;
+          }
           const consent = await requestGuardianConsent(
             guardianName.trim(),
             guardianEmail.trim().toLowerCase(),
@@ -377,6 +388,7 @@ export default function OnboardingScreen() {
     guardianName,
     guardianEmail,
     guardianRelationship,
+    guardianConsent,
     sports,
     positions,
     specialty,
@@ -642,7 +654,7 @@ export default function OnboardingScreen() {
 
         {step === 'teams' ? (
           <TeamsStep
-            sport={sport}
+            sport={sport ?? sports[0] ?? null}
             teams={favoriteTeams}
             venue={venue}
             onChangeTeams={setFavoriteTeams}

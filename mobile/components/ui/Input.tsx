@@ -11,6 +11,7 @@ import { Eye, EyeOff } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
 import { Text } from './Text';
+import { isRTL } from './rtl';
 
 interface Props extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -94,6 +95,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
             fontSize: size.md,
             paddingVertical: multiline ? spacing.md : 0,
             textAlignVertical: multiline ? 'top' : 'center',
+            // Unlike Text, TextInput does not mirror left/right under RTL.
+            textAlign: isRTL ? 'right' : undefined,
           }}
           accessibilityLabel={label ?? rest.placeholder}
           accessibilityState={{ ...rest.accessibilityState, disabled: rest.editable === false }}

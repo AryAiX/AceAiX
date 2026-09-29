@@ -17,7 +17,7 @@ import { useT } from '@/i18n';
  * on screen by the time these words arrive, and if they never arrive the screen
  * says so plainly instead of spinning.
  */
-export function ScoreInsight({ athleteId }: { athleteId?: string }) {
+export function ScoreInsight({ athleteId, score }: { athleteId?: string; score?: number }) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -45,7 +45,8 @@ export function ScoreInsight({ athleteId }: { athleteId?: string }) {
     return () => {
       cancelled = true;
     };
-  }, [athleteId]);
+    // `score` is not read here: a new number means the written summary is stale.
+  }, [athleteId, score]);
 
   return (
     <Card padded tone="primarySoft" style={{ gap: spacing.sm }}>

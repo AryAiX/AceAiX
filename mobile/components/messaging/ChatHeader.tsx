@@ -1,9 +1,9 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
+import { MoreHorizontal } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Skeleton, Text } from '@/components/ui';
+import { Avatar, Skeleton, Text, ChevronBack } from '@/components/ui';
 import { useT } from '@/i18n';
 import { displayName, roleLabel } from '@/lib/format';
 import type { ConversationPeer } from '@/lib/api.messaging';
@@ -57,7 +57,7 @@ export function ChatHeader({ peer, loading, onBack, onOpenProfile, onOpenMenu }:
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <ChevronLeft size={24} color={colors.text} />
+        <ChevronBack size={24} color={colors.text} />
       </Pressable>
 
       <Pressable

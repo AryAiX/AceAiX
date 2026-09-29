@@ -8,13 +8,13 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
+import { ChevronForward } from './rtl';
 
 // ── SegmentedControl ──────────────────────────────────────────────────────────
 interface SegmentedProps<T extends string> {
@@ -185,7 +185,7 @@ export function ListItem({
       </View>
       {right}
       {showChevron ?? (onPress && !right) ? (
-        <ChevronRight size={20} color={colors.textMuted} />
+        <ChevronForward size={20} color={colors.textMuted} />
       ) : null}
     </View>
   );
@@ -226,9 +226,10 @@ export function Switch({
       onValueChange={onValueChange}
       disabled={disabled}
       accessibilityLabel={accessibilityLabel}
-      trackColor={{ false: colors.surfaceSunken, true: colors.primary }}
-      thumbColor={colors.surface}
-      ios_backgroundColor={colors.surfaceSunken}
+      // A surface-coloured thumb on a sunken track vanishes in dark mode.
+      trackColor={{ false: colors.borderStrong, true: colors.primary }}
+      thumbColor="#FFFFFF"
+      ios_backgroundColor={colors.borderStrong}
     />
   );
 }

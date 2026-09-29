@@ -170,9 +170,9 @@ export const onboarding = {
     'Tu perfil se guarda igual: puedes seguir y consultar tu puntuación después.',
   athleteDoneTitle: 'Bien hecho',
   athleteDoneTitleNamed: 'Bien hecho, {{name}}',
-  athleteDoneScored: 'Tu perfil ya está activo. Aquí es donde empiezas: {{tier}}.',
+  athleteDoneScored: 'Todo listo. Aquí es donde empiezas: {{tier}}.',
   athleteDoneNoScore:
-    'Tu perfil ya está activo. Añade un poco más y tu Puntuación de talento aparecerá en él.',
+    'Todo listo. Añade un poco más y tu Puntuación de talento aparecerá en tu perfil.',
   tipsTitle: 'Cómo subirla',
   tipPoints: '+{{points}}',
   tipsEmpty:

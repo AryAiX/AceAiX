@@ -130,14 +130,22 @@ export function Avatar({
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <View>
-            <Text
-              variant={px >= 60 ? 'title' : px >= 44 ? 'subheading' : 'captionStrong'}
-              color="#FFFFFF"
-            >
-              {initials(name)}
-            </Text>
-          </View>
+          {/*
+            The line height is the circle, not the variant's. `title` asks
+            Saira Condensed for 32px of line on a 28px face whose natural line
+            is 44px; when the requested line is shorter than the font's, iOS
+            keeps the baseline where it was and crops, so the initials sat
+            visibly above centre. A line as tall as the circle lets both
+            platforms centre the glyphs on the font's own metrics.
+          */}
+          <Text
+            variant={px >= 60 ? 'title' : px >= 44 ? 'subheading' : 'captionStrong'}
+            color="#FFFFFF"
+            align="center"
+            style={{ lineHeight: px, includeFontPadding: false, textAlignVertical: 'center' }}
+          >
+            {initials(name)}
+          </Text>
         </View>
       )}
 

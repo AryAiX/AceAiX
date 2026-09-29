@@ -84,6 +84,7 @@ export const auth = {
 
     nameTitle: '该怎么称呼你？',
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',
+    nameSubtitleOther: '请用真名 —— 运动员和家长需要知道在和谁交流。',
     firstNameLabel: '名字',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: '请填写你的名字。',
@@ -125,12 +126,13 @@ export const auth = {
 
   // ── 查收邮件 ──────────────────────────────────────────────────────────────
   checkEmail: {
-    body: '我们给你发了一个确认地址的链接。点开它，然后回来登录。',
+    body: '我们给你发了一个确认地址的链接。在这部手机上点开它，就能直接进入。',
     spamHint:
       '还没收到？可能要等一会儿，有时也会进垃圾邮件或推广邮件。',
     resendCountdown_other: '{{count}}秒后可重新发送',
     resend: '重新发送邮件',
     resendSuccess: '已发送。再去收件箱看看。',
+    confirmedSignIn: '邮箱已确认。登录后继续。',
   },
 
   // ── 忘记密码 ──────────────────────────────────────────────────────────────

@@ -149,6 +149,8 @@ export const opportunities = {
 
     withdraw: '撤回申请',
     withdrawA11y: '撤回这份申请',
+    withdrawConfirmTitle: '要撤回这份申请吗？',
+    withdrawConfirmBody: '俱乐部将不再看到它。只要机会仍开放，你可以再次申请。',
     withdrawn: '已撤回。',
     applicationsClosed: '申请已截止',
 

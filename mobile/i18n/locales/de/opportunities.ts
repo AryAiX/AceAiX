@@ -155,6 +155,8 @@ export const opportunities = {
 
     withdraw: 'Bewerbung zurückziehen',
     withdrawA11y: 'Diese Bewerbung zurückziehen',
+    withdrawConfirmTitle: 'Diese Bewerbung zurückziehen?',
+    withdrawConfirmBody: 'Der Verein sieht sie dann nicht mehr. Du kannst dich erneut bewerben, solange die Ausschreibung offen ist.',
     withdrawn: 'Zurückgezogen.',
     applicationsClosed: 'Bewerbung beendet',
 

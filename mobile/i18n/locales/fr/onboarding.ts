@@ -164,9 +164,9 @@ export const onboarding = {
     'Ton profil est enregistré dans tous les cas — tu peux continuer et voir ton score plus tard.',
   athleteDoneTitle: 'Bien joué',
   athleteDoneTitleNamed: 'Bien joué, {{name}}',
-  athleteDoneScored: 'Ton profil est en ligne. Voilà ton point de départ — {{tier}}.',
+  athleteDoneScored: 'Tout est prêt. Voilà ton point de départ — {{tier}}.',
   athleteDoneNoScore:
-    'Ton profil est en ligne. Ajoute encore un peu et ton Score Talent apparaîtra dessus.',
+    'Tout est prêt. Ajoute encore un peu et ton Score Talent apparaîtra sur ton profil.',
   tipsTitle: 'Comment le faire monter',
   tipPoints: '+{{points}}',
   tipsEmpty:

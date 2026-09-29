@@ -23,6 +23,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmSheet,
   Divider,
   EmptyState,
   ErrorState,
@@ -138,6 +139,7 @@ export default function OpportunityDetailScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [applyOpen, setApplyOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
@@ -215,6 +217,7 @@ export default function OpportunityDetailScreen() {
     setBusy(true);
     try {
       await withdrawApplication(application.id);
+      setWithdrawOpen(false);
       toast.success(t('opportunities.detail.withdrawn'));
       reloadDetail();
     } catch (err) {
@@ -349,7 +352,7 @@ export default function OpportunityDetailScreen() {
           <ApplicationStatusBadge status={application.status} />
         </View>
         <Pressable
-          onPress={onWithdraw}
+          onPress={() => setWithdrawOpen(true)}
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel={t('opportunities.detail.withdrawA11y')}
@@ -525,12 +528,14 @@ export default function OpportunityDetailScreen() {
           </Card>
 
           {/* Safety footnote — a trial is a real-world meeting. */}
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <ShieldCheck size={18} color={colors.textMuted} />
-            <Text variant="caption" tone="muted" style={{ flex: 1 }}>
-              {t('opportunities.detail.safety')}
-            </Text>
-          </View>
+          {isOwner ? null : (
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <ShieldCheck size={18} color={colors.textMuted} />
+              <Text variant="caption" tone="muted" style={{ flex: 1 }}>
+                {t('opportunities.detail.safety')}
+              </Text>
+            </View>
+          )}
         </View>
       </Screen>
 
@@ -599,6 +604,18 @@ export default function OpportunityDetailScreen() {
           ))}
         </View>
       </Sheet>
+
+      <ConfirmSheet
+        visible={withdrawOpen}
+        title={t('opportunities.detail.withdrawConfirmTitle')}
+        message={t('opportunities.detail.withdrawConfirmBody')}
+        confirmLabel={t('opportunities.detail.withdraw')}
+        cancelLabel={t('common.cancel')}
+        destructive
+        loading={busy}
+        onConfirm={onWithdraw}
+        onCancel={() => setWithdrawOpen(false)}
+      />
 
       {/* ── Apply ── */}
       <Sheet

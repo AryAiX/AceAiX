@@ -187,12 +187,12 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
   const clubs = useAsync<Page<Organization>>(
     async () => ({ term: debounced, rows: await searchOrganizations(debounced, 30) }),
     [debounced],
-    { enabled: tab === 'clubs' },
+    { enabled: tab === 'clubs', refetchOnFocus: true },
   );
   const coaches = useAsync<Page<PersonResult>>(
     async () => ({ term: debounced, rows: await listCoaches(debounced, 30) }),
     [debounced],
-    { enabled: tab === 'coaches' },
+    { enabled: tab === 'coaches', refetchOnFocus: true },
   );
   const boardScope = `${sport ?? ''}|${country ?? ''}`;
   const searchingBoard = tab === 'leaderboard' && canSearchBoard && !!debounced;
@@ -216,8 +216,8 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
     [athletes.data?.rows, sport, country],
   );
 
-  const orgFollows = useAsync(() => followedOrganizationIds(), []);
-  const peopleFollows = useAsync(() => followedUserIds(), []);
+  const orgFollows = useAsync(() => followedOrganizationIds(), [], { refetchOnFocus: true });
+  const peopleFollows = useAsync(() => followedUserIds(), [], { refetchOnFocus: true });
 
   // Optimistic overrides layered over the fetched follow sets.
   const [orgOverrides, setOrgOverrides] = useState<Record<string, boolean>>({});
@@ -227,8 +227,17 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
   const orgSet = useMemo(() => new Set(orgFollows.data ?? []), [orgFollows.data]);
   const personSet = useMemo(() => new Set(peopleFollows.data ?? []), [peopleFollows.data]);
 
+  // A fresh follow set is the truth again; stale overrides would contradict a
+  // follow or unfollow made on another screen.
+  useEffect(() => setOrgOverrides({}), [orgFollows.data]);
+  useEffect(() => setPersonOverrides({}), [peopleFollows.data]);
+
   const isOrgFollowed = (id: string) => orgOverrides[id] ?? orgSet.has(id);
   const isPersonFollowed = (id: string) => personOverrides[id] ?? personSet.has(id);
+
+  /** The fetched count, nudged by a follow toggled here since that fetch. */
+  const shiftedCount = (count: number, fetched: boolean, now: boolean) =>
+    Math.max(0, count + (now === fetched ? 0 : now ? 1 : -1));
 
   const onToggleOrg = useCallback(
     async (organization: Organization, next: boolean) => {
@@ -351,7 +360,14 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
         }
         renderItem={({ item }) => (
           <ClubCard
-            organization={item}
+            organization={{
+              ...item,
+              followers_count: shiftedCount(
+                item.followers_count,
+                orgSet.has(item.id),
+                isOrgFollowed(item.id),
+              ),
+            }}
             following={isOrgFollowed(item.id)}
             pending={pendingId === item.id}
             onToggleFollow={onToggleOrg}
@@ -397,7 +413,14 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
         }
         renderItem={({ item }) => (
           <CoachRow
-            person={item}
+            person={{
+              ...item,
+              followers_count: shiftedCount(
+                item.followers_count,
+                personSet.has(item.id),
+                isPersonFollowed(item.id),
+              ),
+            }}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
             onToggleFollow={onTogglePerson}

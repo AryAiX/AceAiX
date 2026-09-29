@@ -6,6 +6,7 @@ import {
   deadlineLabel,
   displayName,
   firstName,
+  fullDate,
   heightLabel,
   initialsOf,
   metaLine,
@@ -46,13 +47,30 @@ describe('relativeTime', () => {
 describe('deadlineLabel', () => {
   it('counts down, then says closed', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(NOW);
+    vi.setSystemTime(new Date(2026, 8, 4, 12));
 
     expect(deadlineLabel('2026-09-01')).toBe('Closed');
     expect(deadlineLabel('2026-09-05')).toBe('1 day left');
     expect(deadlineLabel('2026-09-10')).toBe('6 days left');
     expect(deadlineLabel('2026-12-01')).toMatch(/^Closes /);
     expect(deadlineLabel(null)).toBeNull();
+  });
+
+  it('keeps the deadline day open until it ends', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 4, 23, 30));
+
+    expect(deadlineLabel('2026-09-04')).toBe('Closes today');
+    expect(deadlineLabel('2026-09-05')).toBe('1 day left');
+    expect(deadlineLabel('2026-09-03')).toBe('Closed');
+  });
+});
+
+describe('fullDate', () => {
+  it('shows a date-only value on its own calendar day', () => {
+    expect(fullDate('2026-09-27')).toMatch(/27/);
+    expect(fullDate('2026-01-01')).toMatch(/2026/);
+    expect(fullDate('')).toBe('');
   });
 });
 

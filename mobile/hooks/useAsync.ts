@@ -49,14 +49,17 @@ export function useAsync<T>(
   }, []);
 
   const run = useCallback(
-    async (mode: 'initial' | 'refresh' = 'initial') => {
+    async (mode: 'initial' | 'refresh' | 'background' = 'initial') => {
       if (!enabled) return;
       const id = ++runId.current;
 
       setState((s) => ({
         ...s,
         loading: mode === 'initial' ? s.data === null : false,
-        refreshing: mode === 'refresh',
+        // Only a finger-pull owns the spinner. A focus refetch that sets
+        // `refreshing` flashes it, and on iOS that spinner then sticks after
+        // the request has already finished.
+        refreshing: mode === 'refresh' ? true : s.refreshing,
         error: null,
       }));
 
@@ -84,9 +87,15 @@ export function useAsync<T>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run]);
 
+  // The first focus arrives with mount, when the initial fetch is already out.
+  const focusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (refetchOnFocus) run('refresh');
+      if (!focusedOnce.current) {
+        focusedOnce.current = true;
+        return;
+      }
+      if (refetchOnFocus) run('background');
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [refetchOnFocus, run]),
   );

@@ -25,6 +25,12 @@ interface ProgressContextValue {
   streak: Streak | null;
   /** Re-read progress from the server. Never throws. */
   refresh: () => Promise<void>;
+  /**
+   * Re-read progress and celebrate anything newly unlocked. For a screen that
+   * just did something the database rewards (a first post, a first follow),
+   * so the moment lands now rather than on the next launch. Never throws.
+   */
+  check: () => Promise<void>;
   /** Queue something for celebration by hand (a screen that just did the thing). */
   celebrate: (items: CelebrationItem[]) => void;
 }
@@ -40,6 +46,7 @@ const ProgressContext = createContext<ProgressContextValue>({
   progress: null,
   streak: null,
   refresh: async () => {},
+  check: async () => {},
   celebrate: () => {},
 });
 
@@ -291,14 +298,17 @@ export function ProgressProvider({ children }: { children: React.ReactNode }) {
     }
   }, [progress]);
 
+  const check = useCallback(() => sync(false), [sync]);
+
   const value = useMemo<ProgressContextValue>(
     () => ({
       progress,
       streak: progress?.streak ?? null,
       refresh,
+      check,
       celebrate,
     }),
-    [progress, refresh, celebrate],
+    [progress, refresh, check, celebrate],
   );
 
   return (

@@ -93,6 +93,8 @@ export const auth = {
     nameTitle: '¿Cómo te llamas?',
     nameSubtitle:
       'Usa tu nombre real: los entrenadores necesitan saber a quién están viendo.',
+    nameSubtitleOther:
+      'Usa tu nombre real: los deportistas y sus familias necesitan saber con quién hablan.',
     firstNameLabel: 'Nombre',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Escribe tu nombre.',
@@ -134,7 +136,7 @@ export const auth = {
 
   // ── Revisa tu correo ──────────────────────────────────────────────────────
   checkEmail: {
-    body: 'Te enviamos un enlace para confirmar tu dirección. Ábrelo y luego vuelve e inicia sesión.',
+    body: 'Te enviamos un enlace para confirmar tu dirección. Ábrelo en este teléfono y ya estás dentro.',
     spamHint:
       '¿Todavía nada? Puede tardar un minuto y a veces cae en spam o en promociones.',
     resendCountdown_one: 'Reenviar en {{count}} s',
@@ -142,6 +144,7 @@ export const auth = {
     resendCountdown_other: 'Reenviar en {{count}} s',
     resend: 'Reenviar correo',
     resendSuccess: 'Enviado. Vuelve a mirar tu bandeja de entrada.',
+    confirmedSignIn: 'Tu correo está confirmado. Inicia sesión para continuar.',
   },
 
   // ── Contraseña olvidada ───────────────────────────────────────────────────

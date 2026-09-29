@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import Svg, { Defs, LinearGradient, Polygon, Polyline, Stop } from 'react-native-svg';
-import { ChevronRight, Info, Sparkles, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
+import { Info, Sparkles, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -20,11 +20,12 @@ import {
   SkeletonList,
   Text,
   useToast,
+  ChevronForward,
 } from '@/components/ui';
 import { PillarList } from '@/components/profile/PillarList';
 import { ScoreInsight } from '@/components/score/ScoreInsight';
 import { ScoreSimulator } from '@/components/score/ScoreSimulator';
-import { tierLabel } from '@/components/profile/ScoreCard';
+import { tierLabel, visibleTopPercent } from '@/components/profile/ScoreCard';
 import { TipList } from '@/components/profile/TipList';
 import { TierProgress } from '@/components/celebrate/TierProgress';
 import { useProgress } from '@/providers/ProgressProvider';
@@ -64,7 +65,7 @@ export default function ScoreScreen() {
   /* The next-tier target comes from the progress provider, which already has
      it — asking the score screen to recompute a tier floor would be a second
      source of truth for the same number. */
-  const { progress } = useProgress();
+  const { progress, check: checkProgress } = useProgress();
   const progressScore = progress?.score ?? null;
   const toast = useToast();
   const t = useT();
@@ -72,7 +73,20 @@ export default function ScoreScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [howOpen, setHowOpen] = useState(false);
 
-  const score = useAsync(() => getMyTalentScore(), [], { refetchOnFocus: true });
+  /* Recompute rather than read: posts and account verification feed the score
+     but have no database trigger, so the stored row can lag the simulator's
+     "now" figure below. Falls back to the stored row if the recompute fails.
+     The progress snapshot is re-read after, so the tier bar agrees with the
+     ring and a promotion the recompute caused still gets its moment. */
+  const score = useAsync(
+    async () => {
+      const next = await refreshMyTalentScore().catch(() => getMyTalentScore());
+      checkProgress();
+      return next;
+    },
+    [],
+    { refetchOnFocus: true },
+  );
   const athleteId = score.data?.athlete_id ?? null;
 
   const history = useAsync(
@@ -87,13 +101,14 @@ export default function ScoreScreen() {
       const next = await refreshMyTalentScore();
       score.mutate(() => next);
       history.refresh();
+      checkProgress();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
       setRefreshing(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [score.mutate, history.refresh, toast]);
+  }, [score.mutate, history.refresh, toast, checkProgress]);
 
   const header = (
     <Header
@@ -147,7 +162,7 @@ export default function ScoreScreen() {
   const tier = tierForScore(data.overall);
   const tierColor = TierColors[tier];
   const delta = data.previous_overall != null ? data.overall - data.previous_overall : null;
-  const topPercent = data.percentile != null ? Math.max(1, 100 - data.percentile) : null;
+  const topPercent = visibleTopPercent(data.percentile);
 
   return (
     <Screen
@@ -198,7 +213,7 @@ export default function ScoreScreen() {
                 {t('progress.subtitle')}
               </Text>
             </View>
-            <ChevronRight size={20} color={theme.colors.textMuted} />
+            <ChevronForward size={20} color={theme.colors.textMuted} />
           </View>
         </Card>
       </View>
@@ -240,7 +255,7 @@ export default function ScoreScreen() {
       </View>
 
       {/* ── The written read, then the what-if ── */}
-      <ScoreInsight />
+      <ScoreInsight score={data.overall} />
 
       <ScoreSimulator />
 
@@ -255,8 +270,6 @@ export default function ScoreScreen() {
       {/* ── Tips ── */}
       <View>
         <SectionHeader title={t('score.tipsTitle')} />
-        {/* The tips themselves come from talent_scores.tips in English — see
-            TipList for the known gap. */}
         <TipList
           tips={data.tips ?? []}
           onAction={(tip) => {

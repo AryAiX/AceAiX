@@ -97,6 +97,7 @@ export function NameStep({
   firstError,
   lastError,
   onSubmit,
+  role,
 }: {
   firstName: string;
   lastName: string;
@@ -105,6 +106,7 @@ export function NameStep({
   firstError: string | null;
   lastError: string | null;
   onSubmit: () => void;
+  role?: SignupRole | null;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -114,9 +116,20 @@ export function NameStep({
     <View>
       <StepHeading
         title={t('auth.signUp.nameTitle')}
-        subtitle={t('auth.signUp.nameSubtitle')}
+        subtitle={t(
+          !role || role === 'athlete'
+            ? 'auth.signUp.nameSubtitle'
+            : 'auth.signUp.nameSubtitleOther',
+        )}
       />
       <View style={{ gap: theme.spacing.lg }}>
+        {/*
+          This is the first text field of the whole sign-up, so this is where
+          iOS pays for bringing up the keyboard the first time (and looking up
+          the contact card for the name AutoFill): close to a second on a cold
+          process. Focusing on arrival spends that during the step transition
+          instead of after a tap on a field that then sits there doing nothing.
+        */}
         <Input
           label={t('auth.signUp.firstNameLabel')}
           required
@@ -124,6 +137,7 @@ export function NameStep({
           onChangeText={onChangeFirst}
           error={firstError}
           placeholder={t('auth.signUp.firstNamePlaceholder')}
+          autoFocus
           autoCapitalize="words"
           autoComplete="given-name"
           textContentType="givenName"

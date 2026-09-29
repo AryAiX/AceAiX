@@ -3,7 +3,6 @@ import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Bookmark,
-  ChevronRight,
   Flame,
   Inbox,
   Plus,
@@ -29,6 +28,7 @@ import {
   Tappable,
   Text,
   useToast,
+  ChevronForward,
 } from '@/components/ui';
 import { ApplicationStatusBadge } from '@/components/opportunities/ApplicationStatusBadge';
 import { ApplicantRow } from '@/components/opportunities/ApplicantRow';
@@ -578,7 +578,7 @@ function ChallengesLink() {
             </Text>
           </View>
           <View>
-            <ChevronRight size={18} color="#FFFFFF" />
+            <ChevronForward size={18} color="#FFFFFF" />
           </View>
         </View>
         <Shine every={9} radius={theme.radii.lg} />

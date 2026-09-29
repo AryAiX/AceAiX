@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChevronLeft, Clock, Search, SearchX } from 'lucide-react-native';
+import { Clock, Search, SearchX } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -15,6 +15,7 @@ import {
   SegmentedControl,
   SkeletonList,
   Text,
+  ChevronBack,
 } from '@/components/ui';
 import { AthleteCard } from '@/components/discover/AthleteCard';
 import { ClubCard } from '@/components/discover/ClubCard';
@@ -311,7 +312,7 @@ export default function SearchScreen() {
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <ChevronLeft size={24} color={colors.text} />
+          <ChevronBack size={24} color={colors.text} />
         </Pressable>
 
         <Input

@@ -4,6 +4,7 @@ import { PartyPopper, Sparkles, TrendingUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Card, ErrorState, ScoreRing, SkeletonList, Text } from '@/components/ui';
+import { tipText } from '@/lib/scoreTips';
 import { useT } from '@/i18n';
 import { Tier, tierForScore } from '@/theme/tokens';
 import type { FullTalentScore } from '@/types/models';
@@ -143,9 +144,10 @@ export function AthleteFinishStep({
             <Sparkles size={18} color={theme.colors.primary} />
             <Text variant="heading">{t('onboarding.tipsTitle')}</Text>
           </View>
-          {topTips.map((tip) => (
-            <TipCard key={tip.key} label={tip.label} detail={tip.detail} points={tip.points} />
-          ))}
+          {topTips.map((tip) => {
+            const text = tipText(tip, t);
+            return <TipCard key={tip.key} label={text.label} detail={text.detail} points={tip.points} />;
+          })}
         </View>
       ) : (
         <Card tone="alt">

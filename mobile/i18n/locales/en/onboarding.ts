@@ -163,9 +163,9 @@ export const onboarding = {
     'Your profile is saved either way — you can carry on and check your score later.',
   athleteDoneTitle: 'Nice one',
   athleteDoneTitleNamed: 'Nice one, {{name}}',
-  athleteDoneScored: 'Your profile is live. Here is where you are starting — {{tier}}.',
+  athleteDoneScored: 'You’re all set. Here is where you are starting — {{tier}}.',
   athleteDoneNoScore:
-    'Your profile is live. Add a bit more and your Talent Score appears on your profile.',
+    'You’re all set. Add a bit more and your Talent Score appears on your profile.',
   tipsTitle: 'How to move it up',
   tipPoints: '+{{points}}',
   tipsEmpty:

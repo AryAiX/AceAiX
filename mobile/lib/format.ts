@@ -29,9 +29,20 @@ export function relativeTime(iso: string | null | undefined): string {
   return tr('format.yearsShort', '{{n}}y', { n: Math.floor(days / 365) });
 }
 
+/**
+ * `new Date('2026-09-27')` is midnight UTC, which is the 26th anywhere west of
+ * Greenwich. Date-only columns (deadlines, birthdays) are calendar days, so
+ * they are read as local midnight instead.
+ */
+function parseDate(value: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (dateOnly) return new Date(+dateOnly[1], +dateOnly[2] - 1, +dateOnly[3]);
+  return new Date(value);
+}
+
 export function fullDate(iso: string | null | undefined): string {
   if (!iso) return '';
-  const d = new Date(iso);
+  const d = parseDate(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString(currentLanguage(), {
     day: 'numeric',
@@ -47,12 +58,25 @@ export function timeOfDay(iso: string | null | undefined): string {
   return d.toLocaleTimeString(currentLanguage(), { hour: '2-digit', minute: '2-digit' });
 }
 
+/**
+ * Calendar days until a deadline: 0 on the day itself, which is still open,
+ * negative once it has passed. Rounded because a DST change makes one day 23
+ * or 25 hours long.
+ */
+export function daysUntil(date: string | null | undefined): number | null {
+  if (!date) return null;
+  const end = parseDate(date);
+  if (Number.isNaN(end.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  return Math.round((end.getTime() - today.getTime()) / 86_400_000);
+}
+
 /** Days remaining, phrased for a deadline chip. */
 export function deadlineLabel(date: string | null | undefined): string | null {
-  if (!date) return null;
-  const end = new Date(date).getTime();
-  if (Number.isNaN(end)) return null;
-  const days = Math.ceil((end - Date.now()) / 86_400_000);
+  const days = daysUntil(date);
+  if (days == null || !date) return null;
   if (days < 0) return tr('format.closed', 'Closed');
   if (days === 0) return tr('format.closesToday', 'Closes today');
   if (days === 1) return tr('format.oneDayLeft', '1 day left');

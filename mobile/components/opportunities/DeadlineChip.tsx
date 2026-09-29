@@ -5,15 +5,9 @@ import { CalendarClock } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge } from '@/components/ui';
 import type { BadgeTone } from '@/components/ui';
-import { deadlineLabel } from '@/lib/format';
+import { daysUntil, deadlineLabel } from '@/lib/format';
 
-/** Whole days until a deadline. Negative once it has passed. */
-export function daysUntil(date: string | null | undefined): number | null {
-  if (!date) return null;
-  const end = new Date(date).getTime();
-  if (Number.isNaN(end)) return null;
-  return Math.ceil((end - Date.now()) / 86_400_000);
-}
+export { daysUntil };
 
 export function isClosed(date: string | null | undefined): boolean {
   const days = daysUntil(date);

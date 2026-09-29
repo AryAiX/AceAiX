@@ -227,6 +227,7 @@ export default function SignUpScreen() {
 
         {step === 'name' ? (
           <NameStep
+            role={role}
             firstName={firstName}
             lastName={lastName}
             onChangeFirst={(value) => {

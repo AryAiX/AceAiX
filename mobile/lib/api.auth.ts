@@ -99,6 +99,22 @@ export async function resendSignupConfirmation(email: string): Promise<void> {
   if (error) throw new AppError(error);
 }
 
+// ── E-mail confirmation ──────────────────────────────────────────────────────
+/**
+ * Turn the `?code=` of a tapped confirmation link (`aceaix://?code=…`) into a
+ * session so the person lands in onboarding instead of back on the welcome
+ * screen.
+ *
+ * By the time Supabase redirects here the address is already confirmed; the
+ * exchange can still fail when the link is opened on a device other than the
+ * one that signed up (the PKCE verifier lives on that device). The caller
+ * treats that as "confirmed, please sign in", which is the truth.
+ */
+export async function completeEmailConfirmation(code: string): Promise<void> {
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) throw new AppError(error);
+}
+
 // ── Password recovery ────────────────────────────────────────────────────────
 export interface RecoveryLinkParams {
   code?: string;

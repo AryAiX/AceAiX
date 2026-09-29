@@ -156,6 +156,8 @@ export const opportunities = {
 
     withdraw: 'Отозвать отклик',
     withdrawA11y: 'Отозвать этот отклик',
+    withdrawConfirmTitle: 'Отозвать этот отклик?',
+    withdrawConfirmBody: 'Клуб больше не будет его видеть. Вы сможете откликнуться снова, пока вакансия открыта.',
     withdrawn: 'Отозвано.',
     applicationsClosed: 'Приём откликов закрыт',
 

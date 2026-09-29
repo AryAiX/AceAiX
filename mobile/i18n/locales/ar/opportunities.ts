@@ -155,6 +155,8 @@ export const opportunities = {
 
     withdraw: 'سحب الطلب',
     withdrawA11y: 'سحب هذا الطلب',
+    withdrawConfirmTitle: 'هل تريد سحب هذا الطلب؟',
+    withdrawConfirmBody: 'لن يراه النادي بعد الآن. يمكنك التقديم مجددًا ما دام الإعلان مفتوحًا.',
     withdrawn: 'سُحب.',
     applicationsClosed: 'التقديم مغلق',
 
