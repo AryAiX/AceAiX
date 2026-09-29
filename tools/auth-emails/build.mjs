@@ -89,7 +89,7 @@ function layout({ preheader, title, lead, button, code, note, footnote }) {
       </tr>`
     : '';
 
-  return `<!DOCTYPE html>
+  return render(`<!DOCTYPE html>
 <html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
@@ -184,7 +184,16 @@ function layout({ preheader, title, lead, button, code, note, footnote }) {
   </table>
 </body>
 </html>
-`;
+`);
+}
+
+/** Strips trailing whitespace and collapses blank runs left by empty template slots. */
+function render(html) {
+  return html
+    .split('\n')
+    .map((line) => line.replace(/\s+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
 }
 
 const SECURITY_NOTE =
