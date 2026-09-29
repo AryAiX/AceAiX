@@ -1,11 +1,11 @@
 import React from 'react';
 import { Pressable, View, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
 import { Text } from './Text';
+import { ChevronBack } from './rtl';
 
 interface Props {
   title?: string;
@@ -81,7 +81,7 @@ export function Header({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <ChevronLeft size={22} color={colors.text} />
+          <ChevronBack size={22} color={colors.text} />
         </Pressable>
       ) : (
         left

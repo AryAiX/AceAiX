@@ -5,6 +5,7 @@ import { Send } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
+import { isRTL } from '@/components/ui';
 
 interface Props {
   value: string;
@@ -112,6 +113,7 @@ export function Composer({
             paddingTop: spacing.md,
             paddingBottom: spacing.md,
             textAlignVertical: 'top',
+            textAlign: isRTL ? 'right' : undefined,
           }}
         />
       </Pressable>

@@ -163,9 +163,9 @@ export const onboarding = {
     'Dein Profil ist so oder so gespeichert — mach weiter und sieh dir den Score später an.',
   athleteDoneTitle: 'Stark',
   athleteDoneTitleNamed: 'Stark, {{name}}',
-  athleteDoneScored: 'Dein Profil ist online. Hier startest du — {{tier}}.',
+  athleteDoneScored: 'Alles bereit. Hier startest du — {{tier}}.',
   athleteDoneNoScore:
-    'Dein Profil ist online. Trag noch etwas nach, dann erscheint dein Talent Score darauf.',
+    'Alles bereit. Trag noch etwas nach, dann erscheint dein Talent Score in deinem Profil.',
   tipsTitle: 'So kommst du höher',
   tipPoints: '+{{points}}',
   tipsEmpty:

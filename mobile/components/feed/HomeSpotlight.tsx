@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Eye, Flame } from 'lucide-react-native';
+import { Eye, Flame } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -11,6 +11,7 @@ import {
   Shine,
   Tappable,
   Text,
+  ChevronForward,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
@@ -129,7 +130,7 @@ export function HomeSpotlight() {
                     </Text>
                   </View>
                 ) : (
-                  <ChevronRight size={18} color={SOFT_ON_COLOUR} />
+                  <ChevronForward size={18} color={SOFT_ON_COLOUR} />
                 )}
               </View>
               <Shine every={6} radius={theme.radii.lg} />

@@ -153,6 +153,8 @@ export const opportunities = {
 
     withdraw: 'Withdraw application',
     withdrawA11y: 'Withdraw this application',
+    withdrawConfirmTitle: 'Withdraw this application?',
+    withdrawConfirmBody: 'The club stops seeing it. You can apply again while the listing is open.',
     withdrawn: 'Withdrawn.',
     applicationsClosed: 'Applications closed',
 

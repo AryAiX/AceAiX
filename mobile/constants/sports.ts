@@ -349,16 +349,23 @@ const OPPORTUNITY_TYPE_KEYS: Record<string, { label: string; hint: string }> = {
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
+/* Older rows (and the web app) stored lowercase names like "football". */
+function lowercased(keys: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(Object.entries(keys).map(([k, v]) => [k.toLowerCase(), v]));
+}
+const SPORT_LABEL_KEYS_LC = lowercased(SPORT_LABEL_KEYS);
+const POSITION_KEYS_LC = lowercased(POSITION_KEYS);
+
 /** Translate a stored sport name, falling back to the stored value. */
 export function sportLabel(t: Translate, sport: string | null | undefined): string {
   if (!sport) return '';
-  const key = SPORT_LABEL_KEYS[sport];
+  const key = SPORT_LABEL_KEYS[sport] ?? SPORT_LABEL_KEYS_LC[sport.toLowerCase()];
   return key ? t(key) : sport;
 }
 
 export function positionLabel(t: Translate, position: string | null | undefined): string {
   if (!position) return '';
-  const key = POSITION_KEYS[position];
+  const key = POSITION_KEYS[position] ?? POSITION_KEYS_LC[position.toLowerCase()];
   return key ? t(key) : position;
 }
 

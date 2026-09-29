@@ -31,6 +31,7 @@ import {
   Sheet,
   Text,
   useToast,
+  isRTL,
 } from '@/components/ui';
 import { useT } from '@/i18n';
 import { createPost } from '@/lib/api';
@@ -41,6 +42,7 @@ import {
 } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
+import { useProgress } from '@/providers/ProgressProvider';
 import type { PostAudience, PostMedia } from '@/types/models';
 
 /**
@@ -86,6 +88,7 @@ export default function ComposeScreen() {
   const { colors, radii, spacing } = theme;
   const router = useRouter();
   const toast = useToast();
+  const { check: checkAchievements } = useProgress();
   const t = useT();
 
   const [text, setText] = useState('');
@@ -193,13 +196,14 @@ export default function ComposeScreen() {
       await createPost({ caption: trimmed, media: uploaded, audience });
       toast.success(t('feed.posted'));
       close();
+      checkAchievements();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
       setPosting(false);
       setProgress(null);
     }
-  }, [canPost, media, trimmed, audience, toast, close, t]);
+  }, [canPost, media, trimmed, audience, toast, close, t, checkAchievements]);
 
   const percent = progress && progress.total > 0 ? progress.done / progress.total : 0;
 
@@ -327,6 +331,7 @@ export default function ComposeScreen() {
           fontSize: theme.size.lg,
           lineHeight: theme.size.lg * theme.lineHeight.normal,
           textAlignVertical: 'top',
+          textAlign: isRTL ? 'right' : undefined,
           padding: 0,
         }}
       />

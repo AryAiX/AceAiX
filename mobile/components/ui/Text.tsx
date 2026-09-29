@@ -2,6 +2,14 @@ import React from 'react';
 import { Text as RNText, TextProps as RNTextProps, TextStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { isRTL } from './rtl';
+
+/* iOS aligns unaligned text to the phone's own language, not to forceRTL, so an
+   Arabic screen on an English phone would sit flush left without this. React
+   Native swaps left and right under RTL, so 'left' here means the start edge. */
+const START_ALIGN: TextStyle | null = isRTL ? { textAlign: 'left' } : null;
+/* Tracking pulls apart the joined letters of Arabic script. */
+const RTL_OVERLINE: TextStyle | null = isRTL ? { letterSpacing: 0 } : null;
 
 export type TextVariant =
   | 'hero'          // splash / onboarding headline
@@ -130,8 +138,9 @@ export function Text({
       {...rest}
       style={[
         variantStyle[variant],
+        variant === 'overline' ? RTL_OVERLINE : null,
         { color: color ?? toneColor[tone] },
-        align ? { textAlign: align } : null,
+        align ? { textAlign: align } : START_ALIGN,
         style,
       ]}
     />

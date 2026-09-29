@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, TextStyle, View, ViewStyle } from 'react-native';
-import { Check, ChevronLeft, Search } from 'lucide-react-native';
+import { Check, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Text, Chip, Input } from '@/components/ui';
+import { Text, Chip, Input, ChevronBack } from '@/components/ui';
 import type { TextTone } from '@/components/ui';
 import { useT } from '@/i18n';
 import { currentLanguage } from '@/lib/i18n-bridge';
@@ -110,7 +110,7 @@ export function WizardTopBar({
             opacity: pressed ? 0.7 : 1,
           })}
         >
-          <ChevronLeft size={22} color={colors.text} />
+          <ChevronBack size={22} color={colors.text} />
         </Pressable>
       )}
 

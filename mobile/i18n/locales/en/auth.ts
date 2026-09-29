@@ -89,6 +89,8 @@ export const auth = {
 
     nameTitle: 'What should we call you?',
     nameSubtitle: 'Use your real name — coaches need to know who they are looking at.',
+    nameSubtitleOther:
+      'Use your real name — athletes and families need to know who they are talking to.',
     firstNameLabel: 'First name',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Enter your first name.',
@@ -130,13 +132,14 @@ export const auth = {
 
   // ── Check your email ──────────────────────────────────────────────────────
   checkEmail: {
-    body: 'We sent you a link to confirm your address. Tap it, then come back and sign in.',
+    body: 'We sent you a link to confirm your address. Tap it on this phone and you’re in.',
     spamHint:
       'Nothing yet? It can take a minute, and it sometimes lands in spam or promotions.',
     resendCountdown_one: 'Resend email in {{count}}s',
     resendCountdown_other: 'Resend email in {{count}}s',
     resend: 'Resend email',
     resendSuccess: 'Sent. Have another look in your inbox.',
+    confirmedSignIn: 'Your email is confirmed. Sign in to continue.',
   },
 
   // ── Forgot password ───────────────────────────────────────────────────────

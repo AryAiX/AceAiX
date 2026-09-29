@@ -1,10 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
-import { ChevronRight, TrendingDown, TrendingUp } from 'lucide-react-native';
+import { TrendingDown, TrendingUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Tier, TierColors, tierForScore } from '@/theme/tokens';
-import { Card, ScoreRing, Text } from '@/components/ui';
+import { Card, ScoreRing, Text, ChevronForward } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { TalentScore } from '@/types/models';
 
@@ -32,6 +32,13 @@ export function tierLabel(t: Translate, tier: Tier): string {
   return t(TIER_KEYS[tier]);
 }
 
+/** "Top N%" for the top half of the sport, otherwise nothing to show. */
+export function visibleTopPercent(percentile: number | null | undefined): number | null {
+  if (percentile == null) return null;
+  const top = Math.max(1, 100 - percentile);
+  return top <= 50 ? top : null;
+}
+
 /**
  * The number, the tier, where it puts you, and which way it moved. Everything
  * else about the score lives on /score.
@@ -40,13 +47,15 @@ export function ScoreCard({ score, onPress }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
+  // Someone else's card is read by a visitor, so none of the "you" copy fits.
+  const own = !!onPress;
 
   if (!score) {
     return (
       <Card tone="alt" padded>
         <Text variant="subheading">{t('common.talentScore')}</Text>
         <Text variant="caption" tone="muted" style={{ marginTop: 4 }}>
-          {t('score.cardEmptyBody')}
+          {t(own ? 'score.cardEmptyBody' : 'score.cardEmptyBodyOther')}
         </Text>
       </Card>
     );
@@ -60,9 +69,9 @@ export function ScoreCard({ score, onPress }: Props) {
     score.previous_overall != null ? score.overall - score.previous_overall : null;
   const moved = delta !== null && delta !== 0;
 
-  /* The server ranks against every scored athlete on AceAiX, so that is what we
-     say. Claiming a per-sport ranking would be a number we do not compute. */
-  const topPercent = score.percentile != null ? Math.max(1, 100 - score.percentile) : null;
+  /* The server ranks within the athlete's sport once ten are scored. "Top 94%"
+     reads as praise to a kid near the bottom, so only the top half sees a rank. */
+  const topPercent = visibleTopPercent(score.percentile);
 
   return (
     <Card
@@ -86,15 +95,15 @@ export function ScoreCard({ score, onPress }: Props) {
 
           {topPercent != null ? (
             <Text variant="caption" tone="muted">
-              {t('score.topPercent', { percent: topPercent })}
+              {t(own ? 'score.topPercent' : 'score.topPercentOther', { percent: topPercent })}
             </Text>
-          ) : (
+          ) : own ? (
             <Text variant="caption" tone="muted">
               {t('score.rankingBuilding')}
             </Text>
-          )}
+          ) : null}
 
-          {moved ? (
+          {moved && own ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
               {delta > 0 ? (
                 <TrendingUp size={15} color={colors.success} />
@@ -113,7 +122,9 @@ export function ScoreCard({ score, onPress }: Props) {
           ) : null}
         </View>
 
-        {onPress ? <ChevronRight size={20} color={colors.textMuted} /> : null}
+        {onPress ? (
+          <ChevronForward size={20} color={colors.textMuted} />
+        ) : null}
       </View>
     </Card>
   );

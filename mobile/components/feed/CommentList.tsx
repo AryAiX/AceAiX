@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { Heart, MoreHorizontal, Send, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Text } from '@/components/ui';
+import { Avatar, Text, isRTL } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { compactNumber, displayName, relativeTime } from '@/lib/format';
@@ -303,6 +303,7 @@ export function CommentComposer({
               fontSize: theme.size.sm,
               maxHeight: 96,
               padding: 0,
+              textAlign: isRTL ? 'right' : undefined,
             }}
           />
         </View>

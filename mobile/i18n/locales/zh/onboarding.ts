@@ -161,9 +161,9 @@ export const onboarding = {
     '不管怎样你的资料都已经保存了 —— 可以先继续，稍后再看分数。',
   athleteDoneTitle: '干得漂亮',
   athleteDoneTitleNamed: '干得漂亮，{{name}}',
-  athleteDoneScored: '你的资料已上线。这是你的起点 —— {{tier}}。',
+  athleteDoneScored: '一切就绪。这是你的起点 —— {{tier}}。',
   athleteDoneNoScore:
-    '你的资料已上线。再补充一些内容，天赋分就会出现在你的主页上。',
+    '一切就绪。再补充一些内容，天赋分就会出现在你的主页上。',
   tipsTitle: '怎么把分数提上去',
   tipPoints: '+{{points}}',
   tipsEmpty:

@@ -232,6 +232,7 @@ export default function MeetupsScreen() {
                 body={t('meetups.mineEmptyBody')}
                 actionLabel={t('meetups.emptyAction')}
                 onAction={() => router.push(Routes.newMeetup)}
+                style={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
               />
             )
           }
@@ -267,6 +268,7 @@ export default function MeetupsScreen() {
               title={t(applied || sport ? 'meetups.emptySearchTitle' : 'meetups.emptyTitle')}
               body={t(applied || sport ? 'meetups.emptySearchBody' : 'meetups.emptyBody')}
               actionLabel={t('meetups.emptyAction')}
+              style={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
               onAction={() => router.push(Routes.newMeetup)}
             />
           )

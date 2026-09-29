@@ -157,6 +157,8 @@ export const opportunities = {
 
     withdraw: 'Retirar la solicitud',
     withdrawA11y: 'Retirar esta solicitud',
+    withdrawConfirmTitle: '¿Retirar esta solicitud?',
+    withdrawConfirmBody: 'El club dejará de verla. Puedes volver a postularte mientras la oferta siga abierta.',
     withdrawn: 'Retirada.',
     applicationsClosed: 'Solicitudes cerradas',
 

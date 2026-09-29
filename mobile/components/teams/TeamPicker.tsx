@@ -54,7 +54,9 @@ export function TeamPicker({
     const handle = setTimeout(async () => {
       setLoading(true);
       try {
-        const rows = await searchTeams(query, undefined, 24);
+        let rows = await searchTeams(query, query || !sport ? undefined : sport, 24);
+        // A sport with few curated teams still gets a full first screen.
+        if (!query && sport && rows.length < 8) rows = await searchTeams('', undefined, 24);
         if (!cancelled) setResults(rows);
       } catch (err) {
         if (!cancelled) toast.error(errorMessage(err));
@@ -68,7 +70,7 @@ export function TeamPicker({
       clearTimeout(handle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, sport]);
 
   const toggle = useCallback(
     (team: Team) => {

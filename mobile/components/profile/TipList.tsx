@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Card, EmptyState, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { tipText } from '@/lib/scoreTips';
 import type { ScoreTip } from '@/types/models';
 
 /** What the button says for each tip the database can produce. */
@@ -35,19 +36,15 @@ export function TipList({ tips, onAction }: Props) {
 
   return (
     <View style={{ gap: spacing.md }}>
-      {tips.map((tip) => (
+      {tips.map((tip) => {
+        const text = tipText(tip, t);
+        return (
         <Card key={tip.key} padded>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
             <View style={{ flex: 1, gap: 4 }}>
-              {/* KNOWN GAP: `talent_scores.tips` is built by
-                  private.build_score_tips, which writes `label` and `detail`
-                  in English only. There is no key to translate them against,
-                  so they are rendered as they arrive rather than faked. Fixing
-                  it means the function emitting tip keys and the app owning
-                  the copy. Only the button below is translated. */}
-              <Text variant="bodyStrong">{tip.label}</Text>
+              <Text variant="bodyStrong">{text.label}</Text>
               <Text variant="caption" tone="muted">
-                {tip.detail}
+                {text.detail}
               </Text>
             </View>
             <Badge label={t('score.tipPoints', { points: tip.points })} tone="accent" />
@@ -61,7 +58,8 @@ export function TipList({ tips, onAction }: Props) {
             onPress={() => onAction(tip)}
           />
         </Card>
-      ))}
+        );
+      })}
     </View>
   );
 }

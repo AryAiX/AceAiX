@@ -165,9 +165,9 @@ export const onboarding = {
     'Профиль всё равно сохранён — можно идти дальше и посмотреть оценку позже.',
   athleteDoneTitle: 'Отлично',
   athleteDoneTitleNamed: 'Отлично, {{name}}',
-  athleteDoneScored: 'Профиль опубликован. Вот твой старт — {{tier}}.',
+  athleteDoneScored: 'Всё готово. Вот твой старт — {{tier}}.',
   athleteDoneNoScore:
-    'Профиль опубликован. Добавь ещё немного — и в профиле появится оценка таланта.',
+    'Всё готово. Добавь ещё немного — и в профиле появится оценка таланта.',
   tipsTitle: 'Как поднять оценку',
   tipPoints: '+{{points}}',
   tipsEmpty:

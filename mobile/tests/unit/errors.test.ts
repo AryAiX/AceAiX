@@ -53,6 +53,13 @@ describe('auth messages', () => {
 describe('fallbacks', () => {
   it('recognises a dropped connection', () => {
     expect(errorMessage({ message: 'Network request failed' })).toContain('No connection');
+    expect(
+      errorMessage({
+        message:
+          'fetch failed: UnexpectedException: The network connection was lost. (at ExpoModulesCore/Promise.swift:56)',
+      }),
+    ).toContain('No connection');
+    expect(errorMessage({ message: 'The request timed out.' })).toContain('No connection');
   });
 
   it('passes through a short custom message we wrote ourselves', () => {
