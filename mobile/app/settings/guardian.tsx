@@ -45,6 +45,7 @@ import {
   resendGuardianConsentEmail,
 } from '@/lib/api.settings';
 import { errorMessage } from '@/lib/errors';
+import { sanitizeNameInput } from '@/lib/nameInput';
 import { displayName, fullDate, metaLine, relativeTime, roleLabel } from '@/lib/format';
 import { COMPANY } from '@/lib/legal';
 import { Routes } from '@/lib/routes';
@@ -329,8 +330,10 @@ function MinorView() {
           <Input
             label={t('safety.guardianNameLabel')}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => setName(sanitizeNameInput(text))}
             autoCapitalize="words"
+            autoCorrect={false}
+            spellCheck={false}
             placeholder={t('safety.guardianNamePlaceholder')}
             testID="guardian-name"
           />
