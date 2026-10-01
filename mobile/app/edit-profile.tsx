@@ -36,6 +36,7 @@ import {
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
 import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import { sanitizeNameInput } from '@/lib/nameInput';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
@@ -544,17 +545,21 @@ export default function EditProfileScreen() {
               label={t('profile.firstName')}
               required
               value={form.firstName}
-              onChangeText={(text) => set('firstName', text)}
+              onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
               maxLength={60}
               autoCapitalize="words"
+              autoCorrect={false}
+              spellCheck={false}
             />
             <Input
               containerStyle={{ flex: 1 }}
               label={t('profile.lastName')}
               value={form.lastName}
-              onChangeText={(text) => set('lastName', text)}
+              onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
               maxLength={60}
               autoCapitalize="words"
+              autoCorrect={false}
+              spellCheck={false}
             />
           </View>
 
