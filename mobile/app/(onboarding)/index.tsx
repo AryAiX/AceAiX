@@ -15,6 +15,7 @@ import {
 } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
 import {
@@ -256,6 +257,7 @@ export default function OnboardingScreen() {
 
   const safeIndex = Math.min(stepIndex, steps.length - 1);
   const step = steps[safeIndex];
+  const teamsKeyboardOpen = useKeyboardVisible(step === 'teams');
 
   const heightError =
     height && (Number(height) < HEIGHT_RANGE_CM.min || Number(height) > HEIGHT_RANGE_CM.max)
@@ -560,9 +562,34 @@ export default function OnboardingScreen() {
   const knownName = profile.first_name ?? profile.full_name;
   const name = knownName ? firstNameOf(knownName) : '';
 
+  const footerContent = (
+    <View style={{ gap: spacing.sm }}>
+      <Button
+        label={continueLabel}
+        size="lg"
+        fullWidth
+        loading={saving}
+        disabled={!canContinue()}
+        onPress={() => void advance()}
+        testID="onboarding-continue"
+      />
+      {skippable ? (
+        <Button
+          label={t('onboarding.skipForNow')}
+          variant="ghost"
+          fullWidth
+          disabled={saving || uploading}
+          onPress={() => setStepIndex((i) => Math.min(i + 1, steps.length - 1))}
+          testID="onboarding-skip"
+        />
+      ) : null}
+    </View>
+  );
+
   return (
     <Screen
       keyboardAvoiding
+      dropFooterInsetWithKeyboard
       header={
         <WizardTopBar
           step={safeIndex}
@@ -592,29 +619,7 @@ export default function OnboardingScreen() {
           }
         />
       }
-      footer={
-        <View style={{ gap: spacing.sm }}>
-          <Button
-            label={continueLabel}
-            size="lg"
-            fullWidth
-            loading={saving}
-            disabled={!canContinue()}
-            onPress={() => void advance()}
-            testID="onboarding-continue"
-          />
-          {skippable ? (
-            <Button
-              label={t('onboarding.skipForNow')}
-              variant="ghost"
-              fullWidth
-              disabled={saving || uploading}
-              onPress={() => setStepIndex((i) => Math.min(i + 1, steps.length - 1))}
-              testID="onboarding-skip"
-            />
-          ) : null}
-        </View>
-      }
+      footer={step === 'teams' && teamsKeyboardOpen ? undefined : footerContent}
       testID="onboarding-screen"
     >
       <View style={{ paddingTop: spacing.md }}>
