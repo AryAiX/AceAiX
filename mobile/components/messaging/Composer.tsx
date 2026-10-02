@@ -96,7 +96,7 @@ export function Composer({
           onContentSizeChange={(e) =>
             setHeight(
               Math.min(
-                Math.max(e.nativeEvent.contentSize.height + spacing.md, minHeight),
+                Math.max(Math.ceil(e.nativeEvent.contentSize.height), minHeight),
                 maxHeight,
               ),
             )

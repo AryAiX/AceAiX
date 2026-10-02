@@ -6,6 +6,7 @@ import { CalendarDays, Lock, Mail, ShieldAlert, Users } from 'lucide-react-nativ
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Card, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { sanitizeNameInput } from '@/lib/nameInput';
 import type { SignupRole } from '@/types/models';
 import {
   CheckboxRow,
@@ -134,11 +135,13 @@ export function NameStep({
           label={t('auth.signUp.firstNameLabel')}
           required
           value={firstName}
-          onChangeText={onChangeFirst}
+          onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
           error={firstError}
           placeholder={t('auth.signUp.firstNamePlaceholder')}
           autoFocus
           autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
           autoComplete="given-name"
           textContentType="givenName"
           returnKeyType="next"
@@ -150,10 +153,12 @@ export function NameStep({
           label={t('auth.signUp.lastNameLabel')}
           required
           value={lastName}
-          onChangeText={onChangeLast}
+          onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}
           error={lastError}
           placeholder={t('auth.signUp.lastNamePlaceholder')}
           autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
           autoComplete="family-name"
           textContentType="familyName"
           returnKeyType="done"

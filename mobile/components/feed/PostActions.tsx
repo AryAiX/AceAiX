@@ -10,6 +10,8 @@ import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
 
+const formatCount = (n: number) => compactNumber(Math.round(n));
+
 interface Props {
   liked: boolean;
   likeCount: number;
@@ -235,7 +237,7 @@ function Action({
           value={count}
           variant="captionStrong"
           tone={selected ? 'primary' : 'secondary'}
-          format={compactNumber}
+          format={formatCount}
           duration={theme.duration.base}
         />
       ) : null}

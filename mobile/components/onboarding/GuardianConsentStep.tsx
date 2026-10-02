@@ -5,6 +5,7 @@ import { Eye, MessageCircle, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Card, Chip, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { sanitizeNameInput } from '@/lib/nameInput';
 import { StepHeading } from './Shared';
 
 export type GuardianRelationship = 'parent' | 'guardian';
@@ -145,10 +146,12 @@ export function GuardianConsentStep({
           label={t('onboarding.guardianNameLabel')}
           required
           value={name}
-          onChangeText={onChangeName}
+          onChangeText={(value) => onChangeName(sanitizeNameInput(value))}
           error={nameError}
           placeholder={t('onboarding.guardianNamePlaceholder')}
           autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
           returnKeyType="next"
           onSubmitEditing={() => emailRef.current?.focus()}
           testID="guardian-name"

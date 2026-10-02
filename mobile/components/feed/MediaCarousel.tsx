@@ -8,6 +8,7 @@ import {
   ScrollView,
   View,
 } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Play, Volume2, VolumeX } from 'lucide-react-native';
 
@@ -223,6 +224,8 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   const { colors, radii, spacing } = theme;
   const t = useT();
   const [ready, setReady] = useState(false);
+  const isFocused = useIsFocused();
+  const shouldPlay = isActive && isFocused;
 
   const player = useVideoPlayer(item.url, (p) => {
     p.loop = true;
@@ -247,11 +250,11 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
 
   useEffect(() => {
     safely(() => {
-      if (isActive) player.play();
+      if (shouldPlay) player.play();
       else player.pause();
     });
     return () => safely(() => player.pause());
-  }, [isActive, player, safely]);
+  }, [shouldPlay, player, safely]);
 
   useEffect(() => {
     // Safety net: if the first-frame callback never arrives we still need to
