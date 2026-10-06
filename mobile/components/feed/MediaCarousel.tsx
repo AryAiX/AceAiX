@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Image,
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -9,12 +8,14 @@ import {
   View,
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { RemoteImage } from '@/components/ui/RemoteImage';
 import { Play, Volume2, VolumeX } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { PostMedia } from '@/types/models';
+import { useCachedVideoSource } from '@/lib/videoCache';
 import { useFeedMute } from './feedMute';
 
 /**
@@ -195,14 +196,7 @@ function MediaItem({
     );
   }
 
-  const image = (
-    <Image
-      source={{ uri: item.url }}
-      style={{ width, height }}
-      resizeMode="cover"
-      accessibilityIgnoresInvertColors
-    />
-  );
+  const image = <RemoteImage uri={item.url} style={{ width, height }} contentFit="cover" />;
 
   if (!onPress) return <View style={{ width, height }}>{image}</View>;
 
@@ -223,8 +217,9 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   const { colors, radii, spacing } = theme;
   const t = useT();
   const [ready, setReady] = useState(false);
+  const source = useCachedVideoSource(item.url);
 
-  const player = useVideoPlayer(item.url, (p) => {
+  const player = useVideoPlayer(source, (p) => {
     p.loop = true;
     p.muted = true;
   });
@@ -246,28 +241,33 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   }, [muted, player, safely]);
 
   useEffect(() => {
+    setReady(false);
+  }, [source]);
+
+  useEffect(() => {
+    if (!source) return;
     safely(() => {
       if (isActive) player.play();
       else player.pause();
     });
     return () => safely(() => player.pause());
-  }, [isActive, player, safely]);
+  }, [isActive, player, safely, source]);
 
   useEffect(() => {
+    if (!source) return;
     // Safety net: if the first-frame callback never arrives we still need to
     // stop covering the video with its poster.
     const timer = setTimeout(() => setReady(true), 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [source]);
 
   return (
     <View style={{ width, height }}>
       {item.thumbnail && !ready ? (
-        <Image
-          source={{ uri: item.thumbnail }}
+        <RemoteImage
+          uri={item.thumbnail}
           style={{ position: 'absolute', width, height }}
-          resizeMode="cover"
-          accessibilityIgnoresInvertColors
+          contentFit="cover"
         />
       ) : null}
 
