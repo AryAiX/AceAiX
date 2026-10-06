@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, LayoutChangeEvent, Pressable, View } from 'react-native';
+import { ActivityIndicator, LayoutChangeEvent, Pressable, View } from 'react-native';
 import { ImageOff, Play, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Text } from '@/components/ui';
+import { RemoteImage, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 
 export interface MediaTile {
@@ -106,12 +106,7 @@ export function MediaGrid({
           })}
         >
           {tile.uri ? (
-            <Image
-              source={{ uri: tile.uri }}
-              style={{ width: '100%', height: '100%' }}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
+            <RemoteImage uri={tile.uri} style={{ width: '100%', height: '100%' }} contentFit="cover" />
           ) : (
             <View
               style={{

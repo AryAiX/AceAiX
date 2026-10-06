@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Clapperboard } from 'lucide-react-native';
+
+import { useCachedVideoSource } from '@/lib/videoCache';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -11,6 +13,7 @@ import {
   EmptyState,
   ErrorState,
   Input,
+  RemoteImage,
   Sheet,
   Skeleton,
   Text,
@@ -162,17 +165,16 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
       scrollable={false}
     >
       {picked && !picked.isVideo ? (
-        <Image
-          source={{ uri: picked.uri }}
+        <RemoteImage
+          uri={picked.uri}
           style={{
             width: '100%',
             height: 180,
             borderRadius: radii.md,
             marginBottom: spacing.lg,
-            backgroundColor: colors.surfaceAlt,
           }}
-          resizeMode="cover"
-          accessibilityIgnoresInvertColors
+          placeholderColor={colors.surfaceAlt}
+          contentFit="cover"
         />
       ) : null}
 
@@ -325,23 +327,19 @@ function MediaPreview({ item }: { item: AthleteMediaItem }) {
   }
 
   return (
-    <Image
-      source={{ uri: item.display_url }}
-      style={{
-        width: '100%',
-        height: 260,
-        borderRadius: theme.radii.md,
-        backgroundColor: theme.colors.surfaceAlt,
-      }}
-      resizeMode="contain"
-      accessibilityIgnoresInvertColors
+    <RemoteImage
+      uri={item.display_url}
+      style={{ width: '100%', height: 260, borderRadius: theme.radii.md }}
+      placeholderColor={theme.colors.surfaceAlt}
+      contentFit="contain"
     />
   );
 }
 
 function VideoPreview({ uri }: { uri: string }) {
   const theme = useTheme();
-  const player = useVideoPlayer(uri, (instance) => {
+  const source = useCachedVideoSource(uri);
+  const player = useVideoPlayer(source, (instance) => {
     instance.loop = false;
   });
 
