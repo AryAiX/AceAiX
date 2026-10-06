@@ -3,7 +3,6 @@ import {
   Animated,
   BackHandler,
   Easing,
-  Image,
   Modal,
   Platform,
   Pressable,
@@ -12,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { RemoteImage } from './RemoteImage';
 import { X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -182,22 +182,17 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
           pointerEvents="box-none"
         >
           {uri ? (
-            <Image
-              source={{ uri }}
-              style={{
-                width: side,
-                height: side,
-                borderRadius: radii.xxl,
-                backgroundColor: colors.surfaceAlt,
-              }}
-              resizeMode="cover"
+            <RemoteImage
+              uri={uri}
+              style={{ width: side, height: side, borderRadius: radii.xxl }}
+              placeholderColor={colors.surfaceAlt}
+              contentFit="cover"
               accessible
               accessibilityLabel={
                 caption
                   ? t('profile.viewPhotoA11y', { name: caption })
                   : t('profile.photoA11y')
               }
-              accessibilityIgnoresInvertColors
               testID="lightbox-image"
             />
           ) : (

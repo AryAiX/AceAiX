@@ -5,6 +5,8 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase, Buckets, publicUrl } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
 import { getUserPosts } from '@/lib/api';
+import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
+import { prepareVideo } from '@/lib/videoPrep';
 import type { UserPost } from '@/types/models';
 
 /**
@@ -176,11 +178,31 @@ async function upload(bucket: string, path: string, uri: string, contentType: st
   return path;
 }
 
+/**
+ * Shrinks a picked profile image to its preset before upload. Falls back to
+ * the original if the resize fails; the upload itself still goes ahead.
+ */
+async function shrink(
+  uri: string,
+  contentType: string,
+  preset: { maxEdge: number; quality: number },
+): Promise<{ uri: string; contentType: string }> {
+  if (isAnimatedType(contentType, uri)) return { uri, contentType };
+  try {
+    const prepared = await prepareImage(uri, preset);
+    return { uri: prepared.uri, contentType: prepared.contentType };
+  } catch (failure) {
+    console.warn('Could not resize a profile image before upload', failure);
+    return { uri, contentType };
+  }
+}
+
 /** Uploads a picked avatar and returns the public URL to store on the profile. */
 export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
-  const path = `${uid}/avatar-${Date.now()}.${extensionFor(uri, contentType)}`;
-  await upload(Buckets.avatars, path, uri, contentType);
+  const file = await shrink(uri, contentType, IMAGE_PRESETS.avatar);
+  const path = `${uid}/avatar-${Date.now()}.${extensionFor(file.uri, file.contentType)}`;
+  await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');
   return url;
@@ -196,8 +218,9 @@ export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Pro
  */
 export async function uploadCover(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
-  const path = `${uid}/cover-${Date.now()}.${extensionFor(uri, contentType)}`;
-  await upload(Buckets.avatars, path, uri, contentType);
+  const file = await shrink(uri, contentType, IMAGE_PRESETS.cover);
+  const path = `${uid}/cover-${Date.now()}.${extensionFor(file.uri, file.contentType)}`;
+  await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');
   return url;
@@ -272,15 +295,35 @@ export async function addAthleteMedia(input: NewHighlight): Promise<void> {
   }
 
   const uid = await currentUserId();
-  const path = `${uid}/highlights/${Date.now()}.${extensionFor(input.uri, input.contentType)}`;
-  await upload(Buckets.posts, path, input.uri, input.contentType);
+  let sourceUri = input.uri;
+  let contentType = input.contentType;
+  if (input.isVideo) {
+    const prepared = await prepareVideo(sourceUri);
+    if (prepared) {
+      sourceUri = prepared.uri;
+      contentType = prepared.contentType;
+    }
+  }
+  const path = `${uid}/highlights/${Date.now()}.${extensionFor(sourceUri, contentType)}`;
+  await upload(Buckets.posts, path, sourceUri, contentType);
 
   let thumbnailUrl: string | undefined;
   if (input.isVideo) {
     try {
-      const still = await VideoThumbnails.getThumbnailAsync(input.uri, { time: 0 });
+      const still = await VideoThumbnails.getThumbnailAsync(sourceUri, { time: 0 });
+      let thumbUri = still.uri;
+      try {
+        const small = await prepareImage(still.uri, {
+          ...IMAGE_PRESETS.videoThumbnail,
+          width: still.width,
+          height: still.height,
+        });
+        thumbUri = small.uri;
+      } catch {
+        // The full-size still is a worse thumbnail, and still better than none.
+      }
       const thumbPath = path.replace(/\.[^.]+$/, '_thumb.jpg');
-      await upload(Buckets.posts, thumbPath, still.uri, 'image/jpeg');
+      await upload(Buckets.posts, thumbPath, thumbUri, 'image/jpeg');
       thumbnailUrl = thumbPath;
     } catch (thumbFailure) {
       // A missing still must not undo a clip that already landed.

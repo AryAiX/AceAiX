@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { RemoteImage } from '@/components/ui/RemoteImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   BadgeCheck,
@@ -256,11 +257,10 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
         }}
       >
         {cover ? (
-          <Image
-            source={{ uri: cover }}
+          <RemoteImage
+            uri={cover}
             style={StyleSheet.absoluteFill}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
+            contentFit="cover"
             testID="profile-cover"
           />
         ) : (

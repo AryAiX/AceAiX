@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Image, StyleSheet, View, ViewStyle } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { huePair } from '@/theme/tokens';
-import { Text } from '@/components/ui';
+import { RemoteImage, Text } from '@/components/ui';
 import { initialsOf } from '@/lib/format';
 
 export type ClubLogoSize = 'sm' | 'md' | 'lg';
@@ -53,12 +53,11 @@ export function ClubLogo({
       ]}
     >
       {showImage ? (
-        <Image
-          source={{ uri }}
+        <RemoteImage
+          uri={uri}
           onError={() => setFailed(true)}
-          resizeMode="cover"
+          contentFit="cover"
           style={{ width: px, height: px }}
-          accessibilityIgnoresInvertColors
         />
       ) : (
         /* A crest with no badge uploaded is still a crest. Same trick as the

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { BadgeCheck, Building2, MapPin, Target, Trophy, Users } from 'lucide-react-native';
 
@@ -10,6 +10,7 @@ import {
   EmptyState,
   ErrorState,
   Header,
+  RemoteImage,
   Screen,
   SegmentedControl,
   SkeletonList,
@@ -211,11 +212,10 @@ export default function OrganizationScreen() {
         }}
       >
         {organization.cover_url ? (
-          <Image
-            source={{ uri: organization.cover_url }}
-            resizeMode="cover"
+          <RemoteImage
+            uri={organization.cover_url}
+            contentFit="cover"
             style={{ width: '100%', height: '100%' }}
-            accessibilityIgnoresInvertColors
           />
         ) : null}
       </View>
