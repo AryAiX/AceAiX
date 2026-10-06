@@ -6,6 +6,7 @@ import { Camera, ImagePlus } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Button, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { IMAGE_PRESETS, prepareImage } from '@/lib/imagePrep';
 import { StepHeading } from './Shared';
 
 export interface PickedPhoto {
@@ -47,12 +48,29 @@ export function PhotoStep({
   const { colors, spacing } = theme;
   const [opening, setOpening] = useState(false);
 
-  const handleResult = (result: ImagePicker.ImagePickerResult) => {
+  const handleResult = async (result: ImagePicker.ImagePickerResult) => {
     if (result.canceled) return;
     const asset = result.assets[0];
     if (!asset?.base64) {
       onError(t('onboarding.photoUnreadable'));
       return;
+    }
+    // The crop is square already; this brings a 3000px camera square down to
+    // avatar size so the upload and every later download are small. The
+    // picker's own base64 stays as the fallback if the resize fails.
+    try {
+      const small = await prepareImage(asset.uri, {
+        ...IMAGE_PRESETS.avatar,
+        width: asset.width,
+        height: asset.height,
+        base64: true,
+      });
+      if (small.base64) {
+        onPicked({ uri: small.uri, base64: small.base64, fileName: 'avatar.jpg', mimeType: 'image/jpeg' });
+        return;
+      }
+    } catch (failure) {
+      console.warn('Could not resize the profile photo before upload', failure);
     }
     onPicked({
       uri: asset.uri,
@@ -71,7 +89,7 @@ export function PhotoStep({
         onError(t('onboarding.photoLibraryDenied', { app: t('common.appName') }));
         return;
       }
-      handleResult(await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS));
+      await handleResult(await ImagePicker.launchImageLibraryAsync(PICKER_OPTIONS));
     } catch {
       onError(t('onboarding.photoLibraryFailed'));
     } finally {
@@ -88,7 +106,7 @@ export function PhotoStep({
         onError(t('onboarding.photoCameraDenied', { app: t('common.appName') }));
         return;
       }
-      handleResult(await ImagePicker.launchCameraAsync(PICKER_OPTIONS));
+      await handleResult(await ImagePicker.launchCameraAsync(PICKER_OPTIONS));
     } catch {
       onError(t('onboarding.photoCameraFailed'));
     } finally {

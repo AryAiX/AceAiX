@@ -274,6 +274,8 @@ export const profile = {
   notSet: '未填写',
 
   sectionSport: '你的项目',
+  sectionCoaching: '执教信息',
+  sectionClub: '俱乐部',
   sport: '项目',
   sportPlaceholder: '选择你的项目',
   sportA11y: '项目。当前为{{value}}。点击打开选择器。',

@@ -1,6 +1,8 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { AppError } from '@/lib/errors';
+import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
+import { prepareVideo } from '@/lib/videoPrep';
 import { Buckets, supabase } from '@/lib/supabase';
 import { webAppLink } from '@/lib/webLinks';
 import type { FeedPost, PostMedia, Tier, UserRole } from '@/types/models';
@@ -254,12 +256,45 @@ export async function uploadPostMedia(
         throw new AppError('That video is too long. Videos need to be 3 minutes or shorter.');
       }
 
-      const { ext, contentType } = resolveType(item);
+      let { ext, contentType } = resolveType(item);
+      let sourceUri = item.uri;
+      let width = item.width && item.width > 0 ? item.width : undefined;
+      let height = item.height && item.height > 0 ? item.height : undefined;
+
+      // Clips go up at phone-screen size (see lib/videoPrep.ts). A failed
+      // compress uploads the original: a heavy clip beats a lost post.
+      if (item.type === 'video') {
+        const prepared = await prepareVideo(sourceUri, width, height);
+        if (prepared) {
+          sourceUri = prepared.uri;
+          ext = prepared.ext;
+          contentType = prepared.contentType;
+          width = prepared.width ?? width;
+          height = prepared.height ?? height;
+        }
+      }
+
+      // Photos go up at screen size, not camera size (see lib/imagePrep.ts).
+      // If shrinking fails for any reason the original is uploaded as before,
+      // because a big photo beats a lost post.
+      if (item.type === 'photo' && !isAnimatedType(item.mimeType, item.uri)) {
+        try {
+          const prepared = await prepareImage(item.uri, { ...IMAGE_PRESETS.post, width, height });
+          sourceUri = prepared.uri;
+          ext = prepared.ext;
+          contentType = prepared.contentType;
+          width = prepared.width;
+          height = prepared.height;
+        } catch (prepFailure) {
+          console.warn('Could not resize a photo before upload', prepFailure);
+        }
+      }
+
       const path = `${uid}/${randomId()}.${ext}`;
 
       let body: ArrayBuffer;
       try {
-        const response = await fetch(item.uri);
+        const response = await fetch(sourceUri);
         body = await response.arrayBuffer();
       } catch {
         throw new AppError('We could not read that file. Pick it again and retry.');
@@ -280,9 +315,16 @@ export async function uploadPostMedia(
       let thumbnail: string | undefined;
       if (item.type === 'video') {
         try {
-          const still = await VideoThumbnails.getThumbnailAsync(item.uri, { time: 0 });
+          const still = await VideoThumbnails.getThumbnailAsync(sourceUri, { time: 0 });
+          // A full 1080×1920 frame at default quality was close to a megabyte,
+          // for a placeholder that is covered the moment the video plays.
+          const small = await prepareImage(still.uri, {
+            ...IMAGE_PRESETS.videoThumbnail,
+            width: still.width,
+            height: still.height,
+          });
           const thumbPath = path.replace(/\.[^.]+$/, '_thumb.jpg');
-          const thumbResponse = await fetch(still.uri);
+          const thumbResponse = await fetch(small.uri);
           const thumbBody = await thumbResponse.arrayBuffer();
           const { error: thumbError } = await supabase.storage
             .from(Buckets.posts)
@@ -302,8 +344,8 @@ export async function uploadPostMedia(
       uploaded.push({
         url: path,
         type: item.type,
-        width: item.width && item.width > 0 ? item.width : undefined,
-        height: item.height && item.height > 0 ? item.height : undefined,
+        width,
+        height,
         ...(thumbnail ? { thumbnail } : {}),
       });
       onProgress?.(i + 1, items.length);

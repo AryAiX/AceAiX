@@ -10,6 +10,7 @@ export type { TappableProps } from './Pressable';
 export { AnimatedNumber } from './AnimatedNumber';
 export { Screen } from './Screen';
 export { Avatar } from './Avatar';
+export { RemoteImage } from './RemoteImage';
 export { Badge, Chip } from './Badge';
 export type { BadgeTone } from './Badge';
 export { Input } from './Input';

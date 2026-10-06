@@ -23,6 +23,7 @@ module.exports = ({ config }) => {
       "@react-native-community/datetimepicker",
       "expo-sharing",
       "expo-status-bar",
+      "react-native-compressor",
     ],
   };
 };

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Image, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { huePair, tierForScore, tierGradient } from '@/theme/tokens';
+import { RemoteImage } from './RemoteImage';
 import { Text } from './Text';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
@@ -95,16 +96,11 @@ export function Avatar({
       ) : null}
 
       {showImage ? (
-        <Image
-          source={{ uri }}
+        <RemoteImage
+          uri={uri}
           onError={() => setFailed(true)}
-          style={{
-            width: px,
-            height: px,
-            borderRadius: px / 2,
-            backgroundColor: colors.surfaceAlt,
-          }}
-          accessibilityIgnoresInvertColors
+          style={{ width: px, height: px, borderRadius: px / 2 }}
+          placeholderColor={colors.surfaceAlt}
         />
       ) : (
         /*

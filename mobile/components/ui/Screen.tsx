@@ -11,6 +11,7 @@ import {
 import { SafeAreaView, Edge, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
+import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { useTheme } from '@/theme/ThemeProvider';
 
 interface Props {
@@ -28,6 +29,11 @@ interface Props {
   background?: 'bg' | 'surface';
   contentStyle?: ViewStyle;
   keyboardAvoiding?: boolean;
+  /**
+   * On iOS, drop the home-indicator inset under the footer while the keyboard
+   * is open. Off by default so every other screen keeps today's padding.
+   */
+  dropFooterInsetWithKeyboard?: boolean;
   testID?: string;
 }
 
@@ -43,11 +49,13 @@ export function Screen({
   background = 'bg',
   contentStyle,
   keyboardAvoiding = false,
+  dropFooterInsetWithKeyboard = false,
   testID,
 }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardVisible(!!dropFooterInsetWithKeyboard && Platform.OS === 'ios');
 
   const bg = background === 'surface' ? colors.surface : colors.bg;
 
@@ -94,7 +102,7 @@ export function Screen({
               borderTopColor: colors.divider,
               paddingHorizontal: spacing.lg,
               paddingTop: spacing.md,
-              paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.sm,
+              paddingBottom: Math.max(keyboardOpen ? 0 : insets.bottom, spacing.md) + spacing.sm,
             },
           ]}
         >
