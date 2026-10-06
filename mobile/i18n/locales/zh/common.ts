@@ -76,6 +76,26 @@ export const common = {
   aceaixTeam: 'AceAiX 团队',
   verified: '已认证',
   under18: '未满18岁',
+  coachRoles: {
+    head_coach: '主教练',
+    assistant_coach: '助理教练',
+    youth_academy_coach: '青训 / 学院教练',
+    strength_conditioning_coach: '体能教练',
+    technical_skills_coach: '技术教练',
+    scout: '球探',
+    performance_analyst: '表现分析师',
+    other: '其他教练角色',
+  },
+  clubRoles: {
+    academy_director: '学院总监',
+    club_president_owner: '俱乐部主席 / 所有者',
+    technical_director: '技术总监',
+    sporting_director: '体育总监',
+    head_of_recruitment: '人才招募主管',
+    head_of_youth_development: '青训主管',
+    club_administrator: '俱乐部行政人员',
+    other: '其他俱乐部角色',
+  },
 
   // 计数
   followers: '粉丝',

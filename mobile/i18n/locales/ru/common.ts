@@ -77,6 +77,26 @@ export const common = {
   aceaixTeam: 'Команда AceAiX',
   verified: 'Проверено',
   under18: 'До 18 лет',
+  coachRoles: {
+    head_coach: 'Главный тренер',
+    assistant_coach: 'Помощник тренера',
+    youth_academy_coach: 'Тренер детско-юношеской команды / академии',
+    strength_conditioning_coach: 'Тренер по физической подготовке',
+    technical_skills_coach: 'Тренер по технике',
+    scout: 'Скаут',
+    performance_analyst: 'Спортивный аналитик',
+    other: 'Другая тренерская роль',
+  },
+  clubRoles: {
+    academy_director: 'Директор академии',
+    club_president_owner: 'Президент / владелец клуба',
+    technical_director: 'Технический директор',
+    sporting_director: 'Спортивный директор',
+    head_of_recruitment: 'Руководитель селекционной службы',
+    head_of_youth_development: 'Руководитель детско-юношеского направления',
+    club_administrator: 'Администратор клуба',
+    other: 'Другая роль в клубе',
+  },
 
   // Счётчики
   followers: 'Подписчики',

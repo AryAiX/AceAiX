@@ -7,6 +7,7 @@ import {
   ScrollView,
   View,
 } from 'react-native';
+import { useIsFocused } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { RemoteImage } from '@/components/ui/RemoteImage';
 import { Play, Volume2, VolumeX } from 'lucide-react-native';
@@ -217,6 +218,8 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   const { colors, radii, spacing } = theme;
   const t = useT();
   const [ready, setReady] = useState(false);
+  const isFocused = useIsFocused();
+  const shouldPlay = isActive && isFocused;
   const source = useCachedVideoSource(item.url);
 
   const player = useVideoPlayer(source, (p) => {
@@ -247,11 +250,11 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   useEffect(() => {
     if (!source) return;
     safely(() => {
-      if (isActive) player.play();
+      if (shouldPlay) player.play();
       else player.pause();
     });
     return () => safely(() => player.pause());
-  }, [isActive, player, safely, source]);
+  }, [shouldPlay, player, safely, source]);
 
   useEffect(() => {
     if (!source) return;

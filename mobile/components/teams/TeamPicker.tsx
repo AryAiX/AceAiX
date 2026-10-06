@@ -158,6 +158,7 @@ export function TeamPicker({
         onChangeText={setQuery}
         icon={<Search size={18} color={colors.textMuted} />}
         autoCorrect={false}
+        returnKeyType="done"
         testID="team-search"
       />
 

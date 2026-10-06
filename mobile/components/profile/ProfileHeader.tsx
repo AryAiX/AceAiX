@@ -37,12 +37,28 @@ import {
 import { blockUser, canMessage, reportContent, startConversation, toggleFollow } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { levelLabelI18n, positionLabel, sportLabel } from '@/constants/sports';
+import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
 import { useT } from '@/i18n';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
+
+/**
+ * A listed coach role is stored as a key and shown translated, the same way
+ * `sportLabel` and `positionLabel` work. Anything else was typed before the
+ * list existed, so it stays as written.
+ */
+export function coachRoleLabel(
+  t: (key: string) => string,
+  value: string | null | undefined,
+): string {
+  if (!value) return '';
+  return (COACH_ROLE_KEYS as readonly string[]).includes(value)
+    ? t(`common.coachRoles.${value}`)
+    : value;
+}
 
 /** Plain-language answers to "why can't I message this person?". */
 const MESSAGE_BLOCK_KEYS: Record<MessageBlockReason, string> = {
@@ -131,8 +147,8 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
   const name = displayName(user?.full_name);
 
   const meta = useMemo(() => {
-    /* Sport and position are stored in English; only the label is translated.
-       Club and specialty are what the person typed, so they stand as written. */
+    /* Sport, position, and a listed coach role are stored as keys and shown
+       translated. A club name, or an older free-text role, stays as written. */
     if (athlete) {
       return metaLine(
         positionLabel(t, athlete.position),
@@ -140,7 +156,9 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
         athlete.club,
       );
     }
-    if (coach) return metaLine(roleLabel(user?.role), coach.specialty, coach.current_club);
+    if (coach) {
+      return metaLine(roleLabel(user?.role), coachRoleLabel(t, coach.specialty), coach.current_club);
+    }
     return roleLabel(user?.role);
   }, [athlete, coach, t, user?.role]);
 

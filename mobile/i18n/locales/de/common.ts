@@ -77,6 +77,26 @@ export const common = {
   aceaixTeam: 'AceAiX-Team',
   verified: 'Geprüft',
   under18: 'Unter 18',
+  coachRoles: {
+    head_coach: 'Cheftrainer',
+    assistant_coach: 'Co-Trainer',
+    youth_academy_coach: 'Jugend- / Akademietrainer',
+    strength_conditioning_coach: 'Athletiktrainer',
+    technical_skills_coach: 'Techniktrainer',
+    scout: 'Scout',
+    performance_analyst: 'Leistungsanalyst',
+    other: 'Andere Trainerrolle',
+  },
+  clubRoles: {
+    academy_director: 'Akademieleiter',
+    club_president_owner: 'Vereinspräsident / Eigentümer',
+    technical_director: 'Technischer Direktor',
+    sporting_director: 'Sportdirektor',
+    head_of_recruitment: 'Leiter Scouting',
+    head_of_youth_development: 'Leiter Nachwuchsentwicklung',
+    club_administrator: 'Vereinsadministrator',
+    other: 'Andere Vereinsrolle',
+  },
 
   // Zahlen
   followers: 'Follower',
