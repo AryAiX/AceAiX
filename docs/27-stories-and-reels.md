@@ -57,8 +57,13 @@ Only `create_story` writes, since direct `INSERT`/`UPDATE` are revoked. It check
 
 ## 2. Reels
 
-`get_reels` is `get_feed` filtered to posts with a video, in the feed's order. Every feed gate
-applies without being written twice: audience, blocks, suspension and the minor gate.
+`get_reels` returns two things, newest first:
+
+- the feed's posts that have a video (`get_feed`, so audience, blocks, suspension and the minor gate
+  all apply without being written twice);
+- the public clips athletes uploaded to their own page (`athlete_media`), since 1007/01. They come
+  through `private.visible_highlight_clips()`, the helper Explore uses (docs/28). A profile clip has
+  `type = 'highlight'` and plays without like, comment or share, which belong to posts.
 
 The screen (`/reels`) is a vertical pager:
 
@@ -73,8 +78,8 @@ showing an empty frame.
 
 ## 3. Demo media
 
-`tools/local-supabase/demo-media/generate.py` draws three short vertical clips (football, athletics,
-basketball) and three stills from scratch, so nothing in the repo is somebody else's footage. The
+`tools/local-supabase/demo-media/generate.py` draws short vertical clips (football, athletics,
+basketball, swimming; nine since Explore, docs/28) and three stills from scratch, so nothing in the repo is somebody else's footage. The
 seed points seven stories and four posts at them.
 
 - **Local harness:** the stand-in serves these files for the matching storage paths. It also

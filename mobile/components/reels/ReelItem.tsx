@@ -11,6 +11,7 @@ import { HeartBurst } from '@/components/feed/HeartBurst';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { isHighlight } from '@/lib/api.explore';
 import { reelVideo } from '@/lib/api.reels';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -68,6 +69,9 @@ function ReelItemBase({
   const { spacing } = theme;
   const t = useT();
   const video = reelVideo(post);
+  /* A highlight is a clip from a profile, not a post: it has no likes, comments
+     or post link, so the reel shows it without those controls. */
+  const reactable = !isHighlight(post);
 
   const [firstFrame, setFirstFrame] = useState(false);
   const [userPaused, setUserPaused] = useState(false);
@@ -130,6 +134,7 @@ function ReelItemBase({
         clearTimeout(tapTimer.current);
         tapTimer.current = null;
       }
+      if (!reactable) return;
       if (!post.viewer_liked) onLike(post, true);
       setBursts((n) => n + 1);
       if (Platform.OS !== 'web') {
@@ -178,7 +183,7 @@ function ReelItemBase({
         onPress={handleTap}
         accessibilityRole="button"
         accessibilityLabel={userPaused ? t('reels.paused') : t('reels.videoOf', { name })}
-        accessibilityHint={t('reels.doubleTapHint')}
+        accessibilityHint={reactable ? t('reels.doubleTapHint') : undefined}
       />
 
       {userPaused ? (
@@ -263,6 +268,23 @@ function ReelItemBase({
           ) : null}
         </View>
 
+        {!reactable ? (
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              paddingHorizontal: spacing.sm,
+              height: 22,
+              borderRadius: 11,
+              backgroundColor: CHIP,
+              justifyContent: 'center',
+            }}
+          >
+            <Text variant="captionStrong" color={ON_VIDEO}>
+              {t('explore.highlight')}
+            </Text>
+          </View>
+        ) : null}
+
         {caption ? (
           <Pressable onPress={() => setCaptionOpen((o) => !o)} accessibilityRole="button">
             <Text variant="body" color={ON_VIDEO} numberOfLines={captionOpen ? 8 : 2}>
@@ -291,25 +313,29 @@ function ReelItemBase({
           {muted ? <VolumeX size={24} color={ON_VIDEO} /> : <Volume2 size={24} color={ON_VIDEO} />}
         </RailButton>
 
-        <LikeButton
-          liked={post.viewer_liked}
-          count={post.like_count}
-          label={post.viewer_liked ? t('feed.unlikePost') : t('feed.likePost')}
-          onPress={() => onLike(post)}
-        />
+        {reactable ? (
+          <>
+          <LikeButton
+            liked={post.viewer_liked}
+            count={post.like_count}
+            label={post.viewer_liked ? t('feed.unlikePost') : t('feed.likePost')}
+            onPress={() => onLike(post)}
+          />
 
-        <RailButton
-          label={t('feed.readAndAddComments')}
-          onPress={() => onComment(post)}
-          count={post.comment_count}
-          testID="reel-comment"
-        >
-          <MessageCircle size={28} color={ON_VIDEO} strokeWidth={2} />
-        </RailButton>
+          <RailButton
+            label={t('feed.readAndAddComments')}
+            onPress={() => onComment(post)}
+            count={post.comment_count}
+            testID="reel-comment"
+          >
+            <MessageCircle size={28} color={ON_VIDEO} strokeWidth={2} />
+          </RailButton>
 
-        <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
-          <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
-        </RailButton>
+          <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
+            <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
+          </RailButton>
+          </>
+        ) : null}
       </View>
 
       {/* ── Thin progress ── */}

@@ -211,6 +211,13 @@ const TOUR = [
   /* Stories and reels (0925/01). One stop per author with a live story, so
      the viewer opened from the rail has something to play. */
   '/reels',
+  /* Explore (1007/01): the grid, each sport chip, and the pager it opens. */
+  '/discover?view=explore',
+  '/discover?view=people',
+  '/reels?source=explore',
+  '/reels?source=explore&sport=Football',
+  '/reels?source=explore&sport=Athletics',
+  '/reels?source=explore&sport=Basketball',
   '/stories/new',
   '/stories/a0000000-0000-4000-8000-000000000001',
   '/stories/a0000000-0000-4000-8000-000000000002',
@@ -312,6 +319,15 @@ for (const account of ACCOUNTS) {
   if (account.role === 'athlete') {
     const outcome = await playGameIntelligence(page).catch((err) => `stopped: ${err.message.split('\n')[0]}`);
     console.log(`  · game intelligence: ${outcome}`);
+  }
+
+  // Explore: tap every sport chip, so the filtered grids are in the recording.
+  await page.goto(`http://localhost:${PORT}/discover?view=explore`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  const sportChips = page.locator('[data-testid^="explore-sport-"]');
+  for (let i = 0; i < (await sportChips.count()); i += 1) {
+    await sportChips.nth(i).click().catch(() => {});
+    await page.waitForTimeout(800);
   }
 
   // Pull the search and discovery screens through their filters, so a tap in

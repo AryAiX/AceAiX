@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowUpDown, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -23,6 +23,8 @@ import {
 } from '@/components/ui';
 import { AthleteCard, COMPACT_CARD_WIDTH } from '@/components/discover/AthleteCard';
 import { AthleteExplore } from '@/components/discover/AthleteExplore';
+import { DiscoverSwitch, type DiscoverView } from '@/components/explore/DiscoverSwitch';
+import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { FilterSheet, FilterSheetMode, isFilterActive } from '@/components/discover/FilterSheet';
 import {
   criteriaFromFilters,
@@ -96,7 +98,7 @@ function FilterButton({ active, onPress }: { active: boolean; onPress: () => voi
 }
 
 // ── Recruiter face ────────────────────────────────────────────────────────────
-function RecruiterDiscover() {
+function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -357,6 +359,7 @@ function RecruiterDiscover() {
           </>
         }
       />
+      {switcher}
 
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
         <Input
@@ -489,10 +492,29 @@ function RecruiterDiscover() {
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
+/**
+ * Everyone gets Explore — every public clip, in a mosaic.
+ *
+ * For an athlete or a guardian it is the first of four tabs, beside Clubs,
+ * Coaches and Leaderboard, with the search bar under them. A recruiter keeps
+ * their athlete search and opens on it, because finding athletes is the job;
+ * Explore is the tab next to it. `/discover?view=explore` (or `view=people`)
+ * picks a side.
+ */
 export default function DiscoverScreen() {
   const theme = useTheme();
   const t = useT();
+  const router = useRouter();
   const { profile, loading, isRecruiter } = useAuth();
+  const params = useLocalSearchParams<{ view?: string }>();
+  const asked: DiscoverView | null =
+    params.view === 'explore' ? 'explore' : params.view === 'people' ? 'people' : null;
+  const [chosen, setChosen] = useState<DiscoverView | null>(null);
+
+  /* A link that names a view wins over whatever was picked before it. */
+  useEffect(() => {
+    if (asked) setChosen(asked);
+  }, [asked]);
 
   if (loading && !profile) {
     return (
@@ -505,19 +527,33 @@ export default function DiscoverScreen() {
     );
   }
 
+  if (!isRecruiter) {
+    return (
+      <Screen scroll={false} padded={false} testID="discover-screen">
+        <Header title={t('common.tabDiscover')} subtitle={t('discover.athleteSubtitle')} large />
+        <AthleteExplore
+          viewerId={profile?.id ?? null}
+          initialTab={asked === 'people' ? 'clubs' : 'explore'}
+        />
+      </Screen>
+    );
+  }
+
+  const view: DiscoverView = chosen ?? asked ?? 'people';
+  const switcher = (
+    <DiscoverSwitch value={view} onChange={setChosen} peopleLabel={t('explore.viewAthletes')} />
+  );
+
   return (
     <Screen scroll={false} padded={false} testID="discover-screen">
-      {isRecruiter ? (
-        <RecruiterDiscover />
-      ) : (
+      {view === 'explore' ? (
         <>
-          <Header
-            title={t('common.tabDiscover')}
-            subtitle={t('discover.athleteSubtitle')}
-            large
-          />
-          <AthleteExplore viewerId={profile?.id ?? null} />
+          <Header title={t('discover.title')} subtitle={t('explore.subtitle')} large />
+          {switcher}
+          <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
         </>
+      ) : (
+        <RecruiterDiscover switcher={switcher} />
       )}
     </Screen>
   );

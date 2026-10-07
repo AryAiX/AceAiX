@@ -2,8 +2,8 @@
 """
 Demo media for the local harness and the preview build.
 
-Three short vertical clips (football, athletics, basketball) and three
-stills, drawn from scratch so nothing in the repo is somebody else's footage.
+Nine short vertical clips (football, athletics, basketball, swimming) and
+three stills, drawn from scratch so nothing in the repo is somebody else's footage.
 Output lands beside this file as <bucket>/<owner id>/<name>, which is exactly
 the storage path the seeded rows point at. Re-run after changing a scene:
 
@@ -15,6 +15,8 @@ from PIL import Image, ImageDraw, ImageFilter
 HERE = os.path.dirname(os.path.abspath(__file__))
 W, H, FPS, SECONDS = 360, 640, 20, 4
 LAYLA = 'a0000000-0000-4000-8000-000000000001'
+OMAR = 'a0000000-0000-4000-8000-000000000002'
+YUSUF = 'a0000000-0000-4000-8000-000000000003'
 SARA = 'a0000000-0000-4000-8000-000000000004'
 DANIEL = 'a0000000-0000-4000-8000-000000000005'
 MARCO = 'b0000000-0000-4000-8000-000000000001'
@@ -113,6 +115,141 @@ def basketball(t):
     return img
 
 
+def keepups(t, day=False):
+    """Keep-ups under an evening sky: the ball goes up off the foot, five times."""
+    img = Image.new('RGB', (W, H))
+    d = ImageDraw.Draw(img)
+    for y in range(H):
+        k = y / (H - 1)
+        sky = (int(60 + 120 * k), int(150 + 70 * k), int(236 - 10 * k)) if day else (int(24 + 230 * k * k), int(28 + 110 * k), int(74 + 40 * k))
+        d.line([0, y, W, y], fill=sky)
+    d.rectangle([0, 520, W, H], fill=(36, 135, 66))
+    for i in range(0, W, 60):
+        d.rectangle([i, 520, i + 30, H], fill=(30, 123, 59))
+    for x in (60, 300):
+        d.line([x, 90, x, 520], fill=(30, 30, 50), width=6)
+        d.rectangle([x - 26, 74, x + 26, 92], fill=(255, 250, 220))
+    bounce = abs(math.sin(t * math.pi * 5))
+    by = 470 - 230 * bounce
+    foot = 500 - 14 * (1 - bounce)
+    d.ellipse([W / 2 - 70, 512, W / 2 + 70, 532], fill=(20, 80, 40))
+    d.line([W / 2 - 30, 330, W / 2 - 30, 440], fill=(46, 125, 246) if day else (255, 90, 31), width=26)
+    d.ellipse([W / 2 - 52, 270, W / 2 - 8, 314], fill=(255, 205, 170))
+    d.line([W / 2 - 30, 440, W / 2 - 34, 520], fill=(24, 26, 40), width=12)
+    d.line([W / 2 - 26, 440, W / 2 + 4, foot], fill=(24, 26, 40), width=12)
+    d.ellipse([W / 2 - 8, by - 20, W / 2 + 32, by + 20], fill=(255, 255, 255), outline=(20, 22, 26), width=3)
+    d.rounded_rectangle([W - 96, 24, W - 20, 70], 14, fill=(20, 22, 40))
+    d.text((W - 74, 34), f'x{int(t * 5) + 1}', fill=(201, 240, 60), font_size=24)
+    return img
+
+
+def freekick(t):
+    """A free kick over the wall and inside the far post."""
+    img = Image.new('RGB', (W, H))
+    d = ImageDraw.Draw(img)
+    pitch(d)
+    for i in range(4):
+        dot(d, 132 + i * 30, 250 + 5 * math.sin(t * 9 + i), 14, (226, 41, 75), (120, 16, 16))
+    dot(d, W / 2 - 40 + 60 * ease((t - 0.3) / 0.6), 40, 14, (255, 200, 61), (138, 106, 0))
+    run = ease(t / 0.3)
+    dot(d, 120 + 50 * run, 560 - 60 * run, 15, (255, 90, 31))
+    k = ease((t - 0.3) / 0.6)
+    bx = 180 + (W / 2 + 46 - 180) * k + 70 * math.sin(math.pi * k)
+    by = 490 + (24 - 490) * k
+    r = 7 + 5 * math.sin(math.pi * k)
+    d.ellipse([bx - r, by - r, bx + r, by + r], fill=(255, 255, 255), outline=(20, 22, 26), width=2)
+    if t > 0.93:
+        d.rectangle([0, 0, W, H], outline=(201, 240, 60), width=10)
+    return img
+
+
+def save(t):
+    """Seen from behind the goal: a shot to the corner and the keeper gets across."""
+    img = Image.new('RGB', (W, H))
+    d = ImageDraw.Draw(img)
+    pitch(d)
+    for ox, oy in [(90, 300), (250, 340), (180, 420)]:
+        dot(d, ox + 5 * math.sin(t * 5 + ox), oy, 14, (46, 125, 246))
+    dot(d, 200, 300, 15, (226, 41, 75), (120, 16, 16))
+    k = ease((t - 0.25) / 0.5)
+    bx, by = 200 + (232 - 200) * k, 290 + (30 - 290) * k
+    kx = W / 2 + (228 - W / 2) * ease((t - 0.35) / 0.4)
+    if t > 0.75:
+        j = ease((t - 0.75) / 0.25)
+        bx, by = 232 + 70 * j, 30 + 90 * j
+    d.ellipse([kx - 24, 26, kx + 24, 50], fill=(255, 200, 61), outline=(138, 106, 0), width=3)
+    d.ellipse([bx - 8, by - 8, bx + 8, by + 8], fill=(255, 255, 255), outline=(20, 22, 26), width=2)
+    return img
+
+
+def hurdles(t):
+    """Three lanes, three flights of hurdles, the middle lane pulling away."""
+    img = Image.new('RGB', (W, H), (38, 92, 176))
+    d = ImageDraw.Draw(img)
+    for i in range(4):
+        x = 30 + i * 100
+        d.line([x, 0, x, H], fill=(235, 242, 255), width=3)
+    speeds = [0.9, 1.0, 0.86]
+    colors = [(255, 176, 32), (255, 90, 31), (16, 213, 160)]
+    for lane in range(3):
+        cx = 80 + lane * 100
+        for row in (150, 320, 490):
+            d.rectangle([cx - 36, row, cx + 36, row + 7], fill=(255, 255, 255))
+            d.rectangle([cx - 36, row, cx - 30, row + 22], fill=(20, 22, 26))
+            d.rectangle([cx + 30, row, cx + 36, row + 22], fill=(20, 22, 26))
+        y = H - 30 - (H - 90) * ease(min(1, t * speeds[lane] * 1.1))
+        hop = 4 * max(0, math.sin((y - 150) / 170 * 2 * math.pi)) if y < 520 else 0
+        dot(d, cx, y, 14 + hop, colors[lane])
+    return img
+
+
+def swim(t):
+    """Four lanes of a pool, the last fifteen metres to the wall."""
+    img = Image.new('RGB', (W, H), (18, 150, 214))
+    d = ImageDraw.Draw(img)
+    for y in range(0, H, 22):
+        off = 8 * math.sin(y / 30)
+        d.arc([off - 30, y, off + W + 30, y + 44], 200, 340, fill=(90, 196, 240), width=2)
+    for i in range(5):
+        x = 20 + i * 80
+        for y in range(0, H, 26):
+            d.ellipse([x - 5, y, x + 5, y + 10], fill=(255, 255, 255) if (y // 26) % 2 else (226, 41, 75))
+    d.rectangle([0, 0, W, 26], fill=(235, 242, 250))
+    speeds = [0.9, 0.96, 1.0, 0.87]
+    colors = [(255, 200, 61), (240, 48, 140), (255, 90, 31), (139, 92, 246)]
+    for lane in range(4):
+        cx = 60 + lane * 80
+        y = H - 50 - (H - 100) * ease(min(1, t * speeds[lane] * 1.08))
+        d.ellipse([cx - 16, y + 12, cx + 16, y + 70], fill=(200, 236, 255))
+        stroke = 20 * math.sin(t * 22 + lane)
+        d.line([cx - 22, y + 16 - stroke, cx + 22, y + 16 + stroke], fill=(255, 205, 170), width=7)
+        dot(d, cx, y, 12, colors[lane])
+    return img
+
+
+def crossover(t):
+    """A crossover at the top of the key, then a drive to the rim."""
+    img = Image.new('RGB', (W, H), (36, 40, 72))
+    d = ImageDraw.Draw(img)
+    line = (255, 255, 255)
+    d.rectangle([110, 0, W - 110, 230], outline=line, width=3, fill=(240, 48, 140))
+    d.ellipse([110, 170, W - 110, 290], outline=line, width=3)
+    d.arc([20, -180, W - 20, 400], 0, 180, fill=line, width=3)
+    d.rectangle([140, 30, W - 140, 36], fill=(230, 230, 240))
+    d.ellipse([W / 2 - 22, 40, W / 2 + 22, 56], outline=(255, 90, 31), width=4)
+    if t < 0.55:
+        px = W / 2 + 70 * math.sin(t / 0.55 * math.pi * 3)
+        py = 470
+    else:
+        k = ease((t - 0.55) / 0.45)
+        px, py = W / 2 + (W / 2 + 60 - W / 2) * math.sin(math.pi * k) * 0.8, 470 - 360 * k
+    dot(d, W / 2 - 12 * math.sin(t * 9), 400 - 40 * ease((t - 0.55) / 0.3), 15, (46, 125, 246))
+    dot(d, px, py, 16, (255, 176, 32))
+    bounce = abs(math.sin(t * 22)) * 16 if t < 0.55 else 0
+    d.ellipse([px + 12, py + 4 + bounce, px + 34, py + 26 + bounce], fill=(232, 110, 30), outline=(40, 20, 10), width=2)
+    return img
+
+
 def render(scene, bucket, owner, name):
     with tempfile.TemporaryDirectory() as tmp:
         frames = FPS * SECONDS
@@ -168,6 +305,14 @@ if __name__ == '__main__':
     render(football, 'posts', LAYLA, 'demo-reel-1')
     render(athletics, 'posts', SARA, 'demo-reel-2')
     render(basketball, 'posts', DANIEL, 'demo-reel-3')
+    # Explore: highlight clips and two more video posts, so the grid is full.
+    render(freekick, 'posts', LAYLA, 'highlights/demo-clip-1')
+    render(keepups, 'posts', LAYLA, 'highlights/demo-clip-2')
+    render(lambda t: keepups(t, day=True), 'posts', OMAR, 'highlights/demo-clip-3')
+    render(save, 'posts', YUSUF, 'highlights/demo-clip-4')
+    render(crossover, 'posts', DANIEL, 'highlights/demo-clip-5')
+    render(hurdles, 'posts', SARA, 'demo-reel-4')
+    render(swim, 'posts', ACADEMY, 'demo-reel-5')
     still('stadium', 'stories', LAYLA, 'demo-story-1.jpg')
     still('training', 'stories', MARCO, 'demo-story-2.jpg')
     still('academy', 'posts', ACADEMY, 'demo-photo-1.jpg')

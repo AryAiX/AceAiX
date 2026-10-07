@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Building2, Check, Search, Trophy, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -29,11 +30,14 @@ import {
 import type { LeaderboardEntry } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
 import type { Organization, PersonResult } from '@/types/models';
+import { ExploreGrid } from '@/components/explore/ExploreGrid';
+import { Routes } from '@/lib/routes';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
 import { LeaderboardRow } from './LeaderboardRow';
 
-type Tab = 'clubs' | 'coaches' | 'leaderboard';
+export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'leaderboard';
+type Tab = AthleteDiscoverTab;
 
 const SEARCH_DEBOUNCE_MS = 300;
 const BOARD_SIZE = 50;
@@ -44,6 +48,7 @@ interface Page<T> {
 }
 
 const TABS: { value: Tab; labelKey: string }[] = [
+  { value: 'explore', labelKey: 'explore.viewExplore' },
   { value: 'clubs', labelKey: 'discover.tabClubs' },
   { value: 'coaches', labelKey: 'discover.tabCoaches' },
   { value: 'leaderboard', labelKey: 'discover.tabLeaderboard' },
@@ -52,21 +57,30 @@ const TABS: { value: Tab; labelKey: string }[] = [
 interface Props {
   /** The signed-in athlete, so their own leaderboard row can be highlighted. */
   viewerId: string | null;
+  /** The tab to open on. Explore unless a link asked for the people side. */
+  initialTab?: AthleteDiscoverTab;
 }
 
 /**
- * The athlete's side of Discover: who to follow, and where they stand.
+ * The athlete's side of Discover: clips to watch (Explore, the tab it opens
+ * on), who to follow, and where they stand.
  *
  * The leaderboard is read by teenagers, so it only ever names positions people
  * already hold. It never tells anyone they are behind.
  */
-export function AthleteExplore({ viewerId }: Props) {
+export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
+  const router = useRouter();
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
 
-  const [tab, setTab] = useState<Tab>('clubs');
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  /* A link that names a side wins over whatever was open before it. */
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [sport, setSport] = useState<string | undefined>(undefined);
@@ -377,12 +391,47 @@ export function AthleteExplore({ viewerId }: Props) {
       <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md }}>
         {tab === 'leaderboard' ? (
           boardFilters
+        ) : tab === 'explore' ? (
+          /* Clips are not searched by text. The bar opens the people-and-clubs
+             search, where a name typed here would have been looked for anyway. */
+          <Pressable
+            onPress={() => router.push(Routes.search)}
+            accessibilityRole="search"
+            accessibilityLabel={t('discover.searchPeople')}
+            testID="explore-search"
+            style={({ pressed }) => ({
+              marginRight: spacing.lg,
+              minHeight: 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              paddingHorizontal: spacing.lg,
+              borderRadius: theme.radii.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Search size={18} color={colors.textMuted} />
+            <Text variant="body" tone="muted" numberOfLines={1}>
+              {t('discover.searchPeople')}
+            </Text>
+          </Pressable>
         ) : (
           <View style={{ paddingRight: spacing.lg }}>{searchField}</View>
         )}
       </View>
 
-      {tab === 'clubs' ? renderClubs() : tab === 'coaches' ? renderCoaches() : renderBoard()}
+      {tab === 'explore' ? (
+        <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
+      ) : tab === 'clubs' ? (
+        renderClubs()
+      ) : tab === 'coaches' ? (
+        renderCoaches()
+      ) : (
+        renderBoard()
+      )}
 
       <Sheet
         visible={countrySheet}

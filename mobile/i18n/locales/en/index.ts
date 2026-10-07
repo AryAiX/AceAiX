@@ -21,6 +21,7 @@ import { errors } from './errors';
 import { format } from './format';
 import { stories } from './stories';
 import { reels } from './reels';
+import { explore } from './explore';
 import { countries } from './countries';
 
 /**
@@ -54,6 +55,7 @@ export const en = {
   countries,
   stories,
   reels,
+  explore,
 };
 
 export type Translations = typeof en;

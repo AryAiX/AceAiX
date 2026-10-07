@@ -4,9 +4,11 @@ import { supabase } from '@/lib/supabase';
 import type { FeedPost } from '@/types/models';
 
 /**
- * Reels are the feed's own video posts, served full-screen. `get_reels` reads
- * through `get_feed`, so every audience, block and minor gate is the feed's —
- * nothing here may fetch video posts any other way.
+ * Reels are video posts and the clips an athlete uploads to their own page,
+ * served full-screen. `get_reels` reads the posts through `get_feed` and the
+ * profile clips through the same helper Explore uses, so every audience, block
+ * and minor gate is decided in the database — nothing here may fetch clips any
+ * other way. A profile clip has `type === 'highlight'` (see `isHighlight`).
  */
 export async function getReels(params: { limit?: number; before?: string | null } = {}): Promise<FeedPost[]> {
   const { data, error } = await supabase.rpc('get_reels', {

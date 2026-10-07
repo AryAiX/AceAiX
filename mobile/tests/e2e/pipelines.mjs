@@ -719,6 +719,34 @@ async function main() {
     return 'refused by the database';
   });
 
+  // ── Explore ───────────────────────────────────────────────────────────────
+  section('a public clip reaches someone who follows nobody');
+
+  await step('marco, who posts nothing, gets a grid of public clips', async () => {
+    const rows = unwrap(await clients.marco.rpc('explore_videos', { p_limit: 60 }), 'explore_videos');
+    expect(rows.length > 0, 'the grid is empty');
+    expect(
+      rows.every((r) => r.media?.some((m) => m.type === 'video')),
+      'a row without a video reached Explore',
+    );
+    expect(rows.some((r) => r.type === 'highlight'), 'no highlight clip in the grid');
+    expect(!rows.some((r) => r.author_id === ids.mina), 'a hidden minor is on Explore');
+    return `${rows.length} clips, ${rows.filter((r) => r.type === 'highlight').length} highlights`;
+  });
+
+  await step('the sport chips match what the grid can show', async () => {
+    const sports = unwrap(await clients.marco.rpc('explore_sports'), 'explore_sports');
+    expect(sports.length > 0, 'no sports');
+    const first = sports[0];
+    const rows = unwrap(
+      await clients.marco.rpc('explore_videos', { p_limit: 60, p_sport: first.sport }),
+      'explore_videos',
+    );
+    expect(rows.length === first.clips, `${first.sport}: chip says ${first.clips}, grid has ${rows.length}`);
+    expect(rows.every((r) => r.athlete_sport === first.sport), 'another sport leaked into the filter');
+    return `${first.sport}: ${first.clips}`;
+  });
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n  ${results.length - failed.length}/${results.length} steps passed`);

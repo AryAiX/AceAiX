@@ -2006,6 +2006,157 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── explore ──'; end $$;
+
+/*
+ * 1007/01. Explore shows strangers' clips, so it is the strictest read of
+ * video in the app: public only, and every author gate the feed applies.
+ */
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  v_other uuid := '44444444-4444-4444-4444-444444444444';
+  v_public uuid := gen_random_uuid();
+  v_private uuid := gen_random_uuid();
+  v_photo uuid := gen_random_uuid();
+  v_minor_post uuid := gen_random_uuid();
+  v_clip uuid := gen_random_uuid();
+  v_secret_clip uuid := gen_random_uuid();
+  v_athlete uuid;
+  v_disc boolean;
+  v_sport text;
+  v_err text;
+begin
+  select id, sport into v_athlete, v_sport from public.athlete_profiles where user_id = v_adult;
+
+  insert into public.posts (id, author_id, type, caption, text, audience, media) values
+    (v_public, v_adult, 'video', 'public clip', 'public clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/a.mp4', 'type', 'video'))),
+    (v_private, v_adult, 'video', 'followers clip', 'followers clip', 'followers',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/b.mp4', 'type', 'video'))),
+    (v_photo, v_adult, 'standard', 'a photo', 'a photo', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/c.jpg', 'type', 'photo'))),
+    (v_minor_post, v_minor, 'video', 'minor clip', 'minor clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_minor::text || '/d.mp4', 'type', 'video')));
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count) values
+    (v_clip, v_athlete, 'Highlight clip', 'highlight_reel', v_adult::text || '/highlights/h.mp4', true, 12),
+    (v_secret_clip, v_athlete, 'Private clip', 'video', v_adult::text || '/highlights/p.mp4', false, 0);
+  /* Following must not widen Explore: it stays public-only. */
+  insert into public.follows (follower_id, following_id) values (v_coach, v_adult) on conflict do nothing;
+
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    exists (select 1 from public.explore_videos(60, 0, null) where id = v_public),
+    'a public video post is on Explore');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_private),
+    'a followers-only clip is not, even for a follower');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_photo),
+    'a photo post is not a clip');
+  perform tests.ok(
+    (select type = 'highlight' and view_count = 12 and media -> 0 ->> 'type' = 'video'
+     from public.explore_videos(60, 0, null) where id = v_clip),
+    'a public highlight is on Explore, in the feed''s shape');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_secret_clip),
+    'a private highlight is not');
+  perform tests.ok(
+    (select viewer_follows from public.explore_videos(60, 0, null) where id = v_public),
+    'it knows whether I already follow the author');
+
+  /* A minor whose guardian has not approved discovery reaches nobody. */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_minor),
+    'a hidden minor''s clips are on nobody''s Explore');
+  perform tests.as_user(v_minor);
+  perform tests.ok(
+    exists (select 1 from public.explore_videos(60, 0, null) where id = v_minor_post),
+    'though the minor still sees their own');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* Blocks, both directions. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_other) on conflict do nothing;
+  perform tests.as_user(v_other);
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_adult),
+    'someone the author blocked sees none of their clips');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_other;
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_other, v_adult) on conflict do nothing;
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_adult),
+    'nor does someone who blocked the author');
+  delete from public.user_blocks where blocker_id = v_other and blocked_id = v_adult;
+
+  /* Reels: a clip uploaded to a profile is a reel too. */
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_clip and type = 'highlight'),
+    'a public profile clip plays in Reels');
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, null) where id = v_secret_clip),
+    'a private one does not');
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_private),
+    'Reels still carry a followed author''s followers-only clip, as the feed does');
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, now() - interval '1 day') where id = v_clip),
+    'the cursor applies to profile clips as well');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_clip),
+    'and I see my own profile clips in Reels');
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  insert into public.athlete_media (athlete_id, title, media_type, storage_url, is_public)
+  select ap.id, 'Minor clip', 'video', v_minor::text || '/highlights/m.mp4', true
+  from public.athlete_profiles ap where ap.user_id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, null) where author_id = v_minor),
+    'a hidden minor''s profile clips reach nobody''s Reels');
+  delete from public.athlete_media where storage_url = v_minor::text || '/highlights/m.mp4';
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* A hidden or moderated post drops out. */
+  update public.posts set is_hidden = true where id = v_public;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_public),
+    'a hidden post leaves Explore');
+  update public.posts set is_hidden = false where id = v_public;
+
+  /* Paging and the sport filter. */
+  perform tests.ok(
+    not exists (
+      select 1 from public.explore_videos(1, 0, null) a
+      join public.explore_videos(1, 1, null) b on a.id = b.id),
+    'pages do not repeat a clip');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, 'no-such-sport')),
+    'the sport filter narrows the grid');
+  perform tests.ok(
+    v_sport is null
+    or exists (select 1 from public.explore_sports() where sport = v_sport and clips >= 2),
+    'explore_sports counts what this viewer can watch');
+
+  v_err := null;
+  begin
+    perform tests.as_user(null);
+    perform public.explore_videos(10, 0, null);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'Explore needs a signed-in account');
+
+  delete from public.posts where id in (v_public, v_private, v_photo, v_minor_post);
+  delete from public.athlete_media where id in (v_clip, v_secret_clip);
+  delete from public.follows where follower_id = v_coach and following_id = v_adult;
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*

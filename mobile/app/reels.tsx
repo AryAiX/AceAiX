@@ -15,6 +15,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { toggleFollow, toggleLike } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
+import { getExploreVideos, isHighlight } from '@/lib/api.explore';
 import { getReels } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
@@ -41,9 +42,21 @@ export default function ReelsScreen() {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ start?: string }>();
+  const params = useLocalSearchParams<{ start?: string; source?: string; sport?: string }>();
 
-  const reels = useAsync(() => getReels({ limit: 20 }), []);
+  /* Opened from Explore, the pager plays the grid the tap came from — the
+     same clips, the same filter — so swiping carries on where the eye was. */
+  const fromExplore = params.source === 'explore';
+  const sport = typeof params.sport === 'string' && params.sport ? params.sport : null;
+  const reels = useAsync(
+    () =>
+      fromExplore
+        ? getExploreVideos({ limit: 60, sport }).then((rows) =>
+            rows.filter((post) => post.media.some((m) => m.type === 'video')),
+          )
+        : getReels({ limit: 20 }),
+    [fromExplore, sport],
+  );
   const { mutate } = reels;
   const items = useMemo(() => reels.data ?? [], [reels.data]);
 
@@ -78,6 +91,8 @@ export default function ReelsScreen() {
 
   const onLike = useCallback(
     async (post: FeedPost, forceOn = false) => {
+      /* A highlight is a clip from a profile, not a post: nothing to like. */
+      if (isHighlight(post)) return;
       if (forceOn && post.viewer_liked) return;
       const liked = !post.viewer_liked;
       patch((p) => p.id === post.id, {
@@ -129,8 +144,8 @@ export default function ReelsScreen() {
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
-    else router.replace(Routes.home);
-  }, [router]);
+    else router.replace(fromExplore ? Routes.discover : Routes.home);
+  }, [router, fromExplore]);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
@@ -261,7 +276,7 @@ export default function ReelsScreen() {
           <ChevronLeft size={28} color={ON_DARK} strokeWidth={2.4} />
         </Pressable>
         <Text variant="heading" color={ON_DARK}>
-          {t('reels.title')}
+          {fromExplore ? t('explore.title') : t('reels.title')}
         </Text>
       </View>
 

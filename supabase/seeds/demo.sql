@@ -307,14 +307,14 @@ from public.athlete_profiles ap, generate_series(1, 6) n
 where ap.user_id = 'a0000000-0000-4000-8000-000000000002'
 on conflict do nothing;
 
-insert into public.athlete_media (athlete_id, title, description, media_type, storage_url, is_featured, is_public, views_count)
-select ap.id, t.title, t.descr, 'highlight_reel'::media_type_enum, t.url, t.featured, true, t.views
+insert into public.athlete_media (athlete_id, title, description, media_type, storage_url, thumbnail_url, duration_seconds, transcode_status, is_featured, is_public, views_count)
+select ap.id, t.title, t.descr, 'highlight_reel'::media_type_enum, t.url, t.thumb, 4, 'ready', t.featured, true, t.views
 from public.athlete_profiles ap,
   (values
-    ('Season highlights', 'Nine goals from the first half of the season.', 'https://demo.aceaix.com/media/layla-1.mp4', true, 420),
-    ('Finishing session', 'Left-foot finishing, close range.', 'https://demo.aceaix.com/media/layla-2.mp4', false, 180),
-    ('Pressing triggers', 'Front-foot defending from the front.', 'https://demo.aceaix.com/media/layla-3.mp4', false, 96)
-  ) as t(title, descr, url, featured, views)
+    ('Season highlights', 'Nine goals from the first half of the season.', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-1.mp4', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-1.jpg', true, 420),
+    ('Finishing session', 'Left-foot finishing, close range.', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-2.mp4', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-2.jpg', false, 180),
+    ('Pressing triggers', 'Front-foot defending from the front.', 'a0000000-0000-4000-8000-000000000001/demo-reel-1.mp4', 'a0000000-0000-4000-8000-000000000001/demo-reel-1.jpg', false, 96)
+  ) as t(title, descr, url, thumb, featured, views)
 where ap.user_id = 'a0000000-0000-4000-8000-000000000001'
 on conflict do nothing;
 
@@ -553,15 +553,16 @@ insert into public.athlete_media
   (athlete_id, title, description, media_type, storage_url, thumbnail_url,
    duration_seconds, transcode_status, is_public, views_count)
 select ap.id, v.title, v.description, 'highlight_reel',
-       'posts/demo/' || v.slug || '.mp4', 'posts/demo/' || v.slug || '.jpg',
+       v.user_id::text || '/highlights/' || v.slug || '.mp4',
+       v.user_id::text || '/highlights/' || v.slug || '.jpg',
        v.seconds, 'ready', true, v.views
 from (values
   ('a0000000-0000-4000-8000-000000000002'::uuid, 'Keep-ups on the roof pitch',
-   'One take, Thursday evening.', 'omar-keepups', 34, 41),
+   'One take, Thursday evening.', 'demo-clip-3', 34, 41),
   ('a0000000-0000-4000-8000-000000000003'::uuid, 'Ball control drill',
-   'Thirty seconds, feet only.', 'yusuf-control', 31, 18),
+   'Thirty seconds, feet only.', 'demo-clip-4', 31, 18),
   ('a0000000-0000-4000-8000-000000000005'::uuid, 'Pull-up jumper, both sides',
-   'Practice, no defender.', 'daniel-jumper', 46, 12)
+   'Practice, no defender.', 'demo-clip-5', 46, 12)
 ) as v(user_id, title, description, slug, seconds, views)
 join public.athlete_profiles ap on ap.user_id = v.user_id
 where not exists (select 1 from public.athlete_media m where m.athlete_id = ap.id);
@@ -796,5 +797,25 @@ insert into public.posts (id, author_id, type, caption, text, audience, media, c
    'New season, new kit, same pitch. Trials open on the 20th.',
    'New season, new kit, same pitch. Trials open on the 20th.', 'public',
    '[{"url":"c0000000-0000-4000-8000-000000000001/demo-photo-1.jpg","type":"photo","width":720,"height":1280}]',
-   now() - interval '5 hours')
+   now() - interval '5 hours'),
+  ('9a000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000004', 'video',
+   'Hurdle rhythm, three strides between. Lane two is me.',
+   'Hurdle rhythm, three strides between. Lane two is me.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000004/demo-reel-4.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000004/demo-reel-4.jpg","width":360,"height":640}]',
+   now() - interval '26 hours'),
+  ('9a000000-0000-4000-8000-000000000006', 'c0000000-0000-4000-8000-000000000001', 'video',
+   'Swim squad, last fifteen metres of the 100 free.',
+   'Swim squad, last fifteen metres of the 100 free.', 'public',
+   '[{"url":"c0000000-0000-4000-8000-000000000001/demo-reel-5.mp4","type":"video","thumbnail":"c0000000-0000-4000-8000-000000000001/demo-reel-5.jpg","width":360,"height":640}]',
+   now() - interval '2 days')
 on conflict (id) do nothing;
+
+update public.posts set view_count = v.views, like_count = greatest(like_count, v.likes)
+from (values
+  ('9a000000-0000-4000-8000-000000000001'::uuid, 1840, 0),
+  ('9a000000-0000-4000-8000-000000000002'::uuid, 620, 0),
+  ('9a000000-0000-4000-8000-000000000003'::uuid, 410, 0),
+  ('9a000000-0000-4000-8000-000000000005'::uuid, 975, 0),
+  ('9a000000-0000-4000-8000-000000000006'::uuid, 2310, 0)
+) as v(id, views, likes)
+where posts.id = v.id;
