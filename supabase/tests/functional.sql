@@ -2507,6 +2507,295 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── booking a coach ──'; end $$;
+
+/*
+ * 1009/01. A calendar of free places, booked at once. The last place goes to
+ * one person, names are for the people in the booking, and a minor meets an
+ * adult coach only if the coach is verified and a guardian ticked the box.
+ */
+do $$
+declare
+  v_adult    uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor    uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_other    uuid := '44444444-4444-4444-4444-444444444444';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_newcoach uuid := 'aaaaaaaa-6666-4000-8000-000000000001';
+  v_session  uuid;
+  v_class    uuid;
+  v_flex     uuid;
+  v_theirs   uuid;
+  v_slot     uuid;
+  v_class_slot uuid;
+  v_flex_slot uuid;
+  v_their_slot uuid;
+  v_booking  uuid;
+  v_b2       uuid;
+  v_page     jsonb;
+  v_hint     text;
+  v_err      text;
+  v_n        integer;
+  v_t        timestamptz := date_trunc('hour', now()) + interval '3 days';
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_newcoach, 'new.coach@test.local', '{"full_name":"New Coach","role":"coach"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = v_newcoach;
+
+  /* ── The coach sets up ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_adult);
+    perform public.set_coaching_status(true, 'I coach now');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coach_only', 'only a coach can take students');
+
+  perform tests.as_user(v_coach);
+  v_session := public.save_coaching_service(null,
+    '{"kind":"session","title":"One-to-one strength session","duration_minutes":60,"capacity":8,
+      "price":250,"location_mode":"fixed","location":"Al Quoz Performance Gym"}');
+  v_class := public.save_coaching_service(null,
+    '{"kind":"class","title":"Saturday speed class","duration_minutes":90,"capacity":2,
+      "price":80,"location_mode":"fixed","location":"Track 2, Dubai Sports City"}');
+  v_flex := public.save_coaching_service(null,
+    '{"kind":"consultation","title":"Programme consultation","duration_minutes":30,"location_mode":"flexible"}');
+  perform tests.ok(
+    (select capacity from public.coaching_services where id = v_session) = 1
+    and (select capacity from public.coaching_services where id = v_class) = 2,
+    'a one-to-one service takes one person whatever the form says; a class keeps its places');
+  v_hint := null;
+  begin
+    perform public.save_coaching_service(null, '{"kind":"session","title":"Nowhere","location_mode":"fixed"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_location_required', 'a fixed-place service has to say where');
+
+  perform tests.ok(
+    public.add_coaching_slots(v_session, array[v_t, v_t + interval '1 day', now() - interval '1 hour']) = 2,
+    'the coach opens times; one in the past is skipped');
+  perform tests.ok(
+    public.add_coaching_slots(v_class, array[v_t + interval '30 minutes', v_t + interval '5 hours']) = 1,
+    'a time that overlaps one already open is skipped: a coach is in one place');
+  perform tests.ok(public.add_coaching_slots(v_flex, array[v_t + interval '2 days']) = 1, 'and one for the consultation');
+  select id into v_slot from public.coaching_slots where service_id = v_session and starts_at = v_t;
+  select id into v_class_slot from public.coaching_slots where service_id = v_class;
+  select id into v_flex_slot from public.coaching_slots where service_id = v_flex;
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.coaching_slots (service_id, coach_user_id, starts_at, ends_at, capacity)
+    values (v_session, v_coach, v_t + interval '9 days', v_t + interval '9 days 1 hour', 1);
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'slots cannot be written around the RPC');
+
+  /* ── Not taking students yet ── */
+  perform tests.as_user(v_adult);
+  v_page := public.coach_booking_page(v_coach);
+  perform tests.ok(
+    v_page ->> 'gate' = 'coach_not_accepting' and jsonb_array_length(v_page -> 'slots') = 0,
+    'a coach who is not taking students shows no calendar');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coach_not_accepting', 'and cannot be booked');
+
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_status(true, 'Strength and speed for footballers.');
+
+  /* ── An adult books ── */
+  perform tests.as_user(v_adult);
+  v_page := public.coach_booking_page(v_coach);
+  perform tests.ok(
+    v_page ->> 'gate' = 'ok'
+    and jsonb_array_length(v_page -> 'services') = 3
+    and jsonb_array_length(v_page -> 'slots') = 4,
+    'once they are, an athlete sees the services and the free times');
+  perform tests.ok(
+    exists (select 1 from public.bookable_coaches('strength') where id = v_coach and open_slots = 4 and price_from = 80),
+    'and finds the coach among those taking students');
+
+  v_booking := public.book_coaching_slot(v_slot, 'Left hamstring is recovering.');
+  perform tests.ok(
+    (select location from public.coaching_bookings where id = v_booking) = 'Al Quoz Performance Gym'
+    and exists (select 1 from public.notifications
+                where user_id = v_coach and type = 'coaching_booked' and entity_id = v_booking::text),
+    'she books a time at the coach''s place, and the coach is told');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_already_booked', 'the same person cannot book the same time twice');
+
+  perform tests.as_user(v_other);
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_slot_full', 'a one-to-one time that is taken is full');
+  perform tests.ok(
+    (select (x ->> 'spots_left')::int = 0 and x ->> 'my_booking_id' is null
+     from jsonb_array_elements(public.coach_booking_page(v_coach) -> 'slots') x where x ->> 'id' = v_slot::text),
+    'someone else sees that it is full, not who took it');
+  set local role authenticated;
+  select count(*) into v_n from public.coaching_bookings;
+  reset role;
+  perform tests.ok(v_n = 0, 'nor can they read bookings from the table');
+
+  /* Flexible: the athlete names the place. */
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_flex_slot, null, null);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_location_required', 'a flexible service needs the athlete to say where');
+  v_b2 := public.book_coaching_slot(v_flex_slot, null, 'Kite Beach running track');
+  perform tests.ok(
+    (select location from public.coaching_bookings where id = v_b2) = 'Kite Beach running track',
+    'and keeps the place they chose');
+
+  /* A class fills up place by place. */
+  perform public.book_coaching_slot(v_class_slot);
+  perform tests.as_user(v_adult);
+  perform public.book_coaching_slot(v_class_slot);
+  perform tests.as_user(v_newcoach);
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_class_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_slot_full', 'a class with two places takes two people');
+
+  /* ── The coach's calendar ── */
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select jsonb_array_length(x -> 'bookings') = 1
+            and x -> 'bookings' -> 0 ->> 'note' = 'Left hamstring is recovering.'
+     from jsonb_array_elements(public.my_coaching() -> 'slots') x where x ->> 'id' = v_slot::text)
+    and (select jsonb_array_length(x -> 'bookings') = 2
+         from jsonb_array_elements(public.my_coaching() -> 'slots') x where x ->> 'id' = v_class_slot::text),
+    'the coach sees who is coming to each time, with their note');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'own_calendar', 'a coach cannot book themselves');
+
+  /* ── Cancelling ── */
+  v_err := null;
+  begin
+    perform tests.as_user(v_other);
+    perform public.cancel_coaching_booking(v_booking);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'a stranger cannot cancel somebody else''s booking');
+  perform tests.as_user(v_adult);
+  perform public.cancel_coaching_booking(v_booking);
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'athlete' from public.coaching_bookings where id = v_booking)
+    and exists (select 1 from public.notifications
+                where user_id = v_coach and type = 'coaching_cancelled' and entity_id = v_booking::text),
+    'the athlete cancels, and the coach is told');
+  perform tests.as_user(v_other);
+  perform tests.ok(public.book_coaching_slot(v_slot) is not null, 'which frees the place for someone else');
+
+  perform tests.as_user(v_coach);
+  perform public.cancel_coaching_slot(v_class_slot);
+  perform tests.ok(
+    not exists (select 1 from public.coaching_bookings where slot_id = v_class_slot and status = 'booked')
+    and (select count(*) from public.notifications
+         where type = 'coaching_cancelled' and user_id in (v_adult, v_other)
+           and entity_id in (select id::text from public.coaching_bookings where slot_id = v_class_slot)) = 2,
+    'when the coach cancels a class, everyone booked is told');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from jsonb_array_elements(public.my_coaching() -> 'bookings') b
+     where b ->> 'status' = 'cancelled' and b ->> 'cancelled_by' = 'coach') = 1,
+    'and sees it as cancelled by the coach in their own list');
+
+  /* ── A minor ── */
+  update public.guardian_consents set allow_bookings = false where minor_user_id = v_minor;
+  perform tests.as_user(v_newcoach);
+  perform public.set_coaching_status(true, null);
+  v_theirs := public.save_coaching_service(null,
+    '{"kind":"session","title":"Unverified coach session","location_mode":"online"}');
+  perform public.add_coaching_slots(v_theirs, array[v_t + interval '4 days']);
+  select id into v_their_slot from public.coaching_slots where service_id = v_theirs;
+  perform tests.as_user(v_coach);
+  perform public.add_coaching_slots(v_session, array[v_t + interval '6 days']);
+  select id into v_slot from public.coaching_slots
+   where service_id = v_session and starts_at = v_t + interval '6 days';
+
+  perform tests.as_user(v_minor);
+  perform tests.ok(
+    (public.coach_booking_page(v_newcoach) ->> 'gate') = 'minor_needs_verified_coach'
+    and not exists (select 1 from public.bookable_coaches() where id = v_newcoach),
+    'a minor cannot book an unverified coach, and is not shown one');
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'guardian_consent_required',
+    'and needs a guardian''s yes for a verified one');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required', 'which the database enforces');
+
+  update public.guardian_consents set allow_bookings = true, guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    private.has_guardian_consent(v_minor, 'bookings')
+    and has_column_privilege('authenticated', 'public.guardian_consents', 'allow_bookings', 'SELECT'),
+    'a guardian can approve bookings, and the app can read the scope');
+  v_booking := public.book_coaching_slot(v_slot);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_guardian and type = 'coaching_booked' and entity_id = v_booking::text),
+    'with it the minor books, and the guardian is told');
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (select (b ->> 'for_child')::boolean from jsonb_array_elements(public.my_coaching() -> 'bookings') b
+     where b ->> 'id' = v_booking::text),
+    'the guardian sees the booking');
+
+  /* The guardian takes the scope back: the booking ahead is cancelled. */
+  update public.guardian_consents set allow_bookings = false
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'guardian' from public.coaching_bookings where id = v_booking),
+    'when the guardian withdraws the scope, the booking ahead is cancelled');
+
+  /* ── Blocks and retiring ── */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_coach, v_adult) on conflict do nothing;
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    public.coach_booking_page(v_coach) is null
+    and not exists (select 1 from public.bookable_coaches() where id = v_coach),
+    'someone the coach blocked sees no calendar and no listing');
+  delete from public.user_blocks where blocker_id = v_coach and blocked_id = v_adult;
+
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_service_active(v_flex, false);
+  perform tests.ok(
+    exists (select 1 from public.coaching_bookings where id = v_b2 and status = 'booked')
+    and (select status from public.coaching_slots where id = v_flex_slot) = 'open',
+    'retiring a service keeps what is already booked');
+
+  delete from auth.users where id = v_newcoach;
+  delete from public.coaching_services where coach_user_id = v_coach;
+  delete from public.coaching_settings where user_id = v_coach;
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*

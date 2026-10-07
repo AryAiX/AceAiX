@@ -71,7 +71,9 @@ The screen (`/reels`) is a vertical pager:
 - The poster shows until the first frame.
 - Double-tap to like, with a heart burst.
 - Like, comment, share and follow sit down the right side.
-- Home has a Reels button in the header and a strip of reel posters.
+- Home has a Reels button in the header and a strip of reel posters. A poster plays that reel;
+  **See all** opens `/clips`, the whole reels feed as a grid (the Explore mosaic, docs/28), and a
+  tile there opens the pager at that clip.
 
 A video post in the feed keeps its poster when the platform cannot decode the clip, instead of
 showing an empty frame.

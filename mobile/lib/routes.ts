@@ -34,6 +34,8 @@ export const Routes = {
   newStory: '/stories/new' as const,
   /** Full-screen reels; pass `start` (a post id) as a param to open at it. */
   reels: '/reels' as const,
+  /** Every reel as a grid: where "See all" on Home lands. */
+  reelsCollection: '/clips' as const,
 
   profile: (userId: string) => `/u/${userId}` as const,
   post: (postId: string) => `/post/${postId}` as const,
@@ -51,6 +53,15 @@ export const Routes = {
   /** Create a call, or edit one with `id` as a param. */
   sponsorshipCall: '/sponsorship/call' as const,
   sponsorshipBrand: '/sponsorship/brand' as const,
+
+  /** My coaching: a coach's calendar and services, or the sessions I booked. */
+  coaching: '/coaching' as const,
+  /** Create a service, or edit one with `id` as a param. */
+  coachingService: '/coaching/service' as const,
+  /** Open times for a service; pass `service` as a param. */
+  coachingSlots: '/coaching/slots' as const,
+  /** Book this coach. */
+  coachBooking: (coachId: string) => `/coaching/${coachId}` as const,
 
   meetups: '/(tabs)/meetups' as const,
   meetup: (id: string) => `/meetup/${id}` as const,
@@ -179,6 +190,9 @@ export function notificationTarget(n: AppNotification): Href | null {
       return Routes.score;
     case 'challenge':
       return id ? Routes.challenge(id) : Routes.challenges;
+    case 'coaching':
+      // A booking or a cancellation: the coach's calendar, or my sessions.
+      return Routes.coaching;
     case 'sponsorship':
       // Every offer, application and answer is read in the portal.
       return Routes.sponsorship;

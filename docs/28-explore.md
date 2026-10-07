@@ -67,6 +67,12 @@ one large tile (two columns, two rows) and two small ones; the large tile swaps 
 reels pager, loaded with the same grid. A highlight plays there without like, comment or share,
 because those belong to posts. Follow and the profile link work for both.
 
+`ExploreGrid` takes a `source`. `explore` is this screen. `reels` fills the same mosaic from
+`get_reels` for `/clips`, the collection behind "See all" on Home (docs/27).
+
+The athlete's tabs are now a scrolling row (`ScrollTabs`): Explore, Clubs, Coaches, Sponsors,
+Leaderboard. A SegmentedControl stops fitting at five labels.
+
 ## 4. Demo media
 
 `tools/local-supabase/demo-media/generate.py` now draws nine clips. The seed points the highlight

@@ -22,6 +22,7 @@ import { format } from './format';
 import { stories } from './stories';
 import { reels } from './reels';
 import { explore } from './explore';
+import { coaching } from './coaching';
 import { sponsorship } from './sponsorship';
 import { countries } from './countries';
 
@@ -57,6 +58,7 @@ export const en = {
   stories,
   reels,
   explore,
+  coaching,
   sponsorship,
 };
 

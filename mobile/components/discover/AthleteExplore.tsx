@@ -33,6 +33,7 @@ import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { ScrollTabs } from '@/components/explore/ScrollTabs';
 import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
 import { Routes } from '@/lib/routes';
+import { BookableCoaches } from '@/components/coaching/BookableCoaches';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
 import { LeaderboardRow } from './LeaderboardRow';
@@ -88,6 +89,8 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
+  /* Coaches: everyone, or only those who can be booked. */
+  const [bookable, setBookable] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), SEARCH_DEBOUNCE_MS);
@@ -274,6 +277,7 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
   }
 
   function renderCoaches() {
+    if (bookable) return <BookableCoaches query={debounced} />;
     if (coaches.error) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
     if (coaches.loading || coaches.data?.term !== debounced) return busy(4);
 
@@ -425,7 +429,19 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
             </Text>
           </Pressable>
         ) : (
-          <View style={{ paddingRight: spacing.lg }}>{searchField}</View>
+          <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
+            {searchField}
+            {tab === 'coaches' ? (
+              <View style={{ flexDirection: 'row' }}>
+                <Chip
+                  label={t('coaching.takingStudentsFilter')}
+                  selected={bookable}
+                  onPress={() => setBookable((b) => !b)}
+                  testID="coaches-bookable-filter"
+                />
+              </View>
+            ) : null}
+          </View>
         )}
       </View>
 

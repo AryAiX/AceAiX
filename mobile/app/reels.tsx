@@ -54,7 +54,7 @@ export default function ReelsScreen() {
         ? getExploreVideos({ limit: 60, sport }).then((rows) =>
             rows.filter((post) => post.media.some((m) => m.type === 'video')),
           )
-        : getReels({ limit: 20 }),
+        : getReels({ limit: 30 }),
     [fromExplore, sport],
   );
   const { mutate } = reels;

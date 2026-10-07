@@ -535,7 +535,15 @@ export default function DiscoverScreen() {
         <Header title={t('common.tabDiscover')} subtitle={t('discover.athleteSubtitle')} large />
         <AthleteExplore
           viewerId={profile?.id ?? null}
-          initialTab={asked === 'people' ? 'clubs' : asked === 'sponsors' ? 'sponsors' : 'explore'}
+          initialTab={
+            params.view === 'coaches'
+              ? 'coaches'
+              : asked === 'people'
+                ? 'clubs'
+                : asked === 'sponsors'
+                  ? 'sponsors'
+                  : 'explore'
+          }
         />
       </Screen>
     );

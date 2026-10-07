@@ -25,12 +25,13 @@ import { format } from './format';
 import { stories } from './stories';
 import { reels } from './reels';
 import { explore } from './explore';
+import { coaching } from './coaching';
 import { sponsorship } from './sponsorship';
 
 
 /** Russian. Typed against English, so a missing key is a compile error. */
 const catalogue: Translations = { common, language, auth, onboarding, feed, profile,
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
-  safety, sports, countries, errors, format, stories, reels, explore, sponsorship };
+  safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching };
 
 export const ru = catalogue as Translations;

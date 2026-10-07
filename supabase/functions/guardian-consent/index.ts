@@ -115,6 +115,7 @@ interface CurrentScopes {
   allow_media: boolean;
   allow_assessments: boolean;
   allow_sponsorship: boolean;
+  allow_bookings: boolean;
 }
 
 /*
@@ -191,6 +192,17 @@ function decisionForm(
         sponsors' calls. Only sponsors AceAiX has verified can make them an offer, and a sponsor cannot
         message them directly. No money moves through AceAiX: any agreement and payment is yours to
         make with the sponsor.</span>
+      </span>
+    </label>
+
+    <label>
+      <input type="checkbox" name="allow_bookings" value="1" ${on("allow_bookings", false)}>
+      <span>
+        <span class="opt-title">Let them book sessions with verified coaches</span>
+        <span class="opt-body">They can book a training session, a consultation or a class from a
+        coach's calendar, and see where it takes place. Only coaches AceAiX has verified. You are
+        told about every booking if you have an AceAiX account, and you can cancel one. Payment, if
+        any, is made to the coach directly.</span>
       </span>
     </label>
 
@@ -325,7 +337,7 @@ Deno.serve(async (req: Request) => {
        to see or change. */
     const { data: current } = await admin
       .from("guardian_consents")
-      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship")
+      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings")
       .eq("minor_user_id", consent.minor_user_id)
       .eq("guardian_email", consent.guardian_email)
       .eq("status", "granted")
@@ -395,6 +407,7 @@ Deno.serve(async (req: Request) => {
       p_allow_media: form.get("allow_media") === "1",
       p_allow_assessments: form.get("allow_assessments") === "1",
       p_allow_sponsorship: form.get("allow_sponsorship") === "1",
+      p_allow_bookings: form.get("allow_bookings") === "1",
     });
 
     if (error || !data?.ok) {

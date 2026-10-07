@@ -22,7 +22,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { EXPLORE_PAGE, getExploreSports, getExploreVideos, isHighlight } from '@/lib/api.explore';
-import { reelVideo } from '@/lib/api.reels';
+import { getReels, reelVideo } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { mergeClips, mosaicMetrics, mosaicRows, type MosaicRow } from '@/lib/explore';
 import { compactNumber, displayName } from '@/lib/format';
@@ -47,13 +47,19 @@ const SCRIM = 'rgba(0,0,0,0.38)';
 const SMALL = { fontSize: 11, lineHeight: 14 } as const;
 
 interface Props {
+  /**
+   * What fills the grid. `explore` is every public clip, with sport chips;
+   * `reels` is the viewer's own reels feed (people they follow included), the
+   * collection behind "See all" on Home.
+   */
+  source?: 'explore' | 'reels';
   /** Shown above the grid, scrolling away with it. */
   header?: React.ReactElement | null;
   /** Offered in the empty state to someone who can post. */
   onPostFirst?: () => void;
 }
 
-export function ExploreGrid({ header, onPostFirst }: Props) {
+export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -72,7 +78,10 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
   const [visible, setVisible] = useState<Set<string>>(new Set());
   const [focused, setFocused] = useState(true);
 
-  const sports = useAsync(getExploreSports, []);
+  const fromReels = source === 'reels';
+  const sports = useAsync(() => (fromReels ? Promise.resolve([]) : getExploreSports()), [fromReels]);
+  /* Reels page by time, Explore by position: each RPC's own cursor. */
+  const lastSeen = useRef<string | null>(null);
   const mounted = useRef(true);
   const runId = useRef(0);
 
@@ -99,7 +108,10 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
       if (mode === 'more') setLoadingMore(true);
       setMoreError(false);
       try {
-        const rows = await getExploreVideos({ offset, sport });
+        const rows = fromReels
+          ? await getReels({ limit: EXPLORE_PAGE, before: mode === 'more' ? lastSeen.current : null })
+          : await getExploreVideos({ offset, sport });
+        if (rows.length > 0) lastSeen.current = rows[rows.length - 1].created_at;
         /* A slower earlier request must never overwrite a newer filter's grid. */
         if (!mounted.current || id !== runId.current) return;
         setItems((current) => (mode === 'more' ? mergeClips(current, rows) : rows));
@@ -117,7 +129,7 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
         }
       }
     },
-    [sport],
+    [sport, fromReels],
   );
 
   useEffect(() => {
@@ -136,9 +148,11 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
     (post: FeedPost) =>
       router.push({
         pathname: Routes.reels,
-        params: { start: post.id, source: 'explore', ...(sport ? { sport } : {}) },
+        params: fromReels
+          ? { start: post.id }
+          : { start: post.id, source: 'explore', ...(sport ? { sport } : {}) },
       }),
-    [router, sport],
+    [router, sport, fromReels],
   );
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
@@ -247,8 +261,8 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
       <View style={{ paddingHorizontal: spacing.lg }}>
         <EmptyState
           icon={<Clapperboard size={26} color={colors.textMuted} />}
-          title={t('explore.emptyTitle')}
-          body={sport ? t('explore.emptyFilteredBody') : t('explore.emptyBody')}
+          title={fromReels ? t('reels.emptyTitle') : t('explore.emptyTitle')}
+          body={fromReels ? t('reels.emptyBody') : sport ? t('explore.emptyFilteredBody') : t('explore.emptyBody')}
           actionLabel={sport ? t('explore.showAll') : onPostFirst ? t('explore.postFirst') : undefined}
           onAction={sport ? () => setSport(null) : onPostFirst}
         />
@@ -257,7 +271,7 @@ export function ExploreGrid({ header, onPostFirst }: Props) {
   }
 
   return (
-    <View style={{ flex: 1 }} onLayout={onLayout} testID="explore-grid">
+    <View style={{ flex: 1 }} onLayout={onLayout} testID={fromReels ? 'reels-grid' : 'explore-grid'}>
       <FlatList
         data={loading || width === 0 ? [] : rows}
         keyExtractor={(row) => row.key}

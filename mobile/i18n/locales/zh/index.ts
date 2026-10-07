@@ -25,6 +25,7 @@ import { format } from './format';
 import { stories } from './stories';
 import { reels } from './reels';
 import { explore } from './explore';
+import { coaching } from './coaching';
 import { sponsorship } from './sponsorship';
 
 /**
@@ -52,6 +53,6 @@ type SingleFormPlurals<T> = {
 /** 简体中文。以英文为类型基准，少一个键就是编译错误。 */
 const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onboarding,
   feed, profile, score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging,
-  settings, safety, sports, countries, errors, format, stories, reels, explore, sponsorship };
+  settings, safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching };
 
 export const zh = catalogue as Translations;

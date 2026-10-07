@@ -840,6 +840,81 @@ async function main() {
     return `${adult.length} for an adult, ${minor.length} for a minor`;
   });
 
+  // ── Coach bookings ────────────────────────────────────────────────────────
+  section('a booking reaches the coach, and the last place goes to one person');
+
+  let bookedSlot = null;
+  let bookingId = null;
+
+  await step('daniel finds marco among the coaches taking students', async () => {
+    const coaches = unwrap(await clients.daniel.rpc('bookable_coaches'), 'bookable_coaches');
+    const row = coaches.find((c) => c.id === ids.marco);
+    expect(row, 'marco is not listed');
+    expect(row.next_slot, 'marco has no free time');
+    return `${row.open_slots} free times, from ${row.price_from} ${row.currency}`;
+  });
+
+  await step('he books a free one-to-one time and marco is notified', async () => {
+    const page = unwrap(await clients.daniel.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.gate === 'ok', `gate was ${page.gate}`);
+    const session = page.services.find((s) => s.kind === 'session');
+    /* Rerunnable: a booking left by an earlier run is cancelled first. */
+    for (const s of page.slots.filter((x) => x.my_booking_id && x.service_id === session.id)) {
+      unwrap(await clients.daniel.rpc('cancel_coaching_booking', { p_booking: s.my_booking_id }), 'cancel');
+    }
+    const fresh = unwrap(await clients.daniel.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    const slot = fresh.slots.find((x) => x.service_id === session.id && x.spots_left > 0);
+    expect(slot, 'no free session slot');
+    bookedSlot = slot.id;
+    bookingId = unwrap(
+      await clients.daniel.rpc('book_coaching_slot', { p_slot: slot.id, p_note: 'First session.' }),
+      'book_coaching_slot',
+    );
+    await eventually(async () =>
+      (await notifications(clients.marco)).some((n) => n.type === 'coaching_booked' && n.entity_id === bookingId),
+    );
+    return `slot ${slot.starts_at.slice(0, 16)}`;
+  });
+
+  await step('the place is gone for sara, who cannot see who took it', async () => {
+    const res = await clients.sara.rpc('book_coaching_slot', { p_slot: bookedSlot });
+    expect(res.error?.hint === 'coaching_slot_full', `hint was ${res.error?.hint}`);
+    const page = unwrap(await clients.sara.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    const slot = page.slots.find((x) => x.id === bookedSlot);
+    expect(slot.spots_left === 0 && !('bookings' in slot), 'sara saw more than a count');
+    const rows = unwrap(await clients.sara.from('coaching_bookings').select('id').eq('slot_id', bookedSlot), 'read');
+    expect(rows.length === 0, `sara read ${rows.length} bookings from the table`);
+  });
+
+  await step('marco sees daniel in his calendar, with the note', async () => {
+    const mine = unwrap(await clients.marco.rpc('my_coaching'), 'my_coaching');
+    const slot = mine.slots.find((x) => x.id === bookedSlot);
+    expect(slot?.bookings.some((b) => b.athlete_user_id === ids.daniel && b.note === 'First session.'),
+      'the booking is not in the calendar');
+    return `${mine.slots.length} slots, ${mine.slots.reduce((n, x) => n + x.bookings.length, 0)} bookings`;
+  });
+
+  await step('daniel cancels, marco is told, and the place is free again', async () => {
+    unwrap(await clients.daniel.rpc('cancel_coaching_booking', { p_booking: bookingId }), 'cancel_coaching_booking');
+    await eventually(async () =>
+      (await notifications(clients.marco)).some((n) => n.type === 'coaching_cancelled' && n.entity_id === bookingId),
+    );
+    const page = unwrap(await clients.sara.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.slots.find((x) => x.id === bookedSlot)?.spots_left === 1, 'the place did not come back');
+  });
+
+  await step('a fourteen-year-old without the guardian scope cannot book', async () => {
+    const page = unwrap(await clients.mina.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.gate === 'guardian_consent_required', `gate was ${page.gate}`);
+    const res = await clients.mina.rpc('book_coaching_slot', { p_slot: bookedSlot });
+    expect(res.error?.hint === 'guardian_consent_required', `hint was ${res.error?.hint}`);
+  });
+
+  await step('an athlete cannot open a calendar of their own', async () => {
+    const res = await clients.layla.rpc('set_coaching_status', { p_accepting: true });
+    expect(res.error?.hint === 'coach_only', `hint was ${res.error?.hint}`);
+  });
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n  ${results.length - failed.length}/${results.length} steps passed`);

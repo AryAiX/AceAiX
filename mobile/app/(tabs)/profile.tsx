@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, ErrorState, Screen, SkeletonList } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { MyCoachingCard } from '@/components/coaching/CoachingCard';
 import { MyGiCard } from '@/components/intelligence/GiCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
@@ -107,6 +108,16 @@ export default function MyProfileScreen() {
 
         {/* Beside the Talent Score, never inside it — docs/26 §4. */}
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
+
+        {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
+        {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
+          <Button
+            label={t('coaching.myBookings')}
+            variant="secondary"
+            onPress={() => router.push(Routes.coaching)}
+            testID="open-my-sessions"
+          />
+        ) : null}
 
         {athlete || data.user.role === 'sponsor' ? (
           <SponsorshipProfileCard

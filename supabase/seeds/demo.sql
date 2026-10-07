@@ -943,3 +943,98 @@ values
    'a0000000-0000-4000-8000-000000000004', '6a000000-0000-4000-8000-000000000001', null, 'sponsor',
    'Product only this quarter, sorry.', null, 'declined', now() - interval '8 days', now() - interval '7 days')
 on conflict (id) do nothing;
+
+-- ------------------------------------------------------------
+-- Coach bookings (1009/01)
+--
+-- Marco (verified) is taking students: a one-to-one session, a consultation
+-- where the athlete names the place, and a Saturday-style class. Two weeks of
+-- times are open, some of them taken, so the booking page shows free and full
+-- side by side and his calendar has names in it. Hana (unverified) is taking
+-- students too — which a minor is never shown.
+-- ------------------------------------------------------------
+insert into public.coaching_settings (user_id, accepting, headline) values
+  ('b0000000-0000-4000-8000-000000000001', true,
+   'Strength, speed and finishing for footballers. Small groups, honest feedback.'),
+  ('b0000000-0000-4000-8000-000000000002', true, 'Goalkeeping fundamentals, one to one.')
+on conflict (user_id) do update set accepting = excluded.accepting, headline = excluded.headline;
+
+insert into public.coaching_services
+  (id, coach_user_id, kind, title, description, duration_minutes, capacity, price, location_mode, location)
+values
+  ('7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001', 'session',
+   'One-to-one finishing session',
+   'Sixty minutes on first touch and finishing, both feet. Bring boots for grass.',
+   60, 1, 250, 'fixed', 'Al Jadaf Academy, Pitch 2'),
+  ('7a000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001', 'consultation',
+   'Season plan consultation',
+   'Thirty minutes to go through your calendar, your load and what to work on first.',
+   30, 1, 120, 'flexible', null),
+  ('7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001', 'class',
+   'Speed and agility class',
+   'Ninety minutes in a small group: acceleration, change of direction, deceleration.',
+   90, 6, 80, 'fixed', 'Dubai Sports City, Track B'),
+  ('7a000000-0000-4000-8000-000000000004', 'b0000000-0000-4000-8000-000000000002', 'session',
+   'Goalkeeper handling session', 'Footwork, set position and handling.',
+   60, 1, 180, 'online', null)
+on conflict (id) do nothing;
+
+/* Times are in UTC: 13:00, 14:30 and 16:00 UTC are late afternoon and evening
+   in Dubai. One session and one consultation a day, a class every third day. */
+insert into public.coaching_slots (id, service_id, coach_user_id, starts_at, ends_at, capacity)
+select
+  ('7b000000-0000-4000-8000-' || lpad((d * 10 + k)::text, 12, '0'))::uuid,
+  s.id, s.coach_user_id,
+  date_trunc('day', now()) + make_interval(days => d, hours => s.hour, mins => s.minute),
+  date_trunc('day', now()) + make_interval(days => d, hours => s.hour, mins => s.minute + s.length),
+  s.capacity
+from generate_series(1, 14) d
+cross join (values
+  (1, '7a000000-0000-4000-8000-000000000001'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 13, 0, 60, 1, 1),
+  (2, '7a000000-0000-4000-8000-000000000002'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 14, 30, 30, 1, 1),
+  (3, '7a000000-0000-4000-8000-000000000003'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 16, 0, 90, 6, 3),
+  (4, '7a000000-0000-4000-8000-000000000004'::uuid, 'b0000000-0000-4000-8000-000000000002'::uuid, 15, 0, 60, 1, 2)
+) as s(k, id, coach_user_id, hour, minute, length, capacity, every)
+where d % s.every = 0
+on conflict (id) do nothing;
+
+/* Omar's guardian approved coach bookings as well. */
+update public.guardian_consents set allow_bookings = true
+where id = 'f0000000-0000-4000-8000-000000000001';
+
+insert into public.coaching_bookings
+  (id, slot_id, service_id, coach_user_id, athlete_user_id, status, cancelled_by, note, location, created_at, cancelled_at)
+values
+  /* Layla: a session tomorrow, and a place in the first class. */
+  ('7c000000-0000-4000-8000-000000000001', '7b000000-0000-4000-8000-000000000011',
+   '7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'booked', null,
+   'Weak foot, please. Left hamstring is fine again.', 'Al Jadaf Academy, Pitch 2', now() - interval '1 day', null),
+  ('7c000000-0000-4000-8000-000000000002', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '2 days', null),
+  /* The class fills up: Sara, Daniel and Omar (17, guardian approved). */
+  ('7c000000-0000-4000-8000-000000000003', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', 'booked', null, 'Working on my start.', 'Dubai Sports City, Track B',
+   now() - interval '2 days', null),
+  ('7c000000-0000-4000-8000-000000000004', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000005', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '1 day', null),
+  ('7c000000-0000-4000-8000-000000000005', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000002', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '20 hours', null),
+  /* A consultation where the athlete chose the place. */
+  ('7c000000-0000-4000-8000-000000000006', '7b000000-0000-4000-8000-000000000022',
+   '7a000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', 'booked', null,
+   'Planning the indoor season.', 'Kite Beach running track', now() - interval '6 hours', null),
+  /* One that was cancelled, so the list has every state. */
+  ('7c000000-0000-4000-8000-000000000007', '7b000000-0000-4000-8000-000000000041',
+   '7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'cancelled', 'coach', null, 'Al Jadaf Academy, Pitch 2',
+   now() - interval '3 days', now() - interval '2 days')
+on conflict (id) do nothing;

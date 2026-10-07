@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Brain, Check, Clock, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
+import { Brain, CalendarCheck, Check, Clock, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -90,6 +90,12 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
       label: t('sponsorship.scopeSponsorship'),
       off: t('sponsorship.scopeSponsorshipOff'),
     },
+    {
+      granted: !!consent.allow_bookings,
+      Icon: CalendarCheck,
+      label: t('coaching.scopeBookings'),
+      off: t('coaching.scopeBookingsOff'),
+    },
   ];
 
   return (
@@ -114,6 +120,27 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
   );
 }
 
+/** A scope a minor can ask their guardian to add to a consent already given. */
+type AddScope = 'assessments' | 'sponsorship' | 'bookings';
+
+const ADD_COPY: Record<AddScope, { title: string; hint: string; sent: string }> = {
+  assessments: {
+    title: 'intelligence.addAssessments',
+    hint: 'intelligence.addAssessmentsHint',
+    sent: 'intelligence.addAssessmentsSent',
+  },
+  sponsorship: {
+    title: 'sponsorship.addSponsorship',
+    hint: 'sponsorship.addSponsorshipHint',
+    sent: 'sponsorship.addSponsorshipSent',
+  },
+  bookings: {
+    title: 'coaching.addBookings',
+    hint: 'coaching.addBookingsHint',
+    sent: 'coaching.addBookingsSent',
+  },
+};
+
 // ── The minor's view ─────────────────────────────────────────────────────────
 function MinorView() {
   const theme = useTheme();
@@ -126,11 +153,14 @@ function MinorView() {
   const consents = useAsync(getGuardianConsents, [], { refetchOnFocus: true });
   /* `/settings/guardian?add=assessments` — sent here from Game Intelligence
      when a guardian approved the profile but not the games — and
-     `?add=sponsorship`, from the sponsorship screens, for the same reason. */
+     `?add=sponsorship` and `?add=bookings`, from the sponsorship and coach
+     booking screens, for the same reason. */
   const params = useLocalSearchParams<{ add?: string }>();
-  const [asking, setAsking] = useState(params.add === 'assessments' || params.add === 'sponsorship');
-  const [addScope, setAddScope] = useState<'assessments' | 'sponsorship'>(
-    params.add === 'sponsorship' ? 'sponsorship' : 'assessments',
+  const [asking, setAsking] = useState(
+    params.add === 'assessments' || params.add === 'sponsorship' || params.add === 'bookings',
+  );
+  const [addScope, setAddScope] = useState<AddScope>(
+    params.add === 'sponsorship' ? 'sponsorship' : params.add === 'bookings' ? 'bookings' : 'assessments',
   );
 
   const [name, setName] = useState('');
@@ -154,7 +184,9 @@ function MinorView() {
   const current = granted ?? pending;
   const needsAssessments = !!granted && !granted.allow_assessments;
   const needsSponsorship = !!granted && !granted.allow_sponsorship;
-  const needsMore = needsAssessments || needsSponsorship;
+  const needsBookings = !!granted && !granted.allow_bookings;
+  const needsMore = needsAssessments || needsSponsorship || needsBookings;
+  const addCopy = ADD_COPY[addScope];
 
   /* Arriving from Game Intelligence opens the form straight away; fill it
      with the guardian who already approved, the likely person to ask again. */
@@ -166,7 +198,7 @@ function MinorView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asking, granted]);
 
-  const askToAdd = useCallback((scope: 'assessments' | 'sponsorship') => {
+  const askToAdd = useCallback((scope: AddScope) => {
     setAddScope(scope);
     if (granted) {
       setName(granted.guardian_name);
@@ -291,12 +323,7 @@ function MinorView() {
 
           {needsMore && pending ? (
             <Text variant="caption" tone="muted" style={{ marginTop: spacing.md }}>
-              {t(addScope === 'sponsorship' && needsSponsorship
-                  ? 'sponsorship.addSponsorshipSent'
-                  : needsAssessments
-                    ? 'intelligence.addAssessmentsSent'
-                    : 'sponsorship.addSponsorshipSent',
-                { email: pending.guardian_email })}
+              {t(addCopy.sent, { email: pending.guardian_email })}
             </Text>
           ) : null}
 
@@ -322,6 +349,18 @@ function MinorView() {
               onPress={() => askToAdd('sponsorship')}
               style={{ marginTop: spacing.md }}
               testID="ask-add-sponsorship"
+            />
+          ) : null}
+          {needsBookings && !pending && !asking ? (
+            <Button
+              label={t('coaching.addBookings')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<CalendarCheck size={16} color={colors.text} />}
+              onPress={() => askToAdd('bookings')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-bookings"
             />
           ) : null}
 
@@ -390,14 +429,14 @@ function MinorView() {
           <View style={{ gap: 2 }}>
             <Text variant="heading">
               {granted
-                ? t(addScope === 'sponsorship' ? 'sponsorship.addSponsorship' : 'intelligence.addAssessments')
+                ? t(addCopy.title)
                 : pending
                   ? t('safety.askSomeoneElse')
                   : t('safety.askForPermission')}
             </Text>
             <Text variant="caption" tone="muted">
               {granted
-                ? t(addScope === 'sponsorship' ? 'sponsorship.addSponsorshipHint' : 'intelligence.addAssessmentsHint')
+                ? t(addCopy.hint)
                 : t('safety.requestFormHint')}
             </Text>
           </View>

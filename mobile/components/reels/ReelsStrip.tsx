@@ -36,8 +36,9 @@ export function ReelsStrip() {
   const items = reels.data ?? [];
   if (items.length === 0) return null;
 
+  /* A poster plays that reel; "See all" opens the whole collection as a grid. */
   const open = (post?: FeedPost) =>
-    router.push(post ? { pathname: Routes.reels, params: { start: post.id } } : Routes.reels);
+    router.push(post ? { pathname: Routes.reels, params: { start: post.id } } : Routes.reelsCollection);
 
   return (
     <View style={{ marginHorizontal: -spacing.lg, gap: spacing.sm }} testID="reels-strip">

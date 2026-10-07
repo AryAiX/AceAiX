@@ -212,6 +212,7 @@ const TOUR = [
   /* Stories and reels (0925/01). One stop per author with a live story, so
      the viewer opened from the rail has something to play. */
   '/reels',
+  '/clips',
   /* Explore (1007/01): the grid, each sport chip, and the pager it opens. */
   '/discover?view=explore',
   '/discover?view=people',
@@ -227,6 +228,13 @@ const TOUR = [
   '/discover?view=sponsors',
   '/u/60000000-0000-4000-8000-000000000001',
   '/u/a0000000-0000-4000-8000-000000000004',
+  /* Coach bookings (1009/01): my side, the forms, and Marco's booking page. */
+  '/coaching',
+  '/coaching/service',
+  '/coaching/slots',
+  '/coaching/b0000000-0000-4000-8000-000000000001',
+  '/u/b0000000-0000-4000-8000-000000000001',
+  '/discover?view=coaches',
   '/stories/new',
   '/stories/a0000000-0000-4000-8000-000000000001',
   '/stories/a0000000-0000-4000-8000-000000000002',

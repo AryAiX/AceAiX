@@ -5,6 +5,8 @@ import {
   Bell,
   Briefcase,
   Handshake,
+  CalendarCheck,
+  CalendarX,
   ClipboardCheck,
   Eye,
   Heart,
@@ -71,6 +73,10 @@ function skinFor(type: NotificationType): Skin {
     case 'sponsorship_application':
     case 'sponsorship_response':
       return { Icon: Handshake, tint: 'warning' };
+    case 'coaching_booked':
+      return { Icon: CalendarCheck, tint: 'success' };
+    case 'coaching_cancelled':
+      return { Icon: CalendarX, tint: 'danger' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }
