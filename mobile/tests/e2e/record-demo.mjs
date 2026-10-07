@@ -347,6 +347,12 @@ for (const account of ACCOUNTS) {
     await page.waitForTimeout(800);
   }
 
+  // Coaches who are taking students: the filter chip is a different request.
+  await page.goto(`http://localhost:${PORT}/discover?view=coaches`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(1500);
+  await page.getByTestId('coaches-bookable-filter').click().catch(() => {});
+  await page.waitForTimeout(1200);
+
   // Pull the search and discovery screens through their filters, so a tap in
   // the preview lands on something we already asked the real backend for.
   await page.goto(`http://localhost:${PORT}/search`, { waitUntil: 'domcontentloaded' });
