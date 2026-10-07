@@ -9,6 +9,7 @@
 export type UserRole =
   | 'athlete'
   | 'scout'
+  | 'sponsor'
   | 'club'
   | 'coach'
   | 'medical_partner'
@@ -19,7 +20,7 @@ export type UserRole =
   | 'guest';
 
 /** The four roles a person can choose at signup. */
-export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'guardian'] as const;
+export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'sponsor', 'guardian'] as const;
 export type SignupRole = (typeof SIGNUP_ROLES)[number];
 
 export type Tier = 'rising' | 'bronze' | 'silver' | 'gold' | 'elite';
@@ -347,7 +348,10 @@ export type NotificationType =
   | 'profile_view'
   | 'endorsement'
   | 'score_tier_up'
-  | 'opportunity';
+  | 'opportunity'
+  | 'sponsorship_offer'
+  | 'sponsorship_application'
+  | 'sponsorship_response';
 
 export interface AppNotification {
   id: string;
@@ -356,7 +360,15 @@ export interface AppNotification {
   body: string | null;
   is_read: boolean;
   actor_id: string | null;
-  entity_type: 'user' | 'post' | 'conversation' | 'opportunity' | 'score' | 'challenge' | null;
+  entity_type:
+    | 'user'
+    | 'post'
+    | 'conversation'
+    | 'opportunity'
+    | 'score'
+    | 'challenge'
+    | 'sponsorship'
+    | null;
   entity_id: string | null;
   actor_count: number;
   data: Record<string, unknown>;
@@ -402,6 +414,7 @@ export interface LinkedMinor {
   allow_media: boolean;
   /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
   allow_assessments?: boolean;
+  allow_sponsorship?: boolean;
   granted_at: string | null;
 }
 
@@ -430,6 +443,7 @@ export interface GuardianConsent {
   allow_media: boolean;
   /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
   allow_assessments?: boolean;
+  allow_sponsorship?: boolean;
   granted_at: string | null;
   created_at: string;
 }

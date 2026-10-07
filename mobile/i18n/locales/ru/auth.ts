@@ -89,6 +89,8 @@ export const auth = {
     roleClubSubtitle: 'Искать таланты и объявлять просмотры',
     roleGuardianTitle: 'Я родитель или опекун',
     roleGuardianSubtitle: 'Поддержать и одобрить профиль ребёнка',
+    roleSponsorTitle: 'Я спонсор или бренд',
+    roleSponsorSubtitle: 'Поддерживайте спортсменов и находите, кому помочь',
 
     nameTitle: 'Как тебя зовут?',
     nameSubtitle: 'Пиши настоящее имя — тренеру важно понимать, на кого он смотрит.',

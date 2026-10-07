@@ -40,6 +40,7 @@ const ACCOUNTS = [
   { role: 'scout', email: 'nadia.demo@aceaix.com' },
   { role: 'federation', email: 'federation.demo@aceaix.com' },
   { role: 'medical', email: 'amin.demo@aceaix.com' },
+  { role: 'sponsor', email: 'falcon.demo@aceaix.com' },
   { role: 'minor', email: 'mina.demo@aceaix.com' },
 ];
 const PASSWORD = process.env.ACEAIX_DEMO_PASSWORD;
@@ -218,6 +219,14 @@ const TOUR = [
   '/reels?source=explore&sport=Football',
   '/reels?source=explore&sport=Athletics',
   '/reels?source=explore&sport=Basketball',
+  /* Sponsorship (1008/02): the portal, the forms, and each side of Discover. */
+  '/sponsorship',
+  '/sponsorship/request',
+  '/sponsorship/call',
+  '/sponsorship/brand',
+  '/discover?view=sponsors',
+  '/u/60000000-0000-4000-8000-000000000001',
+  '/u/a0000000-0000-4000-8000-000000000004',
   '/stories/new',
   '/stories/a0000000-0000-4000-8000-000000000001',
   '/stories/a0000000-0000-4000-8000-000000000002',

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowUpDown, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
+import { ArrowUpDown, Check, Compass, Handshake, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -25,6 +25,8 @@ import { AthleteCard, COMPACT_CARD_WIDTH } from '@/components/discover/AthleteCa
 import { AthleteExplore } from '@/components/discover/AthleteExplore';
 import { DiscoverSwitch, type DiscoverView } from '@/components/explore/DiscoverSwitch';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
+import { SeekersList } from '@/components/sponsorship/SeekersList';
+import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
 import { FilterSheet, FilterSheetMode, isFilterActive } from '@/components/discover/FilterSheet';
 import {
   criteriaFromFilters,
@@ -498,17 +500,17 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
  * For an athlete or a guardian it is the first of four tabs, beside Clubs,
  * Coaches and Leaderboard, with the search bar under them. A recruiter keeps
  * their athlete search and opens on it, because finding athletes is the job;
- * Explore is the tab next to it. `/discover?view=explore` (or `view=people`)
- * picks a side.
+ * Explore and Sponsors are the tabs next to it. A sponsor opens on the athletes
+ * who are asking for backing. `/discover?view=explore|people|sponsors` picks.
  */
 export default function DiscoverScreen() {
   const theme = useTheme();
   const t = useT();
   const router = useRouter();
-  const { profile, loading, isRecruiter } = useAuth();
+  const { profile, loading, isRecruiter, isSponsor } = useAuth();
   const params = useLocalSearchParams<{ view?: string }>();
   const asked: DiscoverView | null =
-    params.view === 'explore' ? 'explore' : params.view === 'people' ? 'people' : null;
+    params.view === 'explore' || params.view === 'people' || params.view === 'sponsors' ? params.view : null;
   const [chosen, setChosen] = useState<DiscoverView | null>(null);
 
   /* A link that names a view wins over whatever was picked before it. */
@@ -527,22 +529,53 @@ export default function DiscoverScreen() {
     );
   }
 
-  if (!isRecruiter) {
+  if (!isRecruiter && !isSponsor) {
     return (
       <Screen scroll={false} padded={false} testID="discover-screen">
         <Header title={t('common.tabDiscover')} subtitle={t('discover.athleteSubtitle')} large />
         <AthleteExplore
           viewerId={profile?.id ?? null}
-          initialTab={asked === 'people' ? 'clubs' : 'explore'}
+          initialTab={asked === 'people' ? 'clubs' : asked === 'sponsors' ? 'sponsors' : 'explore'}
         />
       </Screen>
     );
   }
 
-  const view: DiscoverView = chosen ?? asked ?? 'people';
+  /* A sponsor's "people" are the athletes asking for backing; a recruiter's
+     are the athletes they scout. A sponsor has no Sponsors tab of their own. */
+  const views: DiscoverView[] = isSponsor ? ['people', 'explore'] : ['explore', 'people', 'sponsors'];
+  const picked = chosen ?? asked ?? 'people';
+  const view: DiscoverView = views.includes(picked) ? picked : 'people';
   const switcher = (
-    <DiscoverSwitch value={view} onChange={setChosen} peopleLabel={t('explore.viewAthletes')} />
+    <DiscoverSwitch
+      value={view}
+      onChange={setChosen}
+      views={views}
+      peopleLabel={t(isSponsor ? 'sponsorship.tabSeekers' : 'explore.viewAthletes')}
+    />
   );
+
+  if (isSponsor) {
+    return (
+      <Screen scroll={false} padded={false} testID="discover-screen">
+        <Header
+          title={t('common.tabDiscover')}
+          subtitle={view === 'explore' ? t('explore.subtitle') : undefined}
+          large
+          right={
+            <IconButton
+              icon={<Handshake size={20} color={theme.colors.text} />}
+              label={t('sponsorship.openPortal')}
+              size={theme.hit.min}
+              onPress={() => router.push(Routes.sponsorship)}
+            />
+          }
+        />
+        {switcher}
+        {view === 'explore' ? <ExploreGrid /> : <SeekersList />}
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll={false} padded={false} testID="discover-screen">
@@ -551,6 +584,12 @@ export default function DiscoverScreen() {
           <Header title={t('discover.title')} subtitle={t('explore.subtitle')} large />
           {switcher}
           <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
+        </>
+      ) : view === 'sponsors' ? (
+        <>
+          <Header title={t('discover.title')} large />
+          {switcher}
+          <SponsorsTab query="" />
         </>
       ) : (
         <RecruiterDiscover switcher={switcher} />

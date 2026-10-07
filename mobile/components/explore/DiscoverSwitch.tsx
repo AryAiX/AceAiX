@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, View, type LayoutChangeEvent } from 'react-native';
-import { Clapperboard, Users } from 'lucide-react-native';
+import { Clapperboard, Handshake, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -8,46 +8,50 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 
-export type DiscoverView = 'explore' | 'people';
+export type DiscoverView = 'explore' | 'people' | 'sponsors';
 
 interface Props {
   value: DiscoverView;
   onChange: (view: DiscoverView) => void;
-  /** "Athletes" for a recruiter, "Clubs & people" for everyone else. */
+  /** The tabs, in order. `people` needs its label: "Athletes" for a recruiter, "Seeking sponsors" for a sponsor. */
+  views: DiscoverView[];
   peopleLabel: string;
 }
 
+const ICONS = { explore: Clapperboard, people: Users, sponsors: Handshake } as const;
+
 /**
- * The two faces of Discover, as underlined tabs.
+ * The faces of Discover for a recruiter or a sponsor, as underlined tabs.
  *
- * Deliberately not a SegmentedControl: the people side already has one of its
- * own just below (clubs / coaches / leaderboard), and two pill switches stacked
- * read as one control with six options.
+ * Deliberately not a SegmentedControl: the screens below have filter rows of
+ * their own, and two pill rows stacked read as one control.
  */
-export function DiscoverSwitch({ value, onChange, peopleLabel }: Props) {
+export function DiscoverSwitch({ value, onChange, views, peopleLabel }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
   const reduced = useReducedMotion();
   const [width, setWidth] = useState(0);
-  const slide = useRef(new Animated.Value(value === 'explore' ? 0 : 1)).current;
+  const index = Math.max(0, views.indexOf(value));
+  const slide = useRef(new Animated.Value(index)).current;
 
   useEffect(() => {
-    const to = value === 'explore' ? 0 : 1;
     if (reduced) {
-      slide.setValue(to);
+      slide.setValue(index);
       return;
     }
-    Animated.spring(slide, { toValue: to, speed: 22, bounciness: 7, useNativeDriver: NATIVE_DRIVER }).start();
-  }, [value, slide, reduced]);
+    Animated.spring(slide, { toValue: index, speed: 22, bounciness: 7, useNativeDriver: NATIVE_DRIVER }).start();
+  }, [index, slide, reduced]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
-  const half = width / 2;
+  const tabWidth = width / Math.max(1, views.length);
 
-  const tabs: { key: DiscoverView; label: string; Icon: typeof Users }[] = [
-    { key: 'explore', label: t('explore.viewExplore'), Icon: Clapperboard },
-    { key: 'people', label: peopleLabel, Icon: Users },
-  ];
+  const labels: Record<DiscoverView, string> = {
+    explore: t('explore.viewExplore'),
+    people: peopleLabel,
+    sponsors: t('sponsorship.tabSponsors'),
+  };
+  const tabs = views.map((key) => ({ key, label: labels[key], Icon: ICONS[key] }));
 
   return (
     <View
@@ -97,11 +101,11 @@ export function DiscoverSwitch({ value, onChange, peopleLabel }: Props) {
             position: 'absolute',
             left: 0,
             bottom: -1,
-            width: half,
+            width: tabWidth,
             height: 3,
             borderRadius: 2,
             backgroundColor: colors.primary,
-            transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [0, half] }) }],
+            transform: [{ translateX: Animated.multiply(slide, tabWidth) }],
           }}
         />
       ) : null}

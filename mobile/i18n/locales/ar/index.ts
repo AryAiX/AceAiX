@@ -25,9 +25,10 @@ import { format } from './format';
 import { stories } from './stories';
 import { reels } from './reels';
 import { explore } from './explore';
+import { sponsorship } from './sponsorship';
 
 
 /** العربية. مُقيَّدة بأنواع الإنجليزية، فأي مفتاح ناقص خطأ في الترجمة البرمجية. */
 export const ar: Translations = { common, language, auth, onboarding, feed, profile,
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
-  safety, sports, countries, errors, format, stories, reels, explore };
+  safety, sports, countries, errors, format, stories, reels, explore, sponsorship };

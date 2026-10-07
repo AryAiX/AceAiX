@@ -44,6 +44,14 @@ export const Routes = {
   followers: (userId: string) => `/u/${userId}/followers` as const,
   following: (userId: string) => `/u/${userId}/following` as const,
 
+  /** The sponsorship portal: requests, calls, offers and applications. */
+  sponsorship: '/sponsorship' as const,
+  /** Create a request, or edit one with `id` as a param. */
+  sponsorshipRequest: '/sponsorship/request' as const,
+  /** Create a call, or edit one with `id` as a param. */
+  sponsorshipCall: '/sponsorship/call' as const,
+  sponsorshipBrand: '/sponsorship/brand' as const,
+
   meetups: '/(tabs)/meetups' as const,
   meetup: (id: string) => `/meetup/${id}` as const,
   newMeetup: '/meetup/new' as const,
@@ -171,6 +179,9 @@ export function notificationTarget(n: AppNotification): Href | null {
       return Routes.score;
     case 'challenge':
       return id ? Routes.challenge(id) : Routes.challenges;
+    case 'sponsorship':
+      // Every offer, application and answer is read in the portal.
+      return Routes.sponsorship;
     default:
       break;
   }

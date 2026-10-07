@@ -66,6 +66,9 @@ const WHO = {
   marco: 'marco.demo@aceaix.com', //   coach, verified
   academy: 'academy.demo@aceaix.com', // club, verified
   nadia: 'nadia.demo@aceaix.com', //   scout, verified
+  falcon: 'falcon.demo@aceaix.com', // sponsor, verified
+  peak: 'peak.demo@aceaix.com', //     sponsor, unverified
+  omar: 'omar.demo@aceaix.com', //     athlete, 17, guardian approved sponsorship
   mina: 'mina.demo@aceaix.com', //     athlete, 14, no guardian consent
 };
 
@@ -745,6 +748,96 @@ async function main() {
     expect(rows.length === first.clips, `${first.sport}: chip says ${first.clips}, grid has ${rows.length}`);
     expect(rows.every((r) => r.athlete_sport === first.sport), 'another sport leaked into the filter');
     return `${first.sport}: ${first.clips}`;
+  });
+
+  // ── Sponsorship ───────────────────────────────────────────────────────────
+  section('a sponsorship offer reaches the athlete, and only from a verified sponsor');
+
+  let sponsoredRequest = null;
+  let offerId = null;
+
+  await step('sara is listed as seeking, with the amount, to a verified sponsor', async () => {
+    const mine = unwrap(await clients.sara.rpc('my_sponsorship'), 'my_sponsorship');
+    const open = mine.requests.find((r) => r.status === 'open');
+    expect(open, 'sara has no open request in the demo data');
+    sponsoredRequest = open.id;
+    const seekers = unwrap(await clients.falcon.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.request_id === open.id);
+    expect(row, 'falcon does not see the request');
+    expect(row.amount === open.amount, `falcon saw amount ${row.amount}`);
+    return `${row.title} · ${row.amount} ${row.currency}`;
+  });
+
+  await step('an unverified sponsor sees her, without the amount, and cannot offer', async () => {
+    const seekers = unwrap(await clients.peak.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.request_id === sponsoredRequest);
+    expect(row && row.amount == null, `peak saw ${JSON.stringify(row?.amount)}`);
+    const res = await clients.peak.rpc('sponsor_make_offer', { p_request: sponsoredRequest, p_message: 'hi' });
+    expect(res.error?.hint === 'sponsor_not_verified', `hint was ${res.error?.hint}`);
+    return 'refused by the database';
+  });
+
+  await step('a coach cannot browse who needs money', async () => {
+    const res = await clients.marco.rpc('sponsorship_seekers');
+    expect(res.error?.hint === 'sponsor_only', `hint was ${res.error?.hint}`);
+  });
+
+  await step('falcon makes an offer and sara is notified', async () => {
+    /* Rerunnable: an offer left pending by an earlier run is withdrawn first. */
+    const before = unwrap(await clients.falcon.rpc('my_sponsorship'), 'my_sponsorship');
+    for (const d of before.deals.filter((d) => d.request_id === sponsoredRequest && d.can_withdraw)) {
+      unwrap(await clients.falcon.rpc('withdraw_sponsorship', { p_deal: d.id }), 'withdraw_sponsorship');
+    }
+    offerId = unwrap(
+      await clients.falcon.rpc('sponsor_make_offer', {
+        p_request: sponsoredRequest,
+        p_message: 'Entry and flights, in return for three posts.',
+        p_amount: 3000,
+      }),
+      'sponsor_make_offer',
+    );
+    await eventually(async () =>
+      (await notifications(clients.sara)).some((n) => n.type === 'sponsorship_offer' && n.entity_id === offerId),
+    );
+    const mine = unwrap(await clients.sara.rpc('my_sponsorship'), 'my_sponsorship');
+    const deal = mine.deals.find((d) => d.id === offerId);
+    expect(deal?.can_respond, 'sara cannot answer the offer');
+    return `offer ${offerId.slice(0, 8)}`;
+  });
+
+  await step('sara declines, and falcon hears back', async () => {
+    const status = unwrap(
+      await clients.sara.rpc('respond_sponsorship', { p_deal: offerId, p_accept: false }),
+      'respond_sponsorship',
+    );
+    expect(status === 'declined', `status ${status}`);
+    await eventually(async () =>
+      (await notifications(clients.falcon)).some(
+        (n) => n.type === 'sponsorship_response' && n.entity_id === offerId,
+      ),
+    );
+  });
+
+  await step('a seventeen-year-old with the guardian scope is listed, marked under 18', async () => {
+    const seekers = unwrap(await clients.falcon.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.athlete_user_id === ids.omar);
+    expect(row?.is_minor === true, `omar's row: ${JSON.stringify(row)}`);
+    const start = await clients.falcon.rpc('start_conversation', { p_user: ids.omar });
+    expect(start.error, 'a sponsor opened a conversation with a minor');
+    return 'and cannot be messaged by the sponsor';
+  });
+
+  await step('a fourteen-year-old without it cannot ask', async () => {
+    const res = await clients.mina.rpc('save_sponsorship_request', { p_id: null, p: { title: 'Swim camp' } });
+    expect(res.error?.hint === 'guardian_consent_required', `hint was ${res.error?.hint}`);
+  });
+
+  await step('an athlete sees the calls, and a minor only the junior one', async () => {
+    const adult = unwrap(await clients.layla.rpc('sponsor_calls_feed'), 'sponsor_calls_feed');
+    const minor = unwrap(await clients.omar.rpc('sponsor_calls_feed'), 'sponsor_calls_feed');
+    expect(adult.length >= 3, `layla sees ${adult.length} calls`);
+    expect(minor.length >= 1 && minor.every((c) => c.open_to_minors), 'omar sees an adults-only call');
+    return `${adult.length} for an adult, ${minor.length} for a minor`;
   });
 
   // ── Summary ───────────────────────────────────────────────────────────────

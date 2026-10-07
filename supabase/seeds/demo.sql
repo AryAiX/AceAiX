@@ -12,8 +12,8 @@
 --     AceAiX-Demo-2026
 --
 -- One account per role the product has, so every role can be signed into and
--- looked at rather than reasoned about. Sign-up itself offers four of these
--- (athlete, coach, club, guardian); scout, federation and medical partner are
+-- looked at rather than reasoned about. Sign-up itself offers five of these
+-- (athlete, coach, club, sponsor, guardian); scout, federation and medical partner are
 -- assigned, so this file is the only way to see one.
 --
 --   layla.demo@aceaix.com       athlete, 19, complete profile — the review account
@@ -29,6 +29,8 @@
 --   nadia.demo@aceaix.com       scout, verified
 --   federation.demo@aceaix.com  federation, verified
 --   amin.demo@aceaix.com        medical partner
+--   falcon.demo@aceaix.com      sponsor, verified — the sponsorship portal
+--   peak.demo@aceaix.com        sponsor, unverified — can look, cannot offer
 --
 -- The three minors are the interesting ones: Omar and Yusuf are discoverable
 -- because a guardian approved them, Mina is not because nobody has yet, and
@@ -819,3 +821,125 @@ from (values
   ('9a000000-0000-4000-8000-000000000006'::uuid, 2310, 0)
 ) as v(id, views, likes)
 where posts.id = v.id;
+
+
+-- ------------------------------------------------------------
+-- Sponsorship (1008/02)
+--
+-- One verified sponsor and one that is not, four athletes asking, three calls,
+-- and a deal in every state — so the portal has something to answer on the
+-- first sign-in, whichever side you sign in as.
+-- ------------------------------------------------------------
+insert into auth.users (id, email, encrypted_password, raw_user_meta_data)
+values
+  ('60000000-0000-4000-8000-000000000001', 'falcon.demo@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Falcon Energy","first_name":"Falcon","last_name":"Energy","role":"sponsor"}'),
+  ('60000000-0000-4000-8000-000000000002', 'peak.demo@aceaix.com',   crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Desert Peak Sportswear","first_name":"Desert Peak","last_name":"Sportswear","role":"sponsor"}')
+on conflict (id) do nothing;
+
+update public.user_private set date_of_birth = current_date - interval '34 years'
+where user_id in ('60000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002');
+
+update public.user_profiles set
+  bio = 'Energy drinks made in the UAE. We back athletes in individual sports from their first national final.',
+  city = 'Dubai', country = 'United Arab Emirates',
+  is_verified = true, onboarding_completed = true
+where id = '60000000-0000-4000-8000-000000000001';
+
+update public.user_profiles set
+  bio = 'Training kit for hot climates. New to AceAiX.',
+  city = 'Sharjah', country = 'United Arab Emirates',
+  is_verified = false, onboarding_completed = true
+where id = '60000000-0000-4000-8000-000000000002';
+
+insert into public.sponsor_profiles
+  (user_id, company_name, industry, website, about, sports, countries, offers, budget_min, budget_max)
+values
+  ('60000000-0000-4000-8000-000000000001', 'Falcon Energy', 'Food and drink', 'https://falcon-energy.example',
+   'We fund entry fees, travel and kit for athletes who compete on their own: runners, swimmers, tennis and padel players.',
+   array['Athletics', 'Swimming', 'Tennis', 'Football'], array['United Arab Emirates'],
+   array['cash', 'equipment', 'travel'], 3000, 15000),
+  ('60000000-0000-4000-8000-000000000002', 'Desert Peak Sportswear', 'Sportswear', 'https://desertpeak.example',
+   'Kit partnerships for juniors and club academies.',
+   array['Football', 'Basketball'], array['United Arab Emirates'],
+   array['equipment'], null, null)
+on conflict (user_id) do update set
+  company_name = excluded.company_name, industry = excluded.industry, website = excluded.website,
+  about = excluded.about, sports = excluded.sports, countries = excluded.countries,
+  offers = excluded.offers, budget_min = excluded.budget_min, budget_max = excluded.budget_max;
+
+/* Omar's guardian ticked the sponsorship box; Yusuf's did not. */
+update public.guardian_consents set allow_sponsorship = true
+where id = 'f0000000-0000-4000-8000-000000000001';
+
+insert into public.sponsorship_requests
+  (id, athlete_user_id, title, event_name, event_date, location, sport, needs, gives, amount, pitch, created_at)
+values
+  ('6a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004',
+   'Asian Indoor qualifiers: entry and travel', 'Asian Indoor Championships qualifier',
+   current_date + 75, 'Doha, Qatar', 'Athletics',
+   array['entry_fee', 'travel', 'coaching'], array['logo_on_kit', 'social_posts', 'content'], 6500,
+   'UAE 800 m finalist two years running. A four-week altitude block and the qualifier in Doha are what stand between me and the standard.',
+   now() - interval '2 days'),
+  ('6a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001',
+   'Pre-season camp and boots', 'UAE Women''s Cup', current_date + 50, 'Abu Dhabi', 'Football',
+   array['travel', 'equipment'], array['social_posts', 'appearances'], 5000,
+   'Nine goals in the first half of the season. A week of camp before the cup, and two pairs of boots.',
+   now() - interval '4 days'),
+  ('6a000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000005',
+   '3x3 summer tour', 'Gulf 3x3 Series', current_date + 110, 'Dubai, Muscat, Manama', 'Basketball',
+   array['entry_fee', 'travel'], array['logo_on_kit', 'content'], 4000,
+   'Three stops, three weekends. Our team finished second last year.',
+   now() - interval '6 days'),
+  ('6a000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000002',
+   'Dana Cup travel', 'Dana Cup', current_date + 140, 'Hjørring, Denmark', 'Football',
+   array['travel', 'entry_fee'], array['social_posts'], 3000,
+   'My academy side qualified for the under-18 bracket. Flights are the part we cannot cover.',
+   now() - interval '1 day')
+on conflict (id) do nothing;
+
+insert into public.sponsor_calls
+  (id, sponsor_user_id, title, description, sport, country, offers, amount_min, amount_max,
+   slots, deadline, open_to_minors, created_at)
+values
+  ('6b000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
+   'Five individual-sport athletes for 2027',
+   'A season of backing for athletes who compete alone: entry fees, travel and product. Tell us your calendar and your best result.',
+   null, 'United Arab Emirates', array['cash', 'equipment', 'travel'], 3000, 12000,
+   5, current_date + 45, false, now() - interval '3 days'),
+  ('6b000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000001',
+   'Junior runners programme',
+   'Race entries and shoes for under-18 middle-distance runners. A parent or guardian is part of every conversation.',
+   'Athletics', 'United Arab Emirates', array['equipment', 'cash'], 1000, 3000,
+   10, current_date + 60, true, now() - interval '5 days'),
+  ('6b000000-0000-4000-8000-000000000003', '60000000-0000-4000-8000-000000000001',
+   'Football creators: match-day content',
+   'Two players who already film their sessions. Product and a monthly fee for six months.',
+   'Football', null, array['cash', 'equipment'], 1500, 4000,
+   2, current_date + 30, false, now() - interval '1 day')
+on conflict (id) do nothing;
+
+insert into public.sponsorship_deals
+  (id, sponsor_user_id, athlete_user_id, request_id, call_id, initiated_by, message, amount, status, created_at, responded_at)
+values
+  /* Waiting on Layla. */
+  ('6c000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000002', null, 'sponsor',
+   'We can cover the camp and send boots this month. In return: three posts and one visit to our Dubai store.',
+   3500, 'pending', now() - interval '5 hours', null),
+  /* Waiting on Falcon. */
+  ('6c000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', null, '6b000000-0000-4000-8000-000000000001', 'athlete',
+   'I race 800 m and 1500 m, eleven meets next season. Happy to share the full calendar.',
+   null, 'pending', now() - interval '9 hours', null),
+  ('6c000000-0000-4000-8000-000000000003', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', null, '6b000000-0000-4000-8000-000000000003', 'athlete',
+   'I film every finishing session already — clips are on my profile.',
+   null, 'pending', now() - interval '3 hours', null),
+  /* Answered. */
+  ('6c000000-0000-4000-8000-000000000004', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000005', '6a000000-0000-4000-8000-000000000003', null, 'sponsor',
+   'Entry fees for all three stops.', 1800, 'accepted', now() - interval '3 days', now() - interval '2 days'),
+  ('6c000000-0000-4000-8000-000000000005', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', '6a000000-0000-4000-8000-000000000001', null, 'sponsor',
+   'Product only this quarter, sorry.', null, 'declined', now() - interval '8 days', now() - interval '7 days')
+on conflict (id) do nothing;

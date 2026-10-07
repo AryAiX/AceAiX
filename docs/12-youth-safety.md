@@ -34,6 +34,7 @@
 | 11 | A compromised account cannot flood the network | `private.enforce_rate_limit()` triggers |
 | 12 | Deleting an account deletes the files it uploaded | `public.delete_own_account()` clears `storage.objects` under the account's folder in `avatars`, `posts` and `stories` |
 | 13 | Game Intelligence needs a guardian's separate yes below the self-consent age (15 by default, per country), and a minor's result is never shown past the discovery gate | `private.gi_consent_state()`, `guardian_consents.allow_assessments`, `get_game_intelligence()` — see [26](./26-game-intelligence.md) |
+| 14 | A minor asks for sponsorship, applies to a call or accepts an offer only under a guardian's separate `sponsorship` scope; only verified sponsors make offers, sponsors cannot message a minor, and guardians with an account are told about every step | `guardian_consents.allow_sponsorship`, `private.sponsorship_visible()`, `private.require_verified_sponsor()`, `save_sponsorship_request()`, `apply_to_sponsor_call()`, `respond_sponsorship()` — see [29](./29-sponsorship.md) |
 
 ---
 

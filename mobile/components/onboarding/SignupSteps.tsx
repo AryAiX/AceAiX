@@ -48,6 +48,12 @@ const ROLES: {
     emoji: '🏟️',
   },
   {
+    value: 'sponsor',
+    titleKey: 'auth.signUp.roleSponsorTitle',
+    subtitleKey: 'auth.signUp.roleSponsorSubtitle',
+    emoji: '🤝',
+  },
+  {
     value: 'guardian',
     titleKey: 'auth.signUp.roleGuardianTitle',
     subtitleKey: 'auth.signUp.roleGuardianSubtitle',

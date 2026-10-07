@@ -1,17 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Brain,
-  Check,
-  Clock,
-  Mail,
-  MessageCircle,
-  Search,
-  ShieldCheck,
-  Users,
-  X,
-} from 'lucide-react-native';
+import { Brain, Check, Clock, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -94,6 +84,12 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
       label: t('intelligence.scopeAssessments'),
       off: t('intelligence.scopeAssessmentsOff'),
     },
+    {
+      granted: !!consent.allow_sponsorship,
+      Icon: Handshake,
+      label: t('sponsorship.scopeSponsorship'),
+      off: t('sponsorship.scopeSponsorshipOff'),
+    },
   ];
 
   return (
@@ -129,9 +125,13 @@ function MinorView() {
 
   const consents = useAsync(getGuardianConsents, [], { refetchOnFocus: true });
   /* `/settings/guardian?add=assessments` — sent here from Game Intelligence
-     when a guardian approved the profile but not the games. */
+     when a guardian approved the profile but not the games — and
+     `?add=sponsorship`, from the sponsorship screens, for the same reason. */
   const params = useLocalSearchParams<{ add?: string }>();
-  const [asking, setAsking] = useState(params.add === 'assessments');
+  const [asking, setAsking] = useState(params.add === 'assessments' || params.add === 'sponsorship');
+  const [addScope, setAddScope] = useState<'assessments' | 'sponsorship'>(
+    params.add === 'sponsorship' ? 'sponsorship' : 'assessments',
+  );
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -153,6 +153,8 @@ function MinorView() {
   const lastRevoked = useMemo(() => rows.find((c) => c.status === 'revoked') ?? null, [rows]);
   const current = granted ?? pending;
   const needsAssessments = !!granted && !granted.allow_assessments;
+  const needsSponsorship = !!granted && !granted.allow_sponsorship;
+  const needsMore = needsAssessments || needsSponsorship;
 
   /* Arriving from Game Intelligence opens the form straight away; fill it
      with the guardian who already approved, the likely person to ask again. */
@@ -164,7 +166,8 @@ function MinorView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asking, granted]);
 
-  const askToAdd = useCallback(() => {
+  const askToAdd = useCallback((scope: 'assessments' | 'sponsorship') => {
+    setAddScope(scope);
     if (granted) {
       setName(granted.guardian_name);
       setEmail(granted.guardian_email);
@@ -286,9 +289,14 @@ function MinorView() {
             })}
           </Text>
 
-          {needsAssessments && pending ? (
+          {needsMore && pending ? (
             <Text variant="caption" tone="muted" style={{ marginTop: spacing.md }}>
-              {t('intelligence.addAssessmentsSent', { email: pending.guardian_email })}
+              {t(addScope === 'sponsorship' && needsSponsorship
+                  ? 'sponsorship.addSponsorshipSent'
+                  : needsAssessments
+                    ? 'intelligence.addAssessmentsSent'
+                    : 'sponsorship.addSponsorshipSent',
+                { email: pending.guardian_email })}
             </Text>
           ) : null}
 
@@ -299,9 +307,21 @@ function MinorView() {
               size="sm"
               fullWidth
               icon={<Brain size={16} color={colors.text} />}
-              onPress={askToAdd}
+              onPress={() => askToAdd('assessments')}
               style={{ marginTop: spacing.md }}
               testID="ask-add-assessments"
+            />
+          ) : null}
+          {needsSponsorship && !pending && !asking ? (
+            <Button
+              label={t('sponsorship.addSponsorship')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<Handshake size={16} color={colors.text} />}
+              onPress={() => askToAdd('sponsorship')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-sponsorship"
             />
           ) : null}
 
@@ -365,18 +385,20 @@ function MinorView() {
       ) : null}
 
       {/* ── The request form ────────────────────────────────────────── */}
-      {!granted || (needsAssessments && asking && !pending) ? (
+      {!granted || (needsMore && asking && !pending) ? (
         <View style={{ gap: spacing.md }}>
           <View style={{ gap: 2 }}>
             <Text variant="heading">
               {granted
-                ? t('intelligence.addAssessments')
+                ? t(addScope === 'sponsorship' ? 'sponsorship.addSponsorship' : 'intelligence.addAssessments')
                 : pending
                   ? t('safety.askSomeoneElse')
                   : t('safety.askForPermission')}
             </Text>
             <Text variant="caption" tone="muted">
-              {granted ? t('intelligence.addAssessmentsHint') : t('safety.requestFormHint')}
+              {granted
+                ? t(addScope === 'sponsorship' ? 'sponsorship.addSponsorshipHint' : 'intelligence.addAssessmentsHint')
+                : t('safety.requestFormHint')}
             </Text>
           </View>
 

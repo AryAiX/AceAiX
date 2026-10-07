@@ -10,7 +10,6 @@ import {
   ErrorState,
   Input,
   ListItem,
-  SegmentedControl,
   Sheet,
   SkeletonList,
   Text,
@@ -31,12 +30,14 @@ import type { LeaderboardEntry } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
 import type { Organization, PersonResult } from '@/types/models';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
+import { ScrollTabs } from '@/components/explore/ScrollTabs';
+import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
 import { Routes } from '@/lib/routes';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
 import { LeaderboardRow } from './LeaderboardRow';
 
-export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'leaderboard';
+export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'sponsors' | 'leaderboard';
 type Tab = AthleteDiscoverTab;
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -51,6 +52,7 @@ const TABS: { value: Tab; labelKey: string }[] = [
   { value: 'explore', labelKey: 'explore.viewExplore' },
   { value: 'clubs', labelKey: 'discover.tabClubs' },
   { value: 'coaches', labelKey: 'discover.tabCoaches' },
+  { value: 'sponsors', labelKey: 'sponsorship.tabSponsors' },
   { value: 'leaderboard', labelKey: 'discover.tabLeaderboard' },
 ];
 
@@ -178,7 +180,9 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
       placeholder={
         tab === 'clubs'
           ? t('discover.explore.searchClubsPlaceholder')
-          : t('discover.explore.searchCoachesPlaceholder')
+          : tab === 'sponsors'
+            ? t('sponsorship.searchPlaceholder')
+            : t('discover.explore.searchCoachesPlaceholder')
       }
       autoCorrect={false}
       autoCapitalize="none"
@@ -187,7 +191,9 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
       accessibilityLabel={
         tab === 'clubs'
           ? t('discover.explore.searchClubsA11y')
-          : t('discover.explore.searchCoachesA11y')
+          : tab === 'sponsors'
+            ? t('sponsorship.searchPlaceholder')
+            : t('discover.explore.searchCoachesA11y')
       }
       icon={<Search size={18} color={colors.textMuted} />}
     />
@@ -375,8 +381,8 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.md }}>
-        <SegmentedControl<Tab>
+      <View style={{ paddingBottom: spacing.md }}>
+        <ScrollTabs<Tab>
           options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
           value={tab}
           onChange={(next) => {
@@ -425,6 +431,8 @@ export function AthleteExplore({ viewerId, initialTab = 'explore' }: Props) {
 
       {tab === 'explore' ? (
         <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
+      ) : tab === 'sponsors' ? (
+        <SponsorsTab query={debounced} />
       ) : tab === 'clubs' ? (
         renderClubs()
       ) : tab === 'coaches' ? (

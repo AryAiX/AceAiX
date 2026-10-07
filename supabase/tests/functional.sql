@@ -2157,6 +2157,356 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sponsorship ──'; end $$;
+
+/*
+ * 1008/02. Money offers to young athletes: only a verified sponsor may make
+ * one, only on a request the athlete opened, and a minor's side of it exists
+ * only while a guardian's consent carries the sponsorship scope.
+ */
+do $$
+declare
+  v_adult    uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor    uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_other    uuid := '44444444-4444-4444-4444-444444444444';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_brand    uuid := 'aaaaaaaa-5555-4000-8000-000000000001';
+  v_fake     uuid := 'aaaaaaaa-5555-4000-8000-000000000002';
+  v_climber  uuid := 'aaaaaaaa-5555-4000-8000-000000000003';
+  v_req      uuid;
+  v_minor_req uuid;
+  v_call     uuid;
+  v_kids_call uuid;
+  v_deal     uuid;
+  v_app      uuid;
+  v_hint     text;
+  v_err      text;
+  v_token    text;
+  v_res      jsonb;
+  v_disc     boolean;
+  v_n        integer;
+begin
+  /* Signup: `sponsor` is a role a person may pick; `super_admin` is not. */
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_brand,   'brand@test.local',   '{"full_name":"Falcon Energy","role":"sponsor"}'),
+    (v_fake,    'fake@test.local',    '{"full_name":"Totally A Brand","role":"sponsor"}'),
+    (v_climber, 'climber@test.local', '{"full_name":"Wants Root","role":"super_admin"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_brand, v_fake, v_climber);
+  update public.user_profiles set is_verified = true where id = v_brand;
+
+  perform tests.ok(
+    (select role::text from public.user_profiles where id = v_brand) = 'sponsor'
+    and exists (select 1 from public.sponsor_profiles where user_id = v_brand),
+    'a sponsor signs up as a sponsor and gets a brand profile');
+  perform tests.ok(
+    (select role::text from public.user_profiles where id = v_climber) = 'athlete',
+    'signup metadata cannot claim super_admin');
+
+  perform tests.as_user(v_brand);
+  perform public.save_sponsor_profile(
+    '{"company_name":"Falcon Energy","industry":"Energy drinks","website":"https://falcon.example",
+      "offers":["cash","equipment","yacht"],"sports":["Tennis","Athletics"],"budget_min":2000,"budget_max":20000}');
+  perform tests.ok(
+    (select offers = array['cash','equipment'] and company_name = 'Falcon Energy'
+     from public.sponsor_profiles where user_id = v_brand),
+    'the brand profile saves, and an invented tag is dropped');
+  v_hint := null;
+  begin
+    perform tests.as_user(v_adult);
+    perform public.save_sponsor_profile('{"company_name":"Me Inc"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_only', 'an athlete has no brand profile to save');
+
+  /* ── An adult athlete asks ── */
+  perform tests.as_user(v_adult);
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Dubai Open entry and travel","event_name":"Dubai Open","event_date":"2027-03-10",
+      "needs":["entry_fee","travel","a pony"],"gives":["logo_on_kit","social_posts"],"amount":4000,
+      "pitch":"Ranked third in the UAE under-21s."}');
+  perform tests.ok(
+    (select needs = array['entry_fee','travel'] and status = 'open' and amount = 4000
+     from public.sponsorship_requests where id = v_req),
+    'an athlete can ask for sponsorship');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.sponsorship_requests (athlete_user_id, title) values (v_adult, 'Around the RPC');
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'requests cannot be written around the RPC');
+
+  v_hint := null;
+  begin
+    perform tests.as_user(v_coach);
+    perform public.save_sponsorship_request(null, '{"title":"A coach wants money"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'athlete_only', 'only an athlete can ask');
+
+  /* ── Who can browse the list of people who need money ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_coach);
+    perform count(*) from public.sponsorship_seekers();
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_only', 'the list of seekers is for sponsors, not for a coach');
+
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    (select amount = 4000 and my_offer_status is null
+     from public.sponsorship_seekers() where request_id = v_req),
+    'a verified sponsor sees the request and the amount');
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers('Curling') where request_id = v_req)
+    and exists (select 1 from public.sponsorship_seekers(null, null, 'dubai') where request_id = v_req),
+    'and can filter and search it');
+  perform tests.as_user(v_fake);
+  perform tests.ok(
+    (select amount is null from public.sponsorship_seekers() where request_id = v_req),
+    'an unverified sponsor sees who is looking, not how much');
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (public.sponsorship_card(v_adult) ->> 'kind') = 'athlete'
+    and (public.sponsorship_card(v_adult) -> 'requests' -> 0 ->> 'amount') is null
+    and not (public.sponsorship_card(v_adult) ->> 'can_offer')::boolean,
+    'anyone sees on the profile that she is looking, without the amount or an offer button');
+
+  /* ── Offers ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_fake);
+    perform public.sponsor_make_offer(v_req, 'Send us your bank details', 100);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_not_verified', 'an unverified sponsor cannot make an offer');
+
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'We would like to cover the entry fee.', 2500);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_adult and type = 'sponsorship_offer' and entity_id = v_deal::text),
+    'a verified sponsor can, and the athlete is told');
+  v_hint := null;
+  begin
+    perform public.sponsor_make_offer(v_req, 'Again', 2600);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_sent', 'one live offer per sponsor per request');
+
+  v_err := null;
+  begin
+    perform tests.as_user(v_other);
+    perform public.respond_sponsorship(v_deal, true);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'a stranger cannot answer somebody else''s offer');
+  v_err := null;
+  begin
+    perform tests.as_user(v_brand);
+    perform public.respond_sponsorship(v_deal, true);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'nor can the sponsor accept their own');
+
+  perform tests.as_user(v_other);
+  set local role authenticated;
+  select count(*) into v_n from public.sponsorship_deals;
+  reset role;
+  perform tests.ok(v_n = 0, 'and a stranger cannot read deals from the table');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select (d ->> 'can_respond')::boolean and d ->> 'my_side' = 'athlete'
+     from jsonb_array_elements(public.my_sponsorship() -> 'deals') d where d ->> 'id' = v_deal::text),
+    'the athlete finds the offer in her portal, waiting for an answer');
+  perform tests.ok(public.respond_sponsorship(v_deal, true) = 'accepted', 'and can accept it');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'which the sponsor hears about');
+  v_hint := null;
+  begin
+    perform public.respond_sponsorship(v_deal, false);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_answered', 'an answer is given once');
+
+  /* ── Calls ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_fake);
+    perform public.save_sponsor_call(null, '{"title":"Free money for teens"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_not_verified', 'an unverified sponsor cannot post a call');
+
+  perform tests.as_user(v_brand);
+  v_call := public.save_sponsor_call(null,
+    '{"title":"Five individual athletes for 2027","offers":["cash","equipment"],"amount_min":2000,
+      "amount_max":8000,"slots":5}');
+  v_kids_call := public.save_sponsor_call(null,
+    '{"title":"Junior kit programme","offers":["equipment"],"open_to_minors":true}');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from public.sponsor_calls_feed() where call_id in (v_call, v_kids_call)) = 2,
+    'an adult athlete sees both calls');
+  perform tests.ok(
+    exists (select 1 from public.sponsor_directory('falcon') where user_id = v_brand and open_calls = 2),
+    'and finds the sponsor in the directory');
+  v_app := public.apply_to_sponsor_call(v_call, 'I race 800m and post every session.');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_application' and entity_id = v_app::text)
+    and (select my_status from public.sponsor_calls_feed() where call_id = v_call) = 'pending',
+    'she applies, and the sponsor is told');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_call, 'Twice');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_sent', 'one application per call');
+  perform public.withdraw_sponsorship(v_app);
+  perform tests.ok(
+    (select status from public.sponsorship_deals where id = v_app) = 'withdrawn',
+    'she can withdraw it while it is pending');
+  v_app := public.apply_to_sponsor_call(v_call, 'On reflection, yes.');
+  perform tests.as_user(v_brand);
+  perform tests.ok(public.respond_sponsorship(v_app, false) = 'declined', 'the sponsor answers an application');
+
+  /* ── A minor ── */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+  update public.guardian_consents set allow_sponsorship = false where minor_user_id = v_minor;
+
+  perform tests.as_user(v_minor);
+  perform tests.ok((public.my_sponsorship() ->> 'gate') = 'guardian_consent_required',
+    'a minor is told a guardian has to approve sponsorship');
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null, '{"title":"Junior nationals"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required',
+    'and the database refuses a request without it');
+  perform tests.ok(
+    (select count(*) from public.sponsor_calls_feed() where call_id in (v_call, v_kids_call)) = 1
+    and exists (select 1 from public.sponsor_calls_feed() where call_id = v_kids_call),
+    'a minor only sees calls open to under-18s');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_call, 'Please');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint in ('sponsor_call_adults_only'), 'and cannot apply to an adults-only call');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_kids_call, 'Please');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required', 'nor to a junior call without the scope');
+
+  /* The guardian ticks the fifth box. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  v_res := public.confirm_guardian_consent(v_token, true, true, true, false, true);
+  perform tests.ok((v_res ->> 'allow_sponsorship')::boolean
+                   and private.has_guardian_consent(v_minor, 'sponsorship'),
+    'a guardian can approve sponsorship');
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_sponsorship', 'SELECT'),
+    'the app can read the new scope');
+  update public.guardian_consents set guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+
+  perform tests.as_user(v_minor);
+  v_minor_req := public.save_sponsorship_request(null, '{"title":"Junior nationals travel","amount":1500}');
+  perform tests.ok(v_minor_req is not null, 'with it, the minor can ask');
+
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    (select is_minor from public.sponsorship_seekers() where request_id = v_minor_req),
+    'and a sponsor sees the request, marked as a minor');
+  v_deal := public.sponsor_make_offer(v_minor_req, 'Kit and travel for the season.', 1500);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_guardian and type = 'sponsorship_offer' and entity_id = v_deal::text),
+    'an offer to a minor is also sent to the guardian');
+  perform tests.ok(not private.can_message(v_brand, v_minor),
+    'a sponsor still cannot open a conversation with a minor');
+
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (select (d ->> 'can_respond')::boolean and d ->> 'my_side' = 'guardian'
+     from jsonb_array_elements(public.my_sponsorship() -> 'deals') d where d ->> 'id' = v_deal::text),
+    'the guardian finds their child''s offer in the portal');
+
+  /* A hidden minor is on nobody's list, whatever the scope says. */
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_minor)
+    and public.sponsorship_card(v_minor) is null,
+    'a minor hidden from discovery is not listed as seeking');
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+
+  /* The guardian takes the scope back: the request vanishes and the offer ends. */
+  update public.guardian_consents set allow_sponsorship = false
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_minor),
+    'when the guardian withdraws the scope the request is no longer listed');
+  perform tests.ok(
+    (select status from public.sponsorship_deals where id = v_deal) = 'declined',
+    'and the pending offer is closed');
+
+  /* Blocks. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_brand) on conflict do nothing;
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_adult),
+    'an athlete who blocked a sponsor is not on that sponsor''s list');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where sponsor_user_id = v_brand)
+    and not exists (select 1 from public.sponsor_directory() where user_id = v_brand),
+    'and no longer sees their calls or their name');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_brand;
+
+  /* Closing things. */
+  perform public.set_sponsorship_request_status(v_req, 'funded');
+  perform tests.as_user(v_brand);
+  v_hint := null;
+  begin
+    perform public.sponsor_make_offer(v_req, 'Late', 10);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_request_closed', 'a funded request takes no more offers');
+  perform public.set_sponsor_call_active(v_call, false);
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where call_id = v_call),
+    'a closed call leaves the feed');
+
+  /* An unverified sponsor's own call never reaches anyone. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_verified = false where id = v_brand;
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where sponsor_user_id = v_brand),
+    'calls from a sponsor who lost verification are hidden');
+
+  delete from auth.users where id in (v_brand, v_fake, v_climber);
+  delete from public.sponsorship_requests where athlete_user_id in (v_adult, v_minor);
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*

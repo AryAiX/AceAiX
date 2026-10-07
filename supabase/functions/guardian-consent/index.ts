@@ -114,6 +114,7 @@ interface CurrentScopes {
   allow_messaging: boolean;
   allow_media: boolean;
   allow_assessments: boolean;
+  allow_sponsorship: boolean;
 }
 
 /*
@@ -179,6 +180,17 @@ function decisionForm(
         <span class="opt-body">Short timed games that measure reaction, focus and football
         decision-making. Results stay private unless they choose to share them with clubs.
         Not a medical or psychological assessment.</span>
+      </span>
+    </label>
+
+    <label>
+      <input type="checkbox" name="allow_sponsorship" value="1" ${on("allow_sponsorship", false)}>
+      <span>
+        <span class="opt-title">Let them ask for and accept sponsorship</span>
+        <span class="opt-body">They can ask companies to back a tournament or a season, and apply to
+        sponsors' calls. Only sponsors AceAiX has verified can make them an offer, and a sponsor cannot
+        message them directly. No money moves through AceAiX: any agreement and payment is yours to
+        make with the sponsor.</span>
       </span>
     </label>
 
@@ -313,7 +325,7 @@ Deno.serve(async (req: Request) => {
        to see or change. */
     const { data: current } = await admin
       .from("guardian_consents")
-      .select("allow_discovery, allow_messaging, allow_media, allow_assessments")
+      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship")
       .eq("minor_user_id", consent.minor_user_id)
       .eq("guardian_email", consent.guardian_email)
       .eq("status", "granted")
@@ -382,6 +394,7 @@ Deno.serve(async (req: Request) => {
       p_allow_messaging: form.get("allow_messaging") === "1",
       p_allow_media: form.get("allow_media") === "1",
       p_allow_assessments: form.get("allow_assessments") === "1",
+      p_allow_sponsorship: form.get("allow_sponsorship") === "1",
     });
 
     if (error || !data?.ok) {
