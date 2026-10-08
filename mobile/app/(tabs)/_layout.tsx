@@ -340,6 +340,9 @@ export default function TabsLayout() {
           elevation: 0,
         },
         tabBarItemStyle: { paddingTop: 2 },
+        /* The icon wrapper defaults to a 31pt box, and the label lives inside
+           the icon here — so every label longer than three letters was being
+           cut to "PRO…". Let the wrapper take the whole slot. */
         tabBarIconStyle: { width: '100%' },
       }}
     >

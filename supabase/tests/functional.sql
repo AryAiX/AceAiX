@@ -37,6 +37,19 @@ begin
 end;
 $$;
 
+/* Request consent as the impersonated minor and hand back the token the
+   guardian would receive by e-mail. The request never returns it (0904/02);
+   the suite reads it from the table as the superuser it is. */
+create or replace function tests.request_consent(p_name text, p_email text, p_rel text)
+returns text language plpgsql as $$
+declare v_req jsonb; v_token text;
+begin
+  v_req := public.request_guardian_consent(p_name, p_email, p_rel);
+  select token into v_token from public.guardian_consents where id = (v_req ->> 'id')::uuid;
+  return v_token;
+end;
+$$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n── seeding ──'; end $$;
 
@@ -1622,6 +1635,1167 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── game intelligence ──'; end $$;
+
+/*
+ * docs/26. The rules worth pinning: consent is decided by age and country
+ * before any test starts; the pitch-decision answer key never leaves the
+ * database; a result outside human limits is stored but not scored; two
+ * attempts per test per fortnight; and nobody sees a result the athlete has
+ * not chosen to share — a minor's, only past the discovery gate as well.
+ */
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_other   uuid := '44444444-4444-4444-4444-444444444444';
+  v_session uuid;
+  v_second  uuid;
+  v_scen    jsonb;
+  v_choices jsonb := '[]';
+  v_best    text;
+  v_res     jsonb;
+  v_state   jsonb;
+  v_prof    public.gi_profiles;
+  v_err     text;
+  v_hint    text;
+  v_rows    integer;
+  v_token   text;
+  v_disc    boolean;
+  r         record;
+begin
+  -- ── consent ──
+  perform tests.as_user(v_adult);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'an adult athlete can consent for themselves');
+
+  /* The minor in this suite is fifteen: at the product default of 15 she
+     decides for herself… */
+  perform tests.as_user(v_minor);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'a fifteen-year-old consents for herself at the default age');
+
+  /* …but not in a country whose law says sixteen. */
+  update public.user_profiles set country = 'Germany' where id = v_minor;
+  perform tests.ok((public.gi_my_state()->>'consent') = 'guardian_required',
+    'in Germany the same fifteen-year-old needs a guardian');
+  perform tests.ok((public.gi_my_state()->>'self_consent_age')::int = 16,
+    'and the screen is told the age that applies');
+
+  v_hint := null;
+  begin
+    perform public.gi_start_session('test', 250, 2);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_consent_required',
+    'the database, not the screen, refuses to start a session without consent');
+
+  /* A guardian ticks the new scope on a fresh request. Granting it must
+     supersede the consent already in force rather than collide with it. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  v_res := public.confirm_guardian_consent(v_token, true, true, true, true);
+  perform tests.ok((v_res->>'ok')::boolean,
+    'a second approval is accepted while an earlier one is in force');
+  select count(*) into v_rows from public.guardian_consents
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(v_rows = 1, 'and exactly one consent is live afterwards');
+  perform tests.ok((public.gi_my_state()->>'consent') = 'ok',
+    'with assessments approved, she can take the games');
+
+  /* The new scope is readable by the app, which names its columns. */
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_assessments', 'SELECT'),
+    'the app can read the new consent scope');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    update public.guardian_consents set allow_assessments = true
+     where minor_user_id = v_minor;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_minor);
+  perform tests.ok(v_err is not null, 'and the minor cannot tick it herself');
+
+  /* A second guardian's approval sits beside the first rather than replacing it. */
+  v_token := tests.request_consent('Other Parent', 'other.parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, false, false, false);
+  select count(*) into v_rows from public.guardian_consents
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(v_rows = 2 and (public.gi_my_state()->>'consent') = 'ok',
+    'another guardian''s narrower approval does not undo the first');
+  update public.guardian_consents set status = 'revoked'
+   where minor_user_id = v_minor and guardian_email = 'other.parent@test.local';
+
+  /* Approving discovery two weeks ago is not approving testing. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true);
+  perform tests.ok((public.gi_my_state()->>'consent') = 'guardian_required',
+    'a guardian who leaves the box unticked has not approved assessments');
+  update public.user_profiles set country = null where id = v_minor;
+
+  -- ── the answer key ──
+  perform tests.as_user(v_adult);
+  v_session := public.gi_start_session('ios:phone', 245, 2);
+  v_scen := public.gi_scenarios_for_session(v_session, 8);
+  perform tests.ok(jsonb_array_length(v_scen) = 8, 'a session is handed eight scenarios');
+  perform tests.ok(not (v_scen::text like '%answer_key%'),
+    'and none of them carries the answer key');
+  perform tests.ok(not (v_scen::text like '%"title"%'),
+    'nor the authoring label, which names the answer');
+  perform tests.ok(public.gi_scenarios_for_session(v_session, 8) = v_scen,
+    'asking again returns the same eight, not a fresh draw to shop from');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    perform count(*) from public.gi_scenarios;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_adult);
+  perform tests.ok(v_err is not null,
+    'a client cannot read the scenario table directly');
+
+  -- ── scoring ──
+  v_res := public.gi_submit_result(v_session, 'reaction',
+    '{"trials":16,"correct":16,"median_ms":120,"anticipations":0}');
+  perform tests.ok(not (v_res->>'valid')::boolean and v_res->>'reason' = 'implausible',
+    'a reaction time faster than a human hand is stored as invalid, not scored');
+
+  v_hint := null;
+  begin
+    perform public.gi_submit_result(v_session, 'reaction',
+      '{"trials":16,"correct":15,"median_ms":480,"anticipations":0}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_already_done', 'one result per test per session');
+
+  v_res := public.gi_submit_result(v_session, 'go_no_go',
+    '{"go_trials":30,"go_hits":29,"go_median_ms":390,"nogo_trials":10,"nogo_withheld":9}');
+  perform tests.ok((v_res->>'valid')::boolean and (v_res->>'score')::numeric between 0 and 100,
+    'go/no-go scores between 0 and 100');
+
+  v_res := public.gi_submit_result(v_session, 'flanker',
+    '{"trials":24,"correct":23,"congruent_ms":520,"incongruent_ms":590}');
+  perform tests.ok((v_res->>'valid')::boolean, 'flanker scores');
+
+  v_res := public.gi_submit_result(v_session, 'tracking',
+    '{"rounds":5,"targets_total":17,"targets_found":15,"max_level":5}');
+  perform tests.ok((v_res->>'valid')::boolean, 'tracking scores');
+
+  v_res := public.gi_submit_result(v_session, 'anticipation',
+    '{"trials":10,"answered":10,"mean_error":0.06}');
+  perform tests.ok((v_res->>'valid')::boolean, 'anticipation scores');
+
+  /* Pick the best option for every issued scenario, plus one that was never
+     issued: the stray must not count. */
+  for r in
+    select (e->>'id')::uuid as id from jsonb_array_elements(v_scen) e
+  loop
+    select k.key into v_best from public.gi_scenarios s, jsonb_each_text(s.answer_key) k
+     where s.id = r.id order by k.value::numeric desc limit 1;
+    v_choices := v_choices || jsonb_build_object('scenario', r.id, 'option', v_best, 'ms', 1200);
+  end loop;
+  v_choices := v_choices || jsonb_build_object(
+    'scenario', (select id from public.gi_scenarios
+                  where not (id = any(array(select (e->>'id')::uuid from jsonb_array_elements(v_scen) e)))
+                  limit 1),
+    'option', 'a', 'ms', 900);
+
+  v_res := public.gi_submit_result(v_session, 'pitch_decision',
+    jsonb_build_object('choices', v_choices));
+  perform tests.ok((v_res->>'valid')::boolean and (v_res->>'score')::numeric >= 85,
+    'the best answer to every scenario scores high, scored on the server');
+
+  v_res := public.gi_finish_session(v_session);
+  select * into v_prof from public.gi_profiles where user_id = v_adult;
+  perform tests.ok(v_prof.tests_completed = 5 and v_prof.overall is not null,
+    'five valid tests of six make an overall; the invalid one is not in it');
+  perform tests.ok(not (v_prof.subscores ? 'reaction'),
+    'and the invalid reaction result is not a sub-score');
+  perform tests.ok(v_prof.confidence = 'medium', 'five of six is medium confidence');
+  perform tests.ok(v_prof.percentile is null,
+    'no percentile from a cohort of one');
+
+  -- ── attempts ──
+  v_second := public.gi_start_session('ios:phone', 250, 2);
+  v_res := public.gi_submit_result(v_second, 'reaction',
+    '{"trials":16,"correct":16,"median_ms":470,"anticipations":0}');
+
+  /* Leaving a field out must not slip past the range checks: a NULL compares
+     as "not out of range", and least(100, NULL) is 100. */
+  v_res := public.gi_submit_result(v_second, 'tracking',
+    '{"rounds":6,"targets_total":20,"max_level":8}');
+  perform tests.ok(not (v_res->>'valid')::boolean,
+    'a result with a metric missing is invalid, not a perfect score');
+  perform public.gi_finish_session(v_second);
+  select * into v_prof from public.gi_profiles where user_id = v_adult;
+  perform tests.ok(v_prof.tests_completed = 6 and v_prof.confidence = 'high',
+    'a retake fills the gap and the best-of window now holds all six');
+
+  v_second := public.gi_start_session('ios:phone', 250, 2);
+  v_hint := null;
+  begin
+    perform public.gi_submit_result(v_second, 'reaction',
+      '{"trials":16,"correct":16,"median_ms":400,"anticipations":0}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'gi_attempt_limit',
+    'a third attempt at the same test inside fourteen days is refused');
+
+  -- ── nobody writes a score ──
+  v_err := null;
+  begin
+    set local role authenticated;
+    update public.gi_profiles set overall = 99 where user_id = v_adult;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'an athlete cannot write their own result');
+
+  -- ── who sees what ──
+  perform tests.as_user(v_coach);
+  perform tests.ok(public.get_game_intelligence(v_adult) is null,
+    'a coach sees nothing until the athlete shares');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(true, false);
+
+  perform tests.as_user(v_coach);
+  v_res := public.get_game_intelligence(v_adult);
+  perform tests.ok(v_res->>'view' = 'recruiter' and v_res ? 'subscores',
+    'once shared, a coach sees the overall and the sub-scores');
+
+  perform tests.as_user(v_other);
+  perform tests.ok(public.get_game_intelligence(v_adult) is null,
+    'another athlete sees nothing while the badge is off');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(true, true);
+  perform tests.as_user(v_other);
+  v_res := public.get_game_intelligence(v_adult);
+  perform tests.ok(v_res->>'view' = 'badge' and not (v_res ? 'subscores'),
+    'with the badge on, another athlete sees the badge and nothing else');
+
+  perform tests.as_user(v_adult);
+  perform public.gi_set_sharing(false, true);
+  perform tests.ok(not (select show_badge from public.gi_profiles where user_id = v_adult),
+    'turning sharing off takes the badge with it');
+
+  /* A minor's shared result stays behind the discovery gate. */
+  insert into public.gi_profiles (athlete_id, user_id, overall, subscores, tests_completed,
+                                  share_with_clubs, show_badge)
+  select id, v_minor, 61, '{"tracking":61}', 4, true, true
+    from public.athlete_profiles where user_id = v_minor
+  on conflict (athlete_id) do update set overall = 61, share_with_clubs = true;
+
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(public.get_game_intelligence(v_minor) is null,
+    'a minor''s shared result is invisible while discovery is not approved');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  delete from public.gi_profiles where user_id = v_minor;
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── stories and reels ──'; end $$;
+
+/*
+ * 0925/01. A story is a 24-hour post, so it carries every gate a post does:
+ * a hidden minor's story reaches nobody, audience and blocks are honoured,
+ * and the only way in is create_story, which checks what a policy cannot.
+ */
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  v_other uuid := '44444444-4444-4444-4444-444444444444';
+  v_story uuid;
+  v_minor_story uuid;
+  v_err   text;
+  v_hint  text;
+  v_disc  boolean;
+  v_rows  integer;
+begin
+  perform tests.as_user(v_adult);
+  v_story := public.create_story('card', null, null,
+    '{"text":"New PB","background":"warm","sticker":"pb","stat":"2:09","extra":"dropped"}', 'public');
+  perform tests.ok(v_story is not null, 'an athlete can post a card story');
+  perform tests.ok(
+    (select not (card ? 'extra') from public.stories where id = v_story),
+    'only the card keys the app renders are kept');
+
+  v_hint := null;
+  begin
+    perform public.create_story('photo', v_other::text || '/x.jpg', null, '{}', 'public');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'story_media_missing',
+    'a photo story must point at the author''s own upload');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.stories (author_id, media_type, card, audience)
+    values (v_adult, 'card', '{"text":"sneaky"}', 'public');
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'stories cannot be written around create_story');
+
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_adult)) = 1,
+    'a public story is visible to another account');
+  perform public.mark_story_viewed(v_story);
+  perform tests.ok(
+    (select seen from public.user_stories(v_adult)) = true,
+    'and viewing it is remembered');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select view_count from public.user_stories(v_adult)) = 1,
+    'the author sees how many people watched');
+
+  /* A minor whose guardian has not approved discovery reaches nobody. */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  perform tests.as_user(v_minor);
+  v_minor_story := public.create_story('card', null, null, '{"text":"Match day","background":"hero"}', 'public');
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_minor)) = 0,
+    'a hidden minor''s story is visible to no one else');
+  v_err := null;
+  begin
+    set local role authenticated;
+    select count(*) into v_rows from public.stories where author_id = v_minor;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.as_user(v_coach);
+  perform tests.ok(coalesce(v_rows, 0) = 0, 'not even by reading the table directly');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* Blocking hides stories both ways. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_other)
+  on conflict do nothing;
+  perform tests.as_user(v_other);
+  perform tests.ok(
+    (select count(*) from public.user_stories(v_adult)) = 0,
+    'someone the author blocked does not see their stories');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_other;
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from public.story_rail(30) where is_self) = 1,
+    'my own stories lead the rail');
+  perform public.delete_story(v_story);
+  perform tests.ok(
+    not exists (select 1 from public.stories where id = v_story),
+    'and I can take one down');
+
+  perform tests.ok((select count(*) from public.get_reels(12, null)) >= 0, 'get_reels executes');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── explore ──'; end $$;
+
+/*
+ * 1007/01. Explore shows strangers' clips, so it is the strictest read of
+ * video in the app: public only, and every author gate the feed applies.
+ */
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  v_other uuid := '44444444-4444-4444-4444-444444444444';
+  v_public uuid := gen_random_uuid();
+  v_private uuid := gen_random_uuid();
+  v_photo uuid := gen_random_uuid();
+  v_minor_post uuid := gen_random_uuid();
+  v_clip uuid := gen_random_uuid();
+  v_secret_clip uuid := gen_random_uuid();
+  v_athlete uuid;
+  v_disc boolean;
+  v_sport text;
+  v_err text;
+begin
+  select id, sport into v_athlete, v_sport from public.athlete_profiles where user_id = v_adult;
+
+  insert into public.posts (id, author_id, type, caption, text, audience, media) values
+    (v_public, v_adult, 'video', 'public clip', 'public clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/a.mp4', 'type', 'video'))),
+    (v_private, v_adult, 'video', 'followers clip', 'followers clip', 'followers',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/b.mp4', 'type', 'video'))),
+    (v_photo, v_adult, 'standard', 'a photo', 'a photo', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_adult::text || '/c.jpg', 'type', 'photo'))),
+    (v_minor_post, v_minor, 'video', 'minor clip', 'minor clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_minor::text || '/d.mp4', 'type', 'video')));
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count) values
+    (v_clip, v_athlete, 'Highlight clip', 'highlight_reel', v_adult::text || '/highlights/h.mp4', true, 12),
+    (v_secret_clip, v_athlete, 'Private clip', 'video', v_adult::text || '/highlights/p.mp4', false, 0);
+  /* Following must not widen Explore: it stays public-only. */
+  insert into public.follows (follower_id, following_id) values (v_coach, v_adult) on conflict do nothing;
+
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    exists (select 1 from public.explore_videos(60, 0, null) where id = v_public),
+    'a public video post is on Explore');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_private),
+    'a followers-only clip is not, even for a follower');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_photo),
+    'a photo post is not a clip');
+  perform tests.ok(
+    (select type = 'highlight' and view_count = 12 and media -> 0 ->> 'type' = 'video'
+     from public.explore_videos(60, 0, null) where id = v_clip),
+    'a public highlight is on Explore, in the feed''s shape');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_secret_clip),
+    'a private highlight is not');
+  perform tests.ok(
+    (select viewer_follows from public.explore_videos(60, 0, null) where id = v_public),
+    'it knows whether I already follow the author');
+
+  /* A minor whose guardian has not approved discovery reaches nobody. */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_minor),
+    'a hidden minor''s clips are on nobody''s Explore');
+  perform tests.as_user(v_minor);
+  perform tests.ok(
+    exists (select 1 from public.explore_videos(60, 0, null) where id = v_minor_post),
+    'though the minor still sees their own');
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* Blocks, both directions. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_other) on conflict do nothing;
+  perform tests.as_user(v_other);
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_adult),
+    'someone the author blocked sees none of their clips');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_other;
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_other, v_adult) on conflict do nothing;
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where author_id = v_adult),
+    'nor does someone who blocked the author');
+  delete from public.user_blocks where blocker_id = v_other and blocked_id = v_adult;
+
+  /* Reels: a clip uploaded to a profile is a reel too. */
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_clip and type = 'highlight'),
+    'a public profile clip plays in Reels');
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, null) where id = v_secret_clip),
+    'a private one does not');
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_private),
+    'Reels still carry a followed author''s followers-only clip, as the feed does');
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, now() - interval '1 day') where id = v_clip),
+    'the cursor applies to profile clips as well');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    exists (select 1 from public.get_reels(30, null) where id = v_clip),
+    'and I see my own profile clips in Reels');
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  insert into public.athlete_media (athlete_id, title, media_type, storage_url, is_public)
+  select ap.id, 'Minor clip', 'video', v_minor::text || '/highlights/m.mp4', true
+  from public.athlete_profiles ap where ap.user_id = v_minor;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    not exists (select 1 from public.get_reels(30, null) where author_id = v_minor),
+    'a hidden minor''s profile clips reach nobody''s Reels');
+  delete from public.athlete_media where storage_url = v_minor::text || '/highlights/m.mp4';
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+
+  /* A hidden or moderated post drops out. */
+  update public.posts set is_hidden = true where id = v_public;
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, null) where id = v_public),
+    'a hidden post leaves Explore');
+  update public.posts set is_hidden = false where id = v_public;
+
+  /* Paging and the sport filter. */
+  perform tests.ok(
+    not exists (
+      select 1 from public.explore_videos(1, 0, null) a
+      join public.explore_videos(1, 1, null) b on a.id = b.id),
+    'pages do not repeat a clip');
+  perform tests.ok(
+    not exists (select 1 from public.explore_videos(60, 0, 'no-such-sport')),
+    'the sport filter narrows the grid');
+  perform tests.ok(
+    v_sport is null
+    or exists (select 1 from public.explore_sports() where sport = v_sport and clips >= 2),
+    'explore_sports counts what this viewer can watch');
+
+  v_err := null;
+  begin
+    perform tests.as_user(null);
+    perform public.explore_videos(10, 0, null);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'Explore needs a signed-in account');
+
+  delete from public.posts where id in (v_public, v_private, v_photo, v_minor_post);
+  delete from public.athlete_media where id in (v_clip, v_secret_clip);
+  delete from public.follows where follower_id = v_coach and following_id = v_adult;
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sponsorship ──'; end $$;
+
+/*
+ * 1008/02. Money offers to young athletes: only a verified sponsor may make
+ * one, only on a request the athlete opened, and a minor's side of it exists
+ * only while a guardian's consent carries the sponsorship scope.
+ */
+do $$
+declare
+  v_adult    uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor    uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_other    uuid := '44444444-4444-4444-4444-444444444444';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_brand    uuid := 'aaaaaaaa-5555-4000-8000-000000000001';
+  v_fake     uuid := 'aaaaaaaa-5555-4000-8000-000000000002';
+  v_climber  uuid := 'aaaaaaaa-5555-4000-8000-000000000003';
+  v_req      uuid;
+  v_minor_req uuid;
+  v_call     uuid;
+  v_kids_call uuid;
+  v_deal     uuid;
+  v_app      uuid;
+  v_hint     text;
+  v_err      text;
+  v_token    text;
+  v_res      jsonb;
+  v_disc     boolean;
+  v_n        integer;
+begin
+  /* Signup: `sponsor` is a role a person may pick; `super_admin` is not. */
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_brand,   'brand@test.local',   '{"full_name":"Falcon Energy","role":"sponsor"}'),
+    (v_fake,    'fake@test.local',    '{"full_name":"Totally A Brand","role":"sponsor"}'),
+    (v_climber, 'climber@test.local', '{"full_name":"Wants Root","role":"super_admin"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_brand, v_fake, v_climber);
+  update public.user_profiles set is_verified = true where id = v_brand;
+
+  perform tests.ok(
+    (select role::text from public.user_profiles where id = v_brand) = 'sponsor'
+    and exists (select 1 from public.sponsor_profiles where user_id = v_brand),
+    'a sponsor signs up as a sponsor and gets a brand profile');
+  perform tests.ok(
+    (select role::text from public.user_profiles where id = v_climber) = 'athlete',
+    'signup metadata cannot claim super_admin');
+
+  perform tests.as_user(v_brand);
+  perform public.save_sponsor_profile(
+    '{"company_name":"Falcon Energy","industry":"Energy drinks","website":"https://falcon.example",
+      "offers":["cash","equipment","yacht"],"sports":["Tennis","Athletics"],"budget_min":2000,"budget_max":20000}');
+  perform tests.ok(
+    (select offers = array['cash','equipment'] and company_name = 'Falcon Energy'
+     from public.sponsor_profiles where user_id = v_brand),
+    'the brand profile saves, and an invented tag is dropped');
+  v_hint := null;
+  begin
+    perform tests.as_user(v_adult);
+    perform public.save_sponsor_profile('{"company_name":"Me Inc"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_only', 'an athlete has no brand profile to save');
+
+  /* ── An adult athlete asks ── */
+  perform tests.as_user(v_adult);
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Dubai Open entry and travel","event_name":"Dubai Open","event_date":"2027-03-10",
+      "needs":["entry_fee","travel","a pony"],"gives":["logo_on_kit","social_posts"],"amount":4000,
+      "pitch":"Ranked third in the UAE under-21s."}');
+  perform tests.ok(
+    (select needs = array['entry_fee','travel'] and status = 'open' and amount = 4000
+     from public.sponsorship_requests where id = v_req),
+    'an athlete can ask for sponsorship');
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.sponsorship_requests (athlete_user_id, title) values (v_adult, 'Around the RPC');
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'requests cannot be written around the RPC');
+
+  v_hint := null;
+  begin
+    perform tests.as_user(v_coach);
+    perform public.save_sponsorship_request(null, '{"title":"A coach wants money"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'athlete_only', 'only an athlete can ask');
+
+  /* ── Who can browse the list of people who need money ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_coach);
+    perform count(*) from public.sponsorship_seekers();
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_only', 'the list of seekers is for sponsors, not for a coach');
+
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    (select amount = 4000 and my_offer_status is null
+     from public.sponsorship_seekers() where request_id = v_req),
+    'a verified sponsor sees the request and the amount');
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers('Curling') where request_id = v_req)
+    and exists (select 1 from public.sponsorship_seekers(null, null, 'dubai') where request_id = v_req),
+    'and can filter and search it');
+  perform tests.as_user(v_fake);
+  perform tests.ok(
+    (select amount is null from public.sponsorship_seekers() where request_id = v_req),
+    'an unverified sponsor sees who is looking, not how much');
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (public.sponsorship_card(v_adult) ->> 'kind') = 'athlete'
+    and (public.sponsorship_card(v_adult) -> 'requests' -> 0 ->> 'amount') is null
+    and not (public.sponsorship_card(v_adult) ->> 'can_offer')::boolean,
+    'anyone sees on the profile that she is looking, without the amount or an offer button');
+
+  /* ── Offers ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_fake);
+    perform public.sponsor_make_offer(v_req, 'Send us your bank details', 100);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_not_verified', 'an unverified sponsor cannot make an offer');
+
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'We would like to cover the entry fee.', 2500);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_adult and type = 'sponsorship_offer' and entity_id = v_deal::text),
+    'a verified sponsor can, and the athlete is told');
+  v_hint := null;
+  begin
+    perform public.sponsor_make_offer(v_req, 'Again', 2600);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_sent', 'one live offer per sponsor per request');
+
+  v_err := null;
+  begin
+    perform tests.as_user(v_other);
+    perform public.respond_sponsorship(v_deal, true);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'a stranger cannot answer somebody else''s offer');
+  v_err := null;
+  begin
+    perform tests.as_user(v_brand);
+    perform public.respond_sponsorship(v_deal, true);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'nor can the sponsor accept their own');
+
+  perform tests.as_user(v_other);
+  set local role authenticated;
+  select count(*) into v_n from public.sponsorship_deals;
+  reset role;
+  perform tests.ok(v_n = 0, 'and a stranger cannot read deals from the table');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select (d ->> 'can_respond')::boolean and d ->> 'my_side' = 'athlete'
+     from jsonb_array_elements(public.my_sponsorship() -> 'deals') d where d ->> 'id' = v_deal::text),
+    'the athlete finds the offer in her portal, waiting for an answer');
+  perform tests.ok(public.respond_sponsorship(v_deal, true) = 'accepted', 'and can accept it');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'which the sponsor hears about');
+  v_hint := null;
+  begin
+    perform public.respond_sponsorship(v_deal, false);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_answered', 'an answer is given once');
+
+  /* ── Calls ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_fake);
+    perform public.save_sponsor_call(null, '{"title":"Free money for teens"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsor_not_verified', 'an unverified sponsor cannot post a call');
+
+  perform tests.as_user(v_brand);
+  v_call := public.save_sponsor_call(null,
+    '{"title":"Five individual athletes for 2027","offers":["cash","equipment"],"amount_min":2000,
+      "amount_max":8000,"slots":5}');
+  v_kids_call := public.save_sponsor_call(null,
+    '{"title":"Junior kit programme","offers":["equipment"],"open_to_minors":true}');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from public.sponsor_calls_feed() where call_id in (v_call, v_kids_call)) = 2,
+    'an adult athlete sees both calls');
+  perform tests.ok(
+    exists (select 1 from public.sponsor_directory('falcon') where user_id = v_brand and open_calls = 2),
+    'and finds the sponsor in the directory');
+  v_app := public.apply_to_sponsor_call(v_call, 'I race 800m and post every session.');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_application' and entity_id = v_app::text)
+    and (select my_status from public.sponsor_calls_feed() where call_id = v_call) = 'pending',
+    'she applies, and the sponsor is told');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_call, 'Twice');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_already_sent', 'one application per call');
+  perform public.withdraw_sponsorship(v_app);
+  perform tests.ok(
+    (select status from public.sponsorship_deals where id = v_app) = 'withdrawn',
+    'she can withdraw it while it is pending');
+  v_app := public.apply_to_sponsor_call(v_call, 'On reflection, yes.');
+  perform tests.as_user(v_brand);
+  perform tests.ok(public.respond_sponsorship(v_app, false) = 'declined', 'the sponsor answers an application');
+
+  /* ── A minor ── */
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+  update public.guardian_consents set allow_sponsorship = false where minor_user_id = v_minor;
+
+  perform tests.as_user(v_minor);
+  perform tests.ok((public.my_sponsorship() ->> 'gate') = 'guardian_consent_required',
+    'a minor is told a guardian has to approve sponsorship');
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null, '{"title":"Junior nationals"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required',
+    'and the database refuses a request without it');
+  perform tests.ok(
+    (select count(*) from public.sponsor_calls_feed() where call_id in (v_call, v_kids_call)) = 1
+    and exists (select 1 from public.sponsor_calls_feed() where call_id = v_kids_call),
+    'a minor only sees calls open to under-18s');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_call, 'Please');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint in ('sponsor_call_adults_only'), 'and cannot apply to an adults-only call');
+  v_hint := null;
+  begin
+    perform public.apply_to_sponsor_call(v_kids_call, 'Please');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required', 'nor to a junior call without the scope');
+
+  /* The guardian ticks the fifth box. */
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  v_res := public.confirm_guardian_consent(v_token, true, true, true, false, true);
+  perform tests.ok((v_res ->> 'allow_sponsorship')::boolean
+                   and private.has_guardian_consent(v_minor, 'sponsorship'),
+    'a guardian can approve sponsorship');
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_sponsorship', 'SELECT'),
+    'the app can read the new scope');
+  update public.guardian_consents set guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+
+  perform tests.as_user(v_minor);
+  v_minor_req := public.save_sponsorship_request(null, '{"title":"Junior nationals travel","amount":1500}');
+  perform tests.ok(v_minor_req is not null, 'with it, the minor can ask');
+
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    (select is_minor from public.sponsorship_seekers() where request_id = v_minor_req),
+    'and a sponsor sees the request, marked as a minor');
+  v_deal := public.sponsor_make_offer(v_minor_req, 'Kit and travel for the season.', 1500);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_guardian and type = 'sponsorship_offer' and entity_id = v_deal::text),
+    'an offer to a minor is also sent to the guardian');
+  perform tests.ok(not private.can_message(v_brand, v_minor),
+    'a sponsor still cannot open a conversation with a minor');
+
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (select (d ->> 'can_respond')::boolean and d ->> 'my_side' = 'guardian'
+     from jsonb_array_elements(public.my_sponsorship() -> 'deals') d where d ->> 'id' = v_deal::text),
+    'the guardian finds their child''s offer in the portal');
+
+  /* A hidden minor is on nobody's list, whatever the scope says. */
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  perform tests.as_user(v_brand);
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_minor)
+    and public.sponsorship_card(v_minor) is null,
+    'a minor hidden from discovery is not listed as seeking');
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+
+  /* The guardian takes the scope back: the request vanishes and the offer ends. */
+  update public.guardian_consents set allow_sponsorship = false
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_minor),
+    'when the guardian withdraws the scope the request is no longer listed');
+  perform tests.ok(
+    (select status from public.sponsorship_deals where id = v_deal) = 'declined',
+    'and the pending offer is closed');
+
+  /* Blocks. */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_adult, v_brand) on conflict do nothing;
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where athlete_user_id = v_adult),
+    'an athlete who blocked a sponsor is not on that sponsor''s list');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where sponsor_user_id = v_brand)
+    and not exists (select 1 from public.sponsor_directory() where user_id = v_brand),
+    'and no longer sees their calls or their name');
+  delete from public.user_blocks where blocker_id = v_adult and blocked_id = v_brand;
+
+  /* Closing things. */
+  perform public.set_sponsorship_request_status(v_req, 'funded');
+  perform tests.as_user(v_brand);
+  v_hint := null;
+  begin
+    perform public.sponsor_make_offer(v_req, 'Late', 10);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_request_closed', 'a funded request takes no more offers');
+  perform public.set_sponsor_call_active(v_call, false);
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where call_id = v_call),
+    'a closed call leaves the feed');
+
+  /* An unverified sponsor's own call never reaches anyone. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_verified = false where id = v_brand;
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    not exists (select 1 from public.sponsor_calls_feed() where sponsor_user_id = v_brand),
+    'calls from a sponsor who lost verification are hidden');
+
+  delete from auth.users where id in (v_brand, v_fake, v_climber);
+  delete from public.sponsorship_requests where athlete_user_id in (v_adult, v_minor);
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── booking a coach ──'; end $$;
+
+/*
+ * 1009/01. A calendar of free places, booked at once. The last place goes to
+ * one person, names are for the people in the booking, and a minor meets an
+ * adult coach only if the coach is verified and a guardian ticked the box.
+ */
+do $$
+declare
+  v_adult    uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor    uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_other    uuid := '44444444-4444-4444-4444-444444444444';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_newcoach uuid := 'aaaaaaaa-6666-4000-8000-000000000001';
+  v_session  uuid;
+  v_class    uuid;
+  v_flex     uuid;
+  v_theirs   uuid;
+  v_slot     uuid;
+  v_class_slot uuid;
+  v_flex_slot uuid;
+  v_their_slot uuid;
+  v_booking  uuid;
+  v_b2       uuid;
+  v_page     jsonb;
+  v_hint     text;
+  v_err      text;
+  v_n        integer;
+  v_t        timestamptz := date_trunc('hour', now()) + interval '3 days';
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_newcoach, 'new.coach@test.local', '{"full_name":"New Coach","role":"coach"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = v_newcoach;
+
+  /* ── The coach sets up ── */
+  v_hint := null;
+  begin
+    perform tests.as_user(v_adult);
+    perform public.set_coaching_status(true, 'I coach now');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coach_only', 'only a coach can take students');
+
+  perform tests.as_user(v_coach);
+  v_session := public.save_coaching_service(null,
+    '{"kind":"session","title":"One-to-one strength session","duration_minutes":60,"capacity":8,
+      "price":250,"location_mode":"fixed","location":"Al Quoz Performance Gym"}');
+  v_class := public.save_coaching_service(null,
+    '{"kind":"class","title":"Saturday speed class","duration_minutes":90,"capacity":2,
+      "price":80,"location_mode":"fixed","location":"Track 2, Dubai Sports City"}');
+  v_flex := public.save_coaching_service(null,
+    '{"kind":"consultation","title":"Programme consultation","duration_minutes":30,"location_mode":"flexible"}');
+  perform tests.ok(
+    (select capacity from public.coaching_services where id = v_session) = 1
+    and (select capacity from public.coaching_services where id = v_class) = 2,
+    'a one-to-one service takes one person whatever the form says; a class keeps its places');
+  v_hint := null;
+  begin
+    perform public.save_coaching_service(null, '{"kind":"session","title":"Nowhere","location_mode":"fixed"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_location_required', 'a fixed-place service has to say where');
+
+  perform tests.ok(
+    public.add_coaching_slots(v_session, array[v_t, v_t + interval '1 day', now() - interval '1 hour']) = 2,
+    'the coach opens times; one in the past is skipped');
+  perform tests.ok(
+    public.add_coaching_slots(v_class, array[v_t + interval '30 minutes', v_t + interval '5 hours']) = 1,
+    'a time that overlaps one already open is skipped: a coach is in one place');
+  perform tests.ok(public.add_coaching_slots(v_flex, array[v_t + interval '2 days']) = 1, 'and one for the consultation');
+  select id into v_slot from public.coaching_slots where service_id = v_session and starts_at = v_t;
+  select id into v_class_slot from public.coaching_slots where service_id = v_class;
+  select id into v_flex_slot from public.coaching_slots where service_id = v_flex;
+
+  v_err := null;
+  begin
+    set local role authenticated;
+    insert into public.coaching_slots (service_id, coach_user_id, starts_at, ends_at, capacity)
+    values (v_session, v_coach, v_t + interval '9 days', v_t + interval '9 days 1 hour', 1);
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'slots cannot be written around the RPC');
+
+  /* ── Not taking students yet ── */
+  perform tests.as_user(v_adult);
+  v_page := public.coach_booking_page(v_coach);
+  perform tests.ok(
+    v_page ->> 'gate' = 'coach_not_accepting' and jsonb_array_length(v_page -> 'slots') = 0,
+    'a coach who is not taking students shows no calendar');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coach_not_accepting', 'and cannot be booked');
+
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_status(true, 'Strength and speed for footballers.');
+
+  /* ── An adult books ── */
+  perform tests.as_user(v_adult);
+  v_page := public.coach_booking_page(v_coach);
+  perform tests.ok(
+    v_page ->> 'gate' = 'ok'
+    and jsonb_array_length(v_page -> 'services') = 3
+    and jsonb_array_length(v_page -> 'slots') = 4,
+    'once they are, an athlete sees the services and the free times');
+  perform tests.ok(
+    exists (select 1 from public.bookable_coaches('strength') where id = v_coach and open_slots = 4 and price_from = 80),
+    'and finds the coach among those taking students');
+
+  v_booking := public.book_coaching_slot(v_slot, 'Left hamstring is recovering.');
+  perform tests.ok(
+    (select location from public.coaching_bookings where id = v_booking) = 'Al Quoz Performance Gym'
+    and exists (select 1 from public.notifications
+                where user_id = v_coach and type = 'coaching_booked' and entity_id = v_booking::text),
+    'she books a time at the coach''s place, and the coach is told');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_already_booked', 'the same person cannot book the same time twice');
+
+  perform tests.as_user(v_other);
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_slot_full', 'a one-to-one time that is taken is full');
+  perform tests.ok(
+    (select (x ->> 'spots_left')::int = 0 and x ->> 'my_booking_id' is null
+     from jsonb_array_elements(public.coach_booking_page(v_coach) -> 'slots') x where x ->> 'id' = v_slot::text),
+    'someone else sees that it is full, not who took it');
+  set local role authenticated;
+  select count(*) into v_n from public.coaching_bookings;
+  reset role;
+  perform tests.ok(v_n = 0, 'nor can they read bookings from the table');
+
+  /* Flexible: the athlete names the place. */
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_flex_slot, null, null);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_location_required', 'a flexible service needs the athlete to say where');
+  v_b2 := public.book_coaching_slot(v_flex_slot, null, 'Kite Beach running track');
+  perform tests.ok(
+    (select location from public.coaching_bookings where id = v_b2) = 'Kite Beach running track',
+    'and keeps the place they chose');
+
+  /* A class fills up place by place. */
+  perform public.book_coaching_slot(v_class_slot);
+  perform tests.as_user(v_adult);
+  perform public.book_coaching_slot(v_class_slot);
+  perform tests.as_user(v_newcoach);
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_class_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'coaching_slot_full', 'a class with two places takes two people');
+
+  /* ── The coach's calendar ── */
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    (select jsonb_array_length(x -> 'bookings') = 1
+            and x -> 'bookings' -> 0 ->> 'note' = 'Left hamstring is recovering.'
+     from jsonb_array_elements(public.my_coaching() -> 'slots') x where x ->> 'id' = v_slot::text)
+    and (select jsonb_array_length(x -> 'bookings') = 2
+         from jsonb_array_elements(public.my_coaching() -> 'slots') x where x ->> 'id' = v_class_slot::text),
+    'the coach sees who is coming to each time, with their note');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'own_calendar', 'a coach cannot book themselves');
+
+  /* ── Cancelling ── */
+  v_err := null;
+  begin
+    perform tests.as_user(v_other);
+    perform public.cancel_coaching_booking(v_booking);
+  exception when others then v_err := sqlerrm;
+  end;
+  perform tests.ok(v_err is not null, 'a stranger cannot cancel somebody else''s booking');
+  perform tests.as_user(v_adult);
+  perform public.cancel_coaching_booking(v_booking);
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'athlete' from public.coaching_bookings where id = v_booking)
+    and exists (select 1 from public.notifications
+                where user_id = v_coach and type = 'coaching_cancelled' and entity_id = v_booking::text),
+    'the athlete cancels, and the coach is told');
+  perform tests.as_user(v_other);
+  perform tests.ok(public.book_coaching_slot(v_slot) is not null, 'which frees the place for someone else');
+
+  perform tests.as_user(v_coach);
+  perform public.cancel_coaching_slot(v_class_slot);
+  perform tests.ok(
+    not exists (select 1 from public.coaching_bookings where slot_id = v_class_slot and status = 'booked')
+    and (select count(*) from public.notifications
+         where type = 'coaching_cancelled' and user_id in (v_adult, v_other)
+           and entity_id in (select id::text from public.coaching_bookings where slot_id = v_class_slot)) = 2,
+    'when the coach cancels a class, everyone booked is told');
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (select count(*) from jsonb_array_elements(public.my_coaching() -> 'bookings') b
+     where b ->> 'status' = 'cancelled' and b ->> 'cancelled_by' = 'coach') = 1,
+    'and sees it as cancelled by the coach in their own list');
+
+  /* ── A minor ── */
+  update public.guardian_consents set allow_bookings = false where minor_user_id = v_minor;
+  perform tests.as_user(v_newcoach);
+  perform public.set_coaching_status(true, null);
+  v_theirs := public.save_coaching_service(null,
+    '{"kind":"session","title":"Unverified coach session","location_mode":"online"}');
+  perform public.add_coaching_slots(v_theirs, array[v_t + interval '4 days']);
+  select id into v_their_slot from public.coaching_slots where service_id = v_theirs;
+  perform tests.as_user(v_coach);
+  perform public.add_coaching_slots(v_session, array[v_t + interval '6 days']);
+  select id into v_slot from public.coaching_slots
+   where service_id = v_session and starts_at = v_t + interval '6 days';
+
+  perform tests.as_user(v_minor);
+  perform tests.ok(
+    (public.coach_booking_page(v_newcoach) ->> 'gate') = 'minor_needs_verified_coach'
+    and not exists (select 1 from public.bookable_coaches() where id = v_newcoach),
+    'a minor cannot book an unverified coach, and is not shown one');
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'guardian_consent_required',
+    'and needs a guardian''s yes for a verified one');
+  v_hint := null;
+  begin
+    perform public.book_coaching_slot(v_slot);
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'guardian_consent_required', 'which the database enforces');
+
+  update public.guardian_consents set allow_bookings = true, guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    private.has_guardian_consent(v_minor, 'bookings')
+    and has_column_privilege('authenticated', 'public.guardian_consents', 'allow_bookings', 'SELECT'),
+    'a guardian can approve bookings, and the app can read the scope');
+  v_booking := public.book_coaching_slot(v_slot);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_guardian and type = 'coaching_booked' and entity_id = v_booking::text),
+    'with it the minor books, and the guardian is told');
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (select (b ->> 'for_child')::boolean from jsonb_array_elements(public.my_coaching() -> 'bookings') b
+     where b ->> 'id' = v_booking::text),
+    'the guardian sees the booking');
+
+  /* The guardian takes the scope back: the booking ahead is cancelled. */
+  update public.guardian_consents set allow_bookings = false
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'guardian' from public.coaching_bookings where id = v_booking),
+    'when the guardian withdraws the scope, the booking ahead is cancelled');
+
+  /* ── Blocks and retiring ── */
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_coach, v_adult) on conflict do nothing;
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    public.coach_booking_page(v_coach) is null
+    and not exists (select 1 from public.bookable_coaches() where id = v_coach),
+    'someone the coach blocked sees no calendar and no listing');
+  delete from public.user_blocks where blocker_id = v_coach and blocked_id = v_adult;
+
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_service_active(v_flex, false);
+  perform tests.ok(
+    exists (select 1 from public.coaching_bookings where id = v_b2 and status = 'booked')
+    and (select status from public.coaching_slots where id = v_flex_slot) = 'open',
+    'retiring a service keeps what is already booked');
+
+  delete from auth.users where id = v_newcoach;
+  delete from public.coaching_services where coach_user_id = v_coach;
+  delete from public.coaching_settings where user_id = v_coach;
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── whole-schema invariants ──'; end $$;
 
 /*
@@ -1711,7 +2885,9 @@ begin
       'viewer_can_see_public_media',
       /* Named in follows INSERT RLS. It must see blocks in either direction,
          including rows the follower cannot select directly. */
-      'users_are_blocked'
+      'users_are_blocked',
+      /* 0925/01. Named in the stories read policy. */
+      'viewer_can_see_story'
     );
 
   perform tests.ok(

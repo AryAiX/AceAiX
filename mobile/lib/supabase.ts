@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { isAbsoluteMediaUrl } from './mediaUrl';
+
 /**
  * A single Supabase client for the whole app.
  *
@@ -99,6 +101,6 @@ export const Buckets = {
 
 export function publicUrl(bucket: string, path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith('http')) return path;
+  if (isAbsoluteMediaUrl(path)) return path;
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl ?? null;
 }

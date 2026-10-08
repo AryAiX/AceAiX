@@ -256,6 +256,16 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
     return () => safely(() => player.pause());
   }, [shouldPlay, player, safely, source]);
 
+  /* A clip the platform cannot decode keeps its poster rather than showing
+     an empty frame. */
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const sub = player.addListener('statusChange', ({ status }) => {
+      if (status === 'error') setFailed(true);
+    });
+    return () => sub.remove();
+  }, [player]);
+
   useEffect(() => {
     if (!source) return;
     // Safety net: if the first-frame callback never arrives we still need to
@@ -264,16 +274,10 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
     return () => clearTimeout(timer);
   }, [source]);
 
+  const showPoster = !!item.thumbnail && (!ready || failed);
+
   return (
     <View style={{ width, height }}>
-      {item.thumbnail && !ready ? (
-        <RemoteImage
-          uri={item.thumbnail}
-          style={{ position: 'absolute', width, height }}
-          contentFit="cover"
-        />
-      ) : null}
-
       <VideoView
         player={player}
         style={{ width, height }}
@@ -284,6 +288,16 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
         onFirstFrameRender={() => setReady(true)}
         accessibilityLabel={t('feed.videoClip')}
       />
+
+      {showPoster ? (
+        <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, width, height }}>
+          <RemoteImage
+            uri={item.thumbnail}
+            style={{ width, height }}
+            contentFit="cover"
+          />
+        </View>
+      ) : null}
 
       {!isActive ? (
         <View

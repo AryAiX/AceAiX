@@ -1,16 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
-import {
-  Check,
-  Clock,
-  Mail,
-  MessageCircle,
-  Search,
-  ShieldCheck,
-  Users,
-  X,
-} from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Brain, CalendarCheck, Check, Clock, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -88,6 +79,24 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
       label: t('safety.scopeMedia'),
       off: t('safety.scopeMediaOff'),
     },
+    {
+      granted: !!consent.allow_assessments,
+      Icon: Brain,
+      label: t('intelligence.scopeAssessments'),
+      off: t('intelligence.scopeAssessmentsOff'),
+    },
+    {
+      granted: !!consent.allow_sponsorship,
+      Icon: Handshake,
+      label: t('sponsorship.scopeSponsorship'),
+      off: t('sponsorship.scopeSponsorshipOff'),
+    },
+    {
+      granted: !!consent.allow_bookings,
+      Icon: CalendarCheck,
+      label: t('coaching.scopeBookings'),
+      off: t('coaching.scopeBookingsOff'),
+    },
   ];
 
   return (
@@ -112,6 +121,27 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
   );
 }
 
+/** A scope a minor can ask their guardian to add to a consent already given. */
+type AddScope = 'assessments' | 'sponsorship' | 'bookings';
+
+const ADD_COPY: Record<AddScope, { title: string; hint: string; sent: string }> = {
+  assessments: {
+    title: 'intelligence.addAssessments',
+    hint: 'intelligence.addAssessmentsHint',
+    sent: 'intelligence.addAssessmentsSent',
+  },
+  sponsorship: {
+    title: 'sponsorship.addSponsorship',
+    hint: 'sponsorship.addSponsorshipHint',
+    sent: 'sponsorship.addSponsorshipSent',
+  },
+  bookings: {
+    title: 'coaching.addBookings',
+    hint: 'coaching.addBookingsHint',
+    sent: 'coaching.addBookingsSent',
+  },
+};
+
 // ── The minor's view ─────────────────────────────────────────────────────────
 function MinorView() {
   const theme = useTheme();
@@ -122,6 +152,17 @@ function MinorView() {
   const { refreshProfile } = useAuth();
 
   const consents = useAsync(getGuardianConsents, [], { refetchOnFocus: true });
+  /* `/settings/guardian?add=assessments` — sent here from Game Intelligence
+     when a guardian approved the profile but not the games — and
+     `?add=sponsorship` and `?add=bookings`, from the sponsorship and coach
+     booking screens, for the same reason. */
+  const params = useLocalSearchParams<{ add?: string }>();
+  const [asking, setAsking] = useState(
+    params.add === 'assessments' || params.add === 'sponsorship' || params.add === 'bookings',
+  );
+  const [addScope, setAddScope] = useState<AddScope>(
+    params.add === 'sponsorship' ? 'sponsorship' : params.add === 'bookings' ? 'bookings' : 'assessments',
+  );
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -142,6 +183,30 @@ function MinorView() {
   const pending = useMemo(() => rows.find((c) => c.status === 'pending') ?? null, [rows]);
   const lastRevoked = useMemo(() => rows.find((c) => c.status === 'revoked') ?? null, [rows]);
   const current = granted ?? pending;
+  const needsAssessments = !!granted && !granted.allow_assessments;
+  const needsSponsorship = !!granted && !granted.allow_sponsorship;
+  const needsBookings = !!granted && !granted.allow_bookings;
+  const needsMore = needsAssessments || needsSponsorship || needsBookings;
+  const addCopy = ADD_COPY[addScope];
+
+  /* Arriving from Game Intelligence opens the form straight away; fill it
+     with the guardian who already approved, the likely person to ask again. */
+  useEffect(() => {
+    if (asking && granted && !name && !email) {
+      setName(granted.guardian_name);
+      setEmail(granted.guardian_email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [asking, granted]);
+
+  const askToAdd = useCallback((scope: AddScope) => {
+    setAddScope(scope);
+    if (granted) {
+      setName(granted.guardian_name);
+      setEmail(granted.guardian_email);
+    }
+    setAsking(true);
+  }, [granted]);
 
   const send = useCallback(async () => {
     const trimmedName = name.trim();
@@ -162,6 +227,7 @@ function MinorView() {
       await requestGuardianConsent(trimmedName, trimmedEmail, relationship);
       setName('');
       setEmail('');
+      setAsking(false);
       await consents.reload();
       toast.success(t('safety.requestSentToast'));
     } catch (err) {
@@ -256,6 +322,49 @@ function MinorView() {
             })}
           </Text>
 
+          {needsMore && pending ? (
+            <Text variant="caption" tone="muted" style={{ marginTop: spacing.md }}>
+              {t(addCopy.sent, { email: pending.guardian_email })}
+            </Text>
+          ) : null}
+
+          {needsAssessments && !pending && !asking ? (
+            <Button
+              label={t('intelligence.addAssessments')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<Brain size={16} color={colors.text} />}
+              onPress={() => askToAdd('assessments')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-assessments"
+            />
+          ) : null}
+          {needsSponsorship && !pending && !asking ? (
+            <Button
+              label={t('sponsorship.addSponsorship')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<Handshake size={16} color={colors.text} />}
+              onPress={() => askToAdd('sponsorship')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-sponsorship"
+            />
+          ) : null}
+          {needsBookings && !pending && !asking ? (
+            <Button
+              label={t('coaching.addBookings')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<CalendarCheck size={16} color={colors.text} />}
+              onPress={() => askToAdd('bookings')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-bookings"
+            />
+          ) : null}
+
           <Button
             label={t('safety.withdrawPermission')}
             variant="danger"
@@ -316,14 +425,20 @@ function MinorView() {
       ) : null}
 
       {/* ── The request form ────────────────────────────────────────── */}
-      {!granted ? (
+      {!granted || (needsMore && asking && !pending) ? (
         <View style={{ gap: spacing.md }}>
           <View style={{ gap: 2 }}>
             <Text variant="heading">
-              {pending ? t('safety.askSomeoneElse') : t('safety.askForPermission')}
+              {granted
+                ? t(addCopy.title)
+                : pending
+                  ? t('safety.askSomeoneElse')
+                  : t('safety.askForPermission')}
             </Text>
             <Text variant="caption" tone="muted">
-              {t('safety.requestFormHint')}
+              {granted
+                ? t(addCopy.hint)
+                : t('safety.requestFormHint')}
             </Text>
           </View>
 

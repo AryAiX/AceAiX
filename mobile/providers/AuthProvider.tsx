@@ -45,6 +45,7 @@ interface AuthContextValue {
   isAthlete: boolean;
   isRecruiter: boolean;   // coach, club or scout
   isGuardian: boolean;
+  isSponsor: boolean;
 
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: {
@@ -221,6 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAthlete: role === 'athlete',
       isRecruiter: role === 'coach' || role === 'club' || role === 'scout',
       isGuardian: role === 'guardian',
+      isSponsor: role === 'sponsor',
       signIn,
       signUp,
       signOut,

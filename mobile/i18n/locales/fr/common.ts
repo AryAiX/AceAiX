@@ -70,6 +70,7 @@ export const common = {
   coach: 'Coach',
   club: 'Club',
   scout: 'Recruteur',
+  sponsor: 'Sponsor',
   guardian: 'Parent ou tuteur',
   federation: 'Fédération',
   medicalPartner: 'Partenaire médical',
@@ -147,7 +148,7 @@ export const common = {
   tabHome: 'Accueil',
   tabDiscover: 'Découvrir',
   tabTrials: 'Essais',
-  tabYou: 'Toi',
+  tabYou: 'Profil',
   tabCreate: 'Créer',
 
   // Mentions légales

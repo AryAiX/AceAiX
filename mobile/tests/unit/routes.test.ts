@@ -93,6 +93,22 @@ describe('notificationTarget', () => {
     ).toBe(Routes.score);
   });
 
+  it('sends every sponsorship notification to the portal', () => {
+    for (const type of ['sponsorship_offer', 'sponsorship_application', 'sponsorship_response'] as const) {
+      expect(
+        notificationTarget(notification({ type, entity_type: 'sponsorship', entity_id: 'd1' })),
+      ).toBe(Routes.sponsorship);
+    }
+  });
+
+  it('sends a coaching booking or cancellation to the coaching screen', () => {
+    for (const type of ['coaching_booked', 'coaching_cancelled'] as const) {
+      expect(notificationTarget(notification({ type, entity_type: 'coaching', entity_id: 'b1' }))).toBe(
+        Routes.coaching,
+      );
+    }
+  });
+
   it('falls back to the actor rather than going nowhere', () => {
     const n = notification({ entity_type: null, entity_id: null, actor_id: 'actor-7' });
     expect(notificationTarget(n)).toBe(Routes.profile('actor-7'));
