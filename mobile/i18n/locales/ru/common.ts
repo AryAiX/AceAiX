@@ -70,6 +70,7 @@ export const common = {
   coach: 'Тренер',
   club: 'Клуб',
   scout: 'Скаут',
+  sponsor: 'Спонсор',
   guardian: 'Родитель или опекун',
   federation: 'Федерация',
   medicalPartner: 'Медицинский партнёр',

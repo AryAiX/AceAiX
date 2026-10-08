@@ -97,6 +97,48 @@ console.log(`  assets       ${inlined} inlined (${(inlinedBytes / 1e6).toFixed(1
 
 // ---- the replay layer -------------------------------------------------------
 const recordings = JSON.parse(fs.readFileSync(path.join(HERE, 'recordings.json'), 'utf8'));
+
+/*
+ * Demo media, inlined.
+ *
+ * Seeded stories and reels point at storage paths (`<uid>/demo-reel-1.mp4`)
+ * that the local harness serves from tools/local-supabase/demo-media. The
+ * preview has no storage, and a signed URL cannot be a data: URI (the client
+ * prefixes it with the storage host), so the recorded answers themselves are
+ * rewritten: every quoted demo path becomes the file as a data: URI, which the
+ * app loads as-is (lib/mediaUrl.ts). Tens of kilobytes each, drawn from
+ * scratch by demo-media/generate.py.
+ */
+const DEMO_MEDIA = path.resolve(ROOT, '../tools/local-supabase/demo-media');
+const DEMO_MIME = { '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.png': 'image/png' };
+const demoFiles = [];
+(function walk(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else if (DEMO_MIME[path.extname(entry.name)]) demoFiles.push(full);
+  }
+})(DEMO_MEDIA);
+/* Each file is stored once and referenced by token; the loader below swaps
+   the tokens back in, so a clip that appears in forty answers costs its bytes
+   one time, not forty. */
+const media = [];
+let mediaRewrites = 0;
+for (const file of demoFiles) {
+  /* <bucket>/<owner>/<name> on disk; the rows hold <owner>/<name>. */
+  const rel = path.relative(DEMO_MEDIA, file).split(path.sep).slice(1).join('/');
+  const token = JSON.stringify(`aceaix-media:${media.length}`);
+  media.push(`data:${DEMO_MIME[path.extname(file)]};base64,${fs.readFileSync(file).toString('base64')}`);
+  const needle = JSON.stringify(rel);
+  for (const r of recordings) {
+    if (typeof r.response === 'string' && r.response.includes(needle)) {
+      r.response = r.response.split(needle).join(token);
+      mediaRewrites += 1;
+    }
+  }
+}
+console.log(`  demo media   ${demoFiles.length} files inlined into ${mediaRewrites} answers`);
 console.log(`  recordings   ${recordings.length} exchanges (${(JSON.stringify(recordings).length / 1e6).toFixed(2)} MB)`);
 
 const runtime = `
@@ -268,6 +310,19 @@ const runtime = `
     var sub = subjectOf(headers);
 
     if (target.indexOf('/storage/v1/') === 0) {
+      /* Batch signing answers in the batch's own shape — an array, one entry
+         per path, none of them signed. Answering '{}' made the client throw
+         "e.map is not a function" and took the whole feed down with it. Demo
+         media never reaches here: it is inlined as data: URIs above. */
+      if (target.indexOf('/storage/v1/object/sign/') === 0 && method === 'POST') {
+        var paths = [];
+        try { paths = JSON.parse(body || '{}').paths || []; } catch (e) { paths = []; }
+        if (paths.length) {
+          return Promise.resolve(new Response(JSON.stringify(paths.map(function (p) {
+            return { path: p, signedURL: null, error: 'not available in the preview' };
+          })), { status: 200, headers: { 'content-type': 'application/json' } }));
+        }
+      }
       return Promise.resolve(new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }));
     }
 
@@ -350,9 +405,22 @@ const html = `<title>AceAiX Talent Network</title>
   .replace(/</g, '\\u003c')
   .replace(/\u2028/g, '\\u2028')
   .replace(/\u2029/g, '\\u2029')}</script>
+<script id="aceaix-media" type="application/json">${JSON.stringify(media)}</script>
 <script>
-  window.__ACEAIX_TAPE__ = JSON.parse(document.getElementById('aceaix-tape').textContent);
-  document.getElementById('aceaix-tape').remove();
+  (function () {
+    var tape = JSON.parse(document.getElementById('aceaix-tape').textContent);
+    var media = JSON.parse(document.getElementById('aceaix-media').textContent);
+    tape.forEach(function (r) {
+      if (typeof r.response === 'string' && r.response.indexOf('"aceaix-media:') >= 0) {
+        r.response = r.response.replace(/"aceaix-media:([0-9]+)"/g, function (_, i) {
+          return JSON.stringify(media[+i]);
+        });
+      }
+    });
+    window.__ACEAIX_TAPE__ = tape;
+    document.getElementById('aceaix-tape').remove();
+    document.getElementById('aceaix-media').remove();
+  })();
 </script>
 <script>${runtime}</script>
 <script>${bundle.replace(/<\/script>/gi, '<\\/script>')}</script>

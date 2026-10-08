@@ -12,8 +12,8 @@
 --     AceAiX-Demo-2026
 --
 -- One account per role the product has, so every role can be signed into and
--- looked at rather than reasoned about. Sign-up itself offers four of these
--- (athlete, coach, club, guardian); scout, federation and medical partner are
+-- looked at rather than reasoned about. Sign-up itself offers five of these
+-- (athlete, coach, club, sponsor, guardian); scout, federation and medical partner are
 -- assigned, so this file is the only way to see one.
 --
 --   layla.demo@aceaix.com       athlete, 19, complete profile — the review account
@@ -29,6 +29,8 @@
 --   nadia.demo@aceaix.com       scout, verified
 --   federation.demo@aceaix.com  federation, verified
 --   amin.demo@aceaix.com        medical partner
+--   falcon.demo@aceaix.com      sponsor, verified — the sponsorship portal
+--   peak.demo@aceaix.com        sponsor, unverified — can look, cannot offer
 --
 -- The three minors are the interesting ones: Omar and Yusuf are discoverable
 -- because a guardian approved them, Mina is not because nobody has yet, and
@@ -307,14 +309,14 @@ from public.athlete_profiles ap, generate_series(1, 6) n
 where ap.user_id = 'a0000000-0000-4000-8000-000000000002'
 on conflict do nothing;
 
-insert into public.athlete_media (athlete_id, title, description, media_type, storage_url, is_featured, is_public, views_count)
-select ap.id, t.title, t.descr, 'highlight_reel'::media_type_enum, t.url, t.featured, true, t.views
+insert into public.athlete_media (athlete_id, title, description, media_type, storage_url, thumbnail_url, duration_seconds, transcode_status, is_featured, is_public, views_count)
+select ap.id, t.title, t.descr, 'highlight_reel'::media_type_enum, t.url, t.thumb, 4, 'ready', t.featured, true, t.views
 from public.athlete_profiles ap,
   (values
-    ('Season highlights', 'Nine goals from the first half of the season.', 'https://demo.aceaix.com/media/layla-1.mp4', true, 420),
-    ('Finishing session', 'Left-foot finishing, close range.', 'https://demo.aceaix.com/media/layla-2.mp4', false, 180),
-    ('Pressing triggers', 'Front-foot defending from the front.', 'https://demo.aceaix.com/media/layla-3.mp4', false, 96)
-  ) as t(title, descr, url, featured, views)
+    ('Season highlights', 'Nine goals from the first half of the season.', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-1.mp4', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-1.jpg', true, 420),
+    ('Finishing session', 'Left-foot finishing, close range.', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-2.mp4', 'a0000000-0000-4000-8000-000000000001/highlights/demo-clip-2.jpg', false, 180),
+    ('Pressing triggers', 'Front-foot defending from the front.', 'a0000000-0000-4000-8000-000000000001/demo-reel-1.mp4', 'a0000000-0000-4000-8000-000000000001/demo-reel-1.jpg', false, 96)
+  ) as t(title, descr, url, thumb, featured, views)
 where ap.user_id = 'a0000000-0000-4000-8000-000000000001'
 on conflict do nothing;
 
@@ -553,15 +555,16 @@ insert into public.athlete_media
   (athlete_id, title, description, media_type, storage_url, thumbnail_url,
    duration_seconds, transcode_status, is_public, views_count)
 select ap.id, v.title, v.description, 'highlight_reel',
-       'posts/demo/' || v.slug || '.mp4', 'posts/demo/' || v.slug || '.jpg',
+       v.user_id::text || '/highlights/' || v.slug || '.mp4',
+       v.user_id::text || '/highlights/' || v.slug || '.jpg',
        v.seconds, 'ready', true, v.views
 from (values
   ('a0000000-0000-4000-8000-000000000002'::uuid, 'Keep-ups on the roof pitch',
-   'One take, Thursday evening.', 'omar-keepups', 34, 41),
+   'One take, Thursday evening.', 'demo-clip-3', 34, 41),
   ('a0000000-0000-4000-8000-000000000003'::uuid, 'Ball control drill',
-   'Thirty seconds, feet only.', 'yusuf-control', 31, 18),
+   'Thirty seconds, feet only.', 'demo-clip-4', 31, 18),
   ('a0000000-0000-4000-8000-000000000005'::uuid, 'Pull-up jumper, both sides',
-   'Practice, no defender.', 'daniel-jumper', 46, 12)
+   'Practice, no defender.', 'demo-clip-5', 46, 12)
 ) as v(user_id, title, description, slug, seconds, views)
 join public.athlete_profiles ap on ap.user_id = v.user_id
 where not exists (select 1 from public.athlete_media m where m.athlete_id = ap.id);
@@ -695,3 +698,343 @@ insert into public.meetup_participants (meetup_id, user_id, status, decided_at) 
   ('e1000000-0000-4000-8000-000000000001',
    'd0000000-0000-4000-8000-000000000001', 'joined', now())
 on conflict (meetup_id, user_id) do nothing;
+
+-- ------------------------------------------------------------
+-- Game Intelligence (0924/01)
+--
+-- Layla has played all six games across two sittings, and shares the
+-- result with clubs. One attempt at each game is left, so the preview can
+-- play a sitting — so Marco's recruiter view of her profile has something
+-- to show. Omar (17) has played nothing: he consents for himself at the
+-- default age of 15 and sees the intro. Mina (14) sees the guardian gate.
+-- ------------------------------------------------------------
+do $$
+declare
+  v_user    uuid := 'a0000000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+  v_s1      uuid := 'f1000000-0000-4000-8000-000000000001';
+  v_s2      uuid := 'f1000000-0000-4000-8000-000000000002';
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_user;
+  if v_athlete is null then return; end if;
+
+  insert into public.gi_sessions (id, user_id, athlete_id, status, device_class, baseline_ms,
+                                  fatigue, started_at, completed_at)
+  values
+    (v_s1, v_user, v_athlete, 'completed', 'ios:phone', 262, 2,
+     now() - interval '12 days', now() - interval '12 days' + interval '11 minutes'),
+    (v_s2, v_user, v_athlete, 'completed', 'ios:phone', 255, 2,
+     now() - interval '2 days', now() - interval '2 days' + interval '9 minutes')
+  on conflict (id) do nothing;
+
+  insert into public.gi_results (session_id, user_id, test_key, metrics, score, valid, created_at) values
+    (v_s1, v_user, 'anticipation',   '{"trials":10,"answered":10,"mean_error":0.07}', 77, true, now() - interval '12 days'),
+    (v_s1, v_user, 'tracking',       '{"rounds":6,"targets_total":20,"targets_found":17,"max_level":5}', 71, true, now() - interval '12 days'),
+    (v_s1, v_user, 'go_no_go',       '{"go_trials":30,"go_hits":29,"go_median_ms":402,"nogo_trials":10,"nogo_withheld":8}', 78, true, now() - interval '12 days'),
+    (v_s2, v_user, 'pitch_decision', '{"choices":[]}', 79, true, now() - interval '2 days'),
+    (v_s2, v_user, 'flanker',        '{"trials":24,"correct":23,"congruent_ms":540,"incongruent_ms":605}', 64, true, now() - interval '2 days'),
+    (v_s2, v_user, 'reaction',       '{"trials":16,"correct":16,"median_ms":468,"anticipations":0}', 74, true, now() - interval '2 days')
+  on conflict (session_id, test_key) do nothing;
+
+  perform private.gi_refresh(v_athlete);
+  update public.gi_profiles set share_with_clubs = true, show_badge = true where athlete_id = v_athlete;
+
+  insert into public.gi_history (athlete_id, recorded_on, overall, subscores)
+  values (v_athlete, current_date - 12, 72, '{}')
+  on conflict do nothing;
+end $$;
+
+-- ------------------------------------------------------------
+-- Stories and reels (0925/01)
+--
+-- Media files live in tools/local-supabase/demo-media and are served by the
+-- local storage stand-in; generate.py draws them from scratch.
+-- ------------------------------------------------------------
+insert into public.stories (id, author_id, media_type, media_url, caption, card, audience, created_at, expires_at) values
+  ('5a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'photo',
+   'a0000000-0000-4000-8000-000000000001/demo-story-1.jpg', 'Under the lights tonight', '{}', 'followers',
+   now() - interval '5 hours', now() + interval '19 hours'),
+  ('5a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001', 'card', null, null,
+   '{"text":"Two goals away. Third win in a row.","background":"action","sticker":"goal","stat":"2–1"}', 'followers',
+   now() - interval '3 hours', now() + interval '21 hours'),
+  ('5a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001', 'photo',
+   'b0000000-0000-4000-8000-000000000001/demo-story-2.jpg', 'Cone drills, 6am. Who is in?', '{}', 'public',
+   now() - interval '8 hours', now() + interval '16 hours'),
+  ('5a000000-0000-4000-8000-000000000004', 'c0000000-0000-4000-8000-000000000001', 'card', null, null,
+   '{"text":"Open trial on the 20th. 2008–2010 born. Boots and water, nothing else.","background":"cool","sticker":"trial","stat":""}', 'public',
+   now() - interval '2 hours', now() + interval '22 hours'),
+  ('5a000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000004', 'card', null, null,
+   '{"text":"New PB over 800m","background":"warm","sticker":"pb","stat":"2:09"}', 'followers',
+   now() - interval '6 hours', now() + interval '18 hours'),
+  ('5a000000-0000-4000-8000-000000000006', 'a0000000-0000-4000-8000-000000000005', 'card', null, null,
+   '{"text":"Game IQ just went up. Decision-making 81.","background":"party","sticker":"gameiq","stat":"78"}', 'followers',
+   now() - interval '1 hour', now() + interval '23 hours'),
+  ('5a000000-0000-4000-8000-000000000007', 'a0000000-0000-4000-8000-000000000002', 'card', null, null,
+   '{"text":"First start for the U18s this weekend","background":"hero","sticker":"star","stat":""}', 'followers',
+   now() - interval '10 hours', now() + interval '14 hours')
+on conflict (id) do nothing;
+
+/* Marco has already watched Layla's first story, so her ring shows one new. */
+insert into public.story_views (story_id, viewer_id) values
+  ('5a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001')
+on conflict do nothing;
+
+insert into public.posts (id, author_id, type, caption, text, audience, media, created_at) values
+  ('9a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', 'video',
+   'The one-two, then the top corner. Watch the run off the ball.',
+   'The one-two, then the top corner. Watch the run off the ball.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000001/demo-reel-1.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000001/demo-reel-1.jpg","width":360,"height":640}]',
+   now() - interval '90 minutes'),
+  ('9a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000004', 'video',
+   'Last 200 of the 800. Lane four.',
+   'Last 200 of the 800. Lane four.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000004/demo-reel-2.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000004/demo-reel-2.jpg","width":360,"height":640}]',
+   now() - interval '4 hours'),
+  ('9a000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000005', 'video',
+   'Pull-up from the wing. Working on the release.',
+   'Pull-up from the wing. Working on the release.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000005/demo-reel-3.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000005/demo-reel-3.jpg","width":360,"height":640}]',
+   now() - interval '7 hours'),
+  ('9a000000-0000-4000-8000-000000000004', 'c0000000-0000-4000-8000-000000000001', 'standard',
+   'New season, new kit, same pitch. Trials open on the 20th.',
+   'New season, new kit, same pitch. Trials open on the 20th.', 'public',
+   '[{"url":"c0000000-0000-4000-8000-000000000001/demo-photo-1.jpg","type":"photo","width":720,"height":1280}]',
+   now() - interval '5 hours'),
+  ('9a000000-0000-4000-8000-000000000005', 'a0000000-0000-4000-8000-000000000004', 'video',
+   'Hurdle rhythm, three strides between. Lane two is me.',
+   'Hurdle rhythm, three strides between. Lane two is me.', 'public',
+   '[{"url":"a0000000-0000-4000-8000-000000000004/demo-reel-4.mp4","type":"video","thumbnail":"a0000000-0000-4000-8000-000000000004/demo-reel-4.jpg","width":360,"height":640}]',
+   now() - interval '26 hours'),
+  ('9a000000-0000-4000-8000-000000000006', 'c0000000-0000-4000-8000-000000000001', 'video',
+   'Swim squad, last fifteen metres of the 100 free.',
+   'Swim squad, last fifteen metres of the 100 free.', 'public',
+   '[{"url":"c0000000-0000-4000-8000-000000000001/demo-reel-5.mp4","type":"video","thumbnail":"c0000000-0000-4000-8000-000000000001/demo-reel-5.jpg","width":360,"height":640}]',
+   now() - interval '2 days')
+on conflict (id) do nothing;
+
+update public.posts set view_count = v.views, like_count = greatest(like_count, v.likes)
+from (values
+  ('9a000000-0000-4000-8000-000000000001'::uuid, 1840, 0),
+  ('9a000000-0000-4000-8000-000000000002'::uuid, 620, 0),
+  ('9a000000-0000-4000-8000-000000000003'::uuid, 410, 0),
+  ('9a000000-0000-4000-8000-000000000005'::uuid, 975, 0),
+  ('9a000000-0000-4000-8000-000000000006'::uuid, 2310, 0)
+) as v(id, views, likes)
+where posts.id = v.id;
+
+
+-- ------------------------------------------------------------
+-- Sponsorship (1008/02)
+--
+-- One verified sponsor and one that is not, four athletes asking, three calls,
+-- and a deal in every state — so the portal has something to answer on the
+-- first sign-in, whichever side you sign in as.
+-- ------------------------------------------------------------
+insert into auth.users (id, email, encrypted_password, raw_user_meta_data)
+values
+  ('60000000-0000-4000-8000-000000000001', 'falcon.demo@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Falcon Energy","first_name":"Falcon","last_name":"Energy","role":"sponsor"}'),
+  ('60000000-0000-4000-8000-000000000002', 'peak.demo@aceaix.com',   crypt('AceAiX-Demo-2026', gen_salt('bf')), '{"full_name":"Desert Peak Sportswear","first_name":"Desert Peak","last_name":"Sportswear","role":"sponsor"}')
+on conflict (id) do nothing;
+
+update public.user_private set date_of_birth = current_date - interval '34 years'
+where user_id in ('60000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000002');
+
+update public.user_profiles set
+  bio = 'Energy drinks made in the UAE. We back athletes in individual sports from their first national final.',
+  city = 'Dubai', country = 'United Arab Emirates',
+  is_verified = true, onboarding_completed = true
+where id = '60000000-0000-4000-8000-000000000001';
+
+update public.user_profiles set
+  bio = 'Training kit for hot climates. New to AceAiX.',
+  city = 'Sharjah', country = 'United Arab Emirates',
+  is_verified = false, onboarding_completed = true
+where id = '60000000-0000-4000-8000-000000000002';
+
+insert into public.sponsor_profiles
+  (user_id, company_name, industry, website, about, sports, countries, offers, budget_min, budget_max)
+values
+  ('60000000-0000-4000-8000-000000000001', 'Falcon Energy', 'Food and drink', 'https://falcon-energy.example',
+   'We fund entry fees, travel and kit for athletes who compete on their own: runners, swimmers, tennis and padel players.',
+   array['Athletics', 'Swimming', 'Tennis', 'Football'], array['United Arab Emirates'],
+   array['cash', 'equipment', 'travel'], 3000, 15000),
+  ('60000000-0000-4000-8000-000000000002', 'Desert Peak Sportswear', 'Sportswear', 'https://desertpeak.example',
+   'Kit partnerships for juniors and club academies.',
+   array['Football', 'Basketball'], array['United Arab Emirates'],
+   array['equipment'], null, null)
+on conflict (user_id) do update set
+  company_name = excluded.company_name, industry = excluded.industry, website = excluded.website,
+  about = excluded.about, sports = excluded.sports, countries = excluded.countries,
+  offers = excluded.offers, budget_min = excluded.budget_min, budget_max = excluded.budget_max;
+
+/* Omar's guardian ticked the sponsorship box; Yusuf's did not. */
+update public.guardian_consents set allow_sponsorship = true
+where id = 'f0000000-0000-4000-8000-000000000001';
+
+insert into public.sponsorship_requests
+  (id, athlete_user_id, title, event_name, event_date, location, sport, needs, gives, amount, pitch, created_at)
+values
+  ('6a000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000004',
+   'Asian Indoor qualifiers: entry and travel', 'Asian Indoor Championships qualifier',
+   current_date + 75, 'Doha, Qatar', 'Athletics',
+   array['entry_fee', 'travel', 'coaching'], array['logo_on_kit', 'social_posts', 'content'], 6500,
+   'UAE 800 m finalist two years running. A four-week altitude block and the qualifier in Doha are what stand between me and the standard.',
+   now() - interval '2 days'),
+  ('6a000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000001',
+   'Pre-season camp and boots', 'UAE Women''s Cup', current_date + 50, 'Abu Dhabi', 'Football',
+   array['travel', 'equipment'], array['social_posts', 'appearances'], 5000,
+   'Nine goals in the first half of the season. A week of camp before the cup, and two pairs of boots.',
+   now() - interval '4 days'),
+  ('6a000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000005',
+   '3x3 summer tour', 'Gulf 3x3 Series', current_date + 110, 'Dubai, Muscat, Manama', 'Basketball',
+   array['entry_fee', 'travel'], array['logo_on_kit', 'content'], 4000,
+   'Three stops, three weekends. Our team finished second last year.',
+   now() - interval '6 days'),
+  ('6a000000-0000-4000-8000-000000000004', 'a0000000-0000-4000-8000-000000000002',
+   'Dana Cup travel', 'Dana Cup', current_date + 140, 'Hjørring, Denmark', 'Football',
+   array['travel', 'entry_fee'], array['social_posts'], 3000,
+   'My academy side qualified for the under-18 bracket. Flights are the part we cannot cover.',
+   now() - interval '1 day')
+on conflict (id) do nothing;
+
+insert into public.sponsor_calls
+  (id, sponsor_user_id, title, description, sport, country, offers, amount_min, amount_max,
+   slots, deadline, open_to_minors, created_at)
+values
+  ('6b000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
+   'Five individual-sport athletes for 2027',
+   'A season of backing for athletes who compete alone: entry fees, travel and product. Tell us your calendar and your best result.',
+   null, 'United Arab Emirates', array['cash', 'equipment', 'travel'], 3000, 12000,
+   5, current_date + 45, false, now() - interval '3 days'),
+  ('6b000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000001',
+   'Junior runners programme',
+   'Race entries and shoes for under-18 middle-distance runners. A parent or guardian is part of every conversation.',
+   'Athletics', 'United Arab Emirates', array['equipment', 'cash'], 1000, 3000,
+   10, current_date + 60, true, now() - interval '5 days'),
+  ('6b000000-0000-4000-8000-000000000003', '60000000-0000-4000-8000-000000000001',
+   'Football creators: match-day content',
+   'Two players who already film their sessions. Product and a monthly fee for six months.',
+   'Football', null, array['cash', 'equipment'], 1500, 4000,
+   2, current_date + 30, false, now() - interval '1 day')
+on conflict (id) do nothing;
+
+insert into public.sponsorship_deals
+  (id, sponsor_user_id, athlete_user_id, request_id, call_id, initiated_by, message, amount, status, created_at, responded_at)
+values
+  /* Waiting on Layla. */
+  ('6c000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', '6a000000-0000-4000-8000-000000000002', null, 'sponsor',
+   'We can cover the camp and send boots this month. In return: three posts and one visit to our Dubai store.',
+   3500, 'pending', now() - interval '5 hours', null),
+  /* Waiting on Falcon. */
+  ('6c000000-0000-4000-8000-000000000002', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', null, '6b000000-0000-4000-8000-000000000001', 'athlete',
+   'I race 800 m and 1500 m, eleven meets next season. Happy to share the full calendar.',
+   null, 'pending', now() - interval '9 hours', null),
+  ('6c000000-0000-4000-8000-000000000003', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', null, '6b000000-0000-4000-8000-000000000003', 'athlete',
+   'I film every finishing session already — clips are on my profile.',
+   null, 'pending', now() - interval '3 hours', null),
+  /* Answered. */
+  ('6c000000-0000-4000-8000-000000000004', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000005', '6a000000-0000-4000-8000-000000000003', null, 'sponsor',
+   'Entry fees for all three stops.', 1800, 'accepted', now() - interval '3 days', now() - interval '2 days'),
+  ('6c000000-0000-4000-8000-000000000005', '60000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', '6a000000-0000-4000-8000-000000000001', null, 'sponsor',
+   'Product only this quarter, sorry.', null, 'declined', now() - interval '8 days', now() - interval '7 days')
+on conflict (id) do nothing;
+
+-- ------------------------------------------------------------
+-- Coach bookings (1009/01)
+--
+-- Marco (verified) is taking students: a one-to-one session, a consultation
+-- where the athlete names the place, and a Saturday-style class. Two weeks of
+-- times are open, some of them taken, so the booking page shows free and full
+-- side by side and his calendar has names in it. Hana (unverified) is taking
+-- students too — which a minor is never shown.
+-- ------------------------------------------------------------
+insert into public.coaching_settings (user_id, accepting, headline) values
+  ('b0000000-0000-4000-8000-000000000001', true,
+   'Strength, speed and finishing for footballers. Small groups, honest feedback.'),
+  ('b0000000-0000-4000-8000-000000000002', true, 'Goalkeeping fundamentals, one to one.')
+on conflict (user_id) do update set accepting = excluded.accepting, headline = excluded.headline;
+
+insert into public.coaching_services
+  (id, coach_user_id, kind, title, description, duration_minutes, capacity, price, location_mode, location)
+values
+  ('7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001', 'session',
+   'One-to-one finishing session',
+   'Sixty minutes on first touch and finishing, both feet. Bring boots for grass.',
+   60, 1, 250, 'fixed', 'Al Jadaf Academy, Pitch 2'),
+  ('7a000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001', 'consultation',
+   'Season plan consultation',
+   'Thirty minutes to go through your calendar, your load and what to work on first.',
+   30, 1, 120, 'flexible', null),
+  ('7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001', 'class',
+   'Speed and agility class',
+   'Ninety minutes in a small group: acceleration, change of direction, deceleration.',
+   90, 6, 80, 'fixed', 'Dubai Sports City, Track B'),
+  ('7a000000-0000-4000-8000-000000000004', 'b0000000-0000-4000-8000-000000000002', 'session',
+   'Goalkeeper handling session', 'Footwork, set position and handling.',
+   60, 1, 180, 'online', null)
+on conflict (id) do nothing;
+
+/* Times are in UTC: 13:00, 14:30 and 16:00 UTC are late afternoon and evening
+   in Dubai. One session and one consultation a day, a class every third day. */
+insert into public.coaching_slots (id, service_id, coach_user_id, starts_at, ends_at, capacity)
+select
+  ('7b000000-0000-4000-8000-' || lpad((d * 10 + k)::text, 12, '0'))::uuid,
+  s.id, s.coach_user_id,
+  date_trunc('day', now()) + make_interval(days => d, hours => s.hour, mins => s.minute),
+  date_trunc('day', now()) + make_interval(days => d, hours => s.hour, mins => s.minute + s.length),
+  s.capacity
+from generate_series(1, 14) d
+cross join (values
+  (1, '7a000000-0000-4000-8000-000000000001'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 13, 0, 60, 1, 1),
+  (2, '7a000000-0000-4000-8000-000000000002'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 14, 30, 30, 1, 1),
+  (3, '7a000000-0000-4000-8000-000000000003'::uuid, 'b0000000-0000-4000-8000-000000000001'::uuid, 16, 0, 90, 6, 3),
+  (4, '7a000000-0000-4000-8000-000000000004'::uuid, 'b0000000-0000-4000-8000-000000000002'::uuid, 15, 0, 60, 1, 2)
+) as s(k, id, coach_user_id, hour, minute, length, capacity, every)
+where d % s.every = 0
+on conflict (id) do nothing;
+
+/* Omar's guardian approved coach bookings as well. */
+update public.guardian_consents set allow_bookings = true
+where id = 'f0000000-0000-4000-8000-000000000001';
+
+insert into public.coaching_bookings
+  (id, slot_id, service_id, coach_user_id, athlete_user_id, status, cancelled_by, note, location, created_at, cancelled_at)
+values
+  /* Layla: a session tomorrow, and a place in the first class. */
+  ('7c000000-0000-4000-8000-000000000001', '7b000000-0000-4000-8000-000000000011',
+   '7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'booked', null,
+   'Weak foot, please. Left hamstring is fine again.', 'Al Jadaf Academy, Pitch 2', now() - interval '1 day', null),
+  ('7c000000-0000-4000-8000-000000000002', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '2 days', null),
+  /* The class fills up: Sara, Daniel and Omar (17, guardian approved). */
+  ('7c000000-0000-4000-8000-000000000003', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', 'booked', null, 'Working on my start.', 'Dubai Sports City, Track B',
+   now() - interval '2 days', null),
+  ('7c000000-0000-4000-8000-000000000004', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000005', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '1 day', null),
+  ('7c000000-0000-4000-8000-000000000005', '7b000000-0000-4000-8000-000000000033',
+   '7a000000-0000-4000-8000-000000000003', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000002', 'booked', null, null, 'Dubai Sports City, Track B',
+   now() - interval '20 hours', null),
+  /* A consultation where the athlete chose the place. */
+  ('7c000000-0000-4000-8000-000000000006', '7b000000-0000-4000-8000-000000000022',
+   '7a000000-0000-4000-8000-000000000002', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000004', 'booked', null,
+   'Planning the indoor season.', 'Kite Beach running track', now() - interval '6 hours', null),
+  /* One that was cancelled, so the list has every state. */
+  ('7c000000-0000-4000-8000-000000000007', '7b000000-0000-4000-8000-000000000041',
+   '7a000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001',
+   'a0000000-0000-4000-8000-000000000001', 'cancelled', 'coach', null, 'Al Jadaf Academy, Pitch 2',
+   now() - interval '3 days', now() - interval '2 days')
+on conflict (id) do nothing;

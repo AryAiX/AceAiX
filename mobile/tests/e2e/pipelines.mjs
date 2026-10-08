@@ -66,6 +66,9 @@ const WHO = {
   marco: 'marco.demo@aceaix.com', //   coach, verified
   academy: 'academy.demo@aceaix.com', // club, verified
   nadia: 'nadia.demo@aceaix.com', //   scout, verified
+  falcon: 'falcon.demo@aceaix.com', // sponsor, verified
+  peak: 'peak.demo@aceaix.com', //     sponsor, unverified
+  omar: 'omar.demo@aceaix.com', //     athlete, 17, guardian approved sponsorship
   mina: 'mina.demo@aceaix.com', //     athlete, 14, no guardian consent
 };
 
@@ -632,6 +635,284 @@ async function main() {
       return d && d.total > 0 ? d : null;
     });
     return `${digest.total} views, ${digest.named?.length ?? 0} named`;
+  });
+
+  // ── 8. Game Intelligence ──────────────────────────────────────────────────
+  section('a game result reaches a coach only once it is shared');
+
+  /* Rerunnable against the same database: a game with no attempts left in the
+     fortnight is skipped rather than refused, so the second and third run of
+     this suite still exercise the path. */
+  const GI_METRICS = {
+    reaction: { trials: 16, correct: 15, median_ms: 470, anticipations: 0 },
+    go_no_go: { go_trials: 30, go_hits: 29, go_median_ms: 400, nogo_trials: 10, nogo_withheld: 9 },
+    flanker: { trials: 24, correct: 23, congruent_ms: 530, incongruent_ms: 600 },
+    tracking: { rounds: 6, targets_total: 20, targets_found: 17, max_level: 5 },
+    anticipation: { trials: 10, answered: 10, mean_error: 0.08 },
+  };
+
+  await step('daniel plays the games, scored by the server', async () => {
+    const state = unwrap(await clients.daniel.rpc('gi_my_state'), 'gi_my_state');
+    expect(state.consent === 'ok', `consent was ${state.consent}`);
+    const session = unwrap(
+      await clients.daniel.rpc('gi_start_session', {
+        p_device_class: 'test', p_baseline_ms: 250, p_fatigue: 2,
+      }),
+      'gi_start_session',
+    );
+    const scenarios = unwrap(
+      await clients.daniel.rpc('gi_scenarios_for_session', { p_session: session, p_count: 8 }),
+      'gi_scenarios_for_session',
+    );
+    expect(scenarios.length === 8, `${scenarios.length} scenarios`);
+    expect(!JSON.stringify(scenarios).includes('answer_key'), 'the answer key reached the phone');
+
+    let played = 0;
+    const tests = { ...GI_METRICS, pitch_decision: {
+      choices: scenarios.map((sc) => ({ scenario: sc.id, option: 'a', ms: 1300 })),
+    } };
+    for (const [test, metrics] of Object.entries(tests)) {
+      if ((state.attempts_left?.[test] ?? 0) <= 0) continue;
+      const res = unwrap(
+        await clients.daniel.rpc('gi_submit_result', { p_session: session, p_test: test, p_metrics: metrics }),
+        `gi_submit_result ${test}`,
+      );
+      expect(res.valid === true, `${test} came back ${JSON.stringify(res)}`);
+      played += 1;
+    }
+    if (played > 0) {
+      unwrap(await clients.daniel.rpc('gi_finish_session', { p_session: session }), 'gi_finish_session');
+    }
+    const after = unwrap(await clients.daniel.rpc('gi_my_state'), 'gi_my_state');
+    expect(after.profile?.overall != null, 'no overall after six games');
+    return `${played} played now · overall ${after.profile.overall}`;
+  });
+
+  await step('marco sees nothing while it is private', async () => {
+    unwrap(
+      await clients.daniel.rpc('gi_set_sharing', { p_share_with_clubs: false, p_show_badge: false }),
+      'gi_set_sharing',
+    );
+    const seen = unwrap(
+      await clients.marco.rpc('get_game_intelligence', { p_user: ids.daniel }),
+      'get_game_intelligence',
+    );
+    expect(seen == null, `marco saw ${JSON.stringify(seen)}`);
+  });
+
+  await step('and the sub-scores once daniel shares', async () => {
+    unwrap(
+      await clients.daniel.rpc('gi_set_sharing', { p_share_with_clubs: true, p_show_badge: false }),
+      'gi_set_sharing',
+    );
+    const seen = unwrap(
+      await clients.marco.rpc('get_game_intelligence', { p_user: ids.daniel }),
+      'get_game_intelligence',
+    );
+    expect(seen?.view === 'recruiter' && seen.subscores, `marco saw ${JSON.stringify(seen)}`);
+    return `overall ${seen.overall}, ${Object.keys(seen.subscores).length} games`;
+  });
+
+  await step('a fourteen-year-old without a guardian’s yes cannot start', async () => {
+    const res = await clients.mina.rpc('gi_start_session', {
+      p_device_class: 'test', p_baseline_ms: 250, p_fatigue: 2,
+    });
+    expect(res.error, 'the session started');
+    expect(res.error.hint === 'gi_consent_required', `hint was ${res.error.hint}`);
+    return 'refused by the database';
+  });
+
+  // ── Explore ───────────────────────────────────────────────────────────────
+  section('a public clip reaches someone who follows nobody');
+
+  await step('marco, who posts nothing, gets a grid of public clips', async () => {
+    const rows = unwrap(await clients.marco.rpc('explore_videos', { p_limit: 60 }), 'explore_videos');
+    expect(rows.length > 0, 'the grid is empty');
+    expect(
+      rows.every((r) => r.media?.some((m) => m.type === 'video')),
+      'a row without a video reached Explore',
+    );
+    expect(rows.some((r) => r.type === 'highlight'), 'no highlight clip in the grid');
+    expect(!rows.some((r) => r.author_id === ids.mina), 'a hidden minor is on Explore');
+    return `${rows.length} clips, ${rows.filter((r) => r.type === 'highlight').length} highlights`;
+  });
+
+  await step('the sport chips match what the grid can show', async () => {
+    const sports = unwrap(await clients.marco.rpc('explore_sports'), 'explore_sports');
+    expect(sports.length > 0, 'no sports');
+    const first = sports[0];
+    const rows = unwrap(
+      await clients.marco.rpc('explore_videos', { p_limit: 60, p_sport: first.sport }),
+      'explore_videos',
+    );
+    expect(rows.length === first.clips, `${first.sport}: chip says ${first.clips}, grid has ${rows.length}`);
+    expect(rows.every((r) => r.athlete_sport === first.sport), 'another sport leaked into the filter');
+    return `${first.sport}: ${first.clips}`;
+  });
+
+  // ── Sponsorship ───────────────────────────────────────────────────────────
+  section('a sponsorship offer reaches the athlete, and only from a verified sponsor');
+
+  let sponsoredRequest = null;
+  let offerId = null;
+
+  await step('sara is listed as seeking, with the amount, to a verified sponsor', async () => {
+    const mine = unwrap(await clients.sara.rpc('my_sponsorship'), 'my_sponsorship');
+    const open = mine.requests.find((r) => r.status === 'open');
+    expect(open, 'sara has no open request in the demo data');
+    sponsoredRequest = open.id;
+    const seekers = unwrap(await clients.falcon.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.request_id === open.id);
+    expect(row, 'falcon does not see the request');
+    expect(row.amount === open.amount, `falcon saw amount ${row.amount}`);
+    return `${row.title} · ${row.amount} ${row.currency}`;
+  });
+
+  await step('an unverified sponsor sees her, without the amount, and cannot offer', async () => {
+    const seekers = unwrap(await clients.peak.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.request_id === sponsoredRequest);
+    expect(row && row.amount == null, `peak saw ${JSON.stringify(row?.amount)}`);
+    const res = await clients.peak.rpc('sponsor_make_offer', { p_request: sponsoredRequest, p_message: 'hi' });
+    expect(res.error?.hint === 'sponsor_not_verified', `hint was ${res.error?.hint}`);
+    return 'refused by the database';
+  });
+
+  await step('a coach cannot browse who needs money', async () => {
+    const res = await clients.marco.rpc('sponsorship_seekers');
+    expect(res.error?.hint === 'sponsor_only', `hint was ${res.error?.hint}`);
+  });
+
+  await step('falcon makes an offer and sara is notified', async () => {
+    /* Rerunnable: an offer left pending by an earlier run is withdrawn first. */
+    const before = unwrap(await clients.falcon.rpc('my_sponsorship'), 'my_sponsorship');
+    for (const d of before.deals.filter((d) => d.request_id === sponsoredRequest && d.can_withdraw)) {
+      unwrap(await clients.falcon.rpc('withdraw_sponsorship', { p_deal: d.id }), 'withdraw_sponsorship');
+    }
+    offerId = unwrap(
+      await clients.falcon.rpc('sponsor_make_offer', {
+        p_request: sponsoredRequest,
+        p_message: 'Entry and flights, in return for three posts.',
+        p_amount: 3000,
+      }),
+      'sponsor_make_offer',
+    );
+    await eventually(async () =>
+      (await notifications(clients.sara)).some((n) => n.type === 'sponsorship_offer' && n.entity_id === offerId),
+    );
+    const mine = unwrap(await clients.sara.rpc('my_sponsorship'), 'my_sponsorship');
+    const deal = mine.deals.find((d) => d.id === offerId);
+    expect(deal?.can_respond, 'sara cannot answer the offer');
+    return `offer ${offerId.slice(0, 8)}`;
+  });
+
+  await step('sara declines, and falcon hears back', async () => {
+    const status = unwrap(
+      await clients.sara.rpc('respond_sponsorship', { p_deal: offerId, p_accept: false }),
+      'respond_sponsorship',
+    );
+    expect(status === 'declined', `status ${status}`);
+    await eventually(async () =>
+      (await notifications(clients.falcon)).some(
+        (n) => n.type === 'sponsorship_response' && n.entity_id === offerId,
+      ),
+    );
+  });
+
+  await step('a seventeen-year-old with the guardian scope is listed, marked under 18', async () => {
+    const seekers = unwrap(await clients.falcon.rpc('sponsorship_seekers'), 'sponsorship_seekers');
+    const row = seekers.find((r) => r.athlete_user_id === ids.omar);
+    expect(row?.is_minor === true, `omar's row: ${JSON.stringify(row)}`);
+    const start = await clients.falcon.rpc('start_conversation', { p_user: ids.omar });
+    expect(start.error, 'a sponsor opened a conversation with a minor');
+    return 'and cannot be messaged by the sponsor';
+  });
+
+  await step('a fourteen-year-old without it cannot ask', async () => {
+    const res = await clients.mina.rpc('save_sponsorship_request', { p_id: null, p: { title: 'Swim camp' } });
+    expect(res.error?.hint === 'guardian_consent_required', `hint was ${res.error?.hint}`);
+  });
+
+  await step('an athlete sees the calls, and a minor only the junior one', async () => {
+    const adult = unwrap(await clients.layla.rpc('sponsor_calls_feed'), 'sponsor_calls_feed');
+    const minor = unwrap(await clients.omar.rpc('sponsor_calls_feed'), 'sponsor_calls_feed');
+    expect(adult.length >= 3, `layla sees ${adult.length} calls`);
+    expect(minor.length >= 1 && minor.every((c) => c.open_to_minors), 'omar sees an adults-only call');
+    return `${adult.length} for an adult, ${minor.length} for a minor`;
+  });
+
+  // ── Coach bookings ────────────────────────────────────────────────────────
+  section('a booking reaches the coach, and the last place goes to one person');
+
+  let bookedSlot = null;
+  let bookingId = null;
+
+  await step('daniel finds marco among the coaches taking students', async () => {
+    const coaches = unwrap(await clients.daniel.rpc('bookable_coaches'), 'bookable_coaches');
+    const row = coaches.find((c) => c.id === ids.marco);
+    expect(row, 'marco is not listed');
+    expect(row.next_slot, 'marco has no free time');
+    return `${row.open_slots} free times, from ${row.price_from} ${row.currency}`;
+  });
+
+  await step('he books a free one-to-one time and marco is notified', async () => {
+    const page = unwrap(await clients.daniel.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.gate === 'ok', `gate was ${page.gate}`);
+    const session = page.services.find((s) => s.kind === 'session');
+    /* Rerunnable: a booking left by an earlier run is cancelled first. */
+    for (const s of page.slots.filter((x) => x.my_booking_id && x.service_id === session.id)) {
+      unwrap(await clients.daniel.rpc('cancel_coaching_booking', { p_booking: s.my_booking_id }), 'cancel');
+    }
+    const fresh = unwrap(await clients.daniel.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    const slot = fresh.slots.find((x) => x.service_id === session.id && x.spots_left > 0);
+    expect(slot, 'no free session slot');
+    bookedSlot = slot.id;
+    bookingId = unwrap(
+      await clients.daniel.rpc('book_coaching_slot', { p_slot: slot.id, p_note: 'First session.' }),
+      'book_coaching_slot',
+    );
+    await eventually(async () =>
+      (await notifications(clients.marco)).some((n) => n.type === 'coaching_booked' && n.entity_id === bookingId),
+    );
+    return `slot ${slot.starts_at.slice(0, 16)}`;
+  });
+
+  await step('the place is gone for sara, who cannot see who took it', async () => {
+    const res = await clients.sara.rpc('book_coaching_slot', { p_slot: bookedSlot });
+    expect(res.error?.hint === 'coaching_slot_full', `hint was ${res.error?.hint}`);
+    const page = unwrap(await clients.sara.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    const slot = page.slots.find((x) => x.id === bookedSlot);
+    expect(slot.spots_left === 0 && !('bookings' in slot), 'sara saw more than a count');
+    const rows = unwrap(await clients.sara.from('coaching_bookings').select('id').eq('slot_id', bookedSlot), 'read');
+    expect(rows.length === 0, `sara read ${rows.length} bookings from the table`);
+  });
+
+  await step('marco sees daniel in his calendar, with the note', async () => {
+    const mine = unwrap(await clients.marco.rpc('my_coaching'), 'my_coaching');
+    const slot = mine.slots.find((x) => x.id === bookedSlot);
+    expect(slot?.bookings.some((b) => b.athlete_user_id === ids.daniel && b.note === 'First session.'),
+      'the booking is not in the calendar');
+    return `${mine.slots.length} slots, ${mine.slots.reduce((n, x) => n + x.bookings.length, 0)} bookings`;
+  });
+
+  await step('daniel cancels, marco is told, and the place is free again', async () => {
+    unwrap(await clients.daniel.rpc('cancel_coaching_booking', { p_booking: bookingId }), 'cancel_coaching_booking');
+    await eventually(async () =>
+      (await notifications(clients.marco)).some((n) => n.type === 'coaching_cancelled' && n.entity_id === bookingId),
+    );
+    const page = unwrap(await clients.sara.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.slots.find((x) => x.id === bookedSlot)?.spots_left === 1, 'the place did not come back');
+  });
+
+  await step('a fourteen-year-old without the guardian scope cannot book', async () => {
+    const page = unwrap(await clients.mina.rpc('coach_booking_page', { p_coach: ids.marco }), 'coach_booking_page');
+    expect(page.gate === 'guardian_consent_required', `gate was ${page.gate}`);
+    const res = await clients.mina.rpc('book_coaching_slot', { p_slot: bookedSlot });
+    expect(res.error?.hint === 'guardian_consent_required', `hint was ${res.error?.hint}`);
+  });
+
+  await step('an athlete cannot open a calendar of their own', async () => {
+    const res = await clients.layla.rpc('set_coaching_status', { p_accepting: true });
+    expect(res.error?.hint === 'coach_only', `hint was ${res.error?.hint}`);
   });
 
   // ── Summary ───────────────────────────────────────────────────────────────

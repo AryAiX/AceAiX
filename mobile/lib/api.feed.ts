@@ -2,6 +2,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { AppError } from '@/lib/errors';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
+import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { prepareVideo } from '@/lib/videoPrep';
 import { Buckets, supabase } from '@/lib/supabase';
 import { webAppLink } from '@/lib/webLinks';
@@ -71,20 +72,20 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
   const rawMedia = Array.isArray(row.media) ? (row.media as PostMedia[]) : [];
   const paths = rawMedia
     .flatMap((item) => [item.url, item.thumbnail])
-    .filter((value): value is string => !!value && !value.startsWith('http'));
+    .filter((value): value is string => !!value && !isAbsoluteMediaUrl(value));
   const { data: signed } = paths.length
     ? await supabase.storage.from(Buckets.posts).createSignedUrls(Array.from(new Set(paths)), 3600)
     : { data: [] };
-  const signedByPath = new Map((signed ?? []).map((item) => [item.path, item.signedUrl]));
+  const signedByPath = new Map((Array.isArray(signed) ? signed : []).map((item) => [item.path, item.signedUrl]));
   const media: PostMedia[] = rawMedia.flatMap((item) => {
-    const url = item.url.startsWith('http') ? item.url : signedByPath.get(item.url);
+    const url = isAbsoluteMediaUrl(item.url) ? item.url : signedByPath.get(item.url);
     if (!url) return [];
     return [{
       ...item,
       url,
       thumbnail: !item.thumbnail
         ? undefined
-        : item.thumbnail.startsWith('http')
+        : isAbsoluteMediaUrl(item.thumbnail)
         ? item.thumbnail
         : signedByPath.get(item.thumbnail) ?? undefined,
     }];

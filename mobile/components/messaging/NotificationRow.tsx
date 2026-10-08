@@ -4,6 +4,9 @@ import {
   Award,
   Bell,
   Briefcase,
+  Handshake,
+  CalendarCheck,
+  CalendarX,
   ClipboardCheck,
   Eye,
   Heart,
@@ -66,6 +69,14 @@ function skinFor(type: NotificationType): Skin {
       return { Icon: TrendingUp, tint: 'success' };
     case 'opportunity':
       return { Icon: Briefcase, tint: 'primary' };
+    case 'sponsorship_offer':
+    case 'sponsorship_application':
+    case 'sponsorship_response':
+      return { Icon: Handshake, tint: 'warning' };
+    case 'coaching_booked':
+      return { Icon: CalendarCheck, tint: 'success' };
+    case 'coaching_cancelled':
+      return { Icon: CalendarX, tint: 'danger' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }

@@ -1,0 +1,12 @@
+-- ============================================================
+-- A sponsor is a new kind of account
+--
+-- A brand or company that funds athletes. It gets its own role instead of
+-- borrowing `club`: a club recruits players, a sponsor pays for a season or a
+-- tournament, and the two must never be mistaken for each other in a policy.
+--
+-- This file only adds the enum value. Postgres does not let a new enum value
+-- be used in the transaction that created it, and every migration runs in one
+-- transaction — so everything that names 'sponsor' lives in the next file.
+-- ============================================================
+alter type public.user_role add value if not exists 'sponsor';

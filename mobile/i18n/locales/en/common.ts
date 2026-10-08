@@ -69,6 +69,7 @@ export const common = {
   coach: 'Coach',
   club: 'Club',
   scout: 'Scout',
+  sponsor: 'Sponsor',
   guardian: 'Parent or guardian',
   federation: 'Federation',
   medicalPartner: 'Medical partner',
@@ -141,7 +142,7 @@ export const common = {
   tabHome: 'Home',
   tabDiscover: 'Discover',
   tabTrials: 'Trials',
-  tabYou: 'You',
+  tabYou: 'Profile',
   tabCreate: 'Create',
 
   // Legal

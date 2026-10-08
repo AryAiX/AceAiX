@@ -135,6 +135,20 @@ function Shell() {
             name="opportunity/new"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
+          {/* Stories and reels are immersive: full screen, no chrome of the
+              app's own, and they arrive by fading up rather than sliding. */}
+          <Stack.Screen
+            name="stories/[userId]"
+            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="stories/new"
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="reels"
+            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
+          />
           {/* Legal is reachable from the signed-out welcome screen, so it must
               not be gated behind a session. */}
           <Stack.Screen name="legal" />

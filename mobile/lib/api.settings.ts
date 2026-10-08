@@ -33,6 +33,8 @@ export function verificationTypeFor(role: UserRole | null | undefined): string {
       return 'recruiter';
     case 'club':
       return 'club';
+    case 'sponsor':
+      return 'sponsor';
     case 'federation':
       return 'federation';
     case 'medical_partner':
@@ -110,7 +112,7 @@ export async function getGuardianLinks(): Promise<GuardianLink[]> {
     supabase
       .from('guardian_consents')
       .select(
-        'id, minor_user_id, guardian_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, granted_at, revoked_at, created_at, updated_at',
+        'id, minor_user_id, guardian_user_id, guardian_name, guardian_email, relationship, status, allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings, granted_at, revoked_at, created_at, updated_at',
       )
       .eq('guardian_user_id', auth.user.id)
       .order('created_at', { ascending: false }),

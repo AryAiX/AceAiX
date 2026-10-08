@@ -93,6 +93,8 @@ export const auth = {
     roleClubSubtitle: 'اكتشف المواهب وانشر التجارب',
     roleGuardianTitle: 'أنا أحد الوالدين أو ولي أمر',
     roleGuardianSubtitle: 'ادعم ملف ابنك ووافق عليه',
+    roleSponsorTitle: 'أنا راعٍ أو علامة تجارية',
+    roleSponsorSubtitle: 'ادعم الرياضيين واعثر على من تسانده',
 
     nameTitle: 'بماذا نناديك؟',
     nameSubtitle: 'استخدم اسمك الحقيقي — المدرّبون يحتاجون معرفة من أمامهم.',

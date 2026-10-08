@@ -88,6 +88,8 @@ export const auth = {
     roleClubSubtitle: 'Repérer des talents et publier des essais',
     roleGuardianTitle: 'Je suis parent ou tuteur',
     roleGuardianSubtitle: 'Accompagner et valider le profil de mon enfant',
+    roleSponsorTitle: 'Je suis un sponsor ou une marque',
+    roleSponsorSubtitle: 'Soutenez des athlètes et trouvez qui accompagner',
 
     nameTitle: 'On t’appelle comment ?',
     nameSubtitle: 'Mets ton vrai nom — les coachs doivent savoir qui ils regardent.',
