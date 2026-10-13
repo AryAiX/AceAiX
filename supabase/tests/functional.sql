@@ -1470,11 +1470,15 @@ do $$ begin raise notice E'\n── translation cache ──'; end $$;
 do $$
 declare v_hit jsonb; v_raised boolean;
 begin
+  -- Only the translate function reads the cache; a client probing it with
+  -- arbitrary text could learn what other people have written.
   perform tests.as_user('11111111-1111-1111-1111-111111111111');
-
-  perform tests.ok(
-    public.cached_translation('Bom jogo hoje', 'en') is null,
-    'a miss is null, so the client knows to call the function');
+  v_raised := false;
+  begin
+    perform public.cached_translation('Bom jogo hoje', 'en');
+  exception when others then v_raised := true;
+  end;
+  perform tests.ok(v_raised, 'a signed-in account cannot read the translation cache');
 
   -- Only the service role writes.
   v_raised := false;
@@ -1485,9 +1489,12 @@ begin
   perform tests.ok(v_raised, 'a signed-in account cannot write a translation');
 
   perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform tests.ok(
+    public.cached_translation('Bom jogo hoje', 'en') is null,
+    'a miss is null, so the function knows to call the provider');
+
   perform public.store_translation('Bom jogo hoje', 'en', 'Good game today', 'test', 'pt');
 
-  perform tests.as_user('11111111-1111-1111-1111-111111111111');
   v_hit := public.cached_translation('Bom jogo hoje', 'en');
   perform tests.ok(v_hit ->> 'translated' = 'Good game today',
     'and the next reader gets it from the cache, free');
