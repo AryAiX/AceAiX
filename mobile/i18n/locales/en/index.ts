@@ -7,6 +7,7 @@ import { profile } from './profile';
 import { score } from './score';
 import { challenges } from './challenges';
 import { meetups } from './meetups';
+import { intelligence } from './intelligence';
 import { teams } from './teams';
 import { views } from './views';
 import { progress } from './progress';
@@ -18,6 +19,11 @@ import { safety } from './safety';
 import { sports } from './sports';
 import { errors } from './errors';
 import { format } from './format';
+import { stories } from './stories';
+import { reels } from './reels';
+import { explore } from './explore';
+import { coaching } from './coaching';
+import { sponsorship } from './sponsorship';
 import { countries } from './countries';
 
 /**
@@ -36,6 +42,7 @@ export const en = {
   score,
   challenges,
   meetups,
+  intelligence,
   teams,
   views,
   progress,
@@ -48,6 +55,11 @@ export const en = {
   errors,
   format,
   countries,
+  stories,
+  reels,
+  explore,
+  coaching,
+  sponsorship,
 };
 
 export type Translations = typeof en;

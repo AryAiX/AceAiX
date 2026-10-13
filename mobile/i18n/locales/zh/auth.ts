@@ -81,6 +81,8 @@ export const auth = {
     roleClubSubtitle: '发掘新人，发布试训',
     roleGuardianTitle: '我是家长或监护人',
     roleGuardianSubtitle: '支持并批准孩子的资料',
+    roleSponsorTitle: '我是赞助商或品牌',
+    roleSponsorSubtitle: '支持运动员，找到值得资助的人',
 
     nameTitle: '该怎么称呼你？',
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',

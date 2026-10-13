@@ -134,6 +134,8 @@ cat <<EOF
     scout, verified             nadia.demo@aceaix.com
     federation                  federation.demo@aceaix.com
     medical partner             amin.demo@aceaix.com
+    sponsor, verified           falcon.demo@aceaix.com    (the sponsorship portal)
+    sponsor, unverified         peak.demo@aceaix.com
 
   The three minors cannot reach Play — meetups are eighteen-plus, and the
   database is what says so, not the tab bar.

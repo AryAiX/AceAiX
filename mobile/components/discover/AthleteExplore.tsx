@@ -13,7 +13,6 @@ import {
   ErrorState,
   Input,
   ListItem,
-  SegmentedControl,
   Sheet,
   SkeletonList,
   Text,
@@ -36,12 +35,17 @@ import { displayName, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Organization, PersonResult } from '@/types/models';
+import { ExploreGrid } from '@/components/explore/ExploreGrid';
+import { ScrollTabs } from '@/components/explore/ScrollTabs';
+import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
+import { BookableCoaches } from '@/components/coaching/BookableCoaches';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
 import { LeaderboardRow } from './LeaderboardRow';
 import { tierLabel } from './MatchBadge';
 
-type Tab = 'clubs' | 'coaches' | 'leaderboard';
+export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'sponsors' | 'leaderboard';
+type Tab = AthleteDiscoverTab;
 
 const SEARCH_DEBOUNCE_MS = 300;
 const BOARD_SIZE = 50;
@@ -52,14 +56,19 @@ interface Page<T> {
 }
 
 const TABS: { value: Tab; labelKey: string }[] = [
+  { value: 'explore', labelKey: 'explore.viewExplore' },
   { value: 'clubs', labelKey: 'discover.tabClubs' },
   { value: 'coaches', labelKey: 'discover.tabCoaches' },
+  { value: 'sponsors', labelKey: 'sponsorship.tabSponsors' },
   { value: 'leaderboard', labelKey: 'discover.tabLeaderboard' },
 ];
 
 interface Props {
   /** The signed-in athlete, so their own leaderboard row can be highlighted. */
   viewerId: string | null;
+  /** The tab to open on. Explore unless a link asked for the people side. */
+  initialTab?: AthleteDiscoverTab;
+  /** Main's link into a tab; tabRequestKey changes on every new request. */
   requestedTab?: string;
   tabRequestKey?: string;
 }
@@ -143,12 +152,19 @@ function AthleteSearchRow({ person, isYou }: { person: PersonResult; isYou: bool
 }
 
 /**
- * The athlete's side of Discover: who to follow, and where they stand.
+ * The athlete's side of Discover: clips to watch (Explore, the tab it opens
+ * on), who to follow, and where they stand.
  *
  * The leaderboard is read by teenagers, so it only ever names positions people
  * already hold. It never tells anyone they are behind.
  */
-export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props) {
+export function AthleteExplore({
+  viewerId,
+  initialTab = 'explore',
+  requestedTab,
+  tabRequestKey,
+}: Props) {
+  const router = useRouter();
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -156,7 +172,12 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
   const { profile } = useAuth();
   const canSearchBoard = profile?.is_minor === false;
 
-  const [tab, setTab] = useState<Tab>('clubs');
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  /* A link that names a side wins over whatever was open before it. */
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     if (!tabRequestKey) return;
@@ -176,6 +197,8 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
+  /* Coaches: everyone, or only those who can be booked. */
+  const [bookable, setBookable] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), SEARCH_DEBOUNCE_MS);
@@ -292,9 +315,11 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
       placeholder={
         tab === 'clubs'
           ? t('discover.explore.searchClubsPlaceholder')
-          : tab === 'coaches'
-            ? t('discover.explore.searchCoachesPlaceholder')
-            : t('discover.queryLabel')
+          : tab === 'sponsors'
+            ? t('sponsorship.searchPlaceholder')
+            : tab === 'coaches'
+              ? t('discover.explore.searchCoachesPlaceholder')
+              : t('discover.queryLabel')
       }
       autoCorrect={false}
       autoCapitalize="none"
@@ -303,9 +328,11 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
       accessibilityLabel={
         tab === 'clubs'
           ? t('discover.explore.searchClubsA11y')
-          : tab === 'coaches'
-            ? t('discover.explore.searchCoachesA11y')
-            : t('discover.queryLabel')
+          : tab === 'sponsors'
+            ? t('sponsorship.searchPlaceholder')
+            : tab === 'coaches'
+              ? t('discover.explore.searchCoachesA11y')
+              : t('discover.queryLabel')
       }
       icon={<Search size={18} color={colors.textMuted} />}
     />
@@ -393,6 +420,7 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
   }
 
   function renderCoaches() {
+    if (bookable) return <BookableCoaches query={debounced} />;
     if (coaches.error) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
     if (coaches.loading || coaches.data?.term !== debounced) return busy(4);
 
@@ -542,8 +570,8 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.md }}>
-        <SegmentedControl<Tab>
+      <View style={{ paddingBottom: spacing.md }}>
+        <ScrollTabs<Tab>
           options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
           value={tab}
           onChange={(next) => {
@@ -556,13 +584,66 @@ export function AthleteExplore({ viewerId, requestedTab, tabRequestKey }: Props)
       </View>
 
       <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md, gap: spacing.md }}>
-        {tab !== 'leaderboard' || canSearchBoard ? (
-          <View style={{ paddingRight: spacing.lg }}>{searchField}</View>
-        ) : null}
-        {tab === 'leaderboard' ? boardFilters : null}
+        {tab === 'explore' ? (
+          /* Clips are not searched by text. The bar opens the people-and-clubs
+             search, where a name typed here would have been looked for anyway. */
+          <Pressable
+            onPress={() => router.push(Routes.search)}
+            accessibilityRole="search"
+            accessibilityLabel={t('discover.searchPeople')}
+            testID="explore-search"
+            style={({ pressed }) => ({
+              marginRight: spacing.lg,
+              minHeight: 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              paddingHorizontal: spacing.lg,
+              borderRadius: theme.radii.md,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Search size={18} color={colors.textMuted} />
+            <Text variant="body" tone="muted" numberOfLines={1}>
+              {t('discover.searchPeople')}
+            </Text>
+          </Pressable>
+        ) : (
+          <>
+            {tab !== 'leaderboard' || canSearchBoard ? (
+              <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
+                {searchField}
+                {tab === 'coaches' ? (
+                  <View style={{ flexDirection: 'row' }}>
+                    <Chip
+                      label={t('coaching.takingStudentsFilter')}
+                      selected={bookable}
+                      onPress={() => setBookable((b) => !b)}
+                      testID="coaches-bookable-filter"
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            {tab === 'leaderboard' ? boardFilters : null}
+          </>
+        )}
       </View>
 
-      {tab === 'clubs' ? renderClubs() : tab === 'coaches' ? renderCoaches() : renderBoard()}
+      {tab === 'explore' ? (
+        <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
+      ) : tab === 'sponsors' ? (
+        <SponsorsTab query={debounced} />
+      ) : tab === 'clubs' ? (
+        renderClubs()
+      ) : tab === 'coaches' ? (
+        renderCoaches()
+      ) : (
+        renderBoard()
+      )}
 
       <Sheet
         visible={countrySheet}

@@ -6,6 +6,9 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, ErrorState, Screen, SkeletonList } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { MyCoachingCard } from '@/components/coaching/CoachingCard';
+import { MyGiCard } from '@/components/intelligence/GiCard';
+import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
@@ -101,6 +104,35 @@ export default function MyProfileScreen() {
       >
         {athlete ? (
           <ScoreCard score={liveScore} onPress={() => router.push(Routes.score)} />
+        ) : null}
+
+        {/* Beside the Talent Score, never inside it — docs/26 §4. */}
+        {athlete ? <MyGiCard refreshKey={childKey} /> : null}
+
+        {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
+        {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
+          <Button
+            label={t('coaching.myBookings')}
+            variant="secondary"
+            onPress={() => router.push(Routes.coaching)}
+            testID="open-my-sessions"
+          />
+        ) : null}
+
+        {athlete || data.user.role === 'sponsor' ? (
+          <SponsorshipProfileCard
+            userId={data.user.id}
+            displayName={data.user.full_name ?? ''}
+            refreshKey={childKey}
+          />
+        ) : null}
+        {data.user.role === 'sponsor' || data.user.role === 'guardian' ? (
+          <Button
+            label={t('sponsorship.openPortal')}
+            variant="secondary"
+            onPress={() => router.push(Routes.sponsorship)}
+            testID="open-sponsorship-portal"
+          />
         ) : null}
 
         <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
