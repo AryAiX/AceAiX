@@ -35,7 +35,6 @@ export function Composer({
   const lineH = Math.round(size.md * lineHeight.normal);
   const minHeight: number = hit.min;
   const maxHeight = lineH * MAX_LINES + spacing.md * 2;
-  const [height, setHeight] = useState<number>(minHeight);
 
   /* The screen's KeyboardAvoidingView already lifts this bar, so the home-bar
      inset must only be added while the keyboard is down — otherwise there is a
@@ -92,20 +91,12 @@ export function Composer({
           placeholderTextColor={colors.textMuted}
           multiline
           editable={!disabled}
-          scrollEnabled={height >= maxHeight}
-          onContentSizeChange={(e) =>
-            setHeight(
-              Math.min(
-                Math.max(Math.ceil(e.nativeEvent.contentSize.height), minHeight),
-                maxHeight,
-              ),
-            )
-          }
           accessibilityLabel={t('common.message')}
           testID="chat-composer"
           maxLength={4000}
           style={{
-            height,
+            minHeight,
+            maxHeight,
             color: colors.text,
             fontFamily: font.regular,
             fontSize: size.md,
