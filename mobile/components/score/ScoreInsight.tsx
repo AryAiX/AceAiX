@@ -10,7 +10,7 @@ import { useT } from '@/i18n';
 /**
  * A few sentences about this profile, written rather than counted.
  *
- * The `talent-insights` function answers whether or not an Anthropic key is
+ * The `talent-insights` function answers whether or not an AI provider key is
  * configured — with one it writes, without one it fills a template from the
  * same pillar numbers — so this never needs a feature flag and never shows a
  * half-built state. It also never blocks: the score and the pillars are already

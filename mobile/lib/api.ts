@@ -1139,7 +1139,7 @@ export async function simulateScore(
 /**
  * A short written read on the profile, from the `talent-insights` function.
  *
- * The function answers with or without an Anthropic key configured — with one
+ * The function answers with or without an AI provider key configured — with one
  * it writes; without one it fills a template from the same pillar numbers. So
  * this never has to be feature-flagged in the UI, and it never blocks a screen:
  * callers render the score first and let the words arrive late.

@@ -17,10 +17,10 @@ export { GUIDELINES_MD } from './guidelines';
 export { CHILD_SAFETY_MD } from './childSafety';
 
 /** ISO date the four documents were last changed. */
-export const LAST_UPDATED = '2026-09-04';
+export const LAST_UPDATED = '2026-10-13';
 
 /** The same date, written the way it is shown on every document. */
-export const LAST_UPDATED_LABEL = '4 September 2026';
+export const LAST_UPDATED_LABEL = '13 October 2026';
 
 export const COMPANY = {
   legalName: 'AryAiX',
