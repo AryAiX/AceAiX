@@ -9,8 +9,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * and this function only explains it, so an outage or a missing API key can
  * never change anyone's score.
  *
- * With ANTHROPIC_API_KEY set, the wording comes from a model, constrained to
- * the facts we hand it. Without one, a written-in template does the same job.
+ * With OPENAI_API_KEY (or ANTHROPIC_API_KEY) set, the wording comes from a
+ * model, constrained to the facts we hand it. Without one, or if the call
+ * fails, a written-in template does the same job.
  * Either way the athlete gets a real answer.
  *
  *   POST {}   (authenticated)  → writes talent_scores.ai_summary for the caller
@@ -25,8 +26,10 @@ const CORS = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const OPENAI_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") ?? "gpt-4.1-mini";
 const ANTHROPIC_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-5";
+const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-5";
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -95,7 +98,7 @@ async function modelSummary(
   sport: string | null,
   isMinor: boolean,
 ): Promise<string | null> {
-  if (!ANTHROPIC_KEY) return null;
+  if (!OPENAI_KEY && !ANTHROPIC_KEY) return null;
 
   const prompt = `An athlete on AceAiX has a Talent Score of ${overall}/100 (${tier} tier).
 Their five pillar scores, each out of 100, are:
@@ -116,26 +119,45 @@ Rules: warm and matter-of-fact, never hyped. ${
   } Do not invent any statistic that is not listed above. Do not promise anyone will scout them. Do not use exclamation marks. Under 60 words. Reply with the sentences only.`;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": ANTHROPIC_KEY,
-        "anthropic-version": "2023-06-01",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 220,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data?.content?.[0]?.text;
+    const text = OPENAI_KEY ? await openaiText(OPENAI_KEY, prompt) : await anthropicText(ANTHROPIC_KEY!, prompt);
     return typeof text === "string" && text.trim().length > 0 ? text.trim() : null;
   } catch {
     return null;
   }
+}
+
+async function openaiText(key: string, prompt: string): Promise<unknown> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: OPENAI_MODEL,
+      max_completion_tokens: 220,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content;
+}
+
+async function anthropicText(key: string, prompt: string): Promise<unknown> {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 220,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data?.content?.[0]?.text;
 }
 
 Deno.serve(async (req: Request) => {
@@ -181,19 +203,19 @@ Deno.serve(async (req: Request) => {
     engagement: score.engagement_score,
   };
 
-  const summary =
-    (await modelSummary(
-      score.overall,
-      score.tier,
-      pillars,
-      athlete.sport,
-      profile?.is_minor ?? false,
-    )) ?? templateSummary(score.overall, score.tier, pillars, athlete.sport);
+  const fromModel = await modelSummary(
+    score.overall,
+    score.tier,
+    pillars,
+    athlete.sport,
+    profile?.is_minor ?? false,
+  );
+  const summary = fromModel ?? templateSummary(score.overall, score.tier, pillars, athlete.sport);
 
   await admin
     .from("talent_scores")
     .update({ ai_summary: summary })
     .eq("athlete_id", athlete.id);
 
-  return json({ ok: true, summary, generated_by: ANTHROPIC_KEY ? "model" : "template" });
+  return json({ ok: true, summary, generated_by: fromModel ? "model" : "template" });
 });
