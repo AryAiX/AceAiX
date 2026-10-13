@@ -347,4 +347,3 @@ export function PitchDecisionGame({ mode, scenarios, onDone }: Props) {
     </View>
   );
 }
-
