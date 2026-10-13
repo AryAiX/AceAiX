@@ -3728,4 +3728,78 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Admin console (20261013000001)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── admin console ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('ad111111-1111-1111-1111-111111111111', 'moderator@test.local', '{"full_name":"Test Moderator"}')
+on conflict do nothing;
+update public.user_profiles set role = 'admin' where id = 'ad111111-1111-1111-1111-111111111111';
+
+do $$
+declare
+  v_raised boolean;
+  v_post uuid;
+  v_report uuid;
+begin
+  -- A non-admin is refused by every console function.
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_raised := false;
+  begin perform public.admin_dashboard(); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot read the admin dashboard');
+  v_raised := false;
+  begin perform public.admin_set_suspension('44444444-4444-4444-4444-444444444444', true, 'x', 1);
+  exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot suspend an account');
+
+  -- The random adult posts; the adult athlete reports it.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  insert into public.posts (author_id, text) values ('44444444-4444-4444-4444-444444444444', 'Buy followers here')
+  returning id into v_post;
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_report := public.report_content('post', v_post::text, 'spam', null);
+
+  -- The moderator sees it, removes the post and suspends the author.
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(public.admin_list_reports('open')) r where (r->>'id')::uuid = v_report),
+    'an admin sees an open report in the queue');
+  perform public.admin_resolve_report(v_report, 'suspend_user', 'Selling followers', 3);
+  perform tests.ok((select moderation_state = 'removed' from public.posts where id = v_post),
+    'resolving with a suspension removes the reported post');
+  perform tests.ok((select is_suspended and suspended_until > now()
+                    from public.user_profiles where id = '44444444-4444-4444-4444-444444444444'),
+    'resolving with a suspension suspends the author until a date');
+  perform tests.ok((select status = 'resolved' from public.moderation_reports where id = v_report),
+    'the report is marked resolved');
+  perform tests.ok(exists (select 1 from public.audit_logs where action = 'report.suspend_user'
+                             and record_id = v_report and user_id = 'ad111111-1111-1111-1111-111111111111'),
+    'the decision is written to the audit log with the moderator''s id');
+
+  -- Reinstating lifts the suspension.
+  perform public.admin_set_suspension('44444444-4444-4444-4444-444444444444', false, null);
+  perform tests.ok((select not is_suspended from public.user_profiles where id = '44444444-4444-4444-4444-444444444444'),
+    'an admin can reinstate a suspended account');
+
+  -- An admin who is not a super admin cannot change roles.
+  v_raised := false;
+  begin perform public.admin_set_role('44444444-4444-4444-4444-444444444444', 'coach');
+  exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'only a super admin can change a role');
+
+  -- An admin cannot suspend themselves.
+  v_raised := false;
+  begin perform public.admin_set_suspension('ad111111-1111-1111-1111-111111111111', true, 'x', null);
+  exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'an admin cannot suspend their own account');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
