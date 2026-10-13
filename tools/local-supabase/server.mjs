@@ -343,8 +343,8 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/functions/v1/talent-insights') {
       /* The same written fallback the deployed function produces when no
-         ANTHROPIC_API_KEY is set, so the score screen reads the way it will in
-         production rather than showing its unavailable state on every run. */
+         AI provider key is set, so the score screen reads the way it would
+         rather than showing its unavailable state on every run. */
       const claims = verify(String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, ''));
       if (!claims?.sub) return send(res, 401, { message: 'Not signed in' });
 

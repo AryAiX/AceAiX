@@ -107,7 +107,7 @@ Deleting an account removes its objects from all three buckets
 | Expo | Push token, notification payloads | Processor | Yes |
 | Apple, Google | Distribution, push transport | Processor / platform | Yes |
 | **Resend** | Guardian's name and email address, child's display name, for the consent email | Processor | **Yes.** Named in "Who we share it with", with the fields it receives. `supabase/functions/guardian-consent/index.ts:204` posts to `api.resend.com` when `RESEND_API_KEY` is set. |
-| **Anthropic** | Overall score, tier, five pillar numbers, sport, and a minor flag. **No name, email or user id.** | Processor, optional | **Yes, conditionally.** The policy names Anthropic and says it applies "only if the optional Talent Score insights feature is switched on", listing what is sent and stating that name, email, account identifier, photos and messages are not. `supabase/functions/talent-insights/index.ts:118`; only reached when `ANTHROPIC_API_KEY` is set, otherwise a written-in template is used and nothing leaves the project. **OPEN — which way it ships is still a decision (owner: legal), and the Data safety / App Privacy answers must match whichever is chosen.** |
+| **OpenAI** | Score summary: overall score, tier, five pillar numbers, sport, and a minor flag — no name, email or user id. Translation: the text of the post, comment or message a reader asks to translate — no author name or id. | Processor (API; not used for training) | **Yes.** The policy names OpenAI and lists what each feature sends. `supabase/functions/talent-insights/index.ts` and `supabase/functions/translate/index.ts`; both read `OPENAI_API_KEY`, which is set on prd since 2026-10-13. **OPEN — App Privacy and Data safety answers must reflect that user content is processed by a service provider (owner: legal).** |
 
 ---
 
@@ -416,10 +416,9 @@ Transparency prompt exists because there is nothing to ask for. No SDK correlate
 user with data from other apps or websites, and no data is shared with a data broker.
 
 **No third-party analytics.** The app's only network destination is its own Supabase
-project. Two edge functions reach further — Resend for the guardian consent email, and
-Anthropic for the optional score summary — and **both are now named in the Privacy
-Policy**, Anthropic conditionally on the feature being enabled. What remains open is
-the product decision about whether that feature ships enabled (§1.6, §6).
+project. Edge functions reach further — Resend for the guardian consent email, and OpenAI
+for the score summary and on-demand translation — and **both are named in the
+Privacy Policy** (§1.6, §6).
 
 ---
 
@@ -430,10 +429,10 @@ the product decision about whether that feature ships enabled (§1.6, §6).
 | 1 | Fix the iOS privacy manifest — one constant to verify, six types to add (§4) | Mobile |
 | 2 | Decide the **approximate location** answer (Yes/No) and keep Play and Apple consistent (§2.2, §3) | Legal + mobile |
 | 3 | Decide the **Fitness info** answer and keep Play, Apple and the manifest consistent | Legal + mobile |
-| 4 | Decide whether `talent-insights` ships with `ANTHROPIC_API_KEY` set, and make the Data safety and App Privacy answers match. The Privacy Policy already covers both cases (§1.6) | Legal |
+| 4 | OpenAI is live for the score summary and translation. Confirm the Data safety and App Privacy answers cover user content processed by a service provider (§1.6) | Legal |
 | 5 | Publish the **account-deletion web URL** Play requires in addition to the in-app flow | Web |
 | 6 | Confirm `user_private.phone` is never populated by the app before each submission | Mobile |
-| 7 | Re-publish `https://aceaix.com/privacy` from the current `mobile/lib/legal/privacy.ts` — it changed on three points (Resend named, Anthropic named conditionally, guardian consent records deleted with the account) — and confirm the two match | Web |
+| 7 | Re-publish `https://aceaix.com/privacy` from the current `mobile/lib/legal/privacy.ts` — it changed on three points (Resend named, OpenAI named for score summaries and translation, guardian consent records deleted with the account) — and confirm the two match | Web |
 
 **Closed since this table was written**, so they are not re-opened from an old copy:
 naming the transactional **email provider** in the Privacy Policy (Resend is now
