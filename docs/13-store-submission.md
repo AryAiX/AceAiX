@@ -116,8 +116,7 @@ be set separately.
       no session yet, and `mobile/app/(auth)/check-email.tsx` exists for the
       confirmation path. **OPEN — product decision:** confirmations on gives a
       stronger age/identity story for reviewers; off gives a smoother demo. Whichever
-      you choose, the demo accounts in `supabase/seeds/demo.sql` must be able to sign
-      in without a mailbox.
+      you choose, the reviewer account must be able to sign in without a mailbox.
 - [ ] Add **redirect URLs** to Auth → URL Configuration. `mobile/providers/AuthProvider.tsx:184`
       sends password recovery to `aceaix://reset-password`. That scheme must be in the
       allow list or recovery breaks in production. Add `aceaix://reset-password` and,
@@ -607,8 +606,11 @@ Each line: what they check, how AceAiX satisfies it, and where it lives.
   a working public CSAE policy URL. This is §0's first blocker.
 - **Play — App access.** The reviewer could not sign in. Put the demo credentials in
   App content → App access, not only in the release notes.
-- **Both — a broken demo account.** Re-run `supabase/seeds/demo.sql` against the
-  production project shortly before submitting, and sign in yourself to confirm.
+- **Both — a broken demo account.** Sign in with the reviewer account yourself
+  shortly before submitting. Never load `supabase/seeds/demo.sql` into production:
+  its password is in the repository and it creates verified coaches, scouts and a
+  verified sponsor who could reach real minors. Production reviewer accounts are
+  created by hand, unverified, with a password kept outside the repository.
 
 ### 6.3 After it is approved
 

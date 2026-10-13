@@ -80,6 +80,10 @@ const carriesNoWords = (text: string) =>
   SAME_IN_ANY_LANGUAGE.test(text.replace(PLACEHOLDER, ''));
 const BRAND_OR_UNIT = new Set([
   'common.appName',
+  /* The feature's name, kept in English where "Talent Score" is. */
+  'intelligence.title',
+  'intelligence.short',
+  'intelligence.theirTitle',
   'sports.padel',
   'sports.esports',
   'sports.position.mma',

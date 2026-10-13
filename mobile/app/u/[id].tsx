@@ -7,6 +7,9 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
+import { CoachBookingCard } from '@/components/coaching/CoachingCard';
+import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
+import { TheirGiCard } from '@/components/intelligence/GiCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
@@ -171,6 +174,15 @@ export default function PublicProfileScreen() {
         }}
       >
         {athlete ? <ScoreCard score={data.score} /> : null}
+        {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}
+        {data.user.role === 'coach' ? <CoachBookingCard coachId={data.user.id} refreshKey={childKey} /> : null}
+        {athlete || data.user.role === 'sponsor' ? (
+          <SponsorshipProfileCard
+            userId={data.user.id}
+            displayName={data.user.full_name ?? ''}
+            refreshKey={childKey}
+          />
+        ) : null}
 
         <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
 

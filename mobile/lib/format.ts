@@ -144,6 +144,8 @@ export function roleLabel(role: string | null | undefined): string {
       return tr('common.club', 'Club');
     case 'scout':
       return tr('common.scout', 'Scout');
+    case 'sponsor':
+      return tr('common.sponsor', 'Sponsor');
     case 'guardian':
       return tr('common.guardian', 'Parent or guardian');
     case 'federation':

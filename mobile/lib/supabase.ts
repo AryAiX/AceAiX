@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { isAbsoluteMediaUrl } from './mediaUrl';
+
 /**
  * A single Supabase client for the whole app.
  *
@@ -28,8 +30,17 @@ function readConfig(fromExtraKey: 'supabaseUrl' | 'supabaseAnonKey', fromEnv: st
   const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.[
     fromExtraKey
   ];
-  const value = (typeof fromExtra === 'string' && fromExtra) || fromEnv || '';
-  return value.trim();
+  const extra = typeof fromExtra === 'string' ? fromExtra.trim() : '';
+  const env = (fromEnv || '').trim();
+  const envLooksReal =
+    fromExtraKey === 'supabaseUrl'
+      ? env.startsWith('http') && !env.includes('placeholder.supabase.co')
+      : env.length > 20 && env !== 'placeholder-anon-key';
+  // Prefer the bundled EXPO_PUBLIC_* value. Native extra is a snapshot from the
+  // last `expo run:*` and will keep pointing at the previous database after
+  // `.env` changes until a full native rebuild.
+  if (envLooksReal) return env;
+  return extra || env;
 }
 
 export const SUPABASE_URL = readConfig('supabaseUrl', process.env.EXPO_PUBLIC_SUPABASE_URL);
@@ -99,6 +110,6 @@ export const Buckets = {
 
 export function publicUrl(bucket: string, path: string | null | undefined): string | null {
   if (!path) return null;
-  if (path.startsWith('http')) return path;
+  if (isAbsoluteMediaUrl(path)) return path;
   return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl ?? null;
 }

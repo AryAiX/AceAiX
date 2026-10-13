@@ -86,6 +86,8 @@ export const auth = {
     roleClubSubtitle: 'Talente sichten und Probetrainings ausschreiben',
     roleGuardianTitle: 'Ich bin Elternteil oder Vormund',
     roleGuardianSubtitle: 'Das Profil deines Kindes begleiten und freigeben',
+    roleSponsorTitle: 'Ich bin Sponsor oder Marke',
+    roleSponsorSubtitle: 'Athleten fördern und passende Talente finden',
 
     nameTitle: 'Wie sollen wir dich nennen?',
     nameSubtitle: 'Nimm deinen echten Namen — Trainer müssen wissen, wen sie vor sich haben.',

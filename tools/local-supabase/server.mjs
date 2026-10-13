@@ -24,6 +24,13 @@ import http from 'node:http';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import fs from 'node:fs';
+import nodePath from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** Seeded stories and reels point at files here — see demo-media/generate.py. */
+const DEMO_MEDIA = nodePath.join(nodePath.dirname(fileURLToPath(import.meta.url)), 'demo-media');
+const DEMO_TYPES = { '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
 
 const exec = promisify(execFile);
 
@@ -226,10 +233,40 @@ const PIXEL = Buffer.from(
 async function handleStorage(req, res, url) {
   const path = url.pathname.replace('/storage/v1', '');
 
-  // Public read: hand back a placeholder rather than 404ing the whole feed.
+  // Public read: the demo media the seed points at, when it exists
+  // (tools/local-supabase/demo-media/<bucket>/<path>) — otherwise a placeholder
+  // rather than a 404 for the whole feed.
   if (req.method === 'GET' && path.startsWith('/object/public/')) {
+    const rel = decodeURIComponent(path.slice('/object/public/'.length));
+    const file = nodePath.join(DEMO_MEDIA, rel);
+    if (!rel.includes('..') && fs.existsSync(file) && fs.statSync(file).isFile()) {
+      const type = DEMO_TYPES[nodePath.extname(file)] ?? 'application/octet-stream';
+      res.writeHead(200, { ...CORS, 'Content-Type': type, 'Cache-Control': 'max-age=60',
+                           'Accept-Ranges': 'bytes', 'Content-Length': fs.statSync(file).size });
+      return fs.createReadStream(file).pipe(res);
+    }
     res.writeHead(200, { ...CORS, 'Content-Type': 'image/png', 'Cache-Control': 'max-age=60' });
     return res.end(PIXEL);
+  }
+
+  /* Signing, single and batch. It is checked before uploads because both are
+     POSTs under /object/: `/object/sign/<bucket>/<path>` signs one object,
+     `/object/sign/<bucket>` with `{ paths }` signs many — the call every feed,
+     story and reel makes. Answering the batch as an upload is what used to
+     crash the feed with "e.map is not a function". */
+  if (req.method === 'POST' && path.startsWith('/object/sign/')) {
+    const rest = path.slice('/object/sign/'.length);
+    const chunks = [];
+    await new Promise((resolve) => {
+      req.on('data', (c) => chunks.push(c));
+      req.on('end', resolve);
+    });
+    if (!rest.includes('/')) {
+      let paths = [];
+      try { paths = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}').paths ?? []; } catch { /* none */ }
+      return send(res, 200, paths.map((p) => ({ path: p, signedURL: `/object/public/${rest}/${p}`, error: null })));
+    }
+    return send(res, 200, { signedURL: `/object/public/${rest}` });
   }
 
   if (req.method === 'POST' && path.startsWith('/object/')) {
@@ -240,11 +277,6 @@ async function handleStorage(req, res, url) {
     });
     const key = path.replace('/object/', '');
     return send(res, 200, { Id: crypto.randomUUID(), Key: key });
-  }
-
-  if (req.method === 'POST' && path.includes('/sign/')) {
-    const key = path.split('/sign/')[1] ?? '';
-    return send(res, 200, { signedURL: `/object/public/${key}` });
   }
 
   return send(res, 200, {});

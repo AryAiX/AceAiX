@@ -69,6 +69,7 @@ export const common = {
   coach: '教练',
   club: '俱乐部',
   scout: '球探',
+  sponsor: '赞助商',
   guardian: '家长或监护人',
   federation: '协会',
   medicalPartner: '医疗伙伴',
@@ -136,7 +137,7 @@ export const common = {
   tabHome: '首页',
   tabDiscover: '发现',
   tabTrials: '试训',
-  tabYou: '我',
+  tabYou: '主页',
   tabCreate: '发布',
 
   // 法律文件

@@ -86,6 +86,8 @@ export const auth = {
     roleClubSubtitle: 'Scout talent and post trials',
     roleGuardianTitle: "I'm a parent or guardian",
     roleGuardianSubtitle: "Support and approve your child's profile",
+    roleSponsorTitle: 'I\'m a sponsor or brand',
+    roleSponsorSubtitle: 'Back athletes and find who to support',
 
     nameTitle: 'What should we call you?',
     nameSubtitle: 'Use your real name — coaches need to know who they are looking at.',
