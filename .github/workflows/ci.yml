@@ -226,6 +226,8 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
     steps:
       # On pull_request this is GitHub's tested merge commit, not an untested
       # branch tip. On main it is the exact commit that passed the four jobs.
@@ -235,13 +237,22 @@ jobs:
       - name: Verify deployment configuration
         run: |
           missing=()
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_REF; do
             if [ -z "${!name}" ]; then missing+=("$name"); fi
           done
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Missing repository deployment secrets: ${missing[*]}"
+            echo "::error::Missing environment deployment secrets: ${missing[*]}"
             exit 1
           fi
+
+      # Runs before the deploy so the schema the new build expects is already
+      # live. Development resolves to the dev project, production to aceaix-v2,
+      # via the SUPABASE_PROJECT_REF variable on each GitHub Environment.
+      - name: Apply migrations to this environment's database
+        working-directory: .
+        run: |
+          chmod +x ./tools/ci/apply-hosted-migrations.sh
+          ./tools/ci/apply-hosted-migrations.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -284,9 +295,9 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed ${{ github.sha }} to $url"
 
-      # Pull requests are promoted to the development app. Only a tested push
-      # to main may update the production app at app.aceaix.com. The apex and
-      # www hosts remain on the separate launch/join site.
+      # Pull requests promote to the development app (dev.aceaix.com → dev DB).
+      # A tested push to main updates the production app (app.aceaix.com →
+      # aceaix-v2). The apex and www hosts remain on the separate join site.
       - name: Pin the environment domain to this deployment
         env:
           TARGET_DOMAIN: ${{ github.event_name == 'push' && 'app.aceaix.com' || 'dev.aceaix.com' }}
