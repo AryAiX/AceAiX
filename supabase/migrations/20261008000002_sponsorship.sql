@@ -29,7 +29,9 @@
 --     minor (private.is_verified_adult). The deal is the channel.
 --   * The amount an athlete asks for is shown to verified sponsors, to the
 --     athlete, to their guardians and to admins. Everybody else sees that the
---     athlete is looking, and for what — not how much.
+--     athlete is looking, and for what — not how much. A minor's event date
+--     and location follow the same rule, and only verified sponsors may
+--     browse minors' requests at all.
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -121,7 +123,7 @@ returns boolean language sql stable security definer set search_path = public as
             when 'media'       then g.allow_media
             when 'assessments' then g.allow_assessments
             when 'sponsorship' then g.allow_sponsorship
-            else true
+            else false
           end
   );
 $$;
@@ -296,8 +298,13 @@ revoke insert, update, delete on public.sponsorship_deals    from authenticated,
 revoke select on public.sponsor_profiles, public.sponsorship_requests,
                  public.sponsor_calls, public.sponsorship_deals from anon;
 
-grant select on public.sponsor_profiles, public.sponsorship_requests,
+grant select on public.sponsorship_requests,
                 public.sponsor_calls, public.sponsorship_deals to authenticated;
+/* A sponsor's budget is theirs; my_sponsorship returns it to them. */
+revoke select on public.sponsor_profiles from authenticated;
+grant select (user_id, company_name, industry, website, about, sports, countries, offers,
+              currency, created_at, updated_at)
+  on public.sponsor_profiles to authenticated;
 
 drop policy if exists sponsor_profiles_select on public.sponsor_profiles;
 create policy sponsor_profiles_select on public.sponsor_profiles
@@ -958,16 +965,20 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-declare v_me public.user_profiles;
+declare
+  v_me       public.user_profiles;
+  v_verified boolean;
 begin
   select * into v_me from public.user_profiles where id = auth.uid();
   if not found then
     raise exception 'Not authenticated' using errcode = '42501';
   end if;
   /* The list of who needs money is for the people who might give it. */
-  if v_me.role::text <> 'sponsor' and not private.is_admin() then
+  if (v_me.role::text <> 'sponsor' or v_me.is_suspended) and not private.is_admin() then
     raise exception 'Only sponsors can browse requests' using errcode = '42501', hint = 'sponsor_only';
   end if;
+  /* Anyone can sign up as a sponsor; minors are listed only to verified ones. */
+  v_verified := private.is_admin() or v_me.is_verified;
 
   return query
   select
@@ -991,6 +1002,7 @@ begin
   where r.status = 'open'
     and r.athlete_user_id <> v_me.id
     and private.sponsorship_visible(r.athlete_user_id)
+    and (v_verified or not coalesce(up.is_minor, false))
     and (p_sport is null or coalesce(r.sport, ap.sport) ilike p_sport)
     and (p_country is null or up.country ilike p_country)
     and (nullif(btrim(p_query), '') is null
@@ -1105,6 +1117,9 @@ as $$
     and not up.is_suspended
     and up.id <> auth.uid()
     and not private.users_are_blocked(auth.uid(), up.id)
+    /* A minor is shown only sponsors someone has checked. */
+    and (up.is_verified
+         or not exists (select 1 from public.user_profiles me where me.id = auth.uid() and me.is_minor))
     and (nullif(btrim(p_query), '') is null
          or up.full_name ilike '%' || btrim(p_query) || '%'
          or sp.company_name ilike '%' || btrim(p_query) || '%'
@@ -1263,8 +1278,13 @@ begin
     'can_offer', v_me.role::text = 'sponsor' and v_me.is_verified and not v_me.is_suspended and p_user <> v_me.id,
     'requests', coalesce((
       select jsonb_agg(jsonb_build_object(
-               'id', r.id, 'title', r.title, 'event_name', r.event_name, 'event_date', r.event_date,
-               'location', r.location, 'needs', r.needs, 'gives', r.gives, 'pitch', r.pitch,
+               'id', r.id, 'title', r.title, 'event_name', r.event_name,
+               /* When and where a minor will be is for the people who may act on it. */
+               'event_date', case when not coalesce(v_them.is_minor, false)
+                                    or private.sponsorship_sees_amount(p_user) then r.event_date end,
+               'location', case when not coalesce(v_them.is_minor, false)
+                                  or private.sponsorship_sees_amount(p_user) then r.location end,
+               'needs', r.needs, 'gives', r.gives, 'pitch', r.pitch,
                'currency', r.currency,
                'amount', case when private.sponsorship_sees_amount(p_user) then r.amount end,
                'my_offer_status', (select d.status from public.sponsorship_deals d

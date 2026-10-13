@@ -8,7 +8,7 @@ import type { GiMetrics } from '@/lib/gi/metrics';
 /**
  * Game Intelligence — six timed games and the result they build.
  *
- * Every rule lives in `20260924000001_game_intelligence.sql`: who may take the
+ * Every rule lives in `20261006000002_game_intelligence.sql`: who may take the
  * games (by age and country), how each result is scored, how often a game may
  * be retaken, and who may see the outcome. The client asks and renders.
  */

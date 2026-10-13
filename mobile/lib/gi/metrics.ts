@@ -3,7 +3,7 @@
  *
  * Each game records one row per trial and hands the list to one of these.
  * The shapes returned are the contract with `private.gi_score_test` in
- * `20260924000001_game_intelligence.sql` — change a key here and the server
+ * `20261006000002_game_intelligence.sql` — change a key here and the server
  * will mark every result "too_few_trials".
  *
  * The client summarises; it never scores. A number shown to the athlete as

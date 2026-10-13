@@ -38,6 +38,9 @@
 -- is what says so (docs/21 §2).
 --
 -- Safe to re-run: everything is keyed on fixed UUIDs and upserts.
+--
+-- NEVER load this into production. Every account shares a password that is in
+-- the repository, and several are verified adults who may contact minors.
 -- ============================================================
 
 -- Seeding writes verification flags and other service-managed columns, so the
@@ -700,7 +703,7 @@ insert into public.meetup_participants (meetup_id, user_id, status, decided_at) 
 on conflict (meetup_id, user_id) do nothing;
 
 -- ------------------------------------------------------------
--- Game Intelligence (0924/01)
+-- Game Intelligence (1006/02)
 --
 -- Layla has played all six games across two sittings, and shares the
 -- result with clubs. One attempt at each game is left, so the preview can
@@ -745,7 +748,7 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
--- Stories and reels (0925/01)
+-- Stories and reels (1006/03)
 --
 -- Media files live in tools/local-supabase/demo-media and are served by the
 -- local storage stand-in; generate.py draws them from scratch.

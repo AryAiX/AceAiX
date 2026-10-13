@@ -246,7 +246,7 @@ $$;
 -- ------------------------------------------------------------
 -- 3. Reels include the clips on a profile
 --
--- Reels were the feed's video posts only (0925/01). A clip an athlete uploads
+-- Reels were the feed's video posts only (1006/03). A clip an athlete uploads
 -- to their own page is just as much a reel, so it joins them. The posts still
 -- come through get_feed with every one of its gates; the profile clips come
 -- through the helper above. Newest first, same cursor as before.

@@ -1,5 +1,5 @@
 -- ============================================================
--- 0924/01 — Game Intelligence
+-- 1006/02 — Game Intelligence
 --
 -- Six short mini-games that measure how a player perceives, decides and holds
 -- back: a football decision test on an animated pitch, ball-flight
@@ -106,7 +106,7 @@ returns boolean language sql stable security definer set search_path = public as
             when 'discovery'   then g.allow_discovery
             when 'media'       then g.allow_media
             when 'assessments' then g.allow_assessments
-            else true
+            else false
           end
   );
 $$;
@@ -999,7 +999,8 @@ begin
     return null;
   end if;
 
-  if v_me.role in ('coach', 'scout', 'club', 'federation', 'org_admin', 'admin') then
+  /* Recruiter roles are self-chosen at signup; the full view needs a check. */
+  if private.is_admin() or private.is_verified_adult(auth.uid()) then
     return jsonb_build_object(
       'view', 'recruiter',
       'overall', v_g.overall,

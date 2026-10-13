@@ -154,7 +154,7 @@ Play will not let you publish until every one of these is answered.
 | Section | Answer | Source |
 |---|---|---|
 | Privacy policy | `https://aceaix.com/privacy` | `web/src/Router.tsx:119` |
-| App access | Demo credentials required — see `docs/store/review-notes.md` | `supabase/seeds/demo.sql` |
+| App access | Demo credentials required — see `docs/store/review-notes.md` | A hand-made, unverified reviewer account (never `supabase/seeds/demo.sql`) |
 | Ads | **No ads** | No ads SDK in `mobile/package.json` |
 | Content rating | See §5 | |
 | Target audience and content | See §6 | |

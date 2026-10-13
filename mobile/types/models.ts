@@ -415,7 +415,7 @@ export interface LinkedMinor {
   allow_discovery: boolean;
   allow_messaging: boolean;
   allow_media: boolean;
-  /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
+  /** Game Intelligence games (1006/02). Off unless the guardian ticked it. */
   allow_assessments?: boolean;
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;
@@ -445,7 +445,7 @@ export interface GuardianConsent {
   allow_discovery: boolean;
   allow_messaging: boolean;
   allow_media: boolean;
-  /** Game Intelligence games (0924/01). Off unless the guardian ticked it. */
+  /** Game Intelligence games (1006/02). Off unless the guardian ticked it. */
   allow_assessments?: boolean;
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;

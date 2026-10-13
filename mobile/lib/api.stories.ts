@@ -7,7 +7,7 @@ import type { PostAudience } from '@/types/models';
 /**
  * Stories — 24-hour posts shown as a rail of rings at the top of Home.
  *
- * Every read goes through the RPCs in `20260925000001_stories_and_reels.sql`,
+ * Every read goes through the RPCs in `20261006000003_stories_and_reels.sql`,
  * which apply the audience, block, suspension and minor-discovery gates. The
  * `stories` table is never selected from directly: its policy is the same
  * predicate, but the RPCs are the contract and the only thing reviewed as one.

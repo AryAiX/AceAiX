@@ -2,7 +2,7 @@
 
 > Stories are 24-hour posts shown as a rail of rings at the top of Home. Reels are the video posts
 > that already existed, played full-screen and vertical. Source of truth:
-> `supabase/migrations/20260925000001_stories_and_reels.sql`. Client: `mobile/app/stories/`,
+> `supabase/migrations/20261006000003_stories_and_reels.sql`. Client: `mobile/app/stories/`,
 > `mobile/app/reels.tsx`, `mobile/components/stories/`, `mobile/components/reels/`,
 > `mobile/lib/api.stories.ts`, `mobile/lib/api.reels.ts`.
 

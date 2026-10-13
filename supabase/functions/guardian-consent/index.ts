@@ -333,7 +333,7 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     /* This guardian's own live approval, if any — submitting replaces it
-       (confirm_guardian_consent, 0924/01). Another guardian's is not theirs
+       (confirm_guardian_consent, 1006/02). Another guardian's is not theirs
        to see or change. */
     const { data: current } = await admin
       .from("guardian_consents")

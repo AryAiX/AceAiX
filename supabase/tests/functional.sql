@@ -1907,7 +1907,7 @@ end $$;
 do $$ begin raise notice E'\n── stories and reels ──'; end $$;
 
 /*
- * 0925/01. A story is a 24-hour post, so it carries every gate a post does:
+ * 1006/03. A story is a 24-hour post, so it carries every gate a post does:
  * a hidden minor's story reaches nobody, audience and blocks are honoured,
  * and the only way in is create_story, which checks what a policy cannot.
  */
@@ -2426,13 +2426,37 @@ begin
   update public.user_profiles set is_discoverable = true where id = v_minor;
 
   perform tests.as_user(v_minor);
-  v_minor_req := public.save_sponsorship_request(null, '{"title":"Junior nationals travel","amount":1500}');
+  v_minor_req := public.save_sponsorship_request(null,
+    '{"title":"Junior nationals travel","amount":1500,"event_name":"Junior nationals",
+      "event_date":"2027-05-01","location":"Abu Dhabi"}');
   perform tests.ok(v_minor_req is not null, 'with it, the minor can ask');
 
   perform tests.as_user(v_brand);
   perform tests.ok(
-    (select is_minor from public.sponsorship_seekers() where request_id = v_minor_req),
-    'and a sponsor sees the request, marked as a minor');
+    (select is_minor and event_date = '2027-05-01' and location = 'Abu Dhabi'
+     from public.sponsorship_seekers() where request_id = v_minor_req),
+    'and a verified sponsor sees the request, marked as a minor, with when and where');
+  perform tests.as_user(v_fake);
+  perform tests.ok(
+    not exists (select 1 from public.sponsorship_seekers() where request_id = v_minor_req)
+    and exists (select 1 from public.sponsorship_seekers() where request_id = v_req),
+    'an unverified sponsor is shown adults who are looking, never a minor');
+  perform tests.as_user(v_coach);
+  perform tests.ok(
+    public.sponsorship_card(v_minor) is null
+    or (select bool_and(r ->> 'event_date' is null and r ->> 'location' is null)
+        from jsonb_array_elements(public.sponsorship_card(v_minor) -> 'requests') r),
+    'anyone else sees that a minor is looking, but not when or where');
+  set local role authenticated;
+  v_err := null;
+  begin
+    perform budget_min from public.sponsor_profiles limit 1;
+  exception when others then v_err := sqlerrm;
+  end;
+  reset role;
+  perform tests.ok(v_err is not null, 'a sponsor''s budget cannot be read from the table');
+
+  perform tests.as_user(v_brand);
   v_deal := public.sponsor_make_offer(v_minor_req, 'Kit and travel for the season.', 1500);
   perform tests.ok(
     exists (select 1 from public.notifications
@@ -2446,6 +2470,17 @@ begin
     (select (d ->> 'can_respond')::boolean and d ->> 'my_side' = 'guardian'
      from jsonb_array_elements(public.my_sponsorship() -> 'deals') d where d ->> 'id' = v_deal::text),
     'the guardian finds their child''s offer in the portal');
+
+  /* Approving again — the way a guardian adds a scope — keeps what is still ticked. */
+  perform tests.as_user(v_minor);
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true);
+  perform tests.ok(
+    (select status from public.sponsorship_deals where id = v_deal) = 'pending'
+    and private.has_guardian_consent(v_minor, 'sponsorship'),
+    'a guardian who approves again with sponsorship ticked leaves the offer open');
+  update public.guardian_consents set guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
 
   /* A hidden minor is on nobody's list, whatever the scope says. */
   update public.user_profiles set is_discoverable = false where id = v_minor;
@@ -2536,6 +2571,7 @@ declare
   v_hint     text;
   v_err      text;
   v_n        integer;
+  v_token    text;
   v_t        timestamptz := date_trunc('hour', now()) + interval '3 days';
 begin
   insert into auth.users (id, email, raw_user_meta_data) values
@@ -2767,6 +2803,18 @@ begin
      where b ->> 'id' = v_booking::text),
     'the guardian sees the booking');
 
+  /* Approving again — the way a guardian adds a scope — keeps what is still ticked. */
+  perform tests.as_user(v_minor);
+  v_token := tests.request_consent('Parent Name', 'parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, false, true);
+  perform tests.ok(
+    (select status = 'booked' from public.coaching_bookings where id = v_booking)
+    and private.has_guardian_consent(v_minor, 'bookings'),
+    'a guardian who approves again with bookings ticked leaves the booking in place');
+  update public.guardian_consents set guardian_user_id = v_guardian
+   where minor_user_id = v_minor and status = 'granted';
+  perform tests.as_user(v_guardian);
+
   /* The guardian takes the scope back: the booking ahead is cancelled. */
   update public.guardian_consents set allow_bookings = false
    where minor_user_id = v_minor and status = 'granted';
@@ -2886,7 +2934,7 @@ begin
       /* Named in follows INSERT RLS. It must see blocks in either direction,
          including rows the follower cannot select directly. */
       'users_are_blocked',
-      /* 0925/01. Named in the stories read policy. */
+      /* 1006/03. Named in the stories read policy. */
       'viewer_can_see_story'
     );
 

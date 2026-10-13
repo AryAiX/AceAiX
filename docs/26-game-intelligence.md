@@ -4,7 +4,7 @@
 > animated pitch, ball-flight anticipation, multiple-object tracking, Go/No-Go, a flanker task and
 > choice reaction time. It sits **beside** the Talent Score, not inside it.
 >
-> Source of truth: `supabase/migrations/20260924000001_game_intelligence.sql`. Client:
+> Source of truth: `supabase/migrations/20261006000002_game_intelligence.sql`. Client:
 > `mobile/app/intelligence/`, `mobile/components/intelligence/`, `mobile/lib/gi/`,
 > `mobile/lib/api.intelligence.ts`. Product rationale: the "AceAiX Talent Score: Mental &
 > Decision-Making Assessment Design" document (September 2026), which recommended building this

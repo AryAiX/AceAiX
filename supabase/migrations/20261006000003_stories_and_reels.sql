@@ -1,5 +1,5 @@
 -- ============================================================
--- 0925/01 — Stories and Reels
+-- 1006/03 — Stories and Reels
 --
 -- Stories: 24-hour posts shown as a rail of rings at the top of Home. Three
 -- kinds — a photo, a short video, or a "card" (text on one of the app's

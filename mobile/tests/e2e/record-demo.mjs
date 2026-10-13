@@ -209,7 +209,7 @@ const TOUR = [
   /* Game Intelligence. Layla has a shared result, Marco reads it from her
      profile above, and Mina records the guardian gate. */
   '/intelligence',
-  /* Stories and reels (0925/01). One stop per author with a live story, so
+  /* Stories and reels (1006/03). One stop per author with a live story, so
      the viewer opened from the rail has something to play. */
   '/reels',
   '/clips',
