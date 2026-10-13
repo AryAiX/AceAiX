@@ -8,6 +8,10 @@
 --
 -- pg_catalog.sha256() gives the same hex for UTF-8 text and resolves the same
 -- way on hosted Supabase and a plain local Postgres.
+--
+-- cached_translation has been service-role-only since 20260910000001, but it
+-- still required auth.uid(), which the translate function never has. It now
+-- checks the role it is actually granted to.
 -- ============================================================
 
 create or replace function public.cached_translation(p_source text, p_target text)
@@ -21,8 +25,9 @@ declare
   v_hash text;
   t      public.translations;
 begin
-  if auth.uid() is null then
-    raise exception 'Not authenticated' using errcode = '42501';
+  if auth.role() <> 'service_role' then
+    raise exception 'The translation cache is read by the translate function only'
+      using errcode = '42501';
   end if;
   if nullif(btrim(coalesce(p_source, '')), '') is null then
     return null;
@@ -46,8 +51,9 @@ begin
 end;
 $$;
 
-revoke all on function public.cached_translation(text, text) from public, anon;
-grant execute on function public.cached_translation(text, text) to authenticated;
+revoke all on function public.cached_translation(text, text)
+  from public, anon, authenticated;
+grant execute on function public.cached_translation(text, text) to service_role;
 
 create or replace function public.store_translation(
   p_source        text,
