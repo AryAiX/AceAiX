@@ -49,9 +49,16 @@ export interface UserSummary {
   created_at: string;
 }
 
+export interface OtherSport {
+  sport: string;
+  level: 'casual' | 'club' | 'competitive';
+}
+
 export interface AthleteProfile {
   id: string;
   sport: string | null;
+  /** Other sports this athlete plays, up to three. Absent on older responses. */
+  other_sports?: OtherSport[];
   position: string | null;
   position_secondary: string | null;
   level: string | null;

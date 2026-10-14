@@ -36,7 +36,13 @@ import {
 } from '@/components/ui';
 import { blockUser, canMessage, reportContent, startConversation, toggleFollow } from '@/lib/api';
 import { Routes } from '@/lib/routes';
-import { levelLabelI18n, positionLabel, sportLabel } from '@/constants/sports';
+import {
+  levelLabelI18n,
+  otherSportLevelLabel,
+  positionLabel,
+  sportEmoji,
+  sportLabel,
+} from '@/constants/sports';
 import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
@@ -341,6 +347,28 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
             <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
               {meta}
             </Text>
+          ) : null}
+          {athlete?.other_sports && athlete.other_sports.length > 0 ? (
+            <View
+              testID="profile-also-plays"
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: spacing.xs,
+                marginTop: spacing.xs,
+              }}
+            >
+              <Text variant="caption" tone="muted">
+                {t('profile.alsoPlaysLabel')}
+              </Text>
+              {athlete.other_sports.map((entry) => (
+                <Badge
+                  key={entry.sport}
+                  label={`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)} · ${otherSportLevelLabel(t, entry.level)}`}
+                />
+              ))}
+            </View>
           ) : null}
         </Reveal>
 

@@ -22,6 +22,7 @@ import type {
   NotificationPreferences,
   Opportunity,
   Organization,
+  OtherSport,
   PostAudience,
   PostComment,
   PostMedia,
@@ -103,6 +104,7 @@ export interface AthleteUpdate {
   birth_date?: string | null;
   bio?: string | null;
   is_open_to_offers?: boolean;
+  other_sports?: OtherSport[];
 }
 
 export async function updateAthleteProfile(patch: AthleteUpdate): Promise<void> {
