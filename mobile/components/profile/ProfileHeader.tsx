@@ -263,6 +263,10 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
     }
   }, [name, onChanged, router, t, toast, user.id]);
 
+  const athleteSportDetail = athlete
+    ? metaLine(positionLabel(t, athlete.position), athlete.club)
+    : '';
+
   return (
     <View>
       {/*
@@ -343,7 +347,14 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
             ) : null}
           </View>
 
-          {meta ? (
+          {athlete?.sport ? (
+            <Text variant="bodyStrong" testID="profile-main-sport" style={{ marginTop: 2 }}>
+              {`${sportEmoji(athlete.sport)} ${sportLabel(t, athlete.sport)}`}
+              {athleteSportDetail ? (
+                <Text variant="body" tone="secondary">{` · ${athleteSportDetail}`}</Text>
+              ) : null}
+            </Text>
+          ) : meta ? (
             <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
               {meta}
             </Text>
@@ -363,10 +374,21 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
                 {t('profile.alsoPlaysLabel')}
               </Text>
               {athlete.other_sports.map((entry) => (
-                <Badge
+                <View
                   key={entry.sport}
-                  label={`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)} · ${otherSportLevelLabel(t, entry.level)}`}
-                />
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: 'transparent',
+                    borderRadius: radii.pill,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text variant="caption" tone="muted">
+                    {`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)} · ${otherSportLevelLabel(t, entry.level)}`}
+                  </Text>
+                </View>
               ))}
             </View>
           ) : null}
