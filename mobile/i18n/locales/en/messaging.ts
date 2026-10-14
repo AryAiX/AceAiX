@@ -151,4 +151,5 @@ export const messaging = {
   actorAndOthers_other: '{{name}} and {{count}} others',
   groupedTitle: '{{actors}}{{rest}}',
   unread: 'Unread',
+  meetupNearbyTitle: 'New {{sport}} game in {{city}}',
 };

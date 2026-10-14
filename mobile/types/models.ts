@@ -360,7 +360,12 @@ export type NotificationType =
   | 'sponsorship_application'
   | 'sponsorship_response'
   | 'coaching_booked'
-  | 'coaching_cancelled';
+  | 'coaching_cancelled'
+  | 'meetup_request'
+  | 'meetup_accepted'
+  | 'meetup_declined'
+  | 'meetup_cancelled'
+  | 'meetup_nearby';
 
 export interface AppNotification {
   id: string;
@@ -378,6 +383,7 @@ export interface AppNotification {
     | 'challenge'
     | 'sponsorship'
     | 'coaching'
+    | 'meetup'
     | null;
   entity_id: string | null;
   actor_count: number;
