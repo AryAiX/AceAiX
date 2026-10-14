@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { BackHandler, Image, InteractionManager, Pressable, StyleSheet, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, ImagePlus, Search, Trash2 } from 'lucide-react-native';
@@ -108,6 +108,7 @@ export default function EditProfileScreen() {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const toast = useToast();
   const t = useT();
   const { profile, refreshProfile } = useAuth();
@@ -183,6 +184,27 @@ export default function EditProfileScreen() {
     setForm(seed);
     setInitial(seed);
   }, [bundle.data, form, isClubAccount, scoutCreds.data, scoutCreds.error, scoutCreds.loading]);
+
+  // The profile reminder passes focus=alsoPlays. Open the picker once, after
+  // the push animation, then drop the param so a later visit stays closed.
+  const alsoPlaysFocusHandled = useRef(false);
+  useEffect(() => {
+    if (alsoPlaysFocusHandled.current) return;
+    if (focus !== 'alsoPlays' || !form || !bundle.data?.athlete) return;
+    if (form.otherSports.length >= MAX_OTHER_SPORTS) return;
+
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      alsoPlaysFocusHandled.current = true;
+      setAlsoPlaysSheet(true);
+      router.setParams({ focus: undefined });
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, [focus, form, bundle.data, router]);
 
   const dirty = useMemo(
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),

@@ -106,7 +106,9 @@ export default function MyProfileScreen() {
               label={t('profile.alsoPlaysReminderCta')}
               variant="secondary"
               size="sm"
-              onPress={() => router.push(Routes.editProfile)}
+              onPress={() =>
+                router.push({ pathname: Routes.editProfile, params: { focus: 'alsoPlays' } })
+              }
             />
           </Card>
         </View>
