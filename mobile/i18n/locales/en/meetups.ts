@@ -81,6 +81,9 @@ export const meetups = {
   posted: 'Posted. People can find it now.',
 
   // ── Joining ────────────────────────────────────────────────────────────────
+  getDirections: 'Get directions',
+  directionsTitle: 'Open in',
+  directionsFailed: "Couldn't open the maps app.",
   askToJoin: 'Ask to join',
   askMessage: 'Say something to the host',
   askMessagePlaceholder: 'I play left back and I know the pitch.',

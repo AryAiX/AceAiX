@@ -92,6 +92,9 @@ export const meetups = {
   posted: 'Eingetragen. Ab jetzt findet man es.',
 
   // ── Mitspielen ─────────────────────────────────────────────────────────────
+  getDirections: 'Route anzeigen',
+  directionsTitle: 'Öffnen mit',
+  directionsFailed: 'Die Karten-App konnte nicht geöffnet werden.',
   askToJoin: 'Mitspielen anfragen',
   askMessage: 'Schreib dem Gastgeber kurz was',
   askMessagePlaceholder: 'Ich spiele links hinten und kenne die Anlage.',
