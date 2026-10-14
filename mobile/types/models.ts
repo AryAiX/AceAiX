@@ -471,6 +471,7 @@ export interface NotificationPreferences {
   applications: boolean;
   scout_interest: boolean;
   score_updates: boolean;
+  meetups: boolean;
   push_enabled: boolean;
   email_enabled: boolean;
 }

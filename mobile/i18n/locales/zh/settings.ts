@@ -137,6 +137,7 @@ export const settings = {
   notifyMessages: '私信',
   notifyComments: '评论',
   notifyLikes: '点赞',
+  notifyMeetups: '约球的球局',
 
   sectionOpportunities: '机会和你的分数',
   notifyOpportunities: '新机会',

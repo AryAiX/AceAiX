@@ -143,6 +143,7 @@ export const settings = {
   notifyMessages: 'Nachrichten',
   notifyComments: 'Kommentare',
   notifyLikes: 'Likes',
+  notifyMeetups: 'Spiele in Spielen',
 
   sectionOpportunities: 'Chancen und dein Score',
   notifyOpportunities: 'Neue Chancen',
