@@ -22,6 +22,7 @@ import {
   ListItem,
   Screen,
   SectionHeader,
+  SegmentedControl,
   Sheet,
   SkeletonList,
   Switch,
@@ -729,50 +730,51 @@ export default function EditProfileScreen() {
                 {t('profile.alsoPlaysHint')}
               </Text>
               {form.otherSports.map((entry) => (
-                <View
-                  key={entry.sport}
-                  style={{
-                    flexDirection: 'row',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: spacing.sm,
-                  }}
-                >
-                  <Text variant="bodyStrong">
-                    {`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)}`}
-                  </Text>
-                  {OTHER_SPORT_LEVELS.map((level) => (
-                    <Chip
-                      key={level}
-                      label={otherSportLevelLabel(t, level)}
-                      selected={entry.level === level}
+                <Card key={entry.sport} style={{ gap: spacing.md }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: spacing.sm,
+                    }}
+                  >
+                    <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)}`}
+                    </Text>
+                    <IconButton
+                      icon={<Trash2 size={16} color={colors.textMuted} />}
+                      label={t('profile.alsoPlaysRemove', {
+                        sport: sportLabel(t, entry.sport),
+                      })}
                       onPress={() =>
                         set(
                           'otherSports',
-                          form.otherSports.map((item) =>
-                            item.sport === entry.sport ? { ...item, level } : item,
-                          ),
+                          form.otherSports.filter((item) => item.sport !== entry.sport),
                         )
                       }
-                      testID={`also-plays-${entry.sport}-${level}`}
-                      style={{ minHeight: theme.hit.min }}
+                      testID={`also-plays-remove-${entry.sport}`}
+                      tone="transparent"
+                      size={theme.hit.min}
                     />
-                  ))}
-                  <IconButton
-                    icon={<Trash2 size={16} color={colors.textMuted} />}
-                    label={t('profile.alsoPlaysRemove', {
-                      sport: sportLabel(t, entry.sport),
-                    })}
-                    onPress={() =>
+                  </View>
+                  <SegmentedControl
+                    options={OTHER_SPORT_LEVELS.map((level) => ({
+                      value: level,
+                      label: otherSportLevelLabel(t, level),
+                    }))}
+                    value={entry.level}
+                    onChange={(level) =>
                       set(
                         'otherSports',
-                        form.otherSports.filter((item) => item.sport !== entry.sport),
+                        form.otherSports.map((item) =>
+                          item.sport === entry.sport ? { ...item, level } : item,
+                        ),
                       )
                     }
-                    testID={`also-plays-remove-${entry.sport}`}
-                    tone="transparent"
+                    testID={`also-plays-level-${entry.sport}`}
                   />
-                </View>
+                </Card>
               ))}
               {form.otherSports.length < MAX_OTHER_SPORTS ? (
                 <Button
