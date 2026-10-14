@@ -1,0 +1,170 @@
+import React from 'react';
+import { Linking, Pressable, View } from 'react-native';
+import { MapPin, Plus, Trash2 } from 'lucide-react-native';
+
+import { useTheme } from '@/theme/ThemeProvider';
+import { Button, Card, IconButton, Input, Text } from '@/components/ui';
+import { useT } from '@/i18n';
+import { CountryPicker } from '@/components/onboarding/Shared';
+import {
+  LIMITS,
+  formatPin,
+  mapUrl,
+  newBranch,
+  parseMapLocation,
+  type BranchDraft,
+  type ClubDraft,
+  type WhereError,
+} from '@/lib/clubSetup';
+import { GroupLabel } from './Bits';
+
+/** Step 2: where the club is, an optional map pin, and any other grounds. */
+export function WhereFields({
+  draft,
+  errors,
+  onChange,
+}: {
+  draft: ClubDraft;
+  errors: Partial<Record<WhereError, true>>;
+  onChange: (patch: Partial<ClubDraft>) => void;
+}) {
+  const theme = useTheme();
+  const t = useT();
+  const { colors, spacing } = theme;
+
+  const pin = parseMapLocation(draft.pin);
+  const pinTyped = draft.pin.trim().length > 0;
+
+  const setBranch = (key: string, patch: Partial<BranchDraft>) =>
+    onChange({ branches: draft.branches.map((b) => (b.key === key ? { ...b, ...patch } : b)) });
+
+  return (
+    <View style={{ gap: spacing.xl }}>
+      <View style={{ gap: spacing.xs }}>
+        <CountryPicker
+          value={draft.country}
+          onChange={(country) => onChange({ country })}
+          label={t('clubSetup.where.countryLabel')}
+        />
+        {errors.country ? (
+          <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+            {t('clubSetup.where.countryRequired')}
+          </Text>
+        ) : null}
+      </View>
+
+      <Input
+        label={t('clubSetup.where.cityLabel')}
+        required
+        value={draft.city}
+        onChangeText={(city) => onChange({ city })}
+        placeholder={t('clubSetup.where.cityPlaceholder')}
+        error={errors.city ? t('clubSetup.where.cityRequired') : null}
+        maxLength={LIMITS.city}
+        autoCapitalize="words"
+        testID="club-setup-city"
+      />
+      <Input
+        label={t('clubSetup.where.addressLabel')}
+        value={draft.address}
+        onChangeText={(address) => onChange({ address })}
+        placeholder={t('clubSetup.where.addressPlaceholder')}
+        maxLength={LIMITS.address}
+        testID="club-setup-address"
+      />
+
+      <View style={{ gap: spacing.sm }}>
+        <Input
+          label={t('clubSetup.where.pinLabel')}
+          value={draft.pin}
+          onChangeText={(value) => onChange({ pin: value })}
+          placeholder={t('clubSetup.where.pinPlaceholder')}
+          hint={pinTyped ? undefined : t('clubSetup.where.pinHint')}
+          error={errors.pin || (pinTyped && !pin) ? t('clubSetup.where.pinInvalid') : null}
+          autoCapitalize="none"
+          autoCorrect={false}
+          icon={<MapPin size={18} color={colors.textMuted} />}
+          testID="club-setup-pin"
+        />
+        {pin ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md }}>
+            <Text variant="captionStrong" tone="success">
+              {t('clubSetup.where.pinParsed', { pin: formatPin(pin.latitude, pin.longitude) })}
+            </Text>
+            <Pressable
+              onPress={() => void Linking.openURL(mapUrl(pin)).catch(() => {})}
+              accessibilityRole="link"
+              accessibilityLabel={t('clubSetup.where.checkOnMap')}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                minHeight: theme.hit.min,
+                justifyContent: 'center',
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Text variant="captionStrong" tone="primary">
+                {t('clubSetup.where.checkOnMap')}
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={{ gap: spacing.md }}>
+        <GroupLabel hint={t('clubSetup.where.branchesHint')}>{t('clubSetup.where.branchesTitle')}</GroupLabel>
+
+        {draft.branches.map((branch, index) => (
+          <Card key={branch.key} tone="alt" padded="sm" style={{ gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <Text variant="captionStrong" style={{ flex: 1 }}>
+                {t('clubSetup.where.branchNumber', { n: index + 1 })}
+              </Text>
+              <IconButton
+                icon={<Trash2 size={18} color={colors.danger} />}
+                label={t('clubSetup.where.removeBranch', { n: index + 1 })}
+                tone="transparent"
+                onPress={() => onChange({ branches: draft.branches.filter((b) => b.key !== branch.key) })}
+              />
+            </View>
+            <Input
+              label={t('clubSetup.where.branchLabel')}
+              value={branch.label}
+              onChangeText={(label) => setBranch(branch.key, { label })}
+              placeholder={t('clubSetup.where.branchLabelPlaceholder')}
+              maxLength={LIMITS.branchLabel}
+            />
+            <Input
+              label={t('clubSetup.where.cityLabel')}
+              value={branch.city}
+              onChangeText={(city) => setBranch(branch.key, { city })}
+              placeholder={t('clubSetup.where.cityPlaceholder')}
+              maxLength={LIMITS.city}
+              autoCapitalize="words"
+            />
+            <Input
+              label={t('clubSetup.where.addressLabel')}
+              value={branch.address}
+              onChangeText={(address) => setBranch(branch.key, { address })}
+              placeholder={t('clubSetup.where.addressPlaceholder')}
+              maxLength={LIMITS.address}
+            />
+          </Card>
+        ))}
+
+        {draft.branches.length < LIMITS.branches ? (
+          <Button
+            label={t('clubSetup.where.addBranch')}
+            variant="secondary"
+            icon={<Plus size={16} color={colors.text} />}
+            onPress={() => onChange({ branches: [...draft.branches, newBranch(draft.country)] })}
+            testID="club-setup-add-branch"
+          />
+        ) : (
+          <Text variant="caption" tone="muted">
+            {t('clubSetup.where.branchesMax', { n: LIMITS.branches })}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}

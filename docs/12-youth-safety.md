@@ -36,6 +36,9 @@
 | 13 | Game Intelligence needs a guardian's separate yes below the self-consent age (15 by default, per country), and a minor's result is never shown past the discovery gate | `private.gi_consent_state()`, `guardian_consents.allow_assessments`, `get_game_intelligence()` — see [26](./26-game-intelligence.md) |
 | 14 | A minor asks for sponsorship, applies to a call or accepts an offer only under a guardian's separate `sponsorship` scope; only verified sponsors make offers, sponsors cannot message a minor, and guardians with an account are told about every step | `guardian_consents.allow_sponsorship`, `private.sponsorship_visible()`, `private.require_verified_sponsor()`, `save_sponsorship_request()`, `apply_to_sponsor_call()`, `respond_sponsorship()` — see [29](./29-sponsorship.md) |
 | 15 | A minor books only a verified coach, under a guardian's separate `bookings` scope; guardians with an account are told about every booking and can cancel it; nobody else sees who is in a slot | `guardian_consents.allow_bookings`, `private.coaching_gate()`, `book_coaching_slot()`, `bookable_coaches()` — see [30](./30-coach-booking.md) |
+| 16 | Club announcements reach a minor only from a verified club; three per page per day; never a chat | `private.club_audience()`, `send_club_broadcast()` — see [31](./31-club-pages.md) |
+| 17 | Strangers see youth-squad players as "First L."; a linked minor appears only after accepting, with a guardian's discovery consent; raw match sheets stay with the club | `private.is_youth_category()`, `private.club_member_json()`, `respond_squad_link()`, `club_match_page()`, RLS on `club_squad_members` / `club_match_events` — see [31](./31-club-pages.md) |
+| 18 | A minor registers for an in-person club event only at a verified club and under the guardian's `bookings` scope; page team members are 18+ | `private.club_event_gate()`, `register_for_club_event()`, `invite_club_member()` — see [31](./31-club-pages.md) |
 
 ---
 

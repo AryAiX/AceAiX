@@ -7,6 +7,7 @@ import { Button, Card, ErrorState, Screen, SkeletonList, Text } from '@/componen
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { MyCoachingCard } from '@/components/coaching/CoachingCard';
+import { MyClubCard } from '@/components/club/manage/MyClubCard';
 import { MyGiCard } from '@/components/intelligence/GiCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
@@ -127,6 +128,9 @@ export default function MyProfileScreen() {
 
         {/* Beside the Talent Score, never inside it — docs/26 §4. */}
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
+
+        {/* The page a club runs, or an invitation to help run one. */}
+        <MyClubCard isClubAccount={data.user.role === 'club'} refreshKey={childKey} />
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
         {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (

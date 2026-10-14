@@ -106,6 +106,8 @@ export const Buckets = {
   avatars: 'avatars',
   posts: 'posts',
   stories: 'stories',
+  /** Private: club licences for the verification team (1014/01). */
+  clubDocuments: 'club-documents',
 } as const;
 
 export function publicUrl(bucket: string, path: string | null | undefined): string | null {

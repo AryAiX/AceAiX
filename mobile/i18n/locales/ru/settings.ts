@@ -152,6 +152,10 @@ export const settings = {
   notifyApplications: 'Обновления по откликам',
   notifyScoutInterest: 'Интерес скаутов',
   notifyScoreUpdates: 'Изменения оценки таланта',
+  sectionClubs: 'Клубы',
+  notifyClubUpdates: 'Новости клубов',
+  notifyClubUpdatesHint:
+    'Объявления, матчи, результаты и события клубов, на которые ты подписан или за которые играешь',
 
   noMarketingNote:
     'Мы никогда не шлём рекламные пуши и не продаём твои данные тем, кто их шлёт.',

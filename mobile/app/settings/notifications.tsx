@@ -5,6 +5,7 @@ import {
   Bell,
   BellRing,
   Briefcase,
+  Building2,
   CalendarDays,
   Heart,
   Mail,
@@ -30,7 +31,8 @@ import {
 import { errorMessage } from '@/lib/errors';
 import type { NotificationPreferences } from '@/types/models';
 
-type Prefs = Omit<NotificationPreferences, 'user_id'>;
+/* `club_updates` arrived with club pages (1014/01). */
+type Prefs = Omit<NotificationPreferences, 'user_id'> & { club_updates: boolean };
 
 const DEFAULTS: Prefs = {
   follows: true,
@@ -42,6 +44,7 @@ const DEFAULTS: Prefs = {
   scout_interest: true,
   score_updates: true,
   meetups: true,
+  club_updates: true,
   push_enabled: true,
   email_enabled: true,
 };
@@ -279,6 +282,17 @@ export default function NotificationSettingsScreen() {
               testID={`pref-${row.key}`}
             />
           ))}
+        </SettingsGroup>
+
+        <SettingsGroup title={t('settings.sectionClubs')}>
+          <SettingsSwitchRow
+            title={t('settings.notifyClubUpdates')}
+            subtitle={t('settings.notifyClubUpdatesHint')}
+            icon={icon(Building2)}
+            value={prefs.club_updates}
+            onValueChange={(v) => update({ club_updates: v })}
+            testID="pref-club_updates"
+          />
         </SettingsGroup>
 
         <Text variant="caption" tone="muted">

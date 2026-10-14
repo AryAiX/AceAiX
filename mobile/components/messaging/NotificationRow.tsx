@@ -3,6 +3,11 @@ import { Pressable, View } from 'react-native';
 import {
   Award,
   Bell,
+  Building2,
+  Megaphone,
+  Radio,
+  ShieldCheck,
+  Trophy,
   Briefcase,
   Handshake,
   CalendarCheck,
@@ -85,6 +90,28 @@ function skinFor(type: NotificationType): Skin {
     case 'meetup_cancelled':
     case 'meetup_nearby':
       return { Icon: Users, tint: 'primary' };
+    case 'club_broadcast':
+      return { Icon: Megaphone, tint: 'primary' };
+    case 'club_invite':
+    case 'club_invite_accepted':
+    case 'club_squad_link':
+      return { Icon: Building2, tint: 'info' };
+    case 'club_event_new':
+    case 'club_event_registration':
+    case 'club_event_registration_minor':
+      return { Icon: CalendarCheck, tint: 'success' };
+    case 'club_event_cancelled':
+      return { Icon: CalendarX, tint: 'danger' };
+    case 'club_match_live':
+      return { Icon: Radio, tint: 'danger' };
+    case 'club_match_scheduled':
+    case 'club_match_result':
+      return { Icon: Trophy, tint: 'warning' };
+    case 'club_verification_approved':
+      return { Icon: ShieldCheck, tint: 'success' };
+    case 'club_verification_rejected':
+    case 'club_verification_more_info':
+      return { Icon: ShieldCheck, tint: 'warning' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }

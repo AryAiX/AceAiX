@@ -1,81 +1,43 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BadgeCheck, Building2, MapPin, Target, Trophy, Users } from 'lucide-react-native';
+import { Building2 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import {
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  Header,
-  RemoteImage,
-  Screen,
-  SegmentedControl,
-  SkeletonList,
-  Text,
-  useToast,
-} from '@/components/ui';
-import { ClubLogo } from '@/components/opportunities/ClubLogo';
-import { OpportunityCard } from '@/components/opportunities/OpportunityCard';
-import { countryLabel } from '@/constants/sports';
+import { EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
+import { ScrollTabs } from '@/components/explore/ScrollTabs';
+import { ClubHeader } from '@/components/club/page/ClubHeader';
+import { ClubBanners } from '@/components/club/page/ClubBanners';
+import { ClubPostsTab } from '@/components/club/page/PostsTab';
+import { ClubMatchesTab } from '@/components/club/page/MatchesTab';
+import { ClubSquadsTab } from '@/components/club/page/SquadsTab';
+import { ClubEventsTab } from '@/components/club/page/EventsTab';
+import { ClubChallengesTab } from '@/components/club/page/ChallengesTab';
+import { ClubAwardsTab } from '@/components/club/page/AwardsTab';
+import { ClubAboutTab } from '@/components/club/page/AboutTab';
+import { ClubOpeningsTab } from '@/components/club/page/OpeningsTab';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { toggleSaveOpportunity } from '@/lib/api';
-import {
-  getOrganizationPage,
-  organizationOpenings,
-  setOrganizationFollow,
-} from '@/lib/api.opportunities';
+import { getClubPage, setClubFollow } from '@/lib/api.club';
+import { organizationOpenings } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
-import { compactNumber, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import type { Opportunity, Organization } from '@/types/models';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Tab = 'about' | 'openings';
+type Tab = 'posts' | 'matches' | 'squads' | 'events' | 'challenges' | 'awards' | 'about' | 'openings';
+const TABS: Tab[] = ['posts', 'matches', 'squads', 'events', 'challenges', 'awards', 'about', 'openings'];
 
-/* The stored type is English; only the label a person reads is translated. */
-const TYPE_KEY: Record<Organization['type'], string> = {
-  club: 'common.club',
-  academy: 'opportunities.org.typeAcademy',
-  federation: 'common.federation',
-};
-
-/** Matches the profile cover so the two page types feel like one app. */
-const COVER_HEIGHT = 128;
-
-/** A labelled fact on the About tab. */
-function AboutRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  const { spacing } = useTheme();
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 40 }}>
-      {icon}
-      <Text variant="caption" tone="muted" style={{ width: 84 }}>
-        {label}
-      </Text>
-      <Text variant="captionStrong" style={{ flex: 1 }}>
-        {value}
-      </Text>
-    </View>
-  );
+/** "Posts 12" — a count only where there is one. */
+function withCount(label: string, count: number | undefined): string {
+  return count && count > 0 ? `${label} ${count}` : label;
 }
 
 /**
- * A club or academy page.
- *
- * Openings are the reason an athlete lands here, so following and applying are
- * both one tap from the top of the screen.
+ * A club or academy page: who they are, what they play, how they're doing,
+ * and what's open. Each tab loads when it is first opened and stays loaded.
  */
 export default function OrganizationScreen() {
   const t = useT();
@@ -88,8 +50,30 @@ export default function OrganizationScreen() {
   const raw = Array.isArray(params.id) ? params.id[0] : params.id;
   const id = typeof raw === 'string' && UUID.test(raw) ? raw : null;
 
-  const page = useAsync(() => getOrganizationPage(id as string), [id], { enabled: !!id });
-  const organization = page.data?.organization ?? null;
+  const page = useAsync(() => getClubPage(id as string), [id], { enabled: !!id });
+  const club = page.data ?? null;
+  const org = club?.organization ?? null;
+
+  /* organizationOpenings wants the old Organization shape; the page has all of it. */
+  const organization = useMemo<Organization | null>(
+    () =>
+      org
+        ? {
+            id: org.id,
+            name: org.name,
+            type: org.type,
+            logo_url: org.logo_url,
+            cover_url: org.cover_url,
+            description: org.description,
+            city: org.city,
+            country: org.country,
+            league: org.league,
+            is_verified: org.is_verified,
+            followers_count: org.followers_count,
+          }
+        : null,
+    [org],
+  );
 
   const openings = useAsync(
     () => organizationOpenings(organization as Organization),
@@ -97,22 +81,38 @@ export default function OrganizationScreen() {
     { enabled: !!organization },
   );
 
-  const [tab, setTab] = useState<Tab>('about');
+  const [tab, setTab] = useState<Tab>('posts');
+  const [visited, setVisited] = useState<Set<Tab>>(() => new Set<Tab>(['posts']));
+  const [refreshKeys, setRefreshKeys] = useState<Partial<Record<Tab, number>>>({});
+
   const [followOverride, setFollowOverride] = useState<boolean | null>(null);
   const [followerDelta, setFollowerDelta] = useState(0);
   const [followBusy, setFollowBusy] = useState(false);
   const [savedOverrides, setSavedOverrides] = useState<Record<string, boolean>>({});
 
-  const following = followOverride ?? page.data?.following ?? false;
+  const following = followOverride ?? club?.viewer.following ?? false;
+
+  const openTab = useCallback((next: Tab) => {
+    setTab(next);
+    setVisited((v) => (v.has(next) ? v : new Set(v).add(next)));
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setFollowOverride(null);
+    setFollowerDelta(0);
+    page.refresh();
+    if (tab === 'openings') openings.refresh();
+    else setRefreshKeys((k) => ({ ...k, [tab]: (k[tab] ?? 0) + 1 }));
+  }, [page, openings, tab]);
 
   const onToggleFollow = useCallback(async () => {
-    if (!organization || followBusy) return;
+    if (!org || followBusy) return;
     const next = !following;
     setFollowOverride(next);
     setFollowerDelta((d) => d + (next ? 1 : -1));
     setFollowBusy(true);
     try {
-      await setOrganizationFollow(organization.id, next);
+      await setClubFollow(org.id, next);
     } catch (err) {
       setFollowOverride(!next);
       setFollowerDelta((d) => d + (next ? -1 : 1));
@@ -120,7 +120,7 @@ export default function OrganizationScreen() {
     } finally {
       setFollowBusy(false);
     }
-  }, [organization, following, followBusy, toast]);
+  }, [org, following, followBusy, toast]);
 
   const onToggleSave = useCallback(
     async (opportunity: Opportunity, next: boolean) => {
@@ -137,9 +137,11 @@ export default function OrganizationScreen() {
     [t, toast],
   );
 
+  const fallbackHeader = <Header back title={t('common.club')} />;
+
   if (!id) {
     return (
-      <Screen header={<Header back title={t('common.club')} />}>
+      <Screen header={fallbackHeader}>
         <EmptyState
           icon={<Building2 size={26} color={colors.textMuted} />}
           title={t('opportunities.org.missingTitle')}
@@ -153,23 +155,23 @@ export default function OrganizationScreen() {
 
   if (page.loading) {
     return (
-      <Screen header={<Header back title={t('common.club')} />}>
+      <Screen header={fallbackHeader}>
         <SkeletonList count={2} />
       </Screen>
     );
   }
 
-  if (page.error) {
+  if (page.error && !club) {
     return (
-      <Screen header={<Header back title={t('common.club')} />}>
+      <Screen header={fallbackHeader}>
         <ErrorState message={page.error} onRetry={page.reload} />
       </Screen>
     );
   }
 
-  if (!organization) {
+  if (!club || !org) {
     return (
-      <Screen header={<Header back title={t('common.club')} />}>
+      <Screen header={fallbackHeader}>
         <EmptyState
           icon={<Building2 size={26} color={colors.textMuted} />}
           title={t('opportunities.org.goneTitle')}
@@ -181,181 +183,89 @@ export default function OrganizationScreen() {
     );
   }
 
-  const place = metaLine(organization.city, countryLabel(t, organization.country));
-  const followers = Math.max(0, organization.followers_count + followerDelta);
-  const followerLabel = t('opportunities.org.followers', {
-    count: followers,
-    value: compactNumber(followers),
-  });
-  const typeLabel = t(TYPE_KEY[organization.type] ?? 'common.club');
+  const viewer = club.viewer;
+  const counts = club.counts;
   const openCount = openings.data?.length ?? 0;
+  const followers = Math.max(0, org.followers_count + followerDelta);
+
+  const labels: Record<Tab, string> = {
+    posts: withCount(t('club.tabs.posts'), counts.posts),
+    matches: t('club.tabs.matches'),
+    squads: t('club.tabs.squads'),
+    events: withCount(t('club.tabs.events'), counts.open_events),
+    challenges: withCount(t('club.tabs.challenges'), counts.open_challenges),
+    awards: withCount(t('club.tabs.awards'), counts.awards),
+    about: t('club.tabs.about'),
+    openings: withCount(t('club.tabs.openings'), openCount),
+  };
+
+  const common = { orgId: org.id, canPost: viewer.can_post };
+  const body = (key: Tab): React.ReactNode => {
+    const refreshKey = refreshKeys[key] ?? 0;
+    switch (key) {
+      case 'posts':
+        return <ClubPostsTab {...common} refreshKey={refreshKey} clubName={org.name} />;
+      case 'matches':
+        return <ClubMatchesTab {...common} refreshKey={refreshKey} clubName={org.name} />;
+      case 'squads':
+        return <ClubSquadsTab {...common} refreshKey={refreshKey} onTeam={viewer.role != null} />;
+      case 'events':
+        return <ClubEventsTab {...common} refreshKey={refreshKey} />;
+      case 'challenges':
+        return <ClubChallengesTab {...common} refreshKey={refreshKey} />;
+      case 'awards':
+        return <ClubAwardsTab {...common} refreshKey={refreshKey} />;
+      case 'about':
+        return <ClubAboutTab page={club} />;
+      case 'openings':
+        return (
+          <ClubOpeningsTab
+            loading={openings.loading}
+            error={openings.error}
+            data={openings.data}
+            onRetry={openings.reload}
+            following={following}
+            onFollow={onToggleFollow}
+            saved={savedOverrides}
+            onToggleSave={onToggleSave}
+          />
+        );
+    }
+  };
 
   return (
     <Screen
-      header={<Header back title={organization.name} />}
+      header={<Header back title={org.name} />}
       padded={false}
-      onRefresh={() => {
-        page.refresh();
-        openings.refresh();
-      }}
+      onRefresh={onRefresh}
       refreshing={page.refreshing}
       testID="organization-screen"
     >
-      {/* Cover */}
-      <View
-        style={{
-          height: COVER_HEIGHT,
-          backgroundColor: colors.surfaceAlt,
-          borderBottomLeftRadius: theme.radii.xl,
-          borderBottomRightRadius: theme.radii.xl,
-          overflow: 'hidden',
-        }}
-      >
-        {organization.cover_url ? (
-          <RemoteImage
-            uri={organization.cover_url}
-            contentFit="cover"
-            style={{ width: '100%', height: '100%' }}
-          />
-        ) : null}
-      </View>
+      <View style={{ gap: spacing.xl, paddingBottom: spacing.xxxl }}>
+        <ClubHeader
+          page={club}
+          following={following}
+          followers={followers}
+          followBusy={followBusy}
+          onToggleFollow={onToggleFollow}
+        />
 
-      <View style={{ paddingHorizontal: spacing.lg, gap: spacing.xl }}>
-        {/* Identity */}
-        {/* The logo laps onto the cover, the way a club badge sits on a shirt. */}
-        <View style={{ gap: spacing.md, marginTop: -spacing.xxxl }}>
-          <ClubLogo
-            uri={organization.logo_url}
-            name={organization.name}
-            size="lg"
-            style={{ borderWidth: 3, borderColor: colors.bg }}
-          />
+        <ClubBanners page={club} onChanged={page.refresh} />
 
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              <Text variant="title" style={{ flexShrink: 1 }} numberOfLines={2}>
-                {organization.name}
-              </Text>
-              {organization.is_verified ? (
-                <BadgeCheck size={20} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
-              ) : null}
-            </View>
-            <Text variant="caption" tone="muted">
-              {metaLine(typeLabel, organization.league, place)}
-            </Text>
-          </View>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-            <Text variant="captionStrong" tone="secondary" style={{ flex: 1 }}>
-              {followerLabel}
-            </Text>
-            <Button
-              label={following ? t('common.following') : t('common.follow')}
-              variant={following ? 'secondary' : 'primary'}
-              size="sm"
-              loading={followBusy}
-              onPress={onToggleFollow}
-              accessibilityLabel={
-                following
-                  ? t('opportunities.org.unfollowA11y', { name: organization.name })
-                  : t('opportunities.org.followA11y', { name: organization.name })
-              }
-            />
-          </View>
-        </View>
-
-        <SegmentedControl<Tab>
+        <ScrollTabs<Tab>
           value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'about', label: t('opportunities.org.tabAbout') },
-            {
-              value: 'openings',
-              label:
-                openCount > 0
-                  ? t('opportunities.org.tabOpeningsCount', { count: openCount })
-                  : t('opportunities.org.tabOpenings'),
-            },
-          ]}
+          onChange={openTab}
+          options={TABS.map((value) => ({ value, label: labels[value] }))}
           testID="organization-tabs"
         />
 
-        {tab === 'about' ? (
-          <View style={{ gap: spacing.lg }}>
-            {organization.description?.trim() ? (
-              <Text variant="body" tone="secondary">
-                {organization.description.trim()}
-              </Text>
-            ) : (
-              <Text variant="body" tone="muted">
-                {t('opportunities.org.noIntro')}
-              </Text>
-            )}
-
-            <Card tone="alt" style={{ gap: spacing.xs }}>
-              <AboutRow
-                icon={<Building2 size={16} color={colors.textMuted} />}
-                label={t('opportunities.org.factType')}
-                value={typeLabel}
-              />
-              {organization.league ? (
-                <AboutRow
-                  icon={<Trophy size={16} color={colors.textMuted} />}
-                  label={t('opportunities.org.factLeague')}
-                  value={organization.league}
-                />
-              ) : null}
-              {place ? (
-                <AboutRow
-                  icon={<MapPin size={16} color={colors.textMuted} />}
-                  label={t('opportunities.org.factBasedIn')}
-                  value={place}
-                />
-              ) : null}
-              <AboutRow
-                icon={<Users size={16} color={colors.textMuted} />}
-                label={t('common.followers')}
-                value={followerLabel}
-              />
-            </Card>
-
-            {!organization.is_verified ? (
-              <Text variant="caption" tone="muted">
-                {t('opportunities.org.unverified')}
-              </Text>
-            ) : null}
-          </View>
-        ) : (
-          <View style={{ gap: spacing.md }}>
-            {openings.loading ? (
-              <SkeletonList count={2} variant="row" />
-            ) : openings.error ? (
-              <ErrorState message={openings.error} onRetry={openings.reload} compact />
-            ) : openCount === 0 ? (
-              <EmptyState
-                compact
-                icon={<Target size={26} color={colors.textMuted} />}
-                title={t('opportunities.org.openingsEmptyTitle')}
-                body={
-                  following
-                    ? t('opportunities.org.openingsEmptyFollowing')
-                    : t('opportunities.org.openingsEmptyBody')
-                }
-                actionLabel={following ? undefined : t('common.follow')}
-                onAction={following ? undefined : onToggleFollow}
-              />
-            ) : (
-              (openings.data ?? []).map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  saved={savedOverrides[opportunity.id] ?? opportunity.is_saved}
-                  onToggleSave={onToggleSave}
-                />
-              ))
-            )}
-          </View>
-        )}
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          {TABS.filter((key) => visited.has(key)).map((key) => (
+            <View key={key} style={key === tab ? undefined : { display: 'none' }}>
+              {body(key)}
+            </View>
+          ))}
+        </View>
       </View>
     </Screen>
   );
