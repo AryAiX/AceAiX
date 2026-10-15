@@ -3,7 +3,7 @@
 > A club or academy account sets up its own page at sign-up and runs it with a small team: posts and
 > stories, announcements, challenges, events, fixtures with a live score, squads per season with their
 > coaching staff, an About story and a trophy cabinet.
-> Source of truth: `supabase/migrations/20261014000001_club_pages.sql`. Client:
+> Source of truth: `supabase/migrations/20261015000001_club_pages.sql`. Client:
 > `mobile/app/org/[id].tsx`, `mobile/app/club/`, `mobile/app/match/[id].tsx`, `mobile/app/event/[id].tsx`,
 > `mobile/components/club/`, `mobile/lib/api.club.ts`, `mobile/lib/club.ts`, `mobile/lib/clubLabels.ts`,
 > `mobile/lib/clubSetup.ts`.
