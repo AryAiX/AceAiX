@@ -349,7 +349,7 @@ export default function MatchScreen() {
           label={t('clubMatch.match.editFixture')}
           variant="ghost"
           icon={<Pencil size={18} color={colors.text} />}
-          onPress={() => router.push({ pathname: Routes.clubMatchEdit(club.id), params: { id: match.id } })}
+          onPress={() => router.push({ pathname: '/club/[orgId]/match-edit', params: { orgId: club.id, id: match.id } })}
           style={{ alignSelf: 'flex-start' }}
           testID="match-edit"
         />

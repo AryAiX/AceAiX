@@ -389,7 +389,7 @@ export default function ClubEventScreen() {
               label={t('clubMatch.event.edit')}
               variant="secondary"
               icon={<Pencil size={18} color={colors.text} />}
-              onPress={() => router.push({ pathname: Routes.clubEventEdit(club.id), params: { id: event.id } })}
+              onPress={() => router.push({ pathname: '/club/[orgId]/event-edit', params: { orgId: club.id, id: event.id } })}
               style={{ flexGrow: 1 }}
               testID="club-event-edit"
             />

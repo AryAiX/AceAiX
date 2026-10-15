@@ -189,7 +189,7 @@ export default function ClubSquadsScreen() {
   };
 
   const openMember = (squadId: string, params: { id?: string; kind?: 'player' | 'staff' }) =>
-    router.push({ pathname: Routes.clubSquadMember(orgId), params: { squad: squadId, ...params } });
+    router.push({ pathname: '/club/[orgId]/member', params: { orgId, squad: squadId, ...params } });
 
   return (
     <Screen
