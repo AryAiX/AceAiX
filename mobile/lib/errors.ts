@@ -48,6 +48,8 @@ const EN: Record<string, string> = {
   'errors.passwordTooShort': 'Choose a password with at least 8 characters.',
   'errors.tooManyAttempts': 'Too many attempts. Wait a few minutes and try again.',
   'errors.meetupMapUrlInvalid': 'Use a Google Maps, Apple Maps or Waze link.',
+  'errors.meetupPlaceInvalid': 'Each place must be 2 to 80 characters.',
+  'errors.meetupPlacesLimit': 'You can add up to 5 places.',
 };
 
 function say(key: string): string {
@@ -99,6 +101,8 @@ const HINTS: Record<string, string> = {
   gi_session_closed: 'errors.giSessionClosed',
   gi_already_done: 'errors.giAlreadyDone',
   meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
+  meetup_place_invalid: 'errors.meetupPlaceInvalid',
+  meetup_places_limit: 'errors.meetupPlacesLimit',
 };
 
 const CODES: Record<string, string> = {
