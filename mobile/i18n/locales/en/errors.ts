@@ -73,4 +73,5 @@ export const errors = {
   coachingLocationRequired: 'Say where it should take place.',
   coachingServiceLimit: 'You can offer twelve services at a time.',
   coachingOwnCalendar: 'You cannot book your own calendar.',
+  meetupMapUrlInvalid: 'Use a Google Maps, Apple Maps or Waze link.',
 };

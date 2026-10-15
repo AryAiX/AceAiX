@@ -47,6 +47,7 @@ const EN: Record<string, string> = {
   'errors.emailInUse': 'An account already uses that email. Try signing in.',
   'errors.passwordTooShort': 'Choose a password with at least 8 characters.',
   'errors.tooManyAttempts': 'Too many attempts. Wait a few minutes and try again.',
+  'errors.meetupMapUrlInvalid': 'Use a Google Maps, Apple Maps or Waze link.',
 };
 
 function say(key: string): string {
@@ -97,6 +98,7 @@ const HINTS: Record<string, string> = {
   gi_attempt_limit: 'errors.giAttemptLimit',
   gi_session_closed: 'errors.giSessionClosed',
   gi_already_done: 'errors.giAlreadyDone',
+  meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
 };
 
 const CODES: Record<string, string> = {

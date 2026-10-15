@@ -72,4 +72,5 @@ export const errors = {
   coachingLocationRequired: '请说明上课地点。',
   coachingServiceLimit: '最多同时提供十二项课程。',
   coachingOwnCalendar: '不能预约自己的日历。',
+  meetupMapUrlInvalid: '请使用 Google 地图、Apple 地图或 Waze 链接。',
 };
