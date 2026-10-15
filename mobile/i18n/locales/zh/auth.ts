@@ -83,6 +83,8 @@ export const auth = {
     roleGuardianSubtitle: '支持并批准孩子的资料',
     roleSponsorTitle: '我是赞助商或品牌',
     roleSponsorSubtitle: '支持运动员，找到值得资助的人',
+    roleAudienceTitle: '我是体育迷',
+    roleAudienceSubtitle: '关注运动员和俱乐部 · 仅限18岁以上',
 
     nameTitle: '该怎么称呼你？',
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',
@@ -119,6 +121,9 @@ export const auth = {
       '继续训练。等你满{{age}}岁再回来，你的资料还在这里等你。',
     blockedBackToStart: '回到开头',
     blockedWrongDate: '我选错日期了',
+    audienceAdultsOnly:
+      '观众账户仅限成年人（18岁以上）。你可以返回并选择其他账户类型。',
+    audienceChooseAnother: '选择其他类型',
 
     accountTitle: '设置你的登录方式',
     accountSubtitle:

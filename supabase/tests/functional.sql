@@ -2942,7 +2942,11 @@ begin
          including rows the follower cannot select directly. */
       'users_are_blocked',
       /* 1006/03. Named in the stories read policy. */
-      'viewer_can_see_story'
+      'viewer_can_see_story',
+      /* Audience RLS predicates (feature 4) */
+      'viewer_is_audience',
+      'profile_is_minor',
+      'conversation_has_audience'
     );
 
   perform tests.ok(

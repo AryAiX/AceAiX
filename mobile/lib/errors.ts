@@ -22,6 +22,9 @@ const EN: Record<string, string> = {
   'errors.notSignedIn': 'You need to be signed in to do that.',
   'errors.guardianConsentRequired':
     'A parent or guardian needs to approve your profile before it can appear in search.',
+  'errors.audienceNotAllowed': "Audience accounts can't do this.",
+  'errors.audienceAdultsOnly': 'Audience accounts are for adults (18+).',
+  'errors.audienceNeedsAdultAge': 'Add your date of birth to continue.',
   'errors.messagingNotPermitted':
     "You can't message this account. They may only accept messages from verified coaches and clubs.",
   'errors.rateLimited': 'You are doing that too quickly. Wait a moment and try again.',
@@ -44,6 +47,9 @@ const EN: Record<string, string> = {
   'errors.emailInUse': 'An account already uses that email. Try signing in.',
   'errors.passwordTooShort': 'Choose a password with at least 8 characters.',
   'errors.tooManyAttempts': 'Too many attempts. Wait a few minutes and try again.',
+  'errors.meetupMapUrlInvalid': 'Use a Google Maps, Apple Maps or Waze link.',
+  'errors.meetupPlaceInvalid': 'Each place must be 2 to 80 characters.',
+  'errors.meetupPlacesLimit': 'You can add up to 5 places.',
 };
 
 function say(key: string): string {
@@ -53,6 +59,9 @@ function say(key: string): string {
 /** `raise … using hint = '…'` in SQL — the most specific signal we get. */
 const HINTS: Record<string, string> = {
   guardian_consent_required: 'errors.guardianConsentRequired',
+  audience_not_allowed: 'errors.audienceNotAllowed',
+  audience_adults_only: 'errors.audienceAdultsOnly',
+  audience_needs_adult_age: 'errors.audienceNeedsAdultAge',
   story_card_text: 'errors.storyCardText',
   story_media_missing: 'errors.storyMediaMissing',
   messaging_not_permitted: 'errors.messagingNotPermitted',
@@ -91,6 +100,9 @@ const HINTS: Record<string, string> = {
   gi_attempt_limit: 'errors.giAttemptLimit',
   gi_session_closed: 'errors.giSessionClosed',
   gi_already_done: 'errors.giAlreadyDone',
+  meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
+  meetup_place_invalid: 'errors.meetupPlaceInvalid',
+  meetup_places_limit: 'errors.meetupPlacesLimit',
 };
 
 const CODES: Record<string, string> = {

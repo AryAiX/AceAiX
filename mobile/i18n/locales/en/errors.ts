@@ -13,6 +13,9 @@ export const errors = {
   // Database hints
   guardianConsentRequired:
     'A parent or guardian needs to approve your profile before it can appear in search.',
+  audienceNotAllowed: "Audience accounts can't do this.",
+  audienceAdultsOnly: 'Audience accounts are for adults (18+).',
+  audienceNeedsAdultAge: 'Add your date of birth to continue.',
   messagingNotPermitted:
     "You can't message this account. They may only accept messages from verified coaches and clubs.",
   rateLimited: 'You are doing that too quickly. Wait a moment and try again.',
@@ -70,4 +73,7 @@ export const errors = {
   coachingLocationRequired: 'Say where it should take place.',
   coachingServiceLimit: 'You can offer twelve services at a time.',
   coachingOwnCalendar: 'You cannot book your own calendar.',
+  meetupMapUrlInvalid: 'Use a Google Maps, Apple Maps or Waze link.',
+  meetupPlaceInvalid: 'Each place must be 2 to 80 characters.',
+  meetupPlacesLimit: 'You can add up to 5 places.',
 };

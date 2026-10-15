@@ -22,6 +22,7 @@ import { didIBlock } from '@/lib/api.profile';
 import { compactNumber, displayName } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 
 /** A route param is only usable when it is a single, plausible user id. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -39,6 +40,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const toast = useToast();
   const t = useT();
+  const { isAudience } = useAuth();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
 
   const raw = Array.isArray(params.id) ? params.id[0] : params.id;
@@ -175,7 +177,9 @@ export default function PublicProfileScreen() {
       >
         {athlete ? <ScoreCard score={data.score} /> : null}
         {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}
-        {data.user.role === 'coach' ? <CoachBookingCard coachId={data.user.id} refreshKey={childKey} /> : null}
+        {data.user.role === 'coach' && !isAudience ? (
+          <CoachBookingCard coachId={data.user.id} refreshKey={childKey} />
+        ) : null}
         {athlete || data.user.role === 'sponsor' ? (
           <SponsorshipProfileCard
             userId={data.user.id}

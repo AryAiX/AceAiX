@@ -21,6 +21,7 @@ import { ServiceCard } from '@/components/coaching/ServiceCard';
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { bookCoachingSlot, getCoachBookingPage, type BookableSlot } from '@/lib/api.coaching';
 import { clockTime, groupByDay } from '@/lib/coaching';
 import { errorMessage } from '@/lib/errors';
@@ -40,6 +41,7 @@ export default function CoachBookingScreen() {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
+  const { isAudience } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const locale = currentLanguage();
@@ -137,7 +139,7 @@ export default function CoachBookingScreen() {
       header={header}
       keyboardAvoiding
       footer={
-        canBook && slot && !slot.my_booking_id ? (
+        canBook && slot && !slot.my_booking_id && !isAudience ? (
           <Button
             label={t('coaching.confirmBooking')}
             fullWidth

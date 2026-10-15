@@ -188,6 +188,10 @@ export const onboarding = {
   doneTitle: 'Alles erledigt',
   guardianDoneBody: 'Dein Konto ist fertig. Die Verbindung zu deinem Kind dauert etwa eine Minute.',
   basicDoneBody: 'Schau dich um und richte den Rest ein, wann immer du magst.',
+  followTitle: 'Folge ein paar Athletinnen, Athleten und Vereinen',
+  followBody: 'Dein Feed füllt sich mit den Leuten, denen du folgst.',
+  followEmpty: 'Noch keine Vorschläge. Unter Entdecken findest du Leute.',
+  audienceDoneBody: 'Dein Start zeigt die Athletinnen, Athleten und Vereine, denen du folgst.',
   guardianDoneNote:
     'Einstellungen, dann „Eltern und Vormund“. Wenn dein Kind dir schon eine E-Mail zur Freigabe geschickt hat, verbindet der Link darin eure Konten.',
 };

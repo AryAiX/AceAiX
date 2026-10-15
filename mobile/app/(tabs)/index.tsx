@@ -55,7 +55,7 @@ export default function HomeScreen() {
   const { colors, spacing } = theme;
   const router = useRouter();
   const t = useT();
-  const { user } = useAuth();
+  const { user, isAudience } = useAuth();
   const unread = useUnread();
 
   const scopes = useMemo<{ value: Scope; label: string }[]>(
@@ -275,18 +275,20 @@ export default function HomeScreen() {
         <ThemeToggle testID="home-theme" />
 
         <ReelsButton label={t('reels.open')} onPress={() => router.push(Routes.reels)} />
-        <IconButton
-          icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
-          label={
-            unread.messages > 0
-              ? t('feed.messagesUnread', { count: unread.messages })
-              : t('feed.messages')
-          }
-          badge={unread.messages}
-          size={38}
-          onPress={() => router.push(Routes.inbox)}
-          testID="home-messages"
-        />
+        {isAudience ? null : (
+          <IconButton
+            icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
+            label={
+              unread.messages > 0
+                ? t('feed.messagesUnread', { count: unread.messages })
+                : t('feed.messages')
+            }
+            badge={unread.messages}
+            size={38}
+            onPress={() => router.push(Routes.inbox)}
+            testID="home-messages"
+          />
+        )}
         <IconButton
           icon={<Bell size={20} color={colors.text} strokeWidth={1.9} />}
           label={
@@ -330,7 +332,7 @@ export default function HomeScreen() {
              switch — each arriving a beat after the one above it. */
           <View style={{ gap: spacing.lg }}>
             <Reveal index={0}>
-              <StoryRail />
+              <StoryRail hideOwnStory={isAudience} />
             </Reveal>
             <Reveal index={1}>
               <ReelsStrip />

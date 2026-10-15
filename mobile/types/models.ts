@@ -19,8 +19,8 @@ export type UserRole =
   | 'admin'
   | 'guest';
 
-/** The four roles a person can choose at signup. */
-export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'sponsor', 'guardian'] as const;
+/** Roles a person can choose at signup. */
+export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'sponsor', 'guardian', 'guest'] as const;
 export type SignupRole = (typeof SIGNUP_ROLES)[number];
 
 export type Tier = 'rising' | 'bronze' | 'silver' | 'gold' | 'elite';
@@ -478,6 +478,8 @@ export interface NotificationPreferences {
   scout_interest: boolean;
   score_updates: boolean;
   meetups: boolean;
+  /** Extra cities or areas, besides the profile city, for Play alerts. */
+  meetup_places: string[];
   push_enabled: boolean;
   email_enabled: boolean;
 }

@@ -16,11 +16,12 @@ import {
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
-import { errorMessage } from '@/lib/errors';
+import { AppError, errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
 import {
   completeOnboarding,
   getGuardianConsents,
+  setDateOfBirth,
   getMatchPreferences,
   getMyProfile,
   refreshMyTalentScore,
@@ -37,8 +38,9 @@ import {
   updateScoutProfile,
   uploadAvatar,
 } from '@/lib/api.auth';
+import { removeOwnProfileImage } from '@/lib/api.profile';
 import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
-import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
+import { WizardTopBar, calculateAge, isValidEmail, toIsoDate } from '@/components/onboarding/Shared';
 import {
   HEIGHT_RANGE_CM,
   LevelStep,
@@ -55,6 +57,8 @@ import {
 import { GuardianIntroStep } from '@/components/onboarding/GuardianIntroStep';
 import { PhotoStep, type PickedPhoto } from '@/components/onboarding/PhotoStep';
 import { TeamsStep } from '@/components/onboarding/TeamsStep';
+import { FollowStep } from '@/components/onboarding/FollowStep';
+import { DateOfBirthStep } from '@/components/onboarding/SignupSteps';
 import { AthleteFinishStep, SimpleFinishStep } from '@/components/onboarding/FinishStep';
 import {
   CLUB_ROLE_KEYS,
@@ -88,13 +92,15 @@ type StepKey =
   | 'guardian'
   | 'photo'
   | 'teams'
+  | 'dob'
+  | 'follow'
   | 'sports'
   | 'role'
   | 'target'
   | 'intro'
   | 'done';
 
-type Path = 'athlete' | 'recruiter' | 'guardian' | 'basic';
+type Path = 'athlete' | 'recruiter' | 'guardian' | 'audience' | 'basic';
 
 export default function OnboardingScreen() {
   const theme = useTheme();
@@ -111,7 +117,9 @@ export default function OnboardingScreen() {
         ? 'recruiter'
         : role === 'guardian'
           ? 'guardian'
-          : 'basic';
+          : role === 'guest'
+            ? 'audience'
+            : 'basic';
   const isClub = role === 'club';
   const isMinor = profile?.is_minor === true;
 
@@ -156,6 +164,9 @@ export default function OnboardingScreen() {
   const [scoreError, setScoreError] = useState<string | null>(null);
 
   const [stepIndex, setStepIndex] = useState(0);
+  /** Guest only: true once a known adult age band is on the profile. */
+  const [audienceAdult, setAudienceAdult] = useState(false);
+  const [audienceDob, setAudienceDob] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
 
   const guardianGranted = guardianConsent?.status === 'granted';
@@ -171,6 +182,11 @@ export default function OnboardingScreen() {
       const appliedDate = await applyPendingDateOfBirth();
 
       const [account, bundle] = await Promise.all([refreshProfile(), getMyProfile()]);
+
+      if (account?.role === 'guest') {
+        const band = account.age_band;
+        setAudienceAdult(band === '18_24' || band === '25_plus');
+      }
 
       // Discovery filters and the Talent Score both read the athlete record's
       // own birth date, so it is written there as well as in user_private.
@@ -250,10 +266,17 @@ export default function OnboardingScreen() {
         return ['sports', 'role', 'place', 'target', 'teams', 'done'];
       case 'guardian':
         return ['intro', 'done'];
+      case 'audience':
+        return [
+          ...(audienceAdult ? [] : (['dob'] as StepKey[])),
+          'teams',
+          'follow',
+          'done',
+        ];
       default:
         return ['done'];
     }
-  }, [path, isMinor, guardianGranted]);
+  }, [path, isMinor, guardianGranted, audienceAdult]);
 
   const safeIndex = Math.min(stepIndex, steps.length - 1);
   const step = steps[safeIndex];
@@ -345,6 +368,16 @@ export default function OnboardingScreen() {
           await saveFavoriteTeams(favoriteTeams.map((team) => team.id));
           await saveFavoriteVenue(venue.trim() || null);
           break;
+        case 'dob': {
+          if (!audienceDob) return false;
+          if (calculateAge(audienceDob) < 18) {
+            toast.error(t('errors.audienceAdultsOnly'));
+            return false;
+          }
+          await setDateOfBirth(toIsoDate(audienceDob));
+          await refreshProfile();
+          break;
+        }
         case 'sports':
           await saveMatchPreferences({ sports });
           break;
@@ -399,6 +432,9 @@ export default function OnboardingScreen() {
     isClub,
     ageBand,
     toast,
+    t,
+    audienceDob,
+    refreshProfile,
   ]);
 
   // The recruiter "where are you based" step writes the same two fields as the
@@ -431,6 +467,8 @@ export default function OnboardingScreen() {
         return !!avatarUri;
       case 'teams':
         return favoriteTeams.length > 0 || venue.trim().length > 0;
+      case 'dob':
+        return audienceDob !== null;
       case 'guardian':
         return guardianName.trim().length >= 2 && isValidEmail(guardianEmail);
       case 'sports':
@@ -477,6 +515,14 @@ export default function OnboardingScreen() {
       await refreshProfile();
     } catch (err) {
       toast.error(errorMessage(err));
+      if (
+        path === 'audience' &&
+        err instanceof AppError &&
+        err.hint === 'audience_needs_adult_age'
+      ) {
+        setAudienceAdult(false);
+        setStepIndex(0);
+      }
     } finally {
       setSaving(false);
     }
@@ -507,8 +553,10 @@ export default function OnboardingScreen() {
   const removePhoto = async () => {
     setPhotoError(null);
     setUploading(true);
+    const previous = profile?.avatar_url ?? null;
     try {
       await updateUserProfile({ avatar_url: null });
+      await removeOwnProfileImage(previous);
       setAvatarUri(null);
       await refreshProfile();
     } catch (err) {
@@ -522,6 +570,7 @@ export default function OnboardingScreen() {
     setPhotoError(null);
     setAvatarUri(photo.uri);
     setUploading(true);
+    const previous = profile?.avatar_url ?? null;
     try {
       const url = await uploadAvatar({
         base64: photo.base64,
@@ -529,6 +578,7 @@ export default function OnboardingScreen() {
         mimeType: photo.mimeType,
       });
       await updateUserProfile({ avatar_url: url });
+      if (previous && previous !== url) await removeOwnProfileImage(previous);
       setAvatarUri(url);
       await refreshProfile();
     } catch (err) {
@@ -557,7 +607,7 @@ export default function OnboardingScreen() {
     );
   }
 
-  const skippable = step === 'physical' || step === 'photo' || step === 'teams';
+  const skippable = step === 'physical' || step === 'photo' || step === 'teams' || step === 'follow';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
   const knownName = profile.first_name ?? profile.full_name;
   const name = knownName ? firstNameOf(knownName) : '';
@@ -663,6 +713,10 @@ export default function OnboardingScreen() {
             onChangeSide={setSide}
           />
         ) : null}
+
+        {step === 'dob' ? <DateOfBirthStep value={audienceDob} onChange={setAudienceDob} /> : null}
+
+        {step === 'follow' ? <FollowStep /> : null}
 
         {step === 'teams' ? (
           <TeamsStep
@@ -801,6 +855,13 @@ export default function OnboardingScreen() {
               t('onboarding.recruiterDonePointPost'),
               t('onboarding.recruiterDonePointVerified'),
             ]}
+          />
+        ) : null}
+
+        {step === 'done' && path === 'audience' ? (
+          <SimpleFinishStep
+            title={t('onboarding.doneTitle')}
+            body={t('onboarding.audienceDoneBody')}
           />
         ) : null}
 

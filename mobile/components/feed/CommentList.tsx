@@ -230,12 +230,14 @@ export function CommentComposer({
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const t = useT();
-  const { profile } = useAuth();
+  const { profile, isAudience } = useAuth();
   const inputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     if (focusSignal > 0) inputRef.current?.focus();
   }, [focusSignal]);
+
+  if (isAudience) return null;
 
   const canSend = value.trim().length > 0 && !sending;
 
