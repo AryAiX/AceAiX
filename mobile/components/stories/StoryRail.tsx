@@ -19,16 +19,17 @@ import { StoryRing, type RingState } from './StoryRing';
 /**
  * The row of rings at the top of Home.
  *
- * "Your story" is always first — it is how a story gets made, so it is there
- * even when nobody you follow has posted. Everyone else comes in the order the
- * database gives: something new first, then the people you have caught up
- * with, newest first within each.
+ * "Your story" is first when the viewer can post one — it is how a story gets
+ * made, so it is there even when nobody you follow has posted. `hideOwnStory`
+ * leaves that ring out; everyone else's stories still show. They come in the
+ * order the database gives: something new first, then the people you have
+ * caught up with, newest first within each.
  */
 
 const RING = 72;
 const LABEL_WIDTH = 76;
 
-export function StoryRail() {
+export function StoryRail({ hideOwnStory = false }: { hideOwnStory?: boolean }) {
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
@@ -62,18 +63,20 @@ export function StoryRail() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.xs }}
       >
-        <Reveal from="scale" index={0}>
-          <YourBubble
-            uri={profile?.avatar_url ?? mine?.avatar_url ?? null}
-            name={myName}
-            ring={mine ? (mine.unseen > 0 ? 'unseen' : 'seen') : 'none'}
-            label={t('stories.yourStory')}
-            openLabel={mine ? t('stories.openYourStory') : t('stories.addStory')}
-            addLabel={t('stories.addStory')}
-            onOpen={mine && user ? () => open(user.id) : compose}
-            onAdd={compose}
-          />
-        </Reveal>
+        {hideOwnStory ? null : (
+          <Reveal from="scale" index={0}>
+            <YourBubble
+              uri={profile?.avatar_url ?? mine?.avatar_url ?? null}
+              name={myName}
+              ring={mine ? (mine.unseen > 0 ? 'unseen' : 'seen') : 'none'}
+              label={t('stories.yourStory')}
+              openLabel={mine ? t('stories.openYourStory') : t('stories.addStory')}
+              addLabel={t('stories.addStory')}
+              onOpen={mine && user ? () => open(user.id) : compose}
+              onAdd={compose}
+            />
+          </Reveal>
+        )}
 
         {others.map((entry, index) => (
           <Reveal key={entry.author_id} from="scale" index={index + 1}>

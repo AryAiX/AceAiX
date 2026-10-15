@@ -13,6 +13,7 @@ export const errors = {
   // 数据库提示
   guardianConsentRequired:
     '你的资料需要家长或监护人批准后，才能出现在搜索结果里。',
+  audienceNotAllowed: '观众账户无法执行此操作。',
   messagingNotPermitted:
     '你无法给这个账号发私信。对方可能只接收经过认证的教练和俱乐部的私信。',
   rateLimited: '你的操作太频繁了，稍等片刻再试。',

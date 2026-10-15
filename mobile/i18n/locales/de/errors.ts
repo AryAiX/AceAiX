@@ -14,6 +14,7 @@ export const errors = {
   // Hinweise aus der Datenbank
   guardianConsentRequired:
     'Ein Elternteil oder Vormund muss dein Profil freigeben, bevor es in der Suche erscheint.',
+  audienceNotAllowed: 'Mit einem Zuschauer-Konto ist das nicht möglich.',
   messagingNotPermitted:
     'Du kannst diesem Konto nicht schreiben. Vielleicht nimmt es nur Nachrichten von geprüften Trainern und Vereinen an.',
   rateLimited: 'Das geht gerade zu schnell. Warte kurz und versuch es noch einmal.',

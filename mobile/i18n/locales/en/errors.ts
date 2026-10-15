@@ -13,6 +13,7 @@ export const errors = {
   // Database hints
   guardianConsentRequired:
     'A parent or guardian needs to approve your profile before it can appear in search.',
+  audienceNotAllowed: "Audience accounts can't do this.",
   messagingNotPermitted:
     "You can't message this account. They may only accept messages from verified coaches and clubs.",
   rateLimited: 'You are doing that too quickly. Wait a moment and try again.',

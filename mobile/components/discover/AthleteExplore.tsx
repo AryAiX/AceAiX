@@ -169,7 +169,7 @@ export function AthleteExplore({
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
-  const { profile } = useAuth();
+  const { profile, isAudience } = useAuth();
   const canSearchBoard = profile?.is_minor === false;
 
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -634,7 +634,9 @@ export function AthleteExplore({
       </View>
 
       {tab === 'explore' ? (
-        <ExploreGrid onPostFirst={() => router.push(Routes.compose)} />
+        <ExploreGrid
+          onPostFirst={isAudience ? undefined : () => router.push(Routes.compose)}
+        />
       ) : tab === 'sponsors' ? (
         <SponsorsTab query={debounced} />
       ) : tab === 'clubs' ? (

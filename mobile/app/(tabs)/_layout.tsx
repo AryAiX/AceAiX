@@ -293,7 +293,7 @@ export default function TabsLayout() {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { profile } = useAuth();
+  const { profile, isAudience } = useAuth();
 
   /*
    * Meetups are eighteen-plus, and the database enforces that — a minor asking
@@ -382,7 +382,7 @@ export default function TabsLayout() {
         name="meetups"
         options={{
           title: t('common.tabMeetups'),
-          href: canMeet ? undefined : null,
+          href: isAudience ? null : canMeet ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Users}
@@ -401,6 +401,7 @@ export default function TabsLayout() {
         name="opportunities"
         options={{
           title: t('common.tabTrials'),
+          href: isAudience ? null : undefined,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Target}
@@ -430,7 +431,7 @@ export default function TabsLayout() {
       />
       </Tabs>
 
-      <CreateButton bottom={fabBottom} />
+      {isAudience ? null : <CreateButton bottom={fabBottom} />}
     </View>
   );
 }
