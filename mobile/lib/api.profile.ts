@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { File as FsFile } from 'expo-file-system';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
-import { supabase, Buckets, publicUrl } from '@/lib/supabase';
+import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { getUserPosts } from '@/lib/api';
@@ -170,6 +170,73 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
+/** 32 hex characters. A new id every upload, so a replaced photo is a new object. */
+function randomImageId(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  let id = '';
+  for (const byte of bytes) id += byte.toString(16).padStart(2, '0');
+  return id;
+}
+
+const PUBLIC_AVATARS = '/storage/v1/object/public/avatars/';
+
+/**
+ * Storage path inside the avatars bucket, when `oldUrl` is a public URL of
+ * this project's bucket and the first folder is the signed-in user.
+ * Anything else — another host, a signed URL, a different bucket, someone
+ * else's folder — is ignored.
+ */
+function ownAvatarObjectPath(oldUrl: string, userId: string): string | null {
+  let url: URL;
+  let base: URL;
+  try {
+    url = new URL(oldUrl);
+    base = new URL(SUPABASE_URL);
+  } catch {
+    return null;
+  }
+  if (url.origin !== base.origin) return null;
+
+  let pathname: string;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  if (!pathname.startsWith(PUBLIC_AVATARS)) return null;
+
+  const parts = pathname
+    .slice(PUBLIC_AVATARS.length)
+    .split('/')
+    .filter((part) => part.length > 0);
+  if (parts.length < 2) return null;
+  if (parts.some((part) => part === '.' || part === '..')) return null;
+  if (parts[0] !== userId) return null;
+  return parts.join('/');
+}
+
+/**
+ * Deletes a profile photo this account previously uploaded.
+ * No-ops unless the URL points at this user's folder in the public avatars
+ * bucket. Storage errors are logged and swallowed: a failed cleanup must not
+ * undo a profile save that already succeeded.
+ */
+export async function removeOwnProfileImage(oldUrl: string | null | undefined): Promise<void> {
+  try {
+    if (!oldUrl) return;
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user?.id;
+    if (!userId) return;
+    const path = ownAvatarObjectPath(oldUrl, userId);
+    if (!path) return;
+    const { error } = await supabase.storage.from(Buckets.avatars).remove([path]);
+    if (error) console.warn('Could not remove a replaced profile image', error);
+  } catch (failure) {
+    console.warn('Could not remove a replaced profile image', failure);
+  }
+}
+
 async function upload(bucket: string, path: string, uri: string, contentType: string) {
   const bytes = await readBytes(uri);
   const { error } = await supabase.storage
@@ -202,7 +269,7 @@ async function shrink(
 export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
   const file = await shrink(uri, contentType, IMAGE_PRESETS.avatar);
-  const path = `${uid}/avatar-${Date.now()}.${extensionFor(file.uri, file.contentType)}`;
+  const path = `${uid}/avatar-${randomImageId()}.${extensionFor(file.uri, file.contentType)}`;
   await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');
@@ -220,7 +287,7 @@ export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Pro
 export async function uploadCover(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
   const file = await shrink(uri, contentType, IMAGE_PRESETS.cover);
-  const path = `${uid}/cover-${Date.now()}.${extensionFor(file.uri, file.contentType)}`;
+  const path = `${uid}/cover-${randomImageId()}.${extensionFor(file.uri, file.contentType)}`;
   await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');

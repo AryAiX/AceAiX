@@ -38,6 +38,7 @@ import {
   updateScoutProfile,
   uploadAvatar,
 } from '@/lib/api.auth';
+import { removeOwnProfileImage } from '@/lib/api.profile';
 import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
 import { WizardTopBar, calculateAge, isValidEmail, toIsoDate } from '@/components/onboarding/Shared';
 import {
@@ -552,8 +553,10 @@ export default function OnboardingScreen() {
   const removePhoto = async () => {
     setPhotoError(null);
     setUploading(true);
+    const previous = profile?.avatar_url ?? null;
     try {
       await updateUserProfile({ avatar_url: null });
+      await removeOwnProfileImage(previous);
       setAvatarUri(null);
       await refreshProfile();
     } catch (err) {
@@ -567,6 +570,7 @@ export default function OnboardingScreen() {
     setPhotoError(null);
     setAvatarUri(photo.uri);
     setUploading(true);
+    const previous = profile?.avatar_url ?? null;
     try {
       const url = await uploadAvatar({
         base64: photo.base64,
@@ -574,6 +578,7 @@ export default function OnboardingScreen() {
         mimeType: photo.mimeType,
       });
       await updateUserProfile({ avatar_url: url });
+      if (previous && previous !== url) await removeOwnProfileImage(previous);
       setAvatarUri(url);
       await refreshProfile();
     } catch (err) {
