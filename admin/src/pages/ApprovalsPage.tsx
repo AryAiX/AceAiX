@@ -76,7 +76,7 @@ export default function ApprovalsPage() {
                     {r.documents?.length ? (
                       <div className="mt-1 flex flex-wrap gap-2">
                         {r.documents.map((d, i) => (
-                          <a key={i} href={d.url} target="_blank" rel="noreferrer"
+                          <a key={i} href={safeHttpsUrl(d.url)} target="_blank" rel="noreferrer noopener"
                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs hover:bg-slate-50">
                             <FileText className="h-3.5 w-3.5 text-slate-500" /> {d.name ?? d.kind ?? `Document ${i + 1}`}
                           </a>
@@ -139,4 +139,15 @@ export default function ApprovalsPage() {
       <ActionDialog spec={dialog} onClose={() => setDialog(null)} />
     </>
   );
+}
+
+/* Document links come from what the applicant submitted. Only https links are
+   followed, so a javascript: URL can never run in an admin's session. */
+function safeHttpsUrl(url: unknown): string | undefined {
+  if (typeof url !== 'string') return undefined;
+  try {
+    return new URL(url).protocol === 'https:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
 }

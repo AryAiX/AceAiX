@@ -19,6 +19,7 @@ export const coaching = {
     athlete: 'Cancelled by the athlete',
     coach: 'Cancelled by the coach',
     guardian: 'Cancelled by a guardian',
+    admin: 'Cancelled by AceAiX',
   },
   accepting: 'Taking students',
   notAccepting: 'Not taking students',

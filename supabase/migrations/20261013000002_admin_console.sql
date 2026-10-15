@@ -46,8 +46,6 @@ create index if not exists idx_moderation_reports_status_created
   on public.moderation_reports(status, created_at desc);
 create index if not exists idx_user_profiles_role_created
   on public.user_profiles(role, created_at desc);
-create index if not exists idx_audit_logs_created
-  on public.audit_logs(created_at desc);
 
 -- ------------------------------------------------------------
 -- §1  Helpers
@@ -60,8 +58,30 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if auth.uid() is null or not private.is_admin() then
+  if auth.uid() is null or not private.is_admin()
+     or exists (select 1 from public.user_profiles where id = auth.uid() and is_suspended) then
     raise exception 'Admin access required' using errcode = '42501';
+  end if;
+end;
+$$;
+
+/* Under-13 accounts are quarantined by 20260910000001 and leave only through
+   the age-appeal flow, which also closes the quarantine case. The console
+   must not lift, shorten or overwrite that suspension. */
+create or replace function private.admin_assert_not_quarantined(p_user uuid)
+returns void
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if exists (select 1 from public.user_profiles
+              where id = p_user and coalesce(suspended_reason, '') like 'underage%')
+     or exists (select 1 from private.underage_account_quarantine
+                 where user_id = p_user and remediation_status = 'pending_review') then
+    raise exception 'This account is under the under-13 review; resolve it through the age appeal'
+      using errcode = '42501';
   end if;
 end;
 $$;
@@ -141,6 +161,9 @@ begin
        set is_suspended = false, suspended_reason = null, suspended_at = null,
            suspended_until = null, suspended_by = null
      where is_suspended and suspended_until is not null and suspended_until <= now()
+       and coalesce(suspended_reason, '') not like 'underage%'
+       and not exists (select 1 from private.underage_account_quarantine q
+                        where q.user_id = user_profiles.id and q.remediation_status = 'pending_review')
     returning id
   )
   select count(*) into v_n from lifted;
@@ -291,6 +314,12 @@ begin
 
   select * into v_old from public.verification_requests where id = p_request for update;
   if not found then raise exception 'Request not found' using errcode = 'P0002'; end if;
+  if v_old.subject_user_id = auth.uid()
+     or (v_old.organization_id is not null and exists (
+           select 1 from public.organization_members om
+            where om.organization_id = v_old.organization_id and om.user_id = auth.uid())) then
+    raise exception 'You cannot decide your own verification' using errcode = '42501';
+  end if;
 
   update public.verification_requests
      set status = p_decision::public.verification_status,
@@ -508,12 +537,18 @@ begin
      and not private.is_super_admin() then
     raise exception 'Only a super admin can suspend an admin' using errcode = '42501';
   end if;
+  perform private.admin_assert_not_quarantined(p_user);
 
+  -- A new suspension never shortens one already running, and never turns a
+  -- permanent ban into a timed one.
   update public.user_profiles set
     is_suspended = true,
     suspended_reason = p_reason,
     suspended_at = now(),
-    suspended_until = p_until,
+    suspended_until = case
+      when is_suspended and suspended_until is null then null
+      when is_suspended and p_until is not null and suspended_until > p_until then suspended_until
+      else p_until end,
     suspended_by = auth.uid()
   where id = p_user;
 
@@ -550,6 +585,9 @@ begin
 
   select * into r from public.moderation_reports where id = p_report for update;
   if not found then raise exception 'Report not found' using errcode = 'P0002'; end if;
+  if r.status in ('resolved','dismissed') then
+    raise exception 'This report is already settled' using errcode = '22023';
+  end if;
 
   v_kind := r.reported_entity_type;
   v_target := private.try_uuid(r.reported_entity_id);
@@ -603,6 +641,7 @@ begin
         and reported_entity_id = r.reported_entity_id
         and id <> r.id
         and status in ('open','reviewing','escalated')
+        and not (v_status = 'dismissed' and reason = 'child_safety')
       returning id
     )
     select count(*) into v_closed from closed;
@@ -722,6 +761,13 @@ begin
   end if;
   if p_action = 'remove' and coalesce(btrim(p_reason), '') = '' then
     raise exception 'Give a reason for removing content' using errcode = '22023';
+  end if;
+  -- Private messages are moderated only once someone has reported them.
+  if p_kind = 'message' and not exists (
+    select 1 from public.moderation_reports
+     where reported_entity_type = 'message' and reported_entity_id = p_id::text
+  ) then
+    raise exception 'Only reported messages can be moderated' using errcode = '42501';
   end if;
 
   v_old := private.admin_apply_content_action(p_kind, p_id, p_action, p_reason);
@@ -897,6 +943,13 @@ begin
     perform private.admin_audit(case when p_days is null then 'user.ban' else 'user.suspend' end,
       'user_profiles', p_user, v_old, jsonb_build_object('reason', p_reason, 'days', p_days));
   else
+    if p_user = auth.uid() then
+      raise exception 'You cannot lift your own suspension' using errcode = '42501';
+    end if;
+    if v_old->>'role' in ('admin','super_admin') and not private.is_super_admin() then
+      raise exception 'Only a super admin can reinstate an admin' using errcode = '42501';
+    end if;
+    perform private.admin_assert_not_quarantined(p_user);
     update public.user_profiles set is_suspended = false, suspended_reason = null, suspended_at = null,
                                     suspended_until = null, suspended_by = null
      where id = p_user;
@@ -935,6 +988,9 @@ as $$
 declare v_old boolean;
 begin
   perform private.require_admin();
+  if p_user = auth.uid() then
+    raise exception 'You cannot change your own verification' using errcode = '42501';
+  end if;
   select is_verified into v_old from public.user_profiles where id = p_user;
   if not found then raise exception 'User not found' using errcode = 'P0002'; end if;
 
@@ -1131,16 +1187,20 @@ begin
 
   if p_kind = 'deal' then
     select to_jsonb(d) into v_old from public.sponsorship_deals d where d.id = p_id;
+    if v_old is null then raise exception 'Not found' using errcode = 'P0002'; end if;
     update public.sponsorship_deals set status = 'withdrawn', responded_at = now()
      where id = p_id and status = 'pending';
+    if not found then raise exception 'Only a pending offer can be withdrawn' using errcode = '22023'; end if;
     perform private.admin_notice((v_old->>'athlete_user_id')::uuid, 'A sponsorship offer was withdrawn by AceAiX', p_reason);
     perform private.admin_notice((v_old->>'sponsor_user_id')::uuid, 'A sponsorship offer was withdrawn by AceAiX', p_reason);
   elsif p_kind = 'call' then
     select to_jsonb(c) into v_old from public.sponsor_calls c where c.id = p_id;
+    if v_old is null then raise exception 'Not found' using errcode = 'P0002'; end if;
     update public.sponsor_calls set is_active = false where id = p_id;
     perform private.admin_notice((v_old->>'sponsor_user_id')::uuid, 'Your sponsor call was closed by AceAiX', p_reason);
   elsif p_kind = 'request' then
     select to_jsonb(r) into v_old from public.sponsorship_requests r where r.id = p_id;
+    if v_old is null then raise exception 'Not found' using errcode = 'P0002'; end if;
     update public.sponsorship_requests set status = 'closed' where id = p_id;
     perform private.admin_notice((v_old->>'athlete_user_id')::uuid, 'Your sponsorship request was closed by AceAiX', p_reason);
   else
@@ -1277,6 +1337,7 @@ $$;
 -- The private helpers are reached only through the public admin_* functions
 -- above (which run as their owner), never directly by a client.
 revoke all on function private.require_admin() from public, anon, authenticated;
+revoke all on function private.admin_assert_not_quarantined(uuid) from public, anon, authenticated;
 revoke all on function private.admin_audit(text, text, uuid, jsonb, jsonb) from public, anon, authenticated;
 revoke all on function private.admin_notice(uuid, text, text, jsonb) from public, anon, authenticated;
 revoke all on function private.admin_person(uuid) from public, anon, authenticated;

@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 
-// ── Shapes returned by the admin_* RPCs (supabase/migrations/20261013000001_admin_console.sql)
+// ── Shapes returned by the admin_* RPCs (supabase/migrations/20261013000002_admin_console.sql)
 
 export interface Person {
   id: string;

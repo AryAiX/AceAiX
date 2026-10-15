@@ -4,7 +4,7 @@ Web admin panel for the AceAiX mobile app. It runs on the **same Supabase projec
 Admins sign in with a normal account whose role is `admin` or `super_admin`.
 
 - **Front end:** this folder (Vite + React + TypeScript + Tailwind + TanStack Query).
-- **Back end:** `supabase/migrations/20261013000001_admin_console.sql`. It adds 22 `admin_*` RPCs.
+- **Back end:** `supabase/migrations/20261013000002_admin_console.sql`. It adds 22 `admin_*` RPCs.
   Each one checks `private.is_admin()` on the server and writes to `audit_logs`.
 - The browser never gets a service-role key. If someone who is not an admin signs in, every call is refused with `42501`.
 
@@ -28,7 +28,7 @@ When a user is suspended, they are signed out (their `auth.sessions` are deleted
 ## Deploy (for Tooraj / Abud)
 
 1. Merge the branch. Apply the migration: `supabase db push`, or run
-   `supabase/migrations/20261013000001_admin_console.sql`. It must run **after** the six migrations already in `HANDOVER.md`.
+   `supabase/migrations/20261013000002_admin_console.sql`. It must run **after** the six migrations already in `HANDOVER.md`.
 2. Make sure there is a super admin. If there is none, run from `web/`:
    `SB_URL=… SB_SVC=<service_role> SUPER_ADMIN_EMAIL=… SUPER_ADMIN_PASSWORD=… npm run create:super-admin`.
 3. Open `admin/` and copy `.env.example` to `.env`. Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. Use the same values as the mobile app.

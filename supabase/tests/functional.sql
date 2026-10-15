@@ -3801,5 +3801,81 @@ reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
+-- Console guardrails. Each refusal must be a permission error (42501), so a
+-- typo or a missing function cannot pass for a refusal.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('ad222222-2222-2222-2222-222222222222', 'moderator2@test.local', '{"full_name":"Second Moderator"}'),
+  ('ad333333-3333-3333-3333-333333333333', 'quarantined@test.local', '{"full_name":"Quarantined Child","role":"athlete"}')
+on conflict do nothing;
+update public.user_profiles set role = 'admin' where id = 'ad222222-2222-2222-2222-222222222222';
+
+do $$
+declare
+  v_state text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles
+     set is_suspended = true, suspended_reason = 'underage_account_pending_remediation'
+   where id = 'ad333333-3333-3333-3333-333333333333';
+  update public.user_profiles
+     set is_suspended = true, suspended_reason = 'Test suspension', suspended_until = now() + interval '7 days'
+   where id = 'ad222222-2222-2222-2222-222222222222';
+
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.admin_dashboard()', 'EXECUTE'),
+    'signed-out callers cannot reach the admin console functions');
+
+  -- A suspended admin loses the console and cannot reinstate themselves.
+  perform tests.as_user('ad222222-2222-2222-2222-222222222222');
+  v_state := null;
+  begin perform public.admin_dashboard(); exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'a suspended admin is refused by the console');
+  v_state := null;
+  begin perform public.admin_set_suspension('ad222222-2222-2222-2222-222222222222', false, null);
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'a suspended admin cannot lift their own suspension');
+
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  v_state := null;
+  begin perform public.admin_set_suspension('ad222222-2222-2222-2222-222222222222', false, null);
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'only a super admin can reinstate an admin');
+
+  -- The under-13 quarantine is left to the age appeal.
+  v_state := null;
+  begin perform public.admin_set_suspension('ad333333-3333-3333-3333-333333333333', false, null);
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'the console cannot lift an under-13 quarantine');
+  v_state := null;
+  begin perform public.admin_set_suspension('ad333333-3333-3333-3333-333333333333', true, 'x', 7);
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'the console cannot turn an under-13 quarantine into a timed suspension');
+
+  -- A timed suspension never shortens a permanent ban.
+  perform public.admin_set_suspension('44444444-4444-4444-4444-444444444444', true, 'Ban', null);
+  perform public.admin_set_suspension('44444444-4444-4444-4444-444444444444', true, 'Shorter', 3);
+  perform tests.ok(
+    (select is_suspended and suspended_until is null
+       from public.user_profiles where id = '44444444-4444-4444-4444-444444444444'),
+    'a later timed suspension does not shorten a permanent ban');
+  perform public.admin_set_suspension('44444444-4444-4444-4444-444444444444', false, null);
+
+  -- No self-verification.
+  v_state := null;
+  begin perform public.admin_set_verified('ad111111-1111-1111-1111-111111111111', true);
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'an admin cannot verify their own account');
+
+  -- Private messages are moderated only once reported.
+  v_state := null;
+  begin perform public.admin_moderate_content('message', gen_random_uuid(), 'hide', 'x');
+  exception when others then v_state := sqlstate; end;
+  perform tests.ok(v_state = '42501', 'an unreported private message cannot be opened by moderation');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

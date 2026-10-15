@@ -17,6 +17,7 @@ export const coaching = {
     athlete: 'Отменено спортсменом',
     coach: 'Отменено тренером',
     guardian: 'Отменено опекуном',
+    admin: 'Отменено AceAiX',
   },
   accepting: 'Набирает учеников',
   notAccepting: 'Не набирает учеников',
