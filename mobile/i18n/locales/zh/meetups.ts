@@ -88,6 +88,9 @@ export const meetups = {
   posted: '发好了，现在别人能找到它了。',
 
   // ── 加入别人的 ─────────────────────────────────────────────────────────────
+  getDirections: '获取路线',
+  directionsTitle: '打开方式',
+  directionsFailed: '无法打开地图应用。',
   askToJoin: '申请加入',
   askMessage: '跟组织者说句话',
   askMessagePlaceholder: '我踢左后卫，这块场地我熟。',

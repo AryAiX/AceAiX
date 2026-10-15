@@ -149,6 +149,7 @@ export const settings = {
   notifyMessages: 'الرسائل',
   notifyComments: 'التعليقات',
   notifyLikes: 'الإعجابات',
+  notifyMeetups: 'مباريات اللعب',
 
   sectionOpportunities: 'الفرص ودرجتك',
   notifyOpportunities: 'فرص جديدة',

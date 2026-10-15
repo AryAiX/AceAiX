@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { BackHandler, Image, InteractionManager, Pressable, StyleSheet, View } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, ImagePlus, Search, Trash2 } from 'lucide-react-native';
@@ -16,11 +16,13 @@ import {
   Divider,
   ErrorState,
   Header,
+  IconButton,
   Input,
   Lightbox,
   ListItem,
   Screen,
   SectionHeader,
+  SegmentedControl,
   Sheet,
   SkeletonList,
   Switch,
@@ -41,15 +43,20 @@ import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/Recruit
 import {
   DOMINANT_SIDE,
   LEVELS,
+  MAX_OTHER_SPORTS,
+  OTHER_SPORT_LEVELS,
   PRIORITY_COUNTRIES,
   SPORTS,
   levelHint,
   levelLabelI18n,
+  otherSportLevelLabel,
   positionLabel,
   positionsFor,
   sideLabel,
+  sportEmoji,
   sportLabel,
 } from '@/constants/sports';
+import type { OtherSport } from '@/types/models';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
@@ -77,6 +84,7 @@ interface FormState {
   avatarUrl: string;
   coverUrl: string;
   sport: string;
+  otherSports: OtherSport[];
   position: string;
   level: string;
   league: string;
@@ -101,6 +109,7 @@ export default function EditProfileScreen() {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const { focus } = useLocalSearchParams<{ focus?: string }>();
   const toast = useToast();
   const t = useT();
   const { profile, refreshProfile } = useAuth();
@@ -126,6 +135,7 @@ export default function EditProfileScreen() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [sportSheet, setSportSheet] = useState(false);
+  const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [clubLoadFailed, setClubLoadFailed] = useState(false);
@@ -158,6 +168,7 @@ export default function EditProfileScreen() {
       avatarUrl: user.avatar_url ?? '',
       coverUrl: user.cover_url ?? '',
       sport: athlete?.sport ?? '',
+      otherSports: athlete?.other_sports ?? [],
       position: athlete?.position ?? '',
       level: athlete?.level ?? '',
       league: athlete?.league ?? '',
@@ -174,6 +185,27 @@ export default function EditProfileScreen() {
     setForm(seed);
     setInitial(seed);
   }, [bundle.data, form, isClubAccount, scoutCreds.data, scoutCreds.error, scoutCreds.loading]);
+
+  // The profile reminder passes focus=alsoPlays. Open the picker once, after
+  // the push animation, then drop the param so a later visit stays closed.
+  const alsoPlaysFocusHandled = useRef(false);
+  useEffect(() => {
+    if (alsoPlaysFocusHandled.current) return;
+    if (focus !== 'alsoPlays' || !form || !bundle.data?.athlete) return;
+    if (form.otherSports.length >= MAX_OTHER_SPORTS) return;
+
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelled) return;
+      alsoPlaysFocusHandled.current = true;
+      setAlsoPlaysSheet(true);
+      router.setParams({ focus: undefined });
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, [focus, form, bundle.data, router]);
 
   const dirty = useMemo(
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),
@@ -292,6 +324,7 @@ export default function EditProfileScreen() {
           // user_profiles.bio — one field in the UI, written to both.
           bio: form.bio.trim() || null,
           is_open_to_offers: form.openToOffers,
+          other_sports: form.otherSports,
         });
       }
 
@@ -689,6 +722,76 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
+          {/* ── Also plays ── */}
+          <View>
+            <SectionHeader title={t('profile.sectionAlsoPlays')} />
+            <View style={{ gap: spacing.md }}>
+              <Text variant="caption" tone="muted">
+                {t('profile.alsoPlaysHint')}
+              </Text>
+              {form.otherSports.map((entry) => (
+                <Card key={entry.sport} style={{ gap: spacing.md }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: spacing.sm,
+                    }}
+                  >
+                    <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)}`}
+                    </Text>
+                    <IconButton
+                      icon={<Trash2 size={16} color={colors.textMuted} />}
+                      label={t('profile.alsoPlaysRemove', {
+                        sport: sportLabel(t, entry.sport),
+                      })}
+                      onPress={() =>
+                        set(
+                          'otherSports',
+                          form.otherSports.filter((item) => item.sport !== entry.sport),
+                        )
+                      }
+                      testID={`also-plays-remove-${entry.sport}`}
+                      tone="transparent"
+                      size={theme.hit.min}
+                    />
+                  </View>
+                  <SegmentedControl
+                    options={OTHER_SPORT_LEVELS.map((level) => ({
+                      value: level,
+                      label: otherSportLevelLabel(t, level),
+                    }))}
+                    value={entry.level}
+                    onChange={(level) =>
+                      set(
+                        'otherSports',
+                        form.otherSports.map((item) =>
+                          item.sport === entry.sport ? { ...item, level } : item,
+                        ),
+                      )
+                    }
+                    testID={`also-plays-level-${entry.sport}`}
+                  />
+                </Card>
+              ))}
+              {form.otherSports.length < MAX_OTHER_SPORTS ? (
+                <Button
+                  label={t('profile.alsoPlaysAdd')}
+                  variant="secondary"
+                  size="sm"
+                  testID="also-plays-add"
+                  onPress={() => setAlsoPlaysSheet(true)}
+                />
+              ) : (
+                <Text variant="caption" tone="muted">
+                  {t('profile.alsoPlaysLimit')}
+                </Text>
+              )}
+            </View>
+          </View>
+
           {/* ── Physical ── */}
           <View>
             <SectionHeader title={t('profile.sectionPhysical')} />
@@ -860,12 +963,49 @@ export default function EditProfileScreen() {
               }
               onPress={() => {
                 // Positions are sport-specific, so a sport change clears the old one.
+                // The new main sport also leaves the "also plays" list.
                 if (sport.key !== form.sport) {
                   setForm((current) =>
-                    current ? { ...current, sport: sport.key, position: '' } : current,
+                    current
+                      ? {
+                          ...current,
+                          sport: sport.key,
+                          position: '',
+                          otherSports: current.otherSports.filter(
+                            (entry) => entry.sport !== sport.key,
+                          ),
+                        }
+                      : current,
                   );
                 }
                 setSportSheet(false);
+              }}
+            />
+          </View>
+        ))}
+      </Sheet>
+
+      {/* ── Also-plays picker ── */}
+      <Sheet
+        visible={alsoPlaysSheet}
+        onClose={() => setAlsoPlaysSheet(false)}
+        title={t('profile.alsoPlaysChooseTitle')}
+      >
+        {SPORTS.filter(
+          (sport) =>
+            sport.key !== form.sport &&
+            !form.otherSports.some((entry) => entry.sport === sport.key),
+        ).map((sport, index) => (
+          <View key={sport.key}>
+            {index > 0 ? <Divider /> : null}
+            <ListItem
+              title={t('profile.sportWithEmoji', {
+                emoji: sport.emoji,
+                name: sportLabel(t, sport.key),
+              })}
+              onPress={() => {
+                set('otherSports', [...form.otherSports, { sport: sport.key, level: 'casual' }]);
+                setAlsoPlaysSheet(false);
               }}
             />
           </View>

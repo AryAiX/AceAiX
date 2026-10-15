@@ -194,6 +194,11 @@ export function levelLabel(key: string | null | undefined): string {
   return LEVELS.find((l) => l.key === key)?.label ?? 'Grassroots';
 }
 
+/** How seriously someone plays a sport besides their main one. At most three. */
+export const OTHER_SPORT_LEVELS = ['casual', 'club', 'competitive'] as const;
+export type OtherSportLevel = (typeof OTHER_SPORT_LEVELS)[number];
+export const MAX_OTHER_SPORTS = 3;
+
 export const DOMINANT_SIDE = ['Right', 'Left', 'Both'] as const;
 
 /** Countries that matter first for this launch, then the long tail. */
@@ -377,6 +382,19 @@ export function levelLabelI18n(t: Translate, level: string | null | undefined): 
 export function levelHint(t: Translate, level: string | null | undefined): string {
   const entry = LEVEL_KEYS[level ?? ''];
   return entry ? t(entry.hint) : '';
+}
+
+export function otherSportLevelLabel(t: Translate, level: string): string {
+  switch (level) {
+    case 'casual':
+      return t('profile.otherSportLevelCasual');
+    case 'club':
+      return t('profile.otherSportLevelClub');
+    case 'competitive':
+      return t('profile.otherSportLevelCompetitive');
+    default:
+      return '';
+  }
 }
 
 export function sideLabel(t: Translate, side: string | null | undefined): string {

@@ -197,6 +197,8 @@ export function notificationTarget(n: AppNotification): Href | null {
     case 'sponsorship':
       // Every offer, application and answer is read in the portal.
       return Routes.sponsorship;
+    case 'meetup':
+      return id ? Routes.meetup(id) : null;
     default:
       break;
   }
