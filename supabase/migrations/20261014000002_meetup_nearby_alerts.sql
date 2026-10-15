@@ -1,8 +1,11 @@
 -- Feature 1 (phase 1): "New game near you" alert.
 -- When a Play game is posted, notify adult athletes with the same main
--- sport in the same city (country not checked yet, see QA-52). Never the host, minors (unknown age
--- counts as minor), suspended users, blocked users (either direction), or
--- anyone with Play alerts off. Max 3 of these alerts per person per 24h.
+-- sport in the same city (country not checked yet, see QA-52). Never the host, minors,
+-- accounts with no known adult age band (is_minor defaults to false, so it
+-- cannot tell an unknown age from an adult), suspended users, blocked users
+-- (either direction), or anyone with Play alerts off. Max 3 of these alerts
+-- per person per 24h and one per host; a host posting more than 2 games in
+-- 24h sends no further alerts.
 -- In-app only; real push comes later.
 
 create or replace function private.notify_meetup_nearby()
@@ -13,6 +16,14 @@ set search_path = ''
 as $$
 begin
   if new.status <> 'open' then
+    return new;
+  end if;
+
+  if (
+    select count(*) from public.meetups m
+    where m.host_id = new.host_id
+      and m.created_at > now() - interval '24 hours'
+  ) > 2 then
     return new;
   end if;
 
@@ -40,6 +51,7 @@ begin
     join public.athlete_profiles ap on ap.user_id = up.id
     where up.id <> new.host_id
       and coalesce(up.is_minor, true) = false
+      and up.age_band in ('18_24', '25_plus')
       and coalesce(up.is_suspended, false) = false
       and ap.sport is not null
       and lower(btrim(ap.sport))   = lower(btrim(new.sport))
@@ -57,6 +69,13 @@ begin
           and n.type = 'meetup_nearby'
           and n.created_at > now() - interval '24 hours'
       ) < 3
+      and not exists (
+        select 1 from public.notifications n
+        where n.user_id = up.id
+          and n.type = 'meetup_nearby'
+          and n.actor_id = new.host_id
+          and n.created_at > now() - interval '24 hours'
+      )
     limit 500
     on conflict do nothing;
   exception when others then
@@ -71,3 +90,4 @@ drop trigger if exists trg_meetup_nearby_alert on public.meetups;
 create trigger trg_meetup_nearby_alert
   after insert on public.meetups
   for each row execute function private.notify_meetup_nearby();
+revoke all on function private.notify_meetup_nearby() from public, anon, authenticated;

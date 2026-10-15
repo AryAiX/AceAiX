@@ -193,14 +193,16 @@ export default function MeetupScreen() {
               icon={<MapPin size={16} color={colors.textMuted} />}
               text={metaLine(meetup.venue, meetup.area, meetup.city, meetup.country) ?? meetup.city}
             />
-            <Button
-              label={t('meetups.getDirections')}
-              variant="secondary"
-              size="sm"
-              icon={<Navigation size={16} color={colors.text} />}
-              onPress={() => setDirectionsOpen(true)}
-              testID="meetup-directions"
-            />
+            {!cancelled ? (
+              <Button
+                label={t('meetups.getDirections')}
+                variant="secondary"
+                size="sm"
+                icon={<Navigation size={16} color={colors.text} />}
+                onPress={() => setDirectionsOpen(true)}
+                testID="meetup-directions"
+              />
+            ) : null}
             <Fact
               icon={<Users size={16} color={spotsColour} />}
               text={`${t('meetups.spotsOf', { taken: meetup.spots_taken, total: meetup.spots_total })} · ${
@@ -465,7 +467,7 @@ function directionsApps(meetup: {
   const apps = [
     {
       label: 'Google Maps',
-      url: `https://www.google.com/maps/search/?api=1&query=${q}`,
+      url: `https://www.google.com/maps/dir/?api=1&destination=${q}`,
       testID: 'directions-google',
     },
     {
@@ -477,7 +479,7 @@ function directionsApps(meetup: {
   if (Platform.OS === 'ios') {
     apps.unshift({
       label: 'Apple Maps',
-      url: `https://maps.apple.com/?q=${q}`,
+      url: `https://maps.apple.com/?daddr=${q}`,
       testID: 'directions-apple',
     });
   }
