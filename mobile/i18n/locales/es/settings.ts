@@ -150,6 +150,7 @@ export const settings = {
   notifyMessages: 'Mensajes',
   notifyComments: 'Comentarios',
   notifyLikes: 'Me gusta',
+  notifyMeetups: 'Partidos en Jugar',
 
   sectionOpportunities: 'Oportunidades y tu puntuación',
   notifyOpportunities: 'Oportunidades nuevas',

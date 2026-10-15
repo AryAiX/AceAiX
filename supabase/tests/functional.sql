@@ -3728,7 +3728,7 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
--- Admin console (20261013000001)
+-- Admin console (20261013000002)
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n── admin console ──'; end $$;
 
@@ -3876,6 +3876,73 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── play game alerts ──'; end $$;
+
+do $$
+declare
+  v_host    uuid := 'a1000000-0000-0000-0000-000000000001';
+  v_adult   uuid := 'a1000000-0000-0000-0000-000000000002';
+  v_unknown uuid := 'a1000000-0000-0000-0000-000000000003';
+  v_minor   uuid := 'a1000000-0000-0000-0000-000000000004';
+  v_other   uuid := 'a1000000-0000-0000-0000-000000000005';
+  v_count   integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_host,    'alerts.host@test.local',    '{"full_name":"Alerts Host","role":"athlete"}'),
+    (v_adult,   'alerts.adult@test.local',   '{"full_name":"Alerts Adult","role":"athlete"}'),
+    (v_unknown, 'alerts.unknown@test.local', '{"full_name":"Alerts Unknown","role":"athlete"}'),
+    (v_minor,   'alerts.minor@test.local',   '{"full_name":"Alerts Minor","role":"athlete"}'),
+    (v_other,   'alerts.other@test.local',   '{"full_name":"Alerts Other","role":"athlete"}');
+
+  update public.user_private set date_of_birth = current_date - interval '30 years'
+   where user_id in (v_host, v_adult, v_other);
+  update public.user_private set date_of_birth = current_date - interval '15 years'
+   where user_id = v_minor;
+
+  update public.user_profiles set city = 'Alertville'
+   where id in (v_host, v_adult, v_unknown, v_minor, v_other);
+  update public.athlete_profiles set sport = 'Padel'
+   where user_id in (v_host, v_adult, v_unknown, v_minor, v_other);
+
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Evening padel', 'United Arab Emirates', 'Alertville',
+          now() + interval '2 days', 4);
+
+  perform tests.ok(
+    exists (select 1 from public.notifications where user_id = v_adult and type = 'meetup_nearby'),
+    'an adult with the same sport in the same city is told about a new game');
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_minor and type = 'meetup_nearby'),
+    'a minor is never sent a game alert');
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_unknown and type = 'meetup_nearby'),
+    'an account with no known age is treated as a minor for game alerts');
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_host and type = 'meetup_nearby'),
+    'the host is not alerted about their own game');
+
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Second padel game', 'United Arab Emirates', 'Alertville',
+          now() + interval '3 days', 4);
+  select count(*) into v_count from public.notifications
+   where user_id = v_adult and type = 'meetup_nearby';
+  perform tests.ok(v_count = 1, 'one host alerts each person at most once a day');
+
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Third padel game', 'United Arab Emirates', 'Alertville',
+          now() + interval '4 days', 4);
+  delete from public.notifications where user_id = v_other and type = 'meetup_nearby';
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Fourth padel game', 'United Arab Emirates', 'Alertville',
+          now() + interval '5 days', 4);
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_other and type = 'meetup_nearby'),
+    'a host posting more than two games a day sends no further alerts');
+end $$;
 
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

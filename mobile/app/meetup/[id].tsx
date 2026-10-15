@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CalendarDays, Check, MapPin, Users, Wallet, X } from 'lucide-react-native';
+import { CalendarDays, Check, MapPin, Navigation, Users, Wallet, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -15,6 +15,7 @@ import {
   ErrorState,
   Header,
   Input,
+  ListItem,
   Reveal,
   Screen,
   SectionHeader,
@@ -65,6 +66,7 @@ export default function MeetupScreen() {
   const [busy, setBusy] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [directionsOpen, setDirectionsOpen] = useState(false);
 
   const data = detail.data;
   const meetup = data?.meetup;
@@ -191,6 +193,16 @@ export default function MeetupScreen() {
               icon={<MapPin size={16} color={colors.textMuted} />}
               text={metaLine(meetup.venue, meetup.area, meetup.city, meetup.country) ?? meetup.city}
             />
+            {!cancelled ? (
+              <Button
+                label={t('meetups.getDirections')}
+                variant="secondary"
+                size="sm"
+                icon={<Navigation size={16} color={colors.text} />}
+                onPress={() => setDirectionsOpen(true)}
+                testID="meetup-directions"
+              />
+            ) : null}
             <Fact
               icon={<Users size={16} color={spotsColour} />}
               text={`${t('meetups.spotsOf', { taken: meetup.spots_taken, total: meetup.spots_total })} · ${
@@ -394,6 +406,29 @@ export default function MeetupScreen() {
         />
       </Sheet>
 
+      <Sheet
+        visible={directionsOpen}
+        onClose={() => setDirectionsOpen(false)}
+        title={t('meetups.directionsTitle')}
+      >
+        {directionsApps(meetup).map((app, index) => (
+          <View key={app.testID}>
+            {index > 0 ? <Divider /> : null}
+            <ListItem
+              title={app.label}
+              showChevron={false}
+              testID={app.testID}
+              onPress={() => {
+                setDirectionsOpen(false);
+                Linking.openURL(app.url).catch(() => {
+                  toast.error(t('meetups.directionsFailed'));
+                });
+              }}
+            />
+          </View>
+        ))}
+      </Sheet>
+
       <ConfirmSheet
         visible={leaveOpen}
         title={t('meetups.leaveConfirmTitle')}
@@ -417,6 +452,38 @@ export default function MeetupScreen() {
       />
     </Screen>
   );
+}
+
+function directionsApps(meetup: {
+  venue: string | null;
+  area: string | null;
+  city: string;
+  country: string;
+}): { label: string; url: string; testID: string }[] {
+  const query = [meetup.venue, meetup.area, meetup.city, meetup.country]
+    .filter((part) => part && part.trim())
+    .join(', ');
+  const q = encodeURIComponent(query);
+  const apps = [
+    {
+      label: 'Google Maps',
+      url: `https://www.google.com/maps/dir/?api=1&destination=${q}`,
+      testID: 'directions-google',
+    },
+    {
+      label: 'Waze',
+      url: `https://waze.com/ul?q=${q}&navigate=yes`,
+      testID: 'directions-waze',
+    },
+  ];
+  if (Platform.OS === 'ios') {
+    apps.unshift({
+      label: 'Apple Maps',
+      url: `https://maps.apple.com/?daddr=${q}`,
+      testID: 'directions-apple',
+    });
+  }
+  return apps;
 }
 
 function Fact({

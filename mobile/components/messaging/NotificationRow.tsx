@@ -14,10 +14,12 @@ import {
   MessageCircle,
   TrendingUp,
   UserPlus,
+  Users,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
+import { sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { relativeTime } from '@/lib/format';
 import type { Translate } from '@/lib/i18n-bridge';
@@ -77,6 +79,12 @@ function skinFor(type: NotificationType): Skin {
       return { Icon: CalendarCheck, tint: 'success' };
     case 'coaching_cancelled':
       return { Icon: CalendarX, tint: 'danger' };
+    case 'meetup_request':
+    case 'meetup_accepted':
+    case 'meetup_declined':
+    case 'meetup_cancelled':
+    case 'meetup_nearby':
+      return { Icon: Users, tint: 'primary' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }
@@ -112,6 +120,27 @@ export function notificationTitle(n: AppNotification, t: Translate): string {
   return n.title;
 }
 
+/**
+ * "New game near you" is the one notification composed on the client.
+ * Sport and city live in `data`; if either is missing, the stored English
+ * sentence is used instead.
+ */
+function nearbyCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type !== 'meetup_nearby') return null;
+  const sportKey = n.data?.sport;
+  const city = n.data?.city;
+  if (typeof sportKey !== 'string' || sportKey.trim() === '') return null;
+  if (typeof city !== 'string' || city.trim() === '') return null;
+  const gameTitle = n.data?.title;
+  return {
+    title: t('messaging.meetupNearbyTitle', { sport: sportLabel(t, sportKey), city }),
+    body: typeof gameTitle === 'string' ? gameTitle : n.body,
+  };
+}
+
 interface Props {
   notification: AppNotification;
   /** Omitted when the notification has no destination. */
@@ -129,7 +158,9 @@ export function NotificationRow({ notification, onPress }: Props) {
   /* KNOWN GAP: title and body are finished English sentences written by the
      database triggers — see `notificationTitle` above for what a real fix
      needs. Everything around them on this row is translated. */
-  const title = notificationTitle(notification, t);
+  const nearby = nearbyCopy(notification, t);
+  const title = nearby?.title ?? notificationTitle(notification, t);
+  const body = nearby ? nearby.body : notification.body;
   const when = relativeTime(notification.created_at);
 
   const content = (
@@ -190,9 +221,9 @@ export function NotificationRow({ notification, onPress }: Props) {
         <Text variant={unread ? 'bodyStrong' : 'body'} numberOfLines={2}>
           {title}
         </Text>
-        {notification.body ? (
+        {body ? (
           <Text variant="caption" tone="muted" numberOfLines={2}>
-            {notification.body}
+            {body}
           </Text>
         ) : null}
         <Text variant="overline" tone="muted" style={{ marginTop: 2 }}>
@@ -219,7 +250,7 @@ export function NotificationRow({ notification, onPress }: Props) {
     return (
       <View
         accessible
-        accessibilityLabel={[title, notification.body, when].filter(Boolean).join('. ')}
+        accessibilityLabel={[title, body, when].filter(Boolean).join('. ')}
         style={{ backgroundColor: unread ? colors.surfaceAlt : colors.bg }}
       >
         {content}
@@ -233,7 +264,7 @@ export function NotificationRow({ notification, onPress }: Props) {
       accessibilityRole="button"
       accessibilityLabel={[
         title,
-        notification.body,
+        body,
         when,
         unread ? t('messaging.unread') : null,
       ]

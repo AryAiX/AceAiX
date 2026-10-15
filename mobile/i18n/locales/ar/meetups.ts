@@ -96,6 +96,9 @@ export const meetups = {
   posted: 'نُشرت. يستطيع الناس أن يجدوها الآن.',
 
   // ── الانضمام ───────────────────────────────────────────────────────────────
+  getDirections: 'احصل على الاتجاهات',
+  directionsTitle: 'افتح في',
+  directionsFailed: 'تعذّر فتح تطبيق الخرائط.',
   askToJoin: 'اطلب الانضمام',
   askMessage: 'قل شيئًا للمنظّم',
   askMessagePlaceholder: 'ألعب ظهيرًا أيسر وأعرف الملعب.',

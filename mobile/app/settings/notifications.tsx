@@ -5,6 +5,7 @@ import {
   Bell,
   BellRing,
   Briefcase,
+  CalendarDays,
   Heart,
   Mail,
   MessageCircle,
@@ -40,6 +41,7 @@ const DEFAULTS: Prefs = {
   applications: true,
   scout_interest: true,
   score_updates: true,
+  meetups: true,
   push_enabled: true,
   email_enabled: true,
 };
@@ -155,6 +157,7 @@ export default function NotificationSettingsScreen() {
       { key: 'messages' as const, title: t('settings.notifyMessages'), Icon: MessageCircle },
       { key: 'comments' as const, title: t('settings.notifyComments'), Icon: MessageSquare },
       { key: 'likes' as const, title: t('settings.notifyLikes'), Icon: Heart },
+      { key: 'meetups' as const, title: t('settings.notifyMeetups'), Icon: CalendarDays },
     ],
     [t],
   );

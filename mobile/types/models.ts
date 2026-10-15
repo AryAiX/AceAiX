@@ -49,9 +49,16 @@ export interface UserSummary {
   created_at: string;
 }
 
+export interface OtherSport {
+  sport: string;
+  level: 'casual' | 'club' | 'competitive';
+}
+
 export interface AthleteProfile {
   id: string;
   sport: string | null;
+  /** Other sports this athlete plays, up to three. Absent on older responses. */
+  other_sports?: OtherSport[];
   position: string | null;
   position_secondary: string | null;
   level: string | null;
@@ -353,7 +360,12 @@ export type NotificationType =
   | 'sponsorship_application'
   | 'sponsorship_response'
   | 'coaching_booked'
-  | 'coaching_cancelled';
+  | 'coaching_cancelled'
+  | 'meetup_request'
+  | 'meetup_accepted'
+  | 'meetup_declined'
+  | 'meetup_cancelled'
+  | 'meetup_nearby';
 
 export interface AppNotification {
   id: string;
@@ -371,6 +383,7 @@ export interface AppNotification {
     | 'challenge'
     | 'sponsorship'
     | 'coaching'
+    | 'meetup'
     | null;
   entity_id: string | null;
   actor_count: number;
@@ -464,6 +477,7 @@ export interface NotificationPreferences {
   applications: boolean;
   scout_interest: boolean;
   score_updates: boolean;
+  meetups: boolean;
   push_enabled: boolean;
   email_enabled: boolean;
 }

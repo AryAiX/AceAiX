@@ -36,7 +36,13 @@ import {
 } from '@/components/ui';
 import { blockUser, canMessage, reportContent, startConversation, toggleFollow } from '@/lib/api';
 import { Routes } from '@/lib/routes';
-import { levelLabelI18n, positionLabel, sportLabel } from '@/constants/sports';
+import {
+  levelLabelI18n,
+  otherSportLevelLabel,
+  positionLabel,
+  sportEmoji,
+  sportLabel,
+} from '@/constants/sports';
 import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
@@ -257,6 +263,10 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
     }
   }, [name, onChanged, router, t, toast, user.id]);
 
+  const athleteSportDetail = athlete
+    ? metaLine(positionLabel(t, athlete.position), athlete.club)
+    : '';
+
   return (
     <View>
       {/*
@@ -337,10 +347,50 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
             ) : null}
           </View>
 
-          {meta ? (
+          {athlete?.sport ? (
+            <Text variant="bodyStrong" testID="profile-main-sport" style={{ marginTop: 2 }}>
+              {`${sportEmoji(athlete.sport)} ${sportLabel(t, athlete.sport)}`}
+              {athleteSportDetail ? (
+                <Text variant="body" tone="secondary">{` · ${athleteSportDetail}`}</Text>
+              ) : null}
+            </Text>
+          ) : meta ? (
             <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
               {meta}
             </Text>
+          ) : null}
+          {athlete?.other_sports && athlete.other_sports.length > 0 ? (
+            <View
+              testID="profile-also-plays"
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: spacing.xs,
+                marginTop: spacing.xs,
+              }}
+            >
+              <Text variant="caption" tone="muted">
+                {t('profile.alsoPlaysLabel')}
+              </Text>
+              {athlete.other_sports.map((entry) => (
+                <View
+                  key={entry.sport}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    backgroundColor: 'transparent',
+                    borderRadius: radii.pill,
+                    paddingHorizontal: spacing.sm,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text variant="caption" tone="muted">
+                    {`${sportEmoji(entry.sport)} ${sportLabel(t, entry.sport)} · ${otherSportLevelLabel(t, entry.level)}`}
+                  </Text>
+                </View>
+              ))}
+            </View>
           ) : null}
         </Reveal>
 

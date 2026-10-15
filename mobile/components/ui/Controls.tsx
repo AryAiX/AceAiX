@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
-import { ChevronForward } from './rtl';
+import { ChevronForward, isRTL } from './rtl';
 
 // ── SegmentedControl ──────────────────────────────────────────────────────────
 interface SegmentedProps<T extends string> {
@@ -24,6 +24,8 @@ interface SegmentedProps<T extends string> {
   style?: ViewStyle;
   testID?: string;
 }
+
+const TRACK_PAD = 4;
 
 export function SegmentedControl<T extends string>({
   options,
@@ -35,25 +37,30 @@ export function SegmentedControl<T extends string>({
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const indicator = useRef(new Animated.Value(0)).current;
-  const widthRef = useRef(0);
+  const [segmentWidth, setSegmentWidth] = useState(0);
 
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  /* forceRTL mirrors the row and swaps left/right, but translateX stays
+     physical, so the pill has to travel the other way in Arabic. */
+  const direction = isRTL ? -1 : 1;
 
   const onLayout = (e: LayoutChangeEvent) => {
-    widthRef.current = e.nativeEvent.layout.width;
-    indicator.setValue((index * widthRef.current) / options.length);
+    const count = options.length;
+    const next = count > 0 ? (e.nativeEvent.layout.width - TRACK_PAD * 2) / count : 0;
+    setSegmentWidth((current) => (current === next ? current : next));
+    indicator.setValue(index * next * direction);
   };
 
   useEffect(() => {
     // Not measured yet: onLayout will place the indicator.
-    if (widthRef.current === 0) return;
+    if (segmentWidth === 0) return;
     Animated.timing(indicator, {
-      toValue: (index * widthRef.current) / options.length,
+      toValue: index * segmentWidth * direction,
       duration: 200,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: NATIVE_DRIVER,
     }).start();
-  }, [index, options.length, indicator]);
+  }, [index, segmentWidth, direction, indicator]);
 
   return (
     <View
@@ -64,7 +71,7 @@ export function SegmentedControl<T extends string>({
           flexDirection: 'row',
           backgroundColor: colors.surfaceSunken,
           borderRadius: radii.pill,
-          padding: 4,
+          padding: TRACK_PAD,
           position: 'relative',
         },
         style,
@@ -74,10 +81,11 @@ export function SegmentedControl<T extends string>({
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: 4,
-          bottom: 4,
-          left: 4,
-          width: `${100 / options.length}%`,
+          top: TRACK_PAD,
+          bottom: TRACK_PAD,
+          left: TRACK_PAD,
+          width: segmentWidth,
+          opacity: segmentWidth === 0 ? 0 : 1,
           borderRadius: radii.pill,
           backgroundColor: colors.surface,
           transform: [{ translateX: indicator }],

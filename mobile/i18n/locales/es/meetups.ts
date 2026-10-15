@@ -90,6 +90,9 @@ export const meetups = {
   posted: 'Publicado. Ya se puede encontrar.',
 
   // ── Apuntarse ──────────────────────────────────────────────────────────────
+  getDirections: 'Cómo llegar',
+  directionsTitle: 'Abrir con',
+  directionsFailed: 'No se pudo abrir la app de mapas.',
   askToJoin: 'Pedir entrar',
   askMessage: 'Escribe algo al anfitrión',
   askMessagePlaceholder: 'Juego de lateral izquierdo y me conozco el campo.',

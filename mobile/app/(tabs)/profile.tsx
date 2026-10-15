@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, ErrorState, Screen, SkeletonList } from '@/components/ui';
+import { Button, Card, ErrorState, Screen, SkeletonList, Text } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { MyCoachingCard } from '@/components/coaching/CoachingCard';
@@ -94,6 +94,25 @@ export default function MyProfileScreen() {
       testID="my-profile"
     >
       <ProfileHeader bundle={data} onChanged={reloadAll} />
+
+      {data.athlete && (data.athlete.other_sports ?? []).length === 0 ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+          <Card testID="also-plays-reminder" style={{ gap: spacing.sm }}>
+            <Text variant="bodyStrong">{t('profile.alsoPlaysReminderTitle')}</Text>
+            <Text variant="caption" tone="muted">
+              {t('profile.alsoPlaysReminderBody')}
+            </Text>
+            <Button
+              label={t('profile.alsoPlaysReminderCta')}
+              variant="secondary"
+              size="sm"
+              onPress={() =>
+                router.push({ pathname: Routes.editProfile, params: { focus: 'alsoPlays' } })
+              }
+            />
+          </Card>
+        </View>
+      ) : null}
 
       <View
         style={{

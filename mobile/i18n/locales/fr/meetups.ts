@@ -89,6 +89,9 @@ export const meetups = {
   posted: 'Publié. Les gens peuvent le trouver.',
 
   // ── Rejoindre ──────────────────────────────────────────────────────────────
+  getDirections: 'Itinéraire',
+  directionsTitle: 'Ouvrir avec',
+  directionsFailed: "Impossible d'ouvrir l'application de cartes.",
   askToJoin: 'Demander à venir',
   askMessage: 'Dis un mot à l’organisateur',
   askMessagePlaceholder: 'Je joue arrière gauche et je connais le terrain.',

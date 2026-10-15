@@ -141,6 +141,7 @@ export const settings = {
   notifyMessages: 'Messages',
   notifyComments: 'Comments',
   notifyLikes: 'Likes',
+  notifyMeetups: 'Play games',
 
   sectionOpportunities: 'Opportunities and your score',
   notifyOpportunities: 'New opportunities',

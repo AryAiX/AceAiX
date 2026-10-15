@@ -145,6 +145,7 @@ export const settings = {
   notifyMessages: 'Сообщения',
   notifyComments: 'Комментарии',
   notifyLikes: 'Лайки',
+  notifyMeetups: 'Игры в «Играть»',
 
   sectionOpportunities: 'Возможности и твоя оценка',
   notifyOpportunities: 'Новые возможности',
