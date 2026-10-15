@@ -52,7 +52,7 @@ as $$
     and not coalesce(up.is_suspended, false)
     and (p_role is null or up.role::text = p_role)
     and (not coalesce(up.is_minor, false) or coalesce(up.is_discoverable, false))
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and up.id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and up.id <> auth.uid())
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = auth.uid() and b.blocked_id = up.id)
@@ -105,7 +105,7 @@ as $$
     and not coalesce(up.is_suspended, false)
     -- A minor appears only once a guardian has approved discovery.
     and (not coalesce(up.is_minor, false) or coalesce(up.is_discoverable, false))
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and ap.user_id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and ap.user_id <> auth.uid())
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = auth.uid() and b.blocked_id = ap.user_id)
@@ -201,7 +201,7 @@ begin
       )
       and coalesce(up.is_suspended, false) = false
       and (coalesce(up.is_minor, false) = false or coalesce(up.is_discoverable, false))
-      and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and ap.user_id <> auth.uid())
+      and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and ap.user_id <> auth.uid())
       and ap.user_id <> v_viewer
   ),
   filtered as (
@@ -308,7 +308,7 @@ as $$
   where f.team_id = p_team_id
     and coalesce(up.is_suspended, false) = false
     and (not coalesce(up.is_minor, false) or coalesce(up.is_discoverable, false))
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and up.id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and up.id <> auth.uid())
     and up.id <> auth.uid()
     and not exists (
       select 1 from public.user_blocks b
@@ -375,7 +375,7 @@ as $$
          afterwards — and when they do, the leaderboard has to forget the
          child too, not just search. */
       and (not coalesce(up.is_minor, false) or coalesce(up.is_discoverable, false))
-      and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and up.id <> auth.uid())
+      and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and up.id <> auth.uid())
       and not exists (
         select 1 from public.user_blocks b
         where (b.blocker_id = auth.uid() and b.blocked_id = up.id)
@@ -430,7 +430,7 @@ begin
   if not v_g.share_with_clubs
      or coalesce(v_up.is_suspended, false)
      or (coalesce(v_up.is_minor, true) and not coalesce(v_up.is_discoverable, false))
-     or (private.viewer_is_audience() and coalesce(v_up.is_minor, true) and p_user <> auth.uid())
+     or (private.viewer_is_audience() and coalesce(v_up.age_band::text, '') not in ('18_24', '25_plus') and p_user <> auth.uid())
      or exists (
        select 1 from public.user_blocks b
         where (b.blocker_id = auth.uid() and b.blocked_id = p_user)

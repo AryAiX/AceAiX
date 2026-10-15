@@ -24,7 +24,7 @@ create policy up_select_authenticated on public.user_profiles
           and g.status = 'granted'
       )
     )
-    and not (private.viewer_is_audience() and coalesce(is_minor, true) and id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(age_band::text, '') not in ('18_24', '25_plus') and id <> auth.uid())
   );
 
 drop policy if exists ap_select_authenticated on public.athlete_profiles;

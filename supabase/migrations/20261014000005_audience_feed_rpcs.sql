@@ -30,7 +30,7 @@ begin
   -- A SECURITY DEFINER RPC bypasses table RLS, so it must enforce the hidden
   -- minor boundary itself. Return the same not-found shape as an unknown id to
   -- prevent account enumeration.
-  if (private.viewer_is_audience() and coalesce(up.is_minor, true) and p_user <> auth.uid())
+  if (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and p_user <> auth.uid())
      or (
        coalesce(up.is_minor, false)
        and not coalesce(up.is_discoverable, false)
@@ -222,7 +222,7 @@ as $$
           and g.status = 'granted'
       )
     )
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and p.author_id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and p.author_id <> auth.uid())
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = auth.uid() and b.blocked_id = p_user)
@@ -340,7 +340,7 @@ begin
           and g.status = 'granted'
       )
     )
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and p.author_id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and p.author_id <> auth.uid())
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = v_viewer and b.blocked_id = p.author_id)
@@ -466,7 +466,7 @@ begin
           and g.status = 'granted'
       )
     )
-    and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and p.author_id <> auth.uid())
+    and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and p.author_id <> auth.uid())
     and not exists (
       select 1 from public.user_blocks b
       where (b.blocker_id = v_viewer and b.blocked_id = p.author_id)

@@ -3,8 +3,8 @@
 --
 -- Discoverability, self, admin, and guardian consent still decide
 -- visibility for every other role. A guest is refused even when the
--- minor is discoverable. A null is_minor counts as a minor for this
--- rule only.
+-- minor is discoverable. Anyone without a known adult age band is hidden from Audience
+-- for this rule only.
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -28,7 +28,7 @@ $$;
 revoke all on function private.viewer_is_audience() from public;
 grant execute on function private.viewer_is_audience() to anon, authenticated, service_role;
 
--- Reads is_minor without the caller's RLS. A policy that selected
+-- True unless a known adult. Reads age_band without the caller's RLS. A policy that selected
 -- user_profiles as the viewer would treat a suspended adult (row
 -- hidden) as unknown, and would hide that adult's comments from a guest.
 create or replace function private.profile_is_minor(p_user uuid)
@@ -39,7 +39,11 @@ security definer
 set search_path = ''
 as $$
   select coalesce(
-    (select is_minor from public.user_profiles where id = p_user),
+    (
+      select coalesce(age_band::text, '') not in ('18_24', '25_plus')
+      from public.user_profiles
+      where id = p_user
+    ),
     true
   );
 $$;
@@ -63,7 +67,7 @@ as $$
     join public.user_profiles up on up.id = ap.user_id
     where ap.id = p_athlete
       and not coalesce(up.is_suspended, false)
-      and not (private.viewer_is_audience() and coalesce(up.is_minor, true) and ap.user_id <> auth.uid())
+      and not (private.viewer_is_audience() and coalesce(up.age_band::text, '') not in ('18_24', '25_plus') and ap.user_id <> auth.uid())
       and (
         not coalesce(up.is_minor, false)
         or private.has_guardian_consent(up.id, 'media')
@@ -91,7 +95,7 @@ as $$
     from public.user_profiles u
     where u.id = p_author
       and not coalesce(u.is_suspended, false)
-      and not (private.viewer_is_audience() and coalesce(u.is_minor, true) and p_author <> auth.uid())
+      and not (private.viewer_is_audience() and coalesce(u.age_band::text, '') not in ('18_24', '25_plus') and p_author <> auth.uid())
       and (
         not coalesce(u.is_minor, false)
         or coalesce(u.is_discoverable, false)
