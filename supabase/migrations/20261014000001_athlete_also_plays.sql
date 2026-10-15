@@ -75,6 +75,8 @@ create trigger trg_athlete_other_sports
   before insert or update of other_sports, sport on public.athlete_profiles
   for each row execute function private.normalize_other_sports();
 
+revoke all on function private.normalize_other_sports() from public, anon, authenticated;
+
 -- 3. Let athletes edit their own list --------------------------------------
 -- (Row-level security already limits updates to the athlete's own row.)
 grant update (other_sports) on public.athlete_profiles to authenticated;
