@@ -80,7 +80,7 @@ export interface CoachSlot {
 export interface MyBooking {
   id: string;
   status: 'booked' | 'cancelled';
-  cancelled_by: 'athlete' | 'coach' | 'guardian' | null;
+  cancelled_by: 'athlete' | 'coach' | 'guardian' | 'admin' | null;
   note: string | null;
   location: string | null;
   created_at: string;

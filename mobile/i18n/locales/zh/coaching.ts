@@ -17,6 +17,7 @@ export const coaching = {
     athlete: '运动员已取消',
     coach: '教练已取消',
     guardian: '监护人已取消',
+    admin: 'AceAiX 已取消',
   },
   accepting: '正在招收学员',
   notAccepting: '暂不招收学员',
