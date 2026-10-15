@@ -160,7 +160,7 @@ as $$
 $$;
 
 revoke all on function private.conversation_has_audience(uuid) from public, anon;
-grant execute on function private.conversation_has_audience(uuid) to authenticated;
+grant execute on function private.conversation_has_audience(uuid) to authenticated, service_role;
 
 drop policy if exists msg_insert on public.messages;
 create policy msg_insert on public.messages

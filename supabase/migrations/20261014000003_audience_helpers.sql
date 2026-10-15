@@ -25,8 +25,8 @@ as $$
   );
 $$;
 
-revoke all on function private.viewer_is_audience() from public;
-grant execute on function private.viewer_is_audience() to anon, authenticated, service_role;
+revoke all on function private.viewer_is_audience() from public, anon;
+grant execute on function private.viewer_is_audience() to authenticated, service_role;
 
 -- True unless a known adult. Reads age_band without the caller's RLS. A policy that selected
 -- user_profiles as the viewer would treat a suspended adult (row
@@ -48,8 +48,8 @@ as $$
   );
 $$;
 
-revoke all on function private.profile_is_minor(uuid) from public;
-grant execute on function private.profile_is_minor(uuid) to anon, authenticated, service_role;
+revoke all on function private.profile_is_minor(uuid) from public, anon;
+grant execute on function private.profile_is_minor(uuid) to authenticated, service_role;
 
 -- ------------------------------------------------------------
 -- 2. Central helpers. Every other condition is unchanged.
