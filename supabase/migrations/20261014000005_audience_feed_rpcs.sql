@@ -488,4 +488,3 @@ begin
   limit greatest(1, least(coalesce(p_limit, 20), 50));
 end;
 $$;
-
