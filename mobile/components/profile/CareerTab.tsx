@@ -83,7 +83,7 @@ export function CareerTab({
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
-  const { user } = useAuth();
+  const { user, isAudience } = useAuth();
 
   const matches = useAsync(
     () => (athleteId ? getMatchRecords(athleteId) : Promise.resolve([])),
@@ -135,7 +135,7 @@ export function CareerTab({
    */
   const [endorseForm, setEndorseForm] = useState<{ skill: string; note: string } | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
-  const canEndorse = !!athleteId && !isSelf && !!user;
+  const canEndorse = !!athleteId && !isSelf && !!user && !isAudience;
 
   const mine = useAsync<MyEndorsement[]>(
     () => (canEndorse ? myEndorsementsOf(athleteId as string) : Promise.resolve([])),

@@ -420,7 +420,7 @@ export function AthleteExplore({
   }
 
   function renderCoaches() {
-    if (bookable) return <BookableCoaches query={debounced} />;
+    if (bookable && !isAudience) return <BookableCoaches query={debounced} />;
     if (coaches.error) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
     if (coaches.loading || coaches.data?.term !== debounced) return busy(4);
 
@@ -616,7 +616,7 @@ export function AthleteExplore({
             {tab !== 'leaderboard' || canSearchBoard ? (
               <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
                 {searchField}
-                {tab === 'coaches' ? (
+                {tab === 'coaches' && !isAudience ? (
                   <View style={{ flexDirection: 'row' }}>
                     <Chip
                       label={t('coaching.takingStudentsFilter')}

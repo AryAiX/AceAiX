@@ -21,6 +21,7 @@ import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { OpportunityCard } from '@/components/opportunities/OpportunityCard';
 import { countryLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { useAsync } from '@/hooks/useAsync';
 import { toggleSaveOpportunity } from '@/lib/api';
 import {
@@ -79,6 +80,7 @@ function AboutRow({
  */
 export default function OrganizationScreen() {
   const t = useT();
+  const { isAudience } = useAuth();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
@@ -350,7 +352,7 @@ export default function OrganizationScreen() {
                   key={opportunity.id}
                   opportunity={opportunity}
                   saved={savedOverrides[opportunity.id] ?? opportunity.is_saved}
-                  onToggleSave={onToggleSave}
+                  onToggleSave={isAudience ? undefined : onToggleSave}
                 />
               ))
             )}

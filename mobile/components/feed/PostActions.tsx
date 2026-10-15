@@ -8,6 +8,7 @@ import { AnimatedNumber, Tappable } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
+import { useAuth } from '@/providers/AuthProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 
 const formatCount = (n: number) => compactNumber(Math.round(n));
@@ -46,6 +47,7 @@ export function PostActions({
   const { colors, spacing } = theme;
   const t = useT();
   const reduced = useReducedMotion();
+  const { isAudience } = useAuth();
 
   const pop = useRef(new Animated.Value(1)).current;
   /* A ring that spreads out from the heart as it fills — the "pop". */
@@ -188,39 +190,41 @@ export function PostActions({
 
       <View style={{ flex: 1 }} />
 
-      <Action
-        label={saved ? t('feed.removeFromSaved') : t('feed.savePost')}
-        onPress={onSave}
-        selected={saved}
-        haptic
-        icon={
-          <View style={{ width: ICON, height: ICON, alignItems: 'center', justifyContent: 'center' }}>
-            <Bookmark size={ICON} color={colors.textSecondary} strokeWidth={1.9} />
-            {/* The filled bookmark springs in over the outline, so saving reads
-                as the mark filling up rather than one icon swapping for another. */}
-            <Animated.View
-              style={{
-                position: 'absolute',
-                opacity: fill.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 1],
-                  extrapolate: 'clamp',
-                }),
-                transform: [
-                  { scale: fill.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) },
-                ],
-              }}
-            >
-              <Bookmark
-                size={ICON}
-                color={colors.primary}
-                fill={colors.primary}
-                strokeWidth={2.4}
-              />
-            </Animated.View>
-          </View>
-        }
-      />
+      {isAudience ? null : (
+        <Action
+          label={saved ? t('feed.removeFromSaved') : t('feed.savePost')}
+          onPress={onSave}
+          selected={saved}
+          haptic
+          icon={
+            <View style={{ width: ICON, height: ICON, alignItems: 'center', justifyContent: 'center' }}>
+              <Bookmark size={ICON} color={colors.textSecondary} strokeWidth={1.9} />
+              {/* The filled bookmark springs in over the outline, so saving reads
+                  as the mark filling up rather than one icon swapping for another. */}
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  opacity: fill.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                    extrapolate: 'clamp',
+                  }),
+                  transform: [
+                    { scale: fill.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) },
+                  ],
+                }}
+              >
+                <Bookmark
+                  size={ICON}
+                  color={colors.primary}
+                  fill={colors.primary}
+                  strokeWidth={2.4}
+                />
+              </Animated.View>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }

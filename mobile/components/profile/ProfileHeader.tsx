@@ -49,6 +49,7 @@ import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
 
 /**
@@ -122,6 +123,7 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
   const router = useRouter();
   const toast = useToast();
   const t = useT();
+  const { isAudience } = useAuth();
 
   const { user, athlete, coach, score, viewer } = bundle;
   const isSelf = viewer?.is_self === true;
@@ -489,26 +491,28 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
                 loading={followBusy}
                 onPress={onToggleFollow}
               />
-              <Button
-                label={t('common.message')}
-                variant="secondary"
-                style={{ flex: 1 }}
-                fullWidth
-                loading={messageBusy}
-                icon={
-                  viewer?.can_message ? (
-                    <MessageCircle size={16} color={colors.text} />
-                  ) : (
-                    <Lock size={16} color={colors.textMuted} />
-                  )
-                }
-                /* Kept tappable on purpose: a dead button teaches nothing, so a
-                   tap explains why messaging is limited instead. */
-                accessibilityHint={
-                  viewer?.can_message ? undefined : t('profile.messageLimitedHint')
-                }
-                onPress={onMessage}
-              />
+              {isAudience || user?.role === 'guest' ? null : (
+                <Button
+                  label={t('common.message')}
+                  variant="secondary"
+                  style={{ flex: 1 }}
+                  fullWidth
+                  loading={messageBusy}
+                  icon={
+                    viewer?.can_message ? (
+                      <MessageCircle size={16} color={colors.text} />
+                    ) : (
+                      <Lock size={16} color={colors.textMuted} />
+                    )
+                  }
+                  /* Kept tappable on purpose: a dead button teaches nothing, so a
+                     tap explains why messaging is limited instead. */
+                  accessibilityHint={
+                    viewer?.can_message ? undefined : t('profile.messageLimitedHint')
+                  }
+                  onPress={onMessage}
+                />
+              )}
             </>
           )}
           <IconButton

@@ -33,7 +33,7 @@ export default function MyProfileScreen() {
   const { spacing } = theme;
   const router = useRouter();
   const t = useT();
-  const { user } = useAuth();
+  const { user, isAudience } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
 
   const [tab, setTab] = useState<ProfileTab>(() => toProfileTab(params.tab));
@@ -129,7 +129,7 @@ export default function MyProfileScreen() {
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
-        {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
+        {!isAudience && data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
           <Button
             label={t('coaching.myBookings')}
             variant="secondary"
