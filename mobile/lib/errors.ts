@@ -23,6 +23,8 @@ const EN: Record<string, string> = {
   'errors.guardianConsentRequired':
     'A parent or guardian needs to approve your profile before it can appear in search.',
   'errors.audienceNotAllowed': "Audience accounts can't do this.",
+  'errors.audienceAdultsOnly': 'Audience accounts are for adults (18+).',
+  'errors.audienceNeedsAdultAge': 'Add your date of birth to continue.',
   'errors.messagingNotPermitted':
     "You can't message this account. They may only accept messages from verified coaches and clubs.",
   'errors.rateLimited': 'You are doing that too quickly. Wait a moment and try again.',
@@ -55,6 +57,8 @@ function say(key: string): string {
 const HINTS: Record<string, string> = {
   guardian_consent_required: 'errors.guardianConsentRequired',
   audience_not_allowed: 'errors.audienceNotAllowed',
+  audience_adults_only: 'errors.audienceAdultsOnly',
+  audience_needs_adult_age: 'errors.audienceNeedsAdultAge',
   story_card_text: 'errors.storyCardText',
   story_media_missing: 'errors.storyMediaMissing',
   messaging_not_permitted: 'errors.messagingNotPermitted',

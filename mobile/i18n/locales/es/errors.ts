@@ -15,6 +15,8 @@ export const errors = {
   guardianConsentRequired:
     'Tu madre, padre o tutor tiene que aprobar tu perfil antes de que pueda aparecer en las búsquedas.',
   audienceNotAllowed: 'Las cuentas de público no pueden hacer esto.',
+  audienceAdultsOnly: 'Las cuentas de público son solo para adultos (18+).',
+  audienceNeedsAdultAge: 'Añade tu fecha de nacimiento para continuar.',
   messagingNotPermitted:
     'No puedes escribir a esta cuenta. Puede que solo acepte mensajes de entrenadores y clubes verificados.',
   rateLimited: 'Estás haciendo eso muy rápido. Espera un momento y vuelve a intentarlo.',

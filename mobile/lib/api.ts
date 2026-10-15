@@ -355,6 +355,23 @@ export async function toggleFollow(userId: string) {
   return data as { following: boolean; followers_count: number };
 }
 
+export interface SuggestedFollow {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: string | null;
+  sport: string | null;
+  followers_count: number;
+  is_verified: boolean;
+}
+
+/** Known adults a signed-in person might follow: athletes, coaches, and clubs. */
+export async function getSuggestedFollows(limit = 12): Promise<SuggestedFollow[]> {
+  const { data, error } = await supabase.rpc('suggested_follows', { p_limit: limit });
+  if (error) throw new AppError(error);
+  return (data ?? []) as SuggestedFollow[];
+}
+
 /** Joined profiles can be null (deleted / RLS-hidden); never return those rows. */
 function asUserSummary(value: unknown): UserSummary | null {
   const row = Array.isArray(value) ? value[0] : value;

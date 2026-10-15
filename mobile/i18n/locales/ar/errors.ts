@@ -14,6 +14,8 @@ export const errors = {
   guardianConsentRequired:
     'يجب أن يوافق أحد الوالدين أو ولي الأمر على ملفك قبل أن يظهر في البحث.',
   audienceNotAllowed: 'لا يمكن لحسابات الجمهور القيام بذلك.',
+  audienceAdultsOnly: 'حسابات الجمهور مخصصة للبالغين (18+).',
+  audienceNeedsAdultAge: 'أضف تاريخ ميلادك للمتابعة.',
   messagingNotPermitted:
     'لا يمكنك مراسلة هذا الحساب. قد يكون لا يستقبل الرسائل إلا من مدرّبين وأندية موثّقين.',
   rateLimited: 'أنت تكرّر ذلك بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',

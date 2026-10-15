@@ -195,6 +195,10 @@ export const onboarding = {
   doneTitle: 'Todo listo',
   guardianDoneBody: 'Tu cuenta está lista. Vincularte con tu hijo o hija lleva un minuto.',
   basicDoneBody: 'Echa un vistazo y prepara el resto cuando quieras.',
+  followTitle: 'Sigue a algunos deportistas y clubes',
+  followBody: 'Tu inicio se llena con la gente a la que sigues.',
+  followEmpty: 'Aún no hay sugerencias. Puedes encontrar gente en Descubrir.',
+  audienceDoneBody: 'Tu inicio muestra a los deportistas y clubes que sigues.',
   guardianDoneNote:
     'Ajustes y luego Madre, padre o tutor. Si tu hijo o hija ya te envió un correo de aprobación, al abrir el enlace se conectan las cuentas.',
 };

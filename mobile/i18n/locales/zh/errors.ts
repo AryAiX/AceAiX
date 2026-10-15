@@ -14,6 +14,8 @@ export const errors = {
   guardianConsentRequired:
     '你的资料需要家长或监护人批准后，才能出现在搜索结果里。',
   audienceNotAllowed: '观众账户无法执行此操作。',
+  audienceAdultsOnly: '观众账户仅限成年人（18岁以上）。',
+  audienceNeedsAdultAge: '请添加你的出生日期以继续。',
   messagingNotPermitted:
     '你无法给这个账号发私信。对方可能只接收经过认证的教练和俱乐部的私信。',
   rateLimited: '你的操作太频繁了，稍等片刻再试。',

@@ -19,8 +19,8 @@ export type UserRole =
   | 'admin'
   | 'guest';
 
-/** The four roles a person can choose at signup. */
-export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'sponsor', 'guardian'] as const;
+/** Roles a person can choose at signup. */
+export const SIGNUP_ROLES = ['athlete', 'coach', 'club', 'sponsor', 'guardian', 'guest'] as const;
 export type SignupRole = (typeof SIGNUP_ROLES)[number];
 
 export type Tier = 'rising' | 'bronze' | 'silver' | 'gold' | 'elite';

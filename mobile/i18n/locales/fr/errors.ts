@@ -15,6 +15,8 @@ export const errors = {
   guardianConsentRequired:
     'Un parent ou tuteur doit valider ton profil avant qu’il puisse apparaître dans les recherches.',
   audienceNotAllowed: 'Les comptes Public ne peuvent pas faire cela.',
+  audienceAdultsOnly: 'Les comptes Public sont réservés aux adultes (18+).',
+  audienceNeedsAdultAge: 'Ajoutez votre date de naissance pour continuer.',
   messagingNotPermitted:
     'Tu ne peux pas écrire à ce compte. Il n’accepte peut-être que les messages des coachs et des clubs vérifiés.',
   rateLimited: 'Tu vas trop vite. Attends un instant et réessaie.',
