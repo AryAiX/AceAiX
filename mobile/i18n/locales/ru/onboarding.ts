@@ -76,7 +76,6 @@ export const onboarding = {
   guardianRelationshipParent: 'Родитель',
   guardianRelationshipGuardian: 'Другой опекун',
   guardianNameLabel: 'Имя взрослого',
-  guardianNamePlaceholder: 'Лейла Карими',
   guardianNameRequired: 'Введи имя взрослого.',
   guardianEmailLabel: 'Почта взрослого',
   guardianEmailHint: 'Проверь адрес — ссылка для одобрения придёт именно сюда.',

@@ -74,7 +74,6 @@ export const onboarding = {
   guardianRelationshipParent: 'A parent',
   guardianRelationshipGuardian: 'Another guardian',
   guardianNameLabel: 'Their name',
-  guardianNamePlaceholder: 'Leila Karimi',
   guardianNameRequired: 'Enter their name.',
   guardianEmailLabel: 'Their email',
   guardianEmailHint: 'Make sure this is right — the approval link goes here.',

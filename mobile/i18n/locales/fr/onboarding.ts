@@ -75,7 +75,6 @@ export const onboarding = {
   guardianRelationshipParent: 'Un parent',
   guardianRelationshipGuardian: 'Un autre tuteur',
   guardianNameLabel: 'Son nom',
-  guardianNamePlaceholder: 'Leila Karimi',
   guardianNameRequired: 'Saisis son nom.',
   guardianEmailLabel: 'Son e-mail',
   guardianEmailHint: 'Vérifie bien — c’est là que part le lien de validation.',

@@ -72,7 +72,6 @@ export const onboarding = {
   guardianRelationshipParent: '家长',
   guardianRelationshipGuardian: '其他监护人',
   guardianNameLabel: '他们的姓名',
-  guardianNamePlaceholder: 'Leila Karimi',
   guardianNameRequired: '请填写他们的姓名。',
   guardianEmailLabel: '他们的邮箱',
   guardianEmailHint: '一定要填对 —— 批准链接会发到这里。',

@@ -148,7 +148,6 @@ export function GuardianConsentStep({
           value={name}
           onChangeText={(value) => onChangeName(sanitizeNameInput(value))}
           error={nameError}
-          placeholder={t('onboarding.guardianNamePlaceholder')}
           autoCapitalize="words"
           autoCorrect={false}
           spellCheck={false}

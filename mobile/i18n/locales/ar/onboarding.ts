@@ -72,7 +72,6 @@ export const onboarding = {
   guardianRelationshipParent: 'أحد الوالدين',
   guardianRelationshipGuardian: 'ولي أمر آخر',
   guardianNameLabel: 'اسمه',
-  guardianNamePlaceholder: 'ليلى كريمي',
   guardianNameRequired: 'أدخل اسمه.',
   guardianEmailLabel: 'بريده الإلكتروني',
   guardianEmailHint: 'تأكّد من صحته — رابط الموافقة سيصل إليه.',
