@@ -4288,6 +4288,14 @@ begin
       v_squad_v, v_hidden)) = 'club_link_unavailable',
     'a verified club cannot link a minor who is not publicly visible');
 
+  raise notice 'QA64 DEBUG verified=% minor=% discoverable=% suspended=% visible=% uid=%',
+    (select is_verified from public.organizations where id = v_verified),
+    (select is_minor from public.user_profiles where id = v_visible),
+    (select is_discoverable from public.user_profiles where id = v_visible),
+    (select is_suspended from public.user_profiles where id = v_visible),
+    (select private.user_publicly_visible(v_visible)),
+    (select auth.uid());
+
   v_row := public.save_squad_member(
     v_squad_v, null, jsonb_build_object('kind', 'player', 'user_id', v_visible));
   perform tests.ok(
