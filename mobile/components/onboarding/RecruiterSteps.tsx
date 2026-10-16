@@ -136,19 +136,21 @@ export function RecruiterRoleStep({
             </Text>
           ) : null}
         </View>
-        <Input
-          ref={clubRef}
-          label={t(isClub ? 'onboarding.recruiterClubLabel' : 'onboarding.clubLabel')}
-          value={club}
-          onChangeText={onChangeClub}
-          placeholder={t('onboarding.clubPlaceholder')}
-          hint={t(
-            isClub ? 'onboarding.recruiterClubHintClub' : 'onboarding.recruiterClubHintCoach',
-          )}
-          autoCapitalize="words"
-          returnKeyType="done"
-          testID="recruiter-club"
-        />
+        {isClub ? null : (
+          <Input
+            ref={clubRef}
+            label={t(isClub ? 'onboarding.recruiterClubLabel' : 'onboarding.clubLabel')}
+            value={club}
+            onChangeText={onChangeClub}
+            placeholder={t('onboarding.clubPlaceholder')}
+            hint={t(
+              isClub ? 'onboarding.recruiterClubHintClub' : 'onboarding.recruiterClubHintCoach',
+            )}
+            autoCapitalize="words"
+            returnKeyType="done"
+            testID="recruiter-club"
+          />
+        )}
       </View>
     </View>
   );

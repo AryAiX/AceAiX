@@ -384,8 +384,10 @@ export default function OnboardingScreen() {
           break;
         case 'role':
           if (isClub) {
+            const organisationName = (profile?.full_name ?? profile?.first_name ?? '').trim();
             await updateScoutProfile({
-              credentials: [specialty.trim(), club.trim()].filter(Boolean).join(' — ') || null,
+              credentials:
+                [specialty.trim(), organisationName].filter(Boolean).join(' — ') || null,
             });
           } else {
             await updateCoachProfile({
@@ -431,6 +433,7 @@ export default function OnboardingScreen() {
     positions,
     specialty,
     isClub,
+    profile,
     ageBand,
     toast,
     t,
