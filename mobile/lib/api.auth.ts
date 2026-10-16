@@ -4,6 +4,7 @@ import { decode } from 'base64-arraybuffer';
 import { supabase, Buckets, publicUrl } from './supabase';
 import { AppError } from './errors';
 import { setDateOfBirth } from './api';
+import { randomUploadId } from '@/lib/uploadId';
 
 /**
  * Network calls that belong to sign-up, onboarding and password recovery.
@@ -237,15 +238,6 @@ export interface AvatarUploadInput {
   mimeType?: string | null;
 }
 
-/** 32 hex characters. A new id every upload, so a replaced photo is a new object. */
-function randomImageId(): string {
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  let id = '';
-  for (const byte of bytes) id += byte.toString(16).padStart(2, '0');
-  return id;
-}
-
 /**
  * Upload a profile photo to the public `avatars` bucket.
  *
@@ -259,7 +251,7 @@ export async function uploadAvatar(input: AvatarUploadInput): Promise<string> {
 
   const declared = (input.mimeType ?? '').toLowerCase();
   const contentType = MIME_EXTENSIONS[declared] ? declared : 'image/jpeg';
-  const path = `${auth.user.id}/avatar-${randomImageId()}.${extensionFor(
+  const path = `${auth.user.id}/avatar-${randomUploadId()}.${extensionFor(
     input.fileName,
     contentType,
   )}`;

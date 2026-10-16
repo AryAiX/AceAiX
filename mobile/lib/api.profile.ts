@@ -8,6 +8,7 @@ import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { getUserPosts } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
+import { randomUploadId } from '@/lib/uploadId';
 import type { UserPost } from '@/types/models';
 
 /**
@@ -170,15 +171,6 @@ async function currentUserId(): Promise<string> {
   return data.user.id;
 }
 
-/** 32 hex characters. A new id every upload, so a replaced photo is a new object. */
-function randomImageId(): string {
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  let id = '';
-  for (const byte of bytes) id += byte.toString(16).padStart(2, '0');
-  return id;
-}
-
 const PUBLIC_AVATARS = '/storage/v1/object/public/avatars/';
 
 /**
@@ -269,7 +261,7 @@ async function shrink(
 export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
   const file = await shrink(uri, contentType, IMAGE_PRESETS.avatar);
-  const path = `${uid}/avatar-${randomImageId()}.${extensionFor(file.uri, file.contentType)}`;
+  const path = `${uid}/avatar-${randomUploadId()}.${extensionFor(file.uri, file.contentType)}`;
   await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');
@@ -287,7 +279,7 @@ export async function uploadAvatar(uri: string, contentType = 'image/jpeg'): Pro
 export async function uploadCover(uri: string, contentType = 'image/jpeg'): Promise<string> {
   const uid = await currentUserId();
   const file = await shrink(uri, contentType, IMAGE_PRESETS.cover);
-  const path = `${uid}/cover-${randomImageId()}.${extensionFor(file.uri, file.contentType)}`;
+  const path = `${uid}/cover-${randomUploadId()}.${extensionFor(file.uri, file.contentType)}`;
   await upload(Buckets.avatars, path, file.uri, file.contentType);
   const url = publicUrl(Buckets.avatars, path);
   if (!url) throw new AppError('That image could not be saved. Try another one.');
