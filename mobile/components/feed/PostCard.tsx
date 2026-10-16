@@ -11,7 +11,7 @@ import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
 import { useAuth } from '@/providers/AuthProvider';
 import { toggleLike, toggleSave } from '@/lib/api';
-import { postLink } from '@/lib/api.feed';
+import { getPostAudience, postLink } from '@/lib/api.feed';
 import { brandedShareCaption, buildBrandedImage, type BrandedKind } from '@/lib/brandedShare';
 import { errorMessage } from '@/lib/errors';
 import { displayName, metaLine, relativeTime } from '@/lib/format';
@@ -75,6 +75,7 @@ function PostCardBase({
   const lastMediaTap = useRef(0);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareLookup = useRef(false);
 
   useEffect(
     () => () => {
@@ -164,9 +165,24 @@ function PostCardBase({
   }, [post.id, t, toast]);
 
   const onShare = useCallback(() => {
-    if (canBrandShare) setShareOpen(true);
-    else void handleShare();
-  }, [canBrandShare, handleShare]);
+    if (!canBrandShare) {
+      void handleShare();
+      return;
+    }
+    if (shareLookup.current) return;
+    shareLookup.current = true;
+    void (async () => {
+      try {
+        const audience = await getPostAudience(post.id);
+        if (audience === 'public') setShareOpen(true);
+        else void handleShare();
+      } catch {
+        void handleShare();
+      } finally {
+        shareLookup.current = false;
+      }
+    })();
+  }, [canBrandShare, handleShare, post.id]);
 
   /* The sheet is a Modal. iOS will not present the system share sheet until
      that modal has left, so the link row closes first and then calls the
