@@ -4217,6 +4217,120 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club squad links and minors ──'; end $$;
+
+do $$
+declare
+  v_owner     uuid := 'c1640000-0000-4000-8000-000000000001';
+  v_visible   uuid := 'c1640000-0000-4000-8000-000000000002';
+  v_hidden    uuid := 'c1640000-0000-4000-8000-000000000003';
+  v_adult     uuid := 'c1640000-0000-4000-8000-000000000004';
+  v_unverified uuid;
+  v_verified   uuid;
+  v_season_u   uuid;
+  v_season_v   uuid;
+  v_squad_u    uuid;
+  v_squad_v    uuid;
+  v_row        uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,   'qa64.owner@test.local',   '{"full_name":"QA64 Owner","role":"club"}'),
+    (v_visible, 'qa64.visible@test.local', '{"full_name":"Layla Haddad","role":"athlete"}'),
+    (v_hidden,  'qa64.hidden@test.local',  '{"full_name":"Mina Noor","role":"athlete"}'),
+    (v_adult,   'qa64.adult@test.local',   '{"full_name":"Noah Adult","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '22 years' where user_id = v_adult;
+  update public.user_private set date_of_birth = current_date - interval '14 years'
+  where user_id in (v_visible, v_hidden);
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, allow_messaging, allow_media
+  ) values (
+    v_visible, v_owner, 'QA64 Parent', 'qa64.parent@test.local',
+    'parent', 'granted', true, false, false
+  );
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA64 Unverified Club', 'club', false, 'pending')
+  returning id into v_unverified;
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA64 Verified Club', 'club', true, 'approved')
+  returning id into v_verified;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_unverified, v_owner, 'owner', 'active'),
+    (v_verified, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_unverified, '2026-27', true)
+  returning id into v_season_u;
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_verified, '2026-27', true)
+  returning id into v_season_v;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_unverified, v_season_u, 'Football', 'U14')
+  returning id into v_squad_u;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_verified, v_season_v, 'Football', 'U14')
+  returning id into v_squad_v;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_u, v_visible)) = 'club_link_unavailable',
+    'QA-64 regression: an unverified club cannot link a minor');
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_v, v_hidden)) = 'club_link_unavailable',
+    'a verified club cannot link a minor who is not publicly visible');
+
+  v_row := public.save_squad_member(
+    v_squad_v, null, jsonb_build_object('kind', 'player', 'user_id', v_visible));
+  perform tests.ok(
+    (select link_status from public.club_squad_members where id = v_row) = 'invited',
+    'a verified club can invite a discoverable minor');
+  perform tests.ok(
+    (select m.display_name = 'Layla H.' and m.display_name <> up.full_name
+     from public.club_squad_members m
+     join public.user_profiles up on up.id = v_visible
+     where m.id = v_row),
+    'a link saved without a display name stores the short form, not the full name');
+
+  perform tests.ok(
+    public.save_squad_member(
+      v_squad_u, null, jsonb_build_object('kind', 'player', 'user_id', v_adult)
+    ) is not null,
+    'an unverified club can still link an adult');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('c1640000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+    'qa64.fill' || g || '@test.local',
+    jsonb_build_object('full_name', 'Fill Person', 'role', 'athlete')
+  from generate_series(10, 20) g;
+  insert into public.club_squad_members (
+    squad_id, organization_id, kind, display_name, user_id, link_status, created_at
+  )
+  select
+    v_squad_v, v_verified, 'player', 'Fill ' || lpad(g::text, 2, '0'),
+    ('c1640000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+    'invited', now()
+  from generate_series(10, 20) g;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_v, v_adult)) = 'rate_limited',
+    'more than ten new squad links in a day is refused');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── play game alerts ──'; end $$;
 
 do $$
