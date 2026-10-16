@@ -322,3 +322,122 @@ jobs:
           done
           echo "::error::${TARGET_DOMAIN} did not serve the deployed Expo build"
           exit 1
+
+  # The admin console (admin/) ships only from main, after deploy-web has
+  # applied the production migrations its RPCs depend on.
+  deploy-admin:
+    name: Deploy admin console
+    needs:
+      - deploy-web
+    if: vars.VERCEL_DEPLOY_ENABLED == 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: aceaix-admin-production-deployment
+      cancel-in-progress: true
+    environment:
+      name: production
+      url: https://admin.aceaix.com
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      APP_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+      ADMIN_PROJECT_NAME: aceaix-admin
+      ADMIN_DOMAIN: admin.aceaix.com
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.18.0
+
+      # The console uses the same public URL and anon key as the app, so they
+      # come from the app project's production environment, not a new secret.
+      - name: Read the app's public Supabase settings
+        working-directory: mobile
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          read_var() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}$/\1/p" .vercel/.env.production.local | head -1; }
+          url="$(read_var EXPO_PUBLIC_SUPABASE_URL)"
+          key="$(read_var EXPO_PUBLIC_SUPABASE_ANON_KEY)"
+          if [ -z "$url" ] || [ -z "$key" ]; then
+            echo "::error::App production env lacks EXPO_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_ANON_KEY"
+            exit 1
+          fi
+          case "$url" in
+            *"$SUPABASE_PROJECT_REF"*) ;;
+            *) echo "::error::App Supabase URL does not match SUPABASE_PROJECT_REF"; exit 1 ;;
+          esac
+          printf 'VITE_SUPABASE_URL=%s\nVITE_SUPABASE_ANON_KEY=%s\n' "$url" "$key" > ../admin/.env.production.local
+          rm -rf .vercel
+
+      - name: Build admin console
+        working-directory: admin
+        run: |
+          npm ci
+          npm run build
+
+      # Prebuilt output bypasses project build settings, so vercel.json's
+      # headers and SPA rewrite are carried into the Build Output config here.
+      - name: Assemble Vercel build output
+        working-directory: admin
+        run: |
+          mkdir -p .vercel/output
+          cp -R dist .vercel/output/static
+          node -e '
+            const v = require("./vercel.json");
+            const headers = Object.fromEntries(v.headers[0].headers.map((h) => [h.key, h.value]));
+            const config = {
+              version: 3,
+              routes: [
+                { src: "/(.*)", headers, continue: true },
+                { handle: "filesystem" },
+                { src: "/(.*)", dest: "/index.html" },
+              ],
+            };
+            require("fs").writeFileSync(".vercel/output/config.json", JSON.stringify(config, null, 2));
+          '
+
+      - name: Resolve or create the admin Vercel project
+        run: |
+          api="https://api.vercel.com"
+          auth="Authorization: Bearer $VERCEL_TOKEN"
+          id="$(curl -fsS -H "$auth" "$api/v9/projects/$ADMIN_PROJECT_NAME?teamId=$VERCEL_ORG_ID" | jq -r '.id // empty' || true)"
+          if [ -z "$id" ]; then
+            id="$(curl -fsS -X POST -H "$auth" -H 'Content-Type: application/json' \
+              -d "{\"name\":\"$ADMIN_PROJECT_NAME\",\"framework\":null}" \
+              "$api/v10/projects?teamId=$VERCEL_ORG_ID" | jq -r '.id')"
+            echo "Created Vercel project $ADMIN_PROJECT_NAME"
+          fi
+          echo "VERCEL_PROJECT_ID=$id" >> "$GITHUB_ENV"
+
+      - name: Deploy admin console
+        id: deploy
+        working-directory: admin
+        run: |
+          url="$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          vercel alias set "$url" "$ADMIN_DOMAIN" --token="$VERCEL_TOKEN"
+
+      - name: Verify the admin host serves this build
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 30 "https://${ADMIN_DOMAIN}/" | grep -q '<title>AceAiX Admin</title>'; then
+              curl -fsS -o /dev/null --max-time 30 "https://${ADMIN_DOMAIN}/reports"
+              echo "${ADMIN_DOMAIN} serves the admin console"
+              exit 0
+            fi
+            echo "attempt $attempt: ${ADMIN_DOMAIN} not serving the build yet"
+            sleep 10
+          done
+          echo "::error::${ADMIN_DOMAIN} did not serve the admin console"
+          exit 1
