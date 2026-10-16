@@ -4638,6 +4638,90 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club matches are not public ──'; end $$;
+
+/*
+ * QA-71. A signed-out client cannot read club_matches. A signed-in
+ * stranger still can, because live scores subscribe to that table.
+ */
+do $$
+declare
+  v_owner    uuid := 'c1710000-0000-4000-8000-000000000001';
+  v_stranger uuid := 'c1710000-0000-4000-8000-000000000002';
+  v_org      uuid;
+  v_season   uuid;
+  v_squad    uuid;
+  v_match    uuid;
+  v_rows     integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa71.owner@test.local',    '{"full_name":"QA71 Owner","role":"club"}'),
+    (v_stranger, 'qa71.stranger@test.local', '{"full_name":"QA71 Stranger","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '28 years' where user_id = v_stranger;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA71 Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_org, '2026-27', true)
+  returning id into v_season;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_org, v_season, 'Football', 'Senior')
+  returning id into v_squad;
+
+  insert into public.club_matches (
+    organization_id, created_by, sport, squad_id, category, opponent_name, kickoff_at, notes
+  ) values (
+    v_org, v_owner, 'Football', v_squad, 'Senior', 'QA71 Opposition',
+    now() + interval '1 day', 'QA71 meet at the north gate'
+  ) returning id into v_match;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select count(*) into v_rows from public.club_matches where id = v_match;
+  exception when insufficient_privilege then
+    v_rows := 0;
+  end;
+  reset role;
+  perform tests.ok(
+    v_rows = 0,
+    'QA-71 regression: a signed-out client cannot read club matches, including notes and created_by');
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_rows from public.club_matches
+   where id = v_match
+     and notes = 'QA71 meet at the north gate'
+     and created_by = v_owner;
+  reset role;
+  perform tests.ok(
+    v_rows = 1,
+    'a signed-in stranger can still read the match row, which is what live scores need');
+
+  perform tests.ok(
+    not has_table_privilege('anon', 'public.club_matches', 'SELECT')
+    and has_table_privilege('authenticated', 'public.club_matches', 'SELECT'),
+    'anon has no select on club_matches and authenticated still does');
+
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    perform tests.ok(
+      exists (select 1 from pg_publication_tables
+               where pubname = 'supabase_realtime'
+                 and schemaname = 'public'
+                 and tablename = 'club_matches'),
+      'club_matches stays in the realtime publication so live scores keep broadcasting');
+  end if;
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── play game alerts ──'; end $$;
 
 do $$
