@@ -70,4 +70,7 @@ export const errors = {
   coachingLocationRequired: 'Indiquez où cela doit avoir lieu.',
   coachingServiceLimit: 'Douze prestations à la fois au maximum.',
   coachingOwnCalendar: 'Vous ne pouvez pas réserver votre propre calendrier.',
+  meetupMapUrlInvalid: 'Utilisez un lien Google Maps, Apple Maps ou Waze.',
+  meetupPlaceInvalid: 'Chaque lieu doit comporter entre 2 et 80 caractères.',
+  meetupPlacesLimit: 'Vous pouvez ajouter jusqu’à 5 lieux.',
 };

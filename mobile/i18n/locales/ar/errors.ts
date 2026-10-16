@@ -69,4 +69,7 @@ export const errors = {
   coachingLocationRequired: 'اذكر مكان إقامتها.',
   coachingServiceLimit: 'يمكنك تقديم اثنتي عشرة خدمة في وقت واحد.',
   coachingOwnCalendar: 'لا يمكنك الحجز في تقويمك الخاص.',
+  meetupMapUrlInvalid: 'استخدم رابطًا من Google Maps أو Apple Maps أو Waze.',
+  meetupPlaceInvalid: 'يجب أن يتكون كل مكان من 2 إلى 80 حرفًا.',
+  meetupPlacesLimit: 'يمكنك إضافة 5 أماكن كحد أقصى.',
 };
