@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, FileText } from 'lucide-react';
-import { api, type ExtraProfile } from '../lib/api';
+import { api, signedDocumentUrl, type ExtraProfile, type VerificationRequest } from '../lib/api';
 import { label, timeAgo } from '../lib/format';
 import {
   ActionDialog, Badge, Button, Card, Empty, ErrorBox, Field, Loading, PageHeader, PersonCell, StatusBadge, Tabs,
@@ -76,10 +76,7 @@ export default function ApprovalsPage() {
                     {r.documents?.length ? (
                       <div className="mt-1 flex flex-wrap gap-2">
                         {r.documents.map((d, i) => (
-                          <a key={i} href={safeHttpsUrl(d.url)} target="_blank" rel="noreferrer noopener"
-                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs hover:bg-slate-50">
-                            <FileText className="h-3.5 w-3.5 text-slate-500" /> {d.name ?? d.kind ?? `Document ${i + 1}`}
-                          </a>
+                          <DocumentChip key={i} doc={d} index={i} />
                         ))}
                       </div>
                     ) : <p className="mt-1 text-sm text-slate-400">None uploaded. Ask for proof with “Need more info”.</p>}
@@ -139,6 +136,48 @@ export default function ApprovalsPage() {
       <ActionDialog spec={dialog} onClose={() => setDialog(null)} />
     </>
   );
+}
+
+const documentClass =
+  'inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs hover:bg-slate-50';
+
+function documentLabel(doc: VerificationRequest['documents'][number], index: number): string {
+  return doc.name ?? doc.kind ?? `Document ${index + 1}`;
+}
+
+async function openPrivateDoc(bucket: string, path: string) {
+  try {
+    window.open(await signedDocumentUrl(bucket, path), '_blank', 'noopener');
+  } catch (err) {
+    window.alert(err instanceof Error ? err.message : 'Could not open the document');
+  }
+}
+
+function DocumentChip({ doc, index }: { doc: VerificationRequest['documents'][number]; index: number }) {
+  const labelText = documentLabel(doc, index);
+  const body = (
+    <>
+      <FileText className="h-3.5 w-3.5 text-slate-500" /> {labelText}
+    </>
+  );
+  if (typeof doc.bucket === 'string' && typeof doc.path === 'string') {
+    const bucket = doc.bucket;
+    const path = doc.path;
+    return (
+      <button type="button" className={documentClass} onClick={() => { void openPrivateDoc(bucket, path); }}>
+        {body}
+      </button>
+    );
+  }
+  const href = safeHttpsUrl(doc.url);
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer noopener" className={documentClass}>
+        {body}
+      </a>
+    );
+  }
+  return <span className={documentClass}>{body}</span>;
 }
 
 /* Document links come from what the applicant submitted. Only https links are
