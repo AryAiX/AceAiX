@@ -99,10 +99,8 @@ export const auth = {
     nameSubtitleOther:
       'Пиши настоящее имя — спортсменам и их семьям важно понимать, с кем они говорят.',
     firstNameLabel: 'Имя',
-    firstNamePlaceholder: 'Сара',
     firstNameRequired: 'Введи имя.',
     lastNameLabel: 'Фамилия',
-    lastNamePlaceholder: 'Карими',
     lastNameRequired: 'Введи фамилию.',
 
     dobTitle: 'Какая у тебя дата рождения?',

@@ -90,10 +90,8 @@ export const auth = {
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',
     nameSubtitleOther: '请用真名 —— 运动员和家长需要知道在和谁交流。',
     firstNameLabel: '名字',
-    firstNamePlaceholder: 'Sara',
     firstNameRequired: '请填写你的名字。',
     lastNameLabel: '姓氏',
-    lastNamePlaceholder: 'Karimi',
     lastNameRequired: '请填写你的姓氏。',
 
     dobTitle: '你的出生日期？',

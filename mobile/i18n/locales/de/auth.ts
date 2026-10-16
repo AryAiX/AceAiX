@@ -96,10 +96,8 @@ export const auth = {
     nameSubtitleOther:
       'Nimm deinen echten Namen — Sportler und Familien müssen wissen, mit wem sie sprechen.',
     firstNameLabel: 'Vorname',
-    firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Gib deinen Vornamen ein.',
     lastNameLabel: 'Nachname',
-    lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Gib deinen Nachnamen ein.',
 
     dobTitle: 'Wann bist du geboren?',

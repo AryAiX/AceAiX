@@ -102,10 +102,8 @@ export const auth = {
     nameSubtitle: 'استخدم اسمك الحقيقي — المدرّبون يحتاجون معرفة من أمامهم.',
     nameSubtitleOther: 'استخدم اسمك الحقيقي — اللاعبون وعائلاتهم يحتاجون معرفة من يحدّثهم.',
     firstNameLabel: 'الاسم الأول',
-    firstNamePlaceholder: 'سارة',
     firstNameRequired: 'أدخل اسمك الأول.',
     lastNameLabel: 'اسم العائلة',
-    lastNamePlaceholder: 'كريمي',
     lastNameRequired: 'أدخل اسم عائلتك.',
 
     dobTitle: 'متى وُلدت؟',

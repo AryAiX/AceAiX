@@ -100,10 +100,8 @@ export const auth = {
     nameSubtitleOther:
       'Usa tu nombre real: los deportistas y sus familias necesitan saber con quién hablan.',
     firstNameLabel: 'Nombre',
-    firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Escribe tu nombre.',
     lastNameLabel: 'Apellido',
-    lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Escribe tu apellido.',
 
     dobTitle: '¿Cuándo naciste?',

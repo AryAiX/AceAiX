@@ -98,10 +98,8 @@ export const auth = {
     nameSubtitleOther:
       'Mets ton vrai nom — les athlètes et leurs familles doivent savoir à qui ils parlent.',
     firstNameLabel: 'Prénom',
-    firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Saisis ton prénom.',
     lastNameLabel: 'Nom',
-    lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Saisis ton nom.',
 
     dobTitle: 'Tu es né quand ?',

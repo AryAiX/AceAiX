@@ -96,10 +96,8 @@ export const auth = {
     nameSubtitleOther:
       'Use your real name — athletes and families need to know who they are talking to.',
     firstNameLabel: 'First name',
-    firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Enter your first name.',
     lastNameLabel: 'Last name',
-    lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Enter your last name.',
 
     dobTitle: 'When were you born?',
