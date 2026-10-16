@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body { @apply bg-slate-50 text-ink antialiased; font-family: Inter, system-ui, sans-serif; }
+@layer components {
+  .input { @apply h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400; }
+.th { @apply px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500; }
+.td { @apply px-4 py-3 align-middle text-sm; }
+}

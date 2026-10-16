@@ -17,6 +17,7 @@ export const coaching = {
     athlete: 'ألغاها الرياضي',
     coach: 'ألغاها المدرب',
     guardian: 'ألغاها وليّ الأمر',
+    admin: 'ألغتها AceAiX',
   },
   accepting: 'يقبل متدربين',
   notAccepting: 'لا يقبل متدربين',

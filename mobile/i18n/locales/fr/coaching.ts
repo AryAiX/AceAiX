@@ -17,6 +17,7 @@ export const coaching = {
     athlete: 'Annulée par l’athlète',
     coach: 'Annulée par le coach',
     guardian: 'Annulée par un responsable',
+    admin: 'Annulée par AceAiX',
   },
   accepting: 'Prend des élèves',
   notAccepting: 'Ne prend pas d’élèves',
