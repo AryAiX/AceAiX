@@ -237,12 +237,21 @@ export interface AvatarUploadInput {
   mimeType?: string | null;
 }
 
+/** 32 hex characters. A new id every upload, so a replaced photo is a new object. */
+function randomImageId(): string {
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  let id = '';
+  for (const byte of bytes) id += byte.toString(16).padStart(2, '0');
+  return id;
+}
+
 /**
  * Upload a profile photo to the public `avatars` bucket.
  *
  * The storage policy only lets someone write inside a folder named after their
- * own user id, so the path is always `<user id>/<file>`. The file name carries
- * a timestamp so a replaced photo is never served from a stale cache.
+ * own user id, so the path is always `<user id>/avatar-<id>.<ext>`. The id is
+ * random so a replaced photo is a new object and never served from a stale cache.
  */
 export async function uploadAvatar(input: AvatarUploadInput): Promise<string> {
   const { data: auth } = await supabase.auth.getUser();
@@ -250,7 +259,10 @@ export async function uploadAvatar(input: AvatarUploadInput): Promise<string> {
 
   const declared = (input.mimeType ?? '').toLowerCase();
   const contentType = MIME_EXTENSIONS[declared] ? declared : 'image/jpeg';
-  const path = `${auth.user.id}/${Date.now()}.${extensionFor(input.fileName, contentType)}`;
+  const path = `${auth.user.id}/avatar-${randomImageId()}.${extensionFor(
+    input.fileName,
+    contentType,
+  )}`;
 
   const { error } = await supabase.storage
     .from(Buckets.avatars)
