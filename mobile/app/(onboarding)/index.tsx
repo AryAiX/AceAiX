@@ -121,6 +121,7 @@ export default function OnboardingScreen() {
             ? 'audience'
             : 'basic';
   const isClub = role === 'club';
+  const isSponsor = role === 'sponsor';
   const isMinor = profile?.is_minor === true;
 
   // ── Boot ───────────────────────────────────────────────────────────────────
@@ -609,8 +610,12 @@ export default function OnboardingScreen() {
 
   const skippable = step === 'physical' || step === 'photo' || step === 'teams' || step === 'follow';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
-  const knownName = profile.first_name ?? profile.full_name;
-  const name = knownName ? firstNameOf(knownName) : '';
+  const knownName =
+    isClub || isSponsor
+      ? profile.full_name ?? profile.first_name
+      : profile.first_name ?? profile.full_name;
+  const name =
+    isClub || isSponsor ? (knownName ?? '').trim() : knownName ? firstNameOf(knownName) : '';
 
   const footerContent = (
     <View style={{ gap: spacing.sm }}>
