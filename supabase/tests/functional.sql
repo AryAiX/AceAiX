@@ -4553,6 +4553,71 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── approving a club does not verify a person ──'; end $$;
+
+/*
+ * QA-68. Approving an organisation request verifies the organisation and
+ * leaves the submitter unverified. A personal request, with no
+ * organization_id, still verifies that person.
+ */
+do $$
+declare
+  v_admin   uuid := 'c1680000-0000-4000-8000-000000000001';
+  v_owner   uuid := 'c1680000-0000-4000-8000-000000000002';
+  v_adult   uuid := 'c1680000-0000-4000-8000-000000000003';
+  v_org     uuid;
+  v_club    uuid;
+  v_person  uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_admin, 'qa68.admin@test.local', '{"full_name":"QA68 Admin","role":"athlete"}'),
+    (v_owner, 'qa68.owner@test.local', '{"full_name":"QA68 Owner","role":"club"}'),
+    (v_adult, 'qa68.adult@test.local', '{"full_name":"QA68 Adult","role":"athlete"}');
+  update public.user_profiles set role = 'admin' where id = v_admin;
+  update public.user_private set date_of_birth = current_date - interval '40 years' where user_id = v_admin;
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '28 years' where user_id = v_adult;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA68 Club', 'club', false, 'pending')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.verification_requests (subject_user_id, organization_id, type, status)
+  values (v_owner, v_org, 'club', 'pending')
+  returning id into v_club;
+  insert into public.verification_requests (subject_user_id, type, status)
+  values (v_adult, 'athlete_id', 'pending')
+  returning id into v_person;
+
+  perform tests.ok(
+    not (select is_verified from public.user_profiles where id = v_owner)
+    and not (select is_verified from public.organizations where id = v_org),
+    'before the decision neither the owner nor the organisation is verified');
+
+  perform tests.as_user(v_admin);
+  perform public.admin_decide_verification(v_club, 'approved');
+  perform tests.ok(
+    (select status = 'approved' from public.verification_requests where id = v_club),
+    'an admin can approve a club verification request');
+  perform tests.ok(
+    (select is_verified from public.organizations where id = v_org)
+    and not (select is_verified from public.user_profiles where id = v_owner),
+    'QA-68 regression: approving a club verifies the organisation and not the submitter');
+  perform tests.ok(
+    not private.is_verified_adult(v_owner),
+    'the submitter is not a verified adult, so this route cannot message minors');
+
+  perform public.admin_decide_verification(v_person, 'approved');
+  perform tests.ok(
+    (select is_verified from public.user_profiles where id = v_adult),
+    'approving a personal request with no organisation still verifies that person');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── play game alerts ──'; end $$;
 
 do $$
