@@ -601,7 +601,7 @@ export async function inviteClubMember(
   orgId: string,
   email: string,
   role: InvitableRole,
-): Promise<{ user_id: string; full_name: string | null; status: 'active' | 'pending' }> {
+): Promise<{ user_id: string; status: 'active' | 'pending' }> {
   return unwrap(
     await supabase.rpc('invite_club_member', { p_org: orgId, p_email: email.trim(), p_role: role }),
   );

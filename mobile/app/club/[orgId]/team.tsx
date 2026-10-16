@@ -96,9 +96,9 @@ export default function ClubTeamScreen() {
     }
     setInviting(true);
     try {
-      const result = await inviteClubMember(orgId, email, inviteRole);
+      await inviteClubMember(orgId, email, inviteRole);
       toast.success(
-        t('clubManage.team.invited', { name: displayName(result.full_name, email.trim()) }),
+        t('clubManage.team.invited', { name: displayName(email) }),
       );
       setEmail('');
       team.refresh();
