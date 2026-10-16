@@ -4559,6 +4559,9 @@ do $$ begin raise notice E'\n── approving a club does not verify a person �
  * QA-68. Approving an organisation request verifies the organisation and
  * leaves the submitter unverified. A personal request, with no
  * organization_id, still verifies that person.
+ * QA-70. That decision sends one notification, the club one, not also a
+ * system notice to the submitter. A personal request still gets its
+ * system notice.
  */
 do $$
 declare
@@ -4610,11 +4613,28 @@ begin
   perform tests.ok(
     not private.is_verified_adult(v_owner),
     'the submitter is not a verified adult, so this route cannot message minors');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_owner and type = 'club_verification_approved') = 1
+    and not exists (select 1 from public.notifications
+      where user_id = v_owner and type = 'system' and entity_type = 'moderation'),
+    'QA-70 regression: approving a club sends the owner exactly one club_verification_approved notice and no system moderation row');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_owner
+        and type = 'club_verification_approved'
+        and entity_type = 'organization'
+        and entity_id = v_org::text) = 1,
+    'the club notice has entity_type organization and the organisation id, so it opens the club page');
 
   perform public.admin_decide_verification(v_person, 'approved');
   perform tests.ok(
     (select is_verified from public.user_profiles where id = v_adult),
     'approving a personal request with no organisation still verifies that person');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+      where user_id = v_adult and type = 'system' and entity_type = 'moderation'),
+    'approving a personal request still sends that person a system moderation notice');
 end $$;
 
 -- ------------------------------------------------------------
