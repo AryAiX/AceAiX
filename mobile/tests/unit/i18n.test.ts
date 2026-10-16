@@ -91,6 +91,8 @@ const BRAND_OR_UNIT = new Set([
   'sports.position.karate',
   'sports.position.libero',
   'sports.position.pivot',
+  /* Example map URL. The link is the same in every language. */
+  'meetups.fieldMapLinkPlaceholder',
 ]);
 
 /**

@@ -54,7 +54,7 @@ export interface MeetupRequestRow extends MeetupPerson {
 }
 
 export interface MeetupDetail {
-  meetup: MeetupCard & { spots_left: number };
+  meetup: MeetupCard & { spots_left: number; map_url?: string | null };
   host: MeetupPerson;
   my_status: MyMeetupStatus | null;
   /** Only for people who are actually going. Null otherwise. */
@@ -139,6 +139,14 @@ export async function createMeetup(input: NewMeetup): Promise<string> {
   });
   if (error) throw new AppError(error);
   return data as string;
+}
+
+export async function setMeetupMapUrl(meetupId: string, url: string | null): Promise<void> {
+  const { error } = await supabase.rpc('set_meetup_map_url', {
+    p_meetup: meetupId,
+    p_url: url,
+  });
+  if (error) throw new AppError(error);
 }
 
 export async function getMeetup(id: string): Promise<MeetupDetail> {
