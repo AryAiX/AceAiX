@@ -3890,7 +3890,7 @@ begin
   /* ── The page team ── */
   perform tests.ok(
     tests.hint_of(format($q$select public.invite_club_member(%L, 'club.kid@test.local', 'editor')$q$, v_org))
-      = 'club_invitee_minor',
+      = 'club_invitee_unavailable',
     'nobody under 18 can join a page team');
   perform tests.ok(
     tests.hint_of(format($q$select public.invite_club_member(%L, 'nobody@test.local', 'editor')$q$, v_org))
@@ -4460,6 +4460,96 @@ begin
     and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
                 where e ->> 'side' = 'us' and e ->> 'player_name' = 'Yasmin Al Amiri'),
     'a club member viewing the youth match still sees full names on both sides');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club invites do not leak ──'; end $$;
+
+/*
+ * QA-67. A minor and a suspended account raise the same hint, a successful
+ * invite does not return the invitee's name, and more than 20 invites in
+ * 24 hours is refused before the email is looked up.
+ */
+do $$
+declare
+  v_owner      uuid := 'c1670000-0000-4000-8000-000000000001';
+  v_minor      uuid := 'c1670000-0000-4000-8000-000000000002';
+  v_adult      uuid := 'c1670000-0000-4000-8000-000000000003';
+  v_suspended  uuid := 'c1670000-0000-4000-8000-000000000004';
+  v_org        uuid;
+  v_res        jsonb;
+  v_minor_hint text;
+  v_suspended_hint text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,     'qa67.owner@test.local',     '{"full_name":"QA67 Owner","role":"club"}'),
+    (v_minor,     'qa67.minor@test.local',     '{"full_name":"QA67 Minor","role":"athlete"}'),
+    (v_adult,     'qa67.adult@test.local',     '{"full_name":"QA67 Adult","role":"athlete"}'),
+    (v_suspended, 'qa67.suspended@test.local', '{"full_name":"QA67 Suspended","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '14 years' where user_id = v_minor;
+  update public.user_private set date_of_birth = current_date - interval '24 years' where user_id = v_adult;
+  update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = v_suspended;
+  update public.user_profiles set is_suspended = true where id = v_suspended;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA67 Invite Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  perform tests.as_user(v_owner);
+  v_minor_hint := tests.hint_of(format(
+    $q$select public.invite_club_member(%L, 'qa67.minor@test.local', 'editor')$q$, v_org));
+  v_suspended_hint := tests.hint_of(format(
+    $q$select public.invite_club_member(%L, 'qa67.suspended@test.local', 'editor')$q$, v_org));
+  perform tests.ok(
+    v_minor_hint = 'club_invitee_unavailable',
+    'QA-67 regression: inviting a minor raises club_invitee_unavailable');
+  perform tests.ok(
+    v_suspended_hint = 'club_invitee_unavailable',
+    'inviting a suspended adult raises club_invitee_unavailable');
+  perform tests.ok(
+    v_minor_hint = v_suspended_hint,
+    'a minor and a suspended account raise the same hint');
+
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.invite_club_member(%L, 'qa67.nobody@test.local', 'editor')$q$, v_org))
+      = 'club_invitee_not_found',
+    'an email with no account still raises club_invitee_not_found');
+
+  v_res := public.invite_club_member(v_org, 'qa67.adult@test.local', 'editor');
+  perform tests.ok(
+    not (v_res ? 'full_name')
+    and (v_res ? 'user_id')
+    and (v_res ? 'status'),
+    'a successful invite returns user_id and status, and not the invitee name');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('c1670000-0000-4000-8000-' || lpad((g + 100)::text, 12, '0'))::uuid,
+    'qa67.fill' || g || '@test.local',
+    jsonb_build_object('full_name', 'Fill Person', 'role', 'athlete')
+  from generate_series(1, 21) g;
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status, invited_by, created_at
+  )
+  select
+    v_org,
+    ('c1670000-0000-4000-8000-' || lpad((g + 100)::text, 12, '0'))::uuid,
+    'staff', 'pending', v_owner, now()
+  from generate_series(1, 21) g;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.invite_club_member(%L, 'qa67.nobody2@test.local', 'editor')$q$, v_org))
+      = 'rate_limited',
+    'more than 20 invites in 24 hours is refused before the email is looked up');
 end $$;
 
 -- ------------------------------------------------------------
