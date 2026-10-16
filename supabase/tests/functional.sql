@@ -3976,12 +3976,32 @@ begin
   v_squad  := public.save_club_squad(v_org, null, jsonb_build_object('season_id', v_season, 'sport', 'Football', 'category', 'U14'));
   v_senior := public.save_club_squad(v_org, null, jsonb_build_object('season_id', v_season, 'sport', 'Football', 'category', 'Senior'));
   v_typed   := public.save_squad_member(v_squad, null, '{"kind":"player","display_name":"Yasmin Al Amiri","shirt_number":7,"position":"Winger"}');
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L, 'shirt_number', 9))$q$,
+      v_squad, v_kid)) = 'club_link_unavailable',
+    'a minor without guardian discovery consent cannot be put on a roster');
+  /* The guardian then consents. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, allow_messaging, allow_media
+  ) values (
+    v_kid, v_owner, 'Kian Parent', 'kian.parent@test.local',
+    'parent', 'granted', true, false, false
+  );
+  perform tests.as_user(v_editor);
   v_kid_row := public.save_squad_member(v_squad, null, jsonb_build_object('kind', 'player', 'user_id', v_kid, 'shirt_number', 9));
   v_fan_row := public.save_squad_member(v_senior, null, jsonb_build_object('kind', 'player', 'user_id', v_fan, 'shirt_number', 10));
   perform public.save_squad_member(v_squad, null, '{"kind":"staff","display_name":"Coach Omar Haddad","staff_role":"head_coach"}');
   perform tests.ok(
     exists (select 1 from public.notifications where user_id = v_kid and type = 'club_squad_link'),
     'a linked athlete is asked, not just added');
+
+  /* The guardian then withdraws consent before Kian answers. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.guardian_consents set status = 'revoked' where minor_user_id = v_kid;
+  perform tests.as_user(v_editor);
 
   perform tests.as_user(v_kid);
   perform tests.ok(
@@ -4287,14 +4307,6 @@ begin
       $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
       v_squad_v, v_hidden)) = 'club_link_unavailable',
     'a verified club cannot link a minor who is not publicly visible');
-
-  raise notice 'QA64 DEBUG verified=% minor=% discoverable=% suspended=% visible=% uid=%',
-    (select is_verified from public.organizations where id = v_verified),
-    (select is_minor from public.user_profiles where id = v_visible),
-    (select is_discoverable from public.user_profiles where id = v_visible),
-    (select is_suspended from public.user_profiles where id = v_visible),
-    (select private.user_publicly_visible(v_visible)),
-    (select auth.uid());
 
   v_row := public.save_squad_member(
     v_squad_v, null, jsonb_build_object('kind', 'player', 'user_id', v_visible));
