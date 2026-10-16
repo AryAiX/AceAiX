@@ -312,7 +312,7 @@ export async function decideVerification(id: string, status: 'approved' | 'rejec
   ) as VerificationRequest;
 
   if (status === 'approved') {
-    if (updated.subject_user_id) {
+    if (updated.subject_user_id && updated.organization_id == null) {
       await supabase.from('user_profiles').update({ is_verified: true }).eq('id', updated.subject_user_id);
     }
     if (updated.organization_id) {
