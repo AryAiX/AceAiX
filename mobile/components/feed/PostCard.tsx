@@ -128,6 +128,7 @@ function PostCardBase({
 
   const firstMedia = post.media[0];
   const canBrandShare =
+    Platform.OS !== 'web' &&
     !!user &&
     post.author_id === user.id &&
     profile?.is_minor === false &&
