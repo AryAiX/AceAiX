@@ -91,6 +91,8 @@ export const auth = {
     roleGuardianSubtitle: 'Acompaña y aprueba el perfil de tu hijo o hija',
     roleSponsorTitle: 'Soy patrocinador o marca',
     roleSponsorSubtitle: 'Apoya a atletas y encuentra a quién respaldar',
+    roleAudienceTitle: 'Soy fan del deporte',
+    roleAudienceSubtitle: 'Sigue a atletas y clubes · 18+',
 
     nameTitle: '¿Cómo te llamas?',
     nameSubtitle:
@@ -129,6 +131,9 @@ export const auth = {
       'Sigue entrenando. Cuando cumplas {{age}}, vuelve: tu perfil te está esperando.',
     blockedBackToStart: 'Volver al principio',
     blockedWrongDate: 'Me equivoqué de fecha',
+    audienceAdultsOnly:
+      'Las cuentas de público son solo para adultos (18+). Puedes volver y elegir otro tipo de cuenta.',
+    audienceChooseAnother: 'Elegir otro tipo',
 
     accountTitle: 'Prepara tu acceso',
     accountSubtitle:

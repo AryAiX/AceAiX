@@ -189,6 +189,10 @@ export const onboarding = {
   doneTitle: 'C’est bon',
   guardianDoneBody: 'Ton compte est prêt. Te relier à ton enfant prend environ une minute.',
   basicDoneBody: 'Fais un tour et règle le reste quand tu veux.',
+  followTitle: 'Suis quelques athlètes et clubs',
+  followBody: 'Ton fil se remplit des personnes que tu suis.',
+  followEmpty: 'Pas encore de suggestions. Tu peux trouver des gens dans Découvrir.',
+  audienceDoneBody: 'Ton accueil montre les athlètes et les clubs que tu suis.',
   guardianDoneNote:
     'Réglages, puis Parent et tuteur. Si ton enfant t’a déjà envoyé un e-mail de validation, ouvrir le lien qu’il contient relie vos comptes.',
 };

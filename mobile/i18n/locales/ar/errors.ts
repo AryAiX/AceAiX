@@ -13,6 +13,9 @@ export const errors = {
   // تلميحات قاعدة البيانات
   guardianConsentRequired:
     'يجب أن يوافق أحد الوالدين أو ولي الأمر على ملفك قبل أن يظهر في البحث.',
+  audienceNotAllowed: 'لا يمكن لحسابات الجمهور القيام بذلك.',
+  audienceAdultsOnly: 'حسابات الجمهور مخصصة للبالغين (18+).',
+  audienceNeedsAdultAge: 'أضف تاريخ ميلادك للمتابعة.',
   messagingNotPermitted:
     'لا يمكنك مراسلة هذا الحساب. قد يكون لا يستقبل الرسائل إلا من مدرّبين وأندية موثّقين.',
   rateLimited: 'أنت تكرّر ذلك بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',
@@ -69,4 +72,7 @@ export const errors = {
   coachingLocationRequired: 'اذكر مكان إقامتها.',
   coachingServiceLimit: 'يمكنك تقديم اثنتي عشرة خدمة في وقت واحد.',
   coachingOwnCalendar: 'لا يمكنك الحجز في تقويمك الخاص.',
+  meetupMapUrlInvalid: 'استخدم رابطاً من خرائط Google أو خرائط Apple أو Waze.',
+  meetupPlaceInvalid: 'يجب أن يتكون كل مكان من 2 إلى 80 حرفاً.',
+  meetupPlacesLimit: 'يمكنك إضافة 5 أماكن كحد أقصى.',
 };

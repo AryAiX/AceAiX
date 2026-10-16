@@ -13,6 +13,9 @@ export const errors = {
   // 数据库提示
   guardianConsentRequired:
     '你的资料需要家长或监护人批准后，才能出现在搜索结果里。',
+  audienceNotAllowed: '观众账户无法执行此操作。',
+  audienceAdultsOnly: '观众账户仅限成年人（18岁以上）。',
+  audienceNeedsAdultAge: '请添加你的出生日期以继续。',
   messagingNotPermitted:
     '你无法给这个账号发私信。对方可能只接收经过认证的教练和俱乐部的私信。',
   rateLimited: '你的操作太频繁了，稍等片刻再试。',
@@ -69,4 +72,7 @@ export const errors = {
   coachingLocationRequired: '请说明上课地点。',
   coachingServiceLimit: '最多同时提供十二项课程。',
   coachingOwnCalendar: '不能预约自己的日历。',
+  meetupMapUrlInvalid: '请使用 Google 地图、Apple 地图或 Waze 链接。',
+  meetupPlaceInvalid: '每个地点须为 2 至 80 个字符。',
+  meetupPlacesLimit: '最多可以添加 5 个地点。',
 };

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Screen, useToast } from '@/components/ui';
+import { Button, Screen, Text, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
@@ -49,6 +49,7 @@ export default function SignUpScreen() {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [blockedByAge, setBlockedByAge] = useState(false);
+  const [audienceTooYoung, setAudienceTooYoung] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const [role, setRole] = useState<SignupRole | null>(null);
@@ -102,17 +103,27 @@ export default function SignUpScreen() {
     return !nextEmail && !nextPassword && !nextTerms;
   };
 
+  const refusesAge = (): boolean => {
+    if (!dob) return true;
+    if (role === 'guest' && calculateAge(dob) < 18) {
+      setAudienceTooYoung(true);
+      return true;
+    }
+    if (calculateAge(dob) < MINIMUM_AGE) {
+      setBlockedByAge(true);
+      return true;
+    }
+    return false;
+  };
+
   const submit = async () => {
     if (submitting) return;
     if (!role || !dob) return;
     if (!validateAccount()) return;
 
     // Belt and braces: the age gate already blocked this, but never let a
-    // stale state slip an under-13 account past.
-    if (calculateAge(dob) < MINIMUM_AGE) {
-      setBlockedByAge(true);
-      return;
-    }
+    // stale state slip an under-13 account past. Audience is adults only.
+    if (refusesAge()) return;
 
     const { data: emailExists } = await supabase.rpc('check_email_exists', {
       p_email: email,
@@ -166,10 +177,7 @@ export default function SignUpScreen() {
         return;
       case 'dob':
         if (!dob) return;
-        if (calculateAge(dob) < MINIMUM_AGE) {
-          setBlockedByAge(true);
-          return;
-        }
+        if (refusesAge()) return;
         setStepIndex(3);
         return;
       case 'account':
@@ -189,6 +197,27 @@ export default function SignUpScreen() {
         return email.trim().length > 0 && password.length > 0 && agreed;
     }
   };
+
+  if (audienceTooYoung) {
+    return (
+      <Screen keyboardAvoiding testID="sign-up-audience-age">
+        <View style={{ paddingTop: spacing.xxl, gap: spacing.xl }}>
+          <Text variant="title" accessibilityRole="header">
+            {t('auth.signUp.audienceAdultsOnly')}
+          </Text>
+          <Button
+            label={t('auth.signUp.audienceChooseAnother')}
+            size="lg"
+            fullWidth
+            onPress={() => {
+              setAudienceTooYoung(false);
+              setStepIndex(0);
+            }}
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   if (blockedByAge) {
     return (

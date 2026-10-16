@@ -14,6 +14,9 @@ export const errors = {
   // Indications de la base
   guardianConsentRequired:
     'Un parent ou tuteur doit valider ton profil avant qu’il puisse apparaître dans les recherches.',
+  audienceNotAllowed: 'Les comptes Public ne peuvent pas faire cela.',
+  audienceAdultsOnly: 'Les comptes Public sont réservés aux adultes (18+).',
+  audienceNeedsAdultAge: 'Ajoutez votre date de naissance pour continuer.',
   messagingNotPermitted:
     'Tu ne peux pas écrire à ce compte. Il n’accepte peut-être que les messages des coachs et des clubs vérifiés.',
   rateLimited: 'Tu vas trop vite. Attends un instant et réessaie.',
@@ -70,4 +73,7 @@ export const errors = {
   coachingLocationRequired: 'Indiquez où cela doit avoir lieu.',
   coachingServiceLimit: 'Douze prestations à la fois au maximum.',
   coachingOwnCalendar: 'Vous ne pouvez pas réserver votre propre calendrier.',
+  meetupMapUrlInvalid: "Utilisez un lien Google Maps, Plans d'Apple ou Waze.",
+  meetupPlaceInvalid: 'Chaque lieu doit comporter entre 2 et 80 caractères.',
+  meetupPlacesLimit: "Vous pouvez ajouter jusqu'à 5 lieux.",
 };

@@ -186,6 +186,10 @@ export const onboarding = {
   doneTitle: '一切就绪',
   guardianDoneBody: '你的账号已经就绪。和孩子建立关联大约只要一分钟。',
   basicDoneBody: '先四处看看，其余的想什么时候设置都行。',
+  followTitle: '关注一些运动员和俱乐部',
+  followBody: '你关注的人会慢慢填满你的动态。',
+  followEmpty: '暂时没有推荐。你可以在发现里找人。',
+  audienceDoneBody: '首页会显示你关注的运动员和俱乐部。',
   guardianDoneNote:
     '打开设置，选择“家长与监护人”。如果孩子已经给你发过批准邮件，点开里面的链接就能把两个账号关联起来。',
 };

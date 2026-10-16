@@ -60,6 +60,12 @@ const ROLES: {
     subtitleKey: 'auth.signUp.roleGuardianSubtitle',
     emoji: '🛡️',
   },
+  {
+    value: 'guest',
+    titleKey: 'auth.signUp.roleAudienceTitle',
+    subtitleKey: 'auth.signUp.roleAudienceSubtitle',
+    emoji: '🎟️',
+  },
 ];
 
 export function RoleStep({

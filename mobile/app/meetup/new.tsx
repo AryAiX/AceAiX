@@ -24,7 +24,8 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
 import { PRIORITY_COUNTRIES, SPORTS, sportLabel } from '@/constants/sports';
-import { createMeetup, type MeetupLevel } from '@/lib/api.meetups';
+import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
+import { isAllowedMapUrl } from '@/lib/mapLinks';
 
 /**
  * Posting a game.
@@ -73,6 +74,7 @@ export default function NewMeetupScreen() {
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
   const [venue, setVenue] = useState('');
+  const [mapLink, setMapLink] = useState('');
   const [day, setDay] = useState<Date | null>(null);
   const [hour, setHour] = useState<number | null>(null);
   const [spots, setSpots] = useState(2);
@@ -93,6 +95,7 @@ export default function NewMeetupScreen() {
     city !== '' ||
     area.trim().length > 0 ||
     venue.trim().length > 0 ||
+    mapLink.trim().length > 0 ||
     day !== null ||
     hour !== null ||
     spots !== 2 ||
@@ -133,12 +136,16 @@ export default function NewMeetupScreen() {
     return d;
   }, [day, hour]);
 
+  const mapLinkTrimmed = mapLink.trim();
+  const mapLinkInvalid = mapLinkTrimmed.length > 0 && !isAllowedMapUrl(mapLinkTrimmed);
+
   const ready =
     sport !== '' &&
     title.trim().length >= 4 &&
     country.trim() !== '' &&
     city.trim() !== '' &&
-    startsAt !== null;
+    startsAt !== null &&
+    !mapLinkInvalid;
 
   const countries = useMemo(() => {
     const term = countryQuery.trim().toLowerCase();
@@ -163,7 +170,16 @@ export default function NewMeetupScreen() {
         note: note.trim() || null,
         costNote: cost.trim() || null,
       });
-      toast.success(t('meetups.posted'));
+      let linkSaved = true;
+      if (mapLinkTrimmed) {
+        try {
+          await setMeetupMapUrl(id, mapLinkTrimmed);
+        } catch (linkErr) {
+          linkSaved = false;
+          toast.error(errorMessage(linkErr));
+        }
+      }
+      if (linkSaved) toast.success(t('meetups.posted'));
       router.replace(Routes.meetup(id));
     } catch (err) {
       toast.error(errorMessage(err));
@@ -171,7 +187,7 @@ export default function NewMeetupScreen() {
       setSaving(false);
     }
   }, [
-    area, city, cost, country, level, note, ready, router, spots, sport,
+    area, city, cost, country, level, mapLinkTrimmed, note, ready, router, spots, sport,
     startsAt, t, title, toast, venue,
   ]);
 
@@ -282,6 +298,19 @@ export default function NewMeetupScreen() {
             value={venue}
             onChangeText={setVenue}
             maxLength={120}
+          />
+          <Input
+            label={t('meetups.fieldMapLink')}
+            placeholder={t('meetups.fieldMapLinkPlaceholder')}
+            hint={t('meetups.fieldMapLinkHint')}
+            error={mapLinkInvalid ? t('errors.meetupMapUrlInvalid') : null}
+            value={mapLink}
+            onChangeText={setMapLink}
+            keyboardType="url"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={500}
+            testID="meetup-map-link"
           />
         </View>
       </View>

@@ -95,6 +95,8 @@ export const auth = {
     roleGuardianSubtitle: 'ادعم ملف ابنك ووافق عليه',
     roleSponsorTitle: 'أنا راعٍ أو علامة تجارية',
     roleSponsorSubtitle: 'ادعم الرياضيين واعثر على من تسانده',
+    roleAudienceTitle: 'أنا مشجّع رياضي',
+    roleAudienceSubtitle: 'تابع الرياضيين والأندية · 18+ فقط',
 
     nameTitle: 'بماذا نناديك؟',
     nameSubtitle: 'استخدم اسمك الحقيقي — المدرّبون يحتاجون معرفة من أمامهم.',
@@ -131,6 +133,9 @@ export const auth = {
       'واصل التدريب. وعند بلوغك {{age}}، عُد وستجد ملفك بانتظارك.',
     blockedBackToStart: 'العودة إلى البداية',
     blockedWrongDate: 'اخترت التاريخ الخطأ',
+    audienceAdultsOnly:
+      'حسابات الجمهور مخصصة للبالغين (18+). يمكنك الرجوع واختيار نوع حساب آخر.',
+    audienceChooseAnother: 'اختر نوعًا آخر',
 
     accountTitle: 'أعدّ بيانات دخولك',
     accountSubtitle:

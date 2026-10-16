@@ -9,6 +9,7 @@ import { getPostTiles } from '@/lib/api.profile';
 import { Routes } from '@/lib/routes';
 import { truncate } from '@/lib/format';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { MediaGrid, MediaTile } from './MediaGrid';
 
 interface Props {
@@ -22,6 +23,7 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
   const theme = useTheme();
   const router = useRouter();
   const t = useT();
+  const { isAudience } = useAuth();
 
   const posts = useAsync(() => getPostTiles(userId), [userId, refreshKey]);
 
@@ -39,8 +41,8 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
         icon={<Grid3x3 size={26} color={theme.colors.textMuted} />}
         title={t(isSelf ? 'profile.postsEmptyTitleSelf' : 'profile.postsEmptyTitleOther')}
         body={t(isSelf ? 'profile.postsEmptyBodySelf' : 'profile.postsEmptyBodyOther')}
-        actionLabel={isSelf ? t('profile.postsEmptyAction') : undefined}
-        onAction={isSelf ? () => router.push(Routes.compose) : undefined}
+        actionLabel={isSelf && !isAudience ? t('profile.postsEmptyAction') : undefined}
+        onAction={isSelf && !isAudience ? () => router.push(Routes.compose) : undefined}
       />
     );
   }

@@ -91,6 +91,8 @@ export const auth = {
     roleGuardianSubtitle: 'Поддержать и одобрить профиль ребёнка',
     roleSponsorTitle: 'Я спонсор или бренд',
     roleSponsorSubtitle: 'Поддерживайте спортсменов и находите, кому помочь',
+    roleAudienceTitle: 'Я болельщик',
+    roleAudienceSubtitle: 'Следите за спортсменами · 18+',
 
     nameTitle: 'Как тебя зовут?',
     nameSubtitle: 'Пиши настоящее имя — тренеру важно понимать, на кого он смотрит.',
@@ -128,6 +130,9 @@ export const auth = {
       'Продолжай тренироваться. Когда исполнится {{age}}, возвращайся — профиль будет ждать.',
     blockedBackToStart: 'В начало',
     blockedWrongDate: 'Дата указана неверно',
+    audienceAdultsOnly:
+      'Аккаунты зрителей — только для взрослых (18+). Можно вернуться и выбрать другой тип аккаунта.',
+    audienceChooseAnother: 'Выбрать другой тип',
 
     accountTitle: 'Настрой вход',
     accountSubtitle:

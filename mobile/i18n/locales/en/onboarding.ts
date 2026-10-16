@@ -188,6 +188,10 @@ export const onboarding = {
   doneTitle: "You're all set",
   guardianDoneBody: 'Your account is ready. Linking to your child takes about a minute.',
   basicDoneBody: 'Have a look around and set the rest up whenever you like.',
+  followTitle: 'Follow some athletes and clubs',
+  followBody: 'Your feed fills up with the people you follow.',
+  followEmpty: 'No suggestions yet. You can find people in Discover.',
+  audienceDoneBody: 'Your Home shows the athletes and clubs you follow.',
   guardianDoneNote:
     'Settings, then Parent and guardian. If your child has already sent you an approval email, opening the link in it connects your accounts.',
 };

@@ -14,6 +14,9 @@ export const errors = {
   // Подсказки из базы данных
   guardianConsentRequired:
     'Чтобы профиль появился в поиске, его должен одобрить родитель или опекун.',
+  audienceNotAllowed: 'Аккаунты зрителей не могут это делать.',
+  audienceAdultsOnly: 'Аккаунты зрителей — только для взрослых (18+).',
+  audienceNeedsAdultAge: 'Укажите дату рождения, чтобы продолжить.',
   messagingNotPermitted:
     'Написать этому аккаунту нельзя. Возможно, он принимает сообщения только от проверенных тренеров и клубов.',
   rateLimited: 'Слишком часто. Подожди немного и попробуй ещё раз.',
@@ -70,4 +73,7 @@ export const errors = {
   coachingLocationRequired: 'Укажите, где это должно пройти.',
   coachingServiceLimit: 'Одновременно можно предлагать двенадцать услуг.',
   coachingOwnCalendar: 'Нельзя записаться в собственный календарь.',
+  meetupMapUrlInvalid: 'Используйте ссылку из Google Карт, Apple Карт или Waze.',
+  meetupPlaceInvalid: 'Каждое место должно содержать от 2 до 80 символов.',
+  meetupPlacesLimit: 'Можно добавить не более 5 мест.',
 };

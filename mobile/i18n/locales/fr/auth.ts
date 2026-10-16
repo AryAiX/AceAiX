@@ -90,6 +90,8 @@ export const auth = {
     roleGuardianSubtitle: 'Accompagner et valider le profil de mon enfant',
     roleSponsorTitle: 'Je suis un sponsor ou une marque',
     roleSponsorSubtitle: 'Soutenez des athlètes et trouvez qui accompagner',
+    roleAudienceTitle: 'Je suis fan de sport',
+    roleAudienceSubtitle: 'Suivez athlètes et clubs · 18+',
 
     nameTitle: 'On t’appelle comment ?',
     nameSubtitle: 'Mets ton vrai nom — les coachs doivent savoir qui ils regardent.',
@@ -127,6 +129,9 @@ export const auth = {
       'Continue à t’entraîner. À tes {{age}} ans, reviens : ton profil t’attend.',
     blockedBackToStart: 'Retour au début',
     blockedWrongDate: 'Je me suis trompé de date',
+    audienceAdultsOnly:
+      'Les comptes Public sont réservés aux adultes (18+). Tu peux revenir en arrière et choisir un autre type de compte.',
+    audienceChooseAnother: 'Choisir un autre type',
 
     accountTitle: 'Crée tes identifiants',
     accountSubtitle:
