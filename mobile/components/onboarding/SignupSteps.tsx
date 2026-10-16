@@ -143,38 +143,63 @@ export function NameStep({
           process. Focusing on arrival spends that during the step transition
           instead of after a tap on a field that then sits there doing nothing.
         */}
-        <Input
-          label={t('auth.signUp.firstNameLabel')}
-          required
-          value={firstName}
-          onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
-          error={firstError}
-          autoFocus
-          autoCapitalize="words"
-          autoCorrect={false}
-          spellCheck={false}
-          autoComplete="given-name"
-          textContentType="givenName"
-          returnKeyType="next"
-          onSubmitEditing={() => lastRef.current?.focus()}
-          testID="signup-first-name"
-        />
-        <Input
-          ref={lastRef}
-          label={t('auth.signUp.lastNameLabel')}
-          required
-          value={lastName}
-          onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}
-          error={lastError}
-          autoCapitalize="words"
-          autoCorrect={false}
-          spellCheck={false}
-          autoComplete="family-name"
-          textContentType="familyName"
-          returnKeyType="done"
-          onSubmitEditing={onSubmit}
-          testID="signup-last-name"
-        />
+        {role === 'club' || role === 'sponsor' ? (
+          <Input
+            label={
+              role === 'club'
+                ? t('auth.signUp.clubNameLabel')
+                : t('auth.signUp.sponsorNameLabel')
+            }
+            required
+            value={firstName}
+            onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
+            error={firstError}
+            autoFocus
+            autoCapitalize="words"
+            autoCorrect={false}
+            spellCheck={false}
+            autoComplete="organization"
+            textContentType="organizationName"
+            returnKeyType="done"
+            onSubmitEditing={onSubmit}
+            testID="signup-first-name"
+          />
+        ) : (
+          <>
+            <Input
+              label={t('auth.signUp.firstNameLabel')}
+              required
+              value={firstName}
+              onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
+              error={firstError}
+              autoFocus
+              autoCapitalize="words"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="given-name"
+              textContentType="givenName"
+              returnKeyType="next"
+              onSubmitEditing={() => lastRef.current?.focus()}
+              testID="signup-first-name"
+            />
+            <Input
+              ref={lastRef}
+              label={t('auth.signUp.lastNameLabel')}
+              required
+              value={lastName}
+              onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}
+              error={lastError}
+              autoCapitalize="words"
+              autoCorrect={false}
+              spellCheck={false}
+              autoComplete="family-name"
+              textContentType="familyName"
+              returnKeyType="done"
+              onSubmitEditing={onSubmit}
+              testID="signup-last-name"
+            />
+          </>
+        )}
       </View>
     </View>
   );

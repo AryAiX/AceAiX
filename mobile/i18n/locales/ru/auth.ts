@@ -102,6 +102,10 @@ export const auth = {
     firstNameRequired: 'Введи имя.',
     lastNameLabel: 'Фамилия',
     lastNameRequired: 'Введи фамилию.',
+    clubNameLabel: 'Название клуба или академии',
+    clubNameRequired: 'Введи название своего клуба или академии.',
+    sponsorNameLabel: 'Название бренда или компании',
+    sponsorNameRequired: 'Введи название своего бренда или компании.',
 
     dobTitle: 'Какая у тебя дата рождения?',
     dobSubtitle:

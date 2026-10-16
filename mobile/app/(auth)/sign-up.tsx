@@ -78,10 +78,25 @@ export default function SignUpScreen() {
   };
 
   const validateName = (): boolean => {
-    const nextFirst = firstName.trim().length < 2 ? t('auth.signUp.firstNameRequired') : null;
-    const nextLast = lastName.trim().length < 2 ? t('auth.signUp.lastNameRequired') : null;
+    const isOrganisation = role === 'club' || role === 'sponsor';
+    const nextFirst =
+      firstName.trim().length < 2
+        ? t(
+            role === 'club'
+              ? 'auth.signUp.clubNameRequired'
+              : role === 'sponsor'
+                ? 'auth.signUp.sponsorNameRequired'
+                : 'auth.signUp.firstNameRequired',
+          )
+        : null;
+    const nextLast = isOrganisation
+      ? null
+      : lastName.trim().length < 2
+        ? t('auth.signUp.lastNameRequired')
+        : null;
     setFirstError(nextFirst);
     setLastError(nextLast);
+    if (isOrganisation) setLastName('');
     return !nextFirst && !nextLast;
   };
 
@@ -190,7 +205,9 @@ export default function SignUpScreen() {
       case 'role':
         return role !== null;
       case 'name':
-        return firstName.trim().length > 0 && lastName.trim().length > 0;
+        return role === 'club' || role === 'sponsor'
+          ? firstName.trim().length > 0
+          : firstName.trim().length > 0 && lastName.trim().length > 0;
       case 'dob':
         return dob !== null;
       case 'account':

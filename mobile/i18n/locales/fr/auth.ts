@@ -101,6 +101,10 @@ export const auth = {
     firstNameRequired: 'Saisis ton prénom.',
     lastNameLabel: 'Nom',
     lastNameRequired: 'Saisis ton nom.',
+    clubNameLabel: 'Nom du club ou de l’académie',
+    clubNameRequired: 'Saisis le nom de ton club ou de ton académie.',
+    sponsorNameLabel: 'Nom de la marque ou de l’entreprise',
+    sponsorNameRequired: 'Saisis le nom de ta marque ou de ton entreprise.',
 
     dobTitle: 'Tu es né quand ?',
     dobSubtitle:

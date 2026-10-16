@@ -93,6 +93,10 @@ export const auth = {
     firstNameRequired: '请填写你的名字。',
     lastNameLabel: '姓氏',
     lastNameRequired: '请填写你的姓氏。',
+    clubNameLabel: '俱乐部或青训机构名称',
+    clubNameRequired: '请填写你的俱乐部或青训机构名称。',
+    sponsorNameLabel: '品牌或公司名称',
+    sponsorNameRequired: '请填写你的品牌或公司名称。',
 
     dobTitle: '你的出生日期？',
     dobSubtitle:

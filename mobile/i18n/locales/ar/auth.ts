@@ -105,6 +105,10 @@ export const auth = {
     firstNameRequired: 'أدخل اسمك الأول.',
     lastNameLabel: 'اسم العائلة',
     lastNameRequired: 'أدخل اسم عائلتك.',
+    clubNameLabel: 'اسم النادي أو الأكاديمية',
+    clubNameRequired: 'أدخل اسم ناديك أو أكاديميتك.',
+    sponsorNameLabel: 'اسم العلامة أو الشركة',
+    sponsorNameRequired: 'أدخل اسم علامتك أو شركتك.',
 
     dobTitle: 'متى وُلدت؟',
     dobSubtitle:

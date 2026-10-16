@@ -99,6 +99,10 @@ export const auth = {
     firstNameRequired: 'Gib deinen Vornamen ein.',
     lastNameLabel: 'Nachname',
     lastNameRequired: 'Gib deinen Nachnamen ein.',
+    clubNameLabel: 'Name des Vereins oder der Akademie',
+    clubNameRequired: 'Gib den Namen deines Vereins oder deiner Akademie ein.',
+    sponsorNameLabel: 'Name der Marke oder des Unternehmens',
+    sponsorNameRequired: 'Gib den Namen deiner Marke oder deines Unternehmens ein.',
 
     dobTitle: 'Wann bist du geboren?',
     dobSubtitle:
