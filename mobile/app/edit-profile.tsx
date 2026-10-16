@@ -163,7 +163,7 @@ export default function EditProfileScreen() {
     setClubLoadFailed(failed);
     const seed: FormState = {
       firstName: isOrganisationAccount
-        ? user.first_name?.trim() || user.full_name?.trim() || ''
+        ? user.full_name?.trim() || user.first_name?.trim() || ''
         : user.first_name?.trim() || fallbackFirst,
       lastName: isOrganisationAccount ? '' : user.last_name?.trim() || fallbackLast.join(' '),
       bio: user.bio ?? '',
