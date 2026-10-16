@@ -3546,6 +3546,56 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── avatars bucket listing ──'; end $$;
+
+do $$
+declare
+  v_rows integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into storage.objects (bucket_id, name) values
+    ('avatars', '11111111-1111-1111-1111-111111111111/avatar-a.jpg'),
+    ('avatars', '22222222-2222-2222-2222-222222222222/avatar-b.jpg');
+
+  grant select on storage.objects to authenticated;
+
+  -- A missing table grant is the same outcome as an empty listing: signed-out
+  -- callers cannot see the bucket. Either way the assertion passes.
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  begin
+    set local role anon;
+    select count(*) into v_rows from storage.objects
+    where bucket_id = 'avatars';
+    reset role;
+  exception when insufficient_privilege then
+    reset role;
+    v_rows := 0;
+  end;
+  perform tests.ok(v_rows = 0, 'signed-out visitors cannot list the avatars bucket');
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 0,
+    'another signed-in user cannot list someone else''s folder in the avatars bucket');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 1,
+    'the owner can list their own folder in the avatars bucket');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── opportunity and match preference authorization ──'; end $$;
 
 do $$
