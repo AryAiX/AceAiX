@@ -4135,6 +4135,88 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club membership cannot be self-claimed ──'; end $$;
+
+do $$
+declare
+  v_owner    uuid := 'c1630000-0000-4000-8000-000000000001';
+  v_stranger uuid := 'c1630000-0000-4000-8000-000000000002';
+  v_org      uuid;
+  v_raised   boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa63.owner@test.local',    '{"full_name":"QA63 Owner","role":"club"}'),
+    (v_stranger, 'qa63.stranger@test.local', '{"full_name":"QA63 Stranger","role":"athlete"}');
+  update public.user_private
+  set date_of_birth = current_date - interval '35 years'
+  where user_id in (v_owner, v_stranger);
+
+  insert into public.organizations (name, type)
+  values ('QA63 Claim Club', 'club')
+  returning id into v_org;
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status
+  ) values (
+    v_org, v_owner, 'owner', 'active'
+  );
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  begin
+    insert into public.organization_members (
+      organization_id, user_id, member_role, status, invited_by
+    ) values (
+      v_org, v_stranger, 'owner', 'pending', v_stranger
+    );
+  exception when others then
+    v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_raised,
+    'QA-63 regression: a stranger cannot insert a pending owner row for themselves');
+  perform tests.ok(
+    (select count(*) from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 0,
+    'the refused self-claim leaves no membership row');
+
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.respond_club_invite(%L, true)$q$, v_org))
+      = 'club_invite_missing',
+    'respond_club_invite refuses a stranger with no invitation');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status, invited_by
+  ) values (
+    v_org, v_stranger, 'owner', 'pending', v_stranger
+  );
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.respond_club_invite(%L, true)$q$, v_org))
+      = 'club_invite_missing',
+    'respond_club_invite refuses a pending owner row invited by the stranger themselves');
+  perform tests.ok(
+    (select status from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 'pending',
+    'a self-written owner invitation stays pending');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.organization_members
+  set invited_by = v_owner, member_role = 'manager'
+  where organization_id = v_org and user_id = v_stranger;
+  perform tests.as_user(v_stranger);
+  perform public.respond_club_invite(v_org, true);
+  perform tests.ok(
+    (select status from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 'active',
+    'an invitation from the active owner still becomes active');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── play game alerts ──'; end $$;
 
 do $$
