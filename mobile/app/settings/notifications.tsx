@@ -322,8 +322,8 @@ export default function NotificationSettingsScreen() {
                 onValueChange={(v) => update({ [row.key]: v } as Partial<Prefs>)}
                 testID={`pref-${row.key}`}
               />
-              // Audience is on hold. When it ships, this row must also be hidden
-              // for audience accounts (&& !isAudience) - see QA-60.
+              {/* Audience is on hold. When it ships, this row must also be
+                  hidden for audience accounts (&& !isAudience) - see QA-60. */}
               {row.key === 'meetups' && prefs.meetups && profile?.is_minor === false ? (
                 <SettingsRow
                   title={t('settings.meetupPlaces')}
