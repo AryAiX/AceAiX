@@ -117,7 +117,9 @@ export default function EditProfileScreen() {
   const bundle = useAsync(() => getMyProfile(), []);
   // Prefer the profile bundle's role once it has loaded. Until then, the
   // signed-in account from auth is enough to start the credentials read.
-  const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
+  const accountRole = bundle.data?.user.role ?? profile?.role;
+  const isClubAccount = accountRole === 'club';
+  const isOrganisationAccount = accountRole === 'club' || accountRole === 'sponsor';
   const scoutCreds = useAsync(() => getMyScoutCredentials(), [isClubAccount], {
     enabled: isClubAccount,
   });
@@ -160,8 +162,10 @@ export default function EditProfileScreen() {
     }
     setClubLoadFailed(failed);
     const seed: FormState = {
-      firstName: user.first_name?.trim() || fallbackFirst,
-      lastName: user.last_name?.trim() || fallbackLast.join(' '),
+      firstName: isOrganisationAccount
+        ? user.first_name?.trim() || user.full_name?.trim() || ''
+        : user.first_name?.trim() || fallbackFirst,
+      lastName: isOrganisationAccount ? '' : user.last_name?.trim() || fallbackLast.join(' '),
       bio: user.bio ?? '',
       city: user.city ?? '',
       country: user.country ?? '',
@@ -184,7 +188,7 @@ export default function EditProfileScreen() {
     };
     setForm(seed);
     setInitial(seed);
-  }, [bundle.data, form, isClubAccount, scoutCreds.data, scoutCreds.error, scoutCreds.loading]);
+  }, [bundle.data, form, isClubAccount, isOrganisationAccount, scoutCreds.data, scoutCreds.error, scoutCreds.loading]);
 
   // The profile reminder passes focus=alsoPlays. Open the picker once, after
   // the push animation, then drop the param so a later visit stays closed.
@@ -288,7 +292,7 @@ export default function EditProfileScreen() {
   const onSave = useCallback(async () => {
     if (!form || !bundle.data) return;
     if (!form.firstName.trim()) {
-      toast.error(t('profile.firstNameRequired'));
+      toast.error(t(isOrganisationAccount ? 'profile.orgNameRequired' : 'profile.firstNameRequired'));
       return;
     }
 
@@ -371,7 +375,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, refreshProfile, router, t, toast]);
+  }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, isOrganisationAccount, refreshProfile, router, t, toast]);
 
   const countries = useMemo(() => {
     const term = countryQuery.trim().toLowerCase();
@@ -541,7 +545,11 @@ export default function EditProfileScreen() {
                 /* Both names: the initials here have to match the ones the feed
                    and the profile draw, or the same person appears twice under
                    two different monograms and two different colours. */
-                name={`${form.firstName} ${form.lastName}`.trim() || form.firstName}
+                name={
+                  isOrganisationAccount
+                    ? form.firstName
+                    : `${form.firstName} ${form.lastName}`.trim() || form.firstName
+                }
                 size="xl"
               />
               <View
@@ -571,15 +579,18 @@ export default function EditProfileScreen() {
         <Lightbox
           visible={photoOpen}
           uri={form.avatarUrl || null}
-          caption={`${form.firstName} ${form.lastName}`.trim() || null}
+          caption={
+            isOrganisationAccount
+              ? form.firstName.trim() || null
+              : `${form.firstName} ${form.lastName}`.trim() || null
+          }
           onClose={() => setPhotoOpen(false)}
         />
 
         <View style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+          {isOrganisationAccount ? (
             <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.firstName')}
+              label={isClubAccount ? t('profile.clubName') : t('profile.sponsorName')}
               required
               value={form.firstName}
               onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
@@ -588,17 +599,31 @@ export default function EditProfileScreen() {
               autoCorrect={false}
               spellCheck={false}
             />
-            <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.lastName')}
-              value={form.lastName}
-              onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
-              maxLength={60}
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-            />
-          </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.firstName')}
+                required
+                value={form.firstName}
+                onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.lastName')}
+                value={form.lastName}
+                onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+            </View>
+          )}
 
           <Input
             label={t('profile.bio')}
