@@ -4351,6 +4351,118 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── youth names on both sides ──'; end $$;
+
+/*
+ * QA-65. A youth match shortens typed names on both sides. The squad's
+ * is_youth flag decides that, not the match's own category text.
+ */
+do $$
+declare
+  v_owner      uuid := 'c1650000-0000-4000-8000-000000000001';
+  v_stranger   uuid := 'c1650000-0000-4000-8000-000000000002';
+  v_org        uuid;
+  v_season     uuid;
+  v_youth      uuid;
+  v_adult      uuid;
+  v_youth_match uuid;
+  v_adult_match uuid;
+  v_page       jsonb;
+begin
+  perform tests.ok(private.is_youth_category('Under 14'),
+    'is_youth_category treats "Under 14" as youth');
+  perform tests.ok(private.is_youth_category('Boys U14'),
+    'is_youth_category treats "Boys U14" as youth');
+  perform tests.ok(private.is_youth_category('2013 Boys'),
+    'is_youth_category treats "2013 Boys" as youth');
+  perform tests.ok(private.is_youth_category('تحت 14'),
+    'is_youth_category treats "تحت 14" as youth');
+  perform tests.ok(not private.is_youth_category('U19'),
+    'is_youth_category rejects "U19"');
+  perform tests.ok(not private.is_youth_category('Stadium 15'),
+    'is_youth_category rejects "Stadium 15"');
+  perform tests.ok(not private.is_youth_category('Stadium 2000 League'),
+    'is_youth_category rejects "Stadium 2000 League"');
+  perform tests.ok(not private.is_youth_category('1999 Boys'),
+    'is_youth_category rejects "1999 Boys"');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa65.owner@test.local',    '{"full_name":"QA65 Owner","role":"club"}'),
+    (v_stranger, 'qa65.stranger@test.local', '{"full_name":"QA65 Stranger","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '24 years' where user_id = v_stranger;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA65 Youth Names', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_org, '2026-27', true)
+  returning id into v_season;
+  insert into public.club_squads (organization_id, season_id, sport, category, is_youth)
+  values (v_org, v_season, 'Football', 'Under 14', true)
+  returning id into v_youth;
+  insert into public.club_squads (organization_id, season_id, sport, category, is_youth)
+  values (v_org, v_season, 'Football', 'Senior', false)
+  returning id into v_adult;
+
+  /* The youth match's own category says Senior. The squad flag must win. */
+  insert into public.club_matches (
+    organization_id, sport, squad_id, category, opponent_name, kickoff_at
+  ) values (
+    v_org, 'Football', v_youth, 'Senior', 'North Side', now() + interval '1 day'
+  ) returning id into v_youth_match;
+  insert into public.club_matches (
+    organization_id, sport, squad_id, category, opponent_name, kickoff_at
+  ) values (
+    v_org, 'Football', v_adult, 'Senior', 'South Side', now() + interval '2 days'
+  ) returning id into v_adult_match;
+
+  insert into public.club_match_events (match_id, organization_id, minute, kind, side, player_name)
+  values
+    (v_youth_match, v_org, 12, 'yellow_card', 'them', 'Omar Saleh'),
+    (v_youth_match, v_org, 20, 'goal', 'us', 'Yasmin Al Amiri'),
+    (v_adult_match, v_org, 15, 'yellow_card', 'them', 'Nora Haddad'),
+    (v_adult_match, v_org, 30, 'goal', 'us', 'Samir Adult');
+
+  perform tests.as_user(v_stranger);
+  v_page := public.club_match_page(v_youth_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Omar S.'),
+    'QA-65 regression: a stranger sees an opponent name shortened on a youth match');
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'us' and e ->> 'player_name' = 'Yasmin A.'),
+    'a stranger still sees our side shortened on that youth match');
+  perform tests.ok(
+    (v_page -> 'match' ->> 'category') = 'Senior'
+    and (select q.is_youth from public.club_squads q where q.id = v_youth)
+    and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                where e ->> 'player_name' = 'Omar S.'),
+    'the squad flag wins over the match category: Senior text on a youth squad still shortens names');
+
+  v_page := public.club_match_page(v_adult_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Nora Haddad'),
+    'on an adult squad match a typed opponent name is not shortened');
+
+  perform tests.as_user(v_owner);
+  v_page := public.club_match_page(v_youth_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Omar Saleh')
+    and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                where e ->> 'side' = 'us' and e ->> 'player_name' = 'Yasmin Al Amiri'),
+    'a club member viewing the youth match still sees full names on both sides');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── play game alerts ──'; end $$;
 
 do $$
