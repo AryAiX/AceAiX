@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { CheckCircle2, MailCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -66,6 +67,8 @@ import {
   RecruiterTargetStep,
 } from '@/components/onboarding/RecruiterSteps';
 import { positionsFor } from '@/constants/sports';
+import { ClubSetupWizard } from '@/components/club/setup';
+import { Routes } from '@/lib/routes';
 
 /**
  * The profile wizard. Runs once, for an account whose profile still has
@@ -102,6 +105,7 @@ export default function OnboardingScreen() {
   const { colors, spacing } = theme;
   const toast = useToast();
   const { profile, signOut, refreshProfile } = useAuth();
+  const router = useRouter();
 
   const role = profile?.role ?? 'athlete';
   const path: Path =
@@ -557,6 +561,51 @@ export default function OnboardingScreen() {
     );
   }
 
+  /* The only way out of the wizard. Rare, but an account holder must never be
+     trapped in a flow they cannot leave. */
+  const signOutButton = (
+    <Pressable
+      onPress={() => void signOut()}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={t('onboarding.signOut')}
+      style={({ pressed }) => ({
+        minHeight: theme.hit.min,
+        justifyContent: 'center',
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Text variant="captionStrong" tone="muted">
+        {t('onboarding.signOut')}
+      </Text>
+    </Pressable>
+  );
+
+  /* A club or academy account sets up its page instead of the recruiter
+     questions: the wizard saves every step itself, and its last step finishes
+     onboarding the same way as everyone else's. */
+  if (isClub) {
+    const finishClub = async (orgId: string) => {
+      try {
+        await completeOnboarding();
+        // Without the refresh the gate still sees an unfinished profile.
+        await refreshProfile();
+      } catch (err) {
+        toast.error(errorMessage(err));
+        return;
+      }
+      router.replace(Routes.home);
+      router.push(Routes.organization(orgId));
+    };
+    return (
+      <ClubSetupWizard
+        mode="onboarding"
+        onFinished={finishClub}
+        firstStepRight={signOutButton}
+      />
+    );
+  }
+
   const skippable = step === 'physical' || step === 'photo' || step === 'teams';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
   const knownName = profile.first_name ?? profile.full_name;
@@ -596,27 +645,7 @@ export default function OnboardingScreen() {
           total={steps.length}
           hideBack={safeIndex === 0}
           onBack={() => setStepIndex((i) => Math.max(0, i - 1))}
-          right={
-            /* The only way out of the wizard. Rare, but an account holder must
-               never be trapped in a flow they cannot leave. */
-            safeIndex === 0 ? (
-              <Pressable
-                onPress={() => void signOut()}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={t('onboarding.signOut')}
-                style={({ pressed }) => ({
-                  minHeight: theme.hit.min,
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Text variant="captionStrong" tone="muted">
-                  {t('onboarding.signOut')}
-                </Text>
-              </Pressable>
-            ) : undefined
-          }
+          right={safeIndex === 0 ? signOutButton : undefined}
         />
       }
       footer={step === 'teams' && teamsKeyboardOpen ? undefined : footerContent}

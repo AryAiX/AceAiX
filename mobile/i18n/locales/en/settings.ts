@@ -148,6 +148,10 @@ export const settings = {
   notifyApplications: 'Application updates',
   notifyScoutInterest: 'Scout interest',
   notifyScoreUpdates: 'Talent Score updates',
+  sectionClubs: 'Clubs',
+  notifyClubUpdates: 'Club updates',
+  notifyClubUpdatesHint:
+    'Announcements, fixtures, results and events from clubs you follow or play for',
 
   noMarketingNote:
     'We never send marketing push notifications, and we do not sell your details to anyone who does.',

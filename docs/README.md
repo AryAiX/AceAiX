@@ -44,6 +44,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 28 | [`28-explore.md`](./28-explore.md) | Explore — every public clip in one mosaic inside Discover, for all roles: what is on it, the two RPCs, the grid pattern, and how a tile opens the reels pager | Mobile + Backend |
 | 29 | [`29-sponsorship.md`](./29-sponsorship.md) | Sponsorship — the sponsor role, athletes' requests, sponsors' calls, offers and applications, the guardian scope for minors, and the portal | Mobile + Backend |
 | 30 | [`30-coach-booking.md`](./30-coach-booking.md) | Booking a coach — "taking students", services (session, consultation, class), the calendar of free times, fixed/flexible/online places, the guardian scope for minors, and the coach's calendar | Mobile + Backend |
+| 31 | [`31-club-pages.md`](./31-club-pages.md) | Club and academy pages — sign-up wizard, verification, the page team, posts, announcements, matches with a live score, squads and the youth naming rule, events, awards | Mobile + Backend + Admin |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–24 describe the product as it stands** after the September 2026

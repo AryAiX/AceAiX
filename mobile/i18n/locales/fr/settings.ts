@@ -151,6 +151,10 @@ export const settings = {
   notifyApplications: 'Suivi des candidatures',
   notifyScoutInterest: 'Intérêt des recruteurs',
   notifyScoreUpdates: 'Évolutions du Score Talent',
+  sectionClubs: 'Clubs',
+  notifyClubUpdates: 'Actus des clubs',
+  notifyClubUpdatesHint:
+    'Annonces, matchs, résultats et événements des clubs que tu suis ou où tu joues',
 
   noMarketingNote:
     'On n’envoie jamais de notifications marketing, et on ne vend tes coordonnées à personne qui le ferait.',

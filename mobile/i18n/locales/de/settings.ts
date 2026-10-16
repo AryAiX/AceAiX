@@ -150,6 +150,10 @@ export const settings = {
   notifyApplications: 'Neues zu Bewerbungen',
   notifyScoutInterest: 'Interesse von Scouts',
   notifyScoreUpdates: 'Neues zum Talent Score',
+  sectionClubs: 'Vereine',
+  notifyClubUpdates: 'Vereins-News',
+  notifyClubUpdatesHint:
+    'Ankündigungen, Spiele, Ergebnisse und Events von Vereinen, denen du folgst oder für die du spielst',
 
   noMarketingNote:
     'Wir senden nie Werbe-Mitteilungen, und wir verkaufen deine Daten an niemanden, der das tut.',

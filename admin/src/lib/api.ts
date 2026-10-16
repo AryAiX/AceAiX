@@ -105,7 +105,7 @@ export interface VerificationRequest extends ExtraProfile {
   id: string;
   type: string;
   status: string;
-  documents: { name?: string; kind?: string; url?: string }[];
+  documents: { name?: string; kind?: string; url?: string; bucket?: string; path?: string }[];
   decision_reason: string | null;
   created_at: string;
   user: Person | null;
@@ -303,6 +303,14 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
   const { data, error } = await supabase.rpc(fn, args);
   if (error) throw new Error(error.message);
   return data as T;
+}
+
+/** A short-lived link to a document in a private bucket (club licences
+ * live in club-documents). Admins can read it; nobody else can. */
+export async function signedDocumentUrl(bucket: string, path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) throw error ?? new Error('Could not open the document');
+  return data.signedUrl;
 }
 
 export const api = {
