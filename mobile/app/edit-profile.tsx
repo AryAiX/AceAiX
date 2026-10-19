@@ -38,6 +38,7 @@ import {
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
 import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
@@ -118,6 +119,7 @@ export default function EditProfileScreen() {
   // Prefer the profile bundle's role once it has loaded. Until then, the
   // signed-in account from auth is enough to start the credentials read.
   const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
+  const isSponsorAccount = (bundle.data?.user.role ?? profile?.role) === 'sponsor';
   const scoutCreds = useAsync(() => getMyScoutCredentials(), [isClubAccount], {
     enabled: isClubAccount,
   });
@@ -287,7 +289,7 @@ export default function EditProfileScreen() {
 
   const onSave = useCallback(async () => {
     if (!form || !bundle.data) return;
-    if (!form.firstName.trim()) {
+    if (!isSponsorAccount && !form.firstName.trim()) {
       toast.error(t('profile.firstNameRequired'));
       return;
     }
@@ -296,16 +298,23 @@ export default function EditProfileScreen() {
     const previous = bundle.data.score?.overall ?? null;
 
     try {
-      await updateUserProfile({
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim() || null,
+      const shared = {
         bio: form.bio.trim() || null,
         city: form.city.trim() || null,
         country: form.country.trim() || null,
         avatar_url: form.avatarUrl || null,
         cover_url: form.coverUrl || null,
-      });
-      await syncFullName(form.firstName, form.lastName);
+      };
+      await updateUserProfile(
+        isSponsorAccount
+          ? shared
+          : {
+              first_name: form.firstName.trim(),
+              last_name: form.lastName.trim() || null,
+              ...shared,
+            },
+      );
+      if (!isSponsorAccount) await syncFullName(form.firstName, form.lastName);
 
       if (bundle.data.athlete) {
         await updateAthleteProfile({
@@ -367,7 +376,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, clubLoadFailed, form, isClubAccount, refreshProfile, router, t, toast]);
+  }, [bundle.data, clubLoadFailed, form, isClubAccount, isSponsorAccount, refreshProfile, router, t, toast]);
 
   const countries = useMemo(() => {
     const term = countryQuery.trim().toLowerCase();
@@ -572,33 +581,50 @@ export default function EditProfileScreen() {
         />
 
         <View style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.firstName')}
-              required
-              value={form.firstName}
-              onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
-              maxLength={60}
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-            />
-            <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.lastName')}
-              value={form.lastName}
-              onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
-              maxLength={60}
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-            />
-          </View>
+          {isSponsorAccount ? (
+            <Pressable
+              onPress={() => router.push(Routes.sponsorshipBrand)}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.brandName')}
+              accessibilityHint={t('profile.brandNameHint')}
+            >
+              <Input
+                label={t('profile.brandName')}
+                value={bundle.data?.user.full_name?.trim() ?? ''}
+                hint={t('profile.brandNameHint')}
+                editable={false}
+                pointerEvents="none"
+              />
+            </Pressable>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.firstName')}
+                required
+                value={form.firstName}
+                onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.lastName')}
+                value={form.lastName}
+                onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+            </View>
+          )}
 
           <Input
             label={t('profile.bio')}
-            placeholder={t('profile.bioPlaceholder')}
+            placeholder={t(isSponsorAccount ? 'profile.bioPlaceholderBrand' : 'profile.bioPlaceholder')}
             value={form.bio}
             onChangeText={(text) => set('bio', text.slice(0, BIO_MAX))}
             multiline

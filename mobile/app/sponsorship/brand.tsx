@@ -9,6 +9,7 @@ import { TagPicker } from '@/components/sponsorship/Tags';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { syncFullName } from '@/lib/api.profile';
 import { getMySponsorship, saveSponsorProfile } from '@/lib/api.sponsorship';
 import { useAuth } from '@/providers/AuthProvider';
 import { errorMessage } from '@/lib/errors';
@@ -89,6 +90,7 @@ export default function SponsorBrandScreen() {
         budget_min: lo ?? null,
         budget_max: hi ?? null,
       });
+      await syncFullName(company, '');
       toast.success(t('sponsorship.brandSaved'));
       close();
     } catch (err) {
