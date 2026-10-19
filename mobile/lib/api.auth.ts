@@ -4,6 +4,7 @@ import { decode } from 'base64-arraybuffer';
 import { supabase, Buckets, publicUrl } from './supabase';
 import { AppError } from './errors';
 import { setDateOfBirth } from './api';
+import { randomUploadId } from '@/lib/uploadId';
 
 /**
  * Network calls that belong to sign-up, onboarding and password recovery.
@@ -241,8 +242,8 @@ export interface AvatarUploadInput {
  * Upload a profile photo to the public `avatars` bucket.
  *
  * The storage policy only lets someone write inside a folder named after their
- * own user id, so the path is always `<user id>/<file>`. The file name carries
- * a timestamp so a replaced photo is never served from a stale cache.
+ * own user id, so the path is always `<user id>/avatar-<id>.<ext>`. The id is
+ * random so a replaced photo is a new object and never served from a stale cache.
  */
 export async function uploadAvatar(input: AvatarUploadInput): Promise<string> {
   const { data: auth } = await supabase.auth.getUser();
@@ -250,7 +251,10 @@ export async function uploadAvatar(input: AvatarUploadInput): Promise<string> {
 
   const declared = (input.mimeType ?? '').toLowerCase();
   const contentType = MIME_EXTENSIONS[declared] ? declared : 'image/jpeg';
-  const path = `${auth.user.id}/${Date.now()}.${extensionFor(input.fileName, contentType)}`;
+  const path = `${auth.user.id}/avatar-${randomUploadId()}.${extensionFor(
+    input.fileName,
+    contentType,
+  )}`;
 
   const { error } = await supabase.storage
     .from(Buckets.avatars)
