@@ -70,4 +70,7 @@ export const errors = {
   coachingLocationRequired: 'Укажите, где это должно пройти.',
   coachingServiceLimit: 'Одновременно можно предлагать двенадцать услуг.',
   coachingOwnCalendar: 'Нельзя записаться в собственный календарь.',
+  meetupMapUrlInvalid: 'Используйте ссылку из Google Maps, Apple Maps или Waze.',
+  meetupPlaceInvalid: 'Каждое место должно содержать от 2 до 80 символов.',
+  meetupPlacesLimit: 'Можно добавить не более 5 мест.',
 };

@@ -142,6 +142,11 @@ export const settings = {
   notifyComments: 'Comments',
   notifyLikes: 'Likes',
   notifyMeetups: 'Play games',
+  meetupPlaces: 'Play alert places',
+  meetupPlacesOnlyCity: 'Only your city',
+  meetupPlacesBody:
+    'You get alerts for games in your profile city. Add up to 5 more cities or areas.',
+  meetupPlaceAdd: 'Add',
 
   sectionOpportunities: 'Opportunities and your score',
   notifyOpportunities: 'New opportunities',
