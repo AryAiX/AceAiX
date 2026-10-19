@@ -99,6 +99,10 @@ export const auth = {
     lastNameLabel: 'Last name',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Enter your last name.',
+    brandTitle: 'What is your brand called?',
+    brandSubtitle: 'This is the name athletes and families will see.',
+    brandNameLabel: 'Company or brand name',
+    brandNameRequired: 'Enter your company or brand name.',
 
     dobTitle: 'When were you born?',
     dobSubtitle:

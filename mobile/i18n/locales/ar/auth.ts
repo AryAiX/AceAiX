@@ -105,6 +105,10 @@ export const auth = {
     lastNameLabel: 'اسم العائلة',
     lastNamePlaceholder: 'كريمي',
     lastNameRequired: 'أدخل اسم عائلتك.',
+    brandTitle: 'ما اسم علامتك التجارية؟',
+    brandSubtitle: 'هذا هو الاسم الذي سيراه الرياضيون وعائلاتهم.',
+    brandNameLabel: 'اسم الشركة أو العلامة',
+    brandNameRequired: 'أدخل اسم شركتك أو علامتك التجارية.',
 
     dobTitle: 'متى وُلدت؟',
     dobSubtitle:

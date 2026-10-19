@@ -93,6 +93,10 @@ export const auth = {
     lastNameLabel: '姓氏',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: '请填写你的姓氏。',
+    brandTitle: '你的品牌叫什么？',
+    brandSubtitle: '运动员和家长会看到这个名称。',
+    brandNameLabel: '公司或品牌名称',
+    brandNameRequired: '请填写公司或品牌名称。',
 
     dobTitle: '你的出生日期？',
     dobSubtitle:

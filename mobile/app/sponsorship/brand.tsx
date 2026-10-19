@@ -10,6 +10,7 @@ import { SPORTS, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getMySponsorship, saveSponsorProfile } from '@/lib/api.sponsorship';
+import { useAuth } from '@/providers/AuthProvider';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { OFFERS, parseAmount, toggleTag, type Offer } from '@/lib/sponsorship';
@@ -24,6 +25,7 @@ export default function SponsorBrandScreen() {
   const toast = useToast();
 
   const mine = useAsync(getMySponsorship, []);
+  const { profile } = useAuth();
   const [company, setCompany] = useState('');
   const [industry, setIndustry] = useState('');
   const [website, setWebsite] = useState('');
@@ -39,7 +41,11 @@ export default function SponsorBrandScreen() {
   useEffect(() => {
     if (filled || !mine.data?.profile) return;
     const p = mine.data.profile;
-    setCompany(p.company_name ?? '');
+    const storedName = p.company_name?.trim() ?? '';
+    // Sign-up stores the brand on the account. Wait for that name before
+    // locking an empty company field in.
+    if (!storedName && !profile) return;
+    setCompany(storedName || profile?.full_name?.trim() || '');
     setIndustry(p.industry ?? '');
     setWebsite(p.website ?? '');
     setAbout(p.about ?? '');
@@ -48,7 +54,7 @@ export default function SponsorBrandScreen() {
     setMin(p.budget_min != null ? String(p.budget_min) : '');
     setMax(p.budget_max != null ? String(p.budget_max) : '');
     setFilled(true);
-  }, [mine.data, filled]);
+  }, [mine.data, filled, profile]);
 
   const close = () => {
     if (router.canGoBack()) router.back();

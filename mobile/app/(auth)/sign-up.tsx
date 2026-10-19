@@ -54,6 +54,7 @@ export default function SignUpScreen() {
   const [role, setRole] = useState<SignupRole | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [brandName, setBrandName] = useState('');
   const [dob, setDob] = useState<Date | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +62,7 @@ export default function SignUpScreen() {
 
   const [firstError, setFirstError] = useState<string | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [brandError, setBrandError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [termsError, setTermsError] = useState<string | null>(null);
@@ -77,6 +79,11 @@ export default function SignUpScreen() {
   };
 
   const validateName = (): boolean => {
+    if (role === 'sponsor') {
+      const nextBrand = brandName.trim().length < 2 ? t('auth.signUp.brandNameRequired') : null;
+      setBrandError(nextBrand);
+      return !nextBrand;
+    }
     const nextFirst = firstName.trim().length < 2 ? t('auth.signUp.firstNameRequired') : null;
     const nextLast = lastName.trim().length < 2 ? t('auth.signUp.lastNameRequired') : null;
     setFirstError(nextFirst);
@@ -131,13 +138,11 @@ export default function SignUpScreen() {
       // write with until the link is clicked. Onboarding applies it.
       await stashPendingDateOfBirth(email, toIsoDate(dob));
 
-      const { needsEmailConfirmation } = await signUp({
-        email,
-        password,
-        firstName,
-        lastName,
-        role,
-      });
+      const { needsEmailConfirmation } = await signUp(
+        role === 'sponsor'
+          ? { email, password, role, brandName: brandName.trim().slice(0, 80) }
+          : { email, password, firstName, lastName, role },
+      );
 
       if (needsEmailConfirmation) {
         router.replace({
@@ -182,7 +187,9 @@ export default function SignUpScreen() {
       case 'role':
         return role !== null;
       case 'name':
-        return firstName.trim().length > 0 && lastName.trim().length > 0;
+        return role === 'sponsor'
+          ? brandName.trim().length > 0
+          : firstName.trim().length > 0 && lastName.trim().length > 0;
       case 'dob':
         return dob !== null;
       case 'account':
@@ -240,6 +247,12 @@ export default function SignUpScreen() {
             }}
             firstError={firstError}
             lastError={lastError}
+            brandName={brandName}
+            onChangeBrand={(value) => {
+              setBrandName(value);
+              if (brandError) setBrandError(null);
+            }}
+            brandError={brandError}
             onSubmit={advance}
           />
         ) : null}

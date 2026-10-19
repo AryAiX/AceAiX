@@ -105,6 +105,9 @@ export function NameStep({
   lastError,
   onSubmit,
   role,
+  brandName,
+  onChangeBrand,
+  brandError,
 }: {
   firstName: string;
   lastName: string;
@@ -114,21 +117,45 @@ export function NameStep({
   lastError: string | null;
   onSubmit: () => void;
   role?: SignupRole | null;
+  brandName: string;
+  onChangeBrand: (value: string) => void;
+  brandError: string | null;
 }) {
   const theme = useTheme();
   const t = useT();
   const lastRef = useRef<TextInput>(null);
+  const isSponsor = role === 'sponsor';
 
   return (
     <View>
       <StepHeading
-        title={t('auth.signUp.nameTitle')}
+        title={t(isSponsor ? 'auth.signUp.brandTitle' : 'auth.signUp.nameTitle')}
         subtitle={t(
-          !role || role === 'athlete'
-            ? 'auth.signUp.nameSubtitle'
-            : 'auth.signUp.nameSubtitleOther',
+          isSponsor
+            ? 'auth.signUp.brandSubtitle'
+            : !role || role === 'athlete'
+              ? 'auth.signUp.nameSubtitle'
+              : 'auth.signUp.nameSubtitleOther',
         )}
       />
+      {isSponsor ? (
+        <Input
+          label={t('auth.signUp.brandNameLabel')}
+          required
+          value={brandName}
+          onChangeText={onChangeBrand}
+          error={brandError}
+          autoFocus
+          maxLength={80}
+          autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
+          autoComplete="organization"
+          returnKeyType="done"
+          onSubmitEditing={onSubmit}
+          testID="signup-brand-name"
+        />
+      ) : (
       <View style={{ gap: theme.spacing.lg }}>
         {/*
           This is the first text field of the whole sign-up, so this is where
@@ -170,6 +197,7 @@ export function NameStep({
           testID="signup-last-name"
         />
       </View>
+      )}
     </View>
   );
 }

@@ -102,6 +102,10 @@ export const auth = {
     lastNameLabel: 'Фамилия',
     lastNamePlaceholder: 'Карими',
     lastNameRequired: 'Введи фамилию.',
+    brandTitle: 'Как называется твой бренд?',
+    brandSubtitle: 'Это имя увидят спортсмены и их семьи.',
+    brandNameLabel: 'Название компании или бренда',
+    brandNameRequired: 'Введи название компании или бренда.',
 
     dobTitle: 'Какая у тебя дата рождения?',
     dobSubtitle:

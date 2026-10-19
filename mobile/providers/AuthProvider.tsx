@@ -51,8 +51,10 @@ interface AuthContextValue {
   signUp: (input: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
+    /** Sponsor accounts. Stored as full_name; split name columns stay unset. */
+    brandName?: string;
     role: SignupRole;
   }) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
@@ -175,17 +177,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback<AuthContextValue['signUp']>(async (input) => {
+    const brand = input.brandName?.trim().slice(0, 80);
+    const first = input.firstName?.trim() ?? '';
+    const last = input.lastName?.trim() ?? '';
     const { data, error } = await supabase.auth.signUp({
       email: input.email.trim().toLowerCase(),
       password: input.password,
       options: {
         emailRedirectTo: emailConfirmationRedirect(Platform.OS),
-        data: {
-          role: input.role,
-          first_name: input.firstName.trim(),
-          last_name: input.lastName.trim(),
-          full_name: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
-        },
+        data: brand
+          ? { role: input.role, full_name: brand }
+          : {
+              role: input.role,
+              first_name: first,
+              last_name: last,
+              full_name: `${first} ${last}`.trim(),
+            },
       },
     });
     if (error) throw new AppError(error);
