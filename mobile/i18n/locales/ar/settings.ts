@@ -150,6 +150,11 @@ export const settings = {
   notifyComments: 'التعليقات',
   notifyLikes: 'الإعجابات',
   notifyMeetups: 'مباريات اللعب',
+  meetupPlaces: 'أماكن تنبيهات اللعب',
+  meetupPlacesOnlyCity: 'مدينتك فقط',
+  meetupPlacesBody:
+    'تصلك تنبيهات المباريات في مدينة ملفك. أضف حتى 5 مدن أو مناطق أخرى.',
+  meetupPlaceAdd: 'إضافة',
 
   sectionOpportunities: 'الفرص ودرجتك',
   notifyOpportunities: 'فرص جديدة',
