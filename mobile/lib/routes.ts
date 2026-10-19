@@ -63,6 +63,28 @@ export const Routes = {
   /** Book this coach. */
   coachBooking: (coachId: string) => `/coaching/${coachId}` as const,
 
+  /** Set up a club or academy page (club accounts without one). */
+  clubSetup: '/club/setup' as const,
+  /** The page team's hub: everything a club runs, one tap each. */
+  clubManage: (orgId: string) => `/club/${orgId}/manage` as const,
+  /** Page details, sports, branches, branding and verification papers. */
+  clubEdit: (orgId: string) => `/club/${orgId}/edit` as const,
+  clubTeam: (orgId: string) => `/club/${orgId}/team` as const,
+  clubBroadcast: (orgId: string) => `/club/${orgId}/broadcast` as const,
+  clubSquads: (orgId: string) => `/club/${orgId}/squads` as const,
+  /** Add a player or staff member: pass `squad`, and `id` to edit. */
+  clubSquadMember: (orgId: string) => `/club/${orgId}/member` as const,
+  /** Add an award, or edit one with `id` as a param. */
+  clubAward: (orgId: string) => `/club/${orgId}/award` as const,
+  /** Create a fixture, or edit one with `id` as a param. */
+  clubMatchEdit: (orgId: string) => `/club/${orgId}/match-edit` as const,
+  /** Create an event, or edit one with `id` as a param. */
+  clubEventEdit: (orgId: string) => `/club/${orgId}/event-edit` as const,
+  /** A match: live score, timeline, stream link — and the scorekeeper's controls. */
+  match: (matchId: string) => `/match/${matchId}` as const,
+  /** A club event: details, places left, register. */
+  clubEvent: (eventId: string) => `/event/${eventId}` as const,
+
   meetups: '/(tabs)/meetups' as const,
   meetup: (id: string) => `/meetup/${id}` as const,
   newMeetup: '/meetup/new' as const,
@@ -199,6 +221,14 @@ export function notificationTarget(n: AppNotification): Href | null {
       return Routes.sponsorship;
     case 'meetup':
       return id ? Routes.meetup(id) : null;
+    case 'organization':
+      // Invitations, squad links, announcements and verification decisions
+      // are all answered on the club's own page.
+      return id ? Routes.organization(id) : null;
+    case 'club_match':
+      return id ? Routes.match(id) : null;
+    case 'club_event':
+      return id ? Routes.clubEvent(id) : null;
     default:
       break;
   }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck, AlertCircle, CheckCircle, X, FileText, Clock, ExternalLink } from 'lucide-react';
-import { listVerificationRequests, decideVerification } from '../../api/admin';
+import { listVerificationRequests, decideVerification, signedDocumentUrl } from '../../api/admin';
 import type { VerificationRequest } from '../../types';
 import { AdminPage, StatusBadge } from '../../components/admin/AdminPrimitives';
 
@@ -12,6 +12,21 @@ function docLabel(doc: Record<string, unknown>): string {
 function docUrl(doc: Record<string, unknown>): string | null {
   const raw = doc.url ?? doc.href ?? doc.storage_url ?? doc.publicUrl;
   return typeof raw === 'string' && raw !== '#' && raw.startsWith('http') ? raw : null;
+}
+
+/** A file in a private bucket: `{ bucket, path }` instead of a public URL. */
+function privateDoc(doc: Record<string, unknown>): { bucket: string; path: string } | null {
+  return typeof doc.bucket === 'string' && typeof doc.path === 'string'
+    ? { bucket: doc.bucket, path: doc.path }
+    : null;
+}
+
+async function openPrivateDoc(bucket: string, path: string) {
+  try {
+    window.open(await signedDocumentUrl(bucket, path), '_blank', 'noopener');
+  } catch (err) {
+    window.alert(err instanceof Error ? err.message : 'Could not open the document');
+  }
 }
 
 function formatDate(iso: string): string {
@@ -93,7 +108,18 @@ export default function AdminVerificationPage() {
                   <div key={i} className="flex items-center gap-3 p-3 bg-navy-800 rounded-lg">
                     <FileText size={14} className="text-slate-400 flex-shrink-0" />
                     <p className="text-sm text-slate-300 flex-1">{docLabel(doc)}</p>
-                    {docUrl(doc) ? (
+                    {privateDoc(doc) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ref = privateDoc(doc);
+                          if (ref) void openPrivateDoc(ref.bucket, ref.path);
+                        }}
+                        className="text-blue-400 text-xs hover:underline inline-flex items-center gap-1"
+                      >
+                        View <ExternalLink size={11} />
+                      </button>
+                    ) : docUrl(doc) ? (
                       <a href={docUrl(doc) ?? undefined} target="_blank" rel="noreferrer" className="text-blue-400 text-xs hover:underline inline-flex items-center gap-1">
                         View <ExternalLink size={11} />
                       </a>

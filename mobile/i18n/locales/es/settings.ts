@@ -162,6 +162,10 @@ export const settings = {
   notifyApplications: 'Novedades de las solicitudes',
   notifyScoutInterest: 'Interés de reclutadores',
   notifyScoreUpdates: 'Cambios en la Puntuación de talento',
+  sectionClubs: 'Clubes',
+  notifyClubUpdates: 'Novedades de clubes',
+  notifyClubUpdatesHint:
+    'Avisos, partidos, resultados y eventos de los clubes que sigues o en los que juegas',
 
   noMarketingNote:
     'Nunca enviamos notificaciones push de publicidad, ni vendemos tus datos a quien las envíe.',

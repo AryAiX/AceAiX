@@ -161,6 +161,10 @@ export const settings = {
   notifyApplications: 'تحديثات الطلبات',
   notifyScoutInterest: 'اهتمام الكشّافين',
   notifyScoreUpdates: 'تحديثات درجة الموهبة',
+  sectionClubs: 'الأندية',
+  notifyClubUpdates: 'أخبار الأندية',
+  notifyClubUpdatesHint:
+    'الإعلانات والمباريات والنتائج والفعاليات من الأندية التي تتابعها أو تلعب لها',
 
   noMarketingNote:
     'لا نرسل إشعارات تسويقية أبدًا، ولا نبيع بياناتك لمن يرسلها.',

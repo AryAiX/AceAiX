@@ -289,6 +289,16 @@ export async function listVerificationRequests(status?: string): Promise<Verific
   return unwrap(await query) as VerificationRequest[];
 }
 
+/**
+ * A short-lived link to a document kept in a private bucket (club licences are
+ * in `club-documents`). Admins can read that bucket; nobody else can.
+ */
+export async function signedDocumentUrl(bucket: string, path: string): Promise<string> {
+  const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 300);
+  if (error || !data?.signedUrl) throw error ?? new Error('Could not open the document');
+  return data.signedUrl;
+}
+
 export async function decideVerification(id: string, status: 'approved' | 'rejected', reason?: string): Promise<void> {
   const before = optionalSingle<VerificationRequest>(await supabase.from('verification_requests').select('*').eq('id', id).maybeSingle());
   const reviewed_by = await currentUserId();
@@ -302,7 +312,7 @@ export async function decideVerification(id: string, status: 'approved' | 'rejec
   ) as VerificationRequest;
 
   if (status === 'approved') {
-    if (updated.subject_user_id) {
+    if (updated.subject_user_id && updated.organization_id == null) {
       await supabase.from('user_profiles').update({ is_verified: true }).eq('id', updated.subject_user_id);
     }
     if (updated.organization_id) {

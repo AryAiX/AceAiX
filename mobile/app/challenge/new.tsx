@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -12,12 +12,14 @@ import {
   Screen,
   SectionHeader,
   SegmentedControl,
+  SkeletonList,
   Text,
   useToast,
 } from '@/components/ui';
-import { useAction } from '@/hooks/useAsync';
+import { useAction, useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import { createChallenge } from '@/lib/api';
+import { getClubPage } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
 import { SPORTS } from '@/constants/sports';
 import { useT } from '@/i18n';
@@ -39,9 +41,15 @@ export default function NewChallengeScreen() {
   const router = useRouter();
   const toast = useToast();
   const { profile } = useAuth();
+  /* `?org=` sets the challenge for a club page the viewer helps run. */
+  const params = useLocalSearchParams<{ org?: string }>();
+  const orgId = typeof params.org === 'string' && params.org ? params.org : null;
+  const club = useAsync(() => getClubPage(orgId as string), [orgId], { enabled: !!orgId });
+  const clubPage = club.data;
   const canCreate =
-    profile?.is_verified === true &&
-    (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout');
+    (profile?.is_verified === true &&
+      (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout')) ||
+    (!!clubPage && clubPage.organization.is_verified && clubPage.viewer.can_post);
 
   const [sport, setSport] = useState<string>(SPORTS[0]?.key ?? 'Football');
   const sports = useMemo(() => SPORTS.map((s) => ({ value: s.key, label: s.label })), []);
@@ -78,8 +86,17 @@ export default function NewChallengeScreen() {
       metricBetter: better,
       ageMin: ageMin.trim() ? Number(ageMin) : null,
       ageMax: ageMax.trim() ? Number(ageMax) : null,
+      organizationId: orgId,
     });
   });
+
+  if (!canCreate && orgId && club.loading) {
+    return (
+      <Screen header={<Header title={t('challenges.newTitle')} back bordered />}>
+        <SkeletonList count={2} variant="row" />
+      </Screen>
+    );
+  }
 
   if (!canCreate) {
     return (
@@ -113,12 +130,21 @@ export default function NewChallengeScreen() {
               return;
             }
             toast.success(t('challenges.created'));
-            router.replace(Routes.challenge(id));
+            if (orgId && router.canGoBack()) router.back();
+            else router.replace(Routes.challenge(id));
           }}
         />
       }
     >
       <View style={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
+        {clubPage ? (
+          <Card padded tone="primarySoft">
+            <Text variant="bodyStrong">
+              {t('clubManage.challenge.settingFor', { club: clubPage.organization.name })}
+            </Text>
+          </Card>
+        ) : null}
+
         <Text variant="body" tone="secondary">
           {t('challenges.newBody')}
         </Text>

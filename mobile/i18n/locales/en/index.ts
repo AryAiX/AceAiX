@@ -24,6 +24,10 @@ import { reels } from './reels';
 import { explore } from './explore';
 import { coaching } from './coaching';
 import { sponsorship } from './sponsorship';
+import { club } from './club';
+import { clubSetup } from './clubSetup';
+import { clubManage } from './clubManage';
+import { clubMatch } from './clubMatch';
 import { countries } from './countries';
 
 /**
@@ -60,6 +64,10 @@ export const en = {
   explore,
   coaching,
   sponsorship,
+  club,
+  clubSetup,
+  clubManage,
+  clubMatch,
 };
 
 export type Translations = typeof en;

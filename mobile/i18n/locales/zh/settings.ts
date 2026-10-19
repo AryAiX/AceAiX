@@ -148,6 +148,10 @@ export const settings = {
   notifyApplications: '申请进展',
   notifyScoutInterest: '球探关注',
   notifyScoreUpdates: '天赋分变动',
+  sectionClubs: '俱乐部',
+  notifyClubUpdates: '俱乐部动态',
+  notifyClubUpdatesHint:
+    '你关注或效力的俱乐部发布的公告、赛程、比分和活动',
 
   noMarketingNote:
     '我们从不发送营销类推送通知，也不会把你的信息卖给任何做这种事的人。',
