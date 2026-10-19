@@ -143,7 +143,6 @@ export function NameStep({
           value={firstName}
           onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
           error={firstError}
-          placeholder={t('auth.signUp.firstNamePlaceholder')}
           autoFocus
           autoCapitalize="words"
           autoCorrect={false}
@@ -161,7 +160,6 @@ export function NameStep({
           value={lastName}
           onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}
           error={lastError}
-          placeholder={t('auth.signUp.lastNamePlaceholder')}
           autoCapitalize="words"
           autoCorrect={false}
           spellCheck={false}
