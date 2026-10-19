@@ -37,7 +37,7 @@ import {
   updateUserProfile,
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
-import { syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
 import { sanitizeNameInput } from '@/lib/nameInput';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
@@ -296,6 +296,8 @@ export default function EditProfileScreen() {
     const previous = bundle.data.score?.overall ?? null;
 
     try {
+      const previousAvatar = initial?.avatarUrl ?? '';
+      const previousCover = initial?.coverUrl ?? '';
       await updateUserProfile({
         first_name: form.firstName.trim(),
         last_name: form.lastName.trim() || null,
@@ -305,6 +307,8 @@ export default function EditProfileScreen() {
         avatar_url: form.avatarUrl || null,
         cover_url: form.coverUrl || null,
       });
+      if (previousAvatar !== form.avatarUrl) await removeOwnProfileImage(previousAvatar);
+      if (previousCover !== form.coverUrl) await removeOwnProfileImage(previousCover);
       await syncFullName(form.firstName, form.lastName);
 
       if (bundle.data.athlete) {
@@ -367,7 +371,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, clubLoadFailed, form, isClubAccount, refreshProfile, router, t, toast]);
+  }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, refreshProfile, router, t, toast]);
 
   const countries = useMemo(() => {
     const term = countryQuery.trim().toLowerCase();
