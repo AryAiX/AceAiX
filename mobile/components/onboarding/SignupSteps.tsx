@@ -314,9 +314,11 @@ function WebDateField({
 export function DateOfBirthStep({
   value,
   onChange,
+  role,
 }: {
   value: Date | null;
   onChange: (date: Date | null) => void;
+  role?: SignupRole | null;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -335,7 +337,9 @@ export function DateOfBirthStep({
     <View>
       <StepHeading
         title={t('auth.signUp.dobTitle')}
-        subtitle={t('auth.signUp.dobSubtitle')}
+        subtitle={t(
+          !role || role === 'athlete' ? 'auth.signUp.dobSubtitle' : 'auth.signUp.dobSubtitleOther',
+        )}
       />
 
       <View style={{ gap: spacing.lg }}>
@@ -432,7 +436,11 @@ export function DateOfBirthStep({
               <View style={{ flex: 1, gap: spacing.xs }}>
                 <Text variant="bodyStrong">{t('auth.signUp.dobMinorTitle')}</Text>
                 <Text variant="caption" tone="secondary">
-                  {t('auth.signUp.dobMinorBody')}
+                  {t(
+                    !role || role === 'athlete'
+                      ? 'auth.signUp.dobMinorBody'
+                      : 'auth.signUp.dobMinorBodyOther',
+                  )}
                 </Text>
               </View>
             </View>
@@ -453,9 +461,11 @@ export function DateOfBirthStep({
 export function AgeGateBlocked({
   onChangeDate,
   onBackToWelcome,
+  role,
 }: {
   onChangeDate: () => void;
   onBackToWelcome: () => void;
+  role?: SignupRole | null;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -481,7 +491,12 @@ export function AgeGateBlocked({
           {t('auth.signUp.blockedTitle', { age: MINIMUM_AGE })}
         </Text>
         <Text variant="body" tone="secondary">
-          {t('auth.signUp.blockedBody', { age: MINIMUM_AGE, app: t('common.appName') })}
+          {t(
+            !role || role === 'athlete'
+              ? 'auth.signUp.blockedBody'
+              : 'auth.signUp.blockedBodyOther',
+            { age: MINIMUM_AGE, app: t('common.appName') },
+          )}
         </Text>
         <Text variant="body" tone="secondary">
           {t('auth.signUp.blockedEncouragement', { age: MINIMUM_AGE })}

@@ -201,6 +201,7 @@ export default function SignUpScreen() {
     return (
       <Screen keyboardAvoiding testID="sign-up-age-blocked">
         <AgeGateBlocked
+          role={role}
           onChangeDate={() => {
             setBlockedByAge(false);
             setDob(null);
@@ -257,7 +258,7 @@ export default function SignUpScreen() {
           />
         ) : null}
 
-        {step === 'dob' ? <DateOfBirthStep value={dob} onChange={setDob} /> : null}
+        {step === 'dob' ? <DateOfBirthStep role={role} value={dob} onChange={setDob} /> : null}
 
         {step === 'account' ? (
           <AccountStep

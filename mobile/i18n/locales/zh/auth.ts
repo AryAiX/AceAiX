@@ -101,6 +101,8 @@ export const auth = {
     dobTitle: '你的出生日期？',
     dobSubtitle:
       '我们问这个是为了保护年纪较小的运动员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
+    dobSubtitleOther:
+      '我们问这个是为了保护年纪较小的成员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
     dobChoose: '选择出生日期',
     dobChange: '更改',
     dobSelectedA11y: '出生日期，{{date}}。点击更改',
@@ -115,10 +117,14 @@ export const auth = {
     dobMinorTitle: '需要家长或监护人参与',
     dobMinorBody:
       '因为你未满18岁，需要家长或监护人批准你的资料，教练才能找到你。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
+    dobMinorBodyOther:
+      '因为你未满18岁，需要家长或监护人批准你的账号，你才能使用。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
 
     blockedTitle: '等你满{{age}}岁再回来',
     blockedBody:
       '{{app}} 是为{{age}}岁及以上的运动员做的，所以现在还不能给你创建账号。这条规定是为了保护年纪更小的孩子在网上的安全，我们无法为任何人破例。',
+    blockedBodyOther:
+      '{{app}} 是为{{age}}岁及以上的人做的，所以现在还不能给你创建账号。这条规定是为了保护年纪更小的孩子在网上的安全，我们无法为任何人破例。',
     blockedEncouragement:
       '继续训练。等你满{{age}}岁再回来，你的资料还在这里等你。',
     blockedBackToStart: '回到开头',

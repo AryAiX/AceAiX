@@ -109,6 +109,8 @@ export const auth = {
     dobTitle: 'Tu es né quand ?',
     dobSubtitle:
       'On le demande pour protéger les plus jeunes. Ta date de naissance exacte n’est jamais montrée à personne — seulement une tranche d’âge.',
+    dobSubtitleOther:
+      'On le demande pour protéger les membres les plus jeunes. Ta date de naissance exacte n’est jamais montrée à personne — seulement une tranche d’âge.',
     dobChoose: 'Choisis ta date de naissance',
     dobChange: 'Modifier',
     dobSelectedA11y: 'Date de naissance, {{date}}. La modifier',
@@ -123,10 +125,14 @@ export const auth = {
     dobMinorTitle: 'Un parent ou tuteur entre en jeu',
     dobMinorBody:
       'Comme tu as moins de 18 ans, un parent ou tuteur doit valider ton profil avant que les coachs puissent te trouver. On te demandera son e-mail dans un instant, et il recevra un court message qui explique tout.',
+    dobMinorBodyOther:
+      'Comme tu as moins de 18 ans, un parent ou tuteur doit valider ton compte avant que tu puisses l’utiliser. On te demandera son e-mail dans un instant, et il recevra un court message qui explique tout.',
 
     blockedTitle: 'Reviens à tes {{age}} ans',
     blockedBody:
       '{{app}} est fait pour les athlètes de {{age}} ans et plus, donc on ne peut pas encore créer ton compte. Cette règle protège les plus jeunes en ligne, et on ne peut pas faire d’exception.',
+    blockedBodyOther:
+      '{{app}} est fait pour les personnes de {{age}} ans et plus, donc on ne peut pas encore créer ton compte. Cette règle protège les plus jeunes en ligne, et on ne peut pas faire d’exception.',
     blockedEncouragement:
       'Continue à t’entraîner. À tes {{age}} ans, reviens : ton profil t’attend.',
     blockedBackToStart: 'Retour au début',
