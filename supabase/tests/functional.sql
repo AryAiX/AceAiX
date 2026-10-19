@@ -3550,6 +3550,56 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── avatars bucket listing ──'; end $$;
+
+do $$
+declare
+  v_rows integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into storage.objects (bucket_id, name) values
+    ('avatars', '11111111-1111-1111-1111-111111111111/avatar-a.jpg'),
+    ('avatars', '22222222-2222-2222-2222-222222222222/avatar-b.jpg');
+
+  grant select on storage.objects to authenticated;
+
+  -- A missing table grant is the same outcome as an empty listing: signed-out
+  -- callers cannot see the bucket. Either way the assertion passes.
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  begin
+    set local role anon;
+    select count(*) into v_rows from storage.objects
+    where bucket_id = 'avatars';
+    reset role;
+  exception when insufficient_privilege then
+    reset role;
+    v_rows := 0;
+  end;
+  perform tests.ok(v_rows = 0, 'signed-out visitors cannot list the avatars bucket');
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 0,
+    'another signed-in user cannot list someone else''s folder in the avatars bucket');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 1,
+    'the owner can list their own folder in the avatars bucket');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── opportunity and match preference authorization ──'; end $$;
 
 do $$
@@ -4936,6 +4986,164 @@ begin
   perform tests.ok(
     not exists (select 1 from public.notifications where user_id = v_other and type = 'meetup_nearby'),
     'a host posting more than two games a day sends no further alerts');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── play phase 2: map link and alert places ──'; end $$;
+
+do $$
+declare
+  v_host  uuid := 'b2000000-0000-0000-0000-000000000001';
+  v_home  uuid := 'b2000000-0000-0000-0000-000000000002';
+  v_far   uuid := 'b2000000-0000-0000-0000-000000000003';
+  v_game  uuid;
+  v_hint  text;
+  v_state text;
+  v_url   text := 'https://www.google.com/maps/place/Alertville';
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_host, 'phase2.host@test.local', '{"full_name":"Phase2 Host","role":"athlete"}'),
+    (v_home, 'phase2.home@test.local', '{"full_name":"Phase2 Home","role":"athlete"}'),
+    (v_far,  'phase2.far@test.local',  '{"full_name":"Phase2 Far","role":"athlete"}');
+
+  update public.user_private set date_of_birth = current_date - interval '30 years'
+   where user_id in (v_host, v_home, v_far);
+  update public.user_profiles set city = 'Alertville' where id in (v_host, v_home);
+  update public.user_profiles set city = 'Faraway' where id = v_far;
+  update public.athlete_profiles set sport = 'Padel'
+   where user_id in (v_host, v_home, v_far);
+
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Map link game', 'United Arab Emirates', 'Alertville',
+          now() + interval '2 days', 4)
+  returning id into v_game;
+
+  perform tests.as_user(v_host);
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, v_url);
+    reset role;
+  exception when others then
+    reset role;
+    raise;
+  end;
+  perform tests.ok(
+    (select map_url from public.meetups where id = v_game) = v_url,
+    'the host can store a Google Maps link');
+
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, '');
+    reset role;
+  exception when others then
+    reset role;
+    raise;
+  end;
+  perform tests.ok(
+    (select map_url from public.meetups where id = v_game) is null,
+    'an empty string clears the map link');
+
+  v_hint := null;
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, 'https://example.com/x');
+    reset role;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+    reset role;
+  end;
+  perform tests.ok(v_hint = 'meetup_map_url_invalid',
+    'a link that is not a map site is refused');
+
+  perform tests.as_user(v_home);
+  v_state := null;
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, v_url);
+    reset role;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate;
+    reset role;
+  end;
+  perform tests.ok(v_state = '42501',
+    'someone who is not the host cannot change the map link');
+
+  update public.notification_preferences
+     set meetup_places = array['  Sharjah  ', 'sharjah', 'Dubai']
+   where user_id = v_far;
+  perform tests.ok(
+    (select array_to_string(meetup_places, ',')
+       from public.notification_preferences where user_id = v_far)
+      = 'Sharjah,Dubai',
+    'places are trimmed and a case-insensitive duplicate is dropped, keeping the original text');
+
+  v_hint := null;
+  begin
+    update public.notification_preferences
+       set meetup_places = array['A']
+     where user_id = v_far;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'meetup_place_invalid',
+    'a place shorter than two characters is refused');
+
+  v_hint := null;
+  begin
+    update public.notification_preferences
+       set meetup_places = array['One', 'Two', 'Three', 'Four', 'Five', 'Six']
+     where user_id = v_far;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'meetup_places_limit',
+    'a sixth place is refused');
+
+  -- Matching. The map-link game above already counted toward this host's
+  -- two-a-day cap, so remove it before these inserts. Notifications are
+  -- cleared between cases so the daily and per-host caps cannot hide a miss.
+  delete from public.notifications
+   where type = 'meetup_nearby' and user_id in (v_host, v_home, v_far);
+  delete from public.meetups where host_id = v_host;
+
+  update public.notification_preferences
+     set meetup_places = array['Downtown']
+   where user_id = v_far;
+
+  insert into public.meetups
+    (host_id, sport, title, country, city, area, starts_at, spots_total)
+  values
+    (v_host, 'Padel', 'Downtown area game', 'United Arab Emirates', 'Alertville',
+     'Downtown', now() + interval '3 days', 4);
+
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                 where user_id = v_far and type = 'meetup_nearby'),
+    'QA-58: a Faraway player listing Downtown is not alerted about Downtown in Alertville');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_home and type = 'meetup_nearby'),
+    'a player whose profile city is Alertville is still alerted about an Alertville game');
+
+  delete from public.notifications
+   where type = 'meetup_nearby' and user_id in (v_host, v_home, v_far);
+
+  update public.notification_preferences
+     set meetup_places = array['Alertville']
+   where user_id = v_far;
+
+  insert into public.meetups
+    (host_id, sport, title, country, city, starts_at, spots_total)
+  values
+    (v_host, 'Padel', 'City name game', 'United Arab Emirates', 'Alertville',
+     now() + interval '4 days', 4);
+
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_far and type = 'meetup_nearby'),
+    'a Faraway player listing Alertville is alerted about a game in that city');
 end $$;
 
 -- ------------------------------------------------------------

@@ -6,7 +6,7 @@ import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { prepareVideo } from '@/lib/videoPrep';
 import { Buckets, supabase } from '@/lib/supabase';
 import { webAppLink } from '@/lib/webLinks';
-import type { FeedPost, PostMedia, Tier, UserRole } from '@/types/models';
+import type { FeedPost, PostAudience, PostMedia, Tier, UserRole } from '@/types/models';
 
 /**
  * Feed-only network calls.
@@ -114,6 +114,23 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     viewer_follows: follows,
     created_at: row.created_at as string,
   };
+}
+
+/** The post's own audience. Only the author can read this (RLS). */
+export async function getPostAudience(postId: string): Promise<PostAudience | null> {
+  try {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('audience')
+      .eq('id', postId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const audience = (data as { audience?: string | null }).audience;
+    if (audience !== 'public' && audience !== 'followers' && audience !== 'connections') return null;
+    return audience;
+  } catch {
+    return null;
+  }
 }
 
 interface AthleteFacts {

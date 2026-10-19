@@ -138,6 +138,10 @@ export const settings = {
   notifyComments: '评论',
   notifyLikes: '点赞',
   notifyMeetups: '约球的球局',
+  meetupPlaces: '约球提醒地点',
+  meetupPlacesOnlyCity: '只限你的城市',
+  meetupPlacesBody: '你会收到资料里所在城市的球局提醒。最多再加 5 个城市或区域。',
+  meetupPlaceAdd: '添加',
 
   sectionOpportunities: '机会和你的分数',
   notifyOpportunities: '新机会',
