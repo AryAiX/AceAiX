@@ -1,19 +1,23 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Clipboard, Platform, Share, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
 import { MoreHorizontal } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Tappable, Text, useToast } from '@/components/ui';
+import { Avatar, Divider, ListItem, Sheet, Tappable, Text, useToast } from '@/components/ui';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
+import { useAuth } from '@/providers/AuthProvider';
 import { toggleLike, toggleSave } from '@/lib/api';
-import { postLink } from '@/lib/api.feed';
+import { getPostAudience, postLink } from '@/lib/api.feed';
+import { brandedShareCaption, buildBrandedImage, type BrandedKind } from '@/lib/brandedShare';
 import { errorMessage } from '@/lib/errors';
 import { displayName, metaLine, relativeTime } from '@/lib/format';
 import { shareContent } from '@/lib/share';
 import type { FeedPost } from '@/types/models';
+import { OffscreenBrandedCard } from './BrandedShareCard';
 import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
 import { PostActions } from './PostActions';
@@ -64,15 +68,19 @@ function PostCardBase({
   const { colors, radii, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const { user, profile } = useAuth();
 
   const [showAll, setShowAll] = useState(expanded);
 
   const lastMediaTap = useRef(0);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareLookup = useRef(false);
 
   useEffect(
     () => () => {
       if (openTimer.current) clearTimeout(openTimer.current);
+      if (shareTimer.current) clearTimeout(shareTimer.current);
     },
     [],
   );
@@ -119,6 +127,33 @@ function PostCardBase({
     }
   }, [post.id, post.viewer_saved, onPatch, toast, t]);
 
+  const firstMedia = post.media[0];
+  const canBrandShare =
+    Platform.OS !== 'web' &&
+    !!user &&
+    post.author_id === user.id &&
+    profile?.is_minor === false &&
+    (profile.age_band === '18_24' || profile.age_band === '25_plus') &&
+    !!firstMedia &&
+    (firstMedia.type === 'photo' || (firstMedia.type === 'video' && !!firstMedia.thumbnail));
+
+  const [shareOpen, setShareOpen] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const shareJob = useRef<{
+    kind: BrandedKind;
+    imageUrl: string;
+    isVideo: boolean;
+    name: string;
+    sport: string;
+    caption: string;
+    link: string;
+    sportKey: string | null;
+    findMePrefix: string;
+    preparing: string;
+    copied: string;
+    failed: string;
+  } | null>(null);
+
   const handleShare = useCallback(async () => {
     const link = postLink(post.id);
     try {
@@ -128,6 +163,101 @@ function PostCardBase({
       toast.error(t('common.somethingWentWrong'));
     }
   }, [post.id, t, toast]);
+
+  const onShare = useCallback(() => {
+    if (!canBrandShare) {
+      void handleShare();
+      return;
+    }
+    if (shareLookup.current) return;
+    shareLookup.current = true;
+    void (async () => {
+      try {
+        const audience = await getPostAudience(post.id);
+        if (audience === 'public') setShareOpen(true);
+        else void handleShare();
+      } catch {
+        void handleShare();
+      } finally {
+        shareLookup.current = false;
+      }
+    })();
+  }, [canBrandShare, handleShare, post.id]);
+
+  /* The sheet is a Modal. iOS will not present the system share sheet until
+     that modal has left, so the link row closes first and then calls the
+     original share. */
+  const shareLinkFromSheet = useCallback(() => {
+    setShareOpen(false);
+    if (shareTimer.current) clearTimeout(shareTimer.current);
+    shareTimer.current = setTimeout(() => {
+      shareTimer.current = null;
+      void handleShare();
+    }, 280);
+  }, [handleShare]);
+
+  const startBrandedShare = useCallback(
+    (kind: BrandedKind) => {
+      const media = post.media[0];
+      const imageUrl = media?.type === 'video' ? media.thumbnail : media?.url;
+      if (!media || !imageUrl) return;
+      shareJob.current = {
+        kind,
+        imageUrl,
+        isVideo: media.type === 'video',
+        name,
+        sport: sportLabel(t, post.athlete_sport),
+        caption: post.caption ?? '',
+        link: postLink(post.id),
+        sportKey: post.athlete_sport,
+        findMePrefix: t('feed.findMeSharePrefix'),
+        preparing: t('feed.sharePreparing'),
+        copied: t('feed.shareCaptionCopied'),
+        failed: t('feed.shareImageFailed'),
+      };
+      setShareOpen(false);
+      setRendering(true);
+    },
+    [name, post.athlete_sport, post.caption, post.id, post.media, t],
+  );
+
+  useEffect(() => {
+    if (!rendering || !shareJob.current) return;
+    const job = shareJob.current;
+    shareJob.current = null;
+    let live = true;
+    void (async () => {
+      toast.info(job.preparing);
+      try {
+        const uri = await buildBrandedImage({
+          kind: job.kind,
+          imageUrl: job.imageUrl,
+          isVideo: job.isVideo,
+          name: job.name,
+          sport: job.sport,
+        });
+        if (!live) return;
+        Clipboard.setString(
+          brandedShareCaption({
+            caption: job.caption,
+            link: job.link,
+            sportKey: job.sportKey,
+            findMePrefix: job.findMePrefix,
+          }),
+        );
+        toast.success(job.copied);
+        await presentPng(uri);
+      } catch (err) {
+        console.warn('Could not create the branded share image', err);
+        if (live) toast.error(job.failed);
+      } finally {
+        if (live) setRendering(false);
+      }
+    })();
+    return () => {
+      live = false;
+    };
+  }, [rendering, toast]);
 
   /* Each double tap bumps this and the burst plays once. */
   const [bursts, setBursts] = useState(0);
@@ -284,11 +414,51 @@ function PostCardBase({
         saved={post.viewer_saved}
         onLike={handleLike}
         onComment={() => onOpenComments(post)}
-        onShare={handleShare}
+        onShare={onShare}
         onSave={handleSave}
       />
+
+      {rendering ? <OffscreenBrandedCard /> : null}
+
+      {shareOpen ? (
+      <Sheet
+        visible
+        onClose={() => setShareOpen(false)}
+        title={t('common.share')}
+      >
+        <ListItem
+          title={t('feed.shareAsStory')}
+          showChevron={false}
+          testID="share-story"
+          onPress={() => startBrandedShare('story')}
+        />
+        <Divider />
+        <ListItem
+          title={t('feed.shareAsPost')}
+          showChevron={false}
+          testID="share-post"
+          onPress={() => startBrandedShare('post')}
+        />
+        <Divider />
+        <ListItem
+          title={t('feed.shareLink')}
+          showChevron={false}
+          testID="share-link"
+          onPress={shareLinkFromSheet}
+        />
+      </Sheet>
+      ) : null}
     </View>
   );
+}
+
+/** iOS takes a file URL on the system sheet. Android only shares the file through expo-sharing. */
+async function presentPng(uri: string): Promise<void> {
+  if (Platform.OS === 'android' && (await Sharing.isAvailableAsync())) {
+    await Sharing.shareAsync(uri, { mimeType: 'image/png' });
+    return;
+  }
+  await Share.share({ url: uri });
 }
 
 export const PostCard = memo(PostCardBase);
