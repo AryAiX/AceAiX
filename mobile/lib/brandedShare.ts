@@ -1,4 +1,3 @@
-import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
 
 const LOGO = require('../assets/images/logo-mark.png');
@@ -111,10 +110,23 @@ async function jpegBase64(uri: string): Promise<string> {
   }
 }
 
+/**
+ * Android release builds embed the logo as a drawable, so its "uri" is a bare
+ * resource name that expo-file-system cannot open; expo-image can.
+ */
 async function logoBase64FromAsset(): Promise<string> {
-  const asset = Asset.fromModule(LOGO);
-  if (!asset.localUri) await asset.downloadAsync();
-  const uri = asset.localUri ?? asset.uri;
-  if (!uri) throw new Error('Logo asset is unavailable');
-  return new File(uri).base64();
+  const [{ Image }, { ImageManipulator, SaveFormat }] = await Promise.all([
+    import('expo-image'),
+    import('expo-image-manipulator'),
+  ]);
+  const logo = await Image.loadAsync(LOGO);
+  const rendered = await ImageManipulator.manipulate(logo).renderAsync();
+  try {
+    const saved = await rendered.saveAsync({ format: SaveFormat.PNG, base64: true });
+    if (!saved.base64) throw new Error('Logo had no data');
+    return saved.base64;
+  } finally {
+    rendered.release();
+    logo.release();
+  }
 }
