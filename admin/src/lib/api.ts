@@ -183,6 +183,7 @@ export interface GuardianConsent {
   allow_assessments: boolean;
   allow_sponsorship: boolean;
   allow_bookings: boolean;
+  allow_mindset: boolean;
   granted_at: string | null;
   revoked_at?: string | null;
   created_at: string;

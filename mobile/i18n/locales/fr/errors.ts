@@ -50,6 +50,8 @@ export const errors = {
   giAttemptLimit: 'Tu as déjà fait deux essais à ce jeu ces deux dernières semaines. Ton meilleur compte.',
   giSessionClosed: 'Cette session est terminée. Lances-en une nouvelle pour continuer à jouer.',
   giAlreadyDone: 'Tu as déjà joué à ce jeu pendant cette session.',
+  sportFitConsentRequired: 'Un parent ou tuteur doit d’abord autoriser le questionnaire Sport Fit.',
+  sportFitRetakeTooSoon: 'Tu pourras refaire Sport Fit 60 jours après ton dernier résultat.',
   sponsorOnly: 'Seul un compte sponsor peut faire cela.',
   sponsorNotVerified: 'Votre compte sponsor n’est pas encore vérifié.',
   athleteOnly: 'Seul un athlète peut faire cela.',

@@ -5147,4 +5147,107 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Sport Fit (20261019000001)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sport fit ──'; end $$;
+
+do $$
+declare
+  v_answers jsonb;
+  v_out     jsonb;
+  v_raised  boolean;
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_seen    integer;
+begin
+  select jsonb_object_agg(id, case when expected is not null then expected
+                                   when reverse then 2 else 4 end)
+    into v_answers from public.sport_fit_items;
+
+  -- An adult athlete answers.
+  perform tests.as_user(v_adult);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'ok',
+    'an adult athlete may take Sport Fit');
+  v_out := public.sport_fit_submit(v_answers, 240);
+  perform tests.ok(v_out ->> 'quality' = 'ok', 'a careful set of answers is scored');
+  perform tests.ok(jsonb_array_length(v_out -> 'fits') = (select count(*) from public.sport_fit_sports where active),
+    'every active sport is ranked');
+  perform tests.ok(
+    (v_out -> 'fits' -> 0 ->> 'fit')::int >= (v_out -> 'fits' -> 1 ->> 'fit')::int
+    and (v_out -> 'fits' -> 1 ->> 'fit')::int >= (v_out -> 'fits' -> 2 ->> 'fit')::int,
+    'sports come back best first');
+  perform tests.ok((v_out -> 'dimensions' ->> 'drive')::int between 0 and 100,
+    'dimensions are reported on 0–100');
+
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers, 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a second valid result inside the retake window is refused');
+
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers - 'drive1', 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a missing answer is refused');
+
+  -- Nobody else reads it.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  set local role authenticated;
+  v_seen := (select count(*) from public.sport_fit_results where user_id = v_adult);
+  v_raised := false;
+  begin
+    update public.sport_fit_results set quality = 'ok' where user_id = v_adult;
+    v_raised := not found;
+  exception when others then v_raised := true; end;
+  reset role;
+  perform tests.ok(v_seen = 0, 'another user cannot read someone''s Sport Fit answers');
+  perform tests.ok(v_raised, 'a client cannot write Sport Fit results');
+
+  -- Careless answers are not scored.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_out := public.sport_fit_submit(jsonb_set(v_answers, '{check1}', '1'), 240);
+  perform tests.ok(v_out ->> 'quality' = 'check_failed' and v_out -> 'fits' = '[]'::jsonb,
+    'a missed attention check gives no result');
+  v_out := public.sport_fit_submit(v_answers, 20);
+  perform tests.ok(v_out ->> 'quality' = 'too_fast', 'answering in under 45 seconds gives no result');
+
+  -- A 14-year-old needs the guardian's "mindset" scope, not just the games.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_private set date_of_birth = current_date - interval '14 years' where user_id = v_minor;
+  update public.guardian_consents set status = 'revoked' where minor_user_id = v_minor and status = 'granted';
+  insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at,
+                                        allow_assessments, allow_mindset)
+  values (v_minor, 'Parent', 'sf.parent@test.local', 'granted', now(), true, false);
+
+  perform tests.as_user(v_minor);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'guardian_required',
+    'approving the games does not approve the mindset questionnaire');
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers, 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'the server refuses a minor without the mindset scope');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.guardian_consents set allow_mindset = true
+   where minor_user_id = v_minor and guardian_email = 'sf.parent@test.local';
+  perform tests.as_user(v_minor);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'ok',
+    'a guardian''s mindset approval unlocks Sport Fit');
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'SELECT')
+    and not has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'UPDATE'),
+    'the minor can read but not write the mindset scope');
+
+  -- Erase.
+  perform tests.as_user(v_adult);
+  perform tests.ok(public.sport_fit_delete_mine() >= 1, 'a player can erase their Sport Fit answers');
+  perform tests.ok(public.sport_fit_my_state() -> 'result' = 'null'::jsonb,
+    'after erasing, no result remains');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_private set date_of_birth = current_date - interval '15 years' where user_id = v_minor;
+  delete from public.guardian_consents where guardian_email = 'sf.parent@test.local';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

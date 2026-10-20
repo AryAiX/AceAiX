@@ -25,6 +25,9 @@ export const Routes = {
   score: '/score' as const,
   intelligence: '/intelligence' as const,
   intelligenceSession: '/intelligence/session' as const,
+  /** Sport Fit: the mindset questionnaire and the sports it points to. */
+  sportFit: '/sport-fit' as const,
+  sportFitQuestions: '/sport-fit/questions' as const,
   achievements: '/achievements' as const,
   editProfile: '/edit-profile' as const,
 

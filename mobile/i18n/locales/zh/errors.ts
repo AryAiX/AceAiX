@@ -49,6 +49,8 @@ export const errors = {
   giAttemptLimit: '最近两周你已经玩过这个游戏两次了，按最好的一次算。',
   giSessionClosed: '这一轮已经结束了。开始新的一轮就能接着玩。',
   giAlreadyDone: '这一轮里你已经玩过这个游戏了。',
+  sportFitConsentRequired: '需要先由父母或监护人同意「运动契合度」问卷。',
+  sportFitRetakeTooSoon: '距离上次结果 60 天后，你可以再次完成「运动契合度」。',
   sponsorOnly: '只有赞助商账号可以这样做。',
   sponsorNotVerified: '你的赞助商账号尚未通过认证。',
   athleteOnly: '只有运动员可以这样做。',

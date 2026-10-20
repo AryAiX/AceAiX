@@ -84,6 +84,9 @@ const BRAND_OR_UNIT = new Set([
   'intelligence.title',
   'intelligence.short',
   'intelligence.theirTitle',
+  /* Sport Fit keeps its English name in the languages that keep "Game Intelligence". */
+  'sportFit.title',
+  'sportFit.questionsTitle',
   'sports.padel',
   'sports.esports',
   'sports.position.mma',

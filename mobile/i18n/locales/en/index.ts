@@ -29,6 +29,7 @@ import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
 import { countries } from './countries';
+import { sportFit } from './sportFit';
 
 /**
  * English — the source of truth.
@@ -68,6 +69,7 @@ export const en = {
   clubSetup,
   clubManage,
   clubMatch,
+  sportFit,
 };
 
 export type Translations = typeof en;

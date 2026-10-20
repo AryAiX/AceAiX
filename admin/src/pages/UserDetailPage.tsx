@@ -167,7 +167,7 @@ export default function UserDetailPage() {
                   <div className="flex items-center justify-between"><b>{g.guardian_name ?? g.guardian?.full_name ?? 'Guardian'}</b><StatusBadge status={g.status} /></div>
                   <div className="text-xs text-slate-500">{label(g.relationship)} · {g.guardian_email ?? '—'}</div>
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {(['discovery', 'messaging', 'media', 'assessments', 'sponsorship', 'bookings'] as const).map((s) => (
+                    {(['discovery', 'messaging', 'media', 'assessments', 'sponsorship', 'bookings', 'mindset'] as const).map((s) => (
                       <Badge key={s} color={g[`allow_${s}`] ? 'green' : 'slate'}>{label(s)}</Badge>
                     ))}
                   </div>
