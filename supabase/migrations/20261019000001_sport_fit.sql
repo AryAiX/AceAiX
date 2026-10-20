@@ -85,15 +85,9 @@ begin
     return jsonb_build_object('ok', false, 'error', 'token_expired');
   end if;
 
-  /* The same guardian's earlier approval is replaced, never anyone else's
-     (docs/26 §2). */
-  update public.guardian_consents
-     set status = 'expired', updated_at = now()
-   where minor_user_id = v_row.minor_user_id
-     and status = 'granted'
-     and id <> v_row.id
-     and lower(guardian_email) = lower(v_row.guardian_email);
-
+  -- Grant before expiring the guardian's previous consent: the scope triggers
+  -- read live consent, and in between the minor would hold none, cancelling
+  -- every booking and offer even when the guardian re-ticked every box.
   update public.guardian_consents
   set status = 'granted',
       granted_at = now(),
@@ -107,6 +101,13 @@ begin
       updated_at = now()
   where id = v_row.id
   returning * into v_row;
+
+  update public.guardian_consents
+     set status = 'expired', updated_at = now()
+   where minor_user_id = v_row.minor_user_id
+     and status = 'granted'
+     and id <> v_row.id
+     and lower(guardian_email) = lower(v_row.guardian_email);
 
   return jsonb_build_object(
     'ok', true,
