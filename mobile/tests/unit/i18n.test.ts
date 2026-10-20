@@ -91,6 +91,15 @@ const BRAND_OR_UNIT = new Set([
   'sports.position.karate',
   'sports.position.libero',
   'sports.position.pivot',
+  /* Example map URL. The link is the same in every language. */
+  'meetups.fieldMapLinkPlaceholder',
+  /* Platform names on a club page's social links. */
+  'club.labels.social.instagram',
+  'club.labels.social.facebook',
+  'club.labels.social.youtube',
+  'club.labels.social.tiktok',
+  'club.labels.social.linkedin',
+  'club.labels.social.snapchat',
 ]);
 
 /**

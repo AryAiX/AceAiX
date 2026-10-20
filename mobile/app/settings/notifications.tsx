@@ -5,6 +5,7 @@ import {
   Bell,
   BellRing,
   Briefcase,
+  Building2,
   CalendarDays,
   Heart,
   Mail,
@@ -12,14 +13,28 @@ import {
   MessageSquare,
   Sparkles,
   UserPlus,
+  X,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Card, ErrorState, Header, Screen, Skeleton, Text, useToast } from '@/components/ui';
-import { SettingsGroup, SettingsSwitchRow } from '@/components/settings/SettingsGroup';
+import {
+  Button,
+  Card,
+  Chip,
+  ErrorState,
+  Header,
+  Input,
+  Screen,
+  Sheet,
+  Skeleton,
+  Text,
+  useToast,
+} from '@/components/ui';
+import { SettingsGroup, SettingsRow, SettingsSwitchRow } from '@/components/settings/SettingsGroup';
 import { SavedBadge } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { getNotificationPreferences, saveNotificationPreferences } from '@/lib/api';
 import {
   getPushPermissionState,
@@ -30,7 +45,8 @@ import {
 import { errorMessage } from '@/lib/errors';
 import type { NotificationPreferences } from '@/types/models';
 
-type Prefs = Omit<NotificationPreferences, 'user_id'>;
+/* `club_updates` arrived with club pages (1014/01). */
+type Prefs = Omit<NotificationPreferences, 'user_id'> & { club_updates: boolean };
 
 const DEFAULTS: Prefs = {
   follows: true,
@@ -42,6 +58,8 @@ const DEFAULTS: Prefs = {
   scout_interest: true,
   score_updates: true,
   meetups: true,
+  meetup_places: [],
+  club_updates: true,
   push_enabled: true,
   email_enabled: true,
 };
@@ -54,10 +72,15 @@ export default function NotificationSettingsScreen() {
   const { colors, spacing } = theme;
   const toast = useToast();
   const t = useT();
+  const { profile } = useAuth();
 
   const loaded = useAsync(getNotificationPreferences, []);
   const [prefs, setPrefs] = useState<Prefs>(DEFAULTS);
   const [saved, setSaved] = useState(false);
+  const [placesOpen, setPlacesOpen] = useState(false);
+  const [placeDraft, setPlaceDraft] = useState<string[]>([]);
+  const [placeInput, setPlaceInput] = useState('');
+  const [placesSaving, setPlacesSaving] = useState(false);
 
   const [pushGranted, setPushGranted] = useState(true);
   const [pushBlocked, setPushBlocked] = useState(false);
@@ -68,7 +91,13 @@ export default function NotificationSettingsScreen() {
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (loaded.data) setPrefs({ ...DEFAULTS, ...loaded.data });
+    if (loaded.data) {
+      setPrefs({
+        ...DEFAULTS,
+        ...loaded.data,
+        meetup_places: Array.isArray(loaded.data.meetup_places) ? loaded.data.meetup_places : [],
+      });
+    }
   }, [loaded.data]);
 
   /* On web there is nothing to grant, so the card below stays away rather than
@@ -145,6 +174,37 @@ export default function NotificationSettingsScreen() {
       setAsking(false);
     }
   }, [update, toast, t]);
+
+  const openPlaces = useCallback(() => {
+    setPlaceDraft(prefs.meetup_places);
+    setPlaceInput('');
+    setPlacesOpen(true);
+  }, [prefs.meetup_places]);
+
+  const addPlace = useCallback(() => {
+    const next = placeInput.trim();
+    if (!next) return;
+    setPlaceDraft((current) => {
+      if (current.length >= 5) return current;
+      if (current.some((place) => place.toLowerCase() === next.toLowerCase())) return current;
+      return [...current, next];
+    });
+    setPlaceInput('');
+  }, [placeInput]);
+
+  const savePlaces = useCallback(async () => {
+    setPlacesSaving(true);
+    try {
+      await saveNotificationPreferences({ meetup_places: placeDraft });
+      setPrefs((current) => ({ ...current, meetup_places: placeDraft }));
+      setPlacesOpen(false);
+      loaded.reload();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setPlacesSaving(false);
+    }
+  }, [loaded, placeDraft, toast]);
 
   const icon = useCallback(
     (Icon: typeof Bell) => <Icon size={17} color={colors.text} />,
@@ -257,14 +317,29 @@ export default function NotificationSettingsScreen() {
           footer={t('settings.activityFooter')}
         >
           {activityRows.map((row) => (
-            <SettingsSwitchRow
-              key={row.key}
-              title={row.title}
-              icon={icon(row.Icon)}
-              value={prefs[row.key]}
-              onValueChange={(v) => update({ [row.key]: v } as Partial<Prefs>)}
-              testID={`pref-${row.key}`}
-            />
+            <React.Fragment key={row.key}>
+              <SettingsSwitchRow
+                title={row.title}
+                icon={icon(row.Icon)}
+                value={prefs[row.key]}
+                onValueChange={(v) => update({ [row.key]: v } as Partial<Prefs>)}
+                testID={`pref-${row.key}`}
+              />
+              {/* Audience is on hold. When it ships, this row must also be
+                  hidden for audience accounts (&& !isAudience) - see QA-60. */}
+              {row.key === 'meetups' && prefs.meetups && profile?.is_minor === false ? (
+                <SettingsRow
+                  title={t('settings.meetupPlaces')}
+                  subtitle={
+                    prefs.meetup_places.length > 0
+                      ? prefs.meetup_places.join(', ')
+                      : t('settings.meetupPlacesOnlyCity')
+                  }
+                  onPress={openPlaces}
+                  testID="pref-meetup-places"
+                />
+              ) : null}
+            </React.Fragment>
           ))}
         </SettingsGroup>
 
@@ -281,10 +356,89 @@ export default function NotificationSettingsScreen() {
           ))}
         </SettingsGroup>
 
+        <SettingsGroup title={t('settings.sectionClubs')}>
+          <SettingsSwitchRow
+            title={t('settings.notifyClubUpdates')}
+            subtitle={t('settings.notifyClubUpdatesHint')}
+            icon={icon(Building2)}
+            value={prefs.club_updates}
+            onValueChange={(v) => update({ club_updates: v })}
+            testID="pref-club_updates"
+          />
+        </SettingsGroup>
+
         <Text variant="caption" tone="muted">
           {t('settings.noMarketingNote')}
         </Text>
       </View>
+
+      <Sheet
+        visible={placesOpen}
+        onClose={() => {
+          if (placesSaving) return;
+          setPlacesOpen(false);
+        }}
+        title={t('settings.meetupPlaces')}
+      >
+        <Text variant="caption" tone="secondary">
+          {t('settings.meetupPlacesBody')}
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            marginTop: spacing.lg,
+          }}
+        >
+          <Input
+            value={placeInput}
+            onChangeText={setPlaceInput}
+            maxLength={80}
+            autoCapitalize="words"
+            autoCorrect={false}
+            containerStyle={{ flex: 1 }}
+            testID="meetup-place-input"
+            onSubmitEditing={addPlace}
+          />
+          <Button
+            label={t('settings.meetupPlaceAdd')}
+            size="sm"
+            disabled={placeDraft.length >= 5}
+            onPress={addPlace}
+            testID="meetup-place-add"
+          />
+        </View>
+        {placeDraft.length > 0 ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: spacing.sm,
+              marginTop: spacing.lg,
+            }}
+          >
+            {placeDraft.map((place, index) => (
+              <Chip
+                key={`${place}-${index}`}
+                label={place}
+                icon={<X size={14} color={colors.textMuted} />}
+                onPress={() => setPlaceDraft((current) => current.filter((_, i) => i !== index))}
+                testID={`meetup-place-${index}`}
+              />
+            ))}
+          </View>
+        ) : null}
+        <Button
+          label={t('common.save')}
+          fullWidth
+          loading={placesSaving}
+          disabled={placesSaving}
+          style={{ marginTop: spacing.lg }}
+          onPress={savePlaces}
+          testID="meetup-places-save"
+        />
+      </Sheet>
     </Screen>
   );
 }

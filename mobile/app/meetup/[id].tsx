@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Linking, Platform, View } from 'react-native';
+import { Linking, Platform, Pressable, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CalendarDays, Check, MapPin, Navigation, Users, Wallet, X } from 'lucide-react-native';
 
@@ -38,7 +38,9 @@ import {
   getMeetup,
   leaveMeetup,
   requestToJoin,
+  setMeetupMapUrl,
 } from '@/lib/api.meetups';
+import { isAllowedMapUrl } from '@/lib/mapLinks';
 
 /**
  * One game: where, when, who is going, and the one thing you can do about it.
@@ -67,6 +69,9 @@ export default function MeetupScreen() {
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [directionsOpen, setDirectionsOpen] = useState(false);
+  const [mapLinkOpen, setMapLinkOpen] = useState(false);
+  const [mapLinkDraft, setMapLinkDraft] = useState('');
+  const [mapLinkBusy, setMapLinkBusy] = useState(false);
 
   const data = detail.data;
   const meetup = data?.meetup;
@@ -130,6 +135,36 @@ export default function MeetupScreen() {
       setBusy(false);
     }
   }, [detail, id, t, toast]);
+
+  const mapLinkTrimmed = mapLinkDraft.trim();
+  const mapLinkInvalid = mapLinkTrimmed.length > 0 && !isAllowedMapUrl(mapLinkTrimmed);
+
+  const onSaveMapLink = useCallback(async () => {
+    if (!mapLinkTrimmed || !isAllowedMapUrl(mapLinkTrimmed)) return;
+    setMapLinkBusy(true);
+    try {
+      await setMeetupMapUrl(id!, mapLinkTrimmed);
+      setMapLinkOpen(false);
+      detail.reload();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setMapLinkBusy(false);
+    }
+  }, [detail, id, mapLinkTrimmed, toast]);
+
+  const onRemoveMapLink = useCallback(async () => {
+    setMapLinkBusy(true);
+    try {
+      await setMeetupMapUrl(id!, null);
+      setMapLinkOpen(false);
+      detail.reload();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setMapLinkBusy(false);
+    }
+  }, [detail, id, toast]);
 
   const header = <Header back title={meetup?.title ?? t('meetups.title')} />;
 
@@ -202,6 +237,21 @@ export default function MeetupScreen() {
                 onPress={() => setDirectionsOpen(true)}
                 testID="meetup-directions"
               />
+            ) : null}
+            {isHost && (meetup.status === 'open' || meetup.status === 'full') ? (
+              <Pressable
+                testID="map-link-edit"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => {
+                  setMapLinkDraft(meetup.map_url ?? '');
+                  setMapLinkOpen(true);
+                }}
+              >
+                <Text variant="captionStrong" tone="primary">
+                  {meetup.map_url ? t('meetups.editMapLink') : t('meetups.addMapLink')}
+                </Text>
+              </Pressable>
             ) : null}
             <Fact
               icon={<Users size={16} color={spotsColour} />}
@@ -411,7 +461,17 @@ export default function MeetupScreen() {
         onClose={() => setDirectionsOpen(false)}
         title={t('meetups.directionsTitle')}
       >
-        {directionsApps(meetup).map((app, index) => (
+        {(meetup.map_url && isAllowedMapUrl(meetup.map_url)
+          ? [
+              {
+                label: t('meetups.exactPin'),
+                url: meetup.map_url,
+                testID: 'directions-exact',
+              },
+              ...directionsApps(meetup),
+            ]
+          : directionsApps(meetup)
+        ).map((app, index) => (
           <View key={app.testID}>
             {index > 0 ? <Divider /> : null}
             <ListItem
@@ -427,6 +487,49 @@ export default function MeetupScreen() {
             />
           </View>
         ))}
+      </Sheet>
+
+      <Sheet
+        visible={mapLinkOpen}
+        onClose={() => {
+          if (mapLinkBusy) return;
+          setMapLinkOpen(false);
+        }}
+        title={t('meetups.mapLinkTitle')}
+      >
+        <Input
+          label={t('meetups.fieldMapLink')}
+          placeholder={t('meetups.fieldMapLinkPlaceholder')}
+          hint={t('meetups.fieldMapLinkHint')}
+          error={mapLinkInvalid ? t('errors.meetupMapUrlInvalid') : null}
+          value={mapLinkDraft}
+          onChangeText={setMapLinkDraft}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={500}
+          testID="meetup-map-link"
+        />
+        <Button
+          label={t('common.save')}
+          fullWidth
+          loading={mapLinkBusy}
+          disabled={mapLinkBusy || mapLinkTrimmed.length === 0 || mapLinkInvalid}
+          style={{ marginTop: spacing.lg }}
+          onPress={onSaveMapLink}
+          testID="map-link-save"
+        />
+        {meetup.map_url ? (
+          <Button
+            label={t('common.remove')}
+            variant="danger"
+            fullWidth
+            disabled={mapLinkBusy}
+            style={{ marginTop: spacing.sm }}
+            onPress={onRemoveMapLink}
+            testID="map-link-remove"
+          />
+        ) : null}
       </Sheet>
 
       <ConfirmSheet

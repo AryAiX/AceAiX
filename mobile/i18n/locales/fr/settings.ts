@@ -145,12 +145,21 @@ export const settings = {
   notifyComments: 'Commentaires',
   notifyLikes: 'Likes',
   notifyMeetups: 'Matchs dans Jouer',
+  meetupPlaces: 'Lieux des alertes Jouer',
+  meetupPlacesOnlyCity: 'Seulement ta ville',
+  meetupPlacesBody:
+    'Tu reçois des alertes pour les matchs dans la ville de ton profil. Ajoute jusqu’à 5 villes ou quartiers de plus.',
+  meetupPlaceAdd: 'Ajouter',
 
   sectionOpportunities: 'Opportunités et ton score',
   notifyOpportunities: 'Nouvelles opportunités',
   notifyApplications: 'Suivi des candidatures',
   notifyScoutInterest: 'Intérêt des recruteurs',
   notifyScoreUpdates: 'Évolutions du Score Talent',
+  sectionClubs: 'Clubs',
+  notifyClubUpdates: 'Actus des clubs',
+  notifyClubUpdatesHint:
+    'Annonces, matchs, résultats et événements des clubs que tu suis ou où tu joues',
 
   noMarketingNote:
     'On n’envoie jamais de notifications marketing, et on ne vend tes coordonnées à personne qui le ferait.',

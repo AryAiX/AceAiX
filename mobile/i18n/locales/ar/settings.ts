@@ -150,12 +150,21 @@ export const settings = {
   notifyComments: 'التعليقات',
   notifyLikes: 'الإعجابات',
   notifyMeetups: 'مباريات اللعب',
+  meetupPlaces: 'أماكن تنبيهات اللعب',
+  meetupPlacesOnlyCity: 'مدينتك فقط',
+  meetupPlacesBody:
+    'تصلك تنبيهات المباريات في مدينة ملفك. أضف حتى 5 مدن أو مناطق أخرى.',
+  meetupPlaceAdd: 'إضافة',
 
   sectionOpportunities: 'الفرص ودرجتك',
   notifyOpportunities: 'فرص جديدة',
   notifyApplications: 'تحديثات الطلبات',
   notifyScoutInterest: 'اهتمام الكشّافين',
   notifyScoreUpdates: 'تحديثات درجة الموهبة',
+  sectionClubs: 'الأندية',
+  notifyClubUpdates: 'أخبار الأندية',
+  notifyClubUpdatesHint:
+    'الإعلانات والمباريات والنتائج والفعاليات من الأندية التي تتابعها أو تلعب لها',
 
   noMarketingNote:
     'لا نرسل إشعارات تسويقية أبدًا، ولا نبيع بياناتك لمن يرسلها.',

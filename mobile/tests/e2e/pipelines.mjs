@@ -915,6 +915,110 @@ async function main() {
     expect(res.error?.hint === 'coach_only', `hint was ${res.error?.hint}`);
   });
 
+  section('a club runs its page, and the right people hear about it');
+
+  const ACADEMY = 'e0000000-0000-4000-8000-000000000001';
+  const LIVE_MATCH = 'f5000000-0000-4000-8000-000000000001';
+  let clubEvent = null;
+
+  await step('the academy opens its page as owner, licence status included', async () => {
+    const page = unwrap(await clients.academy.rpc('club_page', { p_org: ACADEMY }), 'club_page');
+    expect(page.viewer.can_manage && page.viewer.role === 'owner', 'not the owner');
+    expect(page.verification && page.verification.license_number, 'no licence block for the owner');
+    expect(page.live_match?.id === LIVE_MATCH, 'the live match is not on the page');
+    return `${page.sports.length} sports, ${page.counts.players} players`;
+  });
+
+  await step('a stranger sees the page but not the licence, and youth names shortened', async () => {
+    const page = unwrap(await clients.sara.rpc('club_page', { p_org: ACADEMY }), 'club_page');
+    expect(page.verification === null && !page.viewer.can_manage, 'sara sees the licence or can manage');
+    const squads = unwrap(await clients.sara.rpc('club_squads_page', { p_org: ACADEMY }), 'club_squads_page');
+    const u16 = squads.squads.find((q) => q.category === 'U16');
+    const names = u16.players.map((p) => p.display_name);
+    expect(names.includes('Ahmed S.') && !names.some((n) => n.includes('Shamsi')), `names were ${names.join(', ')}`);
+    const raw = unwrap(await clients.sara.from('club_squad_members').select('display_name'), 'read');
+    expect(raw.length === 0, `sara read ${raw.length} roster rows from the table`);
+  });
+
+  await step('an announcement reaches a follower as a notification', async () => {
+    const startedAt = new Date(Date.now() - 2000).toISOString();
+    const res = await clients.academy.rpc('send_club_broadcast', {
+      p_org: ACADEMY, p_title: `Kit day ${RUN}`, p_body: 'Collect your training kit on Monday from 4pm.', p_audience: 'all',
+    });
+    /* Three a day: on a third rerun the limit is the expected answer. */
+    if (res.error?.hint === 'rate_limited') return 'daily limit already reached (expected on reruns)';
+    const sent = unwrap(res, 'send_club_broadcast');
+    await eventually(async () =>
+      (await notifications(clients.layla)).some(
+        (n) => n.type === 'club_broadcast' && n.entity_id === ACADEMY && n.created_at > startedAt,
+      ),
+    );
+    return `${sent.recipients} recipients`;
+  });
+
+  await step('the scorekeeper adds a goal and everyone sees the new score', async () => {
+    const before = unwrap(await clients.sara.rpc('club_match_page', { p_match: LIVE_MATCH }), 'club_match_page');
+    const goal = unwrap(
+      await clients.marco.rpc('add_match_event', {
+        p_match: LIVE_MATCH, p: { kind: 'goal', side: 'us', minute: 61, squad_member_id: 'f4000000-0000-4000-8000-000000000007' },
+      }),
+      'add_match_event',
+    );
+    const after = unwrap(await clients.sara.rpc('club_match_page', { p_match: LIVE_MATCH }), 'club_match_page');
+    expect(after.match.our_score === before.match.our_score + 1, 'the score did not move');
+    expect(after.events.some((e) => e.id === goal && e.player_name === 'Ali K.'), 'the youth scorer was not shortened');
+    /* Leave the demo as it was. */
+    unwrap(await clients.marco.rpc('delete_match_event', { p_event: goal }), 'delete_match_event');
+    return `${before.match.our_score} → ${after.match.our_score} → ${before.match.our_score}`;
+  });
+
+  await step('a scorekeeper cannot rewrite the fixture, and a stranger cannot score', async () => {
+    const res = await clients.marco.rpc('save_club_match', {
+      p_org: ACADEMY, p_id: LIVE_MATCH, p: { sport: 'Football', opponent_name: 'x', kickoff_at: new Date().toISOString() },
+    });
+    expect(res.error?.hint === 'club_permission', `hint was ${res.error?.hint}`);
+    const res2 = await clients.sara.rpc('update_match_live', { p_match: LIVE_MATCH, p: { our_score: 9 } });
+    expect(res2.error?.hint === 'club_permission', `hint was ${res2.error?.hint}`);
+  });
+
+  await step('omar (17, guardian approved) registers for an event and the academy is told', async () => {
+    clubEvent = unwrap(
+      await clients.academy.rpc('save_club_event', {
+        p_org: ACADEMY, p_id: null,
+        p: { kind: 'clinic', title: `Finishing clinic ${RUN}`, sport: 'Football',
+             starts_at: new Date(Date.now() + 5 * 86400000).toISOString(), capacity: 20 },
+      }),
+      'save_club_event',
+    );
+    const page = unwrap(await clients.omar.rpc('club_event_page', { p_event: clubEvent }), 'club_event_page');
+    expect(page.gate === 'ok', `gate was ${page.gate}`);
+    unwrap(await clients.omar.rpc('register_for_club_event', { p_event: clubEvent, p_note: 'Striker' }), 'register');
+    await eventually(async () =>
+      (await notifications(clients.academy)).some((n) => n.type === 'club_event_registration' && n.entity_id === clubEvent),
+    );
+    const managed = unwrap(await clients.academy.rpc('club_event_page', { p_event: clubEvent }), 'club_event_page');
+    expect(managed.registrations.some((r) => r.user_id === ids.omar && r.is_minor), 'omar is not on the list');
+  });
+
+  await step('a fourteen-year-old without the guardian scope cannot register', async () => {
+    const page = unwrap(await clients.mina.rpc('club_event_page', { p_event: clubEvent }), 'club_event_page');
+    expect(page.gate === 'guardian_consent_required', `gate was ${page.gate}`);
+    const res = await clients.mina.rpc('register_for_club_event', { p_event: clubEvent });
+    expect(res.error?.hint === 'guardian_consent_required', `hint was ${res.error?.hint}`);
+  });
+
+  await step('a club account\'s post appears on its page and in its followers\' Following feed', async () => {
+    const caption = `Training photos ${RUN}`;
+    const { data: me } = await clients.academy.auth.getUser();
+    unwrap(await clients.academy.from('posts').insert({ author_id: me.user.id, type: 'standard', caption, audience: 'followers' }), 'post');
+    const onPage = unwrap(await clients.sara.rpc('club_posts', { p_org: ACADEMY }), 'club_posts');
+    expect(!onPage.some((p) => p.caption === caption), 'a non-follower saw a followers-only post');
+    await eventually(async () => {
+      const feed = unwrap(await clients.layla.rpc('get_feed', { p_scope: 'following' }), 'get_feed');
+      return feed.some((p) => p.caption === caption);
+    });
+  });
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n  ${results.length - failed.length}/${results.length} steps passed`);

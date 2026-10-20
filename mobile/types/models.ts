@@ -365,7 +365,21 @@ export type NotificationType =
   | 'meetup_accepted'
   | 'meetup_declined'
   | 'meetup_cancelled'
-  | 'meetup_nearby';
+  | 'meetup_nearby'
+  | 'club_invite'
+  | 'club_invite_accepted'
+  | 'club_broadcast'
+  | 'club_squad_link'
+  | 'club_event_new'
+  | 'club_event_cancelled'
+  | 'club_event_registration'
+  | 'club_event_registration_minor'
+  | 'club_match_scheduled'
+  | 'club_match_live'
+  | 'club_match_result'
+  | 'club_verification_approved'
+  | 'club_verification_rejected'
+  | 'club_verification_more_info';
 
 export interface AppNotification {
   id: string;
@@ -384,6 +398,9 @@ export interface AppNotification {
     | 'sponsorship'
     | 'coaching'
     | 'meetup'
+    | 'organization'
+    | 'club_match'
+    | 'club_event'
     | null;
   entity_id: string | null;
   actor_count: number;
@@ -478,6 +495,8 @@ export interface NotificationPreferences {
   scout_interest: boolean;
   score_updates: boolean;
   meetups: boolean;
+  /** Extra cities or areas, besides the profile city, for Play alerts. */
+  meetup_places: string[];
   push_enabled: boolean;
   email_enabled: boolean;
 }

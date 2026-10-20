@@ -138,12 +138,20 @@ export const settings = {
   notifyComments: '评论',
   notifyLikes: '点赞',
   notifyMeetups: '约球的球局',
+  meetupPlaces: '约球提醒地点',
+  meetupPlacesOnlyCity: '只限你的城市',
+  meetupPlacesBody: '你会收到资料里所在城市的球局提醒。最多再加 5 个城市或区域。',
+  meetupPlaceAdd: '添加',
 
   sectionOpportunities: '机会和你的分数',
   notifyOpportunities: '新机会',
   notifyApplications: '申请进展',
   notifyScoutInterest: '球探关注',
   notifyScoreUpdates: '天赋分变动',
+  sectionClubs: '俱乐部',
+  notifyClubUpdates: '俱乐部动态',
+  notifyClubUpdatesHint:
+    '你关注或效力的俱乐部发布的公告、赛程、比分和活动',
 
   noMarketingNote:
     '我们从不发送营销类推送通知，也不会把你的信息卖给任何做这种事的人。',

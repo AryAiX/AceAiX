@@ -2942,7 +2942,11 @@ begin
          including rows the follower cannot select directly. */
       'users_are_blocked',
       /* 1006/03. Named in the stories read policy. */
-      'viewer_can_see_story'
+      /* 0925/01. Named in the stories read policy. */
+      'viewer_can_see_story',
+      /* 1014/01. Named in the read policies of the club-page tables. Answers
+         whether the caller holds a role on a page; reveals nothing else. */
+      'org_can'
     );
 
   perform tests.ok(
@@ -3546,6 +3550,56 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── avatars bucket listing ──'; end $$;
+
+do $$
+declare
+  v_rows integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into storage.objects (bucket_id, name) values
+    ('avatars', '11111111-1111-1111-1111-111111111111/avatar-a.jpg'),
+    ('avatars', '22222222-2222-2222-2222-222222222222/avatar-b.jpg');
+
+  grant select on storage.objects to authenticated;
+
+  -- A missing table grant is the same outcome as an empty listing: signed-out
+  -- callers cannot see the bucket. Either way the assertion passes.
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  begin
+    set local role anon;
+    select count(*) into v_rows from storage.objects
+    where bucket_id = 'avatars';
+    reset role;
+  exception when insufficient_privilege then
+    reset role;
+    v_rows := 0;
+  end;
+  perform tests.ok(v_rows = 0, 'signed-out visitors cannot list the avatars bucket');
+
+  perform tests.as_user('22222222-2222-2222-2222-222222222222');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 0,
+    'another signed-in user cannot list someone else''s folder in the avatars bucket');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  select count(*) into v_rows from storage.objects
+  where bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = '11111111-1111-1111-1111-111111111111';
+  reset role;
+  perform tests.ok(
+    v_rows = 1,
+    'the owner can list their own folder in the avatars bucket');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n── opportunity and match preference authorization ──'; end $$;
 
 do $$
@@ -3725,6 +3779,996 @@ begin
      from public.match_preferences
      where user_id = '99999999-9999-9999-9999-999999999999'),
     'a scout can write their own match preferences');
+end $$;
+
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club and academy pages ──'; end $$;
+
+/*
+ * 1014/01. A club account builds its own page and runs it with a small team.
+ * The rules worth a test: who may do what on a page, that a club cannot
+ * verify itself, that announcements reach a minor only from a verified club,
+ * that a youth roster never prints a child's full name to strangers, and that
+ * the live score and the timeline cannot disagree.
+ */
+create or replace function tests.hint_of(p_sql text) returns text
+language plpgsql as $$
+declare v_hint text; v_msg text;
+begin
+  execute p_sql;
+  return 'ok';
+exception when others then
+  get stacked diagnostics v_hint = pg_exception_hint, v_msg = message_text;
+  return coalesce(nullif(v_hint, ''), v_msg);
+end;
+$$;
+
+do $$
+declare
+  v_owner    uuid := 'c1ab0000-0000-4000-8000-000000000001';
+  v_editor   uuid := 'c1ab0000-0000-4000-8000-000000000002';
+  v_fan      uuid := 'c1ab0000-0000-4000-8000-000000000003';
+  v_kid      uuid := 'c1ab0000-0000-4000-8000-000000000004';
+  v_keeper   uuid := 'c1ab0000-0000-4000-8000-000000000005';
+  v_org      uuid;
+  v_season   uuid;
+  v_squad    uuid;
+  v_senior   uuid;
+  v_kid_row  uuid;
+  v_fan_row  uuid;
+  v_typed    uuid;
+  v_match    uuid;
+  v_goal     uuid;
+  v_event    uuid;
+  v_post     uuid;
+  v_page     jsonb;
+  v_res      jsonb;
+  v_hint     text;
+  v_n        integer;
+  v_names    text;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,  'club.owner@test.local',  '{"full_name":"Harbour Academy","role":"club"}'),
+    (v_editor, 'club.editor@test.local', '{"full_name":"Edith Editor","role":"coach"}'),
+    (v_fan,    'club.fan@test.local',    '{"full_name":"Farid Fan","role":"athlete"}'),
+    (v_kid,    'club.kid@test.local',    '{"full_name":"Kian Karimi","role":"athlete"}'),
+    (v_keeper, 'club.keeper@test.local', '{"full_name":"Sami Score","role":"athlete"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '40 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '31 years' where user_id = v_editor;
+  update public.user_private set date_of_birth = current_date - interval '22 years' where user_id = v_fan;
+  update public.user_private set date_of_birth = current_date - interval '14 years' where user_id = v_kid;
+  update public.user_private set date_of_birth = current_date - interval '27 years' where user_id = v_keeper;
+
+  /* ── Setting up ── */
+  perform tests.as_user(v_fan);
+  perform tests.ok(
+    tests.hint_of($q$select public.create_club_page('{"type":"club","name":"Fan FC","founded_year":2001,"ceo_name":"Farid"}')$q$)
+      = 'club_account_only',
+    'only a club or academy account can create a club page');
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of($q$select public.create_club_page('{"type":"academy","name":"Harbour Academy","founded_year":1700,"ceo_name":"Rana"}')$q$)
+      = 'club_founded_year',
+    'a founding year from before 1800 is refused');
+  v_org := public.create_club_page(
+    '{"type":"academy","name":"Harbour Academy","name_local":"أكاديمية الميناء","founded_year":2009,"ceo_name":"Rana Saleh","country":"United Arab Emirates","city":"Dubai"}');
+  perform tests.ok(
+    (select verification_status = 'pending' and not is_verified and created_by = v_owner
+       from public.organizations where id = v_org)
+    and private.org_role(v_org) = 'owner',
+    'the creator owns a new, unverified page');
+  perform tests.ok(
+    tests.hint_of($q$select public.create_club_page('{"type":"club","name":"Second","founded_year":2001,"ceo_name":"X"}')$q$)
+      = 'club_page_exists',
+    'one page per club account');
+
+  perform public.update_club_page(v_org, jsonb_build_object(
+    'address', 'Al Jadaf, Street 4', 'latitude', 25.2167, 'longitude', 55.3333,
+    'contact_email', 'Info@Harbour.test', 'website', 'harbour.test',
+    'socials', jsonb_build_object('instagram', '@harbour', 'myspace', 'nope'),
+    'facilities', jsonb_build_array('Pitch', 'Gym', 'Pitch'),
+    'sports', jsonb_build_array(
+      jsonb_build_object('sport', 'Football', 'categories', jsonb_build_array('U14', 'U16', 'Senior')),
+      jsonb_build_object('sport', 'Basketball', 'categories', jsonb_build_array('U18'))),
+    'locations', jsonb_build_array(jsonb_build_object('label', 'North ground', 'city', 'Sharjah'))));
+  perform tests.ok(
+    (select contact_email = 'info@harbour.test' and website = 'https://harbour.test'
+            and socials = '{"instagram":"@harbour"}'::jsonb and cardinality(facilities) = 2
+       from public.organizations where id = v_org)
+    and (select count(*) from public.organization_sports where organization_id = v_org) = 2
+    and (select count(*) from public.organization_locations where organization_id = v_org) = 2
+    and (select count(*) from public.organization_locations where organization_id = v_org and is_primary
+           and address = 'Al Jadaf, Street 4') = 1,
+    'the page keeps its sports, categories, branches and a cleaned-up contact block');
+
+  perform tests.as_user(v_fan);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.update_club_page(%L, '{"name":"Hijacked"}')$q$, v_org)) = 'club_permission',
+    'a stranger cannot edit the page');
+
+  /* ── Verification ── */
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format($q$update public.organizations set is_verified = true, verification_status = 'approved' where id = %L$q$, v_org))
+      like '%administrators%',
+    'a club cannot verify itself');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana"}')$q$, v_org))
+      = 'club_terms_required',
+    'sending papers needs the Terms and Child Safety policy accepted');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana","accept_terms":true,"document_path":"someone-else/licence.pdf"}')$q$, v_org))
+      = 'club_document_missing',
+    'the licence must be the caller''s own upload');
+  perform set_config('request.jwt.claim.role', 'service_role', true);   -- as the admin would
+  update public.organizations set verification_status = 'more_info' where id = v_org;
+  perform tests.as_user(v_owner);
+  v_hint := public.submit_club_verification(v_org, jsonb_build_object(
+      'contact_person_name', 'Rana Saleh', 'contact_person_title', 'Director', 'accept_terms', true,
+      'license_number', 'DED-1234', 'document_path', v_owner::text || '/licence.pdf'));
+  perform tests.ok(
+    v_hint = 'pending'
+    and (select verification_status = 'pending' and not is_verified from public.organizations where id = v_org),
+    'resubmitting after "more info" puts the page back in the queue, unverified');
+  perform tests.ok(
+    (select count(*) from public.verification_requests
+      where organization_id = v_org and type = 'club' and status = 'pending'
+        and documents -> 0 ->> 'path' = v_owner::text || '/licence.pdf') = 1,
+    'the licence lands in the admin portal''s verification queue');
+
+  perform tests.as_user('77777777-7777-7777-7777-777777777777');   -- an admin, in the portal
+  update public.verification_requests set status = 'rejected', decision_reason = 'Licence is expired'
+   where organization_id = v_org;
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    (select verification_status = 'rejected' and not is_verified from public.organizations where id = v_org)
+    and (public.club_page(v_org) -> 'verification' ->> 'review_note') = 'Licence is expired'
+    and exists (select 1 from public.notifications where user_id = v_owner and type = 'club_verification_rejected'),
+    'an admin''s rejection reaches the page, with the reason');
+  perform public.submit_club_verification(v_org, jsonb_build_object(
+      'contact_person_name', 'Rana Saleh', 'accept_terms', true,
+      'license_number', 'DED-5678', 'document_path', v_owner::text || '/licence-2026.pdf'));
+  perform tests.ok(
+    (select verification_status = 'pending' from public.organizations where id = v_org)
+    and (select count(*) from public.verification_requests
+          where organization_id = v_org and status = 'pending') = 1,
+    'a new licence after a rejection opens one fresh request');
+
+  /* ── The page team ── */
+  perform tests.ok(
+    tests.hint_of(format($q$select public.invite_club_member(%L, 'club.kid@test.local', 'editor')$q$, v_org))
+      = 'club_invitee_unavailable',
+    'nobody under 18 can join a page team');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.invite_club_member(%L, 'nobody@test.local', 'editor')$q$, v_org))
+      = 'club_invitee_not_found',
+    'an unknown e-mail is reported, not silently dropped');
+  v_res := public.invite_club_member(v_org, 'CLUB.EDITOR@test.local', 'editor');
+  perform public.invite_club_member(v_org, 'club.keeper@test.local', 'scorekeeper');
+  perform tests.ok(
+    v_res ->> 'status' = 'pending'
+    and exists (select 1 from public.notifications where user_id = v_editor and type = 'club_invite'),
+    'an invitation is pending until accepted, and the invitee is told');
+
+  perform tests.as_user(v_editor);
+  perform tests.ok(not private.org_can(v_org, 'content'), 'an invitation grants nothing before it is accepted');
+  perform public.respond_club_invite(v_org, true);
+  perform tests.ok(private.org_can(v_org, 'content') and not private.org_can(v_org, 'manage'),
+    'an editor may post for the page but not run it');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.invite_club_member(%L, 'club.fan@test.local', 'manager')$q$, v_org))
+      = 'club_permission',
+    'an editor cannot invite people');
+  perform tests.as_user(v_keeper);
+  perform public.respond_club_invite(v_org, true);
+  perform tests.ok(private.org_can(v_org, 'score') and not private.org_can(v_org, 'content'),
+    'a scorekeeper keeps the score and nothing else');
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.remove_club_member(%L, %L)$q$, v_org, v_owner)) = 'club_owner_stays',
+    'the owner cannot be removed');
+
+  /* ── Posts belong to the page ── */
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_owner, 'standard', 'Welcome to Harbour Academy', 'followers')
+  returning id into v_post;
+  perform tests.ok((select organization_id = v_org from public.posts where id = v_post),
+    'a club account''s post is tagged with its page');
+
+  perform tests.as_user(v_fan);
+  perform tests.ok(
+    tests.hint_of(format($q$insert into public.posts (author_id, type, caption, organization_id) values (%L, 'standard', 'fake', %L)$q$, v_fan, v_org))
+      = 'club_permission',
+    'nobody outside the page team can post for it');
+  insert into public.organization_follows (follower_id, organization_id) values (v_fan, v_org);
+  perform tests.ok(
+    exists (select 1 from public.get_feed('following', null, 50, null) f where f.id = v_post)
+    and exists (select 1 from public.club_posts(v_org, 24, null) p where p.id = v_post),
+    'following the page puts its followers-only posts in your Following feed and on the page');
+
+  /* ── Announcements ── */
+  perform tests.as_user(v_kid);
+  insert into public.organization_follows (follower_id, organization_id) values (v_kid, v_org);
+  perform tests.as_user(v_editor);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.send_club_broadcast(%L, 'Trials', 'Saturday 9am', 'followers')$q$, v_org))
+      = 'club_permission',
+    'only the owner and managers send announcements');
+  perform tests.as_user(v_owner);
+  v_res := public.send_club_broadcast(v_org, 'Trials this Saturday', 'U14 and U16 trials at 9am, north ground.', 'followers');
+  perform tests.ok(
+    (v_res ->> 'recipients')::int = 1
+    and exists (select 1 from public.notifications where user_id = v_fan and type = 'club_broadcast')
+    and not exists (select 1 from public.notifications where user_id = v_kid and type = 'club_broadcast'),
+    'an unverified club''s announcement does not reach a minor');
+  perform set_config('request.jwt.claim.role', 'service_role', true);   -- the admin approves
+  update public.organizations set is_verified = true, verification_status = 'approved' where id = v_org;
+  perform tests.as_user(v_owner);
+  v_res := public.send_club_broadcast(v_org, 'Kit collection', 'Collect your kit on Monday.', 'all');
+  perform tests.ok(
+    exists (select 1 from public.notifications where user_id = v_kid and type = 'club_broadcast'),
+    'once verified, followers of any age hear it');
+  perform public.send_club_broadcast(v_org, 'Third', 'Third message today.', 'followers');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.send_club_broadcast(%L, 'Fourth', 'One too many.', 'followers')$q$, v_org))
+      = 'rate_limited',
+    'three announcements a day at most');
+  perform tests.as_user(v_fan);
+  perform tests.ok(jsonb_array_length(public.club_broadcasts_for(v_org, 10)) = 3,
+    'a follower reads the announcements sent to them');
+
+  /* ── Squads and the naming rule ── */
+  perform tests.as_user(v_editor);
+  v_season := public.save_club_season(v_org, null, '2026–27', true);
+  v_squad  := public.save_club_squad(v_org, null, jsonb_build_object('season_id', v_season, 'sport', 'Football', 'category', 'U14'));
+  v_senior := public.save_club_squad(v_org, null, jsonb_build_object('season_id', v_season, 'sport', 'Football', 'category', 'Senior'));
+  v_typed   := public.save_squad_member(v_squad, null, '{"kind":"player","display_name":"Yasmin Al Amiri","shirt_number":7,"position":"Winger"}');
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L, 'shirt_number', 9))$q$,
+      v_squad, v_kid)) = 'club_link_unavailable',
+    'a minor without guardian discovery consent cannot be put on a roster');
+  /* The guardian then consents. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, allow_messaging, allow_media
+  ) values (
+    v_kid, v_owner, 'Kian Parent', 'kian.parent@test.local',
+    'parent', 'granted', true, false, false
+  );
+  perform tests.as_user(v_editor);
+  v_kid_row := public.save_squad_member(v_squad, null, jsonb_build_object('kind', 'player', 'user_id', v_kid, 'shirt_number', 9));
+  v_fan_row := public.save_squad_member(v_senior, null, jsonb_build_object('kind', 'player', 'user_id', v_fan, 'shirt_number', 10));
+  perform public.save_squad_member(v_squad, null, '{"kind":"staff","display_name":"Coach Omar Haddad","staff_role":"head_coach"}');
+  perform tests.ok(
+    exists (select 1 from public.notifications where user_id = v_kid and type = 'club_squad_link'),
+    'a linked athlete is asked, not just added');
+
+  /* The guardian then withdraws consent before Kian answers. */
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.guardian_consents set status = 'revoked' where minor_user_id = v_kid;
+  perform tests.as_user(v_editor);
+
+  perform tests.as_user(v_kid);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.respond_squad_link(%L, true)$q$, v_kid_row)) = 'guardian_consent_required',
+    'a minor cannot put themselves on a public roster without a guardian');
+  perform tests.as_user(v_fan);
+  perform public.respond_squad_link(v_fan_row, true);
+
+  v_page := public.club_squads_page(v_org, null);
+  select string_agg(p ->> 'display_name', ',' order by p ->> 'display_name') into v_names
+  from jsonb_array_elements(v_page -> 'squads') q, jsonb_array_elements(q -> 'players') p;
+  perform tests.ok(
+    v_names like '%Yasmin A.%' and v_names not like '%Al Amiri%'
+    and v_names like '%Kian K.%' and v_names like '%Farid Fan%',
+    'outsiders see "First L." on a youth roster, and full names only for visible, linked adults');
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'squads') q, jsonb_array_elements(q -> 'staff') p
+            where p ->> 'display_name' = 'Coach Omar Haddad'),
+    'coaching staff on a youth squad keep their full names');
+  perform tests.ok(
+    not exists (select 1 from jsonb_array_elements(v_page -> 'squads') q, jsonb_array_elements(q -> 'players') p
+                where p ->> 'user_id' = v_kid::text),
+    'an unaccepted link never exposes the minor''s profile');
+  perform tests.as_user(v_editor);
+  v_page := public.club_squads_page(v_org, null);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'squads') q, jsonb_array_elements(q -> 'players') p
+            where p ->> 'display_name' = 'Yasmin Al Amiri'),
+    'the page team sees the roster in full');
+
+  /* ── A match, live ── */
+  v_match := public.save_club_match(v_org, null, jsonb_build_object(
+    'sport', 'Football', 'squad_id', v_squad, 'opponent_name', 'Marina U14', 'competition', 'Youth League',
+    'kickoff_at', now() + interval '2 hours', 'venue', 'North ground'));
+  perform tests.ok(
+    (select category = 'U14' from public.club_matches where id = v_match)
+    and exists (select 1 from public.notifications where user_id = v_fan and type = 'club_match_scheduled'),
+    'a fixture takes its category from the squad and is announced to followers');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.save_club_match(%L, %L, '{"sport":"Football","opponent_name":"Marina U14","kickoff_at":"2030-01-01T10:00:00Z","stream_url":"https://evil.example/live"}')$q$, v_org, v_match))
+      = 'club_stream_url',
+    'a live stream must be a link to a known platform');
+
+  perform tests.as_user(v_keeper);
+  perform public.update_match_live(v_match, '{"status":"live","minute":0,"period":"1st half"}');
+  perform public.update_match_live(v_match, '{"minute":12}');
+  select count(*) into v_n from public.notifications where user_id = v_fan and type = 'club_match_live';
+  perform tests.ok(v_n = 1, 'kick-off is announced once, not on every clock tick');
+  v_goal := public.add_match_event(v_match, jsonb_build_object('kind', 'goal', 'side', 'us', 'minute', 14,
+                                                               'squad_member_id', v_typed));
+  perform public.add_match_event(v_match, '{"kind":"yellow_card","side":"them","minute":20,"player_name":"Their Number Six"}');
+  perform public.add_match_event(v_match, '{"kind":"goal","side":"them","minute":33}');
+  perform tests.ok(
+    (select our_score = 1 and their_score = 1 from public.club_matches where id = v_match),
+    'goals move the scoreboard');
+  perform public.delete_match_event(v_goal);
+  perform tests.ok(
+    (select our_score = 0 and their_score = 1 from public.club_matches where id = v_match),
+    'removing a goal takes it off the scoreboard too');
+  v_goal := public.add_match_event(v_match, jsonb_build_object('kind', 'goal', 'side', 'us', 'minute', 41,
+                                                               'player_name', 'Yasmin Al Amiri'));
+  perform tests.ok(
+    tests.hint_of(format($q$select public.save_club_match(%L, %L, '{"sport":"Football","opponent_name":"x","kickoff_at":"2030-01-01T10:00:00Z"}')$q$, v_org, v_match))
+      = 'club_permission',
+    'a scorekeeper cannot rewrite the fixture');
+
+  perform tests.as_user(v_fan);
+  v_page := public.club_match_page(v_match);
+  perform tests.ok(
+    (v_page -> 'match' ->> 'our_score')::int = 1 and (v_page ->> 'can_score')::boolean = false
+    and not exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                    where e ->> 'player_name' like '%Al Amiri%')
+    and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                where e ->> 'player_name' = 'Yasmin A.')
+    and v_page -> 'lineup' = 'null'::jsonb,
+    'the public match sheet shortens youth names and hides the line-up');
+  set local role authenticated;
+  select count(*) into v_n from public.club_match_events where match_id = v_match;
+  reset role;
+  perform tests.ok(v_n = 0, 'raw match events are not readable outside the club');
+
+  perform tests.as_user(v_keeper);
+  perform public.update_match_live(v_match, '{"status":"finished"}');
+  perform tests.ok(
+    exists (select 1 from public.notifications where user_id = v_fan and type = 'club_match_result')
+    and (public.club_matches_for(v_org) -> 'results') -> 0 ->> 'id' = v_match::text,
+    'the final whistle posts the result');
+
+  /* ── Events ── */
+  perform tests.as_user(v_editor);
+  v_event := public.save_club_event(v_org, null, jsonb_build_object(
+    'kind', 'trial', 'title', 'U14 open trial', 'sport', 'Football', 'category', 'U14',
+    'starts_at', now() + interval '5 days', 'location', 'North ground', 'age_min', 12, 'age_max', 15,
+    'capacity', 1));
+  perform tests.as_user(v_fan);
+  perform tests.ok((public.club_event_page(v_event) ->> 'gate') = 'age_out_of_range',
+    'the event''s age range is enforced');
+  perform tests.as_user(v_kid);
+  perform tests.ok((public.club_event_page(v_event) ->> 'gate') = 'guardian_consent_required',
+    'a minor needs the guardian''s booking scope for an in-person event');
+  update public.club_events set age_min = null, age_max = null where id = v_event;
+  perform tests.as_user(v_fan);
+  perform public.register_for_club_event(v_event, 'Left-footed winger');
+  perform tests.ok(
+    exists (select 1 from public.notifications where user_id = v_owner and type = 'club_event_registration')
+    and (public.club_event_page(v_event) ->> 'spots_left')::int = 0,
+    'registering fills the place and tells the club');
+  perform tests.as_user(v_keeper);
+  perform tests.ok((public.club_event_page(v_event) ->> 'gate') = 'own_club',
+    'the page team does not register for its own events');
+  perform tests.as_user(v_fan);
+  perform public.cancel_club_event_registration(v_event, null);
+  perform tests.ok((select registration_count = 0 from public.club_events where id = v_event),
+    'cancelling frees the place');
+
+  /* ── Awards and challenges ── */
+  perform tests.as_user(v_editor);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.save_club_award(%L, null, '{"title":"Player of the season","recipient_kind":"player","recipient_user_id":%s}')$q$,
+                         v_org, '"' || v_keeper::text || '"'))
+      = 'club_award_link',
+    'only people on the club''s squads can be linked to an award');
+  perform public.save_club_award(v_org, null, jsonb_build_object('title', 'Youth League', 'placement', 'winner',
+    'year', 2025, 'category', 'U14', 'recipient_kind', 'club'));
+  perform public.save_club_award(v_org, null, jsonb_build_object('title', 'Golden Boot', 'placement', 'individual',
+    'year', 2025, 'category', 'U14', 'recipient_kind', 'player', 'recipient_name', 'Yasmin Al Amiri'));
+  perform tests.as_user(v_fan);
+  perform tests.ok(
+    jsonb_array_length(public.club_awards_for(v_org)) = 2
+    and exists (select 1 from jsonb_array_elements(public.club_awards_for(v_org)) a
+                where a ->> 'recipient_name' = 'Yasmin A.'),
+    'awards are public, with the same naming rule');
+
+  perform tests.as_user(v_editor);
+  perform public.create_challenge('Football', 'Harbour keep-ups', 'Thirty seconds, feet only, one take.',
+                                  now() + interval '7 days', null, 'Keep-ups', null, 'higher', null, null, v_org);
+  perform tests.ok(
+    jsonb_array_length(public.club_challenges(v_org)) = 1,
+    'an editor of a verified page can set a challenge for it');
+
+  /* ── The page in one call ── */
+  perform tests.as_user(v_fan);
+  v_page := public.club_page(v_org);
+  perform tests.ok(
+    (v_page -> 'viewer' ->> 'following')::boolean
+    and (v_page -> 'viewer' ->> 'can_manage')::boolean = false
+    and v_page -> 'verification' = 'null'::jsonb
+    and jsonb_array_length(v_page -> 'sports') = 2
+    and (v_page -> 'counts' ->> 'awards')::int = 2,
+    'the page reads in one call, and the licence stays with the page team');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club membership cannot be self-claimed ──'; end $$;
+
+do $$
+declare
+  v_owner    uuid := 'c1630000-0000-4000-8000-000000000001';
+  v_stranger uuid := 'c1630000-0000-4000-8000-000000000002';
+  v_org      uuid;
+  v_raised   boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa63.owner@test.local',    '{"full_name":"QA63 Owner","role":"club"}'),
+    (v_stranger, 'qa63.stranger@test.local', '{"full_name":"QA63 Stranger","role":"athlete"}');
+  update public.user_private
+  set date_of_birth = current_date - interval '35 years'
+  where user_id in (v_owner, v_stranger);
+
+  insert into public.organizations (name, type)
+  values ('QA63 Claim Club', 'club')
+  returning id into v_org;
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status
+  ) values (
+    v_org, v_owner, 'owner', 'active'
+  );
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  begin
+    insert into public.organization_members (
+      organization_id, user_id, member_role, status, invited_by
+    ) values (
+      v_org, v_stranger, 'owner', 'pending', v_stranger
+    );
+  exception when others then
+    v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_raised,
+    'QA-63 regression: a stranger cannot insert a pending owner row for themselves');
+  perform tests.ok(
+    (select count(*) from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 0,
+    'the refused self-claim leaves no membership row');
+
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.respond_club_invite(%L, true)$q$, v_org))
+      = 'club_invite_missing',
+    'respond_club_invite refuses a stranger with no invitation');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status, invited_by
+  ) values (
+    v_org, v_stranger, 'owner', 'pending', v_stranger
+  );
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.respond_club_invite(%L, true)$q$, v_org))
+      = 'club_invite_missing',
+    'respond_club_invite refuses a pending owner row invited by the stranger themselves');
+  perform tests.ok(
+    (select status from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 'pending',
+    'a self-written owner invitation stays pending');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.organization_members
+  set invited_by = v_owner, member_role = 'manager'
+  where organization_id = v_org and user_id = v_stranger;
+  perform tests.as_user(v_stranger);
+  perform public.respond_club_invite(v_org, true);
+  perform tests.ok(
+    (select status from public.organization_members
+      where organization_id = v_org and user_id = v_stranger) = 'active',
+    'an invitation from the active owner still becomes active');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club squad links and minors ──'; end $$;
+
+do $$
+declare
+  v_owner     uuid := 'c1640000-0000-4000-8000-000000000001';
+  v_visible   uuid := 'c1640000-0000-4000-8000-000000000002';
+  v_hidden    uuid := 'c1640000-0000-4000-8000-000000000003';
+  v_adult     uuid := 'c1640000-0000-4000-8000-000000000004';
+  v_unverified uuid;
+  v_verified   uuid;
+  v_season_u   uuid;
+  v_season_v   uuid;
+  v_squad_u    uuid;
+  v_squad_v    uuid;
+  v_row        uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,   'qa64.owner@test.local',   '{"full_name":"QA64 Owner","role":"club"}'),
+    (v_visible, 'qa64.visible@test.local', '{"full_name":"Layla Haddad","role":"athlete"}'),
+    (v_hidden,  'qa64.hidden@test.local',  '{"full_name":"Mina Noor","role":"athlete"}'),
+    (v_adult,   'qa64.adult@test.local',   '{"full_name":"Noah Adult","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '22 years' where user_id = v_adult;
+  update public.user_private set date_of_birth = current_date - interval '14 years'
+  where user_id in (v_visible, v_hidden);
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, allow_messaging, allow_media
+  ) values (
+    v_visible, v_owner, 'QA64 Parent', 'qa64.parent@test.local',
+    'parent', 'granted', true, false, false
+  );
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA64 Unverified Club', 'club', false, 'pending')
+  returning id into v_unverified;
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA64 Verified Club', 'club', true, 'approved')
+  returning id into v_verified;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_unverified, v_owner, 'owner', 'active'),
+    (v_verified, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_unverified, '2026-27', true)
+  returning id into v_season_u;
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_verified, '2026-27', true)
+  returning id into v_season_v;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_unverified, v_season_u, 'Football', 'U14')
+  returning id into v_squad_u;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_verified, v_season_v, 'Football', 'U14')
+  returning id into v_squad_v;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_u, v_visible)) = 'club_link_unavailable',
+    'QA-64 regression: an unverified club cannot link a minor');
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_v, v_hidden)) = 'club_link_unavailable',
+    'a verified club cannot link a minor who is not publicly visible');
+
+  v_row := public.save_squad_member(
+    v_squad_v, null, jsonb_build_object('kind', 'player', 'user_id', v_visible));
+  perform tests.ok(
+    (select link_status from public.club_squad_members where id = v_row) = 'invited',
+    'a verified club can invite a discoverable minor');
+  perform tests.ok(
+    (select m.display_name = 'Layla H.' and m.display_name <> up.full_name
+     from public.club_squad_members m
+     join public.user_profiles up on up.id = v_visible
+     where m.id = v_row),
+    'a link saved without a display name stores the short form, not the full name');
+
+  perform tests.ok(
+    public.save_squad_member(
+      v_squad_u, null, jsonb_build_object('kind', 'player', 'user_id', v_adult)
+    ) is not null,
+    'an unverified club can still link an adult');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('c1640000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+    'qa64.fill' || g || '@test.local',
+    jsonb_build_object('full_name', 'Fill Person', 'role', 'athlete')
+  from generate_series(10, 20) g;
+  insert into public.club_squad_members (
+    squad_id, organization_id, kind, display_name, user_id, link_status, created_at
+  )
+  select
+    v_squad_v, v_verified, 'player', 'Fill ' || lpad(g::text, 2, '0'),
+    ('c1640000-0000-4000-8000-' || lpad(g::text, 12, '0'))::uuid,
+    'invited', now()
+  from generate_series(10, 20) g;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.save_squad_member(%L, null, jsonb_build_object('kind', 'player', 'user_id', %L))$q$,
+      v_squad_v, v_adult)) = 'rate_limited',
+    'more than ten new squad links in a day is refused');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── youth names on both sides ──'; end $$;
+
+/*
+ * QA-65. A youth match shortens typed names on both sides. The squad's
+ * is_youth flag decides that, not the match's own category text.
+ */
+do $$
+declare
+  v_owner      uuid := 'c1650000-0000-4000-8000-000000000001';
+  v_stranger   uuid := 'c1650000-0000-4000-8000-000000000002';
+  v_org        uuid;
+  v_season     uuid;
+  v_youth      uuid;
+  v_adult      uuid;
+  v_youth_match uuid;
+  v_adult_match uuid;
+  v_page       jsonb;
+begin
+  perform tests.ok(private.is_youth_category('Under 14'),
+    'is_youth_category treats "Under 14" as youth');
+  perform tests.ok(private.is_youth_category('Boys U14'),
+    'is_youth_category treats "Boys U14" as youth');
+  perform tests.ok(private.is_youth_category('2013 Boys'),
+    'is_youth_category treats "2013 Boys" as youth');
+  perform tests.ok(private.is_youth_category('تحت 14'),
+    'is_youth_category treats "تحت 14" as youth');
+  perform tests.ok(not private.is_youth_category('U19'),
+    'is_youth_category rejects "U19"');
+  perform tests.ok(not private.is_youth_category('Stadium 15'),
+    'is_youth_category rejects "Stadium 15"');
+  perform tests.ok(not private.is_youth_category('Stadium 2000 League'),
+    'is_youth_category rejects "Stadium 2000 League"');
+  perform tests.ok(not private.is_youth_category('1999 Boys'),
+    'is_youth_category rejects "1999 Boys"');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa65.owner@test.local',    '{"full_name":"QA65 Owner","role":"club"}'),
+    (v_stranger, 'qa65.stranger@test.local', '{"full_name":"QA65 Stranger","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '24 years' where user_id = v_stranger;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA65 Youth Names', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_org, '2026-27', true)
+  returning id into v_season;
+  insert into public.club_squads (organization_id, season_id, sport, category, is_youth)
+  values (v_org, v_season, 'Football', 'Under 14', true)
+  returning id into v_youth;
+  insert into public.club_squads (organization_id, season_id, sport, category, is_youth)
+  values (v_org, v_season, 'Football', 'Senior', false)
+  returning id into v_adult;
+
+  /* The youth match's own category says Senior. The squad flag must win. */
+  insert into public.club_matches (
+    organization_id, sport, squad_id, category, opponent_name, kickoff_at
+  ) values (
+    v_org, 'Football', v_youth, 'Senior', 'North Side', now() + interval '1 day'
+  ) returning id into v_youth_match;
+  insert into public.club_matches (
+    organization_id, sport, squad_id, category, opponent_name, kickoff_at
+  ) values (
+    v_org, 'Football', v_adult, 'Senior', 'South Side', now() + interval '2 days'
+  ) returning id into v_adult_match;
+
+  insert into public.club_match_events (match_id, organization_id, minute, kind, side, player_name)
+  values
+    (v_youth_match, v_org, 12, 'yellow_card', 'them', 'Omar Saleh'),
+    (v_youth_match, v_org, 20, 'goal', 'us', 'Yasmin Al Amiri'),
+    (v_adult_match, v_org, 15, 'yellow_card', 'them', 'Nora Haddad'),
+    (v_adult_match, v_org, 30, 'goal', 'us', 'Samir Adult');
+
+  perform tests.as_user(v_stranger);
+  v_page := public.club_match_page(v_youth_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Omar S.'),
+    'QA-65 regression: a stranger sees an opponent name shortened on a youth match');
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'us' and e ->> 'player_name' = 'Yasmin A.'),
+    'a stranger still sees our side shortened on that youth match');
+  perform tests.ok(
+    (v_page -> 'match' ->> 'category') = 'Senior'
+    and (select q.is_youth from public.club_squads q where q.id = v_youth)
+    and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                where e ->> 'player_name' = 'Omar S.'),
+    'the squad flag wins over the match category: Senior text on a youth squad still shortens names');
+
+  v_page := public.club_match_page(v_adult_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Nora Haddad'),
+    'on an adult squad match a typed opponent name is not shortened');
+
+  perform tests.as_user(v_owner);
+  v_page := public.club_match_page(v_youth_match);
+  perform tests.ok(
+    exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+            where e ->> 'side' = 'them' and e ->> 'player_name' = 'Omar Saleh')
+    and exists (select 1 from jsonb_array_elements(v_page -> 'events') e
+                where e ->> 'side' = 'us' and e ->> 'player_name' = 'Yasmin Al Amiri'),
+    'a club member viewing the youth match still sees full names on both sides');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club invites do not leak ──'; end $$;
+
+/*
+ * QA-67. A minor and a suspended account raise the same hint, a successful
+ * invite does not return the invitee's name, and more than 20 invites in
+ * 24 hours is refused before the email is looked up.
+ */
+do $$
+declare
+  v_owner      uuid := 'c1670000-0000-4000-8000-000000000001';
+  v_minor      uuid := 'c1670000-0000-4000-8000-000000000002';
+  v_adult      uuid := 'c1670000-0000-4000-8000-000000000003';
+  v_suspended  uuid := 'c1670000-0000-4000-8000-000000000004';
+  v_org        uuid;
+  v_res        jsonb;
+  v_minor_hint text;
+  v_suspended_hint text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,     'qa67.owner@test.local',     '{"full_name":"QA67 Owner","role":"club"}'),
+    (v_minor,     'qa67.minor@test.local',     '{"full_name":"QA67 Minor","role":"athlete"}'),
+    (v_adult,     'qa67.adult@test.local',     '{"full_name":"QA67 Adult","role":"athlete"}'),
+    (v_suspended, 'qa67.suspended@test.local', '{"full_name":"QA67 Suspended","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '14 years' where user_id = v_minor;
+  update public.user_private set date_of_birth = current_date - interval '24 years' where user_id = v_adult;
+  update public.user_private set date_of_birth = current_date - interval '30 years' where user_id = v_suspended;
+  update public.user_profiles set is_suspended = true where id = v_suspended;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA67 Invite Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  perform tests.as_user(v_owner);
+  v_minor_hint := tests.hint_of(format(
+    $q$select public.invite_club_member(%L, 'qa67.minor@test.local', 'editor')$q$, v_org));
+  v_suspended_hint := tests.hint_of(format(
+    $q$select public.invite_club_member(%L, 'qa67.suspended@test.local', 'editor')$q$, v_org));
+  perform tests.ok(
+    v_minor_hint = 'club_invitee_unavailable',
+    'QA-67 regression: inviting a minor raises club_invitee_unavailable');
+  perform tests.ok(
+    v_suspended_hint = 'club_invitee_unavailable',
+    'inviting a suspended adult raises club_invitee_unavailable');
+  perform tests.ok(
+    v_minor_hint = v_suspended_hint,
+    'a minor and a suspended account raise the same hint');
+
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.invite_club_member(%L, 'qa67.nobody@test.local', 'editor')$q$, v_org))
+      = 'club_invitee_not_found',
+    'an email with no account still raises club_invitee_not_found');
+
+  v_res := public.invite_club_member(v_org, 'qa67.adult@test.local', 'editor');
+  perform tests.ok(
+    not (v_res ? 'full_name')
+    and (v_res ? 'user_id')
+    and (v_res ? 'status'),
+    'a successful invite returns user_id and status, and not the invitee name');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('c1670000-0000-4000-8000-' || lpad((g + 100)::text, 12, '0'))::uuid,
+    'qa67.fill' || g || '@test.local',
+    jsonb_build_object('full_name', 'Fill Person', 'role', 'athlete')
+  from generate_series(1, 21) g;
+  insert into public.organization_members (
+    organization_id, user_id, member_role, status, invited_by, created_at
+  )
+  select
+    v_org,
+    ('c1670000-0000-4000-8000-' || lpad((g + 100)::text, 12, '0'))::uuid,
+    'staff', 'pending', v_owner, now()
+  from generate_series(1, 21) g;
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    tests.hint_of(format(
+      $q$select public.invite_club_member(%L, 'qa67.nobody2@test.local', 'editor')$q$, v_org))
+      = 'rate_limited',
+    'more than 20 invites in 24 hours is refused before the email is looked up');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── approving a club does not verify a person ──'; end $$;
+
+/*
+ * QA-68. Approving an organisation request verifies the organisation and
+ * leaves the submitter unverified. A personal request, with no
+ * organization_id, still verifies that person.
+ * QA-70. That decision sends one notification, the club one, not also a
+ * system notice to the submitter. A personal request still gets its
+ * system notice.
+ */
+do $$
+declare
+  v_admin   uuid := 'c1680000-0000-4000-8000-000000000001';
+  v_owner   uuid := 'c1680000-0000-4000-8000-000000000002';
+  v_adult   uuid := 'c1680000-0000-4000-8000-000000000003';
+  v_org     uuid;
+  v_club    uuid;
+  v_person  uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_admin, 'qa68.admin@test.local', '{"full_name":"QA68 Admin","role":"athlete"}'),
+    (v_owner, 'qa68.owner@test.local', '{"full_name":"QA68 Owner","role":"club"}'),
+    (v_adult, 'qa68.adult@test.local', '{"full_name":"QA68 Adult","role":"athlete"}');
+  update public.user_profiles set role = 'admin' where id = v_admin;
+  update public.user_private set date_of_birth = current_date - interval '40 years' where user_id = v_admin;
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '28 years' where user_id = v_adult;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA68 Club', 'club', false, 'pending')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.verification_requests (subject_user_id, organization_id, type, status)
+  values (v_owner, v_org, 'club', 'pending')
+  returning id into v_club;
+  insert into public.verification_requests (subject_user_id, type, status)
+  values (v_adult, 'athlete_id', 'pending')
+  returning id into v_person;
+
+  perform tests.ok(
+    not (select is_verified from public.user_profiles where id = v_owner)
+    and not (select is_verified from public.organizations where id = v_org),
+    'before the decision neither the owner nor the organisation is verified');
+
+  perform tests.as_user(v_admin);
+  perform public.admin_decide_verification(v_club, 'approved');
+  perform tests.ok(
+    (select status = 'approved' from public.verification_requests where id = v_club),
+    'an admin can approve a club verification request');
+  perform tests.ok(
+    (select is_verified from public.organizations where id = v_org)
+    and not (select is_verified from public.user_profiles where id = v_owner),
+    'QA-68 regression: approving a club verifies the organisation and not the submitter');
+  perform tests.ok(
+    not private.is_verified_adult(v_owner),
+    'the submitter is not a verified adult, so this route cannot message minors');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_owner and type = 'club_verification_approved') = 1
+    and not exists (select 1 from public.notifications
+      where user_id = v_owner and type = 'system' and entity_type = 'moderation'),
+    'QA-70 regression: approving a club sends the owner exactly one club_verification_approved notice and no system moderation row');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_owner
+        and type = 'club_verification_approved'
+        and entity_type = 'organization'
+        and entity_id = v_org::text) = 1,
+    'the club notice has entity_type organization and the organisation id, so it opens the club page');
+
+  perform public.admin_decide_verification(v_person, 'approved');
+  perform tests.ok(
+    (select is_verified from public.user_profiles where id = v_adult),
+    'approving a personal request with no organisation still verifies that person');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+      where user_id = v_adult and type = 'system' and entity_type = 'moderation'),
+    'approving a personal request still sends that person a system moderation notice');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club matches are not public ──'; end $$;
+
+/*
+ * QA-71. A signed-out client cannot read club_matches. A signed-in
+ * stranger still can, because live scores subscribe to that table.
+ */
+do $$
+declare
+  v_owner    uuid := 'c1710000-0000-4000-8000-000000000001';
+  v_stranger uuid := 'c1710000-0000-4000-8000-000000000002';
+  v_org      uuid;
+  v_season   uuid;
+  v_squad    uuid;
+  v_match    uuid;
+  v_rows     integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,    'qa71.owner@test.local',    '{"full_name":"QA71 Owner","role":"club"}'),
+    (v_stranger, 'qa71.stranger@test.local', '{"full_name":"QA71 Stranger","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '35 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '28 years' where user_id = v_stranger;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA71 Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_owner, 'owner', 'active');
+
+  insert into public.club_seasons (organization_id, label, is_current)
+  values (v_org, '2026-27', true)
+  returning id into v_season;
+  insert into public.club_squads (organization_id, season_id, sport, category)
+  values (v_org, v_season, 'Football', 'Senior')
+  returning id into v_squad;
+
+  insert into public.club_matches (
+    organization_id, created_by, sport, squad_id, category, opponent_name, kickoff_at, notes
+  ) values (
+    v_org, v_owner, 'Football', v_squad, 'Senior', 'QA71 Opposition',
+    now() + interval '1 day', 'QA71 meet at the north gate'
+  ) returning id into v_match;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select count(*) into v_rows from public.club_matches where id = v_match;
+  exception when insufficient_privilege then
+    v_rows := 0;
+  end;
+  reset role;
+  perform tests.ok(
+    v_rows = 0,
+    'QA-71 regression: a signed-out client cannot read club matches, including notes and created_by');
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_rows from public.club_matches
+   where id = v_match
+     and notes = 'QA71 meet at the north gate'
+     and created_by = v_owner;
+  reset role;
+  perform tests.ok(
+    v_rows = 1,
+    'a signed-in stranger can still read the match row, which is what live scores need');
+
+  perform tests.ok(
+    not has_table_privilege('anon', 'public.club_matches', 'SELECT')
+    and has_table_privilege('authenticated', 'public.club_matches', 'SELECT'),
+    'anon has no select on club_matches and authenticated still does');
+
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    perform tests.ok(
+      exists (select 1 from pg_publication_tables
+               where pubname = 'supabase_realtime'
+                 and schemaname = 'public'
+                 and tablename = 'club_matches'),
+      'club_matches stays in the realtime publication so live scores keep broadcasting');
+  end if;
 end $$;
 
 -- ------------------------------------------------------------
@@ -3942,6 +4986,164 @@ begin
   perform tests.ok(
     not exists (select 1 from public.notifications where user_id = v_other and type = 'meetup_nearby'),
     'a host posting more than two games a day sends no further alerts');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── play phase 2: map link and alert places ──'; end $$;
+
+do $$
+declare
+  v_host  uuid := 'b2000000-0000-0000-0000-000000000001';
+  v_home  uuid := 'b2000000-0000-0000-0000-000000000002';
+  v_far   uuid := 'b2000000-0000-0000-0000-000000000003';
+  v_game  uuid;
+  v_hint  text;
+  v_state text;
+  v_url   text := 'https://www.google.com/maps/place/Alertville';
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_host, 'phase2.host@test.local', '{"full_name":"Phase2 Host","role":"athlete"}'),
+    (v_home, 'phase2.home@test.local', '{"full_name":"Phase2 Home","role":"athlete"}'),
+    (v_far,  'phase2.far@test.local',  '{"full_name":"Phase2 Far","role":"athlete"}');
+
+  update public.user_private set date_of_birth = current_date - interval '30 years'
+   where user_id in (v_host, v_home, v_far);
+  update public.user_profiles set city = 'Alertville' where id in (v_host, v_home);
+  update public.user_profiles set city = 'Faraway' where id = v_far;
+  update public.athlete_profiles set sport = 'Padel'
+   where user_id in (v_host, v_home, v_far);
+
+  insert into public.meetups (host_id, sport, title, country, city, starts_at, spots_total)
+  values (v_host, 'Padel', 'Map link game', 'United Arab Emirates', 'Alertville',
+          now() + interval '2 days', 4)
+  returning id into v_game;
+
+  perform tests.as_user(v_host);
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, v_url);
+    reset role;
+  exception when others then
+    reset role;
+    raise;
+  end;
+  perform tests.ok(
+    (select map_url from public.meetups where id = v_game) = v_url,
+    'the host can store a Google Maps link');
+
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, '');
+    reset role;
+  exception when others then
+    reset role;
+    raise;
+  end;
+  perform tests.ok(
+    (select map_url from public.meetups where id = v_game) is null,
+    'an empty string clears the map link');
+
+  v_hint := null;
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, 'https://example.com/x');
+    reset role;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+    reset role;
+  end;
+  perform tests.ok(v_hint = 'meetup_map_url_invalid',
+    'a link that is not a map site is refused');
+
+  perform tests.as_user(v_home);
+  v_state := null;
+  begin
+    set local role authenticated;
+    perform public.set_meetup_map_url(v_game, v_url);
+    reset role;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate;
+    reset role;
+  end;
+  perform tests.ok(v_state = '42501',
+    'someone who is not the host cannot change the map link');
+
+  update public.notification_preferences
+     set meetup_places = array['  Sharjah  ', 'sharjah', 'Dubai']
+   where user_id = v_far;
+  perform tests.ok(
+    (select array_to_string(meetup_places, ',')
+       from public.notification_preferences where user_id = v_far)
+      = 'Sharjah,Dubai',
+    'places are trimmed and a case-insensitive duplicate is dropped, keeping the original text');
+
+  v_hint := null;
+  begin
+    update public.notification_preferences
+       set meetup_places = array['A']
+     where user_id = v_far;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'meetup_place_invalid',
+    'a place shorter than two characters is refused');
+
+  v_hint := null;
+  begin
+    update public.notification_preferences
+       set meetup_places = array['One', 'Two', 'Three', 'Four', 'Five', 'Six']
+     where user_id = v_far;
+  exception when others then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'meetup_places_limit',
+    'a sixth place is refused');
+
+  -- Matching. The map-link game above already counted toward this host's
+  -- two-a-day cap, so remove it before these inserts. Notifications are
+  -- cleared between cases so the daily and per-host caps cannot hide a miss.
+  delete from public.notifications
+   where type = 'meetup_nearby' and user_id in (v_host, v_home, v_far);
+  delete from public.meetups where host_id = v_host;
+
+  update public.notification_preferences
+     set meetup_places = array['Downtown']
+   where user_id = v_far;
+
+  insert into public.meetups
+    (host_id, sport, title, country, city, area, starts_at, spots_total)
+  values
+    (v_host, 'Padel', 'Downtown area game', 'United Arab Emirates', 'Alertville',
+     'Downtown', now() + interval '3 days', 4);
+
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                 where user_id = v_far and type = 'meetup_nearby'),
+    'QA-58: a Faraway player listing Downtown is not alerted about Downtown in Alertville');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_home and type = 'meetup_nearby'),
+    'a player whose profile city is Alertville is still alerted about an Alertville game');
+
+  delete from public.notifications
+   where type = 'meetup_nearby' and user_id in (v_host, v_home, v_far);
+
+  update public.notification_preferences
+     set meetup_places = array['Alertville']
+   where user_id = v_far;
+
+  insert into public.meetups
+    (host_id, sport, title, country, city, starts_at, spots_total)
+  values
+    (v_host, 'Padel', 'City name game', 'United Arab Emirates', 'Alertville',
+     now() + interval '4 days', 4);
+
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_far and type = 'meetup_nearby'),
+    'a Faraway player listing Alertville is alerted about a game in that city');
 end $$;
 
 -- ------------------------------------------------------------

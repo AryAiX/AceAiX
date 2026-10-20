@@ -1041,3 +1041,162 @@ values
    'a0000000-0000-4000-8000-000000000001', 'cancelled', 'coach', null, 'Al Jadaf Academy, Pitch 2',
    now() - interval '3 days', now() - interval '2 days')
 on conflict (id) do nothing;
+
+-- ------------------------------------------------------------
+-- Club page (1014/01): Al Jadaf Academy runs a full page.
+--
+--   academy.demo   owner — sees Manage, the licence status, the full roster
+--   marco.demo     the U16 head coach, linked; also a scorekeeper on the page
+--   layla.demo     on the U21 squad (accepted link)
+--   omar.demo      on the U18 squad (17, guardian approved discovery)
+--   everyone else  sees "First L." for typed youth names
+--
+-- One match is live right now, one is next week, one finished on Saturday.
+-- ------------------------------------------------------------
+update public.organizations set
+  name_local = 'أكاديمية الجداف', ceo_name = 'Khalid Al Mansoori',
+  address = 'Al Jadaf, Culture Village, Street 12', latitude = 25.2236, longitude = 55.3348,
+  contact_email = 'info@aljadafacademy.ae', contact_phone = '+971 4 555 0142',
+  website = 'https://aljadafacademy.ae',
+  socials = '{"instagram":"@aljadafacademy","youtube":"@aljadafacademy"}'::jsonb,
+  facilities = array['Full-size grass pitch', 'Two 7-a-side pitches', 'Indoor court', 'Gym', 'Physio room'],
+  about_story = 'Founded in 2011 by former UAE Pro League players, Al Jadaf Academy started with forty boys on one pitch. Today more than three hundred girls and boys train with us across football and basketball, and eleven of our graduates have signed professional contracts.',
+  mission = 'Develop good people and good players — in that order.',
+  philosophy = 'Possession-based football, small-sided games before age twelve, and one-to-one development plans reviewed every term.',
+  created_by = 'c0000000-0000-4000-8000-000000000001'
+where id = 'e0000000-0000-4000-8000-000000000001';
+
+insert into public.organization_sports (organization_id, sport, categories, sort) values
+  ('e0000000-0000-4000-8000-000000000001', 'Football',   array['U12','U14','U16','U18','U21','Women'], 0),
+  ('e0000000-0000-4000-8000-000000000001', 'Basketball', array['U14','U16','Senior'], 1)
+on conflict (organization_id, sport) do update set categories = excluded.categories, sort = excluded.sort;
+
+insert into public.organization_locations (id, organization_id, label, address, city, country, latitude, longitude, is_primary) values
+  ('f1000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', null,
+   'Al Jadaf, Culture Village, Street 12', 'Dubai', 'United Arab Emirates', 25.2236, 55.3348, true),
+  ('f1000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'Mirdif branch',
+   'Mirdif Sports Complex, Pitch 3', 'Dubai', 'United Arab Emirates', 25.2196, 55.4206, false)
+on conflict (id) do nothing;
+
+insert into public.organization_verification (organization_id, license_number, contact_person_name,
+  contact_person_title, terms_accepted_at, submitted_by, submitted_at)
+values ('e0000000-0000-4000-8000-000000000001', 'DED-771204', 'Khalid Al Mansoori', 'CEO',
+        now() - interval '30 days', 'c0000000-0000-4000-8000-000000000001', now() - interval '30 days')
+on conflict (organization_id) do nothing;
+
+insert into public.organization_members (organization_id, user_id, member_role, status, invited_by)
+values ('e0000000-0000-4000-8000-000000000001', 'b0000000-0000-4000-8000-000000000001', 'scorekeeper', 'active',
+        'c0000000-0000-4000-8000-000000000001')
+on conflict (organization_id, user_id) do update set member_role = excluded.member_role, status = 'active';
+
+update public.posts set organization_id = 'e0000000-0000-4000-8000-000000000001'
+where author_id = 'c0000000-0000-4000-8000-000000000001';
+update public.stories set organization_id = 'e0000000-0000-4000-8000-000000000001'
+where author_id = 'c0000000-0000-4000-8000-000000000001';
+
+insert into public.club_seasons (id, organization_id, label, is_current) values
+  ('f2000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', '2025–26', false),
+  ('f2000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', '2026–27', true)
+on conflict (id) do nothing;
+
+insert into public.club_squads (id, organization_id, season_id, sport, category, name) values
+  ('f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000002', 'Football', 'U16', null),
+  ('f3000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000002', 'Football', 'U18', null),
+  ('f3000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000002', 'Football', 'U21', 'Development squad'),
+  ('f3000000-0000-4000-8000-000000000004', 'e0000000-0000-4000-8000-000000000001', 'f2000000-0000-4000-8000-000000000002', 'Basketball', 'Senior', null)
+on conflict (id) do nothing;
+
+insert into public.club_squad_members (id, squad_id, organization_id, kind, display_name, user_id, link_status,
+  shirt_number, position, staff_role, sort) values
+  ('f4000000-0000-4000-8000-000000000001', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'staff', 'Marco Silva', 'b0000000-0000-4000-8000-000000000001', 'accepted', null, null, 'head_coach', 0),
+  ('f4000000-0000-4000-8000-000000000002', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'staff', 'Huda Saeed', null, 'none', null, null, 'fitness_coach', 1),
+  ('f4000000-0000-4000-8000-000000000003', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Ahmed Al Shamsi', null, 'none', 1, 'Goalkeeper', null, 0),
+  ('f4000000-0000-4000-8000-000000000004', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Rashid Al Nuaimi', null, 'none', 4, 'Centre-back', null, 0),
+  ('f4000000-0000-4000-8000-000000000005', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Yousef Haddad', null, 'none', 8, 'Central midfielder', null, 0),
+  ('f4000000-0000-4000-8000-000000000006', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Zayed Al Ketbi', null, 'none', 10, 'Attacking midfielder', null, 0),
+  ('f4000000-0000-4000-8000-000000000007', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Ali Reza Karimi', null, 'none', 11, 'Winger', null, 0),
+  ('f4000000-0000-4000-8000-000000000008', 'f3000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'player', 'Saif Al Mazrouei', null, 'none', 9, 'Striker', null, 0),
+  ('f4000000-0000-4000-8000-000000000009', 'f3000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'player', 'Omar Farouk', 'a0000000-0000-4000-8000-000000000002', 'accepted', 6, 'Central midfielder', null, 0),
+  ('f4000000-0000-4000-8000-000000000010', 'f3000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'player', 'Hamdan Al Falasi', null, 'none', 5, 'Centre-back', null, 0),
+  ('f4000000-0000-4000-8000-000000000011', 'f3000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 'player', 'Layla Haddad', 'a0000000-0000-4000-8000-000000000001', 'accepted', 11, 'Striker', null, 0),
+  ('f4000000-0000-4000-8000-000000000012', 'f3000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 'staff', 'Tariq Bakr', null, 'none', null, null, 'head_coach', 0),
+  ('f4000000-0000-4000-8000-000000000013', 'f3000000-0000-4000-8000-000000000004', 'e0000000-0000-4000-8000-000000000001', 'player', 'Daniel Okoro', 'a0000000-0000-4000-8000-000000000005', 'accepted', 23, 'Small forward', null, 0)
+on conflict (id) do nothing;
+
+insert into public.club_matches (id, organization_id, created_by, sport, squad_id, category, competition,
+  opponent_name, is_home, venue, kickoff_at, status, our_score, their_score, period, minute, stream_url,
+  started_at, finished_at) values
+  ('f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'Football', 'f3000000-0000-4000-8000-000000000001', 'U16', 'UAE Youth League', 'Marina Sports Club U16', true,
+   'Al Jadaf, Pitch 1', now() - interval '52 minutes', 'live', 2, 1, '2nd half', 58,
+   'https://www.youtube.com/@aljadafacademy/live', now() - interval '52 minutes', null),
+  ('f5000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'Football', 'f3000000-0000-4000-8000-000000000002', 'U18', 'UAE Youth League', 'Sharjah Youth FC U18', false,
+   'Sharjah Stadium, Pitch B', date_trunc('hour', now()) + interval '6 days 17 hours', 'scheduled', 0, 0, null, null,
+   null, null, null),
+  ('f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'Football', 'f3000000-0000-4000-8000-000000000003', 'U21', 'Dubai Cup', 'Al Wasl Academy U21', true,
+   'Al Jadaf, Pitch 1', now() - interval '4 days', 'finished', 3, 2, 'Full time', 90,
+   null, now() - interval '4 days', now() - interval '4 days' + interval '105 minutes')
+on conflict (id) do nothing;
+
+insert into public.club_match_events (id, match_id, organization_id, minute, kind, side, points, squad_member_id, player_name, detail) values
+  ('f6000000-0000-4000-8000-000000000001', 'f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 9,  'goal',        'us',   1, 'f4000000-0000-4000-8000-000000000008', 'Saif Al Mazrouei', 'Header from a corner'),
+  ('f6000000-0000-4000-8000-000000000002', 'f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 27, 'yellow_card', 'them', 0, null, null, null),
+  ('f6000000-0000-4000-8000-000000000003', 'f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 40, 'goal',        'them', 1, null, null, null),
+  ('f6000000-0000-4000-8000-000000000004', 'f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 45, 'period',      'us',   0, null, null, 'Half time 1–1'),
+  ('f6000000-0000-4000-8000-000000000005', 'f5000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 54, 'goal',        'us',   1, 'f4000000-0000-4000-8000-000000000006', 'Zayed Al Ketbi', 'Free kick, top corner'),
+  ('f6000000-0000-4000-8000-000000000006', 'f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 12, 'goal',        'us',   1, 'f4000000-0000-4000-8000-000000000011', 'Layla Haddad', null),
+  ('f6000000-0000-4000-8000-000000000007', 'f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 31, 'goal',        'them', 1, null, null, null),
+  ('f6000000-0000-4000-8000-000000000008', 'f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 58, 'goal',        'us',   1, 'f4000000-0000-4000-8000-000000000011', 'Layla Haddad', 'Left foot, far post'),
+  ('f6000000-0000-4000-8000-000000000009', 'f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 70, 'goal',        'them', 1, null, null, 'Penalty'),
+  ('f6000000-0000-4000-8000-000000000010', 'f5000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 88, 'goal',        'us',   1, null, 'Tariq Al Hammadi', null)
+on conflict (id) do nothing;
+
+insert into public.club_events (id, organization_id, created_by, kind, title, description, sport, category,
+  starts_at, ends_at, location, age_min, age_max, capacity, registration_open, price, currency, registration_count) values
+  ('f7000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'trial', 'U14 & U16 open trials', 'Bring boots, shin pads and water. Parents welcome to watch from the stand.',
+   'Football', 'U16', date_trunc('day', now()) + interval '9 days 9 hours', date_trunc('day', now()) + interval '9 days 12 hours',
+   'Al Jadaf, Pitch 1', 12, 16, 60, true, null, 'AED', 1),
+  ('f7000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'camp', 'Winter football camp', 'Five mornings of technical work, small-sided games and a final tournament.',
+   'Football', null, date_trunc('day', now()) + interval '45 days 8 hours', date_trunc('day', now()) + interval '49 days 12 hours',
+   'Mirdif Sports Complex, Pitch 3', 8, 14, 40, true, 950, 'AED', 0)
+on conflict (id) do nothing;
+
+insert into public.club_event_registrations (id, event_id, user_id, note) values
+  ('f8000000-0000-4000-8000-000000000001', 'f7000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000003',
+   'Goalkeeper, played two seasons at Tehran Youth Academy.')
+on conflict (id) do nothing;
+
+insert into public.club_awards (id, organization_id, title, competition, year, season_label, sport, category,
+  placement, recipient_kind, recipient_name, recipient_user_id, description) values
+  ('f9000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'UAE Youth League', 'UAE Youth League', 2025, '2024–25',
+   'Football', 'U16', 'winner', 'club', null, null, 'Unbeaten in 18 matches.'),
+  ('f9000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001', 'Dubai Cup', 'Dubai Cup', 2024, null,
+   'Football', 'U18', 'runner_up', 'club', null, null, null),
+  ('f9000000-0000-4000-8000-000000000003', 'e0000000-0000-4000-8000-000000000001', 'Golden Boot', 'UAE Youth League', 2025, '2024–25',
+   'Football', 'U21', 'individual', 'player', 'Layla Haddad', 'a0000000-0000-4000-8000-000000000001', '19 goals in 20 matches.'),
+  ('f9000000-0000-4000-8000-000000000004', 'e0000000-0000-4000-8000-000000000001', 'Coach of the Year', 'Dubai Sports Council', 2025, null,
+   'Football', null, 'individual', 'coach', 'Marco Silva', 'b0000000-0000-4000-8000-000000000001', null)
+on conflict (id) do nothing;
+
+insert into public.club_broadcasts (id, organization_id, sent_by, audience, title, body, recipients, created_at) values
+  ('fa000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'c0000000-0000-4000-8000-000000000001',
+   'all', 'Open trials in nine days', 'U14 and U16 trials on Pitch 1. Register in the app under Events — places are limited to sixty.',
+   2, now() - interval '3 hours')
+on conflict (id) do nothing;
+insert into public.club_broadcast_recipients (broadcast_id, user_id) values
+  ('fa000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001'),
+  ('fa000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000002')
+on conflict do nothing;
+
+insert into public.organization_follows (follower_id, organization_id) values
+  ('a0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001'),
+  ('a0000000-0000-4000-8000-000000000002', 'e0000000-0000-4000-8000-000000000001'),
+  ('d0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001')
+on conflict do nothing;
+
+update public.challenges set organization_id = 'e0000000-0000-4000-8000-000000000001'
+where created_by = 'c0000000-0000-4000-8000-000000000001' and organization_id is null;

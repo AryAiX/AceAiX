@@ -146,12 +146,21 @@ export const settings = {
   notifyComments: 'Комментарии',
   notifyLikes: 'Лайки',
   notifyMeetups: 'Игры в «Играть»',
+  meetupPlaces: 'Места для оповещений «Играть»',
+  meetupPlacesOnlyCity: 'Только твой город',
+  meetupPlacesBody:
+    'Тебе приходят оповещения об играх в городе из профиля. Добавь ещё до 5 городов или районов.',
+  meetupPlaceAdd: 'Добавить',
 
   sectionOpportunities: 'Возможности и твоя оценка',
   notifyOpportunities: 'Новые возможности',
   notifyApplications: 'Обновления по откликам',
   notifyScoutInterest: 'Интерес скаутов',
   notifyScoreUpdates: 'Изменения оценки таланта',
+  sectionClubs: 'Клубы',
+  notifyClubUpdates: 'Новости клубов',
+  notifyClubUpdatesHint:
+    'Объявления, матчи, результаты и события клубов, на которые ты подписан или за которые играешь',
 
   noMarketingNote:
     'Мы никогда не шлём рекламные пуши и не продаём твои данные тем, кто их шлёт.',

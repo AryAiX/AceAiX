@@ -144,12 +144,21 @@ export const settings = {
   notifyComments: 'Kommentare',
   notifyLikes: 'Likes',
   notifyMeetups: 'Spiele in Spielen',
+  meetupPlaces: 'Orte für Spielen-Hinweise',
+  meetupPlacesOnlyCity: 'Nur deine Stadt',
+  meetupPlacesBody:
+    'Du bekommst Hinweise zu Spielen in der Stadt aus deinem Profil. Füge bis zu 5 weitere Städte oder Gegenden hinzu.',
+  meetupPlaceAdd: 'Hinzufügen',
 
   sectionOpportunities: 'Chancen und dein Score',
   notifyOpportunities: 'Neue Chancen',
   notifyApplications: 'Neues zu Bewerbungen',
   notifyScoutInterest: 'Interesse von Scouts',
   notifyScoreUpdates: 'Neues zum Talent Score',
+  sectionClubs: 'Vereine',
+  notifyClubUpdates: 'Vereins-News',
+  notifyClubUpdatesHint:
+    'Ankündigungen, Spiele, Ergebnisse und Events von Vereinen, denen du folgst oder für die du spielst',
 
   noMarketingNote:
     'Wir senden nie Werbe-Mitteilungen, und wir verkaufen deine Daten an niemanden, der das tut.',
