@@ -80,6 +80,22 @@ function subjectOf(headers) {
 
 const recordings = new Map();
 
+/*
+ * Reads whose answer changes once a write has happened. Sport Fit is the case:
+ * its state is "intro" before the questionnaire and "result" after it, and a
+ * preview that only knew one of the two could show either the questions or the
+ * result, never both. Answers recorded after the trigger are kept as `after`
+ * variants; the replay switches to them once the viewer makes the same write,
+ * and back again on the reset.
+ */
+const STATEFUL = {
+  '/rest/v1/rpc/sport_fit_my_state': {
+    after: '/rest/v1/rpc/sport_fit_submit',
+    reset: '/rest/v1/rpc/sport_fit_delete_mine',
+  },
+};
+const wrote = new Set();
+
 function keyOf(sub, method, target, body) {
   return [sub, method.toUpperCase(), target, body ?? ''].join(' ');
 }
@@ -135,9 +151,16 @@ async function capture(response) {
     return;
   }
 
-  const key = keyOf(sub, request.method(), target, body);
+  for (const rule of Object.values(STATEFUL)) {
+    if (target === rule.after && response.status() < 300) wrote.add(`${sub} ${rule.after}`);
+    if (target === rule.reset) wrote.delete(`${sub} ${rule.after}`);
+  }
+  const after = !!STATEFUL[target] && wrote.has(`${sub} ${STATEFUL[target].after}`);
+
+  const key = keyOf(sub, request.method(), target, body) + (after ? ' #after' : '');
   if (!recordings.has(key)) {
     recordings.set(key, {
+      after,
       sub,
       method: request.method().toUpperCase(),
       target,
@@ -209,6 +232,10 @@ const TOUR = [
   /* Game Intelligence. Layla has a shared result, Marco reads it from her
      profile above, and Mina records the guardian gate. */
   '/intelligence',
+  /* Sport Fit. Mina records the guardian gate; Layla's questionnaire is
+     answered once below, so the preview has the intro, the questions and the
+     result. */
+  '/sport-fit',
   /* Stories and reels (1006/03). One stop per author with a live story, so
      the viewer opened from the rail has something to play. */
   '/reels',
@@ -286,6 +313,31 @@ async function playGameIntelligence(page) {
   return 'played';
 }
 
+/*
+ * Sport Fit: answer the questionnaire once, slowly enough to be scored
+ * (the server refuses a set answered in under 45 seconds), then look at the
+ * result and the profile card. The preview replays this one result for any
+ * set of answers.
+ */
+async function answerSportFit(page) {
+  await page.goto(`http://localhost:${PORT}/sport-fit`, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  if (!(await page.getByTestId('sf-start').count())) return 'no intro (already answered?)';
+  await page.getByTestId('sf-start').click();
+  await page.waitForTimeout(1500);
+  const pattern = [3, 4, 5, 2, 5, 4, 2, 4, 2, 1, 4, 4, 5, 5, 2, 2, 5, 5, 2, 1, 2, 5];
+  for (const value of pattern) {
+    await page.waitForTimeout(2200);
+    await page.getByTestId(`sf-answer-${value}`).click();
+  }
+  await page.waitForTimeout(5000);
+  for (const route of ['/sport-fit', '/profile']) {
+    await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: 'domcontentloaded' }).catch(() => {});
+    await page.waitForTimeout(2500);
+  }
+  return (await page.getByTestId('sf-card').count()) ? 'answered' : 'answered (no card seen)';
+}
+
 const server = await serve();
 const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
@@ -336,6 +388,8 @@ for (const account of ACCOUNTS) {
   if (account.role === 'athlete') {
     const outcome = await playGameIntelligence(page).catch((err) => `stopped: ${err.message.split('\n')[0]}`);
     console.log(`  · game intelligence: ${outcome}`);
+    const sportFit = await answerSportFit(page).catch((err) => `stopped: ${err.message.split('\n')[0]}`);
+    console.log(`  · sport fit: ${sportFit}`);
   }
 
   // Explore: tap every sport chip, so the filtered grids are in the recording.
