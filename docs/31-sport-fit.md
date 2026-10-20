@@ -99,7 +99,7 @@ approval starts without it.
 | the player | everything, and can delete it all (`sport_fit_delete_mine`) |
 | a guardian | that it was completed (notification), never the answers or result |
 | clubs, scouts, coaches, other users | nothing; there is no "their" card and no RPC that reads another person's result |
-| admins | the rows exist (RLS allows admins, as for Game Intelligence); the console does not show them |
+| admins | totals and averages only, on the console's **Sport Fit** page (`admin_sport_fit_overview`); groups under five shown as "fewer than 5"; never one person's answers or result |
 
 `sport_fit_results` is owner-readable only and not writable by any client. One valid result per
 **60 days**; at most five submissions a day. "Download my data" (`export_my_data`) now includes Game
@@ -108,7 +108,8 @@ Intelligence and Sport Fit.
 ## 6. Open items — before launch
 
 1. **Expert review.** A sports psychologist should review the 22 statements and the twelve-sport
-   weight matrix (`sport_fit_sports.reviewed_by` stays NULL until then). The weights are AceAiX's
+   weight matrix. The matrix is edited, and each row marked reviewed, on the admin console's Sport Fit
+   page (`20261019000002_admin_sport_fit.sql`); editing a row clears its mark. The weights are AceAiX's
    reasoned starting point, not research.
 2. **Translations of the statements** (`item.*` in six languages) need a native-speaking sports
    psychologist's review: wording changes meaning, and reverse-worded items must stay reversed.

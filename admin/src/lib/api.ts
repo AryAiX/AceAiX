@@ -298,6 +298,33 @@ export interface AuditRow {
   subject: Person | null;
 }
 
+export const SF_DIMENSIONS = ['drive', 'composure', 'focus', 'resilience', 'boldness', 'discipline', 'reading', 'speed'] as const;
+export type SfDimension = (typeof SF_DIMENSIONS)[number];
+
+export interface SportFitSport {
+  sport: string;
+  weights: Record<SfDimension, number>;
+  team_target: number;
+  active: boolean;
+  reviewed_by: string | null;
+  updated_at: string;
+}
+
+export interface SportFitOverview {
+  players: number;
+  players_minor: number;
+  with_game_intelligence: number;
+  last_30d: number;
+  submissions: number;
+  quality: Record<string, number>;
+  top_sports: { sport: string; count: number | null; hidden: boolean }[];
+  by_age_band: { band: string; count: number; hidden: boolean; dimensions?: Record<string, number> }[];
+  by_day: { day: string; count: number }[];
+  pending_consents: number;
+  sports: SportFitSport[];
+  items: { id: string; dimension: string; reverse: boolean; sort: number }[];
+}
+
 // ── Calls
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -358,6 +385,14 @@ export const api = {
 
   bookings: (scope: string) => rpc<Booking[]>('admin_list_bookings', { p_scope: scope }),
   cancelBooking: (id: string, reason: string) => rpc<void>('admin_cancel_booking', { p_booking: id, p_reason: reason }),
+
+  sportFit: () => rpc<SportFitOverview>('admin_sport_fit_overview'),
+  updateSportFitSport: (sport: string, weights: Record<SfDimension, number>, teamTarget: number, active: boolean) =>
+    rpc<SportFitSport>('admin_update_sport_fit_sport', {
+      p_sport: sport, p_weights: weights, p_team_target: teamTarget, p_active: active,
+    }),
+  reviewSportFitSport: (sport: string, reviewedBy: string | null) =>
+    rpc<SportFitSport>('admin_review_sport_fit_sport', { p_sport: sport, p_reviewed_by: reviewedBy }),
 
   audit: (prefix: string, offset = 0) =>
     rpc<AuditRow[]>('admin_audit_log', { p_action_prefix: prefix || null, p_limit: 100, p_offset: offset }),

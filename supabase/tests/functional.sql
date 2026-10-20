@@ -5250,4 +5250,59 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- Admin console: Sport Fit (20261019000002)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── admin sport fit ──'; end $$;
+
+do $$
+declare
+  v_out    jsonb;
+  v_raised boolean;
+  v_w      jsonb := '{"drive":3,"composure":3,"focus":2,"resilience":3,"boldness":2,"discipline":2,"reading":2,"speed":3}';
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_raised := false;
+  begin perform public.admin_sport_fit_overview(); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot read Sport Fit totals');
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w, 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot edit the sport matrix');
+
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  v_out := public.admin_sport_fit_overview();
+  perform tests.ok(jsonb_array_length(v_out -> 'sports') = 12 and jsonb_array_length(v_out -> 'items') = 22,
+    'an admin sees the sport matrix and the statements');
+  perform tests.ok(position('answers' in v_out::text) = 0 and position('user_id' in v_out::text) = 0,
+    'the totals carry no answers and no user ids');
+  perform tests.ok(not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where (e ->> 'hidden')::boolean is false and (e ->> 'count')::int < 5),
+    'a top-sport count under five is never shown as a number');
+
+  perform public.admin_review_sport_fit_sport('tennis', 'Dr. Test Panel');
+  perform tests.ok((select reviewed_by = 'Dr. Test Panel' from public.sport_fit_sports where sport = 'tennis'),
+    'an admin can mark a sport reviewed');
+  perform public.admin_update_sport_fit_sport('tennis', v_w || '{"boldness":1}', 0, true);
+  perform tests.ok((select reviewed_by is null and (weights ->> 'boldness')::int = 1
+                    from public.sport_fit_sports where sport = 'tennis'),
+    'changing a reviewed row clears its review mark');
+
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w || '{"boldness":7}', 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a weight outside 0–3 is refused');
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w - 'speed', 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a matrix row missing a dimension is refused');
+  perform tests.ok(exists (select 1 from public.audit_logs where action = 'sport_fit.sport.update'),
+    'matrix edits are written to the audit log');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.sport_fit_sports set weights = v_w, reviewed_by = null where sport = 'tennis';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

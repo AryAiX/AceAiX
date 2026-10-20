@@ -14,6 +14,7 @@ import YouthSafetyPage from './pages/YouthSafetyPage';
 import SponsorshipPage from './pages/SponsorshipPage';
 import BookingsPage from './pages/BookingsPage';
 import AuditPage from './pages/AuditPage';
+import SportFitPage from './pages/SportFitPage';
 
 export default function App() {
   const { loading, me } = useAuth();
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="youth-safety" element={<YouthSafetyPage />} />
         <Route path="sponsorship" element={<SponsorshipPage />} />
         <Route path="bookings" element={<BookingsPage />} />
+        <Route path="sport-fit" element={<SportFitPage />} />
         <Route path="audit" element={<AuditPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -91,3 +91,48 @@ update public.user_profiles set created_at = now() - (random() * interval '28 da
 select 'admin demo ready' as status,
        (select count(*) from public.moderation_reports) as reports,
        (select count(*) from public.verification_requests where status = 'pending') as pending_verifications;
+
+-- Sport Fit totals for the admin console --------------------------------------
+-- Thirty demo athletes (sf.demo.N@aceaix.com, LOCAL ONLY) answer Sport Fit with
+-- varied answers, so the Sport Fit page has totals large enough to show.
+do $$
+declare
+  n int;
+  v_id uuid;
+  v_answers jsonb;
+  v_band int;
+begin
+  for n in 1..30 loop
+    v_id := ('5f000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform set_config('request.jwt.claim.role', 'service_role', true);
+    perform set_config('request.jwt.claim.sub', '', true);
+    insert into auth.users (id, email, encrypted_password, raw_user_meta_data)
+    values (v_id, 'sf.demo.' || n || '@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')),
+            jsonb_build_object('full_name', 'Demo Player ' || n, 'role', 'athlete'))
+    on conflict (id) do nothing;
+    v_band := case when n % 3 = 0 then 16 when n % 3 = 1 then 20 else 27 end;
+    update public.user_private set date_of_birth = current_date - make_interval(years => v_band)
+     where user_id = v_id;
+
+    select jsonb_object_agg(i.id,
+             case when i.expected is not null then i.expected
+                  else 1 + (('x' || substr(md5('sf' || n || i.id), 1, 6))::bit(24)::int % 5) end)
+      into v_answers from public.sport_fit_items i;
+
+    perform set_config('request.jwt.claim.sub', v_id::text, true);
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    begin
+      if n % 8 = 0 then
+        perform public.sport_fit_submit(v_answers, 20);   -- too fast: not scored
+      end if;
+      perform public.sport_fit_submit(v_answers, 120 + n);
+    exception when others then null;
+    end;
+  end loop;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  /* Spread the dates over the last month. */
+  update public.sport_fit_results set created_at = now() - (random() * interval '25 days')
+   where user_id::text like '5f000000%';
+end;
+$$;
