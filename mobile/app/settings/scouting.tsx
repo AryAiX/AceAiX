@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { BackHandler, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { BellRing, Cake, Handshake } from 'lucide-react-native';
 
@@ -28,9 +28,9 @@ import { getMatchPreferences, saveMatchPreferences } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import {
   LEVELS,
-  PRIORITY_COUNTRIES,
   SPORT_KEYS,
   countryLabel,
+  countryOptions,
   levelLabelI18n,
   positionLabel,
   positionsFor,
@@ -49,6 +49,8 @@ type Draft = {
   open_to_offers_only: boolean;
   notify_on_match: boolean;
 };
+
+const COUNTRIES_BEFORE_EXPAND = 10;
 
 const AGE_FLOOR = 13;
 const AGE_CEILING = 60;
@@ -109,6 +111,17 @@ export default function ScoutingPreferencesScreen() {
   const dirty = JSON.stringify(draft) !== baseline;
   const anyAge = draft.age_min == null && draft.age_max == null;
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [countriesExpanded, setCountriesExpanded] = useState(false);
+  const countryChoices = useMemo(() => {
+    const all = countryOptions();
+    if (countriesExpanded) return all;
+    const short = all.slice(0, COUNTRIES_BEFORE_EXPAND);
+    for (const selected of draft.countries) {
+      if (!short.includes(selected)) short.push(selected);
+    }
+    return short;
+  }, [countriesExpanded, draft.countries]);
+  const showAllCountries = !countriesExpanded && countryOptions().length > COUNTRIES_BEFORE_EXPAND;
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -260,14 +273,29 @@ export default function ScoutingPreferencesScreen() {
           labelOf={(key) => levelLabelI18n(t, key)}
         />
 
-        <ChipPicker
-          label={t('settings.scoutingCountries')}
-          hint={t('settings.scoutingCountriesHint')}
-          options={PRIORITY_COUNTRIES}
-          selected={draft.countries}
-          onToggle={(v) => toggle('countries', v)}
-          labelOf={(key) => countryLabel(t, key)}
-        />
+        <View style={{ gap: spacing.sm }}>
+          <ChipPicker
+            label={t('settings.scoutingCountries')}
+            hint={t('settings.scoutingCountriesHint')}
+            options={countryChoices}
+            selected={draft.countries}
+            onToggle={(v) => toggle('countries', v)}
+            labelOf={(key) => countryLabel(t, key)}
+          />
+          {showAllCountries ? (
+            <Pressable
+              onPress={() => setCountriesExpanded(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('onboarding.countryShowAll')}
+              hitSlop={8}
+              style={{ minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text variant="captionStrong" tone="primary">
+                {t('onboarding.countryShowAll')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         <View style={{ gap: spacing.md }}>
           <Text variant="captionStrong" tone="secondary">

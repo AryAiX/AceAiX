@@ -7,7 +7,7 @@ import { Text, Chip, Input, ChevronBack } from '@/components/ui';
 import type { TextTone } from '@/components/ui';
 import { useT } from '@/i18n';
 import { currentLanguage } from '@/lib/i18n-bridge';
-import { PRIORITY_COUNTRIES } from '@/constants/sports';
+import { PRIORITY_COUNTRIES, countryOptions } from '@/constants/sports';
 
 /**
  * The pieces every wizard step is built from — sign-up and onboarding share
@@ -378,14 +378,11 @@ export function CountryPicker({
   const [expanded, setExpanded] = useState(false);
 
   const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const all = q
-      ? PRIORITY_COUNTRIES.filter((c) => c.toLowerCase().includes(q))
-      : PRIORITY_COUNTRIES;
-    if (q || expanded) return all;
+    const q = query.trim();
+    if (q || expanded) return countryOptions(q);
 
     // Keep the first tap cheap: a short list, plus whatever is already chosen.
-    const short = all.slice(0, COUNTRIES_BEFORE_EXPAND);
+    const short = PRIORITY_COUNTRIES.slice(0, COUNTRIES_BEFORE_EXPAND);
     if (value && !short.includes(value)) short.push(value);
     return short;
   }, [query, expanded, value]);

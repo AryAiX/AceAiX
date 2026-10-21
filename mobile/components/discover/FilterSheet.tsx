@@ -7,8 +7,8 @@ import { TierColors, tierForScore } from '@/theme/tokens';
 import { Button, Chip, Divider, Input, Sheet, Switch, Text } from '@/components/ui';
 import {
   LEVELS,
-  PRIORITY_COUNTRIES,
   SPORTS,
+  countryOptions,
   levelLabelI18n,
   positionLabel,
   positionsFor,
@@ -309,12 +309,10 @@ export function FilterSheet({
 
   const positions = useMemo(() => positionsFor(draft.sport), [draft.sport]);
 
-  const countryMatches = useMemo(() => {
-    const term = countryQuery.trim().toLowerCase();
-    return PRIORITY_COUNTRIES.filter(
-      (c) => !draft.countries.includes(c) && (!term || c.toLowerCase().includes(term)),
-    );
-  }, [countryQuery, draft.countries]);
+  const countryMatches = useMemo(
+    () => countryOptions(countryQuery).filter((c) => !draft.countries.includes(c)),
+    [countryQuery, draft.countries],
+  );
 
   const visibleCountries = countryMatches.slice(0, COUNTRY_PAGE);
   const hiddenCountries = countryMatches.length - visibleCountries.length;

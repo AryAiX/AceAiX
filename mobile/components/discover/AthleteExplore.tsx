@@ -18,7 +18,7 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { PRIORITY_COUNTRIES, SPORTS, positionLabel, sportLabel } from '@/constants/sports';
+import { SPORTS, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { searchOrganizations, searchPeople, toggleFollow } from '@/lib/api';
@@ -197,6 +197,8 @@ export function AthleteExplore({
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+  const countryChoices = useMemo(() => countryOptions(countryQuery), [countryQuery]);
   /* Coaches: everyone, or only those who can be booked. */
   const [bookable, setBookable] = useState(false);
 
@@ -651,27 +653,43 @@ export function AthleteExplore({
         title={t('discover.explore.countryTitle')}
         subtitle={t('discover.explore.countrySubtitle')}
       >
+        <Input
+          placeholder={t('profile.searchCountries')}
+          value={countryQuery}
+          onChangeText={setCountryQuery}
+          icon={<Search size={18} color={colors.textMuted} />}
+          autoCorrect={false}
+          accessibilityLabel={t('profile.searchCountries')}
+          containerStyle={{ marginBottom: spacing.md }}
+        />
         <ListItem
           title={t('discover.explore.anywhere')}
           showChevron={false}
           onPress={() => {
             setCountry(undefined);
+            setCountryQuery('');
             setCountrySheet(false);
           }}
           right={!country ? <Check size={18} color={colors.primary} /> : undefined}
         />
-        {PRIORITY_COUNTRIES.map((name) => (
+        {countryChoices.map((name) => (
           <ListItem
             key={name}
             title={name}
             showChevron={false}
             onPress={() => {
               setCountry(name);
+              setCountryQuery('');
               setCountrySheet(false);
             }}
             right={country === name ? <Check size={18} color={colors.primary} /> : undefined}
           />
         ))}
+        {countryChoices.length === 0 ? (
+          <Text variant="caption" tone="muted" align="center" style={{ paddingVertical: spacing.xl }}>
+            {t('onboarding.countryNoMatch')}
+          </Text>
+        ) : null}
       </Sheet>
     </View>
   );

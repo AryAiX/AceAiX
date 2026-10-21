@@ -23,7 +23,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
-import { PRIORITY_COUNTRIES, SPORTS, sportLabel } from '@/constants/sports';
+import { SPORTS, countryOptions, sportLabel } from '@/constants/sports';
 import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
 
@@ -147,11 +147,7 @@ export default function NewMeetupScreen() {
     startsAt !== null &&
     !mapLinkInvalid;
 
-  const countries = useMemo(() => {
-    const term = countryQuery.trim().toLowerCase();
-    const all = [...PRIORITY_COUNTRIES].sort((a, b) => a.localeCompare(b));
-    return term ? all.filter((c) => c.toLowerCase().includes(term)) : all;
-  }, [countryQuery]);
+  const countries = useMemo(() => countryOptions(countryQuery), [countryQuery]);
 
   const onPost = useCallback(async () => {
     if (!ready || !startsAt) return;

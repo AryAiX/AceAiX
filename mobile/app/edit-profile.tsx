@@ -46,8 +46,8 @@ import {
   LEVELS,
   MAX_OTHER_SPORTS,
   OTHER_SPORT_LEVELS,
-  PRIORITY_COUNTRIES,
   SPORTS,
+  countryOptions,
   levelHint,
   levelLabelI18n,
   otherSportLevelLabel,
@@ -382,17 +382,13 @@ export default function EditProfileScreen() {
     }
   }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, isSponsorAccount, refreshProfile, router, t, toast]);
 
-  const countries = useMemo(() => {
-    const term = countryQuery.trim().toLowerCase();
-    const all = [...PRIORITY_COUNTRIES].sort((a, b) => a.localeCompare(b));
-    return term ? all.filter((country) => country.toLowerCase().includes(term)) : all;
-  }, [countryQuery]);
+  const countries = useMemo(() => countryOptions(countryQuery), [countryQuery]);
 
-  /** A typed country that is not in the pinned list is still a real country. */
+  /** A typed country that is not in the catalogue is still a real country. */
   const customCountry = useMemo(() => {
     const typed = countryQuery.trim();
     if (typed.length < 2) return null;
-    const exists = PRIORITY_COUNTRIES.some(
+    const exists = countryOptions().some(
       (country) => country.toLowerCase() === typed.toLowerCase(),
     );
     return exists ? null : typed;
