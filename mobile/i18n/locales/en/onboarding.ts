@@ -43,6 +43,10 @@ export const onboarding = {
   clubHint: 'Leave this empty if you are not with a club right now.',
   cityLabel: 'City',
   cityPlaceholder: 'Dubai',
+  cityPickCountryFirst: 'Pick a country first.',
+  citySearchPlaceholder: 'Search cities',
+  cityNoMatch: 'No city matches that. Try a shorter search.',
+  cityShowAll: 'Show all cities',
 
   // ── Athlete: physical ─────────────────────────────────────────────────────
   physicalTitle: 'A few numbers',

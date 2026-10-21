@@ -20,6 +20,7 @@ import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
 import {
+  addCustomCity,
   completeOnboarding,
   getGuardianConsents,
   getMatchPreferences,
@@ -99,6 +100,19 @@ type StepKey =
   | 'done';
 
 type Path = 'athlete' | 'recruiter' | 'guardian' | 'basic';
+
+/**
+ * Empty stays null. Anything else is stored as the catalogue spells it,
+ * so "dubai " and "Dubai" cannot become two cities. With no country the
+ * catalogue cannot be asked, and the trimmed name is kept.
+ */
+async function cityForProfile(country: string | null, city: string): Promise<string | null> {
+  const trimmed = city.trim();
+  if (!trimmed) return null;
+  const trimmedCountry = country?.trim() ?? '';
+  if (!trimmedCountry) return trimmed;
+  return addCustomCity(trimmedCountry, trimmed);
+}
 
 export default function OnboardingScreen() {
   const theme = useTheme();
@@ -312,10 +326,13 @@ export default function OnboardingScreen() {
         case 'level':
           await updateAthleteProfile({ level });
           break;
-        case 'place':
+        case 'place': {
           await updateAthleteProfile({ current_club: club.trim() || null });
-          await updateUserProfile({ country, city: city.trim() || null });
+          const cityName = await cityForProfile(country, city);
+          if ((cityName ?? '') !== city) setCity(cityName ?? '');
+          await updateUserProfile({ country, city: cityName });
           break;
+        }
         case 'physical':
           await updateAthleteProfile({
             height_cm: height ? Number(height) : null,
@@ -410,7 +427,9 @@ export default function OnboardingScreen() {
   // athlete one, plus the coach record.
   const persistRecruiterPlace = useCallback(async (): Promise<boolean> => {
     try {
-      await updateUserProfile({ country, city: city.trim() || null });
+      const cityName = await cityForProfile(country, city);
+      if ((cityName ?? '') !== city) setCity(cityName ?? '');
+      await updateUserProfile({ country, city: cityName });
       if (!isClub) await updateCoachProfile({ country });
       return true;
     } catch (err) {

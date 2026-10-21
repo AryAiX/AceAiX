@@ -360,7 +360,7 @@ export function CheckboxRow({
 }
 
 // ── Country picker ───────────────────────────────────────────────────────────
-const COUNTRIES_BEFORE_EXPAND = 10;
+export const COUNTRIES_BEFORE_EXPAND = 10;
 
 export function CountryPicker({
   value,

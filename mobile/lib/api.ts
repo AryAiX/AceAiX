@@ -889,6 +889,33 @@ export async function searchTeams(query?: string, sport?: string, limit = 20): P
   return (data ?? []) as Team[];
 }
 
+/** City names for one country. Nothing about a person is in the result. */
+export async function searchCities(country: string, query: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('search_cities', {
+    p_country: country.trim(),
+    p_query: query.trim() || null,
+    p_limit: 24,
+  });
+  if (error) throw new AppError(error);
+  const rows = (data ?? []) as ({ name?: string } | string)[];
+  return rows
+    .map((row) => (typeof row === 'string' ? row : row.name))
+    .filter((name): name is string => !!name);
+}
+
+/**
+ * The spelling already held for this city, or the trimmed name if it is new.
+ * "dubai " comes back as "Dubai", so the two cannot be stored as two cities.
+ */
+export async function addCustomCity(country: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('add_custom_city', {
+    p_country: country.trim(),
+    p_name: name.trim(),
+  });
+  if (error) throw new AppError(error);
+  return data as string;
+}
+
 /** Adds a club we do not have. Stays private to this person until curated. */
 export async function addCustomTeam(
   name: string,

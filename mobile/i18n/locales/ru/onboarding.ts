@@ -44,6 +44,10 @@ export const onboarding = {
   clubHint: 'Оставь пустым, если сейчас ты не в клубе.',
   cityLabel: 'Город',
   cityPlaceholder: 'Дубай',
+  cityPickCountryFirst: 'Сначала выбери страну.',
+  citySearchPlaceholder: 'Поиск по городам',
+  cityNoMatch: 'Такого города нет. Попробуй запрос покороче.',
+  cityShowAll: 'Показать все города',
 
   // ── Спортсмен: физические данные ──────────────────────────────────────────
   physicalTitle: 'Немного цифр',

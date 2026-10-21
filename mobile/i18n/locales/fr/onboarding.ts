@@ -44,6 +44,10 @@ export const onboarding = {
   clubHint: 'Laisse vide si tu n’es dans aucun club en ce moment.',
   cityLabel: 'Ville',
   cityPlaceholder: 'Dubaï',
+  cityPickCountryFirst: 'Choisis d’abord un pays.',
+  citySearchPlaceholder: 'Rechercher une ville',
+  cityNoMatch: 'Aucune ville ne correspond. Essaie une recherche plus courte.',
+  cityShowAll: 'Voir toutes les villes',
 
   // ── Athlète : physique ────────────────────────────────────────────────────
   physicalTitle: 'Quelques chiffres',

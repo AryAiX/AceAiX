@@ -23,6 +23,11 @@ describe('database hints', () => {
 
   it('explains a rate limit without blaming the user', () => {
     expect(errorMessage({ code: '54000', hint: 'rate_limited' })).toContain('too quickly');
+    expect(errorMessage({ message: 'rate_limited' })).toContain('too quickly');
+  });
+
+  it('explains a city the catalogue will not keep', () => {
+    expect(errorMessage({ code: 'P0001', message: 'city_length' })).toContain('2');
   });
 
   it('explains the age floor', () => {

@@ -46,6 +46,10 @@ export const onboarding = {
   clubHint: 'Déjalo vacío si ahora mismo no estás en ningún club.',
   cityLabel: 'Ciudad',
   cityPlaceholder: 'Dubái',
+  cityPickCountryFirst: 'Elige primero un país.',
+  citySearchPlaceholder: 'Buscar ciudades',
+  cityNoMatch: 'Ninguna ciudad coincide. Prueba con una búsqueda más corta.',
+  cityShowAll: 'Ver todas las ciudades',
 
   // ── Deportista: datos físicos ─────────────────────────────────────────────
   physicalTitle: 'Unos números',

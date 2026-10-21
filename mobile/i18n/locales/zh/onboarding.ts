@@ -41,6 +41,10 @@ export const onboarding = {
   clubHint: '如果你现在没有俱乐部，留空就行。',
   cityLabel: '城市',
   cityPlaceholder: '迪拜',
+  cityPickCountryFirst: '请先选择国家。',
+  citySearchPlaceholder: '搜索城市',
+  cityNoMatch: '没有匹配的城市。试试少输几个字。',
+  cityShowAll: '显示所有城市',
 
   // ── 运动员：身体数据 ──────────────────────────────────────────────────────
   physicalTitle: '几个数字',

@@ -41,6 +41,10 @@ export const onboarding = {
   clubHint: 'اترك هذا فارغًا إن لم تكن مع نادٍ حاليًا.',
   cityLabel: 'المدينة',
   cityPlaceholder: 'دبي',
+  cityPickCountryFirst: 'اختر الدولة أولًا.',
+  citySearchPlaceholder: 'ابحث عن مدينة',
+  cityNoMatch: 'لا مدينة تطابق ذلك. جرّب بحثًا أقصر.',
+  cityShowAll: 'عرض كل المدن',
 
   // ── اللاعب: القياسات ──────────────────────────────────────────────────────
   physicalTitle: 'بعض الأرقام',

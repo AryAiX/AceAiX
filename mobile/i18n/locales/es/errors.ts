@@ -72,6 +72,7 @@ export const errors = {
   coachingOwnCalendar: 'No puedes reservar tu propio calendario.',
   meetupMapUrlInvalid: 'Usa un enlace de Google Maps, Apple Maps o Waze.',
   meetupPlaceInvalid: 'Cada lugar debe tener entre 2 y 80 caracteres.',
+  cityLength: 'Una ciudad necesita entre 2 y 80 caracteres.',
   meetupPlacesLimit: 'Puedes añadir hasta 5 lugares.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "Solo una cuenta de club o academia puede crear una página de club.",

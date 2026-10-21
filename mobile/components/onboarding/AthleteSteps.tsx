@@ -15,6 +15,7 @@ import {
   sideLabel,
   sportLabel,
 } from '@/constants/sports';
+import { CityPicker } from './CityPicker';
 import { CountryPicker, OptionCard, SportTile, StepHeading } from './Shared';
 
 /** The athlete path: sport, position, level, where you play, and your body. */
@@ -166,14 +167,21 @@ export function PlaceStep({
           testID="onboarding-club"
         />
 
-        <CountryPicker value={country} onChange={onChangeCountry} />
+        <CountryPicker
+          value={country}
+          onChange={(next) => {
+            onChangeCountry(next);
+            // A city belongs to the country it was picked under. The first
+            // load is not a change — only a tap here is.
+            if (next !== country) onChangeCity('');
+          }}
+        />
 
-        <Input
-          label={t('onboarding.cityLabel')}
+        <CityPicker
+          country={country}
           value={city}
-          onChangeText={onChangeCity}
-          placeholder={t('onboarding.cityPlaceholder')}
-          autoCapitalize="words"
+          onChange={onChangeCity}
+          label={t('onboarding.cityLabel')}
           testID="onboarding-city"
         />
       </View>

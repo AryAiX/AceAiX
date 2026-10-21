@@ -46,6 +46,7 @@ const EN: Record<string, string> = {
   'errors.tooManyAttempts': 'Too many attempts. Wait a few minutes and try again.',
   'errors.meetupMapUrlInvalid': 'Use a Google Maps, Apple Maps or Waze link.',
   'errors.meetupPlaceInvalid': 'Each place must be 2 to 80 characters.',
+  'errors.cityLength': 'A city needs between 2 and 80 characters.',
   'errors.meetupPlacesLimit': 'You can add up to 5 places.',
   'errors.clubAccountOnly': "Only a club or academy account can create a club page.",
   'errors.clubPageExists': "You already run a club page.",
@@ -145,6 +146,7 @@ const HINTS: Record<string, string> = {
   gi_already_done: 'errors.giAlreadyDone',
   meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
   meetup_place_invalid: 'errors.meetupPlaceInvalid',
+  city_length: 'errors.cityLength',
   meetup_places_limit: 'errors.meetupPlacesLimit',
   /* Club and academy pages (1014/01). */
   club_account_only: 'errors.clubAccountOnly',
@@ -237,6 +239,12 @@ export function toFriendlyError(error: unknown): FriendlyError {
 
   if (e.hint && HINTS[e.hint]) {
     return { message: say(HINTS[e.hint]), hint: e.hint, raw: error };
+  }
+
+  /* add_custom_city raises 'city_length' and 'rate_limited' as the message,
+     not a hint. Match those before the underscore check hides them. */
+  if (e.message && HINTS[e.message]) {
+    return { message: say(HINTS[e.message]), hint: e.message, raw: error };
   }
 
   if (e.code && CODES[e.code]) {

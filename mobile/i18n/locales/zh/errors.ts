@@ -71,6 +71,7 @@ export const errors = {
   coachingOwnCalendar: '不能预约自己的日历。',
   meetupMapUrlInvalid: '请使用 Google Maps、Apple Maps 或 Waze 链接。',
   meetupPlaceInvalid: '每个地点须为 2 至 80 个字符。',
+  cityLength: '城市名称需要 2 到 80 个字符。',
   meetupPlacesLimit: '最多可以添加 5 个地点。',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "只有俱乐部或学院账号可以创建俱乐部主页。",

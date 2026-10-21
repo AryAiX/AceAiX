@@ -5,6 +5,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Chip, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { SPORTS, positionLabel, positionsFor, sportLabel } from '@/constants/sports';
+import { CityPicker } from './CityPicker';
 import { CountryPicker, SportTile, StepHeading } from './Shared';
 
 /** The coach and club path. Short: who they are, and who they are looking for. */
@@ -176,13 +177,20 @@ export function RecruiterPlaceStep({
         subtitle={t('onboarding.recruiterPlaceSubtitle')}
       />
       <View style={{ gap: theme.spacing.xl }}>
-        <CountryPicker value={country} onChange={onChangeCountry} />
-        <Input
-          label={t('onboarding.cityLabel')}
+        <CountryPicker
+          value={country}
+          onChange={(next) => {
+            onChangeCountry(next);
+            // A city belongs to the country it was picked under. The first
+            // load is not a change — only a tap here is.
+            if (next !== country) onChangeCity('');
+          }}
+        />
+        <CityPicker
+          country={country}
           value={city}
-          onChangeText={onChangeCity}
-          placeholder={t('onboarding.cityPlaceholder')}
-          autoCapitalize="words"
+          onChange={onChangeCity}
+          label={t('onboarding.cityLabel')}
           testID="recruiter-city"
         />
       </View>

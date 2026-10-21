@@ -71,6 +71,7 @@ export const errors = {
   coachingOwnCalendar: 'لا يمكنك الحجز في تقويمك الخاص.',
   meetupMapUrlInvalid: 'استخدم رابطًا من Google Maps أو Apple Maps أو Waze.',
   meetupPlaceInvalid: 'يجب أن يتكون كل مكان من 2 إلى 80 حرفًا.',
+  cityLength: 'يجب أن يتكون اسم المدينة من 2 إلى 80 حرفًا.',
   meetupPlacesLimit: 'يمكنك إضافة 5 أماكن كحد أقصى.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "يمكن فقط لحساب نادٍ أو أكاديمية إنشاء صفحة نادٍ.",

@@ -31,6 +31,7 @@ import {
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import {
+  addCustomCity,
   getMyProfile,
   refreshMyTalentScore,
   updateAthleteProfile,
@@ -40,6 +41,7 @@ import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@
 import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
 import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
+import { CityPicker } from '@/components/onboarding/CityPicker';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
@@ -243,6 +245,17 @@ export default function EditProfileScreen() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
+  /** A new country cannot keep the previous city's name. Opening the
+   *  screen seeds both fields and does not come through here. */
+  const chooseCountry = useCallback((next: string) => {
+    setForm((current) => {
+      if (!current || next === current.country) return current;
+      return { ...current, country: next, city: '' };
+    });
+    setCountryQuery('');
+    setCountrySheet(false);
+  }, []);
+
   /**
    * One picker for both pictures.
    *
@@ -301,10 +314,20 @@ export default function EditProfileScreen() {
     try {
       const previousAvatar = initial?.avatarUrl ?? '';
       const previousCover = initial?.coverUrl ?? '';
+      const trimmedCity = form.city.trim();
+      const trimmedCountry = form.country.trim();
+      // The catalogue is the normaliser. Empty stays null. With no country
+      // there is nothing to match against, so the trimmed name is kept.
+      const city = !trimmedCity
+        ? null
+        : trimmedCountry
+          ? await addCustomCity(trimmedCountry, trimmedCity)
+          : trimmedCity;
+      const savedForm = { ...form, city: city ?? '' };
       const shared = {
         bio: form.bio.trim() || null,
-        city: form.city.trim() || null,
-        country: form.country.trim() || null,
+        city,
+        country: trimmedCountry || null,
         avatar_url: form.avatarUrl || null,
         cover_url: form.coverUrl || null,
       };
@@ -374,7 +397,8 @@ export default function EditProfileScreen() {
       }
 
       toast.success(message);
-      setInitial(form);
+      setForm(savedForm);
+      setInitial(savedForm);
       if (router.canGoBack()) router.back();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -639,13 +663,11 @@ export default function EditProfileScreen() {
             hint={t('profile.bioCounter', { n: form.bio.length, max: BIO_MAX })}
           />
 
-          <Input
-            label={t('profile.city')}
-            placeholder={t('profile.cityPlaceholder')}
+          <CityPicker
+            country={form.country.trim() ? form.country : null}
             value={form.city}
-            onChangeText={(text) => set('city', text)}
-            maxLength={80}
-            autoCapitalize="words"
+            onChange={(text) => set('city', text)}
+            label={t('profile.city')}
           />
 
           <Pressable
@@ -1067,11 +1089,7 @@ export default function EditProfileScreen() {
               right={
                 form.country === country ? <Check size={20} color={colors.primary} /> : undefined
               }
-              onPress={() => {
-                set('country', country);
-                setCountryQuery('');
-                setCountrySheet(false);
-              }}
+              onPress={() => chooseCountry(country)}
             />
           </View>
         ))}
@@ -1083,11 +1101,7 @@ export default function EditProfileScreen() {
             <ListItem
               title={t('profile.useTypedCountry', { country: customCountry })}
               subtitle={t('profile.useTypedCountryHint')}
-              onPress={() => {
-                set('country', customCountry);
-                setCountryQuery('');
-                setCountrySheet(false);
-              }}
+              onPress={() => chooseCountry(customCountry)}
             />
           </View>
         ) : null}
