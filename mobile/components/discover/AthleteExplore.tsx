@@ -18,7 +18,7 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { SPORTS, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
+import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { searchOrganizations, searchPeople, toggleFollow } from '@/lib/api';
@@ -198,7 +198,10 @@ export function AthleteExplore({
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
-  const countryChoices = useMemo(() => countryOptions(countryQuery), [countryQuery]);
+  const countryChoices = useMemo(
+    () => countryOptions(countryQuery, (name) => countryLabel(t, name)),
+    [countryQuery, t],
+  );
   /* Coaches: everyone, or only those who can be booked. */
   const [bookable, setBookable] = useState(false);
 
@@ -675,7 +678,7 @@ export function AthleteExplore({
         {countryChoices.map((name) => (
           <ListItem
             key={name}
-            title={name}
+            title={countryLabel(t, name)}
             showChevron={false}
             onPress={() => {
               setCountry(name);

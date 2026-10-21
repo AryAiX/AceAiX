@@ -8,6 +8,7 @@ import { Button, Chip, Divider, Input, Sheet, Switch, Text } from '@/components/
 import {
   LEVELS,
   SPORTS,
+  countryLabel,
   countryOptions,
   levelLabelI18n,
   positionLabel,
@@ -310,8 +311,11 @@ export function FilterSheet({
   const positions = useMemo(() => positionsFor(draft.sport), [draft.sport]);
 
   const countryMatches = useMemo(
-    () => countryOptions(countryQuery).filter((c) => !draft.countries.includes(c)),
-    [countryQuery, draft.countries],
+    () =>
+      countryOptions(countryQuery, (c) => countryLabel(t, c)).filter(
+        (c) => !draft.countries.includes(c),
+      ),
+    [countryQuery, draft.countries, t],
   );
 
   const visibleCountries = countryMatches.slice(0, COUNTRY_PAGE);
@@ -487,7 +491,7 @@ export function FilterSheet({
             {draft.countries.map((country) => (
               <Chip
                 key={country}
-                label={country}
+                label={countryLabel(t, country)}
                 selected
                 onPress={() => patch({ countries: toggle(draft.countries, country) })}
               />
@@ -495,7 +499,7 @@ export function FilterSheet({
             {visibleCountries.map((country) => (
               <Chip
                 key={country}
-                label={country}
+                label={countryLabel(t, country)}
                 onPress={() => patch({ countries: toggle(draft.countries, country) })}
               />
             ))}

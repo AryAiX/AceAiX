@@ -47,6 +47,7 @@ import {
   MAX_OTHER_SPORTS,
   OTHER_SPORT_LEVELS,
   SPORTS,
+  countryLabel,
   countryOptions,
   levelHint,
   levelLabelI18n,
@@ -382,17 +383,23 @@ export default function EditProfileScreen() {
     }
   }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, isSponsorAccount, refreshProfile, router, t, toast]);
 
-  const countries = useMemo(() => countryOptions(countryQuery), [countryQuery]);
+  const countries = useMemo(
+    () => countryOptions(countryQuery, (country) => countryLabel(t, country)),
+    [countryQuery, t],
+  );
 
   /** A typed country that is not in the catalogue is still a real country. */
   const customCountry = useMemo(() => {
     const typed = countryQuery.trim();
     if (typed.length < 2) return null;
+    const needle = typed.toLowerCase();
     const exists = countryOptions().some(
-      (country) => country.toLowerCase() === typed.toLowerCase(),
+      (country) =>
+        country.toLowerCase() === needle ||
+        countryLabel(t, country).toLowerCase() === needle,
     );
     return exists ? null : typed;
-  }, [countryQuery]);
+  }, [countryQuery, t]);
 
   const header = (
     <Header
@@ -645,14 +652,13 @@ export default function EditProfileScreen() {
             onPress={() => setCountrySheet(true)}
             accessibilityRole="button"
             accessibilityLabel={t('profile.countryA11y', {
-              value: form.country || t('profile.notSet'),
+              value: countryLabel(t, form.country) || t('profile.notSet'),
             })}
           >
-            {/* Country names are stored as typed, so they are not translated. */}
             <Input
               label={t('profile.country')}
               placeholder={t('profile.countryPlaceholder')}
-              value={form.country}
+              value={countryLabel(t, form.country)}
               editable={false}
               pointerEvents="none"
             />
@@ -1053,12 +1059,11 @@ export default function EditProfileScreen() {
           accessibilityLabel={t('profile.searchCountries')}
           containerStyle={{ marginBottom: spacing.md }}
         />
-        {/* The country name is what gets stored, so the row shows it as stored. */}
         {countries.map((country, index) => (
           <View key={country}>
             {index > 0 ? <Divider /> : null}
             <ListItem
-              title={country}
+              title={countryLabel(t, country)}
               right={
                 form.country === country ? <Check size={20} color={colors.primary} /> : undefined
               }

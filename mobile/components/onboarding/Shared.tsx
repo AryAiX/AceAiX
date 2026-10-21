@@ -7,7 +7,7 @@ import { Text, Chip, Input, ChevronBack } from '@/components/ui';
 import type { TextTone } from '@/components/ui';
 import { useT } from '@/i18n';
 import { currentLanguage } from '@/lib/i18n-bridge';
-import { PRIORITY_COUNTRIES, countryOptions } from '@/constants/sports';
+import { PRIORITY_COUNTRIES, countryLabel, countryOptions } from '@/constants/sports';
 
 /**
  * The pieces every wizard step is built from — sign-up and onboarding share
@@ -379,13 +379,13 @@ export function CountryPicker({
 
   const matches = useMemo(() => {
     const q = query.trim();
-    if (q || expanded) return countryOptions(q);
+    if (q || expanded) return countryOptions(q, (country) => countryLabel(t, country));
 
     // Keep the first tap cheap: a short list, plus whatever is already chosen.
     const short = PRIORITY_COUNTRIES.slice(0, COUNTRIES_BEFORE_EXPAND);
     if (value && !short.includes(value)) short.push(value);
     return short;
-  }, [query, expanded, value]);
+  }, [query, expanded, value, t]);
 
   const showMore =
     !query.trim() && !expanded && PRIORITY_COUNTRIES.length > COUNTRIES_BEFORE_EXPAND;
@@ -406,7 +406,7 @@ export function CountryPicker({
         {matches.map((country) => (
           <Chip
             key={country}
-            label={country}
+            label={countryLabel(t, country)}
             selected={value === country}
             onPress={() => onChange(country)}
           />

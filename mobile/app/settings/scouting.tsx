@@ -113,14 +113,14 @@ export default function ScoutingPreferencesScreen() {
   const [discardOpen, setDiscardOpen] = useState(false);
   const [countriesExpanded, setCountriesExpanded] = useState(false);
   const countryChoices = useMemo(() => {
-    const all = countryOptions();
+    const all = countryOptions(undefined, (country) => countryLabel(t, country));
     if (countriesExpanded) return all;
     const short = all.slice(0, COUNTRIES_BEFORE_EXPAND);
     for (const selected of draft.countries) {
       if (!short.includes(selected)) short.push(selected);
     }
     return short;
-  }, [countriesExpanded, draft.countries]);
+  }, [countriesExpanded, draft.countries, t]);
   const showAllCountries = !countriesExpanded && countryOptions().length > COUNTRIES_BEFORE_EXPAND;
 
   const close = useCallback(() => {

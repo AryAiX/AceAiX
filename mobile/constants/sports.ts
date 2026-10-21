@@ -445,10 +445,14 @@ export const ALL_COUNTRIES: string[] = [
 
 /**
  * Launch markets first, in their existing order, then every other sovereign
- * state A–Z. A query keeps that order and keeps only English names that
- * contain it, ignoring case.
+ * state A–Z. A query keeps that order and the stored value stays the English
+ * name. It matches a case-insensitive substring of that English name, or of
+ * `label(country)` when a label function is passed.
  */
-export function countryOptions(query?: string): string[] {
+export function countryOptions(
+  query?: string,
+  label?: (country: string) => string,
+): string[] {
   const seen = new Set<string>(PRIORITY_COUNTRIES);
   const ordered = [
     ...PRIORITY_COUNTRIES,
@@ -456,7 +460,10 @@ export function countryOptions(query?: string): string[] {
   ];
   const q = query?.trim().toLowerCase();
   if (!q) return ordered;
-  return ordered.filter((country) => country.toLowerCase().includes(q));
+  return ordered.filter((country) => {
+    if (country.toLowerCase().includes(q)) return true;
+    return label ? label(country).toLowerCase().includes(q) : false;
+  });
 }
 
 export const OPPORTUNITY_TYPES = [

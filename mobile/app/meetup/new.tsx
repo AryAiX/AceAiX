@@ -23,7 +23,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
-import { SPORTS, countryOptions, sportLabel } from '@/constants/sports';
+import { SPORTS, countryLabel, countryOptions, sportLabel } from '@/constants/sports';
 import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
 
@@ -147,7 +147,10 @@ export default function NewMeetupScreen() {
     startsAt !== null &&
     !mapLinkInvalid;
 
-  const countries = useMemo(() => countryOptions(countryQuery), [countryQuery]);
+  const countries = useMemo(
+    () => countryOptions(countryQuery, (c) => countryLabel(t, c)),
+    [countryQuery, t],
+  );
 
   const onPost = useCallback(async () => {
     if (!ready || !startsAt) return;
@@ -416,7 +419,7 @@ export default function NewMeetupScreen() {
           <View key={c}>
             {index > 0 ? <Divider /> : null}
             <ListItem
-              title={c}
+              title={countryLabel(t, c)}
               right={country === c ? <Check size={20} color={colors.primary} /> : undefined}
               onPress={() => {
                 setCountry(c);
