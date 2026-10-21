@@ -36,8 +36,13 @@ import {
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { discoverAthletes, getMatchPreferences, recommendedAthletes } from '@/lib/api';
-import { addToShortlist, removeFromShortlist, shortlistedAthleteIds } from '@/lib/api.discover';
+import { discoverAthletes, getMatchPreferences } from '@/lib/api';
+import {
+  addToShortlist,
+  recommendedForBrief,
+  removeFromShortlist,
+  shortlistedAthleteIds,
+} from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
@@ -215,7 +220,11 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
     ]);
   }, [prefs.data]);
 
-  const recommended = useAsync(() => recommendedAthletes(12), [prefsKey], { enabled: hasBrief });
+  const recommended = useAsync(
+    () => (prefs.data ? recommendedForBrief(prefs.data) : Promise.resolve([])),
+    [prefsKey],
+    { enabled: hasBrief },
+  );
 
   const filterCriteria = useMemo(() => criteriaFromFilters(filters), [filters]);
   const explained = hasAnyCriteria(filterCriteria);

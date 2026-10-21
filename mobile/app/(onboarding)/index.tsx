@@ -67,8 +67,9 @@ import {
   RecruiterRoleStep,
   RecruiterSportsStep,
   RecruiterTargetStep,
+  recruiterAgeBandKey,
 } from '@/components/onboarding/RecruiterSteps';
-import { positionsFor } from '@/constants/sports';
+import { positionsFor, prunePositions } from '@/constants/sports';
 import { ClubSetupWizard } from '@/components/club/setup';
 import { Routes } from '@/lib/routes';
 
@@ -233,6 +234,9 @@ export default function OnboardingScreen() {
         if (prefs) {
           setSports(prefs.sports ?? []);
           setPositions(prefs.positions ?? []);
+          // Step 4 writes whatever chip is selected. Without this, a return
+          // visit still has the default "Any age" and overwrites the band.
+          setAgeBandKey(recruiterAgeBandKey(prefs.age_min, prefs.age_max));
         }
       }
     } catch (err) {
@@ -762,11 +766,15 @@ export default function OnboardingScreen() {
         {step === 'sports' ? (
           <RecruiterSportsStep
             value={sports}
-            onToggle={(next) =>
-              setSports((current) =>
-                current.includes(next) ? current.filter((s) => s !== next) : [...current, next],
-              )
-            }
+            onToggle={(next) => {
+              const nextSports = sports.includes(next)
+                ? sports.filter((s) => s !== next)
+                : [...sports, next];
+              setSports(nextSports);
+              // Unticking handball must not leave "Left wing" selected for
+              // a football search. A shared name (Goalkeeper) stays.
+              setPositions((current) => prunePositions(nextSports, current));
+            }}
           />
         ) : null}
 

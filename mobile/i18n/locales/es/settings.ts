@@ -174,7 +174,7 @@ export const settings = {
   scoutingIntro:
     'Esto define a quién te pone Descubrir delante primero y de qué deportistas te avisamos. Deja algo en blanco para decir «sin preferencia».',
   scoutingSports: 'Deportes',
-  scoutingSportsHint: 'Elige el único deporte para el que ojeas.',
+  scoutingSportsHint: 'Elige los deportes para los que ojeas. Puedes elegir varios.',
   scoutingPositions: 'Posiciones',
   scoutingPositionsHint: 'Solo las posiciones de los deportes que elegiste.',
   scoutingPositionsEmpty: 'Elige primero un deporte y aparecerán aquí sus posiciones.',

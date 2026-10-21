@@ -173,7 +173,7 @@ export const settings = {
   scoutingIntro:
     'هذه تحدّد من يضعه الاستكشاف أمامك أولًا، وأي اللاعبين نخبرك عنهم. اترك أي حقل فارغًا لتقول «لا تفضيل».',
   scoutingSports: 'الرياضات',
-  scoutingSportsHint: 'اختر الرياضة الوحيدة التي تبحث فيها عن لاعبين.',
+  scoutingSportsHint: 'اختر الرياضات التي تبحث فيها عن لاعبين. يمكنك اختيار أكثر من رياضة.',
   scoutingPositions: 'المراكز',
   scoutingPositionsHint: 'مراكز الرياضات التي اخترتها فقط.',
   scoutingPositionsEmpty: 'اختر رياضة أولًا وستظهر مراكزها هنا.',

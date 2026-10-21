@@ -1,7 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import { AppError } from '@/lib/errors';
+import { positionsBySport } from '@/constants/sports';
 import { discoverAthletes, searchPeople, talentLeaderboard } from '@/lib/api';
-import type { DiscoveredAthlete, DiscoveryFilters, PersonResult, Tier } from '@/types/models';
+import type {
+  DiscoveredAthlete,
+  DiscoveryFilters,
+  MatchPreferences,
+  PersonResult,
+  Tier,
+} from '@/types/models';
 
 /**
  * Discovery-only calls that lib/api.ts does not cover.
@@ -28,6 +35,83 @@ async function requireUserId(): Promise<string> {
 export async function countDiscoverAthletes(filters: DiscoveryFilters): Promise<number> {
   const rows = await discoverAthletes(filters, 0, 1);
   return rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
+}
+
+const RECOMMENDED_SIZE = 12;
+
+/**
+ * Athletes for a scouting brief, across every sport it names.
+ *
+ * `recommended_athletes` only forwards the first sport. Asking
+ * `discover_athletes` once per sport keeps the minor rules where they
+ * already live — this function does not add or remove any visibility
+ * check of its own. An empty position list means any position.
+ */
+export async function recommendedForBrief(
+  prefs: MatchPreferences,
+): Promise<DiscoveredAthlete[]> {
+  const sports = (prefs.sports ?? []).filter((sport) => sport.length > 0);
+  const bySport = positionsBySport(sports, prefs.positions ?? []);
+  const shared: DiscoveryFilters = {
+    levels: prefs.levels?.length ? prefs.levels : undefined,
+    countries: prefs.countries?.length ? prefs.countries : undefined,
+    ageMin: prefs.age_min ?? undefined,
+    ageMax: prefs.age_max ?? undefined,
+    minScore: prefs.min_score ?? undefined,
+    openOnly: prefs.open_to_offers_only ?? true,
+    sort: 'match',
+  };
+
+  const searches =
+    sports.length === 0
+      ? [
+          discoverAthletes(
+            {
+              ...shared,
+              positions: prefs.positions?.length ? prefs.positions : undefined,
+            },
+            0,
+            RECOMMENDED_SIZE,
+          ),
+        ]
+      : sports.map((sport) => {
+          const positions = bySport[sport] ?? [];
+          return discoverAthletes(
+            {
+              ...shared,
+              sport,
+              positions: positions.length > 0 ? positions : undefined,
+            },
+            0,
+            RECOMMENDED_SIZE,
+          );
+        });
+
+  const pages = await Promise.all(searches);
+  const total = pages.reduce((sum, page) => {
+    const count = page.length > 0 ? Number(page[0].total_count ?? 0) : 0;
+    return sum + count;
+  }, 0);
+
+  const seen = new Set<string>();
+  const merged: DiscoveredAthlete[] = [];
+  for (const page of pages) {
+    for (const athlete of page) {
+      if (seen.has(athlete.athlete_id)) continue;
+      seen.add(athlete.athlete_id);
+      merged.push(athlete);
+    }
+  }
+
+  merged.sort((a, b) => {
+    if (b.match_percent !== a.match_percent) return b.match_percent - a.match_percent;
+    return b.talent_score - a.talent_score;
+  });
+
+  return merged.slice(0, RECOMMENDED_SIZE).map((athlete) => ({
+    ...athlete,
+    total_count: total,
+  }));
 }
 
 // ── Shortlist (watchlists / watchlist_athletes) ───────────────────────────────

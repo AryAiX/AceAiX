@@ -15,6 +15,11 @@ interface Props {
   step?: number;
   /** Rendered after the number, e.g. "yrs". */
   suffix?: string;
+  /**
+   * Shown instead of the number, for a bound that is not a number (no upper
+   * age). The buttons still step `value`.
+   */
+  display?: string;
   onChange: (next: number) => void;
 }
 
@@ -25,7 +30,17 @@ interface Props {
  * dependency for three numbers — so age and score bounds are stepped instead.
  * Each button is a 44pt target.
  */
-export function Stepper({ label, hint, value, min, max, step = 1, suffix, onChange }: Props) {
+export function Stepper({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  display,
+  onChange,
+}: Props) {
   const theme = useTheme();
   const { colors, radii, spacing, hit } = theme;
   const t = useT();
@@ -82,14 +97,23 @@ export function Stepper({ label, hint, value, min, max, step = 1, suffix, onChan
           t('settings.stepperDecrease', { label }),
         )}
         <View style={{ minWidth: 56, alignItems: 'center' }}>
-          <Text variant="stat" accessibilityLabel={t('settings.stepperValue', { label, value })}>
-            {value}
-            {suffix ? (
-              <Text variant="caption" tone="muted">
-                {` ${suffix}`}
-              </Text>
-            ) : null}
-          </Text>
+          {display ? (
+            <Text
+              variant="captionStrong"
+              accessibilityLabel={t('settings.stepperValue', { label, value: display })}
+            >
+              {display}
+            </Text>
+          ) : (
+            <Text variant="stat" accessibilityLabel={t('settings.stepperValue', { label, value })}>
+              {value}
+              {suffix ? (
+                <Text variant="caption" tone="muted">
+                  {` ${suffix}`}
+                </Text>
+              ) : null}
+            </Text>
+          )}
         </View>
         {button(
           1,

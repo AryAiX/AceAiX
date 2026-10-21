@@ -216,6 +216,19 @@ export const RECRUITER_AGE_BANDS: AgeBandOption[] = [
   { key: '21_plus', labelKey: 'onboarding.ageBand21Plus', min: 21, max: null },
 ];
 
+/**
+ * The chip that matches a brief already saved. A range this step cannot
+ * draw stays on Any, which is the same chip a first visit starts on.
+ */
+export function recruiterAgeBandKey(
+  ageMin: number | null | undefined,
+  ageMax: number | null | undefined,
+): string {
+  const min = ageMin ?? null;
+  const max = ageMax ?? null;
+  return RECRUITER_AGE_BANDS.find((band) => band.min === min && band.max === max)?.key ?? 'any';
+}
+
 export function RecruiterTargetStep({
   sports,
   positions,

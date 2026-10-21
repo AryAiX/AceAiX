@@ -175,6 +175,31 @@ export function positionsFor(sport: string | null | undefined): string[] {
   return sportConfig(sport)?.positions ?? [];
 }
 
+/**
+ * Saved positions, grouped under each sport they belong to.
+ *
+ * A name two sports share (Goalkeeper is both football and handball) is
+ * listed under each of them: a search for either sport still needs it.
+ * Order follows the saved list, not the catalogue.
+ */
+export function positionsBySport(
+  sports: string[],
+  positions: string[],
+): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const sport of sports) {
+    const allowed = new Set(positionsFor(sport));
+    out[sport] = positions.filter((position) => allowed.has(position));
+  }
+  return out;
+}
+
+/** Positions that belong to at least one of the sports. The rest are dropped. */
+export function prunePositions(sports: string[], positions: string[]): string[] {
+  const allowed = new Set(sports.flatMap((sport) => positionsFor(sport)));
+  return positions.filter((position) => allowed.has(position));
+}
+
 export function sportEmoji(sport: string | null | undefined): string {
   return sportConfig(sport)?.emoji ?? '🏅';
 }
