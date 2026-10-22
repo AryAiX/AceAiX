@@ -34,7 +34,7 @@ import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
-import { saveMatchPreferences } from '@/lib/api';
+import { addCustomCity, saveMatchPreferences } from '@/lib/api';
 import {
   getClubPage,
   submitClubVerification,
@@ -57,6 +57,7 @@ import {
   verificationFromPage,
   whereErrors,
   wherePatch,
+  withCatalogueCities,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -113,11 +114,15 @@ export default function ClubEditScreen() {
     else router.replace(Routes.home);
   };
 
-  const save = async (section: Section, patch: ClubPageUpdate, after?: () => Promise<void>) => {
+  const save = async (
+    section: Section,
+    patch: ClubPageUpdate | (() => Promise<ClubPageUpdate>),
+    after?: () => Promise<void>,
+  ) => {
     if (!orgId || saving) return;
     setSaving(section);
     try {
-      await updateClubPage(orgId, patch);
+      await updateClubPage(orgId, typeof patch === 'function' ? await patch() : patch);
       if (after) await after();
       toast.success(t('clubSetup.edit.saved'));
     } catch (err) {
@@ -289,7 +294,13 @@ export default function ClubEditScreen() {
           onSave={() => {
             const found = whereErrors(draft);
             setWhereErr(found);
-            if (Object.keys(found).length === 0) void save('where', wherePatch(draft));
+            if (Object.keys(found).length === 0) {
+              void save('where', async () => {
+                const next = await withCatalogueCities(draft, addCustomCity);
+                setDraft(next);
+                return wherePatch(next);
+              });
+            }
           }}
           testID="club-edit-where"
         >

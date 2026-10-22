@@ -324,6 +324,36 @@ export function basicsPatch(draft: ClubDraft, now = new Date()): ClubPageUpdate 
   };
 }
 
+/**
+ * The catalogue spelling of a city ("dubai " → "Dubai"), or the trimmed name
+ * when there is no country to match against. Empty stays empty: `wherePatch`
+ * still trims and stores null, and the length check stays in `whereErrors`.
+ * `resolve` is `addCustomCity` at save time.
+ */
+export async function withCatalogueCities(
+  draft: ClubDraft,
+  resolve: (country: string, name: string) => Promise<string>,
+): Promise<ClubDraft> {
+  const cityOf = async (country: string | null, city: string): Promise<string> => {
+    const trimmed = city.trim();
+    if (!trimmed) return '';
+    const trimmedCountry = country?.trim() ?? '';
+    if (!trimmedCountry) return trimmed;
+    return resolve(trimmedCountry, trimmed);
+  };
+
+  return {
+    ...draft,
+    city: await cityOf(draft.country, draft.city),
+    branches: await Promise.all(
+      draft.branches.map(async (branch) => ({
+        ...branch,
+        city: await cityOf(branch.country ?? draft.country, branch.city),
+      })),
+    ),
+  };
+}
+
 export function wherePatch(draft: ClubDraft): ClubPageUpdate {
   const pin = draft.pin.trim() ? parseMapLocation(draft.pin) : null;
   return {

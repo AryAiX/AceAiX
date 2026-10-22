@@ -5,6 +5,7 @@ import { MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Card, IconButton, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { CityPicker } from '@/components/onboarding/CityPicker';
 import { CountryPicker } from '@/components/onboarding/Shared';
 import {
   LIMITS,
@@ -43,7 +44,23 @@ export function WhereFields({
       <View style={{ gap: spacing.xs }}>
         <CountryPicker
           value={draft.country}
-          onChange={(country) => onChange({ country })}
+          onChange={(country) => {
+            // A city belongs to the country it was picked under. Loading a
+            // saved page sets both at once; only a tap here is a change.
+            if (country === draft.country) {
+              onChange({ country });
+              return;
+            }
+            onChange({
+              country,
+              city: '',
+              branches: draft.branches.map((branch) =>
+                branch.country && branch.country !== draft.country
+                  ? branch
+                  : { ...branch, country, city: '' },
+              ),
+            });
+          }}
           label={t('clubSetup.where.countryLabel')}
         />
         {errors.country ? (
@@ -53,17 +70,20 @@ export function WhereFields({
         ) : null}
       </View>
 
-      <Input
-        label={t('clubSetup.where.cityLabel')}
-        required
-        value={draft.city}
-        onChangeText={(city) => onChange({ city })}
-        placeholder={t('clubSetup.where.cityPlaceholder')}
-        error={errors.city ? t('clubSetup.where.cityRequired') : null}
-        maxLength={LIMITS.city}
-        autoCapitalize="words"
-        testID="club-setup-city"
-      />
+      <View style={{ gap: spacing.xs }}>
+        <CityPicker
+          country={draft.country}
+          value={draft.city}
+          onChange={(city) => onChange({ city })}
+          label={t('clubSetup.where.cityLabel')}
+          testID="club-setup-city"
+        />
+        {errors.city ? (
+          <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+            {t('clubSetup.where.cityRequired')}
+          </Text>
+        ) : null}
+      </View>
       <Input
         label={t('clubSetup.where.addressLabel')}
         value={draft.address}
@@ -133,13 +153,12 @@ export function WhereFields({
               placeholder={t('clubSetup.where.branchLabelPlaceholder')}
               maxLength={LIMITS.branchLabel}
             />
-            <Input
-              label={t('clubSetup.where.cityLabel')}
+            <CityPicker
+              country={branch.country ?? draft.country}
               value={branch.city}
-              onChangeText={(city) => setBranch(branch.key, { city })}
-              placeholder={t('clubSetup.where.cityPlaceholder')}
-              maxLength={LIMITS.city}
-              autoCapitalize="words"
+              onChange={(city) => setBranch(branch.key, { city })}
+              label={t('clubSetup.where.cityLabel')}
+              testID={`club-setup-branch-city-${index}`}
             />
             <Input
               label={t('clubSetup.where.addressLabel')}

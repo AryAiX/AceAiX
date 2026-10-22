@@ -5,7 +5,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Button, ErrorState, Loader, Screen, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import { StepHeading, WizardTopBar } from '@/components/onboarding/Shared';
-import { saveMatchPreferences } from '@/lib/api';
+import { addCustomCity, saveMatchPreferences } from '@/lib/api';
 import {
   createClubPage,
   getClubPage,
@@ -31,6 +31,7 @@ import {
   whereErrors,
   wherePatch,
   withAccountContactName,
+  withCatalogueCities,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -191,9 +192,12 @@ export function ClubSetupWizard({
       }
       if (!orgId) return false;
       switch (step) {
-        case 'where':
-          await updateClubPage(orgId, wherePatch(draft));
+        case 'where': {
+          const next = await withCatalogueCities(draft, addCustomCity);
+          setDraft(next);
+          await updateClubPage(orgId, wherePatch(next));
           break;
+        }
         case 'sports':
           await updateClubPage(orgId, sportsPatch(draft));
           // Keeps athlete matching working, as the old club onboarding did.

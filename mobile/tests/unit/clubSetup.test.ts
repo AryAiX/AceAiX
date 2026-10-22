@@ -21,6 +21,7 @@ import {
   whereErrors,
   wherePatch,
   withAccountContactName,
+  withCatalogueCities,
 } from '@/lib/clubSetup';
 
 const NOW = new Date(2026, 9, 14);
@@ -130,6 +131,35 @@ describe('patches', () => {
     expect(patch.locations).toEqual([
       { label: 'North pitch', city: 'Sharjah', address: null, country: 'UAE', latitude: null, longitude: null },
     ]);
+  });
+
+  it('stores the catalogue spelling of each city and leaves an empty one empty', async () => {
+    const calls: [string, string][] = [];
+    const next = await withCatalogueCities(
+      {
+        ...emptyDraft(),
+        country: 'UAE',
+        city: ' dubai ',
+        branches: [
+          { key: 'a', label: 'North', city: 'Sharjah', address: '', country: null, latitude: null, longitude: null },
+          { key: 'b', label: 'Away', city: ' muscat ', address: '', country: 'Oman', latitude: null, longitude: null },
+          { key: 'c', label: 'Empty', city: '  ', address: '', country: 'UAE', latitude: null, longitude: null },
+        ],
+      },
+      async (country, name) => {
+        calls.push([country, name]);
+        return name === 'dubai' ? 'Dubai' : name;
+      },
+    );
+    expect(calls).toEqual([
+      ['UAE', 'dubai'],
+      ['UAE', 'Sharjah'],
+      ['Oman', 'muscat'],
+    ]);
+    expect(next.city).toBe('Dubai');
+    expect(next.branches.map((b) => b.city)).toEqual(['Sharjah', 'muscat', '']);
+    expect(wherePatch(next).city).toBe('Dubai');
+    expect(wherePatch(next).locations?.map((l) => l.city)).toEqual(['Sharjah', 'muscat', null]);
   });
 
   it('cleans categories and keeps other socials', () => {
