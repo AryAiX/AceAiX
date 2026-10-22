@@ -121,19 +121,19 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: 'Jahr',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      'Für ein Konto bei {{app}} musst du mindestens {{age}} sein. Tipp auf {{action}}, dann erklären wir, wie es weitergeht.',
+    dobTooYoungTitle: 'Du musst 13 oder älter sein',
+    dobTooYoungBody: 'Tipp auf Weiter, dann erklären wir, wie es weitergeht.',
     dobMinorTitle: 'Ein Erwachsener kommt dazu',
     dobMinorBody:
       'Weil du unter 18 bist, muss ein Elternteil oder Vormund dein Profil freigeben, bevor Trainer dich finden können. Gleich fragen wir nach der E-Mail-Adresse, und die Person bekommt eine kurze Nachricht, die alles erklärt.',
     dobAdultOnlyTitle: 'Du musst 18 oder älter sein',
     dobAdultOnlyCoach:
-      'Du musst 18 oder älter sein, um auf AceAiX Trainerin oder Trainer zu sein. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler.',
+      'Coaching auf AceAiX ist für Erwachsene. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler.',
     dobAdultOnlyClub:
-      'Du musst 18 oder älter sein, um einen Verein oder eine Akademie zu führen. Bitte eine erwachsene Person in deinem Verein, die Seite einzurichten.',
-    dobAdultOnlySponsor: 'Du musst 18 oder älter sein, um dich als Sponsor oder Marke zu registrieren.',
+      'Vereine und Akademien werden von Erwachsenen geführt. Bitte eine erwachsene Person in deinem Verein, die Seite einzurichten.',
+    dobAdultOnlySponsor: 'Konten für Sponsoren und Marken sind für Erwachsene.',
     dobAdultOnlyGuardian:
-      'Du musst 18 oder älter sein, um dich als Elternteil oder Vormund zu registrieren. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler. Ein Elternteil kann dein Konto dann per E-Mail freigeben.',
+      'Konten für Elternteile und Vormunde sind für Erwachsene. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler, und ein Elternteil kann dein Konto per E-Mail freigeben.',
     dobChooseDifferentRole: 'Eine andere Rolle wählen',
 
     blockedTitle: 'Komm wieder, wenn du {{age}} wirst',

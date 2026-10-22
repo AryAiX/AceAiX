@@ -125,20 +125,19 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: 'Año',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      'Tienes que tener al menos {{age}} años para tener una cuenta de {{app}}. Toca {{action}} y te contamos qué hacer.',
+    dobTooYoungTitle: 'Tienes que tener 13 años o más',
+    dobTooYoungBody: 'Toca Continuar y te explicamos qué hacer después.',
     dobMinorTitle: 'Necesitas a tu madre, padre o tutor',
     dobMinorBody:
       'Como eres menor de 18, tu madre, padre o tutor tiene que aprobar tu perfil antes de que los entrenadores puedan encontrarte. Enseguida te pedimos su correo y le llega un mensaje corto con la explicación.',
     dobAdultOnlyTitle: 'Tienes que tener 18 años o más',
     dobAdultOnlyCoach:
-      'Tienes que tener 18 años o más para entrenar en AceAiX. Si eres deportista, vuelve atrás y elige Deportista.',
+      'Entrenar en AceAiX es para adultos. Si eres deportista, vuelve atrás y elige Deportista.',
     dobAdultOnlyClub:
-      'Tienes que tener 18 años o más para gestionar un club o una academia. Pide a una persona adulta de tu club que cree la página.',
-    dobAdultOnlySponsor:
-      'Tienes que tener 18 años o más para registrarte como patrocinador o marca.',
+      'Los clubes y las academias los dirigen personas adultas. Pide a una persona adulta de tu club que cree la página.',
+    dobAdultOnlySponsor: 'Las cuentas de patrocinadores y marcas son para adultos.',
     dobAdultOnlyGuardian:
-      'Tienes que tener 18 años o más para registrarte como madre, padre o tutor. Si eres deportista, vuelve atrás y elige Deportista, y tu madre o padre puede aprobar tu cuenta por correo.',
+      'Las cuentas de madres, padres y tutores son para adultos. Si eres deportista, vuelve atrás y elige Deportista, y tu madre o padre puede aprobar tu cuenta por correo.',
     dobChooseDifferentRole: 'Elegir otro rol',
 
     blockedTitle: 'Vuelve cuando cumplas {{age}}',

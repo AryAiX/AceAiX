@@ -123,19 +123,19 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: 'Année',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      'Il faut avoir au moins {{age}} ans pour avoir un compte {{app}}. Appuie sur {{action}} et on t’explique la suite.',
+    dobTooYoungTitle: 'Il faut avoir 13 ans ou plus',
+    dobTooYoungBody: 'Appuie sur Continuer et on t’explique la suite.',
     dobMinorTitle: 'Un parent ou tuteur entre en jeu',
     dobMinorBody:
       'Comme tu as moins de 18 ans, un parent ou tuteur doit valider ton profil avant que les coachs puissent te trouver. On te demandera son e-mail dans un instant, et il recevra un court message qui explique tout.',
     dobAdultOnlyTitle: 'Il faut avoir 18 ans ou plus',
     dobAdultOnlyCoach:
-      'Il faut avoir 18 ans ou plus pour coacher sur AceAiX. Si tu es athlète, reviens en arrière et choisis Athlète.',
+      'Coacher sur AceAiX, c’est pour les adultes. Si tu es athlète, reviens en arrière et choisis Athlète.',
     dobAdultOnlyClub:
-      'Il faut avoir 18 ans ou plus pour gérer un club ou une académie. Demande à un adulte de ton club de créer la page.',
-    dobAdultOnlySponsor: 'Il faut avoir 18 ans ou plus pour t’inscrire comme sponsor ou marque.',
+      'Les clubs et les académies sont gérés par des adultes. Demande à un adulte de ton club de créer la page.',
+    dobAdultOnlySponsor: 'Les comptes sponsor et marque sont pour les adultes.',
     dobAdultOnlyGuardian:
-      'Il faut avoir 18 ans ou plus pour t’inscrire comme parent ou tuteur. Si tu es athlète, reviens en arrière et choisis Athlète, et un parent pourra valider ton compte par e-mail.',
+      'Les comptes parent et tuteur sont pour les adultes. Si tu es athlète, reviens en arrière et choisis Athlète, et un parent pourra valider ton compte par e-mail.',
     dobChooseDifferentRole: 'Choisir un autre rôle',
 
     blockedTitle: 'Reviens à tes {{age}} ans',

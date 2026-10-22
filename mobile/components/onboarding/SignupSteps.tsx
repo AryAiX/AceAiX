@@ -327,6 +327,26 @@ function WebDateField({
   );
 }
 
+/** The under-13 and 13–17 adult-role warnings: same border, icon, title, and body. */
+function AgeWarningCard({ title, body }: { title: string; body: string }) {
+  const theme = useTheme();
+  const { colors, spacing } = theme;
+
+  return (
+    <Card tone="alt" style={{ borderColor: colors.danger }}>
+      <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <ShieldAlert size={20} color={colors.danger} />
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Text variant="bodyStrong">{title}</Text>
+          <Text variant="caption" tone="secondary">
+            {body}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
 export function DateOfBirthStep({
   value,
   onChange,
@@ -434,41 +454,26 @@ export function DateOfBirthStep({
         )}
 
         {tooYoung ? (
-          <Card tone="alt" style={{ borderColor: colors.danger }}>
-            <View style={{ flexDirection: 'row', gap: spacing.md }}>
-              <ShieldAlert size={20} color={colors.danger} />
-              <Text variant="caption" tone="secondary" style={{ flex: 1 }}>
-                {t('auth.signUp.dobTooYoung', {
-                  age: MINIMUM_AGE,
-                  app: t('common.appName'),
-                  action: t('common.continue'),
-                })}
-              </Text>
-            </View>
-          </Card>
+          <AgeWarningCard
+            title={t('auth.signUp.dobTooYoungTitle')}
+            body={t('auth.signUp.dobTooYoungBody')}
+          />
         ) : null}
 
         {adultOnlyRole ? (
           <View style={{ gap: spacing.md }}>
-            <Card tone="alt" style={{ borderColor: colors.danger }}>
-              <View style={{ flexDirection: 'row', gap: spacing.md }}>
-                <ShieldAlert size={20} color={colors.danger} />
-                <View style={{ flex: 1, gap: spacing.xs }}>
-                  <Text variant="bodyStrong">{t('auth.signUp.dobAdultOnlyTitle')}</Text>
-                  <Text variant="caption" tone="secondary">
-                    {t(
-                      adultOnlyRole === 'coach'
-                        ? 'auth.signUp.dobAdultOnlyCoach'
-                        : adultOnlyRole === 'club'
-                          ? 'auth.signUp.dobAdultOnlyClub'
-                          : adultOnlyRole === 'sponsor'
-                            ? 'auth.signUp.dobAdultOnlySponsor'
-                            : 'auth.signUp.dobAdultOnlyGuardian',
-                    )}
-                  </Text>
-                </View>
-              </View>
-            </Card>
+            <AgeWarningCard
+              title={t('auth.signUp.dobAdultOnlyTitle')}
+              body={t(
+                adultOnlyRole === 'coach'
+                  ? 'auth.signUp.dobAdultOnlyCoach'
+                  : adultOnlyRole === 'club'
+                    ? 'auth.signUp.dobAdultOnlyClub'
+                    : adultOnlyRole === 'sponsor'
+                      ? 'auth.signUp.dobAdultOnlySponsor'
+                      : 'auth.signUp.dobAdultOnlyGuardian',
+              )}
+            />
             <Button
               label={t('auth.signUp.dobChooseDifferentRole')}
               variant="secondary"

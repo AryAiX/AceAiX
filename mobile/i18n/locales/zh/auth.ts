@@ -115,17 +115,17 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: '年',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      '注册 {{app}} 账号需要年满{{age}}岁。点击{{action}}，我们会说明接下来该怎么做。',
+    dobTooYoungTitle: '你需要年满13岁',
+    dobTooYoungBody: '点击继续，我们会说明接下来该怎么做。',
     dobMinorTitle: '需要家长或监护人参与',
     dobMinorBody:
       '因为你未满18岁，需要家长或监护人批准你的资料，教练才能找到你。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
     dobAdultOnlyTitle: '你需要年满18岁',
-    dobAdultOnlyCoach: '在 AceAiX 上当教练需要年满18岁。如果你是运动员，请返回并选择「运动员」。',
-    dobAdultOnlyClub: '管理俱乐部或青训机构需要年满18岁。请让俱乐部里的成年人来创建主页。',
-    dobAdultOnlySponsor: '以赞助商或品牌身份注册需要年满18岁。',
+    dobAdultOnlyCoach: '在 AceAiX 上执教面向成年人。如果你是运动员，请返回并选择「运动员」。',
+    dobAdultOnlyClub: '俱乐部和青训机构由成年人管理。请让俱乐部里的成年人来创建主页。',
+    dobAdultOnlySponsor: '赞助商和品牌账号面向成年人。',
     dobAdultOnlyGuardian:
-      '以家长或监护人身份注册需要年满18岁。如果你是运动员，请返回并选择「运动员」，你的家长可以通过邮件批准你的账号。',
+      '家长和监护人账号面向成年人。如果你是运动员，请返回并选择「运动员」，你的家长可以通过邮件批准你的账号。',
     dobChooseDifferentRole: '选择其他身份',
 
     blockedTitle: '等你满{{age}}岁再回来',
