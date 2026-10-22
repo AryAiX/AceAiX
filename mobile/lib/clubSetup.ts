@@ -150,6 +150,35 @@ export function emptyVerification(): VerificationDraft {
   };
 }
 
+type AccountName = {
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+} | null | undefined;
+
+/**
+ * The signed-in account's name, for a blank "your name" on the papers step.
+ * `full_name` wins; otherwise the first and last name joined.
+ */
+export function contactPersonFromAccount(account: AccountName): string {
+  const full = account?.full_name?.trim() ?? '';
+  const name =
+    full ||
+    [account?.first_name, account?.last_name]
+      .map((part) => part?.trim() ?? '')
+      .filter(Boolean)
+      .join(' ');
+  return name.slice(0, LIMITS.personName);
+}
+
+/** Fills the contact name only while that field is still blank. */
+export function withContactPersonName(draft: VerificationDraft, account: AccountName): VerificationDraft {
+  if (draft.contact_person_name.trim()) return draft;
+  const name = contactPersonFromAccount(account);
+  if (!name) return draft;
+  return { ...draft, contact_person_name: name };
+}
+
 export function draftFromPage(page: ClubPage): ClubDraft {
   const o = page.organization;
   return {

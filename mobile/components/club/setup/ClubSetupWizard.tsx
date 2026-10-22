@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, ErrorState, Loader, Screen, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { StepHeading, WizardTopBar } from '@/components/onboarding/Shared';
 import { saveMatchPreferences } from '@/lib/api';
 import {
@@ -30,6 +31,7 @@ import {
   verificationFromPage,
   whereErrors,
   wherePatch,
+  withContactPersonName,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -84,6 +86,11 @@ export function ClubSetupWizard({
   const t = useT();
   const { spacing } = theme;
   const toast = useToast();
+  const { profile } = useAuth();
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  /** Set once they edit "your name", so a later profile refresh cannot refill it. */
+  const contactNameEdited = useRef(false);
 
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
@@ -108,9 +115,11 @@ export function ClubSetupWizard({
       if (mine && page) {
         setOrgId(mine.id);
         setDraft(draftFromPage(page));
-        setPapers(verificationFromPage(page));
+        setPapers(withContactPersonName(verificationFromPage(page), profileRef.current));
         setPapersSent(!!page.verification?.terms_accepted);
         setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
+      } else if (!contactNameEdited.current) {
+        setPapers((current) => withContactPersonName(current, profileRef.current));
       }
     } catch (err) {
       setBootError(errorMessage(err));
@@ -123,6 +132,12 @@ export function ClubSetupWizard({
     void boot();
   }, [boot]);
 
+  // Profile can arrive after the page load. Fill only a still-blank name.
+  useEffect(() => {
+    if (booting || contactNameEdited.current) return;
+    setPapers((current) => withContactPersonName(current, profile));
+  }, [booting, profile]);
+
   const change = (patch: Partial<ClubDraft>) => {
     setDraft((d) => ({ ...d, ...patch }));
     if ('logo_url' in patch || 'cover_url' in patch) setBrandingTouched(true);
@@ -131,6 +146,7 @@ export function ClubSetupWizard({
   };
 
   const changePapers = (patch: Partial<VerificationDraft>) => {
+    if ('contact_person_name' in patch) contactNameEdited.current = true;
     setPapers((p) => ({ ...p, ...patch }));
     setErrors(NO_ERRORS);
   };

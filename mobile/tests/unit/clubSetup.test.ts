@@ -5,8 +5,10 @@ import {
   basicsErrors,
   contactErrors,
   contactPatch,
+  contactPersonFromAccount,
   draftFromPage,
   emptyDraft,
+  emptyVerification,
   firstIncompleteStep,
   formatPin,
   looksLikeWebsite,
@@ -18,6 +20,7 @@ import {
   toggleSport,
   whereErrors,
   wherePatch,
+  withContactPersonName,
 } from '@/lib/clubSetup';
 
 const NOW = new Date(2026, 9, 14);
@@ -148,6 +151,37 @@ describe('patches', () => {
     expect(patch.contact_email).toBe('info@club.ae');
     expect(patch.socials).toEqual({ instagram: '@club', linkedin: 'club-co' });
     expect(patch.facilities).toEqual(['Gym']);
+  });
+});
+
+describe('contactPersonFromAccount', () => {
+  it('uses full_name when it is set', () => {
+    expect(
+      contactPersonFromAccount({ full_name: 'Sara Ali', first_name: 'Other', last_name: 'Name' }),
+    ).toBe('Sara Ali');
+  });
+
+  it('joins first and last name when full_name is empty', () => {
+    expect(contactPersonFromAccount({ full_name: '  ', first_name: 'Sara', last_name: 'Ali' })).toBe('Sara Ali');
+    expect(contactPersonFromAccount({ full_name: null, first_name: 'Sara', last_name: null })).toBe('Sara');
+    expect(contactPersonFromAccount({ full_name: null, first_name: null, last_name: 'Ali' })).toBe('Ali');
+  });
+
+  it('is empty when the account has no name', () => {
+    expect(contactPersonFromAccount(null)).toBe('');
+    expect(contactPersonFromAccount({ full_name: ' ', first_name: ' ', last_name: null })).toBe('');
+  });
+
+  it('fills a blank contact name and leaves a saved or typed one alone', () => {
+    const blank = emptyVerification();
+    expect(withContactPersonName(blank, { full_name: 'Sara Ali' }).contact_person_name).toBe('Sara Ali');
+    expect(withContactPersonName(blank, null)).toBe(blank);
+    const saved = { ...blank, contact_person_name: 'Nour Haddad' };
+    expect(withContactPersonName(saved, { full_name: 'Sara Ali' })).toBe(saved);
+    const typedSpaces = { ...blank, contact_person_name: '   ' };
+    expect(withContactPersonName(typedSpaces, { first_name: 'Sara', last_name: 'Ali' }).contact_person_name).toBe(
+      'Sara Ali',
+    );
   });
 });
 
