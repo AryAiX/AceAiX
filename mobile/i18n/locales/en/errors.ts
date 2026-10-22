@@ -70,6 +70,9 @@ export const errors = {
   coachingLocationRequired: 'Say where it should take place.',
   coachingServiceLimit: 'You can offer twelve services at a time.',
   coachingOwnCalendar: 'You cannot book your own calendar.',
+  meetupMapUrlInvalid: 'Use a Google Maps, Apple Maps or Waze link.',
+  meetupPlaceInvalid: 'Each place must be 2 to 80 characters.',
+  meetupPlacesLimit: 'You can add up to 5 places.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "Only a club or academy account can create a club page.",
   clubPageExists: "You already run a club page.",

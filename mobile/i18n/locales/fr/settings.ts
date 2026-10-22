@@ -145,6 +145,11 @@ export const settings = {
   notifyComments: 'Commentaires',
   notifyLikes: 'Likes',
   notifyMeetups: 'Matchs dans Jouer',
+  meetupPlaces: 'Lieux des alertes Jouer',
+  meetupPlacesOnlyCity: 'Seulement ta ville',
+  meetupPlacesBody:
+    'Tu reçois des alertes pour les matchs dans la ville de ton profil. Ajoute jusqu’à 5 villes ou quartiers de plus.',
+  meetupPlaceAdd: 'Ajouter',
 
   sectionOpportunities: 'Opportunités et ton score',
   notifyOpportunities: 'Nouvelles opportunités',

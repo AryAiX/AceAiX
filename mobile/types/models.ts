@@ -495,6 +495,8 @@ export interface NotificationPreferences {
   scout_interest: boolean;
   score_updates: boolean;
   meetups: boolean;
+  /** Extra cities or areas, besides the profile city, for Play alerts. */
+  meetup_places: string[];
   push_enabled: boolean;
   email_enabled: boolean;
 }

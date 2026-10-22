@@ -69,6 +69,9 @@ export const errors = {
   coachingLocationRequired: '请说明上课地点。',
   coachingServiceLimit: '最多同时提供十二项课程。',
   coachingOwnCalendar: '不能预约自己的日历。',
+  meetupMapUrlInvalid: '请使用 Google Maps、Apple Maps 或 Waze 链接。',
+  meetupPlaceInvalid: '每个地点须为 2 至 80 个字符。',
+  meetupPlacesLimit: '最多可以添加 5 个地点。',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "只有俱乐部或学院账号可以创建俱乐部主页。",
   clubPageExists: "你已经在管理一个俱乐部主页。",
