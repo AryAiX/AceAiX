@@ -126,8 +126,15 @@ export const auth = {
     dobMinorTitle: 'A parent or guardian joins in',
     dobMinorBody:
       'Because you are under 18, a parent or guardian has to approve your profile before coaches can find you. We will ask for their email in a moment, and they get a short message explaining everything.',
-    dobMinorBodyOther:
-      'Because you are under 18, a parent or guardian has to approve your account before you can use it. We will ask for their email in a moment, and they get a short message explaining everything.',
+    dobAdultOnlyTitle: 'You need to be 18 or over',
+    dobAdultOnlyCoach:
+      "You need to be 18 or over to coach on AceAiX. If you're a player, go back and choose Athlete.",
+    dobAdultOnlyClub:
+      "You need to be 18 or over to manage a club or academy. Ask an adult at your club to set up its page.",
+    dobAdultOnlySponsor: 'You need to be 18 or over to sign up as a sponsor or brand.',
+    dobAdultOnlyGuardian:
+      "You need to be 18 or over to sign up as a parent or guardian. If you're a player, go back and choose Athlete, and your parent can approve your account by email.",
+    dobChooseDifferentRole: 'Choose a different role',
 
     blockedTitle: 'Come back when you turn {{age}}',
     blockedBody:

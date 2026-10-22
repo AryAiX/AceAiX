@@ -25,6 +25,7 @@ import {
   MINIMUM_AGE,
   NameStep,
   RoleStep,
+  signupRoleRequiresAdult,
 } from '@/components/onboarding/SignupSteps';
 
 /**
@@ -38,6 +39,13 @@ import {
 
 const STEPS = ['role', 'name', 'dob', 'account'] as const;
 type StepKey = (typeof STEPS)[number];
+
+/** 13–17 on a role that is adults-only. Under 13 is the separate age gate. */
+function minorAdultRoleBlocked(role: SignupRole | null, date: Date | null): boolean {
+  if (!date || !signupRoleRequiresAdult(role)) return false;
+  const age = calculateAge(date);
+  return age >= MINIMUM_AGE && age < 18;
+}
 
 export default function SignUpScreen() {
   const theme = useTheme();
@@ -115,11 +123,13 @@ export default function SignUpScreen() {
     if (!validateAccount()) return;
 
     // Belt and braces: the age gate already blocked this, but never let a
-    // stale state slip an under-13 account past.
+    // stale state slip an under-13 account past. The same for a 13–17
+    // coach, club, sponsor or guardian — that date step refuses them too.
     if (calculateAge(dob) < MINIMUM_AGE) {
       setBlockedByAge(true);
       return;
     }
+    if (minorAdultRoleBlocked(role, dob)) return;
 
     const { data: emailExists } = await supabase.rpc('check_email_exists', {
       p_email: email,
@@ -175,6 +185,7 @@ export default function SignUpScreen() {
           setBlockedByAge(true);
           return;
         }
+        if (minorAdultRoleBlocked(role, dob)) return;
         setStepIndex(3);
         return;
       case 'account':
@@ -191,7 +202,7 @@ export default function SignUpScreen() {
           ? brandName.trim().length > 0
           : firstName.trim().length > 0 && lastName.trim().length > 0;
       case 'dob':
-        return dob !== null;
+        return dob !== null && !minorAdultRoleBlocked(role, dob);
       case 'account':
         return email.trim().length > 0 && password.length > 0 && agreed;
     }
@@ -258,7 +269,14 @@ export default function SignUpScreen() {
           />
         ) : null}
 
-        {step === 'dob' ? <DateOfBirthStep role={role} value={dob} onChange={setDob} /> : null}
+        {step === 'dob' ? (
+          <DateOfBirthStep
+            role={role}
+            value={dob}
+            onChange={setDob}
+            onChooseRole={() => setStepIndex(0)}
+          />
+        ) : null}
 
         {step === 'account' ? (
           <AccountStep

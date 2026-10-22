@@ -126,8 +126,15 @@ export const auth = {
     dobMinorTitle: 'Ein Erwachsener kommt dazu',
     dobMinorBody:
       'Weil du unter 18 bist, muss ein Elternteil oder Vormund dein Profil freigeben, bevor Trainer dich finden können. Gleich fragen wir nach der E-Mail-Adresse, und die Person bekommt eine kurze Nachricht, die alles erklärt.',
-    dobMinorBodyOther:
-      'Weil du unter 18 bist, muss ein Elternteil oder Vormund dein Konto freigeben, bevor du es nutzen kannst. Gleich fragen wir nach der E-Mail-Adresse, und die Person bekommt eine kurze Nachricht, die alles erklärt.',
+    dobAdultOnlyTitle: 'Du musst 18 oder älter sein',
+    dobAdultOnlyCoach:
+      'Du musst 18 oder älter sein, um auf AceAiX Trainerin oder Trainer zu sein. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler.',
+    dobAdultOnlyClub:
+      'Du musst 18 oder älter sein, um einen Verein oder eine Akademie zu führen. Bitte eine erwachsene Person in deinem Verein, die Seite einzurichten.',
+    dobAdultOnlySponsor: 'Du musst 18 oder älter sein, um dich als Sponsor oder Marke zu registrieren.',
+    dobAdultOnlyGuardian:
+      'Du musst 18 oder älter sein, um dich als Elternteil oder Vormund zu registrieren. Wenn du selbst spielst, geh zurück und wähle Sportlerin oder Sportler. Ein Elternteil kann dein Konto dann per E-Mail freigeben.',
+    dobChooseDifferentRole: 'Eine andere Rolle wählen',
 
     blockedTitle: 'Komm wieder, wenn du {{age}} wirst',
     blockedBody:

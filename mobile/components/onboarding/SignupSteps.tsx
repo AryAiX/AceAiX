@@ -214,6 +214,13 @@ export function NameStep({
 // ── 3. Date of birth ─────────────────────────────────────────────────────────
 export const MINIMUM_AGE = 13;
 
+/** Coach, club, sponsor and guardian accounts are for adults. */
+export function signupRoleRequiresAdult(
+  role: SignupRole | null | undefined,
+): role is 'coach' | 'club' | 'sponsor' | 'guardian' {
+  return role === 'coach' || role === 'club' || role === 'sponsor' || role === 'guardian';
+}
+
 function defaultDobStart(): Date {
   // Opens the picker in the middle of our audience rather than on today.
   const d = new Date();
@@ -324,10 +331,12 @@ export function DateOfBirthStep({
   value,
   onChange,
   role,
+  onChooseRole,
 }: {
   value: Date | null;
   onChange: (date: Date | null) => void;
   role?: SignupRole | null;
+  onChooseRole: () => void;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -337,6 +346,7 @@ export function DateOfBirthStep({
   const age = value ? calculateAge(value) : null;
   const tooYoung = age !== null && age < MINIMUM_AGE;
   const isMinor = age !== null && age >= MINIMUM_AGE && age < 18;
+  const adultOnlyRole = isMinor && signupRoleRequiresAdult(role) ? role : null;
 
   const maximumDate = new Date();
   const minimumDate = new Date();
@@ -438,19 +448,44 @@ export function DateOfBirthStep({
           </Card>
         ) : null}
 
-        {isMinor ? (
+        {adultOnlyRole ? (
+          <View style={{ gap: spacing.md }}>
+            <Card tone="alt" style={{ borderColor: colors.danger }}>
+              <View style={{ flexDirection: 'row', gap: spacing.md }}>
+                <ShieldAlert size={20} color={colors.danger} />
+                <View style={{ flex: 1, gap: spacing.xs }}>
+                  <Text variant="bodyStrong">{t('auth.signUp.dobAdultOnlyTitle')}</Text>
+                  <Text variant="caption" tone="secondary">
+                    {t(
+                      adultOnlyRole === 'coach'
+                        ? 'auth.signUp.dobAdultOnlyCoach'
+                        : adultOnlyRole === 'club'
+                          ? 'auth.signUp.dobAdultOnlyClub'
+                          : adultOnlyRole === 'sponsor'
+                            ? 'auth.signUp.dobAdultOnlySponsor'
+                            : 'auth.signUp.dobAdultOnlyGuardian',
+                    )}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+            <Button
+              label={t('auth.signUp.dobChooseDifferentRole')}
+              variant="secondary"
+              fullWidth
+              onPress={onChooseRole}
+              testID="signup-dob-choose-role"
+            />
+          </View>
+        ) : null}
+
+        {isMinor && !adultOnlyRole ? (
           <Card tone="primarySoft">
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <Users size={20} color={colors.primary} />
               <View style={{ flex: 1, gap: spacing.xs }}>
                 <Text variant="bodyStrong">{t('auth.signUp.dobMinorTitle')}</Text>
-                <Text variant="caption" tone="secondary">
-                  {t(
-                    !role || role === 'athlete'
-                      ? 'auth.signUp.dobMinorBody'
-                      : 'auth.signUp.dobMinorBodyOther',
-                  )}
-                </Text>
+                <Text variant="caption" tone="secondary">{t('auth.signUp.dobMinorBody')}</Text>
               </View>
             </View>
           </Card>

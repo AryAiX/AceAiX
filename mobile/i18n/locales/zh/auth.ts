@@ -120,8 +120,13 @@ export const auth = {
     dobMinorTitle: '需要家长或监护人参与',
     dobMinorBody:
       '因为你未满18岁，需要家长或监护人批准你的资料，教练才能找到你。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
-    dobMinorBodyOther:
-      '因为你未满18岁，需要家长或监护人批准你的账号，你才能使用。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
+    dobAdultOnlyTitle: '你需要年满18岁',
+    dobAdultOnlyCoach: '在 AceAiX 上当教练需要年满18岁。如果你是运动员，请返回并选择「运动员」。',
+    dobAdultOnlyClub: '管理俱乐部或青训机构需要年满18岁。请让俱乐部里的成年人来创建主页。',
+    dobAdultOnlySponsor: '以赞助商或品牌身份注册需要年满18岁。',
+    dobAdultOnlyGuardian:
+      '以家长或监护人身份注册需要年满18岁。如果你是运动员，请返回并选择「运动员」，你的家长可以通过邮件批准你的账号。',
+    dobChooseDifferentRole: '选择其他身份',
 
     blockedTitle: '等你满{{age}}岁再回来',
     blockedBody:

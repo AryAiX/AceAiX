@@ -130,8 +130,16 @@ export const auth = {
     dobMinorTitle: 'Necesitas a tu madre, padre o tutor',
     dobMinorBody:
       'Como eres menor de 18, tu madre, padre o tutor tiene que aprobar tu perfil antes de que los entrenadores puedan encontrarte. Enseguida te pedimos su correo y le llega un mensaje corto con la explicación.',
-    dobMinorBodyOther:
-      'Como eres menor de 18, tu madre, padre o tutor tiene que aprobar tu cuenta antes de que puedas usarla. Enseguida te pedimos su correo y le llega un mensaje corto con la explicación.',
+    dobAdultOnlyTitle: 'Tienes que tener 18 años o más',
+    dobAdultOnlyCoach:
+      'Tienes que tener 18 años o más para entrenar en AceAiX. Si eres deportista, vuelve atrás y elige Deportista.',
+    dobAdultOnlyClub:
+      'Tienes que tener 18 años o más para gestionar un club o una academia. Pide a una persona adulta de tu club que cree la página.',
+    dobAdultOnlySponsor:
+      'Tienes que tener 18 años o más para registrarte como patrocinador o marca.',
+    dobAdultOnlyGuardian:
+      'Tienes que tener 18 años o más para registrarte como madre, padre o tutor. Si eres deportista, vuelve atrás y elige Deportista, y tu madre o padre puede aprobar tu cuenta por correo.',
+    dobChooseDifferentRole: 'Elegir otro rol',
 
     blockedTitle: 'Vuelve cuando cumplas {{age}}',
     blockedBody:
