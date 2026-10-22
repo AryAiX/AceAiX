@@ -26,6 +26,7 @@ import { countryLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { ClubLocation, ClubPage } from '@/lib/api.club';
 import { SOCIAL_KEYS, type SocialKey } from '@/lib/club';
+import { clubMapOpenUrl } from '@/lib/clubSetup';
 import { clubLabel } from '@/lib/clubLabels';
 import { metaLine } from '@/lib/format';
 
@@ -62,14 +63,6 @@ export function socialUrl(key: SocialKey, value: string): string | null {
 function websiteUrl(value: string): string {
   const v = value.trim();
   return /^https?:\/\//i.test(v) ? v : `https://${v}`;
-}
-
-function mapsUrl(loc: { latitude: number | null; longitude: number | null; address: string | null; city: string | null; country: string | null }): string | null {
-  if (loc.latitude != null && loc.longitude != null) {
-    return `https://www.google.com/maps/search/?api=1&query=${loc.latitude},${loc.longitude}`;
-  }
-  const q = [loc.address, loc.city, loc.country].filter(Boolean).join(', ');
-  return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null;
 }
 
 function open(url: string | null) {
@@ -139,10 +132,17 @@ function Prose({ title, text }: { title: string; text: string | null }) {
   );
 }
 
-function LocationRow({ loc }: { loc: ClubLocation }) {
+function LocationRow({ loc, mapUrl }: { loc: ClubLocation; mapUrl: string | null }) {
   const t = useT();
   const { colors, spacing } = useTheme();
-  const url = mapsUrl(loc);
+  const url = clubMapOpenUrl({
+    mapUrl,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    address: loc.address,
+    city: loc.city,
+    country: loc.country,
+  });
   const title = loc.label?.trim() || (loc.is_primary ? t('club.about.mainBase') : loc.city) || '';
   const line = metaLine(loc.address, loc.city, countryLabel(t, loc.country));
   return (
@@ -177,7 +177,7 @@ function LocationRow({ loc }: { loc: ClubLocation }) {
 }
 
 /** The club in its own words, then the facts, places and ways to reach it. */
-export function ClubAboutTab({ page }: { page: ClubPage }) {
+export function ClubAboutTab({ page, mapUrl = null }: { page: ClubPage; mapUrl?: string | null }) {
   const t = useT();
   const { spacing } = useTheme();
   const org = page.organization;
@@ -260,7 +260,7 @@ export function ClubAboutTab({ page }: { page: ClubPage }) {
           <SectionHeader title={t('club.about.locations')} />
           <Card tone="alt" style={{ gap: spacing.lg }}>
             {locations.map((loc) => (
-              <LocationRow key={loc.id} loc={loc} />
+              <LocationRow key={loc.id} loc={loc} mapUrl={loc.is_primary ? mapUrl : null} />
             ))}
           </Card>
         </View>

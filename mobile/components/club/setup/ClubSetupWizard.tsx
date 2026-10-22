@@ -8,8 +8,10 @@ import { StepHeading, WizardTopBar } from '@/components/onboarding/Shared';
 import { addCustomCity, saveMatchPreferences } from '@/lib/api';
 import {
   createClubPage,
+  getClubMapUrl,
   getClubPage,
   getMyManagedClub,
+  setClubMapUrl,
   submitClubVerification,
   updateClubPage,
 } from '@/lib/api.club';
@@ -26,6 +28,7 @@ import {
   emptyDraft,
   emptyVerification,
   firstIncompleteStep,
+  readMapPin,
   sportsPatch,
   verificationFromPage,
   whereErrors,
@@ -104,6 +107,8 @@ export function ClubSetupWizard({
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Errors>(NO_ERRORS);
   const [brandingTouched, setBrandingTouched] = useState(false);
+  /** The map link last loaded or saved, so an unchanged pin does not write again. */
+  const savedMapUrl = useRef<string | null>(null);
 
   const step: SetupStep = SETUP_STEPS[Math.min(stepIndex, SETUP_STEPS.length - 1)];
 
@@ -112,13 +117,16 @@ export function ClubSetupWizard({
     setBootError(null);
     try {
       const mine = await getMyManagedClub();
-      const page = mine ? await getClubPage(mine.id) : null;
-      if (mine && page) {
-        setOrgId(mine.id);
-        setDraft(draftFromPage(page));
-        setPapers(withAccountContactName(verificationFromPage(page), account.current));
-        setPapersSent(!!page.verification?.terms_accepted);
-        setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
+      if (mine) {
+        const [page, mapUrl] = await Promise.all([getClubPage(mine.id), getClubMapUrl(mine.id)]);
+        if (page) {
+          setOrgId(mine.id);
+          savedMapUrl.current = mapUrl;
+          setDraft(draftFromPage(page, mapUrl));
+          setPapers(withAccountContactName(verificationFromPage(page), account.current));
+          setPapersSent(!!page.verification?.terms_accepted);
+          setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
+        }
       }
     } catch (err) {
       setBootError(errorMessage(err));
@@ -196,6 +204,11 @@ export function ClubSetupWizard({
           const next = await withCatalogueCities(draft, addCustomCity);
           setDraft(next);
           await updateClubPage(orgId, wherePatch(next));
+          const nextUrl = readMapPin(next.pin)?.mapUrl ?? null;
+          if (nextUrl !== savedMapUrl.current) {
+            await setClubMapUrl(orgId, nextUrl);
+            savedMapUrl.current = nextUrl;
+          }
           break;
         }
         case 'sports':
@@ -348,7 +361,9 @@ export function ClubSetupWizard({
         {heading ? <StepHeading title={heading.title} subtitle={heading.subtitle} /> : null}
 
         {step === 'basics' ? <BasicsFields draft={draft} errors={errors.basics} onChange={change} /> : null}
-        {step === 'where' ? <WhereFields draft={draft} errors={errors.where} onChange={change} /> : null}
+        {step === 'where' ? (
+          <WhereFields draft={draft} errors={errors.where} onChange={change} />
+        ) : null}
         {step === 'sports' ? <SportsFields draft={draft} showError={errors.sports} onChange={change} /> : null}
         {step === 'contact' ? <ContactFields draft={draft} errors={errors.contact} onChange={change} /> : null}
         {step === 'branding' ? (

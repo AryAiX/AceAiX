@@ -91,6 +91,7 @@ export function EditSection({
   children,
   saving,
   onSave,
+  disabled,
   testID,
   style,
 }: {
@@ -99,6 +100,7 @@ export function EditSection({
   children: React.ReactNode;
   saving: boolean;
   onSave: () => void;
+  disabled?: boolean;
   testID?: string;
   style?: ViewStyle;
 }) {
@@ -120,6 +122,7 @@ export function EditSection({
       <Button
         label={t('clubSetup.edit.save')}
         loading={saving}
+        disabled={disabled}
         onPress={onSave}
         fullWidth
         accessibilityLabel={t('clubSetup.edit.saveA11y', { section: title })}

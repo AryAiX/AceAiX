@@ -30,6 +30,12 @@ describe('database hints', () => {
     expect(errorMessage({ code: 'P0001', message: 'city_length' })).toContain('2');
   });
 
+  it('explains a club map link the server refused', () => {
+    expect(errorMessage({ code: '22023', hint: 'club_map_url_invalid' })).toBe(
+      'Paste a Google Maps, Apple Maps or Waze link, or coordinates.',
+    );
+  });
+
   it('explains the age floor', () => {
     expect(errorMessage({ code: '23514', hint: 'age_below_minimum' })).toContain('13');
   });

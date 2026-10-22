@@ -71,6 +71,7 @@ export const errors = {
   coachingServiceLimit: 'Douze prestations à la fois au maximum.',
   coachingOwnCalendar: 'Vous ne pouvez pas réserver votre propre calendrier.',
   meetupMapUrlInvalid: 'Utilisez un lien Google Maps, Apple Maps ou Waze.',
+  clubMapUrlInvalid: 'Collez un lien Google Maps, Apple Maps ou Waze, ou des coordonnées.',
   meetupPlaceInvalid: 'Chaque lieu doit comporter entre 2 et 80 caractères.',
   cityLength: 'Une ville doit comporter entre 2 et 80 caractères.',
   meetupPlacesLimit: 'Vous pouvez ajouter jusqu’à 5 lieux.',

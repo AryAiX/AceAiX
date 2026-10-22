@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClubPage } from '@/lib/api.club';
 import {
   basicsErrors,
+  clubMapOpenUrl,
   contactErrors,
   contactPatch,
   draftFromPage,
@@ -14,6 +15,7 @@ import {
   mapUrl,
   parseFoundedYear,
   parseMapLocation,
+  readMapPin,
   sportsPatch,
   toggleCategory,
   toggleSport,
@@ -72,11 +74,99 @@ describe('parseMapLocation', () => {
     expect(parseMapLocation(null)).toBeNull();
   });
 
+  it('reads a place pin, an @ position, plain coordinates, and a consent continue link', () => {
+    expect(
+      parseMapLocation(
+        'https://www.google.com/maps/place/X/@25.0,55.0,15z/data=!3m1!4b1!4m6!3m5!3d25.2236!4d55.3348',
+      ),
+    ).toEqual({ latitude: 25.2236, longitude: 55.3348 });
+    expect(parseMapLocation('https://www.google.com/maps/@25.2048493,55.2707828,12z')).toEqual({
+      latitude: 25.204849,
+      longitude: 55.270783,
+    });
+    expect(parseMapLocation('25.2236, 55.3348')).toEqual({ latitude: 25.2236, longitude: 55.3348 });
+
+    const inner = 'https://www.google.com/maps/place/Dubai/@25.2048493,55.2707828,12z';
+    const consent = `https://consent.google.com/ml?continue=${encodeURIComponent(inner)}&gl=DE`;
+    expect(parseMapLocation(consent)).toEqual({ latitude: 25.204849, longitude: 55.270783 });
+  });
+
   it('formats a pin and a map link', () => {
     expect(formatPin(25.22361, 55.33479)).toBe('25.2236, 55.3348');
     expect(mapUrl({ latitude: 25.2, longitude: 55.3 })).toBe(
       'https://www.google.com/maps/search/?api=1&query=25.2,55.3',
     );
+  });
+});
+
+describe('readMapPin', () => {
+  const base = { ...emptyDraft(), country: 'UAE', city: 'Dubai' };
+
+  it('stores coordinates and clears the link', () => {
+    expect(readMapPin('25.2236, 55.3348')).toEqual({
+      latitude: 25.2236,
+      longitude: 55.3348,
+      mapUrl: null,
+    });
+    const patch = wherePatch({ ...base, pin: '25.2236, 55.3348' });
+    expect(patch.latitude).toBe(25.2236);
+    expect(patch.longitude).toBe(55.3348);
+    expect(whereErrors({ ...base, pin: '25.2236, 55.3348' })).toEqual({});
+  });
+
+  it('keeps a short map link and does not invent coordinates', () => {
+    const link = 'https://maps.app.goo.gl/abc123';
+    expect(readMapPin(link)).toEqual({ latitude: null, longitude: null, mapUrl: link });
+    const patch = wherePatch({ ...base, pin: link });
+    expect(patch.latitude).toBeNull();
+    expect(patch.longitude).toBeNull();
+    expect(whereErrors({ ...base, pin: link })).toEqual({});
+  });
+
+  it('keeps a Google link and the coordinates in it', () => {
+    const link = 'https://www.google.com/maps/@25.2048493,55.2707828,12z';
+    expect(readMapPin(link)).toEqual({
+      latitude: 25.204849,
+      longitude: 55.270783,
+      mapUrl: link,
+    });
+    const patch = wherePatch({ ...base, pin: link });
+    expect(patch.latitude).toBe(25.204849);
+    expect(patch.longitude).toBe(55.270783);
+  });
+
+  it('refuses a link that is not a map', () => {
+    expect(readMapPin('https://example.com')).toBeNull();
+    expect(whereErrors({ ...base, pin: 'https://example.com' })).toEqual({ pin: true });
+  });
+
+  it('clears coordinates and the link when the field is empty', () => {
+    expect(readMapPin('')).toEqual({ latitude: null, longitude: null, mapUrl: null });
+    expect(readMapPin('   ')).toEqual({ latitude: null, longitude: null, mapUrl: null });
+    expect(whereErrors({ ...base, pin: '' })).toEqual({});
+    const patch = wherePatch({ ...base, pin: '' });
+    expect(patch.latitude).toBeNull();
+    expect(patch.longitude).toBeNull();
+  });
+
+  it('opens the saved link, then the pin, then a search for the address', () => {
+    const link = 'https://maps.app.goo.gl/abc123';
+    expect(
+      clubMapOpenUrl({ mapUrl: link, latitude: 25.2, longitude: 55.3, address: 'Al Jadaf', city: 'Dubai' }),
+    ).toBe(link);
+    expect(clubMapOpenUrl({ mapUrl: null, latitude: 25.2, longitude: 55.3, address: 'Al Jadaf' })).toBe(
+      'https://www.google.com/maps/search/?api=1&query=25.2,55.3',
+    );
+    expect(
+      clubMapOpenUrl({
+        mapUrl: null,
+        latitude: null,
+        longitude: null,
+        address: 'Al Jadaf',
+        city: 'Dubai',
+        country: 'UAE',
+      }),
+    ).toBe('https://www.google.com/maps/search/?api=1&query=Al%20Jadaf%2C%20Dubai%2C%20UAE');
   });
 });
 
@@ -253,6 +343,9 @@ describe('resuming', () => {
     expect(draft.founded_year).toBe('2001');
     expect(draft.pin).toBe('25.2236, 55.3348');
     expect(draft.branches.map((b) => b.label)).toEqual(['Grounds']);
+    expect(
+      draftFromPage(page({ latitude: 25.2236, longitude: 55.3348 }), 'https://maps.app.goo.gl/abc123').pin,
+    ).toBe('https://maps.app.goo.gl/abc123');
   });
 
   it('fills a blank verification name from the account and keeps a saved one', () => {

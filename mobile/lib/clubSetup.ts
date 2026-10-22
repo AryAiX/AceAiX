@@ -1,11 +1,11 @@
 import type { ClubBasicsInput, ClubPage, ClubPageUpdate, ClubSocials, ClubSport } from '@/lib/api.club';
 import { cleanList, isValidEmail, isValidFoundedYear, isValidPhone, type ClubType } from '@/lib/club';
+import { isAllowedMapUrl } from '@/lib/mapLinks';
 
 /**
  * Setting up and editing a club page (1014/01): the draft the wizard and the
  * edit screen share, the patches each step sends, and the small parsers
- * (a pasted map link, a year). Pure — no React, no network — so it is tested
- * on its own.
+ * (a pasted map pin, a year). No React, and no network calls.
  */
 
 // ── Steps ────────────────────────────────────────────────────────────────────
@@ -184,8 +184,9 @@ export function withAccountContactName(
   return { ...draft, contact_person_name: name };
 }
 
-export function draftFromPage(page: ClubPage): ClubDraft {
+export function draftFromPage(page: ClubPage, mapUrl?: string | null): ClubDraft {
   const o = page.organization;
+  const link = mapUrl?.trim() ?? '';
   return {
     type: o.type === 'academy' ? 'academy' : 'club',
     name: o.name ?? '',
@@ -195,7 +196,11 @@ export function draftFromPage(page: ClubPage): ClubDraft {
     country: o.country,
     city: o.city ?? '',
     address: o.address ?? '',
-    pin: o.latitude != null && o.longitude != null ? formatPin(o.latitude, o.longitude) : '',
+    pin: link
+      ? link
+      : o.latitude != null && o.longitude != null
+        ? formatPin(o.latitude, o.longitude)
+        : '',
     branches: page.locations
       .filter((l) => !l.is_primary)
       .map((l) => ({
@@ -279,7 +284,7 @@ export function whereErrors(draft: ClubDraft): Partial<Record<WhereError, true>>
   const out: Partial<Record<WhereError, true>> = {};
   if (!draft.country) out.country = true;
   if (draft.city.trim().length < 2) out.city = true;
-  if (draft.pin.trim() && !parseMapLocation(draft.pin)) out.pin = true;
+  if (draft.pin.trim() && !readMapPin(draft.pin)) out.pin = true;
   return out;
 }
 
@@ -355,7 +360,7 @@ export async function withCatalogueCities(
 }
 
 export function wherePatch(draft: ClubDraft): ClubPageUpdate {
-  const pin = draft.pin.trim() ? parseMapLocation(draft.pin) : null;
+  const pin = readMapPin(draft.pin);
   return {
     country: draft.country,
     city: trimOrNull(draft.city),
@@ -455,6 +460,7 @@ function point(lat: string | number, lng: string | number): MapPoint | null {
 
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const NUM = '(-?\\d{1,3}(?:\\.\\d+)?)';
+const PLAIN_COORD = new RegExp(`^${NUM}\\s*[,\\s]\\s*${NUM}$`);
 
 /**
  * Reads coordinates out of what people actually paste:
@@ -462,8 +468,8 @@ const NUM = '(-?\\d{1,3}(?:\\.\\d+)?)';
  *  - Google Maps: `/@25.22,55.33,15z`, `!3d25.22!4d55.33`, `?q=25.22,55.33`,
  *    `?query=…`, `?ll=…`, `?destination=…`
  *  - Apple Maps: `?ll=25.22,55.33`, `?q=…`, `?sll=…`, `?coordinate=…`
- * Short links (maps.app.goo.gl/…) hide the position behind a redirect, so they
- * return null and the screen asks for the full link instead.
+ * A short link has no position in the text, so this returns null. `readMapPin`
+ * still keeps that link when the host is allowed.
  */
 export function parseMapLocation(input: string | null | undefined): MapPoint | null {
   if (!input) return null;
@@ -475,7 +481,7 @@ export function parseMapLocation(input: string | null | undefined): MapPoint | n
     // A stray % is fine: read the text as it is.
   }
 
-  const plain = new RegExp(`^${NUM}\\s*[,\\s]\\s*${NUM}$`).exec(text);
+  const plain = PLAIN_COORD.exec(text);
   if (plain) return point(plain[1], plain[2]);
 
   // The place's own pin beats the camera position in a Google link.
@@ -494,6 +500,49 @@ export function parseMapLocation(input: string | null | undefined): MapPoint | n
   return null;
 }
 
+/** "25.2236, 55.3348" — not a link that happens to contain numbers. */
+function isPlainCoordinates(input: string): boolean {
+  let text = input.trim();
+  try {
+    text = decodeURIComponent(text);
+  } catch {
+    // A stray % is fine: test the text as it is.
+  }
+  return PLAIN_COORD.test(text);
+}
+
+export interface MapPinValue {
+  latitude: number | null;
+  longitude: number | null;
+  /** An allowed map link, or null when the field is coordinates or empty. */
+  mapUrl: string | null;
+}
+
+/**
+ * What the map-pin field stores.
+ * Empty clears the coordinates and the link.
+ * "25.2236, 55.3348" stores the coordinates and clears the link.
+ * An allowed Google Maps, Apple Maps or Waze link stores the link, plus
+ * coordinates when the link itself contains them.
+ * Anything else is refused (null).
+ */
+export function readMapPin(input: string | null | undefined): MapPinValue | null {
+  const text = (input ?? '').trim();
+  if (!text) return { latitude: null, longitude: null, mapUrl: null };
+  if (isAllowedMapUrl(text)) {
+    const found = parseMapLocation(text);
+    return {
+      latitude: found?.latitude ?? null,
+      longitude: found?.longitude ?? null,
+      mapUrl: text,
+    };
+  }
+  if (!isPlainCoordinates(text)) return null;
+  const found = parseMapLocation(text);
+  if (!found) return null;
+  return { latitude: found.latitude, longitude: found.longitude, mapUrl: null };
+}
+
 /** 25.2236, 55.3348 — four decimals is about ten metres. */
 export function formatPin(latitude: number, longitude: number): string {
   return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
@@ -502,4 +551,28 @@ export function formatPin(latitude: number, longitude: number): string {
 /** Opens in the Google Maps app or site, wherever the reader is. */
 export function mapUrl(p: MapPoint): string {
   return `https://www.google.com/maps/search/?api=1&query=${p.latitude},${p.longitude}`;
+}
+
+/**
+ * Where "Check on map" and "Open in maps" go: the saved link, then the pin,
+ * then a search for the address.
+ */
+export function clubMapOpenUrl(input: {
+  mapUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+}): string | null {
+  const link = input.mapUrl?.trim() ?? '';
+  if (link && isAllowedMapUrl(link)) return link;
+  if (input.latitude != null && input.longitude != null) {
+    return mapUrl({ latitude: input.latitude, longitude: input.longitude });
+  }
+  const q = [input.address, input.city, input.country]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
+  return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null;
 }
