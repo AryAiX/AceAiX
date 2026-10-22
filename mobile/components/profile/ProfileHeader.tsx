@@ -45,6 +45,7 @@ import {
 } from '@/constants/sports';
 import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
+import type { ClubType } from '@/lib/club';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
@@ -114,9 +115,21 @@ interface Props {
   bundle: ProfileBundle;
   /** Called after a change the parent should reload for (block, unblock). */
   onChanged?: () => void;
+  /**
+   * The page this club account runs, when the parent already loaded it.
+   * Club vs academy lives on the page, not on `user_profiles.role`.
+   */
+  pageType?: ClubType | null;
 }
 
-export function ProfileHeader({ bundle, onChanged }: Props) {
+/** The club/academy choice from setup step 1. Other page types keep the role label. */
+function managedPageLabel(t: (key: string) => string, pageType: ClubType | null | undefined): string | null {
+  if (pageType === 'academy') return t('clubSetup.basics.typeAcademy');
+  if (pageType === 'club') return t('clubSetup.basics.typeClub');
+  return null;
+}
+
+export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const router = useRouter();
@@ -165,8 +178,11 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
     if (coach) {
       return metaLine(roleLabel(user?.role), coachRoleLabel(t, coach.specialty), coach.current_club);
     }
+    if (user?.role === 'club') {
+      return managedPageLabel(t, pageType) ?? roleLabel(user.role);
+    }
     return roleLabel(user?.role);
-  }, [athlete, coach, t, user?.role]);
+  }, [athlete, coach, pageType, t, user?.role]);
 
   const location = metaLine(user?.city, user?.country);
 

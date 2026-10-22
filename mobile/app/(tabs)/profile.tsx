@@ -18,6 +18,8 @@ import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
 import { getMyProfile, getMyTalentScore } from '@/lib/api';
+import { getMyClubPages, managedClubPage } from '@/lib/api.club';
+import type { ClubType } from '@/lib/club';
 import { Routes } from '@/lib/routes';
 import { compactNumber } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -43,14 +45,19 @@ export default function MyProfileScreen() {
     if (params.tab) setTab(toProfileTab(params.tab));
   }, [params.tab]);
 
+  /* Bumped to make the tab children re-fetch alongside a pull-to-refresh. */
+  const [childKey, setChildKey] = useState(0);
+
   const bundle = useAsync(() => getMyProfile(), [user?.id], {
     enabled: !!user?.id,
     refetchOnFocus: true,
   });
   const score = useAsync(() => getMyTalentScore(), [user?.id], { enabled: !!user?.id });
-
-  /* Bumped to make the tab children re-fetch alongside a pull-to-refresh. */
-  const [childKey, setChildKey] = useState(0);
+  // One load for the header's club/academy line and the managed-page card.
+  const clubPages = useAsync(() => getMyClubPages(), [user?.id, childKey], {
+    enabled: !!user?.id,
+    refetchOnFocus: true,
+  });
 
   const reloadAll = useCallback(() => {
     bundle.refresh();
@@ -85,6 +92,9 @@ export default function MyProfileScreen() {
   const data = bundle.data;
   const athlete = data.athlete;
   const liveScore = score.data ?? data.score;
+  const managed = data.user.role === 'club' ? managedClubPage(clubPages.data ?? []) : null;
+  const pageType: ClubType | null =
+    managed?.type === 'club' || managed?.type === 'academy' ? managed.type : null;
 
   return (
     <Screen
@@ -94,7 +104,7 @@ export default function MyProfileScreen() {
       refreshing={bundle.refreshing || score.refreshing}
       testID="my-profile"
     >
-      <ProfileHeader bundle={data} onChanged={reloadAll} />
+      <ProfileHeader bundle={data} onChanged={reloadAll} pageType={pageType} />
 
       {data.athlete && (data.athlete.other_sports ?? []).length === 0 ? (
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
@@ -130,7 +140,7 @@ export default function MyProfileScreen() {
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
 
         {/* The page a club runs, or an invitation to help run one. */}
-        <MyClubCard isClubAccount={data.user.role === 'club'} refreshKey={childKey} />
+        <MyClubCard isClubAccount={data.user.role === 'club'} pages={clubPages.data} />
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
         {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (

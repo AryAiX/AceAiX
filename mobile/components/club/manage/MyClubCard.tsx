@@ -6,9 +6,8 @@ import { Building2, Mail } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Card, Text } from '@/components/ui';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
-import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
-import { getMyClubPages } from '@/lib/api.club';
+import { managedClubPage, type MyClubPage } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
 import { Routes } from '@/lib/routes';
 
@@ -16,19 +15,22 @@ import { Routes } from '@/lib/routes';
  * On my own profile: the club page I run (or the way to set one up, for a club
  * account), and any page team I have been invited to help run.
  */
-export function MyClubCard({ isClubAccount, refreshKey }: { isClubAccount: boolean; refreshKey?: number }) {
+export function MyClubCard({
+  isClubAccount,
+  pages,
+}: {
+  isClubAccount: boolean;
+  /** From the profile screen's `my_club_pages` load. Null while that is still out. */
+  pages: MyClubPage[] | null;
+}) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
-  const pages = useAsync(getMyClubPages, [refreshKey], { refetchOnFocus: true });
-  if (!pages.data) return null;
+  if (!pages) return null;
 
-  const managed =
-    pages.data.find((p) => p.status === 'active' && p.role === 'owner') ??
-    pages.data.find((p) => p.status === 'active' && p.role === 'manager') ??
-    null;
-  const invites = pages.data.filter((p) => p.status === 'pending');
+  const managed = managedClubPage(pages);
+  const invites = pages.filter((p) => p.status === 'pending');
 
   return (
     <>

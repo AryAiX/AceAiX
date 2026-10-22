@@ -547,14 +547,18 @@ export async function getMyClubPages(): Promise<MyClubPage[]> {
   return unwrap<MyClubPage[] | null>(await supabase.rpc('my_club_pages')) ?? [];
 }
 
-/** The page this account runs as owner or manager, if any. */
-export async function getMyManagedClub(): Promise<MyClubPage | null> {
-  const pages = await getMyClubPages();
+/** The page this account runs: its own page first, then one it manages. */
+export function managedClubPage(pages: MyClubPage[]): MyClubPage | null {
   return (
     pages.find((p) => p.status === 'active' && p.role === 'owner') ??
     pages.find((p) => p.status === 'active' && p.role === 'manager') ??
     null
   );
+}
+
+/** The page this account runs as owner or manager, if any. */
+export async function getMyManagedClub(): Promise<MyClubPage | null> {
+  return managedClubPage(await getMyClubPages());
 }
 
 // ── Setting up and editing ───────────────────────────────────────────────────
