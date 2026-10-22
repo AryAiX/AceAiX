@@ -7,6 +7,7 @@ import {
   contactPatch,
   draftFromPage,
   emptyDraft,
+  emptyVerification,
   firstIncompleteStep,
   formatPin,
   looksLikeWebsite,
@@ -16,8 +17,10 @@ import {
   sportsPatch,
   toggleCategory,
   toggleSport,
+  verificationFromPage,
   whereErrors,
   wherePatch,
+  withAccountContactName,
 } from '@/lib/clubSetup';
 
 const NOW = new Date(2026, 9, 14);
@@ -220,5 +223,35 @@ describe('resuming', () => {
     expect(draft.founded_year).toBe('2001');
     expect(draft.pin).toBe('25.2236, 55.3348');
     expect(draft.branches.map((b) => b.label)).toEqual(['Grounds']);
+  });
+
+  it('fills a blank verification name from the account and keeps a saved one', () => {
+    const fromParts = { full_name: '  ', first_name: 'Sara', last_name: 'Hassan' };
+    expect(withAccountContactName(emptyVerification(), fromParts).contact_person_name).toBe('Sara Hassan');
+    expect(
+      withAccountContactName(emptyVerification(), {
+        full_name: 'Noura K',
+        first_name: 'Sara',
+        last_name: 'Hassan',
+      }).contact_person_name,
+    ).toBe('Noura K');
+
+    const saved = verificationFromPage(
+      page(
+        {},
+        {
+          verification: {
+            license_number: null,
+            has_document: false,
+            contact_person_name: 'Club Secretary',
+            contact_person_title: null,
+            terms_accepted: false,
+            submitted_at: null,
+            review_note: null,
+          },
+        },
+      ),
+    );
+    expect(withAccountContactName(saved, fromParts).contact_person_name).toBe('Club Secretary');
   });
 });

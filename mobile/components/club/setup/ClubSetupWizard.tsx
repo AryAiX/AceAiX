@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -30,6 +30,7 @@ import {
   verificationFromPage,
   whereErrors,
   wherePatch,
+  withAccountContactName,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -37,6 +38,7 @@ import {
   type VerificationDraft,
   type WhereError,
 } from '@/lib/clubSetup';
+import { useAuth } from '@/providers/AuthProvider';
 import { BasicsFields } from './BasicsStep';
 import { WhereFields } from './WhereStep';
 import { SportsFields } from './SportsStep';
@@ -84,12 +86,17 @@ export function ClubSetupWizard({
   const t = useT();
   const { spacing } = theme;
   const toast = useToast();
+  const { profile } = useAuth();
+  // Read once. A later profile refresh must not put the name back after a clear.
+  const account = useRef(profile);
 
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ClubDraft>(emptyDraft);
-  const [papers, setPapers] = useState<VerificationDraft>(emptyVerification);
+  const [papers, setPapers] = useState<VerificationDraft>(() =>
+    withAccountContactName(emptyVerification(), account.current),
+  );
   const [papersSent, setPapersSent] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -108,7 +115,7 @@ export function ClubSetupWizard({
       if (mine && page) {
         setOrgId(mine.id);
         setDraft(draftFromPage(page));
-        setPapers(verificationFromPage(page));
+        setPapers(withAccountContactName(verificationFromPage(page), account.current));
         setPapersSent(!!page.verification?.terms_accepted);
         setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
       }

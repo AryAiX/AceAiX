@@ -150,6 +150,40 @@ export function emptyVerification(): VerificationDraft {
   };
 }
 
+/** The signed-in account, as far as "who's filling this in" needs it. */
+export interface AccountName {
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
+/** full_name, or first and last when full_name is empty. */
+export function accountContactName(account: AccountName | null | undefined): string {
+  const full = account?.full_name?.trim() ?? '';
+  if (full) return full.slice(0, LIMITS.personName);
+  return [account?.first_name, account?.last_name]
+    .map((part) => (part ?? '').trim())
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, LIMITS.personName);
+}
+
+/**
+ * Puts the account name on a blank "Your name". A name already on the draft
+ * — saved on the page, or typed — is left as it is. Call this once, when the
+ * draft is first built: calling it again would fill the field back in after
+ * the person clears it to retype.
+ */
+export function withAccountContactName(
+  draft: VerificationDraft,
+  account: AccountName | null | undefined,
+): VerificationDraft {
+  if (draft.contact_person_name.trim()) return draft;
+  const name = accountContactName(account);
+  if (!name) return draft;
+  return { ...draft, contact_person_name: name };
+}
+
 export function draftFromPage(page: ClubPage): ClubDraft {
   const o = page.organization;
   return {
