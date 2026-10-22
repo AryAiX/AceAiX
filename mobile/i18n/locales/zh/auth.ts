@@ -87,6 +87,9 @@ export const auth = {
     nameTitle: '该怎么称呼你？',
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',
     nameSubtitleOther: '请用真名 —— 运动员和家长需要知道在和谁交流。',
+    nameTitleClub: '谁管理你的俱乐部？',
+    nameSubtitleClub:
+      '请用真名，让运动员和家长知道在和谁交流。下一步再添加俱乐部的名称。',
     firstNameLabel: '名字',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: '请填写你的名字。',

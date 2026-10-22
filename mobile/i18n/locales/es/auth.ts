@@ -97,6 +97,9 @@ export const auth = {
       'Usa tu nombre real: los entrenadores necesitan saber a quién están viendo.',
     nameSubtitleOther:
       'Usa tu nombre real: los deportistas y sus familias necesitan saber con quién hablan.',
+    nameTitleClub: '¿Quién gestiona tu club?',
+    nameSubtitleClub:
+      'Usa tu nombre real para que los deportistas y sus familias sepan con quién hablan. En el siguiente paso añadirás el nombre del club.',
     firstNameLabel: 'Nombre',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Escribe tu nombre.',

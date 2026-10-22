@@ -99,6 +99,9 @@ export const auth = {
     nameTitle: 'بماذا نناديك؟',
     nameSubtitle: 'استخدم اسمك الحقيقي — المدرّبون يحتاجون معرفة من أمامهم.',
     nameSubtitleOther: 'استخدم اسمك الحقيقي — اللاعبون وعائلاتهم يحتاجون معرفة من يحدّثهم.',
+    nameTitleClub: 'من يدير ناديك؟',
+    nameSubtitleClub:
+      'استخدم اسمك الحقيقي حتى يعرف اللاعبون وعائلاتهم مع من يتحدثون. ستضيف اسم النادي في الخطوة التالية.',
     firstNameLabel: 'الاسم الأول',
     firstNamePlaceholder: 'سارة',
     firstNameRequired: 'أدخل اسمك الأول.',

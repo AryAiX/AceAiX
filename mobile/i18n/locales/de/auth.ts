@@ -93,6 +93,9 @@ export const auth = {
     nameSubtitle: 'Nimm deinen echten Namen — Trainer müssen wissen, wen sie vor sich haben.',
     nameSubtitleOther:
       'Nimm deinen echten Namen — Sportler und Familien müssen wissen, mit wem sie sprechen.',
+    nameTitleClub: 'Wer verwaltet deinen Verein?',
+    nameSubtitleClub:
+      'Nimm deinen echten Namen, damit Sportler und Familien wissen, mit wem sie sprechen. Den Namen des Vereins gibst du im nächsten Schritt ein.',
     firstNameLabel: 'Vorname',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Gib deinen Vornamen ein.',

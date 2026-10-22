@@ -125,17 +125,26 @@ export function NameStep({
   const t = useT();
   const lastRef = useRef<TextInput>(null);
   const isSponsor = role === 'sponsor';
+  const isClub = role === 'club';
 
   return (
     <View>
       <StepHeading
-        title={t(isSponsor ? 'auth.signUp.brandTitle' : 'auth.signUp.nameTitle')}
+        title={t(
+          isSponsor
+            ? 'auth.signUp.brandTitle'
+            : isClub
+              ? 'auth.signUp.nameTitleClub'
+              : 'auth.signUp.nameTitle',
+        )}
         subtitle={t(
           isSponsor
             ? 'auth.signUp.brandSubtitle'
-            : !role || role === 'athlete'
-              ? 'auth.signUp.nameSubtitle'
-              : 'auth.signUp.nameSubtitleOther',
+            : isClub
+              ? 'auth.signUp.nameSubtitleClub'
+              : !role || role === 'athlete'
+                ? 'auth.signUp.nameSubtitle'
+                : 'auth.signUp.nameSubtitleOther',
         )}
       />
       {isSponsor ? (

@@ -95,6 +95,9 @@ export const auth = {
     nameSubtitle: 'Mets ton vrai nom — les coachs doivent savoir qui ils regardent.',
     nameSubtitleOther:
       'Mets ton vrai nom — les athlètes et leurs familles doivent savoir à qui ils parlent.',
+    nameTitleClub: 'Qui gère ton club ?',
+    nameSubtitleClub:
+      'Mets ton vrai nom pour que les athlètes et leurs familles sachent à qui ils parlent. Tu ajouteras le nom du club à l’étape suivante.',
     firstNameLabel: 'Prénom',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Saisis ton prénom.',
