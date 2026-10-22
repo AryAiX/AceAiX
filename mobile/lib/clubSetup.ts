@@ -1,5 +1,6 @@
 import type { ClubBasicsInput, ClubPage, ClubPageUpdate, ClubSocials, ClubSport } from '@/lib/api.club';
 import { cleanList, isValidEmail, isValidFoundedYear, isValidPhone, type ClubType } from '@/lib/club';
+import { common as enCommon } from '@/i18n/locales/en/common';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
 
 /**
@@ -88,6 +89,11 @@ export interface ClubDraft {
 
 export interface VerificationDraft {
   contact_person_name: string;
+  /**
+   * A club staff role. A preset is stored as its English label
+   * (`common.clubRoles`); anything else is the person's own words.
+   * Optional, at most `LIMITS.personTitle` characters.
+   */
   contact_person_title: string;
   license_number: string;
   /** A fresh upload in this session (a private storage path, never a URL). */
@@ -137,6 +143,36 @@ export function emptyDraft(): ClubDraft {
     philosophy: '',
     league: '',
   };
+}
+
+/** English labels for `CLUB_ROLE_KEYS`. The admin reads these, in every language. */
+const CLUB_ROLE_EN = enCommon.clubRoles;
+export type ClubStaffRole = keyof typeof CLUB_ROLE_EN;
+
+export function clubRoleEnglish(role: Exclude<ClubStaffRole, 'other'>): string {
+  return CLUB_ROLE_EN[role];
+}
+
+export interface ClubRoleChoice {
+  /** A preset chip, `other`, or nothing chosen yet. */
+  role: ClubStaffRole | null;
+  /** What they typed, when `role` is `other`. */
+  custom: string;
+}
+
+/**
+ * Reads a saved role back onto the chips.
+ * An English preset label selects that chip. Anything else, including the
+ * words "Other club role", is a custom role on the Other chip.
+ */
+export function clubRoleFromTitle(title: string): ClubRoleChoice {
+  const trimmed = title.trim();
+  if (!trimmed) return { role: null, custom: '' };
+  for (const key of Object.keys(CLUB_ROLE_EN) as ClubStaffRole[]) {
+    if (key === 'other') continue;
+    if (CLUB_ROLE_EN[key] === trimmed) return { role: key, custom: '' };
+  }
+  return { role: 'other', custom: title };
 }
 
 export function emptyVerification(): VerificationDraft {

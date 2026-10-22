@@ -8,6 +8,8 @@ import {
   contactPatch,
   draftFromPage,
   emptyDraft,
+  clubRoleEnglish,
+  clubRoleFromTitle,
   emptyVerification,
   firstIncompleteStep,
   formatPin,
@@ -167,6 +169,22 @@ describe('readMapPin', () => {
         country: 'UAE',
       }),
     ).toBe('https://www.google.com/maps/search/?api=1&query=Al%20Jadaf%2C%20Dubai%2C%20UAE');
+  });
+});
+
+describe('verification role', () => {
+  it('stores a preset as its English label and reads it back onto that chip', () => {
+    expect(clubRoleEnglish('sporting_director')).toBe('Sporting director');
+    expect(clubRoleEnglish('head_of_youth_development')).toBe('Head of youth development');
+    expect(clubRoleFromTitle('Academy director')).toEqual({ role: 'academy_director', custom: '' });
+    expect(clubRoleFromTitle('  Club administrator  ')).toEqual({ role: 'club_administrator', custom: '' });
+  });
+
+  it('keeps a custom role on Other, and an empty field as nothing chosen', () => {
+    expect(clubRoleFromTitle('General manager')).toEqual({ role: 'other', custom: 'General manager' });
+    expect(clubRoleFromTitle('Other club role')).toEqual({ role: 'other', custom: 'Other club role' });
+    expect(clubRoleFromTitle('')).toEqual({ role: null, custom: '' });
+    expect(clubRoleFromTitle('   ')).toEqual({ role: null, custom: '' });
   });
 });
 

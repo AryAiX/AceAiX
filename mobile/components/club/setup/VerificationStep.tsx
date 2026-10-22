@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Camera, FileCheck2, FileUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Card, Input, Text } from '@/components/ui';
+import { Button, Card, Chip, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { CLUB_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { CheckboxRow } from '@/components/onboarding/Shared';
 import { InfoNote } from '@/components/settings/Notes';
 import { uploadClubDocument } from '@/lib/api.club';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
-import { LIMITS, type VerificationDraft } from '@/lib/clubSetup';
+import {
+  LIMITS,
+  clubRoleEnglish,
+  clubRoleFromTitle,
+  type ClubStaffRole,
+  type VerificationDraft,
+} from '@/lib/clubSetup';
 import { pickErrorMessage, pickImage, type PickSource } from './pickImage';
 
 export type VerificationError = 'name' | 'terms';
@@ -47,6 +54,29 @@ export function VerificationFields({
   const { colors, radii, spacing } = theme;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const choice = clubRoleFromTitle(value.contact_person_title);
+  // Other stays open while the box is still empty, so a tap is not undone
+  // by the blank value it writes.
+  const [otherOpen, setOtherOpen] = useState(choice.role === 'other');
+
+  useEffect(() => {
+    const next = clubRoleFromTitle(value.contact_person_title);
+    if (next.role === 'other') setOtherOpen(true);
+    else if (next.role) setOtherOpen(false);
+  }, [value.contact_person_title]);
+
+  const selected: ClubStaffRole | null =
+    choice.role && choice.role !== 'other' ? choice.role : otherOpen ? 'other' : null;
+
+  const pickRole = (key: (typeof CLUB_ROLE_KEYS)[number]) => {
+    if (key === 'other') {
+      setOtherOpen(true);
+      if (choice.role !== 'other') onChange({ contact_person_title: '' });
+      return;
+    }
+    setOtherOpen(false);
+    onChange({ contact_person_title: clubRoleEnglish(key) });
+  };
 
   const attach = async (source: PickSource) => {
     if (uploading) return;
@@ -98,14 +128,33 @@ export function VerificationFields({
         autoCapitalize="words"
         testID="club-verify-name"
       />
-      <Input
-        label={t('clubSetup.verify.titleLabel')}
-        value={value.contact_person_title}
-        onChangeText={(contact_person_title) => onChange({ contact_person_title })}
-        placeholder={t('clubSetup.verify.titlePlaceholder')}
-        maxLength={LIMITS.personTitle}
-        testID="club-verify-title"
-      />
+      <View style={{ gap: spacing.sm }}>
+        <Text variant="captionStrong" tone="secondary">
+          {t('clubSetup.verify.titleLabel')}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          {CLUB_ROLE_KEYS.map((key) => (
+            <Chip
+              key={key}
+              label={t(`common.clubRoles.${key}`)}
+              selected={selected === key}
+              onPress={() => pickRole(key)}
+              testID={`club-verify-role-${key}`}
+            />
+          ))}
+        </View>
+        {selected === 'other' ? (
+          <Input
+            value={choice.custom}
+            onChangeText={(contact_person_title) => onChange({ contact_person_title })}
+            placeholder={t('clubSetup.verify.titlePlaceholder')}
+            accessibilityLabel={t('clubSetup.verify.titleLabel')}
+            maxLength={LIMITS.personTitle}
+            autoCapitalize="words"
+            testID="club-verify-title"
+          />
+        ) : null}
+      </View>
       <Input
         label={t('clubSetup.verify.licenceLabel')}
         value={value.license_number}
