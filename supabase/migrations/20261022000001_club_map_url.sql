@@ -13,6 +13,7 @@
 alter table public.organizations
   add column if not exists map_url text;
 
+alter table public.organizations drop constraint if exists organizations_map_url_ok;
 alter table public.organizations
   add constraint organizations_map_url_ok check (
     map_url is null or (

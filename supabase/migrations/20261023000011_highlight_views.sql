@@ -9,7 +9,7 @@
 -- (discoverable, or the owner, an admin, or a guardian), and neither
 -- person has blocked the other. The owner's own watch does not count.
 
-create table public.athlete_media_views (
+create table if not exists public.athlete_media_views (
   media_id  uuid not null references public.athlete_media(id) on delete cascade,
   viewer_id uuid not null references auth.users(id) on delete cascade,
   viewed_at timestamptz not null default now(),
@@ -36,6 +36,7 @@ $$;
 
 revoke all on function private.trg_highlight_view_count() from public, anon, authenticated;
 
+drop trigger if exists trg_athlete_media_views_count on public.athlete_media_views;
 create trigger trg_athlete_media_views_count
   after insert on public.athlete_media_views
   for each row execute function private.trg_highlight_view_count();
