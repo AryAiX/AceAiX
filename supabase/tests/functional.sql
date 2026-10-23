@@ -5276,4 +5276,207 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- QA-87. Suggestions are city names from the catalogue, and only a
+-- signed-in user can ask. "dubai " is the Dubai already on file.
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_rows  integer;
+  v_count integer;
+  v_name  text;
+begin
+  perform tests.ok(
+    (select pg_get_function_result(p.oid)
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'search_cities')
+      = 'TABLE(name text)',
+    'search_cities returns names only');
+
+  set local role anon;
+  begin
+    select count(*) into v_rows from public.cities;
+  exception when insufficient_privilege then
+    v_rows := -1;
+  end;
+  reset role;
+  perform tests.ok(
+    v_rows = -1
+    and not has_table_privilege('anon', 'public.cities', 'SELECT')
+    and not has_function_privilege('anon', 'public.search_cities(text, text, integer)', 'EXECUTE'),
+    'anon cannot call search_cities or read public.cities');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('United Arab Emirates', 'dub', 20) s
+   where s.name = 'Dubai';
+  reset role;
+  perform tests.ok(v_count = 1, 'a signed-in user''s search returns the city name');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  select count(*) into v_count
+    from public.search_cities('United Arab Emirates', 'dub', 20);
+  perform tests.ok(v_count = 0, 'search_cities returns nothing when nobody is signed in');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  v_name := public.add_custom_city('United Arab Emirates', 'dubai ');
+  reset role;
+  select count(*) into v_count from public.cities
+   where lower(btrim(country)) = 'united arab emirates'
+     and lower(btrim(name)) = 'dubai';
+  perform tests.ok(
+    v_name = 'Dubai' and v_count = 1,
+    'add_custom_city("dubai ") returns the existing spelling and does not add a duplicate');
+
+  perform tests.ok(
+    tests.hint_of($q$select public.add_custom_city('United Arab Emirates', 'n')$q$) = 'city_length'
+    and tests.hint_of($q$select public.add_custom_city('United Arab Emirates', repeat('n', 81))$q$) = 'city_length',
+    'a city name under 2 or over 80 characters is refused');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-96. A club map pin keeps a Google share link. Only a manager
+-- (or the owner) may set it.
+do $$
+declare
+  v_owner  uuid := 'a0960000-0000-4000-8000-000000000001';
+  v_editor uuid := 'a0960000-0000-4000-8000-000000000002';
+  v_org    uuid;
+  v_url    text := 'https://maps.app.goo.gl/aceaixPin';
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,  'qa96.owner@test.local',  '{"full_name":"QA96 Owner","role":"club"}'),
+    (v_editor, 'qa96.editor@test.local', '{"full_name":"QA96 Editor","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '34 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '29 years' where user_id = v_editor;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA96 Map Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_org, v_owner, 'owner', 'active'),
+    (v_org, v_editor, 'editor', 'active');
+
+  perform tests.as_user(v_owner);
+  perform tests.ok(
+    public.set_club_map_url(v_org, v_url) = v_url
+    and (select map_url from public.organizations where id = v_org) = v_url,
+    'set_club_map_url accepts a maps.app.goo.gl link');
+
+  perform tests.ok(
+    tests.hint_of(format($q$select public.set_club_map_url(%L, 'https://example.com')$q$, v_org))
+      = 'club_map_url_invalid'
+    and (select map_url from public.organizations where id = v_org) = v_url,
+    'https://example.com is refused');
+
+  perform tests.as_user(v_editor);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.set_club_map_url(%L, %L)$q$, v_org, v_url))
+      = 'club_permission'
+    and (select map_url from public.organizations where id = v_org) = v_url,
+    'a non-manager cannot set the club map link');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-109. The hand-added follow trigger is gone, so one follow
+-- writes one notification row.
+do $$
+declare
+  v_follower uuid := 'a1090000-0000-4000-8000-000000000001';
+  v_target   uuid := 'a1090000-0000-4000-8000-000000000002';
+  v_count    integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_follower, 'qa109.follower@test.local', '{"full_name":"QA109 Follower","role":"athlete"}'),
+    (v_target,   'qa109.target@test.local',   '{"full_name":"QA109 Target","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '26 years'
+   where user_id in (v_follower, v_target);
+
+  perform tests.as_user(v_follower);
+  perform public.toggle_follow(v_target);
+
+  select count(*) into v_count from public.notifications where user_id = v_target;
+  perform tests.ok(v_count = 1, 'a follow writes exactly one notification row');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-110. The update check can read the version record before sign-in.
+do $$
+declare
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  select count(*) into v_count
+    from public.platform_settings
+   where key = 'app_version'
+     and value -> 'ios' ->> 'latest' = '2.0.5'
+     and value -> 'android' ->> 'latest' = '2.0.5';
+  reset role;
+  perform tests.ok(v_count = 1, 'the app_version row exists and a signed-out client can read it');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-111. An @ in a caption notifies that adult once. A minor is
+-- not mentionable, so that entry is dropped and nobody is told.
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_who     text;
+  v_caption text;
+  v_len     integer;
+  v_post    uuid;
+  v_kept    jsonb;
+  v_count   integer;
+begin
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.mention_candidates(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.mention_candidates(text, integer)', 'EXECUTE'),
+    'only a signed-in user can search mention candidates');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    exists (select 1 from public.mention_candidates('Verified', 8) c where c.id = v_coach)
+    and not exists (select 1 from public.mention_candidates('Minor', 8) c where c.id = v_minor),
+    'mention search offers an adult and not a minor');
+
+  select full_name into v_who from public.user_profiles where id = v_coach;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (
+    v_adult, 'standard', v_caption, 'public',
+    jsonb_build_array(
+      jsonb_build_object('user_id', v_coach, 'start', 0, 'length', v_len),
+      jsonb_build_object('user_id', v_minor, 'start', 0, 'length', v_len)
+    )
+  )
+  returning id, mentions into v_post, v_kept;
+
+  select count(*) into v_count from public.notifications
+   where user_id = v_coach and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    v_count = 1
+    and jsonb_array_length(v_kept) = 1
+    and (v_kept -> 0 ->> 'user_id') = v_coach::text
+    and not exists (
+      select 1 from public.notifications
+       where user_id = v_minor and type = 'mention'
+    ),
+    'an adult mention writes one notification and a minor mention is dropped');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
