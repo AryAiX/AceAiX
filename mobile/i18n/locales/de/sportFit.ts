@@ -14,7 +14,7 @@
  *     verständlich. Umgekehrt formulierte Aussagen bleiben umgekehrt
  *     formuliert (die Auswertung hängt davon ab). Die Übersetzungen von
  *     `item.*` muss vor dem Start eine Sportpsychologin oder ein
- *     Sportpsychologe mit Deutsch als Muttersprache prüfen (docs/31 §6).
+ *     Sportpsychologe mit Deutsch als Muttersprache prüfen (docs/32 §6).
  *
  * „Sport Fit“ und „Game Intelligence“ bleiben als Produktnamen auf Englisch.
  */
@@ -38,6 +38,8 @@ export const sportFit = {
   introPoint2: 'Privat: Vereine und Scouts sehen weder deine Antworten noch dein Ergebnis.',
   introPoint3: 'Wenn du Game Intelligence gespielt hast, zählt auch, wie du das Spiel liest.',
   introStart: 'Los geht’s',
+  answerAgain: 'Wieder antworten',
+  answerAgainNeedsParent: 'Ein Elternteil muss das wieder erlauben, bevor du antworten kannst.',
   introNotMedical: 'Das ist ein Fragebogen, keine medizinische oder psychologische Untersuchung.',
   introGiHint: 'Spiel zuerst Game Intelligence, dann wird dein Ergebnis genauer.',
   introGiAction: 'Zu den Spielen',

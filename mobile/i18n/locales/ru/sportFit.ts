@@ -35,6 +35,8 @@ export const sportFit = {
   introPoint2: 'Это личное: клубы и скауты никогда не видят твои ответы и результат.',
   introPoint3: 'Если у тебя есть результаты Game Intelligence, твоё чтение игры тоже учитывается.',
   introStart: 'Начать',
+  answerAgain: 'Ответить снова',
+  answerAgainNeedsParent: 'Родитель должен снова разрешить это, прежде чем ты сможешь ответить.',
   introNotMedical: 'Это опросник, а не медицинская или психологическая проверка.',
   introGiHint: 'Сначала сыграй в Game Intelligence — результат будет точнее.',
   introGiAction: 'Сыграть в игры',

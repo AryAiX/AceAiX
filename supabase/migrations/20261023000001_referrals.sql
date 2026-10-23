@@ -20,7 +20,7 @@
 --     ("Brought 10+ players"), never names or exact numbers.
 --   * admins see totals and can revoke an invite that looks fake.
 --
--- Docs: docs/32-invites.md
+-- Docs: docs/33-invites.md
 -- ============================================================
 
 -- ------------------------------------------------------------

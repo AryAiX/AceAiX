@@ -53,10 +53,12 @@ import { SF_HUE, SF_MINDSET, type SfDimension } from '@/lib/sportfit/catalogue';
  *
  * One screen, three shapes, decided by `sport_fit_my_state`:
  *
- *   consent is not 'ok' → why not, and the one thing that fixes it
- *   no result yet       → what this is, and "Start"
- *   a result            → the three best sports and why, every sport, the
- *                         mindset behind it, and a way to delete it all
+ *   no result, consent not 'ok' → why not, and the one thing that fixes it
+ *   no result yet                → what this is, and "Start"
+ *   a result                     → the three best sports and why, every sport,
+ *                                  the mindset behind it, and a way to delete
+ *                                  it all — even after a parent turns "mindset"
+ *                                  off. Then "Answer again" stays hidden.
  */
 export default function SportFitScreen() {
   const theme = useTheme();
@@ -97,8 +99,9 @@ export default function SportFitScreen() {
 
   const data = state.data;
 
-  // ── Not allowed yet ──
-  if (data.consent !== 'ok') {
+  // ── Not allowed yet, and nothing saved to show ──
+  // A result stays readable and deletable after a parent turns "mindset" off.
+  if (data.consent !== 'ok' && !data.result) {
     let body: React.ReactNode;
     const askParent = () => router.push({ pathname: Routes.settingsGuardian, params: { add: 'mindset' } });
     if (data.consent === 'guardian_required') {
@@ -275,14 +278,19 @@ export default function SportFitScreen() {
           icon={<Users size={18} color={colors.text} />}
           onPress={() => router.push({ pathname: Routes.discover, params: { view: 'coaches' } })}
         />
-        {retakeOpen ? (
+        {data.consent === 'ok' && retakeOpen ? (
           <Button
-            label={t('sportFit.introStart')}
+            label={t('sportFit.answerAgain')}
             variant="ghost"
             fullWidth
             onPress={() => router.push(Routes.sportFitQuestions)}
             testID="sf-retake"
           />
+        ) : null}
+        {data.consent !== 'ok' ? (
+          <Text variant="caption" tone="muted" style={{ textAlign: 'center' }} testID="sf-needs-parent">
+            {t('sportFit.answerAgainNeedsParent')}
+          </Text>
         ) : null}
         <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
           {t('sportFit.takenOn', { date: fullDate(result.created_at) })}

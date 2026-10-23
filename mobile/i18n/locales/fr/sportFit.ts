@@ -12,7 +12,7 @@
  *     questionnaire sur ta façon de t’entraîner et ce que tu ressens en match.
  *   * Les phrases sont à la première personne, simples, lisibles à treize ans.
  *     Les traductions de `item.*` doivent être relues par un psychologue du
- *     sport de langue maternelle française avant le lancement (docs/31 §6).
+ *     sport de langue maternelle française avant le lancement (docs/32 §6).
  */
 export const sportFit = {
   // ── Noms ───────────────────────────────────────────────────────────────────
@@ -34,6 +34,8 @@ export const sportFit = {
   introPoint2: 'Privé : les clubs et les recruteurs ne voient jamais tes réponses ni ton résultat.',
   introPoint3: 'Si tu as joué à Intelligence de jeu, ta lecture du jeu compte aussi.',
   introStart: 'C’est parti',
+  answerAgain: 'Répondre à nouveau',
+  answerAgainNeedsParent: 'Un parent doit l’autoriser à nouveau avant que tu puisses répondre.',
   introNotMedical: 'C’est un questionnaire, pas une évaluation médicale ou psychologique.',
   introGiHint: 'Joue d’abord à Intelligence de jeu pour un résultat plus précis.',
   introGiAction: 'Jouer aux jeux',

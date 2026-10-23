@@ -1,4 +1,4 @@
-# 32 — Invites
+# 33 — Invites
 
 > Athletes and coaches share a personal invite link from their profile. Whoever signs up through it is
 > recorded as invited by them. Every 10 friends who count earn the inviter **1 token**. The circle is

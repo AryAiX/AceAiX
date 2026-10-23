@@ -5200,6 +5200,17 @@ begin
   perform tests.ok(v_seen = 0, 'another user cannot read someone''s Sport Fit answers');
   perform tests.ok(v_raised, 'a client cannot write Sport Fit results');
 
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  v_seen := (select count(*) from public.sport_fit_results
+              where user_id <> 'ad111111-1111-1111-1111-111111111111');
+  reset role;
+  perform tests.ok(
+    v_seen = 0
+    and exists (select 1 from public.sport_fit_results
+                where user_id <> 'ad111111-1111-1111-1111-111111111111'),
+    'an admin selecting sport_fit_results directly sees no other player''s rows');
+
   -- Careless answers are not scored.
   perform tests.as_user('44444444-4444-4444-4444-444444444444');
   v_out := public.sport_fit_submit(jsonb_set(v_answers, '{check1}', '1'), 240);
@@ -5229,6 +5240,9 @@ begin
   perform tests.as_user(v_minor);
   perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'ok',
     'a guardian''s mindset approval unlocks Sport Fit');
+  perform tests.ok(
+    not private.has_guardian_consent(v_minor, 'not_a_scope'),
+    'has_guardian_consent of a minor with consent is false for an unknown scope');
   perform tests.ok(
     has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'SELECT')
     and not has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'UPDATE'),
@@ -5278,6 +5292,38 @@ begin
       select 1 from jsonb_array_elements(v_out -> 'top_sports') e
       where (e ->> 'hidden')::boolean is false and (e ->> 'count')::int < 5),
     'a top-sport count under five is never shown as a number');
+
+  -- One player's best sport is curling. Under five, so it must not be named.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.sport_fit_results
+    (user_id, athlete_id, answers, duration_s, quality, fits)
+  select '11111111-1111-1111-1111-111111111111', ap.id,
+         '{}'::jsonb, 120, 'ok',
+         '[{"sport":"curling","fit":99}]'::jsonb
+  from public.athlete_profiles ap
+  where ap.user_id = '11111111-1111-1111-1111-111111111111';
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  v_out := public.admin_sport_fit_overview();
+  perform tests.ok(
+    not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' is distinct from 'other'
+        and coalesce((e ->> 'count')::int, 0) < 5)
+    and not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' = 'curling')
+    and (select count(*) from jsonb_array_elements(v_out -> 'top_sports') e
+         where e ->> 'sport' = 'other') = 1
+    and exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' = 'other'
+        and e -> 'count' = 'null'::jsonb
+        and (e ->> 'hidden')::boolean),
+    'top sports never names a sport with fewer than 5 players');
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  delete from public.sport_fit_results
+   where user_id = '11111111-1111-1111-1111-111111111111'
+     and fits -> 0 ->> 'sport' = 'curling';
 
   perform public.admin_review_sport_fit_sport('tennis', 'Dr. Test Panel');
   perform tests.ok((select reviewed_by = 'Dr. Test Panel' from public.sport_fit_sports where sport = 'tennis'),

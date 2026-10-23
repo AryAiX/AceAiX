@@ -11,7 +11,7 @@
  *     you feel in a match.
  *   * The statements are first person, plain, and readable by a 13-year-old.
  *     Translations of `item.*` need review by a sports psychologist who is a
- *     native speaker before launch (docs/31 §6).
+ *     native speaker before launch (docs/32 §6).
  */
 export const sportFit = {
   // ── Names ──────────────────────────────────────────────────────────────────
@@ -33,6 +33,8 @@ export const sportFit = {
   introPoint2: 'Private: clubs and scouts never see your answers or your result.',
   introPoint3: 'If you have played Game Intelligence, your game reading counts too.',
   introStart: 'Start',
+  answerAgain: 'Answer again',
+  answerAgainNeedsParent: 'A parent needs to allow this again before you can answer.',
   introNotMedical: 'This is a questionnaire, not a medical or psychological assessment.',
   introGiHint: 'Play Game Intelligence first for a sharper result.',
   introGiAction: 'Play the games',
