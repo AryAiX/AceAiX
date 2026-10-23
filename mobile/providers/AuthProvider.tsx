@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
+import type { Href } from 'expo-router';
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { emailConfirmationRedirect, passwordResetRedirect } from '@/lib/authRedirect';
@@ -61,6 +62,13 @@ interface AuthContextValue {
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<AccountProfile | null>;
+  /**
+   * One screen to open after the gate moves a freshly finished account into
+   * the app. The gate reads it once; Later and every other role leave it unset.
+   */
+  setPostOnboardingHref: (href: Href | null) => void;
+  /** Returns the pending screen and clears it. Null when nothing was set. */
+  takePostOnboardingHref: () => Href | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const mounted = useRef(true);
   const activeUserId = useRef<string | null>(null);
+  /** Not state: clearing it must not schedule a second pass of the route gate. */
+  const postOnboardingHref = useRef<Href | null>(null);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -200,9 +210,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    postOnboardingHref.current = null;
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
+  }, []);
+
+  const setPostOnboardingHref = useCallback((href: Href | null) => {
+    postOnboardingHref.current = href;
+  }, []);
+
+  const takePostOnboardingHref = useCallback((): Href | null => {
+    const href = postOnboardingHref.current;
+    postOnboardingHref.current = null;
+    return href;
   }, []);
 
   const sendPasswordReset = useCallback(async (email: string) => {
@@ -236,6 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       updatePassword,
       refreshProfile,
+      setPostOnboardingHref,
+      takePostOnboardingHref,
     };
   }, [
     session,
@@ -247,6 +270,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sendPasswordReset,
     updatePassword,
     refreshProfile,
+    setPostOnboardingHref,
+    takePostOnboardingHref,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

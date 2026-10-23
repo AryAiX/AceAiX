@@ -192,6 +192,10 @@ export const onboarding = {
   doneTitle: "You're all set",
   guardianDoneBody: 'Your account is ready. Linking to your child takes about a minute.',
   basicDoneBody: 'Have a look around and set the rest up whenever you like.',
+  sponsorDoneBody:
+    'Next, tell athletes about your brand. You can post calls and send offers once your brand profile is verified.',
+  sponsorSetupBrand: 'Set up your brand profile',
+  later: 'Later',
   guardianDoneNote:
     'Settings, then Parent and guardian. If your child has already sent you an approval email, opening the link in it connects your accounts.',
 };

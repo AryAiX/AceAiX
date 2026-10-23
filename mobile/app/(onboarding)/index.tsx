@@ -120,7 +120,7 @@ export default function OnboardingScreen() {
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { profile, signOut, refreshProfile, setPostOnboardingHref } = useAuth();
   const router = useRouter();
 
   const role = profile?.role ?? 'athlete';
@@ -496,18 +496,32 @@ export default function OnboardingScreen() {
     return true;
   };
 
-  const finish = async () => {
+  const finish = async (): Promise<boolean> => {
     setSaving(true);
     try {
       await completeOnboarding();
       // Without the refresh the gate still sees an unfinished profile and
       // sends the person back to step one.
       await refreshProfile();
+      return true;
     } catch (err) {
       toast.error(errorMessage(err));
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * Same completion as Start exploring. The route gate is what leaves
+   * onboarding; it opens the brand profile on top of the home tabs when
+   * this target is set. Later leaves the target unset.
+   */
+  const finishToBrand = async () => {
+    if (saving) return;
+    setPostOnboardingHref(Routes.sponsorshipBrand);
+    const ok = await finish();
+    if (!ok) setPostOnboardingHref(null);
   };
 
   const advance = async () => {
@@ -635,21 +649,44 @@ export default function OnboardingScreen() {
   }
 
   const skippable = step === 'physical' || step === 'photo' || step === 'teams';
+  const isSponsorDone = step === 'done' && role === 'sponsor';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
   const knownName = profile.first_name ?? profile.full_name;
   const name = knownName ? firstNameOf(knownName) : '';
 
   const footerContent = (
     <View style={{ gap: spacing.sm }}>
-      <Button
-        label={continueLabel}
-        size="lg"
-        fullWidth
-        loading={saving}
-        disabled={!canContinue()}
-        onPress={() => void advance()}
-        testID="onboarding-continue"
-      />
+      {isSponsorDone ? (
+        <>
+          <Button
+            label={t('onboarding.sponsorSetupBrand')}
+            size="lg"
+            fullWidth
+            loading={saving}
+            onPress={() => void finishToBrand()}
+            testID="onboarding-setup-brand"
+          />
+          <Button
+            label={t('onboarding.later')}
+            variant="secondary"
+            size="lg"
+            fullWidth
+            disabled={saving}
+            onPress={() => void advance()}
+            testID="onboarding-later"
+          />
+        </>
+      ) : (
+        <Button
+          label={continueLabel}
+          size="lg"
+          fullWidth
+          loading={saving}
+          disabled={!canContinue()}
+          onPress={() => void advance()}
+          testID="onboarding-continue"
+        />
+      )}
       {skippable ? (
         <Button
           label={t('onboarding.skipForNow')}
@@ -869,7 +906,11 @@ export default function OnboardingScreen() {
           <SimpleFinishStep
             title={t('onboarding.doneTitle')}
             body={t(
-              path === 'guardian' ? 'onboarding.guardianDoneBody' : 'onboarding.basicDoneBody',
+              role === 'sponsor'
+                ? 'onboarding.sponsorDoneBody'
+                : path === 'guardian'
+                  ? 'onboarding.guardianDoneBody'
+                  : 'onboarding.basicDoneBody',
             )}
           />
         ) : null}

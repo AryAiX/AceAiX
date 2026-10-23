@@ -199,6 +199,10 @@ export const onboarding = {
   doneTitle: 'Todo listo',
   guardianDoneBody: 'Tu cuenta está lista. Vincularte con tu hijo o hija lleva un minuto.',
   basicDoneBody: 'Echa un vistazo y prepara el resto cuando quieras.',
+  sponsorDoneBody:
+    'Ahora cuéntales a los deportistas sobre tu marca. Podrás publicar convocatorias y enviar ofertas cuando el perfil de tu marca esté verificado.',
+  sponsorSetupBrand: 'Configura el perfil de tu marca',
+  later: 'Más tarde',
   guardianDoneNote:
     'Ajustes y luego Madre, padre o tutor. Si tu hijo o hija ya te envió un correo de aprobación, al abrir el enlace se conectan las cuentas.',
 };

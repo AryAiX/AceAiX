@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -29,7 +29,7 @@ import { LanguageGate } from '@/components/common/LanguageGate';
 import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
-import { routeDecision } from '@/lib/routes';
+import { Routes, routeDecision } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -43,9 +43,15 @@ const WEB_APP_MAX_WIDTH = 840;
  * each other, which is what used to produce the loops and dead ends.
  */
 function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { session, profile, loading, configured } = useAuth();
+  const { session, profile, loading, configured, takePostOnboardingHref } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  /**
+   * The follow screen already pushed on top of home. Held until that screen
+   * is the one showing, or a redirect other than home takes over. A second
+   * pass of this effect must not replace the stack with the tabs alone.
+   */
+  const followedFromOnboarding = useRef<Href | null>(null);
 
   useEffect(() => {
     if (loading || !configured) return;
@@ -55,8 +61,31 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
       profile,
       segments: segments as readonly string[],
     });
-    if (target) router.replace(target);
-  }, [session, profile, loading, configured, segments, router]);
+    const inOnboarding = segments[0] === '(onboarding)';
+    const here = `/${segments.join('/')}`;
+
+    /* Home is already underneath the follow screen. Dropping the guard early
+       lets a lagging segment list replace that stack with the tabs alone. */
+    if (followedFromOnboarding.current) {
+      const arrived = here === followedFromOnboarding.current;
+      if (arrived || (target && target !== Routes.home)) followedFromOnboarding.current = null;
+      else return;
+    }
+
+    if (!target) return;
+
+    if (target === Routes.home && inOnboarding) {
+      const follow = takePostOnboardingHref();
+      router.replace(Routes.home);
+      if (follow) {
+        followedFromOnboarding.current = follow;
+        router.push(follow);
+      }
+      return;
+    }
+
+    router.replace(target);
+  }, [session, profile, loading, configured, segments, router, takePostOnboardingHref]);
 
   return <>{children}</>;
 }
