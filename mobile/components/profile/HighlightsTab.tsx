@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -27,6 +27,7 @@ import {
   getAthleteMedia,
   MAX_HIGHLIGHT_VIDEO_SECONDS,
 } from '@/lib/api.profile';
+import { recordHighlightView } from '@/lib/api.explore';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -315,7 +316,7 @@ function MediaPreview({ item }: { item: AthleteMediaItem }) {
         </Text>
       );
     }
-    return <VideoPreview uri={item.video_url} />;
+    return <VideoPreview uri={item.video_url} mediaId={item.id} />;
   }
 
   if (!item.display_url) {
@@ -336,12 +337,29 @@ function MediaPreview({ item }: { item: AthleteMediaItem }) {
   );
 }
 
-function VideoPreview({ uri }: { uri: string }) {
+function VideoPreview({ uri, mediaId }: { uri: string; mediaId: string }) {
   const theme = useTheme();
   const source = useCachedVideoSource(uri);
+  const [playing, setPlaying] = useState(false);
   const player = useVideoPlayer(source, (instance) => {
     instance.loop = false;
   });
+
+  useEffect(() => {
+    setPlaying(player.playing);
+    const sub = player.addListener('playingChange', ({ isPlaying }) => {
+      setPlaying(isPlaying);
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  useEffect(() => {
+    if (!playing) return;
+    const timer = setTimeout(() => {
+      void recordHighlightView(mediaId);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [playing, mediaId]);
 
   return (
     <VideoView

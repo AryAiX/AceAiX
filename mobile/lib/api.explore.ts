@@ -41,3 +41,21 @@ export async function getExploreSports(): Promise<ExploreSport[]> {
 export function isHighlight(post: Pick<FeedPost, 'type'>): boolean {
   return post.type === 'highlight';
 }
+
+/** Clips this session has already sent. A repeat watch does not call again. */
+const recordedHighlightViews = new Set<string>();
+
+/**
+ * Count one watch of a highlight, after the caller has played it.
+ * The server ignores the owner, a duplicate, and a clip this person
+ * cannot see. A failure stays quiet.
+ */
+export async function recordHighlightView(mediaId: string): Promise<void> {
+  if (!mediaId || recordedHighlightViews.has(mediaId)) return;
+  recordedHighlightViews.add(mediaId);
+  try {
+    await supabase.rpc('record_highlight_view', { p_media: mediaId });
+  } catch {
+    /* A missed view is not worth an error on screen. */
+  }
+}

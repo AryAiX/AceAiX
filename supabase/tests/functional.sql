@@ -5209,4 +5209,71 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- QA-118. A highlight watch counts once, never for the owner, never for
+-- a viewer who may not see a minor's clip.
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  v_athlete uuid;
+  v_minor_athlete uuid;
+  v_clip uuid := gen_random_uuid();
+  v_minor_clip uuid := gen_random_uuid();
+  v_count integer;
+  v_disc boolean;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.record_highlight_view(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.record_highlight_view(uuid)', 'EXECUTE'),
+    'only a signed-in user can record a highlight view');
+
+  select id into v_athlete from public.athlete_profiles where user_id = v_adult;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count)
+  values (v_clip, v_athlete, 'QA-118 clip', 'video', v_adult::text || '/highlights/qa118.mp4', true, 0);
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'a viewer''s first call adds 1 to views_count');
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'a second call does not add another view');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'the owner''s call does not count');
+
+  select id into v_minor_athlete from public.athlete_profiles where user_id = v_minor;
+  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count)
+  values (
+    v_minor_clip, v_minor_athlete, 'QA-118 minor clip', 'video',
+    v_minor::text || '/highlights/qa118m.mp4', true, 0
+  );
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_minor_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_minor_clip;
+  perform tests.ok(v_count = 0, 'a viewer who may not see a minor''s clip does not count');
+
+  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
+  delete from public.athlete_media where id in (v_clip, v_minor_clip);
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

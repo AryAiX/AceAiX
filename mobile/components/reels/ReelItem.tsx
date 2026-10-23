@@ -12,7 +12,7 @@ import { MentionText } from '@/components/feed/MentionText';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
-import { isHighlight } from '@/lib/api.explore';
+import { isHighlight, recordHighlightView } from '@/lib/api.explore';
 import { recordPostView } from '@/lib/api.feed';
 import { reelVideo } from '@/lib/api.reels';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
@@ -109,13 +109,15 @@ function ReelItemBase({
     });
   }, [playing, player, safely]);
 
-  /* One view per post this session, and only after the clip has actually
-     been playing. Profile highlights are not posts, so they are not counted. */
+  /* One view per clip this session, and only after it has actually been
+     playing. A highlight is not a post, so it counts on athlete_media. */
   useEffect(() => {
-    if (!playing || isHighlight(post)) return;
+    if (!playing) return;
     const id = post.id;
+    const highlight = isHighlight(post);
     const timer = setTimeout(() => {
-      void recordPostView(id);
+      if (highlight) void recordHighlightView(id);
+      else void recordPostView(id);
     }, 2000);
     return () => clearTimeout(timer);
   }, [playing, post.id, post.type]);
