@@ -5214,14 +5214,15 @@ end $$;
 do $$
 declare
   v_adult uuid := '11111111-1111-1111-1111-111111111111';
-  v_minor uuid := '22222222-2222-2222-2222-222222222222';
   v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  -- The seeded minor's granted consent names this coach as guardian, so
+  -- turning discoverability off does not hide that child from them.
+  v_hidden uuid := 'a1180000-0000-4000-8000-000000000001';
   v_athlete uuid;
-  v_minor_athlete uuid;
+  v_hidden_athlete uuid;
   v_clip uuid := gen_random_uuid();
   v_minor_clip uuid := gen_random_uuid();
   v_count integer;
-  v_disc boolean;
 begin
   perform set_config('request.jwt.claim.role', 'service_role', true);
 
@@ -5255,13 +5256,16 @@ begin
   select views_count into v_count from public.athlete_media where id = v_clip;
   perform tests.ok(v_count = 1, 'the owner''s call does not count');
 
-  select id into v_minor_athlete from public.athlete_profiles where user_id = v_minor;
-  select is_discoverable into v_disc from public.user_profiles where id = v_minor;
-  update public.user_profiles set is_discoverable = false where id = v_minor;
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_hidden, 'qa118.hidden@test.local', '{"full_name":"QA118 Hidden","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '15 years'
+   where user_id = v_hidden;
+  update public.user_profiles set is_discoverable = false where id = v_hidden;
+  select id into v_hidden_athlete from public.athlete_profiles where user_id = v_hidden;
   insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count)
   values (
-    v_minor_clip, v_minor_athlete, 'QA-118 minor clip', 'video',
-    v_minor::text || '/highlights/qa118m.mp4', true, 0
+    v_minor_clip, v_hidden_athlete, 'QA-118 minor clip', 'video',
+    v_hidden::text || '/highlights/qa118m.mp4', true, 0
   );
 
   perform tests.as_user(v_coach);
@@ -5271,7 +5275,6 @@ begin
   select views_count into v_count from public.athlete_media where id = v_minor_clip;
   perform tests.ok(v_count = 0, 'a viewer who may not see a minor''s clip does not count');
 
-  update public.user_profiles set is_discoverable = v_disc where id = v_minor;
   delete from public.athlete_media where id in (v_clip, v_minor_clip);
 end $$;
 
