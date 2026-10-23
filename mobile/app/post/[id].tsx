@@ -29,6 +29,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { addComment, getComments } from '@/lib/api';
 import { getPostById, postLink } from '@/lib/api.feed';
+import { useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
 import { mentionsForSubmit, type MentionSpan } from '@/lib/mentions';
 import { Routes } from '@/lib/routes';
@@ -50,7 +51,7 @@ export default function PostScreen() {
   const post = useAsync<FeedPost | null>(
     () => getPostById(postId as string),
     [postId],
-    { enabled: !!postId },
+    { enabled: !!postId, refetchOnFocus: true },
   );
 
   const comments = useAsync<PostComment[]>(
@@ -69,6 +70,13 @@ export default function PostScreen() {
   const rows = useMemo(() => buildCommentRows(comments.data ?? []), [comments.data]);
 
   const { mutate: mutatePost } = post;
+
+  useViewCountUpdates((subject, id, count) => {
+    if (subject !== 'post' || id !== postId) return;
+    mutatePost((current) =>
+      current && count > current.view_count ? { ...current, view_count: count } : current,
+    );
+  });
 
   const patchPost = useCallback(
     (_postId: string, changes: Partial<FeedPost>) => {

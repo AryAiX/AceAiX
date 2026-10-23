@@ -7,6 +7,7 @@ import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { prepareVideo } from '@/lib/videoPrep';
 import { Buckets, supabase } from '@/lib/supabase';
+import { publishViewCount } from '@/lib/viewCounts';
 import { webAppLink } from '@/lib/webLinks';
 import type { FeedPost, PostAudience, PostMedia, Tier, UserRole } from '@/types/models';
 
@@ -406,11 +407,24 @@ const recordedPostViews = new Set<string>();
  * The server ignores the author, a duplicate, and a post this person
  * cannot see. A failure stays quiet.
  */
+async function readPostViewCount(postId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('view_count')
+    .eq('id', postId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const count = (data as { view_count?: number | null }).view_count;
+  return typeof count === 'number' ? count : null;
+}
+
 export async function recordPostView(postId: string): Promise<void> {
   if (!postId || recordedPostViews.has(postId)) return;
   recordedPostViews.add(postId);
   try {
     await supabase.rpc('record_post_view', { p_post: postId });
+    const count = await readPostViewCount(postId);
+    if (count != null) publishViewCount('post', postId, count);
   } catch {
     /* A missed view is not worth an error on screen. */
   }

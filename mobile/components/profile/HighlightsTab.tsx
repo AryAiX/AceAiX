@@ -28,6 +28,7 @@ import {
   MAX_HIGHLIGHT_VIDEO_SECONDS,
 } from '@/lib/api.profile';
 import { recordHighlightView } from '@/lib/api.explore';
+import { knownViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -66,8 +67,16 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
   const media = useAsync(
     () => (athleteId ? getAthleteMedia(athleteId) : Promise.resolve([])),
     [athleteId, refreshKey],
-    { enabled: !!athleteId },
+    { enabled: !!athleteId, refetchOnFocus: true },
   );
+
+  useViewCountUpdates((subject, id, count) => {
+    if (subject !== 'highlight') return;
+    media.mutate((rows) =>
+      rows?.map((row) => (row.id === id && count > row.views_count ? { ...row, views_count: count } : row)) ??
+      rows,
+    );
+  });
 
   const [picked, setPicked] = useState<Picked | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -75,7 +84,15 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
   const [pendingDelete, setPendingDelete] = useState<AthleteMediaItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const items = useMemo(() => media.data ?? [], [media.data]);
+  const items = useMemo(
+    () =>
+      (media.data ?? []).map((row) => {
+        const known = knownViewCount('highlight', row.id);
+        if (known == null || known <= row.views_count) return row;
+        return { ...row, views_count: known };
+      }),
+    [media.data],
+  );
 
   const pick = useCallback(async () => {
     try {
