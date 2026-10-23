@@ -168,6 +168,16 @@ function nearbyCopy(
   };
 }
 
+/** Title and body, including the one client-composed meetup sentence. */
+export function notificationCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } {
+  const nearby = nearbyCopy(n, t);
+  if (nearby) return nearby;
+  return { title: notificationTitle(n, t), body: n.body };
+}
+
 interface Props {
   notification: AppNotification;
   /** Omitted when the notification has no destination. */
@@ -185,9 +195,9 @@ export function NotificationRow({ notification, onPress }: Props) {
   /* KNOWN GAP: title and body are finished English sentences written by the
      database triggers — see `notificationTitle` above for what a real fix
      needs. Everything around them on this row is translated. */
-  const nearby = nearbyCopy(notification, t);
-  const title = nearby?.title ?? notificationTitle(notification, t);
-  const body = nearby ? nearby.body : notification.body;
+  const copy = notificationCopy(notification, t);
+  const title = copy.title;
+  const body = copy.body;
   const when = relativeTime(notification.created_at);
 
   const content = (

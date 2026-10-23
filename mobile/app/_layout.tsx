@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments, type Href } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -27,8 +27,10 @@ import { BrandSplash } from '@/components/common/BrandSplash';
 import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
 import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
+import { useNotificationBanner } from '@/hooks/useNotificationBanner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
+import { setCurrentPath } from '@/lib/openScreen';
 import { Routes, routeDecision, skipsLanguagePicker } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -90,10 +92,20 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Writes the path the banner reads. A committed render, not a closed-over one. */
+function CurrentPathTracker() {
+  const path = usePathname();
+  useLayoutEffect(() => {
+    setCurrentPath(path ?? '');
+  }, [path]);
+  return null;
+}
+
 function Shell() {
   const theme = useTheme();
   const segments = useSegments();
   const pathname = usePathname();
+  useNotificationBanner();
   const { loading, configured } = useAuth();
   const { hydrating: languageLoading, hasChosen } = useI18n();
   const livePath =
@@ -223,6 +235,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <CurrentPathTracker />
       <SafeAreaProvider>
         <ThemeProvider>
           <I18nProvider>

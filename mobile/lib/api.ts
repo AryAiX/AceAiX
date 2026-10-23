@@ -667,6 +667,25 @@ export async function getNotifications(limit = 50): Promise<AppNotification[]> {
   })) as AppNotification[];
 }
 
+/**
+ * Name and photo shown beside a notification.
+ *
+ * `getNotifications` loads these as the `actor` embed
+ * (`user_profiles.full_name`, `user_profiles.avatar_url`). A banner has the
+ * realtime row and not that embed, so it asks for the same two columns.
+ */
+export async function getNotificationActor(
+  actorId: string,
+): Promise<{ full_name: string | null; avatar_url: string | null } | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('full_name, avatar_url')
+    .eq('id', actorId)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  return data;
+}
+
 export async function markNotificationsRead(ids?: string[]) {
   const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids ?? null });
   if (error) throw new AppError(error);

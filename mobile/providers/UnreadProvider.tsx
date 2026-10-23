@@ -11,6 +11,7 @@ import { AppState } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/api';
+import type { NotificationRealtimePayload } from '@/lib/notificationBanner';
 import { useAuth } from './AuthProvider';
 import type { UnreadCounts } from '@/types/models';
 
@@ -18,6 +19,11 @@ interface UnreadContextValue extends UnreadCounts {
   refresh: () => Promise<void>;
   /** Optimistically clear a badge after the user opens the relevant screen. */
   clear: (which: 'notifications' | 'messages') => void;
+  /**
+   * The notifications channel this provider already holds. Callers must not
+   * open a second one. The handler receives each postgres change as it arrives.
+   */
+  subscribeNotifications: (handler: (payload: NotificationRealtimePayload) => void) => () => void;
 }
 
 const UnreadContext = createContext<UnreadContextValue>({
@@ -25,6 +31,7 @@ const UnreadContext = createContext<UnreadContextValue>({
   messages: 0,
   refresh: async () => {},
   clear: () => {},
+  subscribeNotifications: () => () => {},
 });
 
 /**
@@ -55,6 +62,15 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
     setCounts((c) => ({ ...c, [which]: 0 }));
   }, []);
 
+  const listeners = useRef(new Set<(payload: NotificationRealtimePayload) => void>());
+
+  const subscribeNotifications = useCallback((handler: (payload: NotificationRealtimePayload) => void) => {
+    listeners.current.add(handler);
+    return () => {
+      listeners.current.delete(handler);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) {
       setCounts({ notifications: 0, messages: 0 });
@@ -72,7 +88,16 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        () => refresh(),
+        (payload) => {
+          refresh();
+          const change: NotificationRealtimePayload = {
+            eventType: payload.eventType,
+            commit_timestamp: payload.commit_timestamp,
+            new: payload.new as NotificationRealtimePayload['new'],
+            old: payload.old as NotificationRealtimePayload['old'],
+          };
+          listeners.current.forEach((handler) => handler(change));
+        },
       )
       .on(
         'postgres_changes',
@@ -92,8 +117,8 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
   }, [user, refresh]);
 
   const value = useMemo(
-    () => ({ ...counts, refresh, clear }),
-    [counts, refresh, clear],
+    () => ({ ...counts, refresh, clear, subscribeNotifications }),
+    [counts, refresh, clear, subscribeNotifications],
   );
 
   return <UnreadContext.Provider value={value}>{children}</UnreadContext.Provider>;

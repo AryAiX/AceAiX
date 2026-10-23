@@ -24,6 +24,11 @@ interface ToastPayload {
   duration?: number;
   actionLabel?: string;
   onAction?: () => void;
+  /**
+   * Tap on the banner itself. Omitted toasts only dismiss, which is what
+   * every existing caller does.
+   */
+  onPress?: () => void;
 }
 
 interface ToastContextValue {
@@ -106,7 +111,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           }}
         >
           <Pressable
-            onPress={hide}
+            onPress={() => {
+              toast.onPress?.();
+              hide();
+            }}
             accessibilityRole="alert"
             accessibilityLiveRegion={Platform.OS === 'android' ? 'polite' : undefined}
             style={{
