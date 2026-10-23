@@ -5349,6 +5349,8 @@ declare
   v_editor uuid := 'a0960000-0000-4000-8000-000000000002';
   v_org    uuid;
   v_url    text := 'https://maps.app.goo.gl/aceaixPin';
+  v_set    text;
+  v_saved  text;
 begin
   perform set_config('request.jwt.claim.role', 'service_role', true);
 
@@ -5367,9 +5369,10 @@ begin
     (v_org, v_editor, 'editor', 'active');
 
   perform tests.as_user(v_owner);
+  v_set := public.set_club_map_url(v_org, v_url);
+  select map_url into v_saved from public.organizations where id = v_org;
   perform tests.ok(
-    public.set_club_map_url(v_org, v_url) = v_url
-    and (select map_url from public.organizations where id = v_org) = v_url,
+    v_set = v_url and v_saved = v_url,
     'set_club_map_url accepts a maps.app.goo.gl link');
 
   perform tests.ok(
