@@ -41,6 +41,7 @@ import {
 } from '@/lib/api.auth';
 import { removeOwnProfileImage } from '@/lib/api.profile';
 import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
+import { cityFromPicker } from '@/components/onboarding/CityPicker';
 import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
 import {
   HEIGHT_RANGE_CM,
@@ -146,6 +147,7 @@ export default function OnboardingScreen() {
   const [club, setClub] = useState('');
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [side, setSide] = useState<string | null>(null);
@@ -332,8 +334,10 @@ export default function OnboardingScreen() {
           break;
         case 'place': {
           await updateAthleteProfile({ current_club: club.trim() || null });
-          const cityName = await cityForProfile(country, city);
+          const chosen = isMinor ? city : cityFromPicker(city, cityQuery);
+          const cityName = await cityForProfile(country, chosen);
           if ((cityName ?? '') !== city) setCity(cityName ?? '');
+          setCityQuery('');
           await updateUserProfile({ country, city: cityName });
           break;
         }
@@ -424,6 +428,8 @@ export default function OnboardingScreen() {
     specialty,
     isClub,
     ageBand,
+    isMinor,
+    cityQuery,
     toast,
   ]);
 
@@ -431,8 +437,10 @@ export default function OnboardingScreen() {
   // athlete one, plus the coach record.
   const persistRecruiterPlace = useCallback(async (): Promise<boolean> => {
     try {
-      const cityName = await cityForProfile(country, city);
+      const chosen = isMinor ? city : cityFromPicker(city, cityQuery);
+      const cityName = await cityForProfile(country, chosen);
       if ((cityName ?? '') !== city) setCity(cityName ?? '');
+      setCityQuery('');
       await updateUserProfile({ country, city: cityName });
       if (!isClub) await updateCoachProfile({ country });
       return true;
@@ -440,7 +448,7 @@ export default function OnboardingScreen() {
       toast.error(errorMessage(err));
       return false;
     }
-  }, [country, city, isClub, toast]);
+  }, [country, city, cityQuery, isMinor, isClub, toast]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const canContinue = (): boolean => {
@@ -451,8 +459,11 @@ export default function OnboardingScreen() {
         return positionsFor(sport).length === 0 || position !== null;
       case 'level':
         return level !== null;
-      case 'place':
-        return !!country && country.trim().length > 0;
+      case 'place': {
+        if (!country || country.trim().length === 0) return false;
+        if (isMinor) return true;
+        return cityFromPicker(city, cityQuery).length > 0;
+      }
       case 'physical':
         return !heightError && !weightError && (!!height || !!weight || side !== null);
       case 'photo':
@@ -739,9 +750,12 @@ export default function OnboardingScreen() {
             club={club}
             country={country}
             city={city}
+            cityQuery={cityQuery}
+            requireCity={!isMinor}
             onChangeClub={setClub}
             onChangeCountry={setCountry}
             onChangeCity={setCity}
+            onCityQueryChange={setCityQuery}
           />
         ) : null}
 
@@ -833,8 +847,11 @@ export default function OnboardingScreen() {
           <RecruiterPlaceStep
             country={country}
             city={city}
+            cityQuery={cityQuery}
+            requireCity={!isMinor}
             onChangeCountry={setCountry}
             onChangeCity={setCity}
+            onCityQueryChange={setCityQuery}
           />
         ) : null}
 

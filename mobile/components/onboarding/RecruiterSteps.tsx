@@ -5,7 +5,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Chip, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { SPORTS, positionLabel, positionsFor, sportLabel } from '@/constants/sports';
-import { CityPicker } from './CityPicker';
+import { CityPicker, cityFromPicker } from './CityPicker';
 import { CountryPicker, SportTile, StepHeading } from './Shared';
 
 /** The coach and club path. Short: who they are, and who they are looking for. */
@@ -159,16 +159,25 @@ export function RecruiterRoleStep({
 export function RecruiterPlaceStep({
   country,
   city,
+  cityQuery,
+  requireCity,
   onChangeCountry,
   onChangeCity,
+  onCityQueryChange,
 }: {
   country: string | null;
   city: string;
+  cityQuery: string;
+  /** Adults must name a city. Under-18s can leave it empty. */
+  requireCity: boolean;
   onChangeCountry: (value: string) => void;
   onChangeCity: (value: string) => void;
+  onCityQueryChange: (value: string) => void;
 }) {
   const theme = useTheme();
   const t = useT();
+  const cityMissing =
+    requireCity && !!country?.trim() && cityFromPicker(city, cityQuery).length === 0;
 
   return (
     <View>
@@ -189,8 +198,11 @@ export function RecruiterPlaceStep({
         <CityPicker
           country={country}
           value={city}
+          query={cityQuery}
+          onQueryChange={onCityQueryChange}
           onChange={onChangeCity}
           label={t('onboarding.cityLabel')}
+          hint={cityMissing ? t('onboarding.cityRequiredHint') : undefined}
           testID="recruiter-city"
         />
       </View>

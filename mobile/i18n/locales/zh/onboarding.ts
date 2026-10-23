@@ -42,6 +42,7 @@ export const onboarding = {
   cityLabel: '城市',
   cityPlaceholder: '迪拜',
   cityPickCountryFirst: '请先选择国家。',
+  cityRequiredHint: '填写你的城市，方便附近的比赛和俱乐部找到你。',
   citySearchPlaceholder: '搜索城市',
   cityNoMatch: '没有匹配的城市。试试少输几个字。',
   cityShowAll: '显示所有城市',

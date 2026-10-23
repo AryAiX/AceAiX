@@ -42,6 +42,7 @@ export const onboarding = {
   cityLabel: 'المدينة',
   cityPlaceholder: 'دبي',
   cityPickCountryFirst: 'اختر الدولة أولًا.',
+  cityRequiredHint: 'أضف مدينتك حتى تجدك المباريات والأندية القريبة.',
   citySearchPlaceholder: 'ابحث عن مدينة',
   cityNoMatch: 'لا مدينة تطابق ذلك. جرّب بحثًا أقصر.',
   cityShowAll: 'عرض كل المدن',

@@ -15,7 +15,7 @@ import {
   sideLabel,
   sportLabel,
 } from '@/constants/sports';
-import { CityPicker } from './CityPicker';
+import { CityPicker, cityFromPicker } from './CityPicker';
 import { CountryPicker, OptionCard, SportTile, StepHeading } from './Shared';
 
 /** The athlete path: sport, position, level, where you play, and your body. */
@@ -139,19 +139,28 @@ export function PlaceStep({
   club,
   country,
   city,
+  cityQuery,
+  requireCity,
   onChangeClub,
   onChangeCountry,
   onChangeCity,
+  onCityQueryChange,
 }: {
   club: string;
   country: string | null;
   city: string;
+  cityQuery: string;
+  /** Adults must name a city. Under-18s can leave it empty. */
+  requireCity: boolean;
   onChangeClub: (value: string) => void;
   onChangeCountry: (value: string) => void;
   onChangeCity: (value: string) => void;
+  onCityQueryChange: (value: string) => void;
 }) {
   const theme = useTheme();
   const t = useT();
+  const cityMissing =
+    requireCity && !!country?.trim() && cityFromPicker(city, cityQuery).length === 0;
 
   return (
     <View>
@@ -180,8 +189,11 @@ export function PlaceStep({
         <CityPicker
           country={country}
           value={city}
+          query={cityQuery}
+          onQueryChange={onCityQueryChange}
           onChange={onChangeCity}
           label={t('onboarding.cityLabel')}
+          hint={cityMissing ? t('onboarding.cityRequiredHint') : undefined}
           testID="onboarding-city"
         />
       </View>

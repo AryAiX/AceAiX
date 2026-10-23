@@ -10,11 +10,22 @@ import { useT } from '@/i18n';
 import { COUNTRIES_BEFORE_EXPAND } from './Shared';
 
 /**
+ * A tapped chip, or a name left in the box. Two characters is enough for a
+ * typed name; a shorter query is only a filter and the chip still stands.
+ */
+export function cityFromPicker(selected: string, typed: string): string {
+  const draft = typed.trim();
+  if (draft.length >= 2) return draft;
+  return selected.trim();
+}
+
+/**
  * One city, chosen the same way as a country: a search box, then chips.
  *
- * The box never holds the answer. It only filters. The chosen city is the
- * orange chip. A place that is not in the catalogue can still be picked —
- * what they typed becomes a chip when nothing already spells it.
+ * The chosen city is the orange chip. A place that is not in the catalogue
+ * can still be picked — what they typed becomes a chip when nothing already
+ * spells it. A caller that must not lose an untapped name reads it back
+ * with `cityFromPicker`.
  */
 export function CityPicker({
   country,
@@ -22,12 +33,20 @@ export function CityPicker({
   onChange,
   label,
   testID,
+  query: queryProp,
+  onQueryChange,
+  hint,
 }: {
   country: string | null;
   value: string;
   onChange: (city: string) => void;
   label: string;
   testID?: string;
+  /** When set, the parent owns the search text. */
+  query?: string;
+  onQueryChange?: (query: string) => void;
+  /** Under the box, once a country is chosen. */
+  hint?: string;
 }) {
   const theme = useTheme();
   const { colors, spacing } = theme;
@@ -36,14 +55,24 @@ export function CityPicker({
 
   const countryKey = country?.trim() ?? '';
   const ready = countryKey.length > 0;
-  const [query, setQuery] = useState('');
+  const [localQuery, setLocalQuery] = useState('');
+  const controlled = queryProp !== undefined;
+  const query = controlled ? queryProp : localQuery;
+  const onQueryChangeRef = useRef(onQueryChange);
+  onQueryChangeRef.current = onQueryChange;
+  const writeQuery = (next: string) => {
+    if (!controlled) setLocalQuery(next);
+    onQueryChangeRef.current?.(next);
+  };
   const [expanded, setExpanded] = useState(false);
   const [results, setResults] = useState<string[]>([]);
   const prevCountry = useRef(countryKey);
 
   useEffect(() => {
-    setQuery('');
     setExpanded(false);
+    writeQuery('');
+    // A new country drops the search. `writeQuery` tells the parent too.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- countryKey only
   }, [countryKey]);
 
   /* One in-flight search at a time, and a late reply never overwrites a newer
@@ -99,9 +128,9 @@ export function CityPicker({
       <Input
         label={label}
         value={query}
-        onChangeText={ready ? setQuery : undefined}
+        onChangeText={ready ? writeQuery : undefined}
         placeholder={t('onboarding.citySearchPlaceholder')}
-        hint={ready ? undefined : t('onboarding.cityPickCountryFirst')}
+        hint={ready ? hint : t('onboarding.cityPickCountryFirst')}
         editable={ready}
         autoCorrect={false}
         icon={<Search size={18} color={colors.textMuted} />}
@@ -120,7 +149,7 @@ export function CityPicker({
                 ready
                   ? () => {
                       onChange(city);
-                      setQuery('');
+                      writeQuery('');
                     }
                   : () => undefined
               }

@@ -45,6 +45,7 @@ export const onboarding = {
   cityLabel: 'Город',
   cityPlaceholder: 'Дубай',
   cityPickCountryFirst: 'Сначала выбери страну.',
+  cityRequiredHint: 'Укажи город, чтобы игры и клубы рядом могли тебя найти.',
   citySearchPlaceholder: 'Поиск по городам',
   cityNoMatch: 'Такого города нет. Попробуй запрос покороче.',
   cityShowAll: 'Показать все города',

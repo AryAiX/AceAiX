@@ -47,6 +47,7 @@ export const onboarding = {
   cityLabel: 'Ciudad',
   cityPlaceholder: 'Dubái',
   cityPickCountryFirst: 'Elige primero un país.',
+  cityRequiredHint: 'Añade tu ciudad para que los partidos y clubes cercanos puedan encontrarte.',
   citySearchPlaceholder: 'Buscar ciudades',
   cityNoMatch: 'Ninguna ciudad coincide. Prueba con una búsqueda más corta.',
   cityShowAll: 'Ver todas las ciudades',

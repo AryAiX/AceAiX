@@ -44,6 +44,7 @@ export const onboarding = {
   cityLabel: 'City',
   cityPlaceholder: 'Dubai',
   cityPickCountryFirst: 'Pick a country first.',
+  cityRequiredHint: 'Add your city so nearby games and clubs can find you.',
   citySearchPlaceholder: 'Search cities',
   cityNoMatch: 'No city matches that. Try a shorter search.',
   cityShowAll: 'Show all cities',

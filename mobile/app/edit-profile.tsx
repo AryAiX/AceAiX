@@ -41,7 +41,7 @@ import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@
 import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
 import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
-import { CityPicker } from '@/components/onboarding/CityPicker';
+import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
@@ -123,6 +123,7 @@ export default function EditProfileScreen() {
   // signed-in account from auth is enough to start the credentials read.
   const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
   const isSponsorAccount = (bundle.data?.user.role ?? profile?.role) === 'sponsor';
+  const isMinor = profile?.is_minor === true;
   const scoutCreds = useAsync(() => getMyScoutCredentials(), [isClubAccount], {
     enabled: isClubAccount,
   });
@@ -134,6 +135,7 @@ export default function EditProfileScreen() {
   else if (scoutPhase.current === 'loading') scoutPhase.current = 'done';
 
   const [form, setForm] = useState<FormState | null>(null);
+  const [cityQuery, setCityQuery] = useState('');
   const [initial, setInitial] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -252,6 +254,7 @@ export default function EditProfileScreen() {
       if (!current || next === current.country) return current;
       return { ...current, country: next, city: '' };
     });
+    setCityQuery('');
     setCountryQuery('');
     setCountrySheet(false);
   }, []);
@@ -307,6 +310,8 @@ export default function EditProfileScreen() {
       toast.error(t('profile.firstNameRequired'));
       return;
     }
+    const trimmedCity = isMinor ? form.city.trim() : cityFromPicker(form.city, cityQuery);
+    if (!isMinor && !trimmedCity) return;
 
     setSaving(true);
     const previous = bundle.data.score?.overall ?? null;
@@ -314,7 +319,6 @@ export default function EditProfileScreen() {
     try {
       const previousAvatar = initial?.avatarUrl ?? '';
       const previousCover = initial?.coverUrl ?? '';
-      const trimmedCity = form.city.trim();
       const trimmedCountry = form.country.trim();
       // The catalogue is the normaliser. Empty stays null. With no country
       // there is nothing to match against, so the trimmed name is kept.
@@ -397,6 +401,7 @@ export default function EditProfileScreen() {
       }
 
       toast.success(message);
+      setCityQuery('');
       setForm(savedForm);
       setInitial(savedForm);
       if (router.canGoBack()) router.back();
@@ -405,7 +410,7 @@ export default function EditProfileScreen() {
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, isSponsorAccount, refreshProfile, router, t, toast]);
+  }, [bundle.data, cityQuery, clubLoadFailed, form, initial, isClubAccount, isMinor, isSponsorAccount, refreshProfile, router, t, toast]);
 
   const countries = useMemo(
     () => countryOptions(countryQuery, (country) => countryLabel(t, country)),
@@ -425,6 +430,11 @@ export default function EditProfileScreen() {
     return exists ? null : typed;
   }, [countryQuery, t]);
 
+  const draftCity = form ? (isMinor ? form.city.trim() : cityFromPicker(form.city, cityQuery)) : '';
+  const cityTypedIn =
+    !isMinor && !!initial && draftCity.length > 0 && draftCity !== initial.city.trim();
+  const adultNeedsCity = !isMinor && !!form && draftCity.length === 0;
+
   const header = (
     <Header
       back
@@ -435,7 +445,7 @@ export default function EditProfileScreen() {
           label={t('common.save')}
           size="sm"
           hitSlop={10}
-          disabled={!dirty || saving}
+          disabled={(!dirty && !cityTypedIn) || saving || adultNeedsCity}
           loading={saving}
           onPress={onSave}
         />
@@ -666,8 +676,15 @@ export default function EditProfileScreen() {
           <CityPicker
             country={form.country.trim() ? form.country : null}
             value={form.city}
+            query={cityQuery}
+            onQueryChange={setCityQuery}
             onChange={(text) => set('city', text)}
             label={t('profile.city')}
+            hint={
+              !isMinor && form.country.trim() && cityFromPicker(form.city, cityQuery).length === 0
+                ? t('onboarding.cityRequiredHint')
+                : undefined
+            }
           />
 
           <Pressable
