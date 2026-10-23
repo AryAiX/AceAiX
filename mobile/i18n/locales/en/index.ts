@@ -29,6 +29,7 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 import { countries } from './countries';
 
 /**
@@ -70,6 +71,7 @@ export const en = {
   clubSetup,
   clubManage,
   clubMatch,
+  whatsNew,
 };
 
 export type Translations = typeof en;

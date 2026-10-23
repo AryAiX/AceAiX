@@ -32,10 +32,11 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 
 
 /** العربية. مُقيَّدة بأنواع الإنجليزية، فأي مفتاح ناقص خطأ في الترجمة البرمجية. */
 export const ar: Translations = { common, language, auth, onboarding, feed, profile,
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
   safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
-  club, clubSetup, clubManage, clubMatch };
+  club, clubSetup, clubManage, clubMatch, whatsNew };

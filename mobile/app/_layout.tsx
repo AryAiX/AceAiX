@@ -28,6 +28,7 @@ import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
 import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
 import { useNotificationBanner } from '@/hooks/useNotificationBanner';
+import { useAppVersionPrompts } from '@/hooks/useAppVersionPrompts';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
 import { setCurrentPath } from '@/lib/openScreen';
@@ -120,6 +121,11 @@ function Shell() {
      notification tap. It never *asks* for permission here — that request is
      made from Settings, after the person has a reason to say yes. */
   usePushNotifications();
+  /* Language first, then these sheets, so the copy matches the choice they
+     just made. The hook itself does nothing until that gate has opened. */
+  const versionPrompts = useAppVersionPrompts(
+    configured && !languageLoading && (hasChosen || skipLanguagePicker),
+  );
 
   /* Screens the navigator has hidden keep their place in the tab order until
      something tells the browser otherwise. */
@@ -209,6 +215,7 @@ function Shell() {
           <Stack.Screen name="+not-found" />
         </Stack>
       </RouteGuard>
+      {versionPrompts}
     </View>
   );
 }

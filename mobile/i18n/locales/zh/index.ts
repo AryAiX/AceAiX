@@ -32,6 +32,7 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 
 /**
  * 中文只有一种复数形式。
@@ -59,6 +60,6 @@ type SingleFormPlurals<T> = {
 const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onboarding,
   feed, profile, score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging,
   settings, safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
-  club, clubSetup, clubManage, clubMatch };
+  club, clubSetup, clubManage, clubMatch, whatsNew };
 
 export const zh = catalogue as Translations;
