@@ -11,6 +11,7 @@ import { AppState } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
 import { getUnreadCounts } from '@/lib/api';
+import { refreshFollowCounts } from '@/lib/followCounts';
 import type { NotificationRealtimePayload } from '@/lib/notificationBanner';
 import { useAuth } from './AuthProvider';
 import type { UnreadCounts } from '@/types/models';
@@ -90,6 +91,13 @@ export function UnreadProvider({ children }: { children: React.ReactNode }) {
         },
         (payload) => {
           refresh();
+          const row = payload.new as { type?: string } | null;
+          if (
+            row?.type === 'follow' &&
+            (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE')
+          ) {
+            void refreshFollowCounts(user.id);
+          }
           const change: NotificationRealtimePayload = {
             eventType: payload.eventType,
             commit_timestamp: payload.commit_timestamp,

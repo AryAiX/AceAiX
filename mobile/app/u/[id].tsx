@@ -50,6 +50,7 @@ export default function PublicProfileScreen() {
 
   const bundle = useAsync(() => getProfile(userId as string), [userId], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
 
   const iBlocked = useAsync(

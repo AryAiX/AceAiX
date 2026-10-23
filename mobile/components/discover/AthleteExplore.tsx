@@ -21,7 +21,8 @@ import {
 import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { searchOrganizations, searchPeople, toggleFollow } from '@/lib/api';
+import { searchOrganizations, searchPeople } from '@/lib/api';
+import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
   followedOrganizationIds,
   followedUserIds,
@@ -289,7 +290,13 @@ export function AthleteExplore({
       setPendingId(person.id);
       setPersonOverrides((o) => ({ ...o, [person.id]: next }));
       try {
-        const result = await toggleFollow(person.id);
+        const result = await applyToggleFollow({
+          targetId: person.id,
+          myId: viewerId,
+          wasFollowing: !next,
+          targetFollowers: knownFollowCount(person.id, 'followers') ?? person.followers_count,
+          myFollowing: knownFollowCount(viewerId ?? '', 'following') ?? profile?.following_count ?? 0,
+        });
         setPersonOverrides((o) => ({ ...o, [person.id]: result.following }));
       } catch (err) {
         setPersonOverrides((o) => ({ ...o, [person.id]: !next }));
@@ -298,7 +305,7 @@ export function AthleteExplore({
         setPendingId(null);
       }
     },
-    [toast],
+    [profile?.following_count, toast, viewerId],
   );
 
   const listStyle = {
@@ -446,14 +453,7 @@ export function AthleteExplore({
         }
         renderItem={({ item }) => (
           <CoachRow
-            person={{
-              ...item,
-              followers_count: shiftedCount(
-                item.followers_count,
-                personSet.has(item.id),
-                isPersonFollowed(item.id),
-              ),
-            }}
+            person={item}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
             onToggleFollow={onTogglePerson}
