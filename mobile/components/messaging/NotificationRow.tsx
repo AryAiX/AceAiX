@@ -112,6 +112,10 @@ function skinFor(type: NotificationType): Skin {
     case 'club_verification_rejected':
     case 'club_verification_more_info':
       return { Icon: ShieldCheck, tint: 'warning' };
+    case 'referral_joined':
+      return { Icon: UserPlus, tint: 'success' };
+    case 'referral_token':
+      return { Icon: Award, tint: 'warning' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }

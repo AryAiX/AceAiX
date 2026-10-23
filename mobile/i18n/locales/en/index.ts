@@ -30,6 +30,7 @@ import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
 import { countries } from './countries';
 import { sportFit } from './sportFit';
+import { invites } from './invites';
 
 /**
  * English — the source of truth.
@@ -70,6 +71,7 @@ export const en = {
   clubManage,
   clubMatch,
   sportFit,
+  invites,
 };
 
 export type Translations = typeof en;

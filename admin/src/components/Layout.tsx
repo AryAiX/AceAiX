@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  BadgeCheck, CalendarClock, Compass, Flag, Handshake, Images, LayoutDashboard, LogOut, ScrollText, ShieldCheck, Users,
+  BadgeCheck, CalendarClock, Compass, Flag, Handshake, Images, LayoutDashboard, LogOut, ScrollText, ShieldCheck, UserPlus, Users,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -21,6 +21,7 @@ export function Layout() {
     { to: '/sponsorship', label: 'Sponsorship', icon: Handshake },
     { to: '/bookings', label: 'Coach bookings', icon: CalendarClock },
     { to: '/sport-fit', label: 'Sport Fit', icon: Compass },
+    { to: '/invites', label: 'Invites', icon: UserPlus },
     { to: '/audit', label: 'Audit log', icon: ScrollText },
   ];
 

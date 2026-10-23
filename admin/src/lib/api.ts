@@ -301,6 +301,20 @@ export interface AuditRow {
 export const SF_DIMENSIONS = ['drive', 'composure', 'focus', 'resilience', 'boldness', 'discipline', 'reading', 'speed'] as const;
 export type SfDimension = (typeof SF_DIMENSIONS)[number];
 
+export interface ReferralTop {
+  user: Person | null; qualified: number; pending: number; revoked: number; tokens: number; last_at: string; flagged: boolean;
+}
+export interface ReferralRow {
+  id: string; status: 'pending' | 'qualified' | 'revoked'; revoked_reason: string | null;
+  created_at: string; qualified_at: string | null; referrer: Person | null; referred: Person | null;
+}
+export interface ReferralsOverview {
+  invites: number; qualified: number; pending: number; revoked: number; tokens: number; inviters: number;
+  by_day: { day: string; count: number }[];
+  top: ReferralTop[];
+  recent: ReferralRow[];
+}
+
 export interface SportFitSport {
   sport: string;
   weights: Record<SfDimension, number>;
@@ -393,6 +407,10 @@ export const api = {
     }),
   reviewSportFitSport: (sport: string, reviewedBy: string | null) =>
     rpc<SportFitSport>('admin_review_sport_fit_sport', { p_sport: sport, p_reviewed_by: reviewedBy }),
+
+  referrals: () => rpc<ReferralsOverview>('admin_referrals_overview'),
+  setReferral: (id: string, revoke: boolean, reason: string | null) =>
+    rpc<void>('admin_set_referral', { p_referral: id, p_revoke: revoke, p_reason: reason }),
 
   audit: (prefix: string, offset = 0) =>
     rpc<AuditRow[]>('admin_audit_log', { p_action_prefix: prefix || null, p_limit: 100, p_offset: offset }),

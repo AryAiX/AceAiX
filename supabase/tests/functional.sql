@@ -5305,4 +5305,151 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- Invites (20261023000001)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users (id, email, raw_user_meta_data)
+select ('7e000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid, 'invitee' || n || '@test.local',
+       jsonb_build_object('full_name', 'Invitee' || n || ' Test', 'first_name', 'Invitee' || n, 'role', 'athlete')
+from generate_series(1, 12) n
+on conflict do nothing;
+update public.user_private set date_of_birth = current_date - interval '20 years'
+ where user_id::text like '7e000000-%' and user_id <> '7e000000-0000-4000-8000-000000000012';
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id = '7e000000-0000-4000-8000-000000000012';
+
+do $$
+declare
+  v_inviter uuid := '11111111-1111-1111-1111-111111111111';
+  v_code    text;
+  v_circle  jsonb;
+  v_raised  boolean;
+  v_id      uuid;
+  n         int;
+begin
+  perform tests.as_user(v_inviter);
+  v_circle := public.referral_my_circle();
+  v_code := v_circle ->> 'code';
+  perform tests.ok(v_code ~ '^[A-HJ-NP-Z2-9]{8}$' and (v_circle ->> 'can_invite')::boolean,
+    'an athlete gets a personal 8-character invite code');
+  perform tests.ok(public.referral_my_circle() ->> 'code' = v_code, 'the code stays the same');
+
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'nobody can claim their own code');
+
+  perform tests.ok((public.referral_inviter(v_code) ->> 'first_name') is not null
+                   and not (public.referral_inviter(v_code) ? 'id'),
+    'the landing screen gets a first name, not an id');
+
+  -- Ten adults join; nine finish onboarding.
+  for n in 1..10 loop
+    v_id := ('7e000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    perform public.referral_claim(lower(v_code));
+  end loop;
+  perform tests.ok((select count(*) from public.referrals where referrer_id = v_inviter and status = 'pending') = 10,
+    'an invite starts as pending');
+
+  perform tests.as_user('7e000000-0000-4000-8000-000000000001');
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'an account can be invited only once');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set onboarding_completed = true
+   where id::text like '7e000000-%' and id::text <> '7e000000-0000-4000-8000-000000000010'
+     and id::text <> '7e000000-0000-4000-8000-000000000011' and id::text <> '7e000000-0000-4000-8000-000000000012';
+  perform tests.ok((select count(*) from public.referrals where referrer_id = v_inviter and status = 'qualified') = 9,
+    'an invite counts once the friend finishes onboarding');
+  perform tests.ok(coalesce((select sum(amount) from public.token_ledger where user_id = v_inviter), 0) = 0,
+    'nine invites earn no token yet');
+
+  update public.user_profiles set onboarding_completed = true where id = '7e000000-0000-4000-8000-000000000010';
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 1,
+    'the tenth invite that counts earns one token');
+  perform tests.ok(exists (select 1 from public.notifications where user_id = v_inviter and type = 'referral_token'),
+    'the inviter is told about the token');
+
+  -- The circle and the badge.
+  perform tests.as_user(v_inviter);
+  v_circle := public.referral_my_circle();
+  perform tests.ok((v_circle ->> 'qualified')::int = 10 and (v_circle ->> 'tokens')::int = 1
+                   and (v_circle ->> 'progress')::int = 0,
+    'the circle shows ten that count, one token, and a fresh start toward the next');
+  perform tests.ok(not exists (select 1 from jsonb_array_elements(v_circle -> 'members') m
+                                where m ? 'id' or m ? 'email' or m ? 'last_name'),
+    'the circle shows first names only');
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform tests.ok((public.referral_badge(v_inviter) ->> 'tier')::int = 10,
+    'others see a tier badge ("10+"), not a number or names');
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  perform tests.ok(public.referral_badge(v_inviter) is null,
+    'someone blocked either way sees no badge');
+  perform tests.as_user('7e000000-0000-4000-8000-000000000003');
+  perform tests.ok(public.referral_my_circle() -> 'invited_by' ->> 'first_name' is not null,
+    'the invited friend sees who invited them');
+
+  -- A minor counts only after a guardian approves.
+  perform tests.as_user('7e000000-0000-4000-8000-000000000012');
+  perform public.referral_claim(v_code);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set onboarding_completed = true where id = '7e000000-0000-4000-8000-000000000012';
+  perform tests.ok((select status = 'pending' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000012'),
+    'a minor''s invite waits for a guardian');
+  insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at)
+  values ('7e000000-0000-4000-8000-000000000012', 'Parent', 'ref.parent@test.local', 'granted', now());
+  perform tests.ok((select status = 'qualified' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000012'),
+    'a guardian''s approval makes a minor''s invite count');
+
+  -- A suspension takes the invite back, and the token with it.
+  update public.user_profiles set is_suspended = true
+   where id in ('7e000000-0000-4000-8000-000000000001', '7e000000-0000-4000-8000-000000000002');
+  perform tests.ok((select status = 'revoked' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000001'),
+    'suspending an invited account revokes the invite');
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 0,
+    'dropping below ten takes the token back');
+
+  -- An admin restores one.
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_suspended = false where id = '7e000000-0000-4000-8000-000000000002';
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  perform public.admin_set_referral(
+    (select id from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000002'), false, null);
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 1
+                   and exists (select 1 from public.audit_logs where action = 'referral.restore'),
+    'an admin can restore an invite; the token comes back and it is audited');
+
+  -- Late, unknown, and direct writes.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set created_at = now() - interval '30 days' where id = '7e000000-0000-4000-8000-000000000011';
+  perform tests.as_user('7e000000-0000-4000-8000-000000000011');
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a code cannot be entered more than 14 days after signing up');
+  v_raised := false;
+  begin perform public.referral_claim('ZZZZZZZZ'); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'an unknown code is refused');
+  set local role authenticated;
+  v_raised := false;
+  begin
+    insert into public.referrals (referrer_id, referred_id, code)
+    values (v_inviter, '7e000000-0000-4000-8000-000000000011', v_code);
+  exception when others then v_raised := true; end;
+  reset role;
+  perform tests.ok(v_raised, 'a client cannot write an invite directly');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_suspended = false where id::text like '7e000000-%';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

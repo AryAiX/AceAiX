@@ -10,6 +10,7 @@ import { MyCoachingCard } from '@/components/coaching/CoachingCard';
 import { MyClubCard } from '@/components/club/manage/MyClubCard';
 import { MyGiCard } from '@/components/intelligence/GiCard';
 import { MySportFitCard } from '@/components/sportfit/SportFitCard';
+import { MyInviteCard } from '@/components/invite/InviteCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
@@ -131,6 +132,8 @@ export default function MyProfileScreen() {
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
         {/* Private to the athlete; never shown to anyone else — docs/31 §5. */}
         {athlete ? <MySportFitCard refreshKey={childKey} /> : null}
+
+        {athlete || data.user.role === 'coach' ? <MyInviteCard refreshKey={childKey} /> : null}
 
         {/* The page a club runs, or an invitation to help run one. */}
         <MyClubCard isClubAccount={data.user.role === 'club'} refreshKey={childKey} />

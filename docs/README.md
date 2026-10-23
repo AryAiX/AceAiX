@@ -46,6 +46,7 @@ specifications and reconciles it with the existing **Bolt prototype** (the visua
 | 30 | [`30-coach-booking.md`](./30-coach-booking.md) | Booking a coach — "taking students", services (session, consultation, class), the calendar of free times, fixed/flexible/online places, the guardian scope for minors, and the coach's calendar | Mobile + Backend |
 | 31 | [`31-sport-fit.md`](./31-sport-fit.md) | Sport Fit — a 22-statement mindset questionnaire, server-side matching against what twelve sports ask of a player's mind (plus Game Intelligence signals), the top three sports with reasons, the separate guardian "mindset" scope, privacy and deletion | Mobile + Backend |
 | 31 | [`31-club-pages.md`](./31-club-pages.md) | Club and academy pages — sign-up wizard, verification, the page team, posts, announcements, matches with a live score, squads and the youth naming rule, events, awards | Mobile + Backend + Admin |
+| 32 | [`32-invites.md`](./32-invites.md) | Invites — a personal link from the profile, who invited whom, a private circle, 1 token (in-app points) per 10 friends who finish onboarding, public tier badge, admin revoke | Mobile + Backend + Admin |
 
 **01–09 describe the original web-first plan** and the React SPA in `web/`, which is now the
 marketing and admin surface. **10–24 describe the product as it stands** after the September 2026

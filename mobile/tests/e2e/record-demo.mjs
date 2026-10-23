@@ -236,6 +236,10 @@ const TOUR = [
      answered once below, so the preview has the intro, the questions and the
      result. */
   '/sport-fit',
+  /* Invites: the circle screen, and the landing an invite link opens.
+     LAYLAPLY is Layla's code in supabase/seeds/admin-demo.sql. */
+  '/invite',
+  '/i/LAYLAPLY',
   /* Stories and reels (1006/03). One stop per author with a live story, so
      the viewer opened from the rail has something to play. */
   '/reels',

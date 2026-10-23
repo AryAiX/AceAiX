@@ -136,3 +136,37 @@ begin
    where user_id::text like '5f000000%';
 end;
 $$;
+
+-- Invites for the circle screen and the admin page ----------------------------
+-- Layla invited 15 of the demo players (12 finished onboarding, so she has one
+-- token and is 2 of 10 toward the next); Marco invited 6. LOCAL ONLY.
+do $$
+declare n int; v_id uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  for n in 1..21 loop
+    v_id := ('5f000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    insert into public.referrals (referrer_id, referred_id, code, created_at)
+    values (case when n <= 15 then 'a0000000-0000-4000-8000-000000000001'::uuid
+                 else 'b0000000-0000-4000-8000-000000000001'::uuid end,
+            v_id, case when n <= 15 then 'LAYLAPLY' else 'MARCKBAY' end,
+            now() - make_interval(days => 21 - n))
+    on conflict (referred_id) do nothing;
+    if n not in (13, 14, 15) then
+      update public.user_profiles set onboarding_completed = true where id = v_id;
+    end if;
+    -- A parent approved four of Layla's under-18 friends; Marco's two are still waiting.
+    if n in (3, 6, 9, 12) then
+      insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at)
+      select v_id, 'Demo Parent', 'parent.' || n || '@example.com', 'granted', now()
+      where not exists (select 1 from public.guardian_consents g where g.minor_user_id = v_id and g.status = 'granted');
+    end if;
+    perform private.referral_evaluate(v_id);
+  end loop;
+  insert into public.referral_codes (user_id, code) values
+    ('a0000000-0000-4000-8000-000000000001', 'LAYLAPLY'),
+    ('b0000000-0000-4000-8000-000000000001', 'MARCKBAY')
+  on conflict (user_id) do update set code = excluded.code;
+end;
+$$;
