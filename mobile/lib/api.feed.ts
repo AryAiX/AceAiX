@@ -1,6 +1,8 @@
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { AppError } from '@/lib/errors';
+import { parseMentions } from '@/lib/mentions';
+import { rememberPostMentions } from '@/lib/postMentions';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { prepareVideo } from '@/lib/videoPrep';
@@ -47,7 +49,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      'id, author_id, type, caption, text, media, tags, like_count, comments_count, view_count, created_at, ' +
+      'id, author_id, type, caption, text, media, tags, mentions, like_count, comments_count, view_count, created_at, ' +
         'author:user_profiles!posts_author_id_fkey(full_name, avatar_url, role, is_verified)',
     )
     .eq('id', postId)
@@ -68,6 +70,9 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     viewerHasRow('post_saves', postId, viewerId),
     viewerFollows(authorId, viewerId),
   ]);
+
+  const mentions = parseMentions(row.mentions);
+  rememberPostMentions(row.id as string, mentions);
 
   const rawMedia = Array.isArray(row.media) ? (row.media as PostMedia[]) : [];
   const paths = rawMedia
@@ -113,6 +118,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     viewer_saved: saved,
     viewer_follows: follows,
     created_at: row.created_at as string,
+    mentions,
   };
 }
 

@@ -14,6 +14,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { addComment, getComments } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
+import { mentionsForSubmit, type MentionSpan } from '@/lib/mentions';
 import { useAuth } from '@/providers/AuthProvider';
 import type { FeedPost, PostComment } from '@/types/models';
 import { CommentComposer, CommentList, buildCommentRows } from './CommentList';
@@ -46,6 +47,7 @@ export function CommentSheet({ post, onClose, onOpenProfile, onCommentAdded }: P
   const comments = useAsync<PostComment[]>(() => getComments(postId), [postId]);
 
   const [draft, setDraft] = useState('');
+  const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const [actionTarget, setActionTarget] = useState<ContentTarget | null>(null);
@@ -60,8 +62,10 @@ export function CommentSheet({ post, onClose, onOpenProfile, onCommentAdded }: P
 
     setSending(true);
     try {
-      await addComment(postId, body, replyTo?.id);
+      const saved = mentionsForSubmit(draft, mentions);
+      await addComment(postId, saved.text, replyTo?.id, saved.mentions);
       setDraft('');
+      setMentions([]);
       setReplyTo(null);
       onCommentAdded(postId);
       await refresh();
@@ -70,7 +74,7 @@ export function CommentSheet({ post, onClose, onOpenProfile, onCommentAdded }: P
     } finally {
       setSending(false);
     }
-  }, [draft, postId, replyTo, sending, refresh, onCommentAdded, toast]);
+  }, [draft, mentions, postId, replyTo, sending, refresh, onCommentAdded, toast]);
 
   const openProfile = useCallback(
     (userId: string) => {
@@ -103,6 +107,7 @@ export function CommentSheet({ post, onClose, onOpenProfile, onCommentAdded }: P
         <CommentComposer
           value={draft}
           onChangeText={setDraft}
+          onMentionsChange={setMentions}
           onSubmit={submit}
           sending={sending}
           replyingTo={replyTo}

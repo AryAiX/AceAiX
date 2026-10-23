@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { AppError } from './errors';
+import { parseMentions, type MentionSpan } from './mentions';
+import { attachPostMentions } from './postMentions';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import type {
   ActivityResult,
@@ -244,7 +246,8 @@ export async function getFeed(params: {
     p_before: params.before ?? null,
   });
   if (error) throw new AppError(error);
-  return signPostMedia((data ?? []) as FeedPost[]);
+  const signed = await signPostMedia((data ?? []) as FeedPost[]);
+  return attachPostMentions(signed);
 }
 
 export async function getSavedPosts(params: {
@@ -278,6 +281,7 @@ export async function createPost(input: {
   audience?: PostAudience;
   tags?: string[];
   type?: string;
+  mentions?: MentionSpan[];
 }): Promise<string> {
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError) throw new AppError(authError);
@@ -293,6 +297,7 @@ export async function createPost(input: {
       tags: input.tags ?? [],
       audience: input.audience ?? 'public',
       type: input.type ?? (input.media?.some((m) => m.type === 'video') ? 'video' : 'standard'),
+      ...(input.mentions !== undefined ? { mentions: input.mentions } : {}),
     })
     .select('id')
     .single();
@@ -320,23 +325,35 @@ export async function toggleSave(postId: string) {
 export async function getComments(postId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from('post_comments')
-    .select('id, post_id, author_id, body, parent_id, like_count, created_at, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url, is_verified)')
+    .select('id, post_id, author_id, body, mentions, parent_id, like_count, created_at, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url, is_verified)')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
     .limit(200);
   if (error) throw new AppError(error);
   return (data ?? []).map((row) => ({
     ...row,
+    mentions: parseMentions((row as { mentions?: unknown }).mentions),
     author: Array.isArray(row.author) ? row.author[0] : row.author,
   })) as PostComment[];
 }
 
-export async function addComment(postId: string, body: string, parentId?: string) {
+export async function addComment(
+  postId: string,
+  body: string,
+  parentId?: string,
+  mentions?: MentionSpan[],
+) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new AppError('Not signed in');
   const { data, error } = await supabase
     .from('post_comments')
-    .insert({ post_id: postId, author_id: auth.user.id, body, parent_id: parentId ?? null })
+    .insert({
+      post_id: postId,
+      author_id: auth.user.id,
+      body,
+      parent_id: parentId ?? null,
+      ...(mentions !== undefined ? { mentions } : {}),
+    })
     .select('id')
     .single();
   if (error) throw new AppError(error);
@@ -425,6 +442,26 @@ export async function talentLeaderboard(sport?: string, country?: string, limit 
   });
   if (error) throw new AppError(error);
   return data ?? [];
+}
+
+export interface MentionCandidate {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_verified: boolean;
+  role: string | null;
+}
+
+/** People the signed-in user is allowed to @-mention. Blank queries match nobody. */
+export async function mentionCandidates(query: string): Promise<MentionCandidate[]> {
+  const term = query.trim();
+  if (!term) return [];
+  const { data, error } = await supabase.rpc('mention_candidates', {
+    p_query: term,
+    p_limit: 5,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as MentionCandidate[];
 }
 
 /**

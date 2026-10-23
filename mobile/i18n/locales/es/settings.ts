@@ -149,6 +149,7 @@ export const settings = {
   notifyFollows: 'Nuevos seguidores',
   notifyMessages: 'Mensajes',
   notifyComments: 'Comentarios',
+  notifyMentions: 'Menciones',
   notifyLikes: 'Me gusta',
   notifyMeetups: 'Partidos en Jugar',
   meetupPlaces: 'Lugares de avisos de Jugar',

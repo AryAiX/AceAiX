@@ -140,6 +140,7 @@ export const settings = {
   notifyFollows: 'New followers',
   notifyMessages: 'Messages',
   notifyComments: 'Comments',
+  notifyMentions: 'Mentions',
   notifyLikes: 'Likes',
   notifyMeetups: 'Play games',
   meetupPlaces: 'Play alert places',

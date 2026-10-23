@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import {
+  AtSign,
   Award,
   Bell,
   Building2,
@@ -61,6 +62,8 @@ function skinFor(type: NotificationType): Skin {
     case 'comment':
     case 'reply':
       return { Icon: MessageCircle, tint: 'primary' };
+    case 'mention':
+      return { Icon: AtSign, tint: 'primary' };
     case 'message':
       return { Icon: Mail, tint: 'info' };
     case 'application_received':
@@ -148,7 +151,7 @@ export function notificationTitle(n: AppNotification, t: Translate): string {
 }
 
 /**
- * "New game near you" is the one notification composed on the client.
+ * "New game near you" is composed on the client.
  * Sport and city live in `data`; if either is missing, the stored English
  * sentence is used instead.
  */
@@ -168,13 +171,31 @@ function nearbyCopy(
   };
 }
 
-/** Title and body, including the one client-composed meetup sentence. */
+/** "{name} mentioned you in a post", or in a comment when `data.comment_id` is set. */
+function mentionCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type !== 'mention') return null;
+  const name = n.actor?.full_name?.trim();
+  if (!name) return null;
+  const commentId = n.data?.comment_id;
+  const inComment = typeof commentId === 'string' ? commentId.trim().length > 0 : commentId != null;
+  return {
+    title: t(inComment ? 'messaging.mentionedInComment' : 'messaging.mentionedInPost', { name }),
+    body: n.body,
+  };
+}
+
+/** Title and body, including the sentences composed on the client. */
 export function notificationCopy(
   n: AppNotification,
   t: Translate,
 ): { title: string; body: string | null } {
   const nearby = nearbyCopy(n, t);
   if (nearby) return nearby;
+  const mention = mentionCopy(n, t);
+  if (mention) return mention;
   return { title: notificationTitle(n, t), body: n.body };
 }
 

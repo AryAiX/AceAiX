@@ -74,6 +74,8 @@ export const errors = {
   meetupPlaceInvalid: 'يجب أن يتكون كل مكان من 2 إلى 80 حرفًا.',
   cityLength: 'يجب أن يتكون اسم المدينة من 2 إلى 80 حرفًا.',
   meetupPlacesLimit: 'يمكنك إضافة 5 أماكن كحد أقصى.',
+  mentionLimit: 'يمكنك الإشارة إلى 10 أشخاص كحد أقصى.',
+  mentionInvalid: 'حدث خطأ في إحدى الإشارات. أزلها ثم أضفها من جديد.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "يمكن فقط لحساب نادٍ أو أكاديمية إنشاء صفحة نادٍ.",
   clubPageExists: "لديك صفحة نادٍ بالفعل.",

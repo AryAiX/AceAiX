@@ -144,6 +144,7 @@ export const settings = {
   notifyFollows: 'Новые подписчики',
   notifyMessages: 'Сообщения',
   notifyComments: 'Комментарии',
+  notifyMentions: 'Упоминания',
   notifyLikes: 'Лайки',
   notifyMeetups: 'Игры в «Играть»',
   meetupPlaces: 'Места для оповещений «Играть»',

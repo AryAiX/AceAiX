@@ -8,6 +8,7 @@ import { BadgeCheck, Heart, MessageCircle, Play, Share2, Volume2, VolumeX } from
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
 import { HeartBurst } from '@/components/feed/HeartBurst';
+import { MentionText } from '@/components/feed/MentionText';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
@@ -286,11 +287,14 @@ function ReelItemBase({
         ) : null}
 
         {caption ? (
-          <Pressable onPress={() => setCaptionOpen((o) => !o)} accessibilityRole="button">
-            <Text variant="body" color={ON_VIDEO} numberOfLines={captionOpen ? 8 : 2}>
-              {caption}
-            </Text>
-          </Pressable>
+          <MentionText
+            text={caption}
+            mentions={post.mentions}
+            variant="body"
+            color={ON_VIDEO}
+            numberOfLines={captionOpen ? 8 : 2}
+            onPressText={() => setCaptionOpen((open) => !open)}
+          />
         ) : null}
       </View>
 

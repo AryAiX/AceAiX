@@ -136,6 +136,7 @@ export const settings = {
   notifyFollows: '新粉丝',
   notifyMessages: '私信',
   notifyComments: '评论',
+  notifyMentions: '提及',
   notifyLikes: '点赞',
   notifyMeetups: '约球的球局',
   meetupPlaces: '约球提醒地点',

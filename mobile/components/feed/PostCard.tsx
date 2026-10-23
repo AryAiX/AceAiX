@@ -373,6 +373,7 @@ function PostCardBase({
       {caption ? (
         <TranslatableText
           text={caption}
+          mentions={post.mentions}
           sourceRef={{ type: 'post', id: post.id }}
           variant="body"
           numberOfLines={showAll ? undefined : CAPTION_LINES}

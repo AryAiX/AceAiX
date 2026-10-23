@@ -75,6 +75,8 @@ export const errors = {
   meetupPlaceInvalid: 'Jeder Ort muss 2 bis 80 Zeichen lang sein.',
   cityLength: 'Eine Stadt braucht 2 bis 80 Zeichen.',
   meetupPlacesLimit: 'Du kannst bis zu 5 Orte hinzufügen.',
+  mentionLimit: 'Du kannst bis zu 10 Personen erwähnen.',
+  mentionInvalid: 'Mit einer Erwähnung ist etwas schiefgegangen. Entferne sie und füge sie noch einmal hinzu.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "Nur ein Vereins- oder Akademiekonto kann eine Vereinsseite erstellen.",
   clubPageExists: "Du verwaltest bereits eine Vereinsseite.",

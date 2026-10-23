@@ -36,6 +36,15 @@ describe('database hints', () => {
     );
   });
 
+  it('explains a mention the server refused', () => {
+    expect(errorMessage({ code: '22023', hint: 'mention_limit' })).toBe(
+      'You can mention up to 10 people.',
+    );
+    expect(errorMessage({ code: '22023', hint: 'mention_invalid' })).toBe(
+      'Something went wrong with a mention. Try removing it and adding it again.',
+    );
+  });
+
   it('explains the age floor', () => {
     expect(errorMessage({ code: '23514', hint: 'age_below_minimum' })).toContain('13');
   });

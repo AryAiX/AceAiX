@@ -74,6 +74,8 @@ export const errors = {
   meetupPlaceInvalid: '每个地点须为 2 至 80 个字符。',
   cityLength: '城市名称需要 2 到 80 个字符。',
   meetupPlacesLimit: '最多可以添加 5 个地点。',
+  mentionLimit: '最多可以提及其他 10 个人。',
+  mentionInvalid: '有一处提及出了问题。请先删掉它，再重新添加。',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "只有俱乐部或学院账号可以创建俱乐部主页。",
   clubPageExists: "你已经在管理一个俱乐部主页。",

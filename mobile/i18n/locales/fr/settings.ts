@@ -143,6 +143,7 @@ export const settings = {
   notifyFollows: 'Nouveaux abonnés',
   notifyMessages: 'Messages',
   notifyComments: 'Commentaires',
+  notifyMentions: 'Mentions',
   notifyLikes: 'Likes',
   notifyMeetups: 'Matchs dans Jouer',
   meetupPlaces: 'Lieux des alertes Jouer',

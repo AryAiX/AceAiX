@@ -49,6 +49,9 @@ const EN: Record<string, string> = {
   'errors.meetupPlaceInvalid': 'Each place must be 2 to 80 characters.',
   'errors.cityLength': 'A city needs between 2 and 80 characters.',
   'errors.meetupPlacesLimit': 'You can add up to 5 places.',
+  'errors.mentionLimit': 'You can mention up to 10 people.',
+  'errors.mentionInvalid':
+    'Something went wrong with a mention. Try removing it and adding it again.',
   'errors.clubAccountOnly': "Only a club or academy account can create a club page.",
   'errors.clubPageExists': "You already run a club page.",
   'errors.clubPermission': "You don't have permission to do that for this club.",
@@ -150,6 +153,8 @@ const HINTS: Record<string, string> = {
   meetup_place_invalid: 'errors.meetupPlaceInvalid',
   city_length: 'errors.cityLength',
   meetup_places_limit: 'errors.meetupPlacesLimit',
+  mention_limit: 'errors.mentionLimit',
+  mention_invalid: 'errors.mentionInvalid',
   /* Club and academy pages (1014/01). */
   club_account_only: 'errors.clubAccountOnly',
   club_page_exists: 'errors.clubPageExists',

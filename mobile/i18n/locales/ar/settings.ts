@@ -148,6 +148,7 @@ export const settings = {
   notifyFollows: 'متابِعون جدد',
   notifyMessages: 'الرسائل',
   notifyComments: 'التعليقات',
+  notifyMentions: 'الإشارات',
   notifyLikes: 'الإعجابات',
   notifyMeetups: 'مباريات اللعب',
   meetupPlaces: 'أماكن تنبيهات اللعب',
