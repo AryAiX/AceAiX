@@ -397,3 +397,21 @@ export async function uploadPostMedia(
 export function postLink(postId: string): string {
   return webAppLink(`/post/${postId}`);
 }
+
+/** Posts this session has already sent. A repeat watch does not call again. */
+const recordedPostViews = new Set<string>();
+
+/**
+ * Count one watch of a video post, after the caller has played it.
+ * The server ignores the author, a duplicate, and a post this person
+ * cannot see. A failure stays quiet.
+ */
+export async function recordPostView(postId: string): Promise<void> {
+  if (!postId || recordedPostViews.has(postId)) return;
+  recordedPostViews.add(postId);
+  try {
+    await supabase.rpc('record_post_view', { p_post: postId });
+  } catch {
+    /* A missed view is not worth an error on screen. */
+  }
+}

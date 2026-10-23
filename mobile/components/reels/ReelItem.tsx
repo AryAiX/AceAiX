@@ -13,6 +13,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { isHighlight } from '@/lib/api.explore';
+import { recordPostView } from '@/lib/api.feed';
 import { reelVideo } from '@/lib/api.reels';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -107,6 +108,17 @@ function ReelItemBase({
       else player.pause();
     });
   }, [playing, player, safely]);
+
+  /* One view per post this session, and only after the clip has actually
+     been playing. Profile highlights are not posts, so they are not counted. */
+  useEffect(() => {
+    if (!playing || isHighlight(post)) return;
+    const id = post.id;
+    const timer = setTimeout(() => {
+      void recordPostView(id);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [playing, post.id, post.type]);
 
   useEffect(() => {
     const sub = player.addListener('timeUpdate', ({ currentTime }) => {

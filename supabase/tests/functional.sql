@@ -5152,4 +5152,61 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- QA-114. A watch counts once, never for the author, never for a post
+-- the viewer is not allowed to see.
+do $$
+declare
+  v_post uuid;
+  v_hidden uuid;
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.record_post_view(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.record_post_view(uuid)', 'EXECUTE'),
+    'only a signed-in user can record a post view');
+
+  insert into public.posts (author_id, type, caption, audience)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'QA-114 public clip', 'public'
+  ) returning id into v_post;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'a viewer''s first call adds 1 to view_count');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'a second call does not add another view');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'the author''s call does not count');
+
+  insert into public.posts (author_id, type, caption, audience, is_hidden)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'QA-114 hidden clip', 'public', true
+  ) returning id into v_hidden;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_hidden);
+  reset role;
+  select view_count into v_count from public.posts where id = v_hidden;
+  perform tests.ok(v_count = 0, 'a viewer who may not see the post does not count');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

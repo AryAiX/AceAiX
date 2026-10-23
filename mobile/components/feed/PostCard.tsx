@@ -399,6 +399,7 @@ function PostCardBase({
         <View>
           <MediaCarousel
             media={post.media}
+            postId={post.id}
             isActive={isActive}
             onPress={handleMediaTap}
           />

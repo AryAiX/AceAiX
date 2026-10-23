@@ -16,6 +16,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { PostMedia } from '@/types/models';
+import { recordPostView } from '@/lib/api.feed';
 import { useCachedVideoSource } from '@/lib/videoCache';
 import { useFeedMute } from './feedMute';
 
@@ -40,12 +41,14 @@ function frameRatio(media: PostMedia[]): number {
 
 interface Props {
   media: PostMedia[];
+  /** The post these clips belong to. Absent, a watch is not recorded. */
+  postId?: string;
   /** True while this card is the one on screen — videos only play then. */
   isActive?: boolean;
   onPress?: () => void;
 }
 
-export function MediaCarousel({ media, isActive = false, onPress }: Props) {
+export function MediaCarousel({ media, postId, isActive = false, onPress }: Props) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const t = useT();
@@ -99,6 +102,7 @@ export function MediaCarousel({ media, isActive = false, onPress }: Props) {
             <MediaItem
               key={`${item.url}-${index}`}
               item={item}
+              postId={postId}
               width={width}
               height={height}
               muted={muted}
@@ -164,6 +168,7 @@ export function MediaCarousel({ media, isActive = false, onPress }: Props) {
 
 interface ItemProps {
   item: PostMedia;
+  postId?: string;
   width: number;
   height: number;
   isActive: boolean;
@@ -174,6 +179,7 @@ interface ItemProps {
 
 function MediaItem({
   item,
+  postId,
   width,
   height,
   isActive,
@@ -187,6 +193,7 @@ function MediaItem({
     return (
       <VideoItem
         item={item}
+        postId={postId}
         width={width}
         height={height}
         isActive={isActive}
@@ -213,7 +220,7 @@ function MediaItem({
   );
 }
 
-function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress }: ItemProps) {
+function VideoItem({ item, postId, width, height, isActive, muted, onToggleMute, onPress }: ItemProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const t = useT();
@@ -221,6 +228,15 @@ function VideoItem({ item, width, height, isActive, muted, onToggleMute, onPress
   const isFocused = useIsFocused();
   const shouldPlay = isActive && isFocused;
   const source = useCachedVideoSource(item.url);
+
+  useEffect(() => {
+    if (!shouldPlay || !postId) return;
+    const id = postId;
+    const timer = setTimeout(() => {
+      void recordPostView(id);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [shouldPlay, postId]);
 
   const player = useVideoPlayer(source, (p) => {
     p.loop = true;
