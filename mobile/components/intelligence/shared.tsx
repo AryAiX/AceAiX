@@ -204,7 +204,14 @@ export function GiRing({
           );
         })}
       </Svg>
-      <Text variant="display" style={{ fontSize: size * 0.3, lineHeight: size * 0.34 }}>
+      <Text
+        variant="display"
+        style={{
+          fontSize: size * 0.28,
+          lineHeight: size * 0.28 * 1.15,
+          transform: [{ translateY: size * 0.04 }],
+        }}
+      >
         {score == null ? '–' : Math.round(target * p)}
       </Text>
     </View>
