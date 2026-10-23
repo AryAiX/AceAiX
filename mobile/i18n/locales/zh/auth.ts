@@ -106,6 +106,9 @@ export const auth = {
       '我们问这个是为了保护年纪较小的运动员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
     dobSubtitleOther:
       '我们问这个是为了保护年纪较小的成员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
+    dobTitleSponsor: '确认你已年满18岁',
+    dobSubtitleSponsor:
+      '我们需要管理这个品牌账号的人的出生日期。它不会显示在你的品牌资料上。',
     dobChoose: '选择出生日期',
     dobChange: '更改',
     dobSelectedA11y: '出生日期，{{date}}。点击更改',

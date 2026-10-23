@@ -116,6 +116,9 @@ export const auth = {
       'Te lo preguntamos para proteger a los deportistas más jóvenes. Tu fecha exacta no se le muestra nunca a nadie, solo un rango de edad.',
     dobSubtitleOther:
       'Te lo preguntamos para proteger a los miembros más jóvenes. Tu fecha exacta no se le muestra nunca a nadie, solo un rango de edad.',
+    dobTitleSponsor: 'Confirma que tienes 18 años o más',
+    dobSubtitleSponsor:
+      'Necesitamos la fecha de nacimiento de la persona que gestiona esta cuenta de marca. Nunca se muestra en el perfil de tu marca.',
     dobChoose: 'Elige tu fecha de nacimiento',
     dobChange: 'Cambiar',
     dobSelectedA11y: 'Fecha de nacimiento, {{date}}. Cambiarla',

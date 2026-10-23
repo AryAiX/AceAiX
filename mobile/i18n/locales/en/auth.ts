@@ -112,6 +112,9 @@ export const auth = {
       'We ask so we can keep younger athletes safe. Your exact birthday is never shown to anyone — only an age range.',
     dobSubtitleOther:
       'We ask so we can keep younger members safe. Your exact birthday is never shown to anyone — only an age range.',
+    dobTitleSponsor: "Confirm you're 18 or over",
+    dobSubtitleSponsor:
+      "We need the date of birth of the person managing this brand account. It's never shown on your brand profile.",
     dobChoose: 'Choose your date of birth',
     dobChange: 'Change',
     dobSelectedA11y: 'Date of birth, {{date}}. Change it',

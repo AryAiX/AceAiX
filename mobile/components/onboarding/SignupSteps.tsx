@@ -367,6 +367,7 @@ export function DateOfBirthStep({
   const tooYoung = age !== null && age < MINIMUM_AGE;
   const isMinor = age !== null && age >= MINIMUM_AGE && age < 18;
   const adultOnlyRole = isMinor && signupRoleRequiresAdult(role) ? role : null;
+  const isSponsor = role === 'sponsor';
 
   const maximumDate = new Date();
   const minimumDate = new Date();
@@ -375,9 +376,13 @@ export function DateOfBirthStep({
   return (
     <View>
       <StepHeading
-        title={t('auth.signUp.dobTitle')}
+        title={t(isSponsor ? 'auth.signUp.dobTitleSponsor' : 'auth.signUp.dobTitle')}
         subtitle={t(
-          !role || role === 'athlete' ? 'auth.signUp.dobSubtitle' : 'auth.signUp.dobSubtitleOther',
+          isSponsor
+            ? 'auth.signUp.dobSubtitleSponsor'
+            : !role || role === 'athlete'
+              ? 'auth.signUp.dobSubtitle'
+              : 'auth.signUp.dobSubtitleOther',
         )}
       />
 

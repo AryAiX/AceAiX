@@ -112,6 +112,9 @@ export const auth = {
       'Wir fragen, um jüngere Sportler zu schützen. Dein genauer Geburtstag wird niemandem gezeigt — nur eine Altersgruppe.',
     dobSubtitleOther:
       'Wir fragen, um jüngere Mitglieder zu schützen. Dein genauer Geburtstag wird niemandem gezeigt — nur eine Altersgruppe.',
+    dobTitleSponsor: 'Bestätige, dass du 18 oder älter bist',
+    dobSubtitleSponsor:
+      'Wir brauchen das Geburtsdatum der Person, die dieses Markenkonto verwaltet. Es wird nie in deinem Markenprofil angezeigt.',
     dobChoose: 'Wähle dein Geburtsdatum',
     dobChange: 'Ändern',
     dobSelectedA11y: 'Geburtsdatum, {{date}}. Ändern',

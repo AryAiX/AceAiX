@@ -114,6 +114,9 @@ export const auth = {
       'On le demande pour protéger les plus jeunes. Ta date de naissance exacte n’est jamais montrée à personne — seulement une tranche d’âge.',
     dobSubtitleOther:
       'On le demande pour protéger les membres les plus jeunes. Ta date de naissance exacte n’est jamais montrée à personne — seulement une tranche d’âge.',
+    dobTitleSponsor: 'Confirme que tu as 18 ans ou plus',
+    dobSubtitleSponsor:
+      'On a besoin de la date de naissance de la personne qui gère ce compte de marque. Elle n’apparaît jamais sur le profil de ta marque.',
     dobChoose: 'Choisis ta date de naissance',
     dobChange: 'Modifier',
     dobSelectedA11y: 'Date de naissance, {{date}}. La modifier',
