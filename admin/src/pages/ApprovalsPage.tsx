@@ -63,14 +63,33 @@ export default function ApprovalsPage() {
           <h2 className="mb-3 text-sm font-semibold text-ink">Verification requests</h2>
           {!data?.requests.length ? <Card><Empty title="No requests" /></Card> : (
             <div className="space-y-3">
-              {data.requests.map((r) => (
+              {data.requests.map((r) => {
+                const page = r.organization;
+                const subject = page ? `club page ${page.name}` : (r.user?.full_name?.trim() || 'Unnamed');
+                return (
                 <Card key={r.id} className="p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <PersonCell person={r.user} sub={`${label(r.user?.role)} · asked ${timeAgo(r.created_at)}`} />
-                    <div className="flex items-center gap-2"><Badge color="blue">{label(r.type)}</Badge><StatusBadge status={r.status} /></div>
+                    {page ? (
+                      <div className="min-w-0">
+                        <Badge color="violet">Club page</Badge>
+                        <div className="mt-1.5 text-base font-semibold text-ink">{page.name}</div>
+                        <p className="text-sm text-slate-500">{label(page.type)}{page.country ? ` · ${page.country}` : ''}</p>
+                        <div className="mt-3">
+                          <div className="mb-1 text-xs text-slate-500">Submitted by</div>
+                          <PersonCell person={r.user} sub={`${label(r.user?.role)} · asked ${timeAgo(r.created_at)}`} />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="min-w-0">
+                        <Badge color="slate">Person</Badge>
+                        <div className="mt-1.5">
+                          <PersonCell person={r.user} sub={`${label(r.user?.role)} · asked ${timeAgo(r.created_at)}`} />
+                        </div>
+                      </div>
+                    )}
+                    <StatusBadge status={r.status} />
                   </div>
                   <div className="mt-4"><Details x={r} bio={r.bio} city={r.city} email={r.email} /></div>
-                  {r.organization && <p className="mt-3 text-sm text-slate-600">Organization: <b>{r.organization.name}</b> ({label(r.organization.type)}, {r.organization.country ?? '—'})</p>}
                   <div className="mt-4">
                     <div className="text-xs text-slate-500">Documents</div>
                     {r.documents?.length ? (
@@ -85,22 +104,25 @@ export default function ApprovalsPage() {
                   {(r.status === 'pending' || r.status === 'more_info') && (
                     <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
                       <Button tone="success" size="sm" onClick={() => setDialog({
-                        title: `Approve ${r.user?.full_name ?? ''}`, confirm: 'Approve', tone: 'success', reason: 'none',
-                        body: 'The account gets the verified badge and full access for its role.',
+                        title: `Approve ${subject}`, confirm: 'Approve', tone: 'success', reason: 'none',
+                        body: page
+                          ? 'The club page gets the verified badge.'
+                          : 'The account gets the verified badge and full access for its role.',
                         onConfirm: async () => { await api.decideVerification(r.id, 'approved'); done(); },
                       })}>Approve</Button>
                       <Button size="sm" onClick={() => setDialog({
-                        title: 'Ask for more information', confirm: 'Send', reasonLabel: 'What do they need to send?',
+                        title: `Ask ${subject} for more information`, confirm: 'Send', reasonLabel: 'What do they need to send?',
                         onConfirm: async (reason) => { await api.decideVerification(r.id, 'more_info', reason); done(); },
                       })}>Need more info</Button>
                       <Button tone="danger" size="sm" onClick={() => setDialog({
-                        title: 'Reject verification', confirm: 'Reject', tone: 'danger',
+                        title: `Reject ${subject}`, confirm: 'Reject', tone: 'danger',
                         onConfirm: async (reason) => { await api.decideVerification(r.id, 'rejected', reason); done(); },
                       })}>Reject</Button>
                     </div>
                   )}
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -118,12 +140,19 @@ export default function ApprovalsPage() {
                           {u.sponsor?.company_name ?? u.coach?.specialty ?? u.bio ?? '—'}
                           <div className="text-xs text-slate-400">{u.email}</div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button tone="success" size="sm" onClick={() => setDialog({
-                            title: `Verify ${u.user.full_name ?? ''}`, confirm: 'Verify', tone: 'success', reason: 'optional', reasonLabel: 'Note (audit log)',
-                            onConfirm: async (reason) => { await api.setVerified(u.user.id, true, reason); done(); },
-                          })}>Verify</Button>
-                        </div>
+                        {u.user.role === 'club' ? (
+                          <div className="text-sm text-slate-400">
+                            <div>Waiting for club papers</div>
+                            <div className="text-xs">The club page is verified from its papers request.</div>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button tone="success" size="sm" onClick={() => setDialog({
+                              title: `Verify ${u.user.full_name ?? ''}`, confirm: 'Verify', tone: 'success', reason: 'optional', reasonLabel: 'Note (audit log)',
+                              onConfirm: async (reason) => { await api.setVerified(u.user.id, true, reason); done(); },
+                            })}>Verify</Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
