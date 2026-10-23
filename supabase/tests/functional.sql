@@ -5391,12 +5391,16 @@ end $$;
 
 -- ------------------------------------------------------------
 -- QA-109. The hand-added follow trigger is gone, so one follow
--- writes one notification row.
+-- writes one notification row. The real trigger's type is 'follow';
+-- the stray one's was 'connection'. Count only those, and only the
+-- rows this follow creates: signing the recipient up already wrote
+-- a score notification.
 do $$
 declare
   v_follower uuid := 'a1090000-0000-4000-8000-000000000001';
   v_target   uuid := 'a1090000-0000-4000-8000-000000000002';
-  v_count    integer;
+  v_before   integer;
+  v_after    integer;
 begin
   perform set_config('request.jwt.claim.role', 'service_role', true);
 
@@ -5405,12 +5409,17 @@ begin
     (v_target,   'qa109.target@test.local',   '{"full_name":"QA109 Target","role":"athlete"}');
   update public.user_private set date_of_birth = current_date - interval '26 years'
    where user_id in (v_follower, v_target);
+  insert into public.notification_preferences (user_id, follows)
+  values (v_target, true)
+  on conflict (user_id) do update set follows = true;
 
   perform tests.as_user(v_follower);
+  select count(*) into v_before from public.notifications
+   where user_id = v_target and type in ('follow', 'connection');
   perform public.toggle_follow(v_target);
-
-  select count(*) into v_count from public.notifications where user_id = v_target;
-  perform tests.ok(v_count = 1, 'a follow writes exactly one notification row');
+  select count(*) into v_after from public.notifications
+   where user_id = v_target and type in ('follow', 'connection');
+  perform tests.ok(v_after = v_before + 1, 'a follow writes exactly one notification row');
 end $$;
 
 -- ------------------------------------------------------------
