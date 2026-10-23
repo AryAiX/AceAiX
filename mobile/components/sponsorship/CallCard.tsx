@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { BadgeCheck, CalendarClock, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Badge, Button, Card, Text } from '@/components/ui';
+import { Avatar, Badge, Button, Card, ExpandableText, Text } from '@/components/ui';
 import { sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { CallFeedItem } from '@/lib/api.sponsorship';
@@ -59,9 +59,7 @@ export function CallCard({ call, onApply, onOpenSponsor }: Props) {
       <View style={{ gap: 4 }}>
         <Text variant="subheading">{call.title}</Text>
         {call.description ? (
-          <Text variant="body" tone="secondary" numberOfLines={3}>
-            {call.description}
-          </Text>
+          <ExpandableText text={call.description} lines={3} variant="body" tone="secondary" />
         ) : null}
       </View>
 

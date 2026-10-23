@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Badge, Button, Card, Text, useToast } from '@/components/ui';
+import { Avatar, Badge, Button, Card, ExpandableText, Text, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import { startConversation } from '@/lib/api';
 import { respondSponsorship, withdrawSponsorship, type Deal } from '@/lib/api.sponsorship';
@@ -95,9 +95,7 @@ export function DealRow({ deal, onChanged }: { deal: Deal; onChanged: () => void
         </Text>
       ) : null}
       {deal.message ? (
-        <Text variant="body" tone="secondary">
-          {deal.message}
-        </Text>
+        <ExpandableText text={deal.message} lines={3} variant="body" tone="secondary" />
       ) : null}
 
       {deal.can_respond ? (

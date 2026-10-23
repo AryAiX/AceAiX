@@ -10,6 +10,7 @@ import {
   Card,
   EmptyState,
   ErrorState,
+  ExpandableText,
   Header,
   Reveal,
   Screen,
@@ -192,6 +193,9 @@ export default function SponsorshipPortalScreen() {
                           amount,
                         )}
                       </Text>
+                      {request.pitch ? (
+                        <ExpandableText text={request.pitch} lines={3} variant="body" tone="secondary" />
+                      ) : null}
                       <TagRow group="need" tags={request.needs} />
                       {request.pending_offers > 0 ? (
                         <Text variant="captionStrong" tone="primary">
@@ -278,6 +282,9 @@ export default function SponsorshipPortalScreen() {
                         call.deadline ? t('sponsorship.deadline', { date: fullDate(call.deadline) }) : null,
                       )}
                     </Text>
+                    {call.description ? (
+                      <ExpandableText text={call.description} lines={3} variant="body" tone="secondary" />
+                    ) : null}
                     <TagRow group="offer" tags={call.offers} />
                     {call.pending_applications > 0 ? (
                       <Text variant="captionStrong" tone="primary">
