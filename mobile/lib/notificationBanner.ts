@@ -156,11 +156,27 @@ function asString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
 
+function asCount(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
 function asBoolean(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return null;
+    }
+  }
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
 }
@@ -178,7 +194,7 @@ function rowFromRecord(record: Record<string, unknown> | null | undefined): Bann
     actor_id: asString(record.actor_id),
     entity_type: asString(record.entity_type),
     entity_id: asString(record.entity_id),
-    actor_count: typeof record.actor_count === 'number' ? record.actor_count : null,
+    actor_count: asCount(record.actor_count),
     data,
     created_at: asString(record.created_at),
     updated_at: asString(record.updated_at),
@@ -192,4 +208,46 @@ export function bannerEventFromPayload(payload: NotificationRealtimePayload): Ba
     commitTimestamp: payload.commit_timestamp ?? null,
     row: rowFromRecord(source),
   };
+}
+
+/**
+ * A coalesced write can arrive without the columns it did not assign.
+ * The notifications screen reads the stored row, so the banner has to as well
+ * before it chooses the sentence or the tap target.
+ *
+ * An insert already carries the whole row. Title is not nullable, so a missing
+ * title means the payload was partial.
+ */
+export function rowNeedsHydration(event: BannerEvent): boolean {
+  const row = event.row;
+  if (!row.id) return false;
+  if (!row.title?.trim() || !row.type) return true;
+  if (event.eventType !== 'UPDATE') {
+    // Nearby games and mentions compose their sentence from `data`.
+    return row.data == null && (row.type === 'meetup_nearby' || row.type === 'mention');
+  }
+  if (!row.entity_type || row.actor_count == null || row.data == null) return true;
+  return false;
+}
+
+/** Fill only the fields the payload left out. Read flags and times stay put. */
+export function applyHydratedRow(event: BannerEvent, record: Record<string, unknown>): BannerEvent {
+  const fetched = rowFromRecord(record);
+  const row: BannerRow = { ...event.row };
+  if (!row.type && fetched.type) row.type = fetched.type;
+  if (!row.title?.trim() && fetched.title) row.title = fetched.title;
+  if (row.body == null && fetched.body) row.body = fetched.body;
+  if (!row.actor_id && fetched.actor_id) row.actor_id = fetched.actor_id;
+  if (!row.entity_type && fetched.entity_type) row.entity_type = fetched.entity_type;
+  if (!row.entity_id && fetched.entity_id) row.entity_id = fetched.entity_id;
+  if (row.actor_count == null && fetched.actor_count != null) row.actor_count = fetched.actor_count;
+  if (row.data == null && fetched.data) row.data = fetched.data;
+  if (!row.created_at && fetched.created_at) row.created_at = fetched.created_at;
+  return { ...event, row };
+}
+
+/** Title and body, the same two lines the notifications row draws. */
+export function bannerText(title: string, body: string | null): string {
+  const parts = [title, body].filter((part) => part && part.trim());
+  return parts.join('\n');
 }

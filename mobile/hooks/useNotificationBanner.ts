@@ -7,14 +7,18 @@ import { useT } from '@/i18n';
 import { getNotificationActor, markNotificationsRead } from '@/lib/api';
 import {
   BANNER_COALESCE_MS,
+  applyHydratedRow,
   bannerEventFromPayload,
+  bannerText,
   newerBannerEvent,
+  rowNeedsHydration,
   shouldShowBanner,
   type BannerEvent,
   type NotificationRealtimePayload,
 } from '@/lib/notificationBanner';
 import { getCurrentPath, getOpenConversation } from '@/lib/openScreen';
 import { notificationTarget } from '@/lib/routes';
+import { supabase } from '@/lib/supabase';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { AppNotification, NotificationType } from '@/types/models';
 
@@ -58,8 +62,42 @@ function toNotification(
 
 function bannerMessage(notification: AppNotification, t: ReturnType<typeof useT>): string {
   const copy = notificationCopy(notification, t);
-  const parts = [copy.title, copy.body].filter((part) => part && part.trim());
-  return parts.join('\n');
+  return bannerText(copy.title, copy.body) || bannerText(notification.title, notification.body);
+}
+
+const NOTIFICATION_COLUMNS =
+  'id, type, title, body, is_read, actor_id, entity_type, entity_id, actor_count, data, created_at, actor:user_profiles!notifications_actor_id_fkey(full_name, avatar_url)';
+
+function actorFromRow(
+  record: Record<string, unknown>,
+): { full_name: string | null; avatar_url: string | null } | null {
+  const raw = record.actor;
+  const actor = Array.isArray(raw) ? raw[0] : raw;
+  if (!actor || typeof actor !== 'object') return null;
+  const row = actor as Record<string, unknown>;
+  const fullName = typeof row.full_name === 'string' ? row.full_name : null;
+  const avatar = typeof row.avatar_url === 'string' ? row.avatar_url : null;
+  if (!fullName && !avatar) return null;
+  return { full_name: fullName, avatar_url: avatar };
+}
+
+/** The stored row, when the realtime payload left out what the screen shows. */
+async function hydrate(
+  event: BannerEvent,
+): Promise<{ event: BannerEvent; actor: { full_name: string | null; avatar_url: string | null } | null }> {
+  if (!rowNeedsHydration(event)) return { event, actor: null };
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select(NOTIFICATION_COLUMNS)
+      .eq('id', event.row.id ?? '')
+      .maybeSingle();
+    if (error || !data) return { event, actor: null };
+    const record = data as unknown as Record<string, unknown>;
+    return { event: applyHydratedRow(event, record), actor: actorFromRow(record) };
+  } catch {
+    return { event, actor: null };
+  }
 }
 
 export function useNotificationBanner(): void {
@@ -80,13 +118,17 @@ export function useNotificationBanner(): void {
     let cancelled = false;
 
     const flush = async () => {
-      const chosen = pending;
+      const queued = pending;
       pending = null;
       timer = null;
-      if (!chosen || cancelled) return;
+      if (!queued || cancelled) return;
 
-      let actor: { full_name: string | null; avatar_url: string | null } | null = null;
-      if (chosen.row.actor_id) {
+      const hydrated = await hydrate(queued);
+      const chosen = hydrated.event;
+      if (cancelled) return;
+
+      let actor = hydrated.actor;
+      if (!actor && chosen.row.actor_id) {
         try {
           actor = await getNotificationActor(chosen.row.actor_id);
         } catch {
@@ -95,6 +137,7 @@ export function useNotificationBanner(): void {
       }
       if (cancelled) return;
       // The chat they are in now, not the chat they were in when the row arrived.
+      // A partial message update is recognized only after the stored row is loaded.
       if (decide(chosen) !== 'show') return;
 
       const notification = toNotification(chosen, actor);
