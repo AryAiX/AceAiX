@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
-import { Stack, useRouter, useSegments, type Href } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments, type Href } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -29,7 +29,7 @@ import { LanguageGate } from '@/components/common/LanguageGate';
 import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
-import { Routes, routeDecision } from '@/lib/routes';
+import { Routes, routeDecision, skipsLanguagePicker } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -92,8 +92,17 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
 
 function Shell() {
   const theme = useTheme();
+  const segments = useSegments();
+  const pathname = usePathname();
   const { loading, configured } = useAuth();
   const { hydrating: languageLoading, hasChosen } = useI18n();
+  const livePath =
+    pathname ||
+    (Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : '');
+  const skipLanguagePicker = skipsLanguagePicker({
+    segments: segments as readonly string[],
+    pathname: livePath,
+  });
 
   /* Registers the push token when permission already exists and routes a
      notification tap. It never *asks* for permission here — that request is
@@ -123,9 +132,10 @@ function Shell() {
   /* Language comes before everything, including the session check: there is no
      point deciding which screen to show until we know what language to show it
      in. On every launch after the first, the stored choice makes this
-     invisible. */
+     invisible. The approval link is the exception — the provider has already
+     selected the device language and has not saved it. */
   if (languageLoading) return <BrandSplash />;
-  if (!hasChosen) return <LanguageGate />;
+  if (!hasChosen && !skipLanguagePicker) return <LanguageGate />;
 
   return (
     <View
@@ -181,6 +191,9 @@ function Shell() {
           {/* Legal is reachable from the signed-out welcome screen, so it must
               not be gated behind a session. */}
           <Stack.Screen name="legal" />
+          {/* The guardian opens this from the consent email, signed in or not.
+              routeDecision keeps parent-approval off the auth and onboarding redirects. */}
+          <Stack.Screen name="parent-approval" options={{ animation: 'fade' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
       </RouteGuard>

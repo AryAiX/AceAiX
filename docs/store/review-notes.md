@@ -76,8 +76,10 @@ state is visible:
    `<CONSENT_PAGE_URL>?token=demo-token-mina-0000000000000000000000`
    Approving on that page makes Mina discoverable, which is the behaviour under test.
 
-> **OPEN — before pasting, replace `<CONSENT_PAGE_URL>` with the deployed function
-> URL: `https://<project-ref>.supabase.co/functions/v1/guardian-consent`.**
+> **OPEN — before pasting, replace `<CONSENT_PAGE_URL>` with the
+> `CONSENT_PAGE_URL` function secret (the in-app page, for example
+> `https://app.aceaix.com/parent-approval`). The function URL redirects there
+> once that secret is set.**
 
 ## Seeing a minor protection refuse an action
 

@@ -18,6 +18,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { countries } from './countries';
 import { errors } from './errors';
@@ -35,5 +36,5 @@ import { clubMatch } from './clubMatch';
 /** Spanish. Typed against English, so a missing key is a compile error. */
 export const es: Translations = { common, language, auth, onboarding, feed, profile,
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
-  safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
+  safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
   club, clubSetup, clubManage, clubMatch };

@@ -18,6 +18,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { countries } from './countries';
 import { errors } from './errors';
@@ -57,7 +58,7 @@ type SingleFormPlurals<T> = {
 /** 简体中文。以英文为类型基准，少一个键就是编译错误。 */
 const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onboarding,
   feed, profile, score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging,
-  settings, safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
+  settings, safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
   club, clubSetup, clubManage, clubMatch };
 
 export const zh = catalogue as Translations;

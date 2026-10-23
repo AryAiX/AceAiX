@@ -172,13 +172,17 @@ export function routeDecision(input: {
   const inRecovery = isResetPasswordRoute(segments);
   const inOnboarding = group === '(onboarding)';
   const inAgeReview = group === 'age-review';
-  const isPublic = group === 'legal' || group === '+not-found';
+  // The guardian approval link is opened from an email. Most parents have no
+  // account; a parent who does must not be sent to welcome or onboarding.
+  const isParentApproval = group === 'parent-approval';
+  const isPublic = group === 'legal' || group === '+not-found' || isParentApproval;
   const atEntry = segments.length === 0;
 
   if (!hasSession) return !inAuth && !isPublic ? Routes.auth.welcome : null;
 
   // Supabase establishes a session before the recovery form is submitted.
   if (inRecovery) return null;
+  if (isParentApproval) return null;
   if (!profile) return null;
 
   if (requiresAgeReview(profile)) return inAgeReview ? null : Routes.ageReview;
@@ -186,6 +190,19 @@ export function routeDecision(input: {
 
   if (!profile.onboarding_completed) return inOnboarding ? null : Routes.onboarding;
   return inAuth || inOnboarding || atEntry ? Routes.home : null;
+}
+
+/**
+ * The first-launch language picker. The approval link is the one route that
+ * skips it: the screen uses the device language and does not store that guess.
+ */
+export function skipsLanguagePicker(input: {
+  segments?: readonly string[];
+  pathname?: string;
+}): boolean {
+  if (input.segments?.[0] === 'parent-approval') return true;
+  const path = (input.pathname ?? '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+  return path === '/parent-approval';
 }
 
 /**

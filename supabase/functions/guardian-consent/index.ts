@@ -5,21 +5,44 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * Guardian consent — the whole flow in one function.
  *
  *   POST { consent_id }        (authenticated as the minor)
- *        → e-mails the guardian a one-time link
+ *        → e-mails the guardian a one-time link. The link still points at
+ *          this function. There is no `decision` field on this body.
  *
- *   GET  ?token=…              (opened by the guardian from that e-mail)
- *        → renders the consent page
+ *   GET  ?token=…
+ *        → ?format=json: the page as data, and nothing more
+ *             { state: pending | answered | expired | invalid,
+ *               child_name,   // the name the HTML page shows, or null
+ *               options }     // checkbox defaults, or null when there is no form
+ *          Status codes match the HTML: 400 missing token, 404 unknown token,
+ *          200 already answered, 410 expired, 200 pending.
+ *        → CONSENT_PAGE_URL set, and format is not json: 302 to
+ *          CONSENT_PAGE_URL?token=<token>, so emails already sent still open
+ *          the approval page.
+ *        → otherwise: today's HTML page.
  *
- *   POST form-encoded          (submitted from that page)
- *        → records the decision via public.confirm_guardian_consent
+ *   POST JSON { token, decision: "approve" | "decline", allow_* }
+ *        → the guardian's decision. No JWT — the token is the credential,
+ *          same as the form. `decision` is what tells this apart from the
+ *          minor's { consent_id } post above.
+ *        → decline sets the row to revoked; approve calls
+ *          confirm_guardian_consent with the same booleans as the form.
+ *          Only JSON true counts as a ticked box.
+ *        → { ok, state } with the form's status codes.
+ *          state: granted | revoked | expired | invalid
  *
- * Serving the page from here means the flow works the moment the function is
- * deployed — it does not wait on the marketing site being live.
+ *   POST form-encoded          (submitted from the HTML fallback)
+ *        → the same decision, rendered as HTML
+ *
+ * Supabase rewrites text/html from *.supabase.co functions to text/plain, so
+ * the live page is the Expo route named by CONSENT_PAGE_URL. The HTML here
+ * remains for local use and for when that URL is not set.
  *
  * Environment:
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   (provided by the platform)
  *   RESEND_API_KEY                            (required for delivery)
  *   CONSENT_FROM_EMAIL                        (default: AceAiX <safety@aceaix.com>)
+ *   CONSENT_PAGE_URL                          (e.g. https://app.aceaix.com/parent-approval)
+ *                                             Leave unset until that route is deployed.
  */
 
 const CORS = {
@@ -33,6 +56,7 @@ const FROM = Deno.env.get("CONSENT_FROM_EMAIL") ?? "AceAiX <safety@aceaix.com>";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY");
+const CONSENT_PAGE_URL = (Deno.env.get("CONSENT_PAGE_URL") ?? "").trim();
 
 const admin = createClient(SUPABASE_URL, SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -50,6 +74,26 @@ function html(body: string, status = 200) {
     status,
     headers: { ...CORS, "Content-Type": "text/html; charset=utf-8" },
   });
+}
+
+function redirect(location: string) {
+  return new Response(null, {
+    status: 302,
+    headers: { ...CORS, Location: location },
+  });
+}
+
+/** Absolute page URL with the guardian token, or null when unset or unusable. */
+function consentPageLocation(token: string | null): string | null {
+  if (!CONSENT_PAGE_URL) return null;
+  try {
+    const target = new URL(CONSENT_PAGE_URL);
+    if (token) target.searchParams.set("token", token);
+    return target.toString();
+  } catch (err) {
+    console.error("CONSENT_PAGE_URL is not an absolute URL:", err);
+    return null;
+  }
 }
 
 function escape(value: string): string {
@@ -125,15 +169,37 @@ interface CurrentScopes {
  * left them. Pre-ticking
  * everything would quietly re-grant a scope the guardian had refused.
  */
+/** First-visit checkbox defaults. A returning guardian's grants replace these. */
+const FRESH_OPTIONS: CurrentScopes = {
+  allow_discovery: true,
+  allow_messaging: true,
+  allow_media: true,
+  allow_assessments: false,
+  allow_sponsorship: false,
+  allow_bookings: false,
+};
+
+function checkboxOptions(current: CurrentScopes | null): CurrentScopes {
+  if (!current) return { ...FRESH_OPTIONS };
+  return {
+    allow_discovery: Boolean(current.allow_discovery),
+    allow_messaging: Boolean(current.allow_messaging),
+    allow_media: Boolean(current.allow_media),
+    allow_assessments: Boolean(current.allow_assessments),
+    allow_sponsorship: Boolean(current.allow_sponsorship),
+    allow_bookings: Boolean(current.allow_bookings),
+  };
+}
+
 function decisionForm(
   token: string,
   childName: string,
   guardianName: string,
-  current: CurrentScopes | null,
+  options: CurrentScopes,
+  reviewing: boolean,
 ): string {
-  const on = (scope: keyof CurrentScopes, fresh: boolean) =>
-    (current ? current[scope] : fresh) ? "checked" : "";
-  const intro = current
+  const on = (scope: keyof CurrentScopes) => (options[scope] ? "checked" : "");
+  const intro = reviewing
     ? `<p>${escape(childName)} is asking you to review what you approved on AceAiX. The boxes
        below show your current choices — change only what you want to change.</p>`
     : `<p>Because they are under 18, nothing happens until you say so. Their profile is
@@ -149,7 +215,7 @@ function decisionForm(
     <input type="hidden" name="token" value="${escape(token)}">
 
     <label>
-      <input type="checkbox" name="allow_discovery" value="1" ${on("allow_discovery", true)}>
+      <input type="checkbox" name="allow_discovery" value="1" ${on("allow_discovery")}>
       <span>
         <span class="opt-title">Let coaches and clubs find them</span>
         <span class="opt-body">Their profile can appear in searches by verified coaches,
@@ -158,7 +224,7 @@ function decisionForm(
     </label>
 
     <label>
-      <input type="checkbox" name="allow_messaging" value="1" ${on("allow_messaging", true)}>
+      <input type="checkbox" name="allow_messaging" value="1" ${on("allow_messaging")}>
       <span>
         <span class="opt-title">Let verified coaches and clubs message them</span>
         <span class="opt-body">Only accounts AceAiX has verified can start a conversation.
@@ -167,7 +233,7 @@ function decisionForm(
     </label>
 
     <label>
-      <input type="checkbox" name="allow_media" value="1" ${on("allow_media", true)}>
+      <input type="checkbox" name="allow_media" value="1" ${on("allow_media")}>
       <span>
         <span class="opt-title">Let them share photos and clips</span>
         <span class="opt-body">Highlights and posts they choose to publish.</span>
@@ -175,7 +241,7 @@ function decisionForm(
     </label>
 
     <label>
-      <input type="checkbox" name="allow_assessments" value="1" ${on("allow_assessments", false)}>
+      <input type="checkbox" name="allow_assessments" value="1" ${on("allow_assessments")}>
       <span>
         <span class="opt-title">Let them take the Game Intelligence games</span>
         <span class="opt-body">Short timed games that measure reaction, focus and football
@@ -185,7 +251,7 @@ function decisionForm(
     </label>
 
     <label>
-      <input type="checkbox" name="allow_sponsorship" value="1" ${on("allow_sponsorship", false)}>
+      <input type="checkbox" name="allow_sponsorship" value="1" ${on("allow_sponsorship")}>
       <span>
         <span class="opt-title">Let them ask for and accept sponsorship</span>
         <span class="opt-body">They can ask companies to back a tournament or a season, and apply to
@@ -196,7 +262,7 @@ function decisionForm(
     </label>
 
     <label>
-      <input type="checkbox" name="allow_bookings" value="1" ${on("allow_bookings", false)}>
+      <input type="checkbox" name="allow_bookings" value="1" ${on("allow_bookings")}>
       <span>
         <span class="opt-title">Let them book sessions with verified coaches</span>
         <span class="opt-body">They can book a training session, a consultation or a class from a
@@ -281,6 +347,229 @@ async function sendEmail(to: string, guardianName: string, childName: string, to
   return { sent: true };
 }
 
+// ── What the page shows ──────────────────────────────────────────────────────
+type ConsentState = "pending" | "answered" | "expired" | "invalid";
+
+interface ConsentView {
+  status: number;
+  state: ConsentState;
+  /** The name the HTML heading uses. Null when that page shows no name. */
+  childName: string | null;
+  guardianName: string;
+  options: CurrentScopes | null;
+  reviewing: boolean;
+  token: string;
+  invalidHtml: "missing" | "unknown" | null;
+}
+
+async function describeConsent(token: string | null): Promise<ConsentView> {
+  const empty = (status: number, state: ConsentState, invalidHtml: ConsentView["invalidHtml"]): ConsentView => ({
+    status,
+    state,
+    childName: null,
+    guardianName: "",
+    options: null,
+    reviewing: false,
+    token: token ?? "",
+    invalidHtml,
+  });
+
+  if (!token) return empty(400, "invalid", "missing");
+
+  const { data: consent } = await admin
+    .from("guardian_consents")
+    .select("id, status, guardian_name, guardian_email, minor_user_id, token_expires_at")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (!consent) return empty(404, "invalid", "unknown");
+  if (consent.status !== "pending") return empty(200, "answered", null);
+  if (new Date(consent.token_expires_at).getTime() < Date.now()) {
+    return empty(410, "expired", null);
+  }
+
+  const { data: child } = await admin
+    .from("user_profiles")
+    .select("full_name")
+    .eq("id", consent.minor_user_id)
+    .maybeSingle();
+
+  /* This guardian's own live approval, if any — submitting replaces it
+     (confirm_guardian_consent, 1006/02). Another guardian's is not theirs
+     to see or change. */
+  const { data: current } = await admin
+    .from("guardian_consents")
+    .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings")
+    .eq("minor_user_id", consent.minor_user_id)
+    .eq("guardian_email", consent.guardian_email)
+    .eq("status", "granted")
+    .order("granted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const prior = (current as CurrentScopes | null) ?? null;
+  return {
+    status: 200,
+    state: "pending",
+    childName: child?.full_name ?? "Your child",
+    guardianName: consent.guardian_name ?? "",
+    options: checkboxOptions(prior),
+    reviewing: prior !== null,
+    token,
+    invalidHtml: null,
+  };
+}
+
+function consentJson(view: ConsentView): Response {
+  return json(
+    {
+      state: view.state,
+      child_name: view.childName,
+      options: view.options,
+    },
+    view.status,
+  );
+}
+
+function consentPageHtml(view: ConsentView): Response {
+  if (view.invalidHtml === "missing") {
+    return html(page("<h1>That link is not valid.</h1>"), view.status);
+  }
+  if (view.invalidHtml === "unknown") {
+    return html(
+      page(`<h1>That link is not valid</h1>
+          <p>It may already have been used. If you need a new one, ask your child to
+          resend it from the AceAiX app, or contact
+          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
+      view.status,
+    );
+  }
+  if (view.state === "answered") {
+    return html(
+      page(`<h1>This request has already been answered</h1>
+          <p>Nothing further is needed. To change your decision, e-mail
+          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
+      view.status,
+    );
+  }
+  if (view.state === "expired") {
+    return html(
+      page(`<h1>This link has expired</h1>
+          <p>Ask your child to send a new request from the AceAiX app.</p>`),
+      view.status,
+    );
+  }
+  return html(
+    page(
+      decisionForm(
+        view.token,
+        view.childName ?? "Your child",
+        view.guardianName,
+        view.options ?? checkboxOptions(null),
+        view.reviewing,
+      ),
+    ),
+    view.status,
+  );
+}
+
+// ── Recording the guardian's decision (form and JSON share this) ─────────────
+interface DecisionInput {
+  token: string;
+  decision: string;
+  allow_discovery: boolean;
+  allow_messaging: boolean;
+  allow_media: boolean;
+  allow_assessments: boolean;
+  allow_sponsorship: boolean;
+  allow_bookings: boolean;
+}
+
+interface DecisionOutcome {
+  ok: boolean;
+  state: "granted" | "revoked" | "expired" | "invalid";
+  status: 200 | 400 | 500;
+}
+
+async function recordDecision(input: DecisionInput): Promise<DecisionOutcome> {
+  if (input.decision === "decline") {
+    const { data: pending } = await admin
+      .from("guardian_consents")
+      .select("id, token_expires_at")
+      .eq("token", input.token)
+      .eq("status", "pending")
+      .maybeSingle();
+    if (!pending) return { ok: false, state: "invalid", status: 400 };
+    if (new Date(pending.token_expires_at).getTime() < Date.now()) {
+      return { ok: false, state: "expired", status: 400 };
+    }
+
+    const { error: declineError } = await admin
+      .from("guardian_consents")
+      .update({ status: "revoked", revoked_at: new Date().toISOString() })
+      .eq("id", pending.id)
+      .eq("status", "pending");
+    if (declineError) return { ok: false, state: "invalid", status: 500 };
+    return { ok: true, state: "revoked", status: 200 };
+  }
+
+  const { data, error } = await admin.rpc("confirm_guardian_consent", {
+    p_token: input.token,
+    p_allow_discovery: input.allow_discovery,
+    p_allow_messaging: input.allow_messaging,
+    p_allow_media: input.allow_media,
+    p_allow_assessments: input.allow_assessments,
+    p_allow_sponsorship: input.allow_sponsorship,
+    p_allow_bookings: input.allow_bookings,
+  });
+
+  if (error || !data?.ok) {
+    const state = data?.error === "token_expired" ? "expired" : "invalid";
+    return { ok: false, state, status: 400 };
+  }
+  return { ok: true, state: "granted", status: 200 };
+}
+
+function decisionHtml(outcome: DecisionOutcome): Response {
+  if (!outcome.ok) {
+    if (outcome.status === 500) {
+      return html(page("<h1>We couldn't record that</h1><p>Please try again.</p>"), 500);
+    }
+    return html(
+      page(`<h1>We couldn't record that</h1>
+            <p>The link may have expired or already been used. Contact
+            <a href="mailto:safety@aceaix.com">safety@aceaix.com</a> and we will help.</p>`),
+      outcome.status,
+    );
+  }
+  if (outcome.state === "revoked") {
+    return html(
+      page(`<div class="ok">✓</div>
+          <h1>Thank you — nothing has been shared</h1>
+          <p>Their profile stays hidden and nobody can message them. They can ask
+          again later if you change your mind.</p>`),
+    );
+  }
+  return html(
+    page(`<div class="ok">✓</div>
+        <h1>Approved — thank you</h1>
+        <p>Their profile is now visible to verified coaches and clubs, with the
+        permissions you chose.</p>
+        <p>You can change or withdraw this at any time by e-mailing
+        <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>. We will always
+        act on a parent or guardian's request.</p>`),
+  );
+}
+
+/** JSON true is a ticked box. Anything else, including a missing field, is not. */
+function optedIn(value: unknown): boolean {
+  return value === true;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
 // ── Handler ──────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: CORS });
@@ -294,149 +583,72 @@ Deno.serve(async (req: Request) => {
   // ---- The guardian opening the link ----
   if (req.method === "GET") {
     const token = url.searchParams.get("token");
-    if (!token) return html(page("<h1>That link is not valid.</h1>"), 400);
-
-    const { data: consent } = await admin
-      .from("guardian_consents")
-      .select("id, status, guardian_name, guardian_email, minor_user_id, token_expires_at")
-      .eq("token", token)
-      .maybeSingle();
-
-    if (!consent) {
-      return html(
-        page(`<h1>That link is not valid</h1>
-          <p>It may already have been used. If you need a new one, ask your child to
-          resend it from the AceAiX app, or contact
-          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
-        404,
-      );
+    const wantsJson = url.searchParams.get("format") === "json";
+    if (!wantsJson) {
+      const location = consentPageLocation(token);
+      if (location) return redirect(location);
     }
-    if (consent.status !== "pending") {
-      return html(
-        page(`<h1>This request has already been answered</h1>
-          <p>Nothing further is needed. To change your decision, e-mail
-          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
-      );
-    }
-    if (new Date(consent.token_expires_at).getTime() < Date.now()) {
-      return html(
-        page(`<h1>This link has expired</h1>
-          <p>Ask your child to send a new request from the AceAiX app.</p>`),
-        410,
-      );
-    }
-
-    const { data: child } = await admin
-      .from("user_profiles")
-      .select("full_name")
-      .eq("id", consent.minor_user_id)
-      .maybeSingle();
-
-    /* This guardian's own live approval, if any — submitting replaces it
-       (confirm_guardian_consent, 1006/02). Another guardian's is not theirs
-       to see or change. */
-    const { data: current } = await admin
-      .from("guardian_consents")
-      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings")
-      .eq("minor_user_id", consent.minor_user_id)
-      .eq("guardian_email", consent.guardian_email)
-      .eq("status", "granted")
-      .order("granted_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    return html(
-      page(
-        decisionForm(
-          token,
-          child?.full_name ?? "Your child",
-          consent.guardian_name ?? "",
-          (current as CurrentScopes | null) ?? null,
-        ),
-      ),
-    );
+    const view = await describeConsent(token);
+    return wantsJson ? consentJson(view) : consentPageHtml(view);
   }
 
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const contentType = req.headers.get("content-type") ?? "";
 
-  // ---- The guardian submitting the form ----
+  // ---- The guardian submitting the HTML form ----
   if (contentType.includes("application/x-www-form-urlencoded")) {
     const form = await req.formData();
-    const token = String(form.get("token") ?? "");
-    const decision = String(form.get("decision") ?? "approve");
-
-    if (decision === "decline") {
-      const { data: pending } = await admin
-        .from("guardian_consents")
-        .select("id, token_expires_at")
-        .eq("token", token)
-        .eq("status", "pending")
-        .maybeSingle();
-      if (!pending || new Date(pending.token_expires_at).getTime() < Date.now()) {
-        return html(
-          page(`<h1>We couldn't record that</h1>
-            <p>The link may have expired or already been used. Contact
-            <a href="mailto:safety@aceaix.com">safety@aceaix.com</a> and we will help.</p>`),
-          400,
-        );
-      }
-
-      const { error: declineError } = await admin
-        .from("guardian_consents")
-        .update({ status: "revoked", revoked_at: new Date().toISOString() })
-        .eq("id", pending.id)
-        .eq("status", "pending");
-      if (declineError) {
-        return html(page("<h1>We couldn't record that</h1><p>Please try again.</p>"), 500);
-      }
-
-      return html(
-        page(`<div class="ok">✓</div>
-          <h1>Thank you — nothing has been shared</h1>
-          <p>Their profile stays hidden and nobody can message them. They can ask
-          again later if you change your mind.</p>`),
-      );
-    }
-
-    const { data, error } = await admin.rpc("confirm_guardian_consent", {
-      p_token: token,
-      p_allow_discovery: form.get("allow_discovery") === "1",
-      p_allow_messaging: form.get("allow_messaging") === "1",
-      p_allow_media: form.get("allow_media") === "1",
-      p_allow_assessments: form.get("allow_assessments") === "1",
-      p_allow_sponsorship: form.get("allow_sponsorship") === "1",
-      p_allow_bookings: form.get("allow_bookings") === "1",
+    const outcome = await recordDecision({
+      token: String(form.get("token") ?? ""),
+      decision: String(form.get("decision") ?? "approve"),
+      allow_discovery: form.get("allow_discovery") === "1",
+      allow_messaging: form.get("allow_messaging") === "1",
+      allow_media: form.get("allow_media") === "1",
+      allow_assessments: form.get("allow_assessments") === "1",
+      allow_sponsorship: form.get("allow_sponsorship") === "1",
+      allow_bookings: form.get("allow_bookings") === "1",
     });
-
-    if (error || !data?.ok) {
-      return html(
-        page(`<h1>We couldn't record that</h1>
-          <p>The link may have expired or already been used. Contact
-          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a> and we will help.</p>`),
-        400,
-      );
-    }
-
-    return html(
-      page(`<div class="ok">✓</div>
-        <h1>Approved — thank you</h1>
-        <p>Their profile is now visible to verified coaches and clubs, with the
-        permissions you chose.</p>
-        <p>You can change or withdraw this at any time by e-mailing
-        <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>. We will always
-        act on a parent or guardian's request.</p>`),
-    );
+    return decisionHtml(outcome);
   }
 
-  // ---- The app asking us to send (or resend) the e-mail ----
-  let payload: { consent_id?: string; resend?: boolean };
+  // ---- JSON: either the guardian's decision, or the minor asking to send ----
+  let parsed: unknown;
   try {
-    payload = await req.json();
+    parsed = await req.json();
   } catch {
     return json({ error: "Invalid JSON body" }, 400);
   }
+  if (!isPlainObject(parsed)) return json({ error: "Invalid JSON body" }, 400);
+
+  /*
+   * The minor's body is { consent_id } and has no decision. A body that
+   * carries `decision`, or a token and no consent_id, is the guardian.
+   * That post is not authenticated: the one-time token is the credential.
+   */
+  const hasConsentId = typeof parsed.consent_id === "string" && parsed.consent_id.length > 0;
+  const guardianDecision = "decision" in parsed ||
+    (typeof parsed.token === "string" && !hasConsentId);
+  if (guardianDecision) {
+    const token = typeof parsed.token === "string" ? parsed.token : null;
+    const decision = parsed.decision === "approve" || parsed.decision === "decline"
+      ? parsed.decision
+      : null;
+    if (!token || !decision) return json({ ok: false, state: "invalid" }, 400);
+    const outcome = await recordDecision({
+      token,
+      decision,
+      allow_discovery: optedIn(parsed.allow_discovery),
+      allow_messaging: optedIn(parsed.allow_messaging),
+      allow_media: optedIn(parsed.allow_media),
+      allow_assessments: optedIn(parsed.allow_assessments),
+      allow_sponsorship: optedIn(parsed.allow_sponsorship),
+      allow_bookings: optedIn(parsed.allow_bookings),
+    });
+    return json({ ok: outcome.ok, state: outcome.state }, outcome.status);
+  }
+
+  const payload = parsed as { consent_id?: string; resend?: boolean };
   if (!payload.consent_id) return json({ error: "consent_id is required" }, 400);
 
   const authHeader = req.headers.get("Authorization") ?? "";

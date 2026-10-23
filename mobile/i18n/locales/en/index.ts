@@ -16,6 +16,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { errors } from './errors';
 import { format } from './format';
@@ -55,6 +56,7 @@ export const en = {
   messaging,
   settings,
   safety,
+  parentApproval,
   sports,
   errors,
   format,
