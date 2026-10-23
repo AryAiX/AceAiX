@@ -13,7 +13,7 @@
  *   * Las frases van en primera persona, son sencillas y las entiende alguien
  *     de trece años. Las frases en negativo deben seguir en negativo y decir
  *     lo mismo (la puntuación depende de ello). Los textos de `item.*` los
- *     revisa antes del lanzamiento un psicólogo deportivo nativo (docs/31 §6).
+ *     revisa antes del lanzamiento un psicólogo deportivo nativo (docs/32 §6).
  */
 export const sportFit = {
   // ── Nombres ────────────────────────────────────────────────────────────────
@@ -35,6 +35,8 @@ export const sportFit = {
   introPoint2: 'Privado: los clubes y ojeadores nunca ven tus respuestas ni tu resultado.',
   introPoint3: 'Si has jugado a Inteligencia de juego, tu lectura del juego también cuenta.',
   introStart: 'Empezar',
+  answerAgain: 'Responder otra vez',
+  answerAgainNeedsParent: 'Tu madre, padre o tutor tiene que volver a permitirlo para que puedas responder.',
   introNotMedical: 'Es un cuestionario, no una evaluación médica ni psicológica.',
   introGiHint: 'Juega primero a Inteligencia de juego para un resultado más preciso.',
   introGiAction: 'Ir a los juegos',

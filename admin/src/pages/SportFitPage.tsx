@@ -10,7 +10,7 @@ import {
 const SPORT_LABEL: Record<string, string> = {
   football: 'Football', basketball: 'Basketball', volleyball: 'Volleyball', handball: 'Handball',
   cricket: 'Cricket', padel: 'Padel', esports: 'Esports', tennis: 'Tennis', martialArts: 'Martial arts',
-  chess: 'Chess', swimming: 'Swimming', athletics: 'Athletics',
+  chess: 'Chess', swimming: 'Swimming', athletics: 'Athletics', other: 'Other',
 };
 const DIM_LABEL: Record<string, string> = {
   drive: 'Drive', composure: 'Composure', focus: 'Focus', resilience: 'Bounce-back', boldness: 'Boldness',
@@ -155,7 +155,7 @@ function Usage({ data }: { data: NonNullable<Awaited<ReturnType<typeof api.sport
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
           <li>A sports psychologist reviews the 22 statements and their six translations.</li>
           <li>The same reviewer checks every row of the sport matrix and is recorded on it (Sport matrix tab).</li>
-          <li>Pilot with 300+ players: consistency per dimension and test–retest after 4–6 weeks (docs/31 §6).</li>
+          <li>Pilot with 300+ players: consistency per dimension and test–retest after 4–6 weeks (docs/32 §6).</li>
         </ul>
       </Card>
     </div>

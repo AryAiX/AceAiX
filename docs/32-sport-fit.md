@@ -1,4 +1,4 @@
-# 31 — Sport Fit
+# 32 — Sport Fit
 
 > A short mindset questionnaire (22 statements, about 4 minutes) and the sports it points to. The
 > player gets their three best-fitting sports, the reasons each one fits, and one thing to develop,
@@ -16,8 +16,9 @@
 ```
 Profile tab ─ Sport Fit card ─▶ /sport-fit
                                   │
-     consent not ok ◀─────────────┤  (guardian "mindset" scope, date of birth, not an athlete)
+     no result, consent not ok ◀───┤  (guardian "mindset" scope, date of birth, not an athlete)
      intro ─ "Start" ─────────────┤  (nudge to play Game Intelligence first, if they have not)
+     a saved result ──────────────┤  (still shown if a parent later turns "mindset" off)
                                   ▼
                        /sport-fit/questions
      one statement per screen, five answers, auto-advance, Back steps back
@@ -29,6 +30,8 @@ The result screen shows the top three sports as cards (fit %, what the sport ask
 fits, one thing to develop), every other sport as a bar, the mindset dimensions as bars, team-or-solo
 as a spectrum, the two Game Intelligence signals when used, "Find coaches", the retake date, a
 privacy note with **Delete my answers**, and the footnote: a suggestion to explore, not a verdict.
+If a parent later turns "mindset" off, that result and Delete stay on screen; "Answer again" is hidden,
+with a line that a parent needs to allow it again. The profile card still opens the result.
 
 The profile card shows "Best fit: Handball — then Basketball and Football · Only you can see this".
 

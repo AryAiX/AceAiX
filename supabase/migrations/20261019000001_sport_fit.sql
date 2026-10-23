@@ -23,7 +23,7 @@
 -- about how their child feels under pressure, so `allow_mindset` starts false
 -- for everyone.
 --
--- Docs: docs/31-sport-fit.md
+-- Docs: docs/32-sport-fit.md
 -- ============================================================
 
 -- ------------------------------------------------------------

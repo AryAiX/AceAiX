@@ -9,7 +9,7 @@
  *     这是一份关于你怎么训练、比赛时有什么感受的问卷。
  *   * `item.*` 里的句子用第一人称，简单直白，十三岁的读者也能看懂。
  *     反向表述的句子必须保持反向，意思不能变（计分依赖于此）。
- *     上线前需由以中文为母语的运动心理专家审读（docs/31 §6）。
+ *     上线前需由以中文为母语的运动心理专家审读（docs/32 §6）。
  *
  * “Game Intelligence”在中文里统一叫“球商”，“Talent Score”叫“天赋分”。
  */
@@ -33,6 +33,8 @@ export const sportFit = {
   introPoint2: '完全私密：俱乐部和球探永远看不到你的回答和结果。',
   introPoint3: '如果你玩过球商游戏，你读懂比赛的能力也会算进去。',
   introStart: '开始',
+  answerAgain: '再答一次',
+  answerAgainNeedsParent: '需要家长再次允许后，你才能再答一次。',
   introNotMedical: '这只是一份问卷，不是医学或心理方面的评估。',
   introGiHint: '先玩球商游戏，结果会更准确。',
   introGiAction: '去玩游戏',

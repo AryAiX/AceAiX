@@ -129,7 +129,7 @@ export default function MyProfileScreen() {
 
         {/* Beside the Talent Score, never inside it — docs/26 §4. */}
         {athlete ? <MyGiCard refreshKey={childKey} /> : null}
-        {/* Private to the athlete; never shown to anyone else — docs/31 §5. */}
+        {/* Private to the athlete; never shown to anyone else — docs/32 §5. */}
         {athlete ? <MySportFitCard refreshKey={childKey} /> : null}
 
         {/* The page a club runs, or an invitation to help run one. */}

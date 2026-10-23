@@ -8,7 +8,7 @@
 --      come out on top, average mindset by age group.
 --   2. The sport matrix (weights 0–3 and the team target per sport) is edited
 --      here, and each row is marked reviewed when a sports psychologist has
---      signed it off (docs/31 §6).
+--      signed it off (docs/32 §6).
 --
 --   The rule: nothing here returns one person's answers or result. Every
 --   number is a count or an average over a group, and a group smaller than

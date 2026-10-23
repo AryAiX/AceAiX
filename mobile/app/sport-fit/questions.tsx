@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { RotateCcw } from 'lucide-react-native';
 
@@ -35,7 +35,7 @@ import {
  *
  * One statement per screen, five answers as big buttons, and the next
  * statement arrives on its own after a tap. Back steps to the previous
- * statement; leaving from the first asks before throwing the answers away.
+ * statement; leaving the screen asks before throwing the answers away.
  * Nothing is saved until the last answer: the server scores the whole set or
  * nothing (`sport_fit_submit`).
  */
@@ -43,6 +43,7 @@ export default function SportFitQuestions() {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const navigation = useNavigation();
   const t = useT();
   const toast = useToast();
 
@@ -53,10 +54,34 @@ export default function SportFitQuestions() {
   const [leaving, setLeaving] = useState(false);
   const startedAt = useRef(Date.now());
   const advance = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const answersRef = useRef(answers);
+  const submittingRef = useRef(false);
+  /** Set before replaying a leave the player already confirmed, so the listener does not ask again. */
+  const allowLeave = useRef(false);
+  /** Set before the successful replace, so that removal is not a discard. */
+  const submitted = useRef(false);
+  const pendingAction = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null);
+  answersRef.current = answers;
+  submittingRef.current = submitting;
 
   useEffect(() => () => {
     if (advance.current) clearTimeout(advance.current);
   }, []);
+
+  // One listener for the header (via router.back), the hardware button, and the back gesture.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (allowLeave.current || submitted.current) return;
+      if (submittingRef.current || answeredCount(answersRef.current) === 0) {
+        if (submittingRef.current) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      pendingAction.current = e.data.action;
+      setLeaving(true);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const total = SF_ITEMS.length;
   const item = SF_ITEMS[index];
@@ -64,10 +89,12 @@ export default function SportFitQuestions() {
 
   const submit = useCallback(
     async (final: SfAnswers) => {
+      submittingRef.current = true;
       setSubmitting(true);
       try {
         const out = await submitSportFit(final, (Date.now() - startedAt.current) / 1000);
         if (out.quality === 'ok') {
+          submitted.current = true;
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
           router.replace({ pathname: Routes.sportFit, params: { fresh: '1' } });
           return;
@@ -76,6 +103,7 @@ export default function SportFitQuestions() {
       } catch (err) {
         toast.error(errorMessage(err));
       }
+      submittingRef.current = false;
       setSubmitting(false);
     },
     [router, toast],
@@ -85,6 +113,7 @@ export default function SportFitQuestions() {
     (value: SfAnswer) => {
       Haptics.selectionAsync().catch(() => {});
       const next = { ...answers, [item]: value };
+      answersRef.current = next;
       setAnswers(next);
       if (advance.current) clearTimeout(advance.current);
       advance.current = setTimeout(() => {
@@ -98,17 +127,43 @@ export default function SportFitQuestions() {
   const back = useCallback(() => {
     if (submitting) return;
     if (index > 0) setIndex(index - 1);
-    else if (answeredCount(answers) > 0) setLeaving(true);
     else router.back();
-  }, [index, answers, submitting, router]);
+  }, [index, submitting, router]);
 
   const restart = useCallback(() => {
+    answersRef.current = {};
+    submittingRef.current = false;
     setAnswers({});
     setIndex(0);
     setRetry(null);
     setSubmitting(false);
     startedAt.current = Date.now();
   }, []);
+
+  const confirmLeave = () => {
+    setLeaving(false);
+    allowLeave.current = true;
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    if (action) navigation.dispatch(action);
+    else router.back();
+  };
+
+  const leaveSheet = (
+    <ConfirmSheet
+      visible={leaving}
+      title={t('sportFit.leaveTitle')}
+      message={t('sportFit.leaveBody')}
+      confirmLabel={t('sportFit.leaveConfirm')}
+      cancelLabel={t('sportFit.leaveCancel')}
+      destructive
+      onConfirm={confirmLeave}
+      onCancel={() => {
+        pendingAction.current = null;
+        setLeaving(false);
+      }}
+    />
+  );
 
   const header = <Header back title={t('sportFit.questionsTitle')} onBack={back} />;
 
@@ -124,6 +179,7 @@ export default function SportFitQuestions() {
           actionLabel={t('sportFit.retryAction')}
           onAction={restart}
         />
+        {leaveSheet}
       </Screen>
     );
   }
@@ -135,6 +191,7 @@ export default function SportFitQuestions() {
           <Loader />
           <Text tone="secondary">{t('sportFit.submitting')}</Text>
         </View>
+        {leaveSheet}
       </Screen>
     );
   }
@@ -218,19 +275,7 @@ export default function SportFitQuestions() {
         <Button label={t('sportFit.back')} variant="ghost" onPress={back} testID="sf-back" />
       ) : null}
 
-      <ConfirmSheet
-        visible={leaving}
-        title={t('sportFit.leaveTitle')}
-        message={t('sportFit.leaveBody')}
-        confirmLabel={t('sportFit.leaveConfirm')}
-        cancelLabel={t('sportFit.leaveCancel')}
-        destructive
-        onConfirm={() => {
-          setLeaving(false);
-          router.back();
-        }}
-        onCancel={() => setLeaving(false)}
-      />
+      {leaveSheet}
     </Screen>
   );
 }
