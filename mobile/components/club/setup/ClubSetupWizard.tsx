@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, ErrorState, Loader, Screen, useToast } from '@/components/ui';
+import { Button, ErrorState, Loader, Screen, Text, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import { StepHeading, WizardTopBar } from '@/components/onboarding/Shared';
 import { addCustomCity, saveMatchPreferences } from '@/lib/api';
@@ -339,10 +339,15 @@ export function ClubSetupWizard({
             size="lg"
             fullWidth
             loading={saving}
-            disabled={busy}
+            disabled={busy || (step === 'verify' && !papers.document_path)}
             onPress={() => void advance()}
             testID="club-setup-continue"
           />
+          {step === 'verify' ? (
+            <Text variant="caption" tone="secondary">
+              {t('clubSetup.verify.attachToSend')}
+            </Text>
+          ) : null}
           {skipLabel ? (
             <Button
               label={skipLabel}

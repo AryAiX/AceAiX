@@ -3903,6 +3903,11 @@ begin
     tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana","accept_terms":true,"document_path":"someone-else/licence.pdf"}')$q$, v_org))
       = 'club_document_missing',
     'the licence must be the caller''s own upload');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana","accept_terms":true}')$q$, v_org))
+      = 'club_document_required'
+    and (select count(*) from public.verification_requests where organization_id = v_org) = 0,
+    'sending papers without a licence document is refused');
   perform set_config('request.jwt.claim.role', 'service_role', true);   -- as the admin would
   update public.organizations set verification_status = 'more_info' where id = v_org;
   perform tests.as_user(v_owner);

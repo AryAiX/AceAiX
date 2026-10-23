@@ -275,11 +275,14 @@ export default function ClubEditScreen() {
             label={t('clubSetup.edit.sendPapers')}
             fullWidth
             loading={saving === 'verify'}
-            disabled={busy}
+            disabled={busy || !papers.document_path}
             icon={<Send size={18} color={colors.textOnBrand} />}
             onPress={() => void sendPapers()}
             testID="club-edit-verify-send"
           />
+          <Text variant="caption" tone="secondary">
+            {t('clubSetup.verify.attachToSend')}
+          </Text>
         </Card>
 
         <EditSection

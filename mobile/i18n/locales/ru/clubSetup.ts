@@ -139,6 +139,7 @@ export const clubSetup = {
     docReplace: 'Заменить',
     docCamera: 'Сфотографировать',
     docCameraA11y: 'Сфотографировать лицензию',
+    attachToSend: 'Прикрепи лицензию или документ о регистрации, чтобы отправить их на проверку.',
     termsLine: 'Я принимаю {{terms}} и {{childSafety}}',
     termsLink: 'Условия',
     childSafetyLink: 'политику защиты детей',

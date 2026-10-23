@@ -141,6 +141,7 @@ export const clubSetup = {
     docReplace: 'استبدال',
     docCamera: 'التقط صورة',
     docCameraA11y: 'التقط صورة للرخصة',
+    attachToSend: 'أرفق رخصتك أو وثيقة التسجيل لإرسالها للمراجعة.',
     termsLine: 'أوافق على {{terms}} و{{childSafety}}',
     termsLink: 'الشروط',
     childSafetyLink: 'سياسة حماية الأطفال',

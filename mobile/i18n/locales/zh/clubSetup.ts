@@ -136,6 +136,7 @@ export const clubSetup = {
     docReplace: '替换',
     docCamera: '拍照',
     docCameraA11y: '给执照拍照',
+    attachToSend: '请附上执照或注册文件，以便提交审核。',
     termsLine: '我同意{{terms}}和{{childSafety}}',
     termsLink: '服务条款',
     childSafetyLink: '儿童安全政策',

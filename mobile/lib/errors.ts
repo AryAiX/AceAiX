@@ -69,6 +69,8 @@ const EN: Record<string, string> = {
   'errors.clubTermsRequired': "Please accept the Terms and the Child Safety policy.",
   'errors.clubContactPersonRequired': "Tell us who is filling this in.",
   'errors.clubDocumentMissing': "Upload the document first.",
+  'clubSetup.verify.attachToSend':
+    'Attach your licence or registration document to send it for review.',
   'errors.clubInviteeNotFound': "No AceAiX account uses that email. Ask them to sign up first.",
   'errors.clubInviteeMinor': "Page team members must be 18 or over.",
   'errors.clubInviteeUnavailable': "That account can't be added.",
@@ -174,6 +176,7 @@ const HINTS: Record<string, string> = {
   club_terms_required: 'errors.clubTermsRequired',
   club_contact_person_required: 'errors.clubContactPersonRequired',
   club_document_missing: 'errors.clubDocumentMissing',
+  club_document_required: 'clubSetup.verify.attachToSend',
   club_invitee_not_found: 'errors.clubInviteeNotFound',
   club_invitee_minor: 'errors.clubInviteeMinor',
   club_invitee_unavailable: 'errors.clubInviteeUnavailable',

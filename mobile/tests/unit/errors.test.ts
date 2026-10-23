@@ -36,6 +36,12 @@ describe('database hints', () => {
     );
   });
 
+  it('explains a club submission with no licence document', () => {
+    expect(errorMessage({ code: '22023', hint: 'club_document_required' })).toBe(
+      'Attach your licence or registration document to send it for review.',
+    );
+  });
+
   it('explains a mention the server refused', () => {
     expect(errorMessage({ code: '22023', hint: 'mention_limit' })).toBe(
       'You can mention up to 10 people.',

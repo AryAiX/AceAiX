@@ -142,6 +142,7 @@ export const clubSetup = {
     docReplace: 'Replace',
     docCamera: 'Take photo',
     docCameraA11y: 'Take a photo of your licence',
+    attachToSend: 'Attach your licence or registration document to send it for review.',
     termsLine: 'I accept the {{terms}} and the {{childSafety}}',
     termsLink: 'Terms',
     childSafetyLink: 'Child Safety policy',
