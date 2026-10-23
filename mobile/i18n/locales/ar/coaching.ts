@@ -51,6 +51,8 @@ export const coaching = {
   sTitle: 'العنوان',
   sTitlePlaceholder: 'جلسة قوة فردية',
   sDescription: 'ماذا يجري فيها',
+  readMore: 'اقرأ المزيد',
+  showLess: 'عرض أقل',
   sDuration: 'المدة',
   minutes: '{{n}} د',
   sCapacity: 'عدد الأماكن في الحصة',
