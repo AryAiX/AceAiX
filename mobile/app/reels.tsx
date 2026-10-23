@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, View, type LayoutChangeEvent, type ViewToken } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -38,6 +38,7 @@ export default function ReelsScreen() {
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
+  const focused = useIsFocused();
   const t = useT();
   const toast = useToast();
   const insets = useSafeAreaInsets();
@@ -162,7 +163,7 @@ export default function ReelsScreen() {
         post={item}
         width={size.width}
         height={size.height}
-        active={item.id === currentId}
+        active={focused && item.id === currentId}
         muted={muted}
         isOwn={!!user && user.id === item.author_id}
         bottomInset={insets.bottom}
@@ -174,7 +175,7 @@ export default function ReelsScreen() {
         onOpenProfile={openProfile}
       />
     ),
-    [size.width, size.height, currentId, muted, user, insets.bottom, toggleMute, onLike, onShare, onFollow, openProfile],
+    [size.width, size.height, currentId, focused, muted, user, insets.bottom, toggleMute, onLike, onShare, onFollow, openProfile],
   );
 
   const getItemLayout = useCallback(
@@ -216,7 +217,7 @@ export default function ReelsScreen() {
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={currentId}
+        extraData={focused ? currentId : null}
         pagingEnabled
         snapToInterval={size.height}
         snapToAlignment="start"

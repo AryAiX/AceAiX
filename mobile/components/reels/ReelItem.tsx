@@ -306,6 +306,7 @@ function ReelItemBase({
             color={ON_VIDEO}
             numberOfLines={captionOpen ? 8 : 2}
             onPressText={() => setCaptionOpen((open) => !open)}
+            onOpenProfile={onOpenProfile}
           />
         ) : null}
       </View>

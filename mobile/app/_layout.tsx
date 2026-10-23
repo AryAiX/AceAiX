@@ -192,8 +192,8 @@ function Shell() {
             name="opportunity/new"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
-          {/* Stories and reels are immersive: full screen, no chrome of the
-              app's own, and they arrive by fading up rather than sliding. */}
+          {/* Stories are immersive: full screen, no chrome of the app's own,
+              and they arrive by fading up rather than sliding. */}
           <Stack.Screen
             name="stories/[userId]"
             options={{ presentation: 'fullScreenModal', animation: 'fade' }}
@@ -202,10 +202,14 @@ function Shell() {
             name="stories/new"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
-          <Stack.Screen
-            name="reels"
-            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
-          />
+          {/* Reels is a normal card, not a modal. A full-screen modal stays
+              above anything pushed as a card, so a profile opened from a reel
+              was hidden underneath it. A card lets the profile, and the
+              follower lists, sit on top; back and the swipe return to the reel. */}
+          <Stack.Screen name="reels" options={{ presentation: 'card', gestureEnabled: true }} />
+          <Stack.Screen name="u/[id]" options={{ presentation: 'card' }} />
+          <Stack.Screen name="u/[id]/followers" options={{ presentation: 'card' }} />
+          <Stack.Screen name="u/[id]/following" options={{ presentation: 'card' }} />
           {/* Legal is reachable from the signed-out welcome screen, so it must
               not be gated behind a session. */}
           <Stack.Screen name="legal" />
