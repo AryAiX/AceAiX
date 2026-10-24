@@ -116,6 +116,7 @@ interface CurrentScopes {
   allow_assessments: boolean;
   allow_sponsorship: boolean;
   allow_bookings: boolean;
+  allow_mindset: boolean;
 }
 
 /*
@@ -203,6 +204,18 @@ function decisionForm(
         coach's calendar, and see where it takes place. Only coaches AceAiX has verified. You are
         told about every booking if you have an AceAiX account, and you can cancel one. Payment, if
         any, is made to the coach directly.</span>
+      </span>
+    </label>
+
+    <label>
+      <input type="checkbox" name="allow_mindset" value="1" ${on("allow_mindset", false)}>
+      <span>
+        <span class="opt-title">Let them answer the Sport Fit questionnaire</span>
+        <span class="opt-body">22 short statements about how they train and how they feel under
+        pressure, for example "Nerves before a competition often make me play worse". AceAiX uses
+        the answers to suggest sports that may suit them. The answers and the result are private
+        to them: clubs and scouts never see them. Not a medical or psychological assessment, and
+        they can delete it at any time.</span>
       </span>
     </label>
 
@@ -337,7 +350,7 @@ Deno.serve(async (req: Request) => {
        to see or change. */
     const { data: current } = await admin
       .from("guardian_consents")
-      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings")
+      .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings, allow_mindset")
       .eq("minor_user_id", consent.minor_user_id)
       .eq("guardian_email", consent.guardian_email)
       .eq("status", "granted")
@@ -408,6 +421,7 @@ Deno.serve(async (req: Request) => {
       p_allow_assessments: form.get("allow_assessments") === "1",
       p_allow_sponsorship: form.get("allow_sponsorship") === "1",
       p_allow_bookings: form.get("allow_bookings") === "1",
+      p_allow_mindset: form.get("allow_mindset") === "1",
     });
 
     if (error || !data?.ok) {

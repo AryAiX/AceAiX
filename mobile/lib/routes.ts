@@ -25,6 +25,13 @@ export const Routes = {
   score: '/score' as const,
   intelligence: '/intelligence' as const,
   intelligenceSession: '/intelligence/session' as const,
+  /** Sport Fit: the mindset questionnaire and the sports it points to. */
+  sportFit: '/sport-fit' as const,
+  sportFitQuestions: '/sport-fit/questions' as const,
+  /** My invite link, my circle and my tokens. */
+  invite: '/invite' as const,
+  /** Where an invite link lands: `/i/<code>`. */
+  inviteLanding: (code: string) => `/i/${code}` as const,
   achievements: '/achievements' as const,
   editProfile: '/edit-profile' as const,
 
@@ -172,7 +179,9 @@ export function routeDecision(input: {
   const inRecovery = isResetPasswordRoute(segments);
   const inOnboarding = group === '(onboarding)';
   const inAgeReview = group === 'age-review';
-  const isPublic = group === 'legal' || group === '+not-found';
+  /* An invite link (`/i/<code>`) must open before there is an account: that
+     is the point of it. The screen keeps the code and sends the visitor on. */
+  const isPublic = group === 'legal' || group === '+not-found' || group === 'i';
   const atEntry = segments.length === 0;
 
   if (!hasSession) return !inAuth && !isPublic ? Routes.auth.welcome : null;
@@ -229,6 +238,9 @@ export function notificationTarget(n: AppNotification): Href | null {
       return id ? Routes.match(id) : null;
     case 'club_event':
       return id ? Routes.clubEvent(id) : null;
+    case 'referral':
+      // A friend joined through my invite, or I earned a token.
+      return Routes.invite;
     default:
       break;
   }

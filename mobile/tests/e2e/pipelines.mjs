@@ -1019,6 +1019,80 @@ async function main() {
     });
   });
 
+  // ── Invites ───────────────────────────────────────────────────────────────
+  section('a personal invite link → a new friend → a token');
+
+  let inviteCode = null;
+  let friendId = null;
+  let friend = null;
+  const friendEmail = `pipe.friend.${RUN}@example.com`;
+
+  await step('layla has a code and a link to share', async () => {
+    const circle = unwrap(await clients.layla.rpc('referral_my_circle'), 'referral_my_circle');
+    expect(circle.can_invite && /^[A-HJ-NP-Z2-9]{8}$/.test(circle.code), `circle was ${JSON.stringify(circle).slice(0, 120)}`);
+    inviteCode = circle.code;
+    return `code ${inviteCode}`;
+  });
+
+  await step('whoever opens the link sees her first name, without signing in', async () => {
+    const anon = createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const who = unwrap(await anon.rpc('referral_inviter', { p_code: inviteCode }), 'referral_inviter');
+    expect(who?.first_name === 'Layla', `inviter was ${JSON.stringify(who)}`);
+    expect(!('last_name' in who) && !('id' in who), 'the link gave away more than a first name');
+  });
+
+  await step('a friend signs up and adds the code', async () => {
+    friend = createClient(URL_, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { data, error } = await friend.auth.signUp({
+      email: friendEmail,
+      password: PASSWORD,
+      options: { data: { role: 'athlete', first_name: 'Pipe', last_name: `Friend ${RUN}`, full_name: `Pipe Friend ${RUN}` } },
+    });
+    if (error) throw new Error(error.message);
+    if (!data.session) {
+      const signed = await friend.auth.signInWithPassword({ email: friendEmail, password: PASSWORD });
+      if (signed.error) throw new Error(signed.error.message);
+    }
+    friendId = (await friend.auth.getUser()).data.user.id;
+    const out = unwrap(await friend.rpc('referral_claim', { p_code: inviteCode }), 'referral_claim');
+    expect(out.inviter?.first_name === 'Layla', `claim answered ${JSON.stringify(out)}`);
+  });
+
+  await step('it does not count for layla yet, and she sees a first name only', async () => {
+    const circle = unwrap(await clients.layla.rpc('referral_my_circle'), 'referral_my_circle');
+    const me = circle.members.find((m) => m.first_name === 'Pipe' && m.status === 'pending');
+    expect(me, 'the friend is not in her circle as pending');
+    expect(!JSON.stringify(me).includes(`Friend ${RUN}`), 'her circle shows a last name');
+  });
+
+  await step('the friend finishes onboarding; it counts and layla is told', async () => {
+    unwrap(await friend.from('user_profiles').update({ onboarding_completed: true }).eq('id', friendId), 'onboarding');
+    await eventually(async () =>
+      (await notifications(clients.layla)).some((n) => n.type === 'referral_joined'),
+    );
+    const circle = unwrap(await clients.layla.rpc('referral_my_circle'), 'referral_my_circle');
+    expect(circle.members.some((m) => m.first_name === 'Pipe' && m.status === 'qualified'), 'it did not count');
+    return `${circle.qualified} counted · ${circle.tokens} tokens · ${circle.progress}/${circle.per_token} to the next`;
+  });
+
+  await step('a code is used once, and never by its owner', async () => {
+    const again = await friend.rpc('referral_claim', { p_code: inviteCode });
+    expect(again.error?.hint === 'referral_already_claimed', `second claim hint was ${again.error?.hint}`);
+    const own = await clients.layla.rpc('referral_claim', { p_code: inviteCode });
+    expect(['referral_own_code', 'referral_too_late', 'referral_already_claimed'].includes(own.error?.hint),
+      `own claim hint was ${own.error?.hint}`);
+  });
+
+  await step('the friend sees who invited them', async () => {
+    const circle = unwrap(await friend.rpc('referral_my_circle'), 'referral_my_circle');
+    expect(circle.invited_by?.first_name === 'Layla', `invited_by was ${JSON.stringify(circle.invited_by)}`);
+  });
+
+  await step('a club has no invite link', async () => {
+    const circle = unwrap(await clients.academy.rpc('referral_my_circle'), 'referral_my_circle');
+    expect(circle.can_invite === false && !circle.code, 'a club was given a code');
+  });
+
   // ── Summary ───────────────────────────────────────────────────────────────
   const failed = results.filter((r) => !r.ok);
   console.log(`\n  ${results.length - failed.length}/${results.length} steps passed`);

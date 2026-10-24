@@ -361,6 +361,8 @@ export type NotificationType =
   | 'sponsorship_response'
   | 'coaching_booked'
   | 'coaching_cancelled'
+  | 'referral_joined'
+  | 'referral_token'
   | 'meetup_request'
   | 'meetup_accepted'
   | 'meetup_declined'
@@ -397,6 +399,7 @@ export interface AppNotification {
     | 'challenge'
     | 'sponsorship'
     | 'coaching'
+    | 'referral'
     | 'meetup'
     | 'organization'
     | 'club_match'
@@ -449,6 +452,7 @@ export interface LinkedMinor {
   allow_assessments?: boolean;
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;
+  allow_mindset?: boolean;
   granted_at: string | null;
 }
 
@@ -479,6 +483,7 @@ export interface GuardianConsent {
   allow_assessments?: boolean;
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;
+  allow_mindset?: boolean;
   granted_at: string | null;
   created_at: string;
 }

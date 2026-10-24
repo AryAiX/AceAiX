@@ -211,8 +211,27 @@ const runtime = `
   var byTarget = Object.create(null);
   var byAnyone = Object.create(null);
 
+  /* Reads that change after a write (see STATEFUL in record-demo.mjs): their
+     "after" answers live in a second index, used once the viewer has made the
+     triggering write in this page, and dropped again on the reset. */
+  var STATEFUL = {
+    '/rest/v1/rpc/sport_fit_my_state': {
+      after: '/rest/v1/rpc/sport_fit_submit',
+      reset: '/rest/v1/rpc/sport_fit_delete_mine',
+    },
+  };
+  var wrote = Object.create(null);
+  var afterExact = Object.create(null);
+  var afterTarget = Object.create(null);
+
   for (var i = 0; i < TAPE.length; i++) {
     var r = TAPE[i];
+    if (r.after) {
+      afterExact[r.sub + ' ' + r.method + ' ' + r.target + ' ' + r.body] = r;
+      var at = r.sub + ' ' + r.method + ' ' + r.target;
+      if (!afterTarget[at]) afterTarget[at] = r;
+      continue;
+    }
     byExact[r.sub + ' ' + r.method + ' ' + r.target + ' ' + r.body] = r;
     var t = r.sub + ' ' + r.method + ' ' + r.target;
     if (!byTarget[t]) byTarget[t] = r;
@@ -286,6 +305,14 @@ const runtime = `
   }
 
   function lookup(method, target, body, sub) {
+    var rule = STATEFUL[target];
+    if (rule && wrote[rule.after]) {
+      var later = afterExact[sub + ' ' + method + ' ' + target + ' ' + body]
+        || afterExact[currentSub + ' ' + method + ' ' + target + ' ' + body]
+        || afterTarget[sub + ' ' + method + ' ' + target]
+        || afterTarget[currentSub + ' ' + method + ' ' + target];
+      if (later) return later;
+    }
     return byExact[sub + ' ' + method + ' ' + target + ' ' + body]
       || byExact[currentSub + ' ' + method + ' ' + target + ' ' + body]
       || byTarget[sub + ' ' + method + ' ' + target]
@@ -327,6 +354,10 @@ const runtime = `
     }
 
     var rec = lookup(method, target, body, sub);
+    Object.keys(STATEFUL).forEach(function (read) {
+      if (target === STATEFUL[read].after && rec) wrote[target] = true;
+      if (target === STATEFUL[read].reset) delete wrote[STATEFUL[read].after];
+    });
 
     /* A refresh has a body we have never seen — its token is minted per run.
        Hand back the session the app is already holding. */

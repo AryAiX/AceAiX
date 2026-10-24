@@ -18,6 +18,7 @@ export default function AuditPage() {
           { value: '', label: 'All' }, { value: 'report.', label: 'Reports' }, { value: 'user.', label: 'Accounts' },
           { value: 'content.', label: 'Content' }, { value: 'verification.', label: 'Verification' },
           { value: 'sponsorship.', label: 'Sponsorship' }, { value: 'booking.', label: 'Bookings' },
+          { value: 'sport_fit.', label: 'Sport Fit' }, { value: 'referral.', label: 'Invites' },
         ]} />}
       />
       {error && <ErrorBox error={error} />}

@@ -4,7 +4,7 @@ Web admin panel for the AceAiX mobile app. It runs on the **same Supabase projec
 Admins sign in with a normal account whose role is `admin` or `super_admin`.
 
 - **Front end:** this folder (Vite + React + TypeScript + Tailwind + TanStack Query).
-- **Back end:** `supabase/migrations/20261013000002_admin_console.sql`. It adds 22 `admin_*` RPCs.
+- **Back end:** `supabase/migrations/20261013000002_admin_console.sql`. It adds 22 `admin_*` RPCs. `20261019000002_admin_sport_fit.sql` adds 3 more for the Sport Fit page, and `20261023000001_referrals.sql` adds 2 for the Invites page.
   Each one checks `private.is_admin()` on the server and writes to `audit_logs`.
 - The browser never gets a service-role key. If someone who is not an admin signs in, every call is refused with `42501`.
 
@@ -21,6 +21,8 @@ Admins sign in with a normal account whose role is `admin` or `super_admin`.
 | Youth safety | See every minor with their consent state and guardian. See adult↔minor conversations as **metadata only** (counts, timing, flags). Message text appears only when a message is reported. |
 | Sponsorship | See offers, sponsor calls and athlete requests. Can withdraw or close any of them. Flags a minor who has no sponsorship consent. |
 | Coach bookings | See upcoming, past and cancelled sessions. Can cancel a session; the athlete, guardian and coach are notified. |
+| Sport Fit | See totals for the mindset questionnaire: players with a result, results per day, answer quality, the most common best-fit sport, and average mindset by age group. Any group under 5 is shown as "fewer than 5", and no individual answers are shown. Edit the 12-sport weight matrix and mark each row reviewed by the sports psychologist. Editing a row clears its review mark. |
+| Invites | Totals, a 30-day chart, top inviters (flagged when many sign-ups never finish onboarding — a sign of fake accounts) and recent invites. **Revoke** an invite (reason required; a token it completed is taken back) or **Restore** it. |
 | Audit log | See every admin action with who, when, the reason, and before/after JSON. |
 
 When a user is suspended, they are signed out (their `auth.sessions` are deleted). Their profile and content disappear from the app through the existing RLS.

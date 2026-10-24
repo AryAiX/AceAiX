@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import { label, timeAgo } from '../lib/format';
 import { Badge, Card, Empty, ErrorBox, Loading, PageHeader, PersonCell, StatusBadge, Tabs } from '../components/ui';
 
-const SCOPES = ['discovery', 'messaging', 'media', 'assessments', 'sponsorship', 'bookings'] as const;
+const SCOPES = ['discovery', 'messaging', 'media', 'assessments', 'sponsorship', 'bookings', 'mindset'] as const;
 
 export default function YouthSafetyPage() {
   const [params, setParams] = useSearchParams();

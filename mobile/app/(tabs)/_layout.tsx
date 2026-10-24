@@ -12,6 +12,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { useClaimPendingInvite } from '@/hooks/useClaimPendingInvite';
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
@@ -294,6 +295,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const t = useT();
   const { profile } = useAuth();
+  useClaimPendingInvite();
 
   /*
    * Meetups are eighteen-plus, and the database enforces that — a minor asking

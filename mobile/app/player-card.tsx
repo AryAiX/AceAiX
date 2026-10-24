@@ -1,18 +1,19 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Platform, Share, View, useWindowDimensions } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient as SvgGradient,
-  Rect,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg';
+import type Svg from 'react-native-svg';
 import { Directory, File as FsFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, tierForScore } from '@/theme/tokens';
+import { tierForScore } from '@/theme/tokens';
+import {
+  CARD_H,
+  CARD_W,
+  PlayerCardArt,
+  imageAsDataUri,
+  inlineCardFontsCss,
+  type PlayerCardData,
+} from '@/components/profile/PlayerCardArt';
 import {
   Button,
   Card,
@@ -29,17 +30,28 @@ import { useAuth } from '@/providers/AuthProvider';
 import { displayName, initialsOf } from '@/lib/format';
 import { useT } from '@/i18n';
 
-/** The card is drawn at this size and scaled to fit; 4:5 posts well anywhere. */
-const CARD_W = 1080;
-const CARD_H = 1350;
-
 async function webPngFromSvg(ref: Svg | null): Promise<Blob> {
-  const element = ref as unknown as SVGSVGElement | null;
-  if (!element || element.tagName.toLowerCase() !== 'svg') {
+  /* react-native-svg's ref is the DOM <svg> on some versions and a component
+     instance on others, so fall back to finding the card in the page. */
+  const direct = ref as unknown as { tagName?: string } | null;
+  const element = (direct?.tagName?.toLowerCase() === 'svg'
+    ? direct
+    : document.querySelector('[data-testid="player-card-art"] svg')) as SVGSVGElement | null;
+  if (!element) {
     throw new Error('Player card SVG is unavailable');
   }
 
-  const source = new XMLSerializer().serializeToString(element);
+  /* Inline the app's fonts: an SVG drawn through an <img> cannot load them. */
+  const fonts = await inlineCardFontsCss();
+  let source = new XMLSerializer().serializeToString(element);
+  /* Draw at full size: the on-screen SVG is scaled down, and an <img> of it
+     would be rasterised at that small size and then blown up. */
+  source = source.replace(/<svg([^>]*)>/, (_m, attrs: string) => {
+    const sized = attrs
+      .replace(/\swidth="[^"]*"/, ` width="${CARD_W}"`)
+      .replace(/\sheight="[^"]*"/, ` height="${CARD_H}"`);
+    return `<svg${sized}>${fonts ? `<style>${fonts}</style>` : ''}`;
+  });
   const sourceUrl = URL.createObjectURL(
     new Blob([source], { type: 'image/svg+xml;charset=utf-8' }),
   );
@@ -124,29 +136,48 @@ export default function PlayerCardScreen() {
   const score = useAsync(() => refreshMyTalentScore(), []);
   const teams = useAsync(() => teamsOf(profile!.id), [profile?.id], { enabled: !!profile?.id });
 
-  const card = useMemo(() => {
+  const photo = useAsync(
+    () => imageAsDataUri(bundle.data?.user?.avatar_url),
+    [bundle.data?.user?.avatar_url],
+    { enabled: !!bundle.data },
+  );
+
+  const card = useMemo<PlayerCardData>(() => {
     const user = bundle.data?.user;
     const athlete = bundle.data?.athlete;
-    const overall = score.data?.overall ?? bundle.data?.score?.overall ?? 0;
+    const full = score.data;
+    const overall = full?.overall ?? bundle.data?.score?.overall ?? 0;
     const tier = tierForScore(overall);
+    const pillars = full?.pillars ?? bundle.data?.score?.pillars;
+    const supports = (teams.data ?? []).slice(0, 2).map((team) => team.name).join(' · ');
 
     return {
       name: displayName(user?.full_name, ''),
       initials: initialsOf(user?.full_name),
       line: [athlete?.position, athlete?.sport].filter(Boolean).join(' · '),
-      place: [user?.city, user?.country].filter(Boolean).join(', '),
-      club: athlete?.club ?? null,
+      meta: [athlete?.club, [user?.city, user?.country].filter(Boolean).join(', ')]
+        .filter(Boolean)
+        .join(' · '),
       overall,
       tier,
-      tierColor: TierColors[tier],
+      tierLabel: t(`common.tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as never),
+      scoreLabel: t('common.talentScore'),
+      photo: photo.data ?? null,
+      pillars: [
+        { label: t('score.pillarPerformance'), value: pillars?.performance ?? 0 },
+        { label: t('score.pillarCredibility'), value: pillars?.credibility ?? 0 },
+        { label: t('score.pillarEngagement'), value: pillars?.engagement ?? 0 },
+        { label: t('score.pillarProfile'), value: pillars?.profile ?? 0 },
+        { label: t('score.pillarMedia'), value: pillars?.media ?? 0 },
+      ],
       stats: [
         { label: t('common.matches'), value: bundle.data?.stats.matches ?? 0 },
         { label: t('common.clips'), value: bundle.data?.stats.media ?? 0 },
         { label: t('common.endorsed'), value: bundle.data?.stats.endorsements ?? 0 },
       ],
-      supports: (teams.data ?? []).slice(0, 2).map((team) => team.name).join(' · '),
+      footerRight: supports ? `${t('teams.supportsTitle')}: ${supports}` : '',
     };
-  }, [bundle.data, score.data, teams.data, t]);
+  }, [bundle.data, score.data, teams.data, photo.data, t]);
 
   const exportCard = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -251,133 +282,16 @@ export default function PlayerCardScreen() {
         </Text>
 
         <View
+          testID="player-card-art"
           style={{
             width: displayWidth,
             height: displayHeight,
-            borderRadius: 24,
+            borderRadius: (displayWidth * 56) / CARD_W,
             overflow: 'hidden',
             ...theme.elevation(2),
           }}
         >
-          <Svg
-            ref={svgRef}
-            width={displayWidth}
-            height={displayHeight}
-            viewBox={`0 0 ${CARD_W} ${CARD_H}`}
-          >
-            <Defs>
-              <SvgGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor="#0B0D11" />
-                <Stop offset="1" stopColor="#171B22" />
-              </SvgGradient>
-              <SvgGradient id="glow" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0" stopColor={card.tierColor} stopOpacity="0.55" />
-                <Stop offset="1" stopColor={card.tierColor} stopOpacity="0" />
-              </SvgGradient>
-            </Defs>
-
-            <Rect x="0" y="0" width={CARD_W} height={CARD_H} fill="url(#bg)" />
-            <Rect x="0" y="0" width={CARD_W} height="520" fill="url(#glow)" />
-
-            {/* Wordmark */}
-            <SvgText x="72" y="112" fill="#FF5A1F" fontSize="46" fontWeight="800">
-              Ace
-            </SvgText>
-            <SvgText x="182" y="112" fill="#FFFFFF" fontSize="46" fontWeight="800">
-              AiX
-            </SvgText>
-
-            {/* Score ring */}
-            <Circle
-              cx={CARD_W / 2}
-              cy="430"
-              r="180"
-              stroke={card.tierColor}
-              strokeWidth="14"
-              fill="none"
-              opacity="0.35"
-            />
-            <SvgText
-              x={CARD_W / 2}
-              y="480"
-              fill="#FFFFFF"
-              fontSize="200"
-              fontWeight="800"
-              textAnchor="middle"
-            >
-              {String(card.overall)}
-            </SvgText>
-            <SvgText
-              x={CARD_W / 2}
-              y="668"
-              fill={card.tierColor}
-              fontSize="46"
-              fontWeight="700"
-              textAnchor="middle"
-            >
-              {t(`common.tier${card.tier.charAt(0).toUpperCase()}${card.tier.slice(1)}` as never)}
-            </SvgText>
-
-            {/* Identity */}
-            <SvgText
-              x={CARD_W / 2}
-              y="800"
-              fill="#FFFFFF"
-              fontSize="72"
-              fontWeight="800"
-              textAnchor="middle"
-            >
-              {card.name}
-            </SvgText>
-            <SvgText
-              x={CARD_W / 2}
-              y="866"
-              fill="#A6AEBB"
-              fontSize="40"
-              textAnchor="middle"
-            >
-              {card.line}
-            </SvgText>
-            {card.club ? (
-              <SvgText x={CARD_W / 2} y="926" fill="#A6AEBB" fontSize="36" textAnchor="middle">
-                {card.club}
-              </SvgText>
-            ) : null}
-
-            {/* Stats */}
-            {card.stats.map((stat, index) => {
-              const x = 180 + index * 360;
-              return (
-                <React.Fragment key={stat.label}>
-                  <SvgText
-                    x={x}
-                    y="1090"
-                    fill="#FFFFFF"
-                    fontSize="66"
-                    fontWeight="800"
-                    textAnchor="middle"
-                  >
-                    {String(stat.value)}
-                  </SvgText>
-                  <SvgText x={x} y="1140" fill="#8A93A0" fontSize="28" textAnchor="middle">
-                    {stat.label.toUpperCase()}
-                  </SvgText>
-                </React.Fragment>
-              );
-            })}
-
-            {card.supports ? (
-              <SvgText
-                x={CARD_W / 2}
-                y="1250"
-                fill="#8A93A0"
-                fontSize="30"
-                textAnchor="middle"
-              >
-                {`${t('teams.supportsTitle')}: ${card.supports}`}
-              </SvgText>
-            ) : null}
-          </Svg>
+          <PlayerCardArt ref={svgRef} data={card} width={displayWidth} height={displayHeight} />
         </View>
 
         <Card padded tone="alt" style={{ width: '100%' }}>
