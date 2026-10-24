@@ -5372,6 +5372,32 @@ update public.user_private set date_of_birth = current_date - interval '20 years
 update public.user_private set date_of_birth = current_date - interval '14 years'
  where user_id = '7e000000-0000-4000-8000-000000000012';
 
+-- Invites ship switched off (20261024000001); off closes every path.
+do $$
+declare
+  v_inviter uuid := '11111111-1111-1111-1111-111111111111';
+  v_code    text;
+  v_raised  boolean := false;
+begin
+  perform tests.ok((select value ->> 'invites' from public.platform_settings where key = 'features') = 'false',
+    'invites ship switched off');
+  perform tests.as_user(v_inviter);
+  perform tests.ok(not (public.referral_my_circle() ->> 'can_invite')::boolean,
+    'with invites off, nobody can invite');
+
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'true') where key = 'features';
+  v_code := public.referral_my_circle() ->> 'code';
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'false') where key = 'features';
+  perform tests.ok(public.referral_inviter(v_code) is null,
+    'with invites off, a code shows no inviter');
+  perform tests.as_user('7e000000-0000-4000-8000-000000000001');
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised and not exists (select 1 from public.referrals where code = v_code),
+    'with invites off, a code cannot be claimed');
+
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'true') where key = 'features';
+end $$;
+
 do $$
 declare
   v_inviter uuid := '11111111-1111-1111-1111-111111111111';

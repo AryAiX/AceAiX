@@ -10,6 +10,7 @@ export const whatsNew = {
   title: 'Was ist neu in {{version}}',
   gotIt: 'Verstanden',
   v2_0_6: {
+    sportFit: 'Neu: Sport Fit. Beantworte 22 kurze Aussagen und sieh, welche Sportarten zu deiner Denkweise passen.',
     countries: 'Jedes Land ist jetzt verfügbar, in deiner Sprache.',
     city: 'Wähle deine Stadt aus den Vorschlägen, damit Spiele in der Nähe dich finden.',
     sports: 'Trainer und Scouts können in ihrem Suchprofil mehrere Sportarten verfolgen.',

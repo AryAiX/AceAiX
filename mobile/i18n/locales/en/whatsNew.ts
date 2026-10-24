@@ -16,6 +16,7 @@ export const whatsNew = {
   title: 'What’s new in {{version}}',
   gotIt: 'Got it',
   v2_0_6: {
+    sportFit: 'New: Sport Fit. Answer 22 quick statements and see which sports suit how you think.',
     countries: 'Every country is now available, in your language.',
     city: 'Pick your city from suggestions, so nearby games can find you.',
     sports: 'Coaches and scouts can follow several sports in their brief.',

@@ -10,6 +10,7 @@ export const whatsNew = {
   title: 'Novedades de {{version}}',
   gotIt: 'Entendido',
   v2_0_6: {
+    sportFit: 'Nuevo: Sport Fit. Responde 22 frases rápidas y descubre qué deportes encajan con tu forma de pensar.',
     countries: 'Todos los países ya están disponibles, en tu idioma.',
     city: 'Elige tu ciudad entre las sugerencias, para que los partidos cercanos te encuentren.',
     sports: 'Los entrenadores y los reclutadores pueden seguir varios deportes en sus criterios.',
