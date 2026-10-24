@@ -7,11 +7,15 @@ import { TierColors, tierForScore } from '@/theme/tokens';
 import { Button, Chip, Divider, Input, Sheet, Switch, Text } from '@/components/ui';
 import {
   LEVELS,
-  PRIORITY_COUNTRIES,
   SPORTS,
+  countryLabel,
+  countryOptions,
   levelLabelI18n,
   positionLabel,
+  positionsBySport,
   positionsFor,
+  prunePositions,
+  sportEmoji,
   sportLabel,
 } from '@/constants/sports';
 import { useT } from '@/i18n';
@@ -34,7 +38,10 @@ const COUNTRY_PAGE = 10;
 const COUNT_DEBOUNCE_MS = 350;
 
 interface Draft {
+  /** Filter mode. `discover_athletes` takes one sport. */
   sport?: string;
+  /** Preferences mode. The brief holds every sport the coach scouts. */
+  sports?: string[];
   positions: string[];
   levels: string[];
   countries: string[];
@@ -85,7 +92,7 @@ function draftFromFilters(filters: DiscoveryFilters): Draft {
 function draftFromPreferences(prefs: MatchPreferences | null): Draft {
   if (!prefs) return EMPTY_DRAFT;
   return {
-    sport: prefs.sports?.[0],
+    sports: prefs.sports ?? [],
     positions: prefs.positions ?? [],
     levels: prefs.levels ?? [],
     countries: prefs.countries ?? [],
@@ -218,6 +225,87 @@ function Stepper({
   );
 }
 
+function PreferenceSports({
+  sports,
+  positions,
+  onToggleSport,
+  onTogglePosition,
+}: {
+  sports: string[];
+  positions: string[];
+  onToggleSport: (sport: string) => void;
+  onTogglePosition: (position: string) => void;
+}) {
+  const theme = useTheme();
+  const t = useT();
+  const { spacing } = theme;
+  const bySport = useMemo(() => positionsBySport(sports, positions), [sports, positions]);
+  const extraSports = useMemo(() => {
+    const known = new Set(SPORTS.map((sport) => sport.key));
+    return sports.filter((sport) => !known.has(sport));
+  }, [sports]);
+
+  return (
+    <>
+      <View>
+        <SectionLabel title={t('discover.filters.sport')} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          {SPORTS.map((sport) => (
+            <Chip
+              key={sport.key}
+              label={sportLabel(t, sport.key)}
+              icon={<Text variant="caption">{sport.emoji}</Text>}
+              selected={sports.includes(sport.key)}
+              onPress={() => onToggleSport(sport.key)}
+            />
+          ))}
+          {extraSports.map((sport) => (
+            <Chip
+              key={sport}
+              label={sportLabel(t, sport)}
+              icon={<Text variant="caption">{sportEmoji(sport)}</Text>}
+              selected
+              onPress={() => onToggleSport(sport)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <Divider />
+
+      <View>
+        <SectionLabel
+          title={t('discover.filters.position')}
+          hint={sports.length === 0 ? t('discover.filters.positionHint') : undefined}
+        />
+        <View style={{ gap: spacing.lg }}>
+        {sports.map((sport) => {
+          const options = positionsFor(sport);
+          const selected = bySport[sport] ?? [];
+          return (
+            <View key={sport} style={{ gap: spacing.sm }}>
+              <Text variant="captionStrong">{sportLabel(t, sport)}</Text>
+              {options.length > 0 ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  {options.map((position) => (
+                    <Chip
+                      key={`${sport}:${position}`}
+                      label={positionLabel(t, position)}
+                      selected={selected.includes(position)}
+                      onPress={() => onTogglePosition(position)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+        </View>
+      </View>
+    </>
+  );
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   const theme = useTheme();
   return (
@@ -309,12 +397,13 @@ export function FilterSheet({
 
   const positions = useMemo(() => positionsFor(draft.sport), [draft.sport]);
 
-  const countryMatches = useMemo(() => {
-    const term = countryQuery.trim().toLowerCase();
-    return PRIORITY_COUNTRIES.filter(
-      (c) => !draft.countries.includes(c) && (!term || c.toLowerCase().includes(term)),
-    );
-  }, [countryQuery, draft.countries]);
+  const countryMatches = useMemo(
+    () =>
+      countryOptions(countryQuery, (c) => countryLabel(t, c)).filter(
+        (c) => !draft.countries.includes(c),
+      ),
+    [countryQuery, draft.countries, t],
+  );
 
   const visibleCountries = countryMatches.slice(0, COUNTRY_PAGE);
   const hiddenCountries = countryMatches.length - visibleCountries.length;
@@ -322,11 +411,30 @@ export function FilterSheet({
   const anyAge = draft.ageMin == null && draft.ageMax == null;
   const effectiveAgeMin = draft.ageMin ?? DEFAULT_AGE_MIN;
   const effectiveAgeMax = draft.ageMax ?? DEFAULT_AGE_MAX;
+  /* 21+ is stored as a minimum and no maximum. Filter mode never reads this:
+     its steppers keep drawing the default ceiling. */
+  const openEndedMax = mode === 'preferences' && draft.ageMin != null && draft.ageMax == null;
 
-  const setAgeMin = (next: number) =>
+  const setAgeMin = (next: number) => {
+    if (openEndedMax) {
+      patch({ ageMin: next });
+      return;
+    }
     patch({ ageMin: next, ageMax: Math.max(next, effectiveAgeMax) });
-  const setAgeMax = (next: number) =>
+  };
+  const setAgeMax = (next: number) => {
+    if (mode === 'preferences' && next > AGE_CEILING) {
+      patch({ ageMax: undefined });
+      return;
+    }
     patch({ ageMax: next, ageMin: Math.min(next, effectiveAgeMin) });
+  };
+
+  const briefSports = draft.sports ?? [];
+  const toggleBriefSport = (sport: string) => {
+    const next = toggle(briefSports, sport);
+    patch({ sports: next, positions: prunePositions(next, draft.positions) });
+  };
 
   const scoreTier = tierForScore(draft.minScore);
 
@@ -344,9 +452,10 @@ export function FilterSheet({
     setSaving(true);
     setError(null);
     try {
+      const sports = draft.sports ?? [];
       await saveMatchPreferences({
-        sports: draft.sport ? [draft.sport] : [],
-        positions: draft.positions,
+        sports,
+        positions: prunePositions(sports, draft.positions),
         levels: draft.levels,
         countries: draft.countries,
         age_min: draft.ageMin ?? null,
@@ -408,51 +517,64 @@ export function FilterSheet({
       testID="discover-filter-sheet"
     >
       <View style={{ gap: spacing.xl, paddingBottom: spacing.sm }}>
-        {/* Sport */}
-        <View>
-          <SectionLabel title={t('discover.filters.sport')} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {SPORTS.map((sport) => (
-              <Chip
-                key={sport.key}
-                label={sportLabel(t, sport.key)}
-                icon={<Text variant="caption">{sport.emoji}</Text>}
-                selected={draft.sport === sport.key}
-                onPress={() =>
-                  // Positions belong to a sport; keeping them across a change
-                  // would filter for a position the new sport does not have.
-                  patch(
-                    draft.sport === sport.key
-                      ? { sport: undefined, positions: [] }
-                      : { sport: sport.key, positions: [] },
-                  )
-                }
-              />
-            ))}
-          </View>
-        </View>
-
-        <Divider />
-
-        {/* Positions */}
-        <View>
-          <SectionLabel
-            title={t('discover.filters.position')}
-            hint={draft.sport ? undefined : t('discover.filters.positionHint')}
+        {mode === 'preferences' ? (
+          <PreferenceSports
+            sports={briefSports}
+            positions={draft.positions}
+            onToggleSport={toggleBriefSport}
+            onTogglePosition={(position) =>
+              patch({ positions: toggle(draft.positions, position) })
+            }
           />
-          {positions.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {positions.map((position) => (
-                <Chip
-                  key={position}
-                  label={positionLabel(t, position)}
-                  selected={draft.positions.includes(position)}
-                  onPress={() => patch({ positions: toggle(draft.positions, position) })}
-                />
-              ))}
+        ) : (
+          <>
+            {/* Sport */}
+            <View>
+              <SectionLabel title={t('discover.filters.sport')} />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                {SPORTS.map((sport) => (
+                  <Chip
+                    key={sport.key}
+                    label={sportLabel(t, sport.key)}
+                    icon={<Text variant="caption">{sport.emoji}</Text>}
+                    selected={draft.sport === sport.key}
+                    onPress={() =>
+                      // Positions belong to a sport; keeping them across a change
+                      // would filter for a position the new sport does not have.
+                      patch(
+                        draft.sport === sport.key
+                          ? { sport: undefined, positions: [] }
+                          : { sport: sport.key, positions: [] },
+                      )
+                    }
+                  />
+                ))}
+              </View>
             </View>
-          ) : null}
-        </View>
+
+            <Divider />
+
+            {/* Positions */}
+            <View>
+              <SectionLabel
+                title={t('discover.filters.position')}
+                hint={draft.sport ? undefined : t('discover.filters.positionHint')}
+              />
+              {positions.length > 0 ? (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  {positions.map((position) => (
+                    <Chip
+                      key={position}
+                      label={positionLabel(t, position)}
+                      selected={draft.positions.includes(position)}
+                      onPress={() => patch({ positions: toggle(draft.positions, position) })}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          </>
+        )}
 
         <Divider />
 
@@ -489,7 +611,7 @@ export function FilterSheet({
             {draft.countries.map((country) => (
               <Chip
                 key={country}
-                label={country}
+                label={countryLabel(t, country)}
                 selected
                 onPress={() => patch({ countries: toggle(draft.countries, country) })}
               />
@@ -497,7 +619,7 @@ export function FilterSheet({
             {visibleCountries.map((country) => (
               <Chip
                 key={country}
-                label={country}
+                label={countryLabel(t, country)}
                 onPress={() => patch({ countries: toggle(draft.countries, country) })}
               />
             ))}
@@ -545,11 +667,13 @@ export function FilterSheet({
           <Row label={t('discover.filters.oldest')}>
             <Stepper
               name={t('discover.filters.oldestAgeName')}
-              value={effectiveAgeMax}
-              display={anyAge ? t('discover.filters.any') : String(effectiveAgeMax)}
+              value={openEndedMax ? AGE_CEILING + 1 : effectiveAgeMax}
+              display={
+                anyAge || openEndedMax ? t('discover.filters.any') : String(effectiveAgeMax)
+              }
               onChange={setAgeMax}
               min={AGE_FLOOR}
-              max={AGE_CEILING}
+              max={mode === 'preferences' && !anyAge ? AGE_CEILING + 1 : AGE_CEILING}
             />
           </Row>
         </View>

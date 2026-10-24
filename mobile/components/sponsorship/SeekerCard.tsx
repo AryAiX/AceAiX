@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { CalendarDays, MapPin } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Badge, Button, Card, Text } from '@/components/ui';
+import { Avatar, Badge, Button, Card, ExpandableText, Text } from '@/components/ui';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { Seeker } from '@/lib/api.sponsorship';
@@ -69,9 +69,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
           </View>
         ) : null}
         {seeker.pitch ? (
-          <Text variant="body" tone="secondary" numberOfLines={4}>
-            {seeker.pitch}
-          </Text>
+          <ExpandableText text={seeker.pitch} lines={3} variant="body" tone="secondary" />
         ) : null}
       </View>
 

@@ -51,6 +51,8 @@ export const coaching = {
   sTitle: '标题',
   sTitlePlaceholder: '一对一力量训练',
   sDescription: '课程内容',
+  readMore: '阅读更多',
+  showLess: '收起',
   sDuration: '时长',
   minutes: '{{n}} 分钟',
   sCapacity: '团体课名额',

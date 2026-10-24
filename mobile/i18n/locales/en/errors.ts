@@ -77,8 +77,12 @@ export const errors = {
   coachingServiceLimit: 'You can offer twelve services at a time.',
   coachingOwnCalendar: 'You cannot book your own calendar.',
   meetupMapUrlInvalid: 'Use a Google Maps, Apple Maps or Waze link.',
+  clubMapUrlInvalid: 'Paste a Google Maps, Apple Maps or Waze link, or coordinates.',
   meetupPlaceInvalid: 'Each place must be 2 to 80 characters.',
+  cityLength: 'A city needs between 2 and 80 characters.',
   meetupPlacesLimit: 'You can add up to 5 places.',
+  mentionLimit: 'You can mention up to 10 people.',
+  mentionInvalid: 'Something went wrong with a mention. Try removing it and adding it again.',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "Only a club or academy account can create a club page.",
   clubPageExists: "You already run a club page.",

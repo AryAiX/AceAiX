@@ -1,6 +1,7 @@
 import { signPostMedia } from '@/lib/api';
 import { AppError } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
+import { publishViewCount } from '@/lib/viewCounts';
 import type { FeedPost } from '@/types/models';
 
 /**
@@ -40,4 +41,35 @@ export async function getExploreSports(): Promise<ExploreSport[]> {
 /** A highlight is a clip from a profile, not a post: it cannot be liked or commented on. */
 export function isHighlight(post: Pick<FeedPost, 'type'>): boolean {
   return post.type === 'highlight';
+}
+
+/** Clips this session has already sent. A repeat watch does not call again. */
+const recordedHighlightViews = new Set<string>();
+
+/**
+ * Count one watch of a highlight, after the caller has played it.
+ * The server ignores the owner, a duplicate, and a clip this person
+ * cannot see. A failure stays quiet.
+ */
+async function readHighlightViewCount(mediaId: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from('athlete_media')
+    .select('views_count')
+    .eq('id', mediaId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const count = (data as { views_count?: number | null }).views_count;
+  return typeof count === 'number' ? count : null;
+}
+
+export async function recordHighlightView(mediaId: string): Promise<void> {
+  if (!mediaId || recordedHighlightViews.has(mediaId)) return;
+  recordedHighlightViews.add(mediaId);
+  try {
+    await supabase.rpc('record_highlight_view', { p_media: mediaId });
+    const count = await readHighlightViewCount(mediaId);
+    if (count != null) publishViewCount('highlight', mediaId, count);
+  } catch {
+    /* A missed view is not worth an error on screen. */
+  }
 }

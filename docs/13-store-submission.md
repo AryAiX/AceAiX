@@ -180,27 +180,50 @@ be set separately.
         the minor. A guardian would never receive it.
       - `CONSENT_FROM_EMAIL` — defaults to `AceAiX <safety@aceaix.com>`. The sending
         domain must be verified with the email provider or the mail will bounce.
+      - `CONSENT_PAGE_URL` — the in-app parent approval page, for example
+        `https://app.aceaix.com/parent-approval`. When set, `GET ?token=` without
+        `format=json` redirects (302) to `<CONSENT_PAGE_URL>?token=<token>`, so
+        emails already sent still open the page. Leave it unset until that route
+        is deployed; the function then keeps serving the HTML fallback.
       - `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` — optional; see the blocker above.
 
 ### 1.4 The hosted consent page URL
 
-The guardian's approval page is served by the edge function itself, at:
+The email link stays on the edge function:
 
 ```
 https://<project-ref>.supabase.co/functions/v1/guardian-consent?token=<token>
 ```
 
-- [ ] Confirm that URL loads a page for a valid pending token, and shows the
-      "already answered" / "expired" pages for the other cases.
-- [ ] **OPEN — decide whether to front it with `https://aceaix.com/consent`.** A
-      branded URL reads better in a parent's inbox. If you add one, keep it off the
-      `/app` path prefix so the Android intent filter does not capture it — a
-      guardian without the app must land in a browser.
-- [ ] Note for the record: the page is `noindex,nofollow` and the token is the only
-      credential; `confirm_guardian_consent` is deliberately granted to `anon`.
+`*.supabase.co` rewrites `text/html` from a function to `text/plain`. When
+`CONSENT_PAGE_URL` is set, that URL redirects to the app page instead.
+
+- `CONSENT_PAGE_URL` set — GET without `format=json` returns **302** to
+  `<CONSENT_PAGE_URL>?token=<token>`. That is the Expo route
+  (`https://app.aceaix.com/parent-approval`), including the web export on
+  `app.aceaix.com`, so a guardian without the native app still lands in a
+  browser. It is not under `aceaix.com/app`, which is the Android intent-filter
+  prefix. The page calls `GET ?token=&format=json` and posts
+  `{ token, decision, allow_* }` as JSON.
+- `CONSENT_PAGE_URL` unset — GET still returns the HTML page, and the form POST
+  still records the decision. Leave the secret unset until the route is deployed.
+
+- [ ] Confirm `?format=json` on a valid pending token returns `state: "pending"`,
+      the child name the page shows, and the checkbox defaults (a returning
+      guardian's previous grants, otherwise the pre-ticked defaults). The body
+      has nothing else.
+- [ ] Confirm the other cases keep their status codes: missing token `400`,
+      unknown token `404`, already answered `200`, expired `410`.
+- [ ] Confirm a JSON decision POST approves through `confirm_guardian_consent`
+      and declines by setting `revoked`, and returns `{ ok, state }` with the
+      same status codes as the form (`200`, `400`, `500`).
+- [ ] Note for the record: the token is the only credential;
+      `confirm_guardian_consent` is deliberately granted to `anon`. The HTML
+      fallback is `noindex,nofollow`.
 - [ ] Confirm the deployed function has JWT verification disabled at the gateway.
-      GET and form POST validate the one-time guardian token; the app's JSON POST
-      separately validates its bearer JWT in the handler.
+      GET, the form POST, and the guardian's JSON decision POST validate the
+      one-time token. The app's JSON POST `{ consent_id }` validates its bearer
+      JWT in the handler.
 
 ### 1.4.1 V2-only production cutover
 

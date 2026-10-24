@@ -373,6 +373,7 @@ function PostCardBase({
       {caption ? (
         <TranslatableText
           text={caption}
+          mentions={post.mentions}
           sourceRef={{ type: 'post', id: post.id }}
           variant="body"
           numberOfLines={showAll ? undefined : CAPTION_LINES}
@@ -398,6 +399,7 @@ function PostCardBase({
         <View>
           <MediaCarousel
             media={post.media}
+            postId={post.id}
             isActive={isActive}
             onPress={handleMediaTap}
           />

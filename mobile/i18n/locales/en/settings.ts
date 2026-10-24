@@ -140,6 +140,7 @@ export const settings = {
   notifyFollows: 'New followers',
   notifyMessages: 'Messages',
   notifyComments: 'Comments',
+  notifyMentions: 'Mentions',
   notifyLikes: 'Likes',
   notifyMeetups: 'Play games',
   meetupPlaces: 'Play alert places',
@@ -165,7 +166,7 @@ export const settings = {
   scoutingIntro:
     'These shape who Discover puts in front of you first, and which athletes we tell you about. Leave anything blank to say “no preference”.',
   scoutingSports: 'Sports',
-  scoutingSportsHint: 'Pick the one sport you scout for.',
+  scoutingSportsHint: 'Pick the sports you scout for. You can choose more than one.',
   scoutingPositions: 'Positions',
   scoutingPositionsHint: 'Only the positions from the sports you chose.',
   scoutingPositionsEmpty: 'Choose a sport first and its positions will appear here.',

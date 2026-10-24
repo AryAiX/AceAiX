@@ -20,6 +20,7 @@ import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
 import {
+  addCustomCity,
   completeOnboarding,
   getGuardianConsents,
   getMatchPreferences,
@@ -40,6 +41,7 @@ import {
 } from '@/lib/api.auth';
 import { removeOwnProfileImage } from '@/lib/api.profile';
 import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
+import { cityFromPicker } from '@/components/onboarding/CityPicker';
 import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
 import {
   HEIGHT_RANGE_CM,
@@ -66,8 +68,9 @@ import {
   RecruiterRoleStep,
   RecruiterSportsStep,
   RecruiterTargetStep,
+  recruiterAgeBandKey,
 } from '@/components/onboarding/RecruiterSteps';
-import { positionsFor } from '@/constants/sports';
+import { positionsFor, prunePositions } from '@/constants/sports';
 import { ClubSetupWizard } from '@/components/club/setup';
 import { Routes } from '@/lib/routes';
 
@@ -100,12 +103,25 @@ type StepKey =
 
 type Path = 'athlete' | 'recruiter' | 'guardian' | 'basic';
 
+/**
+ * Empty stays null. Anything else is stored as the catalogue spells it,
+ * so "dubai " and "Dubai" cannot become two cities. With no country the
+ * catalogue cannot be asked, and the trimmed name is kept.
+ */
+async function cityForProfile(country: string | null, city: string): Promise<string | null> {
+  const trimmed = city.trim();
+  if (!trimmed) return null;
+  const trimmedCountry = country?.trim() ?? '';
+  if (!trimmedCountry) return trimmed;
+  return addCustomCity(trimmedCountry, trimmed);
+}
+
 export default function OnboardingScreen() {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { profile, signOut, refreshProfile, setPostOnboardingHref } = useAuth();
   const router = useRouter();
 
   const role = profile?.role ?? 'athlete';
@@ -131,6 +147,7 @@ export default function OnboardingScreen() {
   const [club, setClub] = useState('');
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [side, setSide] = useState<string | null>(null);
@@ -219,6 +236,9 @@ export default function OnboardingScreen() {
         if (prefs) {
           setSports(prefs.sports ?? []);
           setPositions(prefs.positions ?? []);
+          // Step 4 writes whatever chip is selected. Without this, a return
+          // visit still has the default "Any age" and overwrites the band.
+          setAgeBandKey(recruiterAgeBandKey(prefs.age_min, prefs.age_max));
         }
       }
     } catch (err) {
@@ -312,10 +332,15 @@ export default function OnboardingScreen() {
         case 'level':
           await updateAthleteProfile({ level });
           break;
-        case 'place':
+        case 'place': {
           await updateAthleteProfile({ current_club: club.trim() || null });
-          await updateUserProfile({ country, city: city.trim() || null });
+          const chosen = isMinor ? city : cityFromPicker(city, cityQuery);
+          const cityName = await cityForProfile(country, chosen);
+          if ((cityName ?? '') !== city) setCity(cityName ?? '');
+          setCityQuery('');
+          await updateUserProfile({ country, city: cityName });
           break;
+        }
         case 'physical':
           await updateAthleteProfile({
             height_cm: height ? Number(height) : null,
@@ -403,6 +428,8 @@ export default function OnboardingScreen() {
     specialty,
     isClub,
     ageBand,
+    isMinor,
+    cityQuery,
     toast,
   ]);
 
@@ -410,14 +437,18 @@ export default function OnboardingScreen() {
   // athlete one, plus the coach record.
   const persistRecruiterPlace = useCallback(async (): Promise<boolean> => {
     try {
-      await updateUserProfile({ country, city: city.trim() || null });
+      const chosen = isMinor ? city : cityFromPicker(city, cityQuery);
+      const cityName = await cityForProfile(country, chosen);
+      if ((cityName ?? '') !== city) setCity(cityName ?? '');
+      setCityQuery('');
+      await updateUserProfile({ country, city: cityName });
       if (!isClub) await updateCoachProfile({ country });
       return true;
     } catch (err) {
       toast.error(errorMessage(err));
       return false;
     }
-  }, [country, city, isClub, toast]);
+  }, [country, city, cityQuery, isMinor, isClub, toast]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const canContinue = (): boolean => {
@@ -428,8 +459,11 @@ export default function OnboardingScreen() {
         return positionsFor(sport).length === 0 || position !== null;
       case 'level':
         return level !== null;
-      case 'place':
-        return !!country && country.trim().length > 0;
+      case 'place': {
+        if (!country || country.trim().length === 0) return false;
+        if (isMinor) return true;
+        return cityFromPicker(city, cityQuery).length > 0;
+      }
       case 'physical':
         return !heightError && !weightError && (!!height || !!weight || side !== null);
       case 'photo':
@@ -473,18 +507,32 @@ export default function OnboardingScreen() {
     return true;
   };
 
-  const finish = async () => {
+  const finish = async (): Promise<boolean> => {
     setSaving(true);
     try {
       await completeOnboarding();
       // Without the refresh the gate still sees an unfinished profile and
       // sends the person back to step one.
       await refreshProfile();
+      return true;
     } catch (err) {
       toast.error(errorMessage(err));
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * Same completion as Start exploring. The route gate is what leaves
+   * onboarding; it opens the brand profile on top of the home tabs when
+   * this target is set. Later leaves the target unset.
+   */
+  const finishToBrand = async () => {
+    if (saving) return;
+    setPostOnboardingHref(Routes.sponsorshipBrand);
+    const ok = await finish();
+    if (!ok) setPostOnboardingHref(null);
   };
 
   const advance = async () => {
@@ -612,21 +660,44 @@ export default function OnboardingScreen() {
   }
 
   const skippable = step === 'physical' || step === 'photo' || step === 'teams';
+  const isSponsorDone = step === 'done' && role === 'sponsor';
   const continueLabel = step === 'done' ? t('onboarding.finish') : t('common.continue');
   const knownName = profile.first_name ?? profile.full_name;
   const name = knownName ? firstNameOf(knownName) : '';
 
   const footerContent = (
     <View style={{ gap: spacing.sm }}>
-      <Button
-        label={continueLabel}
-        size="lg"
-        fullWidth
-        loading={saving}
-        disabled={!canContinue()}
-        onPress={() => void advance()}
-        testID="onboarding-continue"
-      />
+      {isSponsorDone ? (
+        <>
+          <Button
+            label={t('onboarding.sponsorSetupBrand')}
+            size="lg"
+            fullWidth
+            loading={saving}
+            onPress={() => void finishToBrand()}
+            testID="onboarding-setup-brand"
+          />
+          <Button
+            label={t('onboarding.later')}
+            variant="secondary"
+            size="lg"
+            fullWidth
+            disabled={saving}
+            onPress={() => void advance()}
+            testID="onboarding-later"
+          />
+        </>
+      ) : (
+        <Button
+          label={continueLabel}
+          size="lg"
+          fullWidth
+          loading={saving}
+          disabled={!canContinue()}
+          onPress={() => void advance()}
+          testID="onboarding-continue"
+        />
+      )}
       {skippable ? (
         <Button
           label={t('onboarding.skipForNow')}
@@ -679,9 +750,12 @@ export default function OnboardingScreen() {
             club={club}
             country={country}
             city={city}
+            cityQuery={cityQuery}
+            requireCity={!isMinor}
             onChangeClub={setClub}
             onChangeCountry={setCountry}
             onChangeCity={setCity}
+            onCityQueryChange={setCityQuery}
           />
         ) : null}
 
@@ -743,11 +817,15 @@ export default function OnboardingScreen() {
         {step === 'sports' ? (
           <RecruiterSportsStep
             value={sports}
-            onToggle={(next) =>
-              setSports((current) =>
-                current.includes(next) ? current.filter((s) => s !== next) : [...current, next],
-              )
-            }
+            onToggle={(next) => {
+              const nextSports = sports.includes(next)
+                ? sports.filter((s) => s !== next)
+                : [...sports, next];
+              setSports(nextSports);
+              // Unticking handball must not leave "Left wing" selected for
+              // a football search. A shared name (Goalkeeper) stays.
+              setPositions((current) => prunePositions(nextSports, current));
+            }}
           />
         ) : null}
 
@@ -769,8 +847,11 @@ export default function OnboardingScreen() {
           <RecruiterPlaceStep
             country={country}
             city={city}
+            cityQuery={cityQuery}
+            requireCity={!isMinor}
             onChangeCountry={setCountry}
             onChangeCity={setCity}
+            onCityQueryChange={setCityQuery}
           />
         ) : null}
 
@@ -842,7 +923,11 @@ export default function OnboardingScreen() {
           <SimpleFinishStep
             title={t('onboarding.doneTitle')}
             body={t(
-              path === 'guardian' ? 'onboarding.guardianDoneBody' : 'onboarding.basicDoneBody',
+              role === 'sponsor'
+                ? 'onboarding.sponsorDoneBody'
+                : path === 'guardian'
+                  ? 'onboarding.guardianDoneBody'
+                  : 'onboarding.basicDoneBody',
             )}
           />
         ) : null}

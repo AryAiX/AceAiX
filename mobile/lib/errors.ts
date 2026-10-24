@@ -51,8 +51,13 @@ const EN: Record<string, string> = {
   'errors.passwordTooShort': 'Choose a password with at least 8 characters.',
   'errors.tooManyAttempts': 'Too many attempts. Wait a few minutes and try again.',
   'errors.meetupMapUrlInvalid': 'Use a Google Maps, Apple Maps or Waze link.',
+  'errors.clubMapUrlInvalid': 'Paste a Google Maps, Apple Maps or Waze link, or coordinates.',
   'errors.meetupPlaceInvalid': 'Each place must be 2 to 80 characters.',
+  'errors.cityLength': 'A city needs between 2 and 80 characters.',
   'errors.meetupPlacesLimit': 'You can add up to 5 places.',
+  'errors.mentionLimit': 'You can mention up to 10 people.',
+  'errors.mentionInvalid':
+    'Something went wrong with a mention. Try removing it and adding it again.',
   'errors.clubAccountOnly': "Only a club or academy account can create a club page.",
   'errors.clubPageExists': "You already run a club page.",
   'errors.clubPermission': "You don't have permission to do that for this club.",
@@ -70,6 +75,8 @@ const EN: Record<string, string> = {
   'errors.clubTermsRequired': "Please accept the Terms and the Child Safety policy.",
   'errors.clubContactPersonRequired': "Tell us who is filling this in.",
   'errors.clubDocumentMissing': "Upload the document first.",
+  'clubSetup.verify.attachToSend':
+    'Attach your licence or registration document to send it for review.',
   'errors.clubInviteeNotFound': "No AceAiX account uses that email. Ask them to sign up first.",
   'errors.clubInviteeMinor': "Page team members must be 18 or over.",
   'errors.clubInviteeUnavailable': "That account can't be added.",
@@ -156,8 +163,12 @@ const HINTS: Record<string, string> = {
   referral_unknown_code: 'errors.inviteUnknownCode',
   referral_own_code: 'errors.inviteOwnCode',
   meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
+  club_map_url_invalid: 'errors.clubMapUrlInvalid',
   meetup_place_invalid: 'errors.meetupPlaceInvalid',
+  city_length: 'errors.cityLength',
   meetup_places_limit: 'errors.meetupPlacesLimit',
+  mention_limit: 'errors.mentionLimit',
+  mention_invalid: 'errors.mentionInvalid',
   /* Club and academy pages (1014/01). */
   club_account_only: 'errors.clubAccountOnly',
   club_page_exists: 'errors.clubPageExists',
@@ -177,6 +188,7 @@ const HINTS: Record<string, string> = {
   club_terms_required: 'errors.clubTermsRequired',
   club_contact_person_required: 'errors.clubContactPersonRequired',
   club_document_missing: 'errors.clubDocumentMissing',
+  club_document_required: 'clubSetup.verify.attachToSend',
   club_invitee_not_found: 'errors.clubInviteeNotFound',
   club_invitee_minor: 'errors.clubInviteeMinor',
   club_invitee_unavailable: 'errors.clubInviteeUnavailable',
@@ -249,6 +261,12 @@ export function toFriendlyError(error: unknown): FriendlyError {
 
   if (e.hint && HINTS[e.hint]) {
     return { message: say(HINTS[e.hint]), hint: e.hint, raw: error };
+  }
+
+  /* add_custom_city raises 'city_length' and 'rate_limited' as the message,
+     not a hint. Match those before the underscore check hides them. */
+  if (e.message && HINTS[e.message]) {
+    return { message: say(HINTS[e.message]), hint: e.message, raw: error };
   }
 
   if (e.code && CODES[e.code]) {

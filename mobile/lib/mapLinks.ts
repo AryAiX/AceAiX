@@ -1,6 +1,6 @@
 /**
- * Same allow-list as `meetup_map_url_ok` / `set_meetup_map_url` in
- * `20261015000006_meetup_map_link.sql`. Case-insensitive, prefix match,
+ * Same allow-list as meetups (`20261015000006_meetup_map_link.sql`) and
+ * `set_club_map_url` (`20261022000001_club_map_url.sql`). Case-insensitive, prefix match,
  * at most 500 characters. A blank field is optional and is not passed here.
  */
 const MAP_URL =

@@ -15,6 +15,7 @@ import {
   sideLabel,
   sportLabel,
 } from '@/constants/sports';
+import { CityPicker, cityFromPicker } from './CityPicker';
 import { CountryPicker, OptionCard, SportTile, StepHeading } from './Shared';
 
 /** The athlete path: sport, position, level, where you play, and your body. */
@@ -138,19 +139,28 @@ export function PlaceStep({
   club,
   country,
   city,
+  cityQuery,
+  requireCity,
   onChangeClub,
   onChangeCountry,
   onChangeCity,
+  onCityQueryChange,
 }: {
   club: string;
   country: string | null;
   city: string;
+  cityQuery: string;
+  /** Adults must name a city. Under-18s can leave it empty. */
+  requireCity: boolean;
   onChangeClub: (value: string) => void;
   onChangeCountry: (value: string) => void;
   onChangeCity: (value: string) => void;
+  onCityQueryChange: (value: string) => void;
 }) {
   const theme = useTheme();
   const t = useT();
+  const cityMissing =
+    requireCity && !!country?.trim() && cityFromPicker(city, cityQuery).length === 0;
 
   return (
     <View>
@@ -166,14 +176,24 @@ export function PlaceStep({
           testID="onboarding-club"
         />
 
-        <CountryPicker value={country} onChange={onChangeCountry} />
+        <CountryPicker
+          value={country}
+          onChange={(next) => {
+            onChangeCountry(next);
+            // A city belongs to the country it was picked under. The first
+            // load is not a change — only a tap here is.
+            if (next !== country) onChangeCity('');
+          }}
+        />
 
-        <Input
-          label={t('onboarding.cityLabel')}
+        <CityPicker
+          country={country}
           value={city}
-          onChangeText={onChangeCity}
-          placeholder={t('onboarding.cityPlaceholder')}
-          autoCapitalize="words"
+          query={cityQuery}
+          onQueryChange={onCityQueryChange}
+          onChange={onChangeCity}
+          label={t('onboarding.cityLabel')}
+          hint={cityMissing ? t('onboarding.cityRequiredHint') : undefined}
           testID="onboarding-city"
         />
       </View>

@@ -87,16 +87,28 @@ export const auth = {
     nameTitle: '该怎么称呼你？',
     nameSubtitle: '请用真名 —— 教练需要知道自己看的是谁。',
     nameSubtitleOther: '请用真名 —— 运动员和家长需要知道在和谁交流。',
+    nameTitleClub: '谁管理你的俱乐部？',
+    nameSubtitleClub:
+      '请用真名，让运动员和家长知道在和谁交流。下一步再添加俱乐部的名称。',
     firstNameLabel: '名字',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: '请填写你的名字。',
     lastNameLabel: '姓氏',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: '请填写你的姓氏。',
+    brandTitle: '你的品牌叫什么？',
+    brandSubtitle: '运动员和家长会看到这个名称。',
+    brandNameLabel: '公司或品牌名称',
+    brandNameRequired: '请填写公司或品牌名称。',
 
     dobTitle: '你的出生日期？',
     dobSubtitle:
       '我们问这个是为了保护年纪较小的运动员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
+    dobSubtitleOther:
+      '我们问这个是为了保护年纪较小的成员。你的准确生日不会展示给任何人，只会显示一个年龄段。',
+    dobTitleSponsor: '确认你已年满18岁',
+    dobSubtitleSponsor:
+      '我们需要管理这个品牌账号的人的出生日期。它不会显示在你的品牌资料上。',
     dobChoose: '选择出生日期',
     dobChange: '更改',
     dobSelectedA11y: '出生日期，{{date}}。点击更改',
@@ -106,15 +118,24 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: '年',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      '注册 {{app}} 账号需要年满{{age}}岁。点击{{action}}，我们会说明接下来该怎么做。',
+    dobTooYoungTitle: '你需要年满13岁',
+    dobTooYoungBody: '点击继续，我们会说明接下来该怎么做。',
     dobMinorTitle: '需要家长或监护人参与',
     dobMinorBody:
       '因为你未满18岁，需要家长或监护人批准你的资料，教练才能找到你。我们稍后会问他们的邮箱，并给他们发一封简短的说明邮件。',
+    dobAdultOnlyTitle: '你需要年满18岁',
+    dobAdultOnlyCoach: '在 AceAiX 上执教面向成年人。如果你是运动员，请返回并选择「运动员」。',
+    dobAdultOnlyClub: '俱乐部和青训机构由成年人管理。请让俱乐部里的成年人来创建主页。',
+    dobAdultOnlySponsor: '赞助商和品牌账号面向成年人。',
+    dobAdultOnlyGuardian:
+      '家长和监护人账号面向成年人。如果你是运动员，请返回并选择「运动员」，你的家长可以通过邮件批准你的账号。',
+    dobChooseDifferentRole: '选择其他身份',
 
     blockedTitle: '等你满{{age}}岁再回来',
     blockedBody:
       '{{app}} 是为{{age}}岁及以上的运动员做的，所以现在还不能给你创建账号。这条规定是为了保护年纪更小的孩子在网上的安全，我们无法为任何人破例。',
+    blockedBodyOther:
+      '{{app}} 是为{{age}}岁及以上的人做的，所以现在还不能给你创建账号。这条规定是为了保护年纪更小的孩子在网上的安全，我们无法为任何人破例。',
     blockedEncouragement:
       '继续训练。等你满{{age}}岁再回来，你的资料还在这里等你。',
     blockedBackToStart: '回到开头',

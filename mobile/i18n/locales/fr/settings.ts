@@ -143,6 +143,7 @@ export const settings = {
   notifyFollows: 'Nouveaux abonnés',
   notifyMessages: 'Messages',
   notifyComments: 'Commentaires',
+  notifyMentions: 'Mentions',
   notifyLikes: 'Likes',
   notifyMeetups: 'Matchs dans Jouer',
   meetupPlaces: 'Lieux des alertes Jouer',
@@ -168,7 +169,7 @@ export const settings = {
   scoutingIntro:
     'Cela détermine qui Découvrir te montre en premier, et de quels athlètes on te parle. Laisse vide pour dire « peu importe ».',
   scoutingSports: 'Sports',
-  scoutingSportsHint: 'Choisis le seul sport pour lequel tu recrutes.',
+  scoutingSportsHint: 'Choisis les sports pour lesquels tu recrutes. Tu peux en choisir plusieurs.',
   scoutingPositions: 'Postes',
   scoutingPositionsHint: 'Seulement les postes des sports que tu as choisis.',
   scoutingPositionsEmpty: 'Choisis d’abord un sport et ses postes apparaîtront ici.',

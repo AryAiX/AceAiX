@@ -4,7 +4,6 @@ import {
   Image,
   Pressable,
   ScrollView,
-  TextInput,
   View,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
@@ -34,6 +33,7 @@ import {
   isRTL,
 } from '@/components/ui';
 import { useT } from '@/i18n';
+import { MentionInput } from '@/components/feed/MentionInput';
 import { createPost } from '@/lib/api';
 import {
   MAX_POST_VIDEO_SECONDS,
@@ -41,6 +41,7 @@ import {
   type PendingMedia,
 } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
+import { mentionsForSubmit, type MentionSpan } from '@/lib/mentions';
 import { Routes } from '@/lib/routes';
 import { useProgress } from '@/providers/ProgressProvider';
 import type { PostAudience, PostMedia } from '@/types/models';
@@ -92,6 +93,7 @@ export default function ComposeScreen() {
   const t = useT();
 
   const [text, setText] = useState('');
+  const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [media, setMedia] = useState<PendingMedia[]>([]);
   const [audience, setAudience] = useState<PostAudience>('public');
   const [audienceOpen, setAudienceOpen] = useState(false);
@@ -193,7 +195,13 @@ export default function ComposeScreen() {
         );
       }
 
-      await createPost({ caption: trimmed, media: uploaded, audience });
+      const saved = mentionsForSubmit(text, mentions);
+      await createPost({
+        caption: saved.text,
+        mentions: saved.mentions,
+        media: uploaded,
+        audience,
+      });
       toast.success(t('feed.posted'));
       close();
       checkAchievements();
@@ -203,7 +211,7 @@ export default function ComposeScreen() {
       setPosting(false);
       setProgress(null);
     }
-  }, [canPost, media, trimmed, audience, toast, close, t, checkAchievements]);
+  }, [canPost, media, text, mentions, audience, toast, close, t, checkAchievements]);
 
   const percent = progress && progress.total > 0 ? progress.done / progress.total : 0;
 
@@ -312,9 +320,10 @@ export default function ComposeScreen() {
         <ChevronDown size={15} color={colors.textMuted} />
       </Pressable>
 
-      <TextInput
+      <MentionInput
         value={text}
         onChangeText={setText}
+        onMentionsChange={setMentions}
         placeholder={t('feed.composePlaceholder')}
         placeholderTextColor={colors.textMuted}
         multiline

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, View, type LayoutChangeEvent, type ViewToken } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +13,8 @@ import { CommentSheet } from '@/components/feed/CommentSheet';
 import { ReelItem } from '@/components/reels/ReelItem';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
-import { toggleFollow, toggleLike } from '@/lib/api';
+import { toggleLike } from '@/lib/api';
+import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import { postLink } from '@/lib/api.feed';
 import { getExploreVideos, isHighlight } from '@/lib/api.explore';
 import { getReels } from '@/lib/api.reels';
@@ -38,10 +39,11 @@ export default function ReelsScreen() {
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
+  const focused = useIsFocused();
   const t = useT();
   const toast = useToast();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const params = useLocalSearchParams<{ start?: string; source?: string; sport?: string }>();
 
   /* Opened from Explore, the pager plays the grid the tap came from — the
@@ -112,16 +114,23 @@ export default function ReelsScreen() {
 
   const onFollow = useCallback(
     async (post: FeedPost) => {
-      patch((p) => p.author_id === post.author_id, { viewer_follows: true });
+      const wasFollowing = post.viewer_follows === true;
+      patch((p) => p.author_id === post.author_id, { viewer_follows: !wasFollowing });
       try {
-        const result = await toggleFollow(post.author_id);
+        const result = await applyToggleFollow({
+          targetId: post.author_id,
+          myId: user?.id ?? null,
+          wasFollowing,
+          targetFollowers: knownFollowCount(post.author_id, 'followers') ?? null,
+          myFollowing: knownFollowCount(user?.id ?? '', 'following') ?? profile?.following_count ?? 0,
+        });
         patch((p) => p.author_id === post.author_id, { viewer_follows: result.following });
       } catch (err) {
-        patch((p) => p.author_id === post.author_id, { viewer_follows: false });
+        patch((p) => p.author_id === post.author_id, { viewer_follows: wasFollowing });
         toast.error(errorMessage(err));
       }
     },
-    [patch, toast],
+    [patch, profile?.following_count, toast, user?.id],
   );
 
   const onShare = useCallback(
@@ -162,7 +171,7 @@ export default function ReelsScreen() {
         post={item}
         width={size.width}
         height={size.height}
-        active={item.id === currentId}
+        active={focused && item.id === currentId}
         muted={muted}
         isOwn={!!user && user.id === item.author_id}
         bottomInset={insets.bottom}
@@ -174,7 +183,7 @@ export default function ReelsScreen() {
         onOpenProfile={openProfile}
       />
     ),
-    [size.width, size.height, currentId, muted, user, insets.bottom, toggleMute, onLike, onShare, onFollow, openProfile],
+    [size.width, size.height, currentId, focused, muted, user, insets.bottom, toggleMute, onLike, onShare, onFollow, openProfile],
   );
 
   const getItemLayout = useCallback(
@@ -216,7 +225,7 @@ export default function ReelsScreen() {
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={currentId}
+        extraData={focused ? currentId : null}
         pagingEnabled
         snapToInterval={size.height}
         snapToAlignment="start"

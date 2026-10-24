@@ -4,7 +4,10 @@ import { Heart, MoreHorizontal, Send, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text, isRTL } from '@/components/ui';
+import { MentionInput } from '@/components/feed/MentionInput';
+import { MentionText } from '@/components/feed/MentionText';
 import { useT } from '@/i18n';
+import type { MentionSpan } from '@/lib/mentions';
 import { useAuth } from '@/providers/AuthProvider';
 import { compactNumber, displayName, relativeTime } from '@/lib/format';
 import type { PostComment } from '@/types/models';
@@ -122,9 +125,13 @@ export function CommentRow({
           </Text>
         </Pressable>
 
-        <Text variant="caption" style={{ marginTop: 2 }}>
-          {comment.body}
-        </Text>
+        <MentionText
+          text={comment.body}
+          mentions={comment.mentions}
+          variant="caption"
+          style={{ marginTop: 2 }}
+          onOpenProfile={onOpenProfile}
+        />
 
         <View
           style={{
@@ -208,6 +215,7 @@ export function CommentList({
 interface ComposerProps {
   value: string;
   onChangeText: (text: string) => void;
+  onMentionsChange?: (mentions: MentionSpan[]) => void;
   onSubmit: () => void;
   sending: boolean;
   replyingTo: PostComment | null;
@@ -220,6 +228,7 @@ interface ComposerProps {
 export function CommentComposer({
   value,
   onChangeText,
+  onMentionsChange,
   onSubmit,
   sending,
   replyingTo,
@@ -274,29 +283,29 @@ export function CommentComposer({
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
         <Avatar uri={profile?.avatar_url} name={profile?.full_name} size="sm" />
 
-        <View
-          style={{
-            flex: 1,
-            minHeight: 44,
-            justifyContent: 'center',
-            borderRadius: radii.lg,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surfaceAlt,
-            paddingHorizontal: spacing.lg,
-            paddingVertical: spacing.sm,
-          }}
-        >
-          <TextInput
+        <View style={{ flex: 1 }}>
+          <MentionInput
             ref={inputRef}
             value={value}
             onChangeText={onChangeText}
+            onMentionsChange={onMentionsChange}
             placeholder={t('feed.commentPlaceholder')}
             placeholderTextColor={colors.textMuted}
             multiline
             maxLength={1000}
             autoFocus={autoFocus}
             accessibilityLabel={t('feed.writeComment')}
+            suggestionsLayout="overlay"
+            containerStyle={{
+              minHeight: 44,
+              justifyContent: 'center',
+              borderRadius: radii.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceAlt,
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.sm,
+            }}
             style={{
               color: colors.text,
               fontFamily: theme.font.regular,

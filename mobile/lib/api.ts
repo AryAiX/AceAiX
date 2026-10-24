@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import { AppError } from './errors';
+import { parseMentions, type MentionSpan } from './mentions';
+import { attachPostMentions } from './postMentions';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import type {
   ActivityResult,
@@ -244,7 +246,8 @@ export async function getFeed(params: {
     p_before: params.before ?? null,
   });
   if (error) throw new AppError(error);
-  return signPostMedia((data ?? []) as FeedPost[]);
+  const signed = await signPostMedia((data ?? []) as FeedPost[]);
+  return attachPostMentions(signed);
 }
 
 export async function getSavedPosts(params: {
@@ -278,6 +281,7 @@ export async function createPost(input: {
   audience?: PostAudience;
   tags?: string[];
   type?: string;
+  mentions?: MentionSpan[];
 }): Promise<string> {
   const { data: auth, error: authError } = await supabase.auth.getUser();
   if (authError) throw new AppError(authError);
@@ -293,6 +297,7 @@ export async function createPost(input: {
       tags: input.tags ?? [],
       audience: input.audience ?? 'public',
       type: input.type ?? (input.media?.some((m) => m.type === 'video') ? 'video' : 'standard'),
+      ...(input.mentions !== undefined ? { mentions: input.mentions } : {}),
     })
     .select('id')
     .single();
@@ -320,23 +325,35 @@ export async function toggleSave(postId: string) {
 export async function getComments(postId: string): Promise<PostComment[]> {
   const { data, error } = await supabase
     .from('post_comments')
-    .select('id, post_id, author_id, body, parent_id, like_count, created_at, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url, is_verified)')
+    .select('id, post_id, author_id, body, mentions, parent_id, like_count, created_at, author:user_profiles!post_comments_author_id_fkey(full_name, avatar_url, is_verified)')
     .eq('post_id', postId)
     .order('created_at', { ascending: true })
     .limit(200);
   if (error) throw new AppError(error);
   return (data ?? []).map((row) => ({
     ...row,
+    mentions: parseMentions((row as { mentions?: unknown }).mentions),
     author: Array.isArray(row.author) ? row.author[0] : row.author,
   })) as PostComment[];
 }
 
-export async function addComment(postId: string, body: string, parentId?: string) {
+export async function addComment(
+  postId: string,
+  body: string,
+  parentId?: string,
+  mentions?: MentionSpan[],
+) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new AppError('Not signed in');
   const { data, error } = await supabase
     .from('post_comments')
-    .insert({ post_id: postId, author_id: auth.user.id, body, parent_id: parentId ?? null })
+    .insert({
+      post_id: postId,
+      author_id: auth.user.id,
+      body,
+      parent_id: parentId ?? null,
+      ...(mentions !== undefined ? { mentions } : {}),
+    })
     .select('id')
     .single();
   if (error) throw new AppError(error);
@@ -425,6 +442,26 @@ export async function talentLeaderboard(sport?: string, country?: string, limit 
   });
   if (error) throw new AppError(error);
   return data ?? [];
+}
+
+export interface MentionCandidate {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  is_verified: boolean;
+  role: string | null;
+}
+
+/** People the signed-in user is allowed to @-mention. Blank queries match nobody. */
+export async function mentionCandidates(query: string): Promise<MentionCandidate[]> {
+  const term = query.trim();
+  if (!term) return [];
+  const { data, error } = await supabase.rpc('mention_candidates', {
+    p_query: term,
+    p_limit: 5,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as MentionCandidate[];
 }
 
 /**
@@ -667,6 +704,25 @@ export async function getNotifications(limit = 50): Promise<AppNotification[]> {
   })) as AppNotification[];
 }
 
+/**
+ * Name and photo shown beside a notification.
+ *
+ * `getNotifications` loads these as the `actor` embed
+ * (`user_profiles.full_name`, `user_profiles.avatar_url`). A banner has the
+ * realtime row and not that embed, so it asks for the same two columns.
+ */
+export async function getNotificationActor(
+  actorId: string,
+): Promise<{ full_name: string | null; avatar_url: string | null } | null> {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('full_name, avatar_url')
+    .eq('id', actorId)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  return data;
+}
+
 export async function markNotificationsRead(ids?: string[]) {
   const { error } = await supabase.rpc('mark_notifications_read', { p_ids: ids ?? null });
   if (error) throw new AppError(error);
@@ -887,6 +943,33 @@ export async function searchTeams(query?: string, sport?: string, limit = 20): P
   });
   if (error) throw new AppError(error);
   return (data ?? []) as Team[];
+}
+
+/** City names for one country. Nothing about a person is in the result. */
+export async function searchCities(country: string, query: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('search_cities', {
+    p_country: country.trim(),
+    p_query: query.trim() || null,
+    p_limit: 24,
+  });
+  if (error) throw new AppError(error);
+  const rows = (data ?? []) as ({ name?: string } | string)[];
+  return rows
+    .map((row) => (typeof row === 'string' ? row : row.name))
+    .filter((name): name is string => !!name);
+}
+
+/**
+ * The spelling already held for this city, or the trimmed name if it is new.
+ * "dubai " comes back as "Dubai", so the two cannot be stored as two cities.
+ */
+export async function addCustomCity(country: string, name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('add_custom_city', {
+    p_country: country.trim(),
+    p_name: name.trim(),
+  });
+  if (error) throw new AppError(error);
+  return data as string;
 }
 
 /** Adds a club we do not have. Stays private to this person until curated. */

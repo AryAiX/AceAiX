@@ -44,6 +44,11 @@ export const onboarding = {
   clubHint: 'Laisse vide si tu n’es dans aucun club en ce moment.',
   cityLabel: 'Ville',
   cityPlaceholder: 'Dubaï',
+  cityPickCountryFirst: 'Choisis d’abord un pays.',
+  cityRequiredHint: 'Ajoute ta ville pour que les matchs et clubs près de chez toi puissent te trouver.',
+  citySearchPlaceholder: 'Rechercher une ville',
+  cityNoMatch: 'Aucune ville ne correspond. Essaie une recherche plus courte.',
+  cityShowAll: 'Voir toutes les villes',
 
   // ── Athlète : physique ────────────────────────────────────────────────────
   physicalTitle: 'Quelques chiffres',
@@ -189,6 +194,10 @@ export const onboarding = {
   doneTitle: 'C’est bon',
   guardianDoneBody: 'Ton compte est prêt. Te relier à ton enfant prend environ une minute.',
   basicDoneBody: 'Fais un tour et règle le reste quand tu veux.',
+  sponsorDoneBody:
+    'Ensuite, parle de ta marque aux athlètes. Tu pourras publier des appels et envoyer des offres une fois ton profil de marque vérifié.',
+  sponsorSetupBrand: 'Configurer ton profil de marque',
+  later: 'Plus tard',
   guardianDoneNote:
     'Réglages, puis Parent et tuteur. Si ton enfant t’a déjà envoyé un e-mail de validation, ouvrir le lien qu’il contient relie vos comptes.',
 };

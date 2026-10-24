@@ -106,7 +106,7 @@ Deleting an account removes its objects from all three buckets
 | Supabase | Everything — hosting, database, auth, storage | Processor | Yes |
 | Expo | Push token, notification payloads | Processor | Yes |
 | Apple, Google | Distribution, push transport | Processor / platform | Yes |
-| **Resend** | Guardian's name and email address, child's display name, for the consent email | Processor | **Yes.** Named in "Who we share it with", with the fields it receives. `supabase/functions/guardian-consent/index.ts:204` posts to `api.resend.com` when `RESEND_API_KEY` is set. |
+| **Resend** | Guardian's name and email address, child's display name, for the consent email | Processor | **Yes.** Named in "Who we share it with", with the fields it receives. `supabase/functions/guardian-consent/index.ts:329` posts to `api.resend.com` when `RESEND_API_KEY` is set. |
 | **OpenAI** | Score summary: overall score, tier, five pillar numbers, sport, and a minor flag — no name, email or user id. Translation: the text of the post, comment or message a reader asks to translate — no author name or id. | Processor (API; not used for training) | **Yes.** The policy names OpenAI and lists what each feature sends. `supabase/functions/talent-insights/index.ts` and `supabase/functions/translate/index.ts`; both read `OPENAI_API_KEY`, which is set on prd since 2026-10-13. **OPEN — App Privacy and Data safety answers must reflect that user content is processed by a service provider (owner: legal).** |
 
 ---

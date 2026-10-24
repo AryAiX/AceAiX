@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, TurboModuleRegistry } from 'react-native';
 
 import { fitWithin } from '@/lib/imagePrep';
 
@@ -44,6 +44,13 @@ export async function prepareVideo(
   height?: number | null,
 ): Promise<PreparedVideo | null> {
   if (Platform.OS === 'web') return null;
+  /* The compressor's module body asks Nitro for its native module, and Metro
+     reports that failure as a red overlay even when this import() is caught.
+     get() does not throw: missing means this binary cannot compress (Expo Go). */
+  if (TurboModuleRegistry.get('NitroModules') == null) {
+    console.info('Video compression is unavailable in this build');
+    return null;
+  }
   try {
     const { Video } = await import('react-native-compressor');
     const compressed = await Video.compress(uri, {

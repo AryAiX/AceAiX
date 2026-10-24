@@ -16,6 +16,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { errors } from './errors';
 import { format } from './format';
@@ -28,6 +29,7 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 import { countries } from './countries';
 import { sportFit } from './sportFit';
 import { invites } from './invites';
@@ -57,6 +59,7 @@ export const en = {
   messaging,
   settings,
   safety,
+  parentApproval,
   sports,
   errors,
   format,
@@ -72,6 +75,7 @@ export const en = {
   clubMatch,
   sportFit,
   invites,
+  whatsNew,
 };
 
 export type Translations = typeof en;

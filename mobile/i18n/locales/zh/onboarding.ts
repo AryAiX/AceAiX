@@ -41,6 +41,11 @@ export const onboarding = {
   clubHint: '如果你现在没有俱乐部，留空就行。',
   cityLabel: '城市',
   cityPlaceholder: '迪拜',
+  cityPickCountryFirst: '请先选择国家。',
+  cityRequiredHint: '填写你的城市，方便附近的比赛和俱乐部找到你。',
+  citySearchPlaceholder: '搜索城市',
+  cityNoMatch: '没有匹配的城市。试试少输几个字。',
+  cityShowAll: '显示所有城市',
 
   // ── 运动员：身体数据 ──────────────────────────────────────────────────────
   physicalTitle: '几个数字',
@@ -186,6 +191,10 @@ export const onboarding = {
   doneTitle: '一切就绪',
   guardianDoneBody: '你的账号已经就绪。和孩子建立关联大约只要一分钟。',
   basicDoneBody: '先四处看看，其余的想什么时候设置都行。',
+  sponsorDoneBody:
+    '接下来，向运动员介绍你的品牌。品牌资料通过认证后，就可以发布征集并提出报价。',
+  sponsorSetupBrand: '设置品牌资料',
+  later: '稍后',
   guardianDoneNote:
     '打开设置，选择“家长与监护人”。如果孩子已经给你发过批准邮件，点开里面的链接就能把两个账号关联起来。',
 };

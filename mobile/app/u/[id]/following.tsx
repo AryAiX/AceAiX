@@ -20,11 +20,13 @@ export default function FollowingScreen() {
 
   const following = useAsync(() => getFollowing(userId as string), [userId], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
 
   /* On my own list every row is someone I follow; otherwise ask for my own. */
   const mine = useAsync(() => getFollowing(myId as string), [myId], {
     enabled: !!myId && !isMe,
+    refetchOnFocus: true,
   });
 
   const followingIds = useMemo(() => {

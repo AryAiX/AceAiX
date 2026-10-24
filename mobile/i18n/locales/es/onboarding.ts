@@ -46,6 +46,11 @@ export const onboarding = {
   clubHint: 'Déjalo vacío si ahora mismo no estás en ningún club.',
   cityLabel: 'Ciudad',
   cityPlaceholder: 'Dubái',
+  cityPickCountryFirst: 'Elige primero un país.',
+  cityRequiredHint: 'Añade tu ciudad para que los partidos y clubes cercanos puedan encontrarte.',
+  citySearchPlaceholder: 'Buscar ciudades',
+  cityNoMatch: 'Ninguna ciudad coincide. Prueba con una búsqueda más corta.',
+  cityShowAll: 'Ver todas las ciudades',
 
   // ── Deportista: datos físicos ─────────────────────────────────────────────
   physicalTitle: 'Unos números',
@@ -195,6 +200,10 @@ export const onboarding = {
   doneTitle: 'Todo listo',
   guardianDoneBody: 'Tu cuenta está lista. Vincularte con tu hijo o hija lleva un minuto.',
   basicDoneBody: 'Echa un vistazo y prepara el resto cuando quieras.',
+  sponsorDoneBody:
+    'Ahora cuéntales a los deportistas sobre tu marca. Podrás publicar convocatorias y enviar ofertas cuando el perfil de tu marca esté verificado.',
+  sponsorSetupBrand: 'Configura el perfil de tu marca',
+  later: 'Más tarde',
   guardianDoneNote:
     'Ajustes y luego Madre, padre o tutor. Si tu hijo o hija ya te envió un correo de aprobación, al abrir el enlace se conectan las cuentas.',
 };

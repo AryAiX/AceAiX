@@ -6,6 +6,8 @@
  * the whole UI is written against.
  */
 
+import type { MentionSpan } from '@/lib/mentions';
+
 export type UserRole =
   | 'athlete'
   | 'scout'
@@ -188,6 +190,8 @@ export interface FeedPost {
   viewer_saved: boolean;
   viewer_follows: boolean;
   created_at: string;
+  /** Code-point spans. The character at `start` is "@". Loaders fill this in. */
+  mentions?: MentionSpan[];
 }
 
 export interface SavedPost extends FeedPost {
@@ -214,6 +218,8 @@ export interface PostComment {
   like_count: number;
   created_at: string;
   author?: { full_name: string | null; avatar_url: string | null; is_verified: boolean };
+  /** Code-point spans. The character at `start` is "@". */
+  mentions?: MentionSpan[];
 }
 
 // ── Discovery ────────────────────────────────────────────────────────────────
@@ -349,6 +355,7 @@ export type NotificationType =
   | 'message'
   | 'comment'
   | 'reply'
+  | 'mention'
   | 'like'
   | 'application_received'
   | 'application_status'
@@ -494,6 +501,7 @@ export interface NotificationPreferences {
   follows: boolean;
   messages: boolean;
   comments: boolean;
+  mentions: boolean;
   likes: boolean;
   opportunities: boolean;
   applications: boolean;
@@ -502,6 +510,7 @@ export interface NotificationPreferences {
   meetups: boolean;
   /** Extra cities or areas, besides the profile city, for Play alerts. */
   meetup_places: string[];
+  club_updates: boolean;
   push_enabled: boolean;
   email_enabled: boolean;
 }

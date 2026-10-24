@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Linking, View } from 'react-native';
 import {
   Award,
+  AtSign,
   Bell,
   BellRing,
   Briefcase,
@@ -45,13 +46,13 @@ import {
 import { errorMessage } from '@/lib/errors';
 import type { NotificationPreferences } from '@/types/models';
 
-/* `club_updates` arrived with club pages (1014/01). */
-type Prefs = Omit<NotificationPreferences, 'user_id'> & { club_updates: boolean };
+type Prefs = Omit<NotificationPreferences, 'user_id'>;
 
 const DEFAULTS: Prefs = {
   follows: true,
   messages: true,
   comments: true,
+  mentions: true,
   likes: true,
   opportunities: true,
   applications: true,
@@ -216,6 +217,7 @@ export default function NotificationSettingsScreen() {
       { key: 'follows' as const, title: t('settings.notifyFollows'), Icon: UserPlus },
       { key: 'messages' as const, title: t('settings.notifyMessages'), Icon: MessageCircle },
       { key: 'comments' as const, title: t('settings.notifyComments'), Icon: MessageSquare },
+      { key: 'mentions' as const, title: t('settings.notifyMentions'), Icon: AtSign },
       { key: 'likes' as const, title: t('settings.notifyLikes'), Icon: Heart },
       { key: 'meetups' as const, title: t('settings.notifyMeetups'), Icon: CalendarDays },
     ],

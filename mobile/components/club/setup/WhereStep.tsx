@@ -5,13 +5,14 @@ import { MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Card, IconButton, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { CityPicker } from '@/components/onboarding/CityPicker';
 import { CountryPicker } from '@/components/onboarding/Shared';
 import {
   LIMITS,
+  clubMapOpenUrl,
   formatPin,
-  mapUrl,
   newBranch,
-  parseMapLocation,
+  readMapPin,
   type BranchDraft,
   type ClubDraft,
   type WhereError,
@@ -32,8 +33,20 @@ export function WhereFields({
   const t = useT();
   const { colors, spacing } = theme;
 
-  const pin = parseMapLocation(draft.pin);
+  const saved = readMapPin(draft.pin);
   const pinTyped = draft.pin.trim().length > 0;
+  const point =
+    saved && saved.latitude != null && saved.longitude != null
+      ? { latitude: saved.latitude, longitude: saved.longitude }
+      : null;
+  const openUrl = clubMapOpenUrl({
+    mapUrl: saved?.mapUrl ?? null,
+    latitude: saved?.latitude ?? null,
+    longitude: saved?.longitude ?? null,
+    address: draft.address,
+    city: draft.city,
+    country: draft.country,
+  });
 
   const setBranch = (key: string, patch: Partial<BranchDraft>) =>
     onChange({ branches: draft.branches.map((b) => (b.key === key ? { ...b, ...patch } : b)) });
@@ -43,7 +56,23 @@ export function WhereFields({
       <View style={{ gap: spacing.xs }}>
         <CountryPicker
           value={draft.country}
-          onChange={(country) => onChange({ country })}
+          onChange={(country) => {
+            // A city belongs to the country it was picked under. Loading a
+            // saved page sets both at once; only a tap here is a change.
+            if (country === draft.country) {
+              onChange({ country });
+              return;
+            }
+            onChange({
+              country,
+              city: '',
+              branches: draft.branches.map((branch) =>
+                branch.country && branch.country !== draft.country
+                  ? branch
+                  : { ...branch, country, city: '' },
+              ),
+            });
+          }}
           label={t('clubSetup.where.countryLabel')}
         />
         {errors.country ? (
@@ -53,17 +82,20 @@ export function WhereFields({
         ) : null}
       </View>
 
-      <Input
-        label={t('clubSetup.where.cityLabel')}
-        required
-        value={draft.city}
-        onChangeText={(city) => onChange({ city })}
-        placeholder={t('clubSetup.where.cityPlaceholder')}
-        error={errors.city ? t('clubSetup.where.cityRequired') : null}
-        maxLength={LIMITS.city}
-        autoCapitalize="words"
-        testID="club-setup-city"
-      />
+      <View style={{ gap: spacing.xs }}>
+        <CityPicker
+          country={draft.country}
+          value={draft.city}
+          onChange={(city) => onChange({ city })}
+          label={t('clubSetup.where.cityLabel')}
+          testID="club-setup-city"
+        />
+        {errors.city ? (
+          <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+            {t('clubSetup.where.cityRequired')}
+          </Text>
+        ) : null}
+      </View>
       <Input
         label={t('clubSetup.where.addressLabel')}
         value={draft.address}
@@ -77,22 +109,24 @@ export function WhereFields({
         <Input
           label={t('clubSetup.where.pinLabel')}
           value={draft.pin}
-          onChangeText={(value) => onChange({ pin: value })}
+          onChangeText={(pin) => onChange({ pin })}
           placeholder={t('clubSetup.where.pinPlaceholder')}
           hint={pinTyped ? undefined : t('clubSetup.where.pinHint')}
-          error={errors.pin || (pinTyped && !pin) ? t('clubSetup.where.pinInvalid') : null}
+          error={errors.pin || (pinTyped && !saved) ? t('clubSetup.where.pinInvalid') : null}
           autoCapitalize="none"
           autoCorrect={false}
           icon={<MapPin size={18} color={colors.textMuted} />}
           testID="club-setup-pin"
         />
-        {pin ? (
+        {openUrl ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md }}>
-            <Text variant="captionStrong" tone="success">
-              {t('clubSetup.where.pinParsed', { pin: formatPin(pin.latitude, pin.longitude) })}
-            </Text>
+            {point ? (
+              <Text variant="captionStrong" tone="success">
+                {t('clubSetup.where.pinParsed', { pin: formatPin(point.latitude, point.longitude) })}
+              </Text>
+            ) : null}
             <Pressable
-              onPress={() => void Linking.openURL(mapUrl(pin)).catch(() => {})}
+              onPress={() => void Linking.openURL(openUrl).catch(() => {})}
               accessibilityRole="link"
               accessibilityLabel={t('clubSetup.where.checkOnMap')}
               hitSlop={8}
@@ -133,13 +167,12 @@ export function WhereFields({
               placeholder={t('clubSetup.where.branchLabelPlaceholder')}
               maxLength={LIMITS.branchLabel}
             />
-            <Input
-              label={t('clubSetup.where.cityLabel')}
+            <CityPicker
+              country={branch.country ?? draft.country}
               value={branch.city}
-              onChangeText={(city) => setBranch(branch.key, { city })}
-              placeholder={t('clubSetup.where.cityPlaceholder')}
-              maxLength={LIMITS.city}
-              autoCapitalize="words"
+              onChange={(city) => setBranch(branch.key, { city })}
+              label={t('clubSetup.where.cityLabel')}
+              testID={`club-setup-branch-city-${index}`}
             />
             <Input
               label={t('clubSetup.where.addressLabel')}

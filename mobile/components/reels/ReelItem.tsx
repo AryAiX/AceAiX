@@ -8,10 +8,12 @@ import { BadgeCheck, Heart, MessageCircle, Play, Share2, Volume2, VolumeX } from
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
 import { HeartBurst } from '@/components/feed/HeartBurst';
+import { MentionText } from '@/components/feed/MentionText';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
-import { isHighlight } from '@/lib/api.explore';
+import { isHighlight, recordHighlightView } from '@/lib/api.explore';
+import { recordPostView } from '@/lib/api.feed';
 import { reelVideo } from '@/lib/api.reels';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -106,6 +108,19 @@ function ReelItemBase({
       else player.pause();
     });
   }, [playing, player, safely]);
+
+  /* One view per clip this session, and only after it has actually been
+     playing. A highlight is not a post, so it counts on athlete_media. */
+  useEffect(() => {
+    if (!playing) return;
+    const id = post.id;
+    const highlight = isHighlight(post);
+    const timer = setTimeout(() => {
+      if (highlight) void recordHighlightView(id);
+      else void recordPostView(id);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [playing, post.id, post.type]);
 
   useEffect(() => {
     const sub = player.addListener('timeUpdate', ({ currentTime }) => {
@@ -286,11 +301,15 @@ function ReelItemBase({
         ) : null}
 
         {caption ? (
-          <Pressable onPress={() => setCaptionOpen((o) => !o)} accessibilityRole="button">
-            <Text variant="body" color={ON_VIDEO} numberOfLines={captionOpen ? 8 : 2}>
-              {caption}
-            </Text>
-          </Pressable>
+          <MentionText
+            text={caption}
+            mentions={post.mentions}
+            variant="body"
+            color={ON_VIDEO}
+            numberOfLines={captionOpen ? 8 : 2}
+            onPressText={() => setCaptionOpen((open) => !open)}
+            onOpenProfile={onOpenProfile}
+          />
         ) : null}
       </View>
 

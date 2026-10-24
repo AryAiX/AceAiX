@@ -76,8 +76,12 @@ export const errors = {
   coachingServiceLimit: '最多同时提供十二项课程。',
   coachingOwnCalendar: '不能预约自己的日历。',
   meetupMapUrlInvalid: '请使用 Google Maps、Apple Maps 或 Waze 链接。',
+  clubMapUrlInvalid: '请粘贴 Google 地图、Apple 地图或 Waze 的链接，或坐标。',
   meetupPlaceInvalid: '每个地点须为 2 至 80 个字符。',
+  cityLength: '城市名称需要 2 到 80 个字符。',
   meetupPlacesLimit: '最多可以添加 5 个地点。',
+  mentionLimit: '最多可以提及其他 10 个人。',
+  mentionInvalid: '有一处提及出了问题。请先删掉它，再重新添加。',
   /* Club and academy pages (1014/01). */
   clubAccountOnly: "只有俱乐部或学院账号可以创建俱乐部主页。",
   clubPageExists: "你已经在管理一个俱乐部主页。",

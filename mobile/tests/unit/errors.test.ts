@@ -23,6 +23,32 @@ describe('database hints', () => {
 
   it('explains a rate limit without blaming the user', () => {
     expect(errorMessage({ code: '54000', hint: 'rate_limited' })).toContain('too quickly');
+    expect(errorMessage({ message: 'rate_limited' })).toContain('too quickly');
+  });
+
+  it('explains a city the catalogue will not keep', () => {
+    expect(errorMessage({ code: 'P0001', message: 'city_length' })).toContain('2');
+  });
+
+  it('explains a club map link the server refused', () => {
+    expect(errorMessage({ code: '22023', hint: 'club_map_url_invalid' })).toBe(
+      'Paste a Google Maps, Apple Maps or Waze link, or coordinates.',
+    );
+  });
+
+  it('explains a club submission with no licence document', () => {
+    expect(errorMessage({ code: '22023', hint: 'club_document_required' })).toBe(
+      'Attach your licence or registration document to send it for review.',
+    );
+  });
+
+  it('explains a mention the server refused', () => {
+    expect(errorMessage({ code: '22023', hint: 'mention_limit' })).toBe(
+      'You can mention up to 10 people.',
+    );
+    expect(errorMessage({ code: '22023', hint: 'mention_invalid' })).toBe(
+      'Something went wrong with a mention. Try removing it and adding it again.',
+    );
   });
 
   it('explains the age floor', () => {

@@ -18,6 +18,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { countries } from './countries';
 import { sportFit } from './sportFit';
@@ -33,6 +34,7 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 
 /**
  * 中文只有一种复数形式。
@@ -61,5 +63,7 @@ const catalogue: SingleFormPlurals<Translations> = { common, language, auth, onb
   feed, profile, score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging,
   settings, safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
   club, clubSetup, clubManage, clubMatch, sportFit, invites };
+  settings, safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
+  club, clubSetup, clubManage, clubMatch, whatsNew };
 
 export const zh = catalogue as Translations;

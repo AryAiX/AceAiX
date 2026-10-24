@@ -18,6 +18,7 @@ import { opportunities } from './opportunities';
 import { messaging } from './messaging';
 import { settings } from './settings';
 import { safety } from './safety';
+import { parentApproval } from './parentApproval';
 import { sports } from './sports';
 import { countries } from './countries';
 import { sportFit } from './sportFit';
@@ -33,6 +34,7 @@ import { club } from './club';
 import { clubSetup } from './clubSetup';
 import { clubManage } from './clubManage';
 import { clubMatch } from './clubMatch';
+import { whatsNew } from './whatsNew';
 
 
 /** العربية. مُقيَّدة بأنواع الإنجليزية، فأي مفتاح ناقص خطأ في الترجمة البرمجية. */
@@ -40,3 +42,5 @@ export const ar: Translations = { common, language, auth, onboarding, feed, prof
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
   safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
   club, clubSetup, clubManage, clubMatch, sportFit, invites };
+  safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
+  club, clubSetup, clubManage, clubMatch, whatsNew };

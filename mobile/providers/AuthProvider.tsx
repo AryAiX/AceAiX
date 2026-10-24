@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import { AppState, Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
+import type { Href } from 'expo-router';
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { emailConfirmationRedirect, passwordResetRedirect } from '@/lib/authRedirect';
@@ -51,14 +52,23 @@ interface AuthContextValue {
   signUp: (input: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    firstName?: string;
+    lastName?: string;
+    /** Sponsor accounts. Stored as full_name; split name columns stay unset. */
+    brandName?: string;
     role: SignupRole;
   }) => Promise<{ needsEmailConfirmation: boolean }>;
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   refreshProfile: () => Promise<AccountProfile | null>;
+  /**
+   * One screen to open after the gate moves a freshly finished account into
+   * the app. The gate reads it once; Later and every other role leave it unset.
+   */
+  setPostOnboardingHref: (href: Href | null) => void;
+  /** Returns the pending screen and clears it. Null when nothing was set. */
+  takePostOnboardingHref: () => Href | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -72,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const mounted = useRef(true);
   const activeUserId = useRef<string | null>(null);
+  /** Not state: clearing it must not schedule a second pass of the route gate. */
+  const postOnboardingHref = useRef<Href | null>(null);
 
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
@@ -175,17 +187,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback<AuthContextValue['signUp']>(async (input) => {
+    const brand = input.brandName?.trim().slice(0, 80);
+    const first = input.firstName?.trim() ?? '';
+    const last = input.lastName?.trim() ?? '';
     const { data, error } = await supabase.auth.signUp({
       email: input.email.trim().toLowerCase(),
       password: input.password,
       options: {
         emailRedirectTo: emailConfirmationRedirect(Platform.OS),
-        data: {
-          role: input.role,
-          first_name: input.firstName.trim(),
-          last_name: input.lastName.trim(),
-          full_name: `${input.firstName.trim()} ${input.lastName.trim()}`.trim(),
-        },
+        data: brand
+          ? { role: input.role, full_name: brand }
+          : {
+              role: input.role,
+              first_name: first,
+              last_name: last,
+              full_name: `${first} ${last}`.trim(),
+            },
       },
     });
     if (error) throw new AppError(error);
@@ -193,9 +210,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    postOnboardingHref.current = null;
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);
+  }, []);
+
+  const setPostOnboardingHref = useCallback((href: Href | null) => {
+    postOnboardingHref.current = href;
+  }, []);
+
+  const takePostOnboardingHref = useCallback((): Href | null => {
+    const href = postOnboardingHref.current;
+    postOnboardingHref.current = null;
+    return href;
   }, []);
 
   const sendPasswordReset = useCallback(async (email: string) => {
@@ -229,6 +257,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       updatePassword,
       refreshProfile,
+      setPostOnboardingHref,
+      takePostOnboardingHref,
     };
   }, [
     session,
@@ -240,6 +270,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sendPasswordReset,
     updatePassword,
     refreshProfile,
+    setPostOnboardingHref,
+    takePostOnboardingHref,
   ]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

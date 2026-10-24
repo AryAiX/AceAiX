@@ -119,6 +119,13 @@ export const SCREEN_PARITY: ScreenParity[] = [
   screen('legal/privacy.tsx', '/legal/privacy', ['public'], ['ready'], ['navigate back']),
   screen('legal/guidelines.tsx', '/legal/guidelines', ['public'], ['ready'], ['navigate back']),
   screen('legal/child-safety.tsx', '/legal/child-safety', ['public'], ['ready'], ['navigate back']),
+  screen(
+    'parent-approval.tsx',
+    '/parent-approval',
+    ['public', 'signed-in'],
+    ['loading', 'invalid', 'expired', 'answered', 'pending', 'approved', 'declined', 'network error'],
+    ['approve', 'decline', 'change a permission', 'retry', 'open privacy', 'open child safety'],
+  ),
   screen('age-review.tsx', '/age-review', ['underage-remediation suspension'], ['idle', 'requesting', 'requested', 'request error'], ['request appeal', 'email safety', 'sign out']),
 ];
 

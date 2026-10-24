@@ -51,6 +51,8 @@ export const coaching = {
   sTitle: 'Titel',
   sTitlePlaceholder: 'Einzeltraining Kraft',
   sDescription: 'Was passiert dabei',
+  readMore: 'Mehr lesen',
+  showLess: 'Weniger anzeigen',
   sDuration: 'Dauer',
   minutes: '{{n}} Min.',
   sCapacity: 'Plätze im Kurs',

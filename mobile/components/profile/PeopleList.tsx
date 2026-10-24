@@ -14,7 +14,8 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { toggleFollow } from '@/lib/api';
+import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
+import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
@@ -49,6 +50,7 @@ export function PeopleList({
   const router = useRouter();
   const toast = useToast();
   const t = useT();
+  const { profile } = useAuth();
 
   const [query, setQuery] = useState('');
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
@@ -75,7 +77,13 @@ export function PeopleList({
       setBusyId(person.id);
       setOverrides((current) => ({ ...current, [person.id]: !currentlyFollowing }));
       try {
-        const result = await toggleFollow(person.id);
+        const result = await applyToggleFollow({
+          targetId: person.id,
+          myId,
+          wasFollowing: currentlyFollowing,
+          targetFollowers: knownFollowCount(person.id, 'followers') ?? person.followers_count,
+          myFollowing: knownFollowCount(myId ?? '', 'following') ?? profile?.following_count ?? 0,
+        });
         setOverrides((current) => ({ ...current, [person.id]: result.following }));
       } catch (err) {
         setOverrides((current) => ({ ...current, [person.id]: currentlyFollowing }));
@@ -84,7 +92,7 @@ export function PeopleList({
         setBusyId(null);
       }
     },
-    [toast],
+    [myId, profile?.following_count, toast],
   );
 
   if (loading) return <SkeletonList count={4} variant="row" />;

@@ -19,6 +19,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotifications, markNotificationsRead } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
+import { isUnreadNotification } from '@/lib/notificationBanner';
 import { Routes, notificationTarget } from '@/lib/routes';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -101,6 +102,21 @@ export default function NotificationsScreen() {
         },
         () => {
           refreshRef.current();
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          // Grouped likes and messages rewrite the same row. Marking it read
+          // must not reload the list out from under the person.
+          const row = payload.new as { is_read?: boolean | null; read?: boolean | null };
+          if (isUnreadNotification(row)) refreshRef.current();
         },
       )
       .subscribe();

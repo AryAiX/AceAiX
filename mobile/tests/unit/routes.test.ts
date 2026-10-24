@@ -5,6 +5,7 @@ import {
   isResetPasswordRoute,
   notificationTarget,
   routeDecision,
+  skipsLanguagePicker,
 } from '@/lib/routes';
 import type { AppNotification, NotificationType } from '@/types/models';
 
@@ -135,6 +136,40 @@ describe('authentication routes', () => {
       .toBeNull();
   });
 
+  it('skips the language picker only on the parent approval link', () => {
+    expect(skipsLanguagePicker({ segments: ['parent-approval'] })).toBe(true);
+    expect(skipsLanguagePicker({ pathname: '/parent-approval' })).toBe(true);
+    expect(skipsLanguagePicker({ pathname: '/parent-approval/' })).toBe(true);
+    expect(skipsLanguagePicker({ pathname: '/parent-approval?token=abc' })).toBe(true);
+    expect(skipsLanguagePicker({ segments: ['(auth)', 'welcome'], pathname: '/welcome' })).toBe(
+      false,
+    );
+    expect(skipsLanguagePicker({ segments: ['legal', 'privacy'], pathname: '/legal/privacy' })).toBe(
+      false,
+    );
+    expect(skipsLanguagePicker({ pathname: '/' })).toBe(false);
+  });
+
+  it('keeps the parent approval link open without an account and during onboarding', () => {
+    expect(
+      routeDecision({ hasSession: false, profile: null, segments: ['parent-approval'] }),
+    ).toBeNull();
+    expect(
+      routeDecision({
+        hasSession: true,
+        profile: { onboarding_completed: false },
+        segments: ['parent-approval'],
+      }),
+    ).toBeNull();
+    expect(
+      routeDecision({
+        hasSession: true,
+        profile: { onboarding_completed: false },
+        segments: ['(tabs)'],
+      }),
+    ).toBe(Routes.onboarding);
+  });
+
   it('sends an authenticated non-recovery auth route to the app', () => {
     expect(
       routeDecision({
@@ -165,6 +200,7 @@ describe('authentication routes', () => {
       Routes.ageReview,
     );
     expect(routeDecision({ hasSession: true, profile, segments: ['age-review'] })).toBeNull();
+    expect(routeDecision({ hasSession: true, profile, segments: ['parent-approval'] })).toBeNull();
   });
 });
 

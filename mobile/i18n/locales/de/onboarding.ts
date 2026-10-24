@@ -43,6 +43,11 @@ export const onboarding = {
   clubHint: 'Lass das leer, wenn du gerade in keinem Verein bist.',
   cityLabel: 'Stadt',
   cityPlaceholder: 'Dubai',
+  cityPickCountryFirst: 'Wähle zuerst ein Land.',
+  cityRequiredHint: 'Gib deine Stadt an, damit Spiele und Vereine in der Nähe dich finden.',
+  citySearchPlaceholder: 'Städte suchen',
+  cityNoMatch: 'Keine Stadt passt dazu. Versuch es mit weniger Buchstaben.',
+  cityShowAll: 'Alle Städte anzeigen',
 
   // ── Sportler: Körperdaten ─────────────────────────────────────────────────
   physicalTitle: 'Ein paar Zahlen',
@@ -188,6 +193,10 @@ export const onboarding = {
   doneTitle: 'Alles erledigt',
   guardianDoneBody: 'Dein Konto ist fertig. Die Verbindung zu deinem Kind dauert etwa eine Minute.',
   basicDoneBody: 'Schau dich um und richte den Rest ein, wann immer du magst.',
+  sponsorDoneBody:
+    'Als Nächstes erzähl Sportlerinnen und Sportlern von deiner Marke. Ausschreibungen posten und Angebote senden kannst du, sobald dein Markenprofil verifiziert ist.',
+  sponsorSetupBrand: 'Markenprofil einrichten',
+  later: 'Später',
   guardianDoneNote:
     'Einstellungen, dann „Eltern und Vormund“. Wenn dein Kind dir schon eine E-Mail zur Freigabe geschickt hat, verbindet der Link darin eure Konten.',
 };

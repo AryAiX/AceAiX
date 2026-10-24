@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Card, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { compactNumber, displayName, metaLine, roleLabel, truncate } from '@/lib/format';
+import { useFollowCount, useRefreshFollowCountsOnFocus } from '@/lib/followCounts';
 import { Routes } from '@/lib/routes';
 import type { PersonResult } from '@/types/models';
 import { FollowButton } from './FollowButton';
@@ -27,9 +28,11 @@ export function CoachRow({ person, following, pending, onToggleFollow }: Props) 
   const name = displayName(person.full_name);
   const place = [person.city, person.country].filter(Boolean).join(', ');
   const meta = metaLine(roleLabel(person.role), place);
+  const followerCount = useFollowCount(person.id, 'followers', person.followers_count);
+  useRefreshFollowCountsOnFocus(person.id);
   const followers = t('discover.followers', {
-    count: person.followers_count,
-    value: compactNumber(person.followers_count),
+    count: followerCount,
+    value: compactNumber(followerCount),
   });
 
   return (

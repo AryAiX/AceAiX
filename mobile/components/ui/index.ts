@@ -1,5 +1,6 @@
 export { Text } from './Text';
 export type { TextVariant, TextTone } from './Text';
+export { ExpandableText } from './ExpandableText';
 
 export { Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';

@@ -3,8 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { en } from '@/i18n/locales/en';
+import { COUNTRY_KEYS } from '@/constants/sports';
 import { LANGUAGES } from '@/i18n/languages';
+import { en } from '@/i18n/locales/en';
 
 /**
  * Catalogue parity.
@@ -214,6 +215,10 @@ for (const lang of LANGUAGES.filter((l) => l.code !== 'en')) {
     it('is actually translated', () => {
       const untranslated = ENGLISH_SINGULAR_KEYS.filter((key) => {
         if (BRAND_OR_UNIT.has(key)) return false;
+        // Country names are proper nouns, so identical-to-English is the wrong
+        // signal for them (Liechtenstein, Malta). They are left out of this
+        // count only. A missing country translation is its own test below.
+        if (key.startsWith('countries.')) return false;
         const value = flat[key];
         if (typeof value !== 'string') return false;
         if (carriesNoWords(ENGLISH[key])) return false;
@@ -233,6 +238,22 @@ for (const lang of LANGUAGES.filter((l) => l.code !== 'en')) {
     });
   });
 }
+
+describe('country names', () => {
+  const required = Object.values(COUNTRY_KEYS);
+
+  it('defines every COUNTRY_KEYS entry in all 7 locales', () => {
+    expect(LANGUAGES).toHaveLength(7);
+    for (const lang of LANGUAGES) {
+      const catalogue = loadLocale(lang.code);
+      expect(catalogue, `mobile/i18n/locales/${lang.code} is missing`).not.toBeNull();
+      if (!catalogue) continue;
+      const flat = flatten(catalogue);
+      const missing = required.filter((key) => !(key in flat));
+      expect(missing, `${lang.code} is missing ${missing.join(', ')}`).toEqual([]);
+    }
+  });
+});
 
 // ── Every key a screen asks for exists ───────────────────────────────────────
 /**
