@@ -39,7 +39,5 @@ import { whatsNew } from './whatsNew';
 /** Spanish. Typed against English, so a missing key is a compile error. */
 export const es: Translations = { common, language, auth, onboarding, feed, profile,
   score, challenges, meetups, intelligence, teams, views, progress, discover, opportunities, messaging, settings,
-  safety, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
-  club, clubSetup, clubManage, clubMatch, sportFit, invites };
   safety, parentApproval, sports, countries, errors, format, stories, reels, explore, sponsorship, coaching,
-  club, clubSetup, clubManage, clubMatch, whatsNew };
+  club, clubSetup, clubManage, clubMatch, sportFit, invites, whatsNew };
