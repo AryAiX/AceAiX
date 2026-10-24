@@ -20,10 +20,14 @@ export default function FollowersScreen() {
 
   const followers = useAsync(() => getFollowers(userId as string), [userId], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
 
   /* My own following list drives the button state on every row. */
-  const mine = useAsync(() => getFollowing(myId as string), [myId], { enabled: !!myId });
+  const mine = useAsync(() => getFollowing(myId as string), [myId], {
+    enabled: !!myId,
+    refetchOnFocus: true,
+  });
 
   const followingIds = useMemo(
     () =>

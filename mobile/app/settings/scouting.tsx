@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, View } from 'react-native';
+import { BackHandler, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { BellRing, Cake, Handshake } from 'lucide-react-native';
 
@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
+  Chip,
   ConfirmSheet,
   Divider,
   EmptyState,
@@ -28,12 +29,14 @@ import { getMatchPreferences, saveMatchPreferences } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import {
   LEVELS,
-  PRIORITY_COUNTRIES,
   SPORT_KEYS,
   countryLabel,
+  countryOptions,
   levelLabelI18n,
   positionLabel,
+  positionsBySport,
   positionsFor,
+  prunePositions,
   sportLabel,
 } from '@/constants/sports';
 import type { MatchPreferences } from '@/types/models';
@@ -50,10 +53,14 @@ type Draft = {
   notify_on_match: boolean;
 };
 
+const COUNTRIES_BEFORE_EXPAND = 10;
+
 const AGE_FLOOR = 13;
 const AGE_CEILING = 60;
 const DEFAULT_AGE_MIN = 13;
 const DEFAULT_AGE_MAX = 25;
+/** One step past the oldest age the stepper can name. Stored as null. */
+const NO_AGE_MAX = AGE_CEILING + 1;
 
 const EMPTY: Draft = {
   sports: [],
@@ -71,11 +78,9 @@ const LEVEL_KEYS = LEVELS.map((l) => l.key as string);
 
 function toDraft(prefs: MatchPreferences | null): Draft {
   if (!prefs) return EMPTY;
-  const sports = (prefs.sports ?? []).slice(0, 1);
-  const allowed = new Set(sports.flatMap((sport) => positionsFor(sport)));
   return {
-    sports,
-    positions: (prefs.positions ?? []).filter((p) => allowed.has(p)),
+    sports: prefs.sports ?? [],
+    positions: prefs.positions ?? [],
     levels: prefs.levels ?? [],
     countries: prefs.countries ?? [],
     age_min: prefs.age_min ?? null,
@@ -109,6 +114,17 @@ export default function ScoutingPreferencesScreen() {
   const dirty = JSON.stringify(draft) !== baseline;
   const anyAge = draft.age_min == null && draft.age_max == null;
   const [discardOpen, setDiscardOpen] = useState(false);
+  const [countriesExpanded, setCountriesExpanded] = useState(false);
+  const countryChoices = useMemo(() => {
+    const all = countryOptions(undefined, (country) => countryLabel(t, country));
+    if (countriesExpanded) return all;
+    const short = all.slice(0, COUNTRIES_BEFORE_EXPAND);
+    for (const selected of draft.countries) {
+      if (!short.includes(selected)) short.push(selected);
+    }
+    return short;
+  }, [countriesExpanded, draft.countries, t]);
+  const showAllCountries = !countriesExpanded && countryOptions().length > COUNTRIES_BEFORE_EXPAND;
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -132,34 +148,28 @@ export default function ScoutingPreferencesScreen() {
     return () => sub.remove();
   }, [dirty, saving]);
 
-  /* Only offer the positions that belong to the sports actually chosen —
-     "Wicket-keeper" under Football is noise a scout has to scroll past. */
-  const positionOptions = useMemo(() => {
-    const set = new Set<string>();
-    draft.sports.forEach((sport) => positionsFor(sport).forEach((p) => set.add(p)));
-    return Array.from(set);
+  const sportOptions = useMemo(() => {
+    const known = new Set<string>(SPORT_KEYS);
+    return [...SPORT_KEYS, ...draft.sports.filter((sport) => !known.has(sport))];
   }, [draft.sports]);
+
+  /* Saved positions under the sport they belong to. Goalkeeper is one stored
+     value and shows up under every sport that has it. */
+  const positionsBy = useMemo(
+    () => positionsBySport(draft.sports, draft.positions),
+    [draft.sports, draft.positions],
+  );
 
   const toggle = useCallback((key: 'sports' | 'positions' | 'levels' | 'countries', value: string) => {
     setDraft((current) => {
       const list = current[key];
-      const next =
-        key === 'sports'
-          ? list.includes(value)
-            ? []
-            : [value]
-          : list.includes(value)
-            ? list.filter((v) => v !== value)
-            : [...list, value];
+      const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
       if (key === 'sports') {
-        // Drop positions that no longer belong to any selected sport.
-        const allowed = new Set<string>();
-        next.forEach((sport) => positionsFor(sport).forEach((p) => allowed.add(p)));
         return {
           ...current,
           sports: next,
-          positions: current.positions.filter((p) => allowed.has(p)),
+          positions: prunePositions(next, current.positions),
         };
       }
       return { ...current, [key]: next };
@@ -236,21 +246,51 @@ export default function ScoutingPreferencesScreen() {
         <ChipPicker
           label={t('settings.scoutingSports')}
           hint={t('settings.scoutingSportsHint')}
-          options={SPORT_KEYS}
+          options={sportOptions}
           selected={draft.sports}
           onToggle={(v) => toggle('sports', v)}
           labelOf={(key) => sportLabel(t, key)}
         />
 
-        <ChipPicker
-          label={t('settings.scoutingPositions')}
-          hint={t('settings.scoutingPositionsHint')}
-          options={positionOptions}
-          selected={draft.positions}
-          onToggle={(v) => toggle('positions', v)}
-          labelOf={(key) => positionLabel(t, key)}
-          emptyHint={t('settings.scoutingPositionsEmpty')}
-        />
+        <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: 2 }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('settings.scoutingPositions')}
+            </Text>
+            <Text variant="caption" tone="muted">
+              {t('settings.scoutingPositionsHint')}
+            </Text>
+          </View>
+          {draft.sports.length === 0 ? (
+            <Text variant="caption" tone="muted">
+              {t('settings.scoutingPositionsEmpty')}
+            </Text>
+          ) : (
+            <View style={{ gap: spacing.lg }}>
+            {draft.sports.map((sport) => {
+              const options = positionsFor(sport);
+              const selected = positionsBy[sport] ?? [];
+              return (
+                <View key={sport} style={{ gap: spacing.sm }}>
+                  <Text variant="captionStrong">{sportLabel(t, sport)}</Text>
+                  {options.length > 0 ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                      {options.map((position) => (
+                        <Chip
+                          key={`${sport}:${position}`}
+                          label={positionLabel(t, position)}
+                          selected={selected.includes(position)}
+                          onPress={() => toggle('positions', position)}
+                        />
+                      ))}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+            </View>
+          )}
+        </View>
 
         <ChipPicker
           label={t('settings.scoutingLevels')}
@@ -260,14 +300,29 @@ export default function ScoutingPreferencesScreen() {
           labelOf={(key) => levelLabelI18n(t, key)}
         />
 
-        <ChipPicker
-          label={t('settings.scoutingCountries')}
-          hint={t('settings.scoutingCountriesHint')}
-          options={PRIORITY_COUNTRIES}
-          selected={draft.countries}
-          onToggle={(v) => toggle('countries', v)}
-          labelOf={(key) => countryLabel(t, key)}
-        />
+        <View style={{ gap: spacing.sm }}>
+          <ChipPicker
+            label={t('settings.scoutingCountries')}
+            hint={t('settings.scoutingCountriesHint')}
+            options={countryChoices}
+            selected={draft.countries}
+            onToggle={(v) => toggle('countries', v)}
+            labelOf={(key) => countryLabel(t, key)}
+          />
+          {showAllCountries ? (
+            <Pressable
+              onPress={() => setCountriesExpanded(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t('onboarding.countryShowAll')}
+              hitSlop={8}
+              style={{ minHeight: 44, justifyContent: 'center' }}
+            >
+              <Text variant="captionStrong" tone="primary">
+                {t('onboarding.countryShowAll')}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         <View style={{ gap: spacing.md }}>
           <Text variant="captionStrong" tone="secondary">
@@ -305,18 +360,21 @@ export default function ScoutingPreferencesScreen() {
                   label={t('settings.youngest')}
                   value={draft.age_min ?? DEFAULT_AGE_MIN}
                   min={AGE_FLOOR}
-                  max={draft.age_max ?? DEFAULT_AGE_MAX}
+                  max={draft.age_max ?? AGE_CEILING}
                   suffix={t('settings.yearsSuffix')}
                   onChange={(v) => setDraft((c) => ({ ...c, age_min: v }))}
                 />
                 <Divider style={{ marginVertical: spacing.sm }} />
                 <Stepper
                   label={t('settings.oldest')}
-                  value={draft.age_max ?? DEFAULT_AGE_MAX}
+                  value={draft.age_max == null ? NO_AGE_MAX : draft.age_max}
+                  display={draft.age_max == null ? t('discover.filters.any') : undefined}
                   min={draft.age_min ?? DEFAULT_AGE_MIN}
-                  max={AGE_CEILING}
+                  max={NO_AGE_MAX}
                   suffix={t('settings.yearsSuffix')}
-                  onChange={(v) => setDraft((c) => ({ ...c, age_max: v }))}
+                  onChange={(v) =>
+                    setDraft((c) => ({ ...c, age_max: v > AGE_CEILING ? null : v }))
+                  }
                 />
               </>
             ) : null}

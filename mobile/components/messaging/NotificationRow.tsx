@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import {
+  AtSign,
   Award,
   Bell,
   Building2,
@@ -61,6 +62,8 @@ function skinFor(type: NotificationType): Skin {
     case 'comment':
     case 'reply':
       return { Icon: MessageCircle, tint: 'primary' };
+    case 'mention':
+      return { Icon: AtSign, tint: 'primary' };
     case 'message':
       return { Icon: Mail, tint: 'info' };
     case 'application_received':
@@ -112,6 +115,10 @@ function skinFor(type: NotificationType): Skin {
     case 'club_verification_rejected':
     case 'club_verification_more_info':
       return { Icon: ShieldCheck, tint: 'warning' };
+    case 'referral_joined':
+      return { Icon: UserPlus, tint: 'success' };
+    case 'referral_token':
+      return { Icon: Award, tint: 'warning' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }
@@ -148,7 +155,7 @@ export function notificationTitle(n: AppNotification, t: Translate): string {
 }
 
 /**
- * "New game near you" is the one notification composed on the client.
+ * "New game near you" is composed on the client.
  * Sport and city live in `data`; if either is missing, the stored English
  * sentence is used instead.
  */
@@ -168,6 +175,34 @@ function nearbyCopy(
   };
 }
 
+/** "{name} mentioned you in a post", or in a comment when `data.comment_id` is set. */
+function mentionCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type !== 'mention') return null;
+  const name = n.actor?.full_name?.trim();
+  if (!name) return null;
+  const commentId = n.data?.comment_id;
+  const inComment = typeof commentId === 'string' ? commentId.trim().length > 0 : commentId != null;
+  return {
+    title: t(inComment ? 'messaging.mentionedInComment' : 'messaging.mentionedInPost', { name }),
+    body: n.body,
+  };
+}
+
+/** Title and body, including the sentences composed on the client. */
+export function notificationCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } {
+  const nearby = nearbyCopy(n, t);
+  if (nearby) return nearby;
+  const mention = mentionCopy(n, t);
+  if (mention) return mention;
+  return { title: notificationTitle(n, t), body: n.body };
+}
+
 interface Props {
   notification: AppNotification;
   /** Omitted when the notification has no destination. */
@@ -185,9 +220,9 @@ export function NotificationRow({ notification, onPress }: Props) {
   /* KNOWN GAP: title and body are finished English sentences written by the
      database triggers — see `notificationTitle` above for what a real fix
      needs. Everything around them on this row is translated. */
-  const nearby = nearbyCopy(notification, t);
-  const title = nearby?.title ?? notificationTitle(notification, t);
-  const body = nearby ? nearby.body : notification.body;
+  const copy = notificationCopy(notification, t);
+  const title = copy.title;
+  const body = copy.body;
   const when = relativeTime(notification.created_at);
 
   const content = (

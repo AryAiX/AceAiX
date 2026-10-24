@@ -51,6 +51,8 @@ export const coaching = {
   sTitle: 'Titre',
   sTitlePlaceholder: 'Séance individuelle de force',
   sDescription: 'Ce qui s’y passe',
+  readMore: 'Lire la suite',
+  showLess: 'Afficher moins',
   sDuration: 'Durée',
   minutes: '{{n}} minutes',
   sCapacity: 'Places dans le cours',

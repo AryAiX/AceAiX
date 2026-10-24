@@ -1,15 +1,17 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, ErrorState, Loader, Screen, useToast } from '@/components/ui';
+import { Button, ErrorState, Loader, Screen, Text, useToast } from '@/components/ui';
 import { useT } from '@/i18n';
 import { StepHeading, WizardTopBar } from '@/components/onboarding/Shared';
-import { saveMatchPreferences } from '@/lib/api';
+import { addCustomCity, saveMatchPreferences } from '@/lib/api';
 import {
   createClubPage,
+  getClubMapUrl,
   getClubPage,
   getMyManagedClub,
+  setClubMapUrl,
   submitClubVerification,
   updateClubPage,
 } from '@/lib/api.club';
@@ -26,10 +28,13 @@ import {
   emptyDraft,
   emptyVerification,
   firstIncompleteStep,
+  readMapPin,
   sportsPatch,
   verificationFromPage,
   whereErrors,
   wherePatch,
+  withAccountContactName,
+  withCatalogueCities,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -37,6 +42,7 @@ import {
   type VerificationDraft,
   type WhereError,
 } from '@/lib/clubSetup';
+import { useAuth } from '@/providers/AuthProvider';
 import { BasicsFields } from './BasicsStep';
 import { WhereFields } from './WhereStep';
 import { SportsFields } from './SportsStep';
@@ -84,18 +90,25 @@ export function ClubSetupWizard({
   const t = useT();
   const { spacing } = theme;
   const toast = useToast();
+  const { profile } = useAuth();
+  // Read once. A later profile refresh must not put the name back after a clear.
+  const account = useRef(profile);
 
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [draft, setDraft] = useState<ClubDraft>(emptyDraft);
-  const [papers, setPapers] = useState<VerificationDraft>(emptyVerification);
+  const [papers, setPapers] = useState<VerificationDraft>(() =>
+    withAccountContactName(emptyVerification(), account.current),
+  );
   const [papersSent, setPapersSent] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<Errors>(NO_ERRORS);
   const [brandingTouched, setBrandingTouched] = useState(false);
+  /** The map link last loaded or saved, so an unchanged pin does not write again. */
+  const savedMapUrl = useRef<string | null>(null);
 
   const step: SetupStep = SETUP_STEPS[Math.min(stepIndex, SETUP_STEPS.length - 1)];
 
@@ -104,13 +117,16 @@ export function ClubSetupWizard({
     setBootError(null);
     try {
       const mine = await getMyManagedClub();
-      const page = mine ? await getClubPage(mine.id) : null;
-      if (mine && page) {
-        setOrgId(mine.id);
-        setDraft(draftFromPage(page));
-        setPapers(verificationFromPage(page));
-        setPapersSent(!!page.verification?.terms_accepted);
-        setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
+      if (mine) {
+        const [page, mapUrl] = await Promise.all([getClubPage(mine.id), getClubMapUrl(mine.id)]);
+        if (page) {
+          setOrgId(mine.id);
+          savedMapUrl.current = mapUrl;
+          setDraft(draftFromPage(page, mapUrl));
+          setPapers(withAccountContactName(verificationFromPage(page), account.current));
+          setPapersSent(!!page.verification?.terms_accepted);
+          setStepIndex(SETUP_STEPS.indexOf(firstIncompleteStep(page)));
+        }
       }
     } catch (err) {
       setBootError(errorMessage(err));
@@ -184,9 +200,17 @@ export function ClubSetupWizard({
       }
       if (!orgId) return false;
       switch (step) {
-        case 'where':
-          await updateClubPage(orgId, wherePatch(draft));
+        case 'where': {
+          const next = await withCatalogueCities(draft, addCustomCity);
+          setDraft(next);
+          await updateClubPage(orgId, wherePatch(next));
+          const nextUrl = readMapPin(next.pin)?.mapUrl ?? null;
+          if (nextUrl !== savedMapUrl.current) {
+            await setClubMapUrl(orgId, nextUrl);
+            savedMapUrl.current = nextUrl;
+          }
           break;
+        }
         case 'sports':
           await updateClubPage(orgId, sportsPatch(draft));
           // Keeps athlete matching working, as the old club onboarding did.
@@ -315,10 +339,15 @@ export function ClubSetupWizard({
             size="lg"
             fullWidth
             loading={saving}
-            disabled={busy}
+            disabled={busy || (step === 'verify' && !papers.document_path)}
             onPress={() => void advance()}
             testID="club-setup-continue"
           />
+          {step === 'verify' ? (
+            <Text variant="caption" tone="secondary">
+              {t('clubSetup.verify.attachToSend')}
+            </Text>
+          ) : null}
           {skipLabel ? (
             <Button
               label={skipLabel}
@@ -337,7 +366,9 @@ export function ClubSetupWizard({
         {heading ? <StepHeading title={heading.title} subtitle={heading.subtitle} /> : null}
 
         {step === 'basics' ? <BasicsFields draft={draft} errors={errors.basics} onChange={change} /> : null}
-        {step === 'where' ? <WhereFields draft={draft} errors={errors.where} onChange={change} /> : null}
+        {step === 'where' ? (
+          <WhereFields draft={draft} errors={errors.where} onChange={change} />
+        ) : null}
         {step === 'sports' ? <SportsFields draft={draft} showError={errors.sports} onChange={change} /> : null}
         {step === 'contact' ? <ContactFields draft={draft} errors={errors.contact} onChange={change} /> : null}
         {step === 'branding' ? (

@@ -26,6 +26,7 @@ import { getReels, reelVideo } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { mergeClips, mosaicMetrics, mosaicRows, type MosaicRow } from '@/lib/explore';
 import { compactNumber, displayName } from '@/lib/format';
+import { knownViewCount, publishViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { Routes } from '@/lib/routes';
 import type { FeedPost } from '@/types/models';
 
@@ -42,6 +43,14 @@ import type { FeedPost } from '@/types/models';
  */
 
 const GAP = 3;
+/** explore_videos caps a page at 60; get_reels caps one at 30. */
+const QUIET_CAP = { explore: 60, reels: 30 } as const;
+
+function withKnownView(post: FeedPost): FeedPost {
+  const known = knownViewCount(isHighlight(post) ? 'highlight' : 'post', post.id);
+  if (known == null || known <= post.view_count) return post;
+  return { ...post, view_count: known };
+}
 const ON_TILE = '#FFFFFF';
 const SCRIM = 'rgba(0,0,0,0.38)';
 const SMALL = { fontSize: 11, lineHeight: 14 } as const;
@@ -84,6 +93,19 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
   const lastSeen = useRef<string | null>(null);
   const mounted = useRef(true);
   const runId = useRef(0);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  useViewCountUpdates((subject, id, count) => {
+    setItems((current) =>
+      current.map((post) => {
+        if (post.id !== id || post.view_count === count) return post;
+        const highlight = isHighlight(post);
+        if (subject === 'highlight' ? !highlight : highlight) return post;
+        return { ...post, view_count: count };
+      }),
+    );
+  });
 
   useEffect(() => {
     mounted.current = true;
@@ -92,10 +114,39 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
     };
   }, []);
 
-  /* A preview must stop when the tab is left or the pager covers the grid. */
+  /* A preview must stop when the tab is left or the pager covers the grid.
+     Coming back re-reads the counts already on screen, without a spinner
+     and without replacing the list, so the scroll offset stays put. */
+  const focusedOnce = useRef(false);
+  const refreshCounts = useCallback(async () => {
+    const loaded = itemsRef.current.length;
+    if (loaded === 0) return;
+    const cap = fromReels ? QUIET_CAP.reels : QUIET_CAP.explore;
+    const floor = fromReels ? 12 : EXPLORE_PAGE;
+    try {
+      const rows = fromReels
+        ? await getReels({ limit: Math.min(cap, Math.max(floor, loaded)) })
+        : await getExploreVideos({
+            offset: 0,
+            limit: Math.min(cap, Math.max(floor, loaded)),
+            sport,
+          });
+      if (!mounted.current) return;
+      for (const row of rows) {
+        publishViewCount(isHighlight(row) ? 'highlight' : 'post', row.id, row.view_count);
+      }
+    } catch {
+      /* A quiet refresh that fails leaves the grid as it is. */
+    }
+  }, [fromReels, sport]);
+  const refreshCountsRef = useRef(refreshCounts);
+  refreshCountsRef.current = refreshCounts;
+
   useFocusEffect(
     useCallback(() => {
       setFocused(true);
+      if (focusedOnce.current) void refreshCountsRef.current();
+      else focusedOnce.current = true;
       return () => setFocused(false);
     }, []),
   );
@@ -114,7 +165,9 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         if (rows.length > 0) lastSeen.current = rows[rows.length - 1].created_at;
         /* A slower earlier request must never overwrite a newer filter's grid. */
         if (!mounted.current || id !== runId.current) return;
-        setItems((current) => (mode === 'more' ? mergeClips(current, rows) : rows));
+        setItems((current) =>
+          (mode === 'more' ? mergeClips(current, rows) : rows).map(withKnownView),
+        );
         setDone(rows.length < EXPLORE_PAGE);
         setError(null);
       } catch (err) {

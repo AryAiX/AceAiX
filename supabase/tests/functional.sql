@@ -3903,6 +3903,11 @@ begin
     tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana","accept_terms":true,"document_path":"someone-else/licence.pdf"}')$q$, v_org))
       = 'club_document_missing',
     'the licence must be the caller''s own upload');
+  perform tests.ok(
+    tests.hint_of(format($q$select public.submit_club_verification(%L, '{"contact_person_name":"Rana","accept_terms":true}')$q$, v_org))
+      = 'club_document_required'
+    and (select count(*) from public.verification_requests where organization_id = v_org) = 0,
+    'sending papers without a licence document is refused');
   perform set_config('request.jwt.claim.role', 'service_role', true);   -- as the admin would
   update public.organizations set verification_status = 'more_info' where id = v_org;
   perform tests.as_user(v_owner);
@@ -5144,6 +5149,783 @@ begin
     exists (select 1 from public.notifications
             where user_id = v_far and type = 'meetup_nearby'),
     'a Faraway player listing Alertville is alerted about a game in that city');
+end $$;
+
+-- ------------------------------------------------------------
+-- Sport Fit (20261019000001)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sport fit ──'; end $$;
+
+do $$
+declare
+  v_answers jsonb;
+  v_out     jsonb;
+  v_raised  boolean;
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_seen    integer;
+begin
+  select jsonb_object_agg(id, case when expected is not null then expected
+                                   when reverse then 2 else 4 end)
+    into v_answers from public.sport_fit_items;
+
+  -- An adult athlete answers.
+  perform tests.as_user(v_adult);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'ok',
+    'an adult athlete may take Sport Fit');
+  v_out := public.sport_fit_submit(v_answers, 240);
+  perform tests.ok(v_out ->> 'quality' = 'ok', 'a careful set of answers is scored');
+  perform tests.ok(jsonb_array_length(v_out -> 'fits') = (select count(*) from public.sport_fit_sports where active),
+    'every active sport is ranked');
+  perform tests.ok(
+    (v_out -> 'fits' -> 0 ->> 'fit')::int >= (v_out -> 'fits' -> 1 ->> 'fit')::int
+    and (v_out -> 'fits' -> 1 ->> 'fit')::int >= (v_out -> 'fits' -> 2 ->> 'fit')::int,
+    'sports come back best first');
+  perform tests.ok((v_out -> 'dimensions' ->> 'drive')::int between 0 and 100,
+    'dimensions are reported on 0–100');
+
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers, 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a second valid result inside the retake window is refused');
+
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers - 'drive1', 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a missing answer is refused');
+
+  -- Nobody else reads it.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  set local role authenticated;
+  v_seen := (select count(*) from public.sport_fit_results where user_id = v_adult);
+  v_raised := false;
+  begin
+    update public.sport_fit_results set quality = 'ok' where user_id = v_adult;
+    v_raised := not found;
+  exception when others then v_raised := true; end;
+  reset role;
+  perform tests.ok(v_seen = 0, 'another user cannot read someone''s Sport Fit answers');
+  perform tests.ok(v_raised, 'a client cannot write Sport Fit results');
+
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  v_seen := (select count(*) from public.sport_fit_results
+              where user_id <> 'ad111111-1111-1111-1111-111111111111');
+  reset role;
+  perform tests.ok(
+    v_seen = 0
+    and exists (select 1 from public.sport_fit_results
+                where user_id <> 'ad111111-1111-1111-1111-111111111111'),
+    'an admin selecting sport_fit_results directly sees no other player''s rows');
+
+  -- Careless answers are not scored.
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  v_out := public.sport_fit_submit(jsonb_set(v_answers, '{check1}', '1'), 240);
+  perform tests.ok(v_out ->> 'quality' = 'check_failed' and v_out -> 'fits' = '[]'::jsonb,
+    'a missed attention check gives no result');
+  v_out := public.sport_fit_submit(v_answers, 20);
+  perform tests.ok(v_out ->> 'quality' = 'too_fast', 'answering in under 45 seconds gives no result');
+
+  -- A 14-year-old needs the guardian's "mindset" scope, not just the games.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_private set date_of_birth = current_date - interval '14 years' where user_id = v_minor;
+  update public.guardian_consents set status = 'revoked' where minor_user_id = v_minor and status = 'granted';
+  insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at,
+                                        allow_assessments, allow_mindset)
+  values (v_minor, 'Parent', 'sf.parent@test.local', 'granted', now(), true, false);
+
+  perform tests.as_user(v_minor);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'guardian_required',
+    'approving the games does not approve the mindset questionnaire');
+  v_raised := false;
+  begin perform public.sport_fit_submit(v_answers, 240); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'the server refuses a minor without the mindset scope');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.guardian_consents set allow_mindset = true
+   where minor_user_id = v_minor and guardian_email = 'sf.parent@test.local';
+  perform tests.as_user(v_minor);
+  perform tests.ok(public.sport_fit_my_state() ->> 'consent' = 'ok',
+    'a guardian''s mindset approval unlocks Sport Fit');
+  perform tests.ok(
+    not private.has_guardian_consent(v_minor, 'not_a_scope'),
+    'has_guardian_consent of a minor with consent is false for an unknown scope');
+  perform tests.ok(
+    has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'SELECT')
+    and not has_column_privilege('authenticated', 'public.guardian_consents', 'allow_mindset', 'UPDATE'),
+    'the minor can read but not write the mindset scope');
+
+  -- Erase.
+  perform tests.as_user(v_adult);
+  perform tests.ok(public.sport_fit_delete_mine() >= 1, 'a player can erase their Sport Fit answers');
+  perform tests.ok(public.sport_fit_my_state() -> 'result' = 'null'::jsonb,
+    'after erasing, no result remains');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_private set date_of_birth = current_date - interval '15 years' where user_id = v_minor;
+  delete from public.guardian_consents where guardian_email = 'sf.parent@test.local';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Admin console: Sport Fit (20261019000002)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── admin sport fit ──'; end $$;
+
+do $$
+declare
+  v_out    jsonb;
+  v_raised boolean;
+  v_w      jsonb := '{"drive":3,"composure":3,"focus":2,"resilience":3,"boldness":2,"discipline":2,"reading":2,"speed":3}';
+begin
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  v_raised := false;
+  begin perform public.admin_sport_fit_overview(); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot read Sport Fit totals');
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w, 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a non-admin cannot edit the sport matrix');
+
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  v_out := public.admin_sport_fit_overview();
+  perform tests.ok(jsonb_array_length(v_out -> 'sports') = 12 and jsonb_array_length(v_out -> 'items') = 22,
+    'an admin sees the sport matrix and the statements');
+  perform tests.ok(position('answers' in v_out::text) = 0 and position('user_id' in v_out::text) = 0,
+    'the totals carry no answers and no user ids');
+  perform tests.ok(not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where (e ->> 'hidden')::boolean is false and (e ->> 'count')::int < 5),
+    'a top-sport count under five is never shown as a number');
+
+  -- One player's best sport is curling. Under five, so it must not be named.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  insert into public.sport_fit_results
+    (user_id, athlete_id, answers, duration_s, quality, fits)
+  select '11111111-1111-1111-1111-111111111111', ap.id,
+         '{}'::jsonb, 120, 'ok',
+         '[{"sport":"curling","fit":99}]'::jsonb
+  from public.athlete_profiles ap
+  where ap.user_id = '11111111-1111-1111-1111-111111111111';
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  v_out := public.admin_sport_fit_overview();
+  perform tests.ok(
+    not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' is distinct from 'other'
+        and coalesce((e ->> 'count')::int, 0) < 5)
+    and not exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' = 'curling')
+    and (select count(*) from jsonb_array_elements(v_out -> 'top_sports') e
+         where e ->> 'sport' = 'other') = 1
+    and exists (
+      select 1 from jsonb_array_elements(v_out -> 'top_sports') e
+      where e ->> 'sport' = 'other'
+        and e -> 'count' = 'null'::jsonb
+        and (e ->> 'hidden')::boolean),
+    'top sports never names a sport with fewer than 5 players');
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  delete from public.sport_fit_results
+   where user_id = '11111111-1111-1111-1111-111111111111'
+     and fits -> 0 ->> 'sport' = 'curling';
+
+  perform public.admin_review_sport_fit_sport('tennis', 'Dr. Test Panel');
+  perform tests.ok((select reviewed_by = 'Dr. Test Panel' from public.sport_fit_sports where sport = 'tennis'),
+    'an admin can mark a sport reviewed');
+  perform public.admin_update_sport_fit_sport('tennis', v_w || '{"boldness":1}', 0, true);
+  perform tests.ok((select reviewed_by is null and (weights ->> 'boldness')::int = 1
+                    from public.sport_fit_sports where sport = 'tennis'),
+    'changing a reviewed row clears its review mark');
+
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w || '{"boldness":7}', 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a weight outside 0–3 is refused');
+  v_raised := false;
+  begin perform public.admin_update_sport_fit_sport('tennis', v_w - 'speed', 0, true); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a matrix row missing a dimension is refused');
+  perform tests.ok(exists (select 1 from public.audit_logs where action = 'sport_fit.sport.update'),
+    'matrix edits are written to the audit log');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.sport_fit_sports set weights = v_w, reviewed_by = null where sport = 'tennis';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Invites (20261023000001)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users (id, email, raw_user_meta_data)
+select ('7e000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid, 'invitee' || n || '@test.local',
+       jsonb_build_object('full_name', 'Invitee' || n || ' Test', 'first_name', 'Invitee' || n, 'role', 'athlete')
+from generate_series(1, 12) n
+on conflict do nothing;
+update public.user_private set date_of_birth = current_date - interval '20 years'
+ where user_id::text like '7e000000-%' and user_id <> '7e000000-0000-4000-8000-000000000012';
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id = '7e000000-0000-4000-8000-000000000012';
+
+-- Invites ship switched off (20261024000001); off closes every path.
+do $$
+declare
+  v_inviter uuid := '11111111-1111-1111-1111-111111111111';
+  v_code    text;
+  v_raised  boolean := false;
+begin
+  perform tests.ok((select value ->> 'invites' from public.platform_settings where key = 'features') = 'false',
+    'invites ship switched off');
+  perform tests.as_user(v_inviter);
+  perform tests.ok(not (public.referral_my_circle() ->> 'can_invite')::boolean,
+    'with invites off, nobody can invite');
+
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'true') where key = 'features';
+  v_code := public.referral_my_circle() ->> 'code';
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'false') where key = 'features';
+  perform tests.ok(public.referral_inviter(v_code) is null,
+    'with invites off, a code shows no inviter');
+  perform tests.as_user('7e000000-0000-4000-8000-000000000001');
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised and not exists (select 1 from public.referrals where code = v_code),
+    'with invites off, a code cannot be claimed');
+
+  update public.platform_settings set value = jsonb_set(value, '{invites}', 'true') where key = 'features';
+end $$;
+
+do $$
+declare
+  v_inviter uuid := '11111111-1111-1111-1111-111111111111';
+  v_code    text;
+  v_circle  jsonb;
+  v_raised  boolean;
+  v_id      uuid;
+  n         int;
+begin
+  perform tests.as_user(v_inviter);
+  v_circle := public.referral_my_circle();
+  v_code := v_circle ->> 'code';
+  perform tests.ok(v_code ~ '^[A-HJ-NP-Z2-9]{8}$' and (v_circle ->> 'can_invite')::boolean,
+    'an athlete gets a personal 8-character invite code');
+  perform tests.ok(public.referral_my_circle() ->> 'code' = v_code, 'the code stays the same');
+
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'nobody can claim their own code');
+
+  perform tests.ok((public.referral_inviter(v_code) ->> 'first_name') is not null
+                   and not (public.referral_inviter(v_code) ? 'id'),
+    'the landing screen gets a first name, not an id');
+
+  -- Ten adults join; nine finish onboarding.
+  for n in 1..10 loop
+    v_id := ('7e000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    perform public.referral_claim(lower(v_code));
+  end loop;
+  perform tests.ok((select count(*) from public.referrals where referrer_id = v_inviter and status = 'pending') = 10,
+    'an invite starts as pending');
+
+  perform tests.as_user('7e000000-0000-4000-8000-000000000001');
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'an account can be invited only once');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set onboarding_completed = true
+   where id::text like '7e000000-%' and id::text <> '7e000000-0000-4000-8000-000000000010'
+     and id::text <> '7e000000-0000-4000-8000-000000000011' and id::text <> '7e000000-0000-4000-8000-000000000012';
+  perform tests.ok((select count(*) from public.referrals where referrer_id = v_inviter and status = 'qualified') = 9,
+    'an invite counts once the friend finishes onboarding');
+  perform tests.ok(coalesce((select sum(amount) from public.token_ledger where user_id = v_inviter), 0) = 0,
+    'nine invites earn no token yet');
+
+  update public.user_profiles set onboarding_completed = true where id = '7e000000-0000-4000-8000-000000000010';
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 1,
+    'the tenth invite that counts earns one token');
+  perform tests.ok(exists (select 1 from public.notifications where user_id = v_inviter and type = 'referral_token'),
+    'the inviter is told about the token');
+
+  -- The circle and the badge.
+  perform tests.as_user(v_inviter);
+  v_circle := public.referral_my_circle();
+  perform tests.ok((v_circle ->> 'qualified')::int = 10 and (v_circle ->> 'tokens')::int = 1
+                   and (v_circle ->> 'progress')::int = 0,
+    'the circle shows ten that count, one token, and a fresh start toward the next');
+  perform tests.ok(not exists (select 1 from jsonb_array_elements(v_circle -> 'members') m
+                                where m ? 'id' or m ? 'email' or m ? 'last_name'),
+    'the circle shows first names only');
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  perform tests.ok((public.referral_badge(v_inviter) ->> 'tier')::int = 10,
+    'others see a tier badge ("10+"), not a number or names');
+  perform tests.as_user('44444444-4444-4444-4444-444444444444');
+  perform tests.ok(public.referral_badge(v_inviter) is null,
+    'someone blocked either way sees no badge');
+  perform tests.as_user('7e000000-0000-4000-8000-000000000003');
+  perform tests.ok(public.referral_my_circle() -> 'invited_by' ->> 'first_name' is not null,
+    'the invited friend sees who invited them');
+
+  -- A minor counts only after a guardian approves.
+  perform tests.as_user('7e000000-0000-4000-8000-000000000012');
+  perform public.referral_claim(v_code);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set onboarding_completed = true where id = '7e000000-0000-4000-8000-000000000012';
+  perform tests.ok((select status = 'pending' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000012'),
+    'a minor''s invite waits for a guardian');
+  insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at)
+  values ('7e000000-0000-4000-8000-000000000012', 'Parent', 'ref.parent@test.local', 'granted', now());
+  perform tests.ok((select status = 'qualified' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000012'),
+    'a guardian''s approval makes a minor''s invite count');
+
+  -- A suspension takes the invite back, and the token with it.
+  update public.user_profiles set is_suspended = true
+   where id in ('7e000000-0000-4000-8000-000000000001', '7e000000-0000-4000-8000-000000000002');
+  perform tests.ok((select status = 'revoked' from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000001'),
+    'suspending an invited account revokes the invite');
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 0,
+    'dropping below ten takes the token back');
+
+  -- An admin restores one.
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_suspended = false where id = '7e000000-0000-4000-8000-000000000002';
+  perform tests.as_user('ad111111-1111-1111-1111-111111111111');
+  perform public.admin_set_referral(
+    (select id from public.referrals where referred_id = '7e000000-0000-4000-8000-000000000002'), false, null);
+  perform tests.ok((select sum(amount) from public.token_ledger where user_id = v_inviter) = 1
+                   and exists (select 1 from public.audit_logs where action = 'referral.restore'),
+    'an admin can restore an invite; the token comes back and it is audited');
+
+  -- Late, unknown, and direct writes.
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set created_at = now() - interval '30 days' where id = '7e000000-0000-4000-8000-000000000011';
+  perform tests.as_user('7e000000-0000-4000-8000-000000000011');
+  v_raised := false;
+  begin perform public.referral_claim(v_code); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'a code cannot be entered more than 14 days after signing up');
+  v_raised := false;
+  begin perform public.referral_claim('ZZZZZZZZ'); exception when others then v_raised := true; end;
+  perform tests.ok(v_raised, 'an unknown code is refused');
+  set local role authenticated;
+  v_raised := false;
+  begin
+    insert into public.referrals (referrer_id, referred_id, code)
+    values (v_inviter, '7e000000-0000-4000-8000-000000000011', v_code);
+  exception when others then v_raised := true; end;
+  reset role;
+  perform tests.ok(v_raised, 'a client cannot write an invite directly');
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_suspended = false where id::text like '7e000000-%';
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- QA-114. A watch counts once, never for the author, never for a post
+-- the viewer is not allowed to see.
+do $$
+declare
+  v_post uuid;
+  v_hidden uuid;
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.record_post_view(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.record_post_view(uuid)', 'EXECUTE'),
+    'only a signed-in user can record a post view');
+
+  insert into public.posts (author_id, type, caption, audience)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'QA-114 public clip', 'public'
+  ) returning id into v_post;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'a viewer''s first call adds 1 to view_count');
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'a second call does not add another view');
+
+  perform tests.as_user('11111111-1111-1111-1111-111111111111');
+  set local role authenticated;
+  perform public.record_post_view(v_post);
+  reset role;
+  select view_count into v_count from public.posts where id = v_post;
+  perform tests.ok(v_count = 1, 'the author''s call does not count');
+
+  insert into public.posts (author_id, type, caption, audience, is_hidden)
+  values (
+    '11111111-1111-1111-1111-111111111111',
+    'standard', 'QA-114 hidden clip', 'public', true
+  ) returning id into v_hidden;
+
+  perform tests.as_user('33333333-3333-3333-3333-333333333333');
+  set local role authenticated;
+  perform public.record_post_view(v_hidden);
+  reset role;
+  select view_count into v_count from public.posts where id = v_hidden;
+  perform tests.ok(v_count = 0, 'a viewer who may not see the post does not count');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-118. A highlight watch counts once, never for the owner, never for
+-- a viewer who may not see a minor's clip.
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_coach uuid := '33333333-3333-3333-3333-333333333333';
+  -- The seeded minor's granted consent names this coach as guardian, so
+  -- turning discoverability off does not hide that child from them.
+  v_hidden uuid := 'a1180000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+  v_hidden_athlete uuid;
+  v_clip uuid := gen_random_uuid();
+  v_minor_clip uuid := gen_random_uuid();
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.record_highlight_view(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.record_highlight_view(uuid)', 'EXECUTE'),
+    'only a signed-in user can record a highlight view');
+
+  select id into v_athlete from public.athlete_profiles where user_id = v_adult;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count)
+  values (v_clip, v_athlete, 'QA-118 clip', 'video', v_adult::text || '/highlights/qa118.mp4', true, 0);
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'a viewer''s first call adds 1 to views_count');
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'a second call does not add another view');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  perform public.record_highlight_view(v_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_clip;
+  perform tests.ok(v_count = 1, 'the owner''s call does not count');
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_hidden, 'qa118.hidden@test.local', '{"full_name":"QA118 Hidden","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '15 years'
+   where user_id = v_hidden;
+  update public.user_profiles set is_discoverable = false where id = v_hidden;
+  select id into v_hidden_athlete from public.athlete_profiles where user_id = v_hidden;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, views_count)
+  values (
+    v_minor_clip, v_hidden_athlete, 'QA-118 minor clip', 'video',
+    v_hidden::text || '/highlights/qa118m.mp4', true, 0
+  );
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  perform public.record_highlight_view(v_minor_clip);
+  reset role;
+  select views_count into v_count from public.athlete_media where id = v_minor_clip;
+  perform tests.ok(v_count = 0, 'a viewer who may not see a minor''s clip does not count');
+
+  delete from public.athlete_media where id in (v_clip, v_minor_clip);
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-87. Suggestions are city names from the catalogue, and only a
+-- signed-in user can ask. "dubai " is the Dubai already on file.
+do $$
+declare
+  v_adult uuid := '11111111-1111-1111-1111-111111111111';
+  v_rows  integer;
+  v_count integer;
+  v_name  text;
+begin
+  perform tests.ok(
+    (select pg_get_function_result(p.oid)
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'search_cities')
+      = 'TABLE(name text)',
+    'search_cities returns names only');
+
+  set local role anon;
+  begin
+    select count(*) into v_rows from public.cities;
+  exception when insufficient_privilege then
+    v_rows := -1;
+  end;
+  reset role;
+  perform tests.ok(
+    v_rows = -1
+    and not has_table_privilege('anon', 'public.cities', 'SELECT')
+    and not has_function_privilege('anon', 'public.search_cities(text, text, integer)', 'EXECUTE'),
+    'anon cannot call search_cities or read public.cities');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('United Arab Emirates', 'dub', 20) s
+   where s.name = 'Dubai';
+  reset role;
+  perform tests.ok(v_count = 1, 'a signed-in user''s search returns the city name');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  select count(*) into v_count
+    from public.search_cities('United Arab Emirates', 'dub', 20);
+  perform tests.ok(v_count = 0, 'search_cities returns nothing when nobody is signed in');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  v_name := public.add_custom_city('United Arab Emirates', 'dubai ');
+  reset role;
+  select count(*) into v_count from public.cities
+   where lower(btrim(country)) = 'united arab emirates'
+     and lower(btrim(name)) = 'dubai';
+  perform tests.ok(
+    v_name = 'Dubai' and v_count = 1,
+    'add_custom_city("dubai ") returns the existing spelling and does not add a duplicate');
+
+  perform tests.ok(
+    tests.hint_of($q$select public.add_custom_city('United Arab Emirates', 'n')$q$) = 'city_length'
+    and tests.hint_of($q$select public.add_custom_city('United Arab Emirates', repeat('n', 81))$q$) = 'city_length',
+    'a city name under 2 or over 80 characters is refused');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-96. A club map pin keeps a Google share link. Only a manager
+-- (or the owner) may set it.
+do $$
+declare
+  v_owner  uuid := 'a0960000-0000-4000-8000-000000000001';
+  v_editor uuid := 'a0960000-0000-4000-8000-000000000002';
+  v_org    uuid;
+  v_url    text := 'https://maps.app.goo.gl/aceaixPin';
+  v_set    text;
+  v_saved  text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_owner,  'qa96.owner@test.local',  '{"full_name":"QA96 Owner","role":"club"}'),
+    (v_editor, 'qa96.editor@test.local', '{"full_name":"QA96 Editor","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '34 years' where user_id = v_owner;
+  update public.user_private set date_of_birth = current_date - interval '29 years' where user_id = v_editor;
+
+  insert into public.organizations (name, type, is_verified, verification_status)
+  values ('QA96 Map Club', 'club', true, 'approved')
+  returning id into v_org;
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_org, v_owner, 'owner', 'active'),
+    (v_org, v_editor, 'editor', 'active');
+
+  perform tests.as_user(v_owner);
+  v_set := public.set_club_map_url(v_org, v_url);
+  select map_url into v_saved from public.organizations where id = v_org;
+  perform tests.ok(
+    v_set = v_url and v_saved = v_url,
+    'set_club_map_url accepts a maps.app.goo.gl link');
+
+  perform tests.ok(
+    tests.hint_of(format($q$select public.set_club_map_url(%L, 'https://example.com')$q$, v_org))
+      = 'club_map_url_invalid'
+    and (select map_url from public.organizations where id = v_org) = v_url,
+    'https://example.com is refused');
+
+  perform tests.as_user(v_editor);
+  perform tests.ok(
+    tests.hint_of(format($q$select public.set_club_map_url(%L, %L)$q$, v_org, v_url))
+      = 'club_permission'
+    and (select map_url from public.organizations where id = v_org) = v_url,
+    'a non-manager cannot set the club map link');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-109. The hand-added follow trigger is gone, so one follow
+-- writes one notification row. The real trigger's type is 'follow';
+-- the stray one's was 'connection'. Count only those, and only the
+-- rows this follow creates: signing the recipient up already wrote
+-- a score notification.
+do $$
+declare
+  v_follower uuid := 'a1090000-0000-4000-8000-000000000001';
+  v_target   uuid := 'a1090000-0000-4000-8000-000000000002';
+  v_before   integer;
+  v_after    integer;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_follower, 'qa109.follower@test.local', '{"full_name":"QA109 Follower","role":"athlete"}'),
+    (v_target,   'qa109.target@test.local',   '{"full_name":"QA109 Target","role":"athlete"}');
+  update public.user_private set date_of_birth = current_date - interval '26 years'
+   where user_id in (v_follower, v_target);
+  insert into public.notification_preferences (user_id, follows)
+  values (v_target, true)
+  on conflict (user_id) do update set follows = true;
+
+  perform tests.as_user(v_follower);
+  select count(*) into v_before from public.notifications
+   where user_id = v_target and type in ('follow', 'connection');
+  perform public.toggle_follow(v_target);
+  select count(*) into v_after from public.notifications
+   where user_id = v_target and type in ('follow', 'connection');
+  perform tests.ok(v_after = v_before + 1, 'a follow writes exactly one notification row');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-110. The update check can read the version record before sign-in.
+do $$
+declare
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  select count(*) into v_count
+    from public.platform_settings
+   where key = 'app_version'
+     and value -> 'ios' ->> 'latest' = '2.0.5'
+     and value -> 'android' ->> 'latest' = '2.0.5';
+  reset role;
+  perform tests.ok(v_count = 1, 'the app_version row exists and a signed-out client can read it');
+end $$;
+
+-- ------------------------------------------------------------
+-- QA-111. An @ in a caption notifies that adult once. A minor is
+-- not mentionable, so that entry is dropped and nobody is told.
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_who     text;
+  v_caption text;
+  v_len     integer;
+  v_post    uuid;
+  v_kept    jsonb;
+  v_count   integer;
+begin
+  perform tests.ok(
+    not has_function_privilege('anon', 'public.mention_candidates(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.mention_candidates(text, integer)', 'EXECUTE'),
+    'only a signed-in user can search mention candidates');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    exists (select 1 from public.mention_candidates('Verified', 8) c where c.id = v_coach)
+    and not exists (select 1 from public.mention_candidates('Minor', 8) c where c.id = v_minor),
+    'mention search offers an adult and not a minor');
+
+  select full_name into v_who from public.user_profiles where id = v_coach;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (
+    v_adult, 'standard', v_caption, 'public',
+    jsonb_build_array(
+      jsonb_build_object('user_id', v_coach, 'start', 0, 'length', v_len),
+      jsonb_build_object('user_id', v_minor, 'start', 0, 'length', v_len)
+    )
+  )
+  returning id, mentions into v_post, v_kept;
+
+  select count(*) into v_count from public.notifications
+   where user_id = v_coach and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    v_count = 1
+    and jsonb_array_length(v_kept) = 1
+    and (v_kept -> 0 ->> 'user_id') = v_coach::text
+    and not exists (
+      select 1 from public.notifications
+       where user_id = v_minor and type = 'mention'
+    ),
+    'an adult mention writes one notification and a minor mention is dropped');
+end $$;
+
+-- 20261024000002. A hidden minor cannot mention anyone, and a mention
+-- reaches only someone who may see the post. A view row needs a post the
+-- viewer may see.
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_post    uuid;
+  v_kept    jsonb;
+  v_raised  boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  delete from public.follows where follower_id = v_coach and following_id = v_adult;
+  perform tests.ok(not (select is_discoverable from public.user_profiles where id = v_minor),
+    'the minor is hidden for this check');
+
+  perform tests.as_user(v_minor);
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (v_minor, 'standard', '@Coach hi', 'public',
+          jsonb_build_array(jsonb_build_object('user_id', v_coach, 'start', 0, 'length', 6)))
+  returning id, mentions into v_post, v_kept;
+  perform tests.ok(
+    coalesce(jsonb_array_length(v_kept), 0) = 0
+    and not exists (select 1 from public.notifications
+                     where user_id = v_coach and type = 'mention' and entity_id = v_post::text),
+    'a hidden minor cannot mention an adult');
+
+  perform tests.as_user(v_adult);
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (v_adult, 'standard', '@Coach followers only', 'followers',
+          jsonb_build_array(jsonb_build_object('user_id', v_coach, 'start', 0, 'length', 6)))
+  returning id into v_post;
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                 where user_id = v_coach and type = 'mention' and entity_id = v_post::text),
+    'a mention in a followers-only post does not reach a non-follower');
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  begin
+    insert into public.post_views (post_id, viewer_id) values (v_post, v_coach);
+  exception when others then v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(v_raised, 'a view cannot be written for a post the viewer may not see');
+
+  v_raised := false;
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  begin
+    insert into public.post_views (post_id, viewer_id) values (v_post, v_adult);
+  exception when others then v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(v_raised, 'an author cannot write a view of their own post');
 end $$;
 
 -- ------------------------------------------------------------

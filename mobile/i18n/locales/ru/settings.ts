@@ -144,6 +144,7 @@ export const settings = {
   notifyFollows: 'Новые подписчики',
   notifyMessages: 'Сообщения',
   notifyComments: 'Комментарии',
+  notifyMentions: 'Упоминания',
   notifyLikes: 'Лайки',
   notifyMeetups: 'Игры в «Играть»',
   meetupPlaces: 'Места для оповещений «Играть»',
@@ -169,7 +170,7 @@ export const settings = {
   scoutingIntro:
     'От этого зависит, кого поиск покажет тебе первым и о каких спортсменах мы сообщим. Оставь поле пустым — это значит «без предпочтений».',
   scoutingSports: 'Виды спорта',
-  scoutingSportsHint: 'Выбери один вид спорта, по которому набираешь.',
+  scoutingSportsHint: 'Выбери виды спорта, по которым набираешь. Можно несколько.',
   scoutingPositions: 'Позиции',
   scoutingPositionsHint: 'Только позиции из выбранных видов спорта.',
   scoutingPositionsEmpty: 'Сначала выбери вид спорта — его позиции появятся здесь.',

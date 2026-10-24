@@ -91,3 +91,82 @@ update public.user_profiles set created_at = now() - (random() * interval '28 da
 select 'admin demo ready' as status,
        (select count(*) from public.moderation_reports) as reports,
        (select count(*) from public.verification_requests where status = 'pending') as pending_verifications;
+
+-- Sport Fit totals for the admin console --------------------------------------
+-- Thirty demo athletes (sf.demo.N@aceaix.com, LOCAL ONLY) answer Sport Fit with
+-- varied answers, so the Sport Fit page has totals large enough to show.
+do $$
+declare
+  n int;
+  v_id uuid;
+  v_answers jsonb;
+  v_band int;
+begin
+  for n in 1..30 loop
+    v_id := ('5f000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform set_config('request.jwt.claim.role', 'service_role', true);
+    perform set_config('request.jwt.claim.sub', '', true);
+    insert into auth.users (id, email, encrypted_password, raw_user_meta_data)
+    values (v_id, 'sf.demo.' || n || '@aceaix.com', crypt('AceAiX-Demo-2026', gen_salt('bf')),
+            jsonb_build_object('full_name', 'Demo Player ' || n, 'role', 'athlete'))
+    on conflict (id) do nothing;
+    v_band := case when n % 3 = 0 then 16 when n % 3 = 1 then 20 else 27 end;
+    update public.user_private set date_of_birth = current_date - make_interval(years => v_band)
+     where user_id = v_id;
+
+    select jsonb_object_agg(i.id,
+             case when i.expected is not null then i.expected
+                  else 1 + (('x' || substr(md5('sf' || n || i.id), 1, 6))::bit(24)::int % 5) end)
+      into v_answers from public.sport_fit_items i;
+
+    perform set_config('request.jwt.claim.sub', v_id::text, true);
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    begin
+      if n % 8 = 0 then
+        perform public.sport_fit_submit(v_answers, 20);   -- too fast: not scored
+      end if;
+      perform public.sport_fit_submit(v_answers, 120 + n);
+    exception when others then null;
+    end;
+  end loop;
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  /* Spread the dates over the last month. */
+  update public.sport_fit_results set created_at = now() - (random() * interval '25 days')
+   where user_id::text like '5f000000%';
+end;
+$$;
+
+-- Invites for the circle screen and the admin page ----------------------------
+-- Layla invited 15 of the demo players (12 finished onboarding, so she has one
+-- token and is 2 of 10 toward the next); Marco invited 6. LOCAL ONLY.
+do $$
+declare n int; v_id uuid;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  for n in 1..21 loop
+    v_id := ('5f000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    insert into public.referrals (referrer_id, referred_id, code, created_at)
+    values (case when n <= 15 then 'a0000000-0000-4000-8000-000000000001'::uuid
+                 else 'b0000000-0000-4000-8000-000000000001'::uuid end,
+            v_id, case when n <= 15 then 'LAYLAPLY' else 'MARCKBAY' end,
+            now() - make_interval(days => 21 - n))
+    on conflict (referred_id) do nothing;
+    if n not in (13, 14, 15) then
+      update public.user_profiles set onboarding_completed = true where id = v_id;
+    end if;
+    -- A parent approved four of Layla's under-18 friends; Marco's two are still waiting.
+    if n in (3, 6, 9, 12) then
+      insert into public.guardian_consents (minor_user_id, guardian_name, guardian_email, status, granted_at)
+      select v_id, 'Demo Parent', 'parent.' || n || '@example.com', 'granted', now()
+      where not exists (select 1 from public.guardian_consents g where g.minor_user_id = v_id and g.status = 'granted');
+    end if;
+    perform private.referral_evaluate(v_id);
+  end loop;
+  insert into public.referral_codes (user_id, code) values
+    ('a0000000-0000-4000-8000-000000000001', 'LAYLAPLY'),
+    ('b0000000-0000-4000-8000-000000000001', 'MARCKBAY')
+  on conflict (user_id) do update set code = excluded.code;
+end;
+$$;

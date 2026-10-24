@@ -51,6 +51,8 @@ export const coaching = {
   sTitle: 'Название',
   sTitlePlaceholder: 'Индивидуальная силовая тренировка',
   sDescription: 'Что входит',
+  readMore: 'Читать дальше',
+  showLess: 'Показать меньше',
   sDuration: 'Длительность',
   minutes: '{{n}} мин',
   sCapacity: 'Мест в группе',

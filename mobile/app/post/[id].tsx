@@ -29,7 +29,9 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { addComment, getComments } from '@/lib/api';
 import { getPostById, postLink } from '@/lib/api.feed';
+import { useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
+import { mentionsForSubmit, type MentionSpan } from '@/lib/mentions';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { FeedPost, PostComment } from '@/types/models';
@@ -49,7 +51,7 @@ export default function PostScreen() {
   const post = useAsync<FeedPost | null>(
     () => getPostById(postId as string),
     [postId],
-    { enabled: !!postId },
+    { enabled: !!postId, refetchOnFocus: true },
   );
 
   const comments = useAsync<PostComment[]>(
@@ -59,6 +61,7 @@ export default function PostScreen() {
   );
 
   const [draft, setDraft] = useState('');
+  const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [sending, setSending] = useState(false);
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
   const [focusSignal, setFocusSignal] = useState(0);
@@ -67,6 +70,13 @@ export default function PostScreen() {
   const rows = useMemo(() => buildCommentRows(comments.data ?? []), [comments.data]);
 
   const { mutate: mutatePost } = post;
+
+  useViewCountUpdates((subject, id, count) => {
+    if (subject !== 'post' || id !== postId) return;
+    mutatePost((current) =>
+      current && count > current.view_count ? { ...current, view_count: count } : current,
+    );
+  });
 
   const patchPost = useCallback(
     (_postId: string, changes: Partial<FeedPost>) => {
@@ -123,8 +133,10 @@ export default function PostScreen() {
 
     setSending(true);
     try {
-      await addComment(postId, body, replyTo?.id);
+      const saved = mentionsForSubmit(draft, mentions);
+      await addComment(postId, saved.text, replyTo?.id, saved.mentions);
       setDraft('');
+      setMentions([]);
       setReplyTo(null);
       mutatePost((current) =>
         current ? { ...current, comment_count: current.comment_count + 1 } : current,
@@ -135,7 +147,7 @@ export default function PostScreen() {
     } finally {
       setSending(false);
     }
-  }, [draft, postId, replyTo, sending, comments, mutatePost, toast]);
+  }, [draft, mentions, postId, replyTo, sending, comments, mutatePost, toast]);
 
   const onActionDeleted = useCallback(
     (target: ContentTarget) => {
@@ -232,6 +244,7 @@ export default function PostScreen() {
         <CommentComposer
           value={draft}
           onChangeText={setDraft}
+          onMentionsChange={setMentions}
           onSubmit={submit}
           sending={sending}
           replyingTo={replyTo}

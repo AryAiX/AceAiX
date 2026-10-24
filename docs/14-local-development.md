@@ -365,7 +365,10 @@ supabase db push
 supabase functions deploy guardian-consent talent-insights
 ```
 
-Function secrets to set: `RESEND_API_KEY` and `CONSENT_FROM_EMAIL` for `guardian-consent`;
+Function secrets to set: `RESEND_API_KEY`, `CONSENT_FROM_EMAIL`, and
+`CONSENT_PAGE_URL` (the in-app parent approval page, for example
+`https://app.aceaix.com/parent-approval`; when set, the emailed link redirects
+there) for `guardian-consent`;
 `ANTHROPIC_API_KEY` (and optionally `ANTHROPIC_MODEL`) for `talent-insights`. Both functions
 degrade gracefully without them — the consent link is returned in the response instead of e-mailed,
 and the insight falls back to a written template — so a missing secret is a reduced feature, never

@@ -31,6 +31,7 @@ import {
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import {
+  addCustomCity,
   getMyProfile,
   refreshMyTalentScore,
   updateAthleteProfile,
@@ -38,15 +39,18 @@ import {
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
 import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
+import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
 import { CLUB_ROLE_KEYS, COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import {
   DOMINANT_SIDE,
   LEVELS,
   MAX_OTHER_SPORTS,
   OTHER_SPORT_LEVELS,
-  PRIORITY_COUNTRIES,
   SPORTS,
+  countryLabel,
+  countryOptions,
   levelHint,
   levelLabelI18n,
   otherSportLevelLabel,
@@ -118,6 +122,8 @@ export default function EditProfileScreen() {
   // Prefer the profile bundle's role once it has loaded. Until then, the
   // signed-in account from auth is enough to start the credentials read.
   const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
+  const isSponsorAccount = (bundle.data?.user.role ?? profile?.role) === 'sponsor';
+  const isMinor = profile?.is_minor === true;
   const scoutCreds = useAsync(() => getMyScoutCredentials(), [isClubAccount], {
     enabled: isClubAccount,
   });
@@ -129,6 +135,7 @@ export default function EditProfileScreen() {
   else if (scoutPhase.current === 'loading') scoutPhase.current = 'done';
 
   const [form, setForm] = useState<FormState | null>(null);
+  const [cityQuery, setCityQuery] = useState('');
   const [initial, setInitial] = useState<FormState | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -240,6 +247,18 @@ export default function EditProfileScreen() {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }, []);
 
+  /** A new country cannot keep the previous city's name. Opening the
+   *  screen seeds both fields and does not come through here. */
+  const chooseCountry = useCallback((next: string) => {
+    setForm((current) => {
+      if (!current || next === current.country) return current;
+      return { ...current, country: next, city: '' };
+    });
+    setCityQuery('');
+    setCountryQuery('');
+    setCountrySheet(false);
+  }, []);
+
   /**
    * One picker for both pictures.
    *
@@ -287,10 +306,12 @@ export default function EditProfileScreen() {
 
   const onSave = useCallback(async () => {
     if (!form || !bundle.data) return;
-    if (!form.firstName.trim()) {
+    if (!isSponsorAccount && !form.firstName.trim()) {
       toast.error(t('profile.firstNameRequired'));
       return;
     }
+    const trimmedCity = isMinor ? form.city.trim() : cityFromPicker(form.city, cityQuery);
+    if (!isMinor && !trimmedCity) return;
 
     setSaving(true);
     const previous = bundle.data.score?.overall ?? null;
@@ -298,18 +319,34 @@ export default function EditProfileScreen() {
     try {
       const previousAvatar = initial?.avatarUrl ?? '';
       const previousCover = initial?.coverUrl ?? '';
-      await updateUserProfile({
-        first_name: form.firstName.trim(),
-        last_name: form.lastName.trim() || null,
+      const trimmedCountry = form.country.trim();
+      // The catalogue is the normaliser. Empty stays null. With no country
+      // there is nothing to match against, so the trimmed name is kept.
+      const city = !trimmedCity
+        ? null
+        : trimmedCountry
+          ? await addCustomCity(trimmedCountry, trimmedCity)
+          : trimmedCity;
+      const savedForm = { ...form, city: city ?? '' };
+      const shared = {
         bio: form.bio.trim() || null,
-        city: form.city.trim() || null,
-        country: form.country.trim() || null,
+        city,
+        country: trimmedCountry || null,
         avatar_url: form.avatarUrl || null,
         cover_url: form.coverUrl || null,
-      });
+      };
+      await updateUserProfile(
+        isSponsorAccount
+          ? shared
+          : {
+              first_name: form.firstName.trim(),
+              last_name: form.lastName.trim() || null,
+              ...shared,
+            },
+      );
       if (previousAvatar !== form.avatarUrl) await removeOwnProfileImage(previousAvatar);
       if (previousCover !== form.coverUrl) await removeOwnProfileImage(previousCover);
-      await syncFullName(form.firstName, form.lastName);
+      if (!isSponsorAccount) await syncFullName(form.firstName, form.lastName);
 
       if (bundle.data.athlete) {
         await updateAthleteProfile({
@@ -364,30 +401,39 @@ export default function EditProfileScreen() {
       }
 
       toast.success(message);
-      setInitial(form);
+      setCityQuery('');
+      setForm(savedForm);
+      setInitial(savedForm);
       if (router.canGoBack()) router.back();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
       setSaving(false);
     }
-  }, [bundle.data, clubLoadFailed, form, initial, isClubAccount, refreshProfile, router, t, toast]);
+  }, [bundle.data, cityQuery, clubLoadFailed, form, initial, isClubAccount, isMinor, isSponsorAccount, refreshProfile, router, t, toast]);
 
-  const countries = useMemo(() => {
-    const term = countryQuery.trim().toLowerCase();
-    const all = [...PRIORITY_COUNTRIES].sort((a, b) => a.localeCompare(b));
-    return term ? all.filter((country) => country.toLowerCase().includes(term)) : all;
-  }, [countryQuery]);
+  const countries = useMemo(
+    () => countryOptions(countryQuery, (country) => countryLabel(t, country)),
+    [countryQuery, t],
+  );
 
-  /** A typed country that is not in the pinned list is still a real country. */
+  /** A typed country that is not in the catalogue is still a real country. */
   const customCountry = useMemo(() => {
     const typed = countryQuery.trim();
     if (typed.length < 2) return null;
-    const exists = PRIORITY_COUNTRIES.some(
-      (country) => country.toLowerCase() === typed.toLowerCase(),
+    const needle = typed.toLowerCase();
+    const exists = countryOptions().some(
+      (country) =>
+        country.toLowerCase() === needle ||
+        countryLabel(t, country).toLowerCase() === needle,
     );
     return exists ? null : typed;
-  }, [countryQuery]);
+  }, [countryQuery, t]);
+
+  const draftCity = form ? (isMinor ? form.city.trim() : cityFromPicker(form.city, cityQuery)) : '';
+  const cityTypedIn =
+    !isMinor && !!initial && draftCity.length > 0 && draftCity !== initial.city.trim();
+  const adultNeedsCity = !isMinor && !!form && draftCity.length === 0;
 
   const header = (
     <Header
@@ -399,7 +445,7 @@ export default function EditProfileScreen() {
           label={t('common.save')}
           size="sm"
           hitSlop={10}
-          disabled={!dirty || saving}
+          disabled={(!dirty && !cityTypedIn) || saving || adultNeedsCity}
           loading={saving}
           onPress={onSave}
         />
@@ -576,33 +622,50 @@ export default function EditProfileScreen() {
         />
 
         <View style={{ gap: spacing.md }}>
-          <View style={{ flexDirection: 'row', gap: spacing.md }}>
-            <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.firstName')}
-              required
-              value={form.firstName}
-              onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
-              maxLength={60}
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-            />
-            <Input
-              containerStyle={{ flex: 1 }}
-              label={t('profile.lastName')}
-              value={form.lastName}
-              onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
-              maxLength={60}
-              autoCapitalize="words"
-              autoCorrect={false}
-              spellCheck={false}
-            />
-          </View>
+          {isSponsorAccount ? (
+            <Pressable
+              onPress={() => router.push(Routes.sponsorshipBrand)}
+              accessibilityRole="button"
+              accessibilityLabel={t('profile.brandName')}
+              accessibilityHint={t('profile.brandNameHint')}
+            >
+              <Input
+                label={t('profile.brandName')}
+                value={bundle.data?.user.full_name?.trim() ?? ''}
+                hint={t('profile.brandNameHint')}
+                editable={false}
+                pointerEvents="none"
+              />
+            </Pressable>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.firstName')}
+                required
+                value={form.firstName}
+                onChangeText={(text) => set('firstName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+              <Input
+                containerStyle={{ flex: 1 }}
+                label={t('profile.lastName')}
+                value={form.lastName}
+                onChangeText={(text) => set('lastName', sanitizeNameInput(text))}
+                maxLength={60}
+                autoCapitalize="words"
+                autoCorrect={false}
+                spellCheck={false}
+              />
+            </View>
+          )}
 
           <Input
             label={t('profile.bio')}
-            placeholder={t('profile.bioPlaceholder')}
+            placeholder={t(isSponsorAccount ? 'profile.bioPlaceholderBrand' : 'profile.bioPlaceholder')}
             value={form.bio}
             onChangeText={(text) => set('bio', text.slice(0, BIO_MAX))}
             multiline
@@ -610,27 +673,31 @@ export default function EditProfileScreen() {
             hint={t('profile.bioCounter', { n: form.bio.length, max: BIO_MAX })}
           />
 
-          <Input
-            label={t('profile.city')}
-            placeholder={t('profile.cityPlaceholder')}
+          <CityPicker
+            country={form.country.trim() ? form.country : null}
             value={form.city}
-            onChangeText={(text) => set('city', text)}
-            maxLength={80}
-            autoCapitalize="words"
+            query={cityQuery}
+            onQueryChange={setCityQuery}
+            onChange={(text) => set('city', text)}
+            label={t('profile.city')}
+            hint={
+              !isMinor && form.country.trim() && cityFromPicker(form.city, cityQuery).length === 0
+                ? t('onboarding.cityRequiredHint')
+                : undefined
+            }
           />
 
           <Pressable
             onPress={() => setCountrySheet(true)}
             accessibilityRole="button"
             accessibilityLabel={t('profile.countryA11y', {
-              value: form.country || t('profile.notSet'),
+              value: countryLabel(t, form.country) || t('profile.notSet'),
             })}
           >
-            {/* Country names are stored as typed, so they are not translated. */}
             <Input
               label={t('profile.country')}
               placeholder={t('profile.countryPlaceholder')}
-              value={form.country}
+              value={countryLabel(t, form.country)}
               editable={false}
               pointerEvents="none"
             />
@@ -1031,20 +1098,15 @@ export default function EditProfileScreen() {
           accessibilityLabel={t('profile.searchCountries')}
           containerStyle={{ marginBottom: spacing.md }}
         />
-        {/* The country name is what gets stored, so the row shows it as stored. */}
         {countries.map((country, index) => (
           <View key={country}>
             {index > 0 ? <Divider /> : null}
             <ListItem
-              title={country}
+              title={countryLabel(t, country)}
               right={
                 form.country === country ? <Check size={20} color={colors.primary} /> : undefined
               }
-              onPress={() => {
-                set('country', country);
-                setCountryQuery('');
-                setCountrySheet(false);
-              }}
+              onPress={() => chooseCountry(country)}
             />
           </View>
         ))}
@@ -1056,11 +1118,7 @@ export default function EditProfileScreen() {
             <ListItem
               title={t('profile.useTypedCountry', { country: customCountry })}
               subtitle={t('profile.useTypedCountryHint')}
-              onPress={() => {
-                set('country', customCountry);
-                setCountryQuery('');
-                setCountrySheet(false);
-              }}
+              onPress={() => chooseCountry(customCountry)}
             />
           </View>
         ) : null}

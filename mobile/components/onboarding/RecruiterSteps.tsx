@@ -5,6 +5,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Chip, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { SPORTS, positionLabel, positionsFor, sportLabel } from '@/constants/sports';
+import { CityPicker, cityFromPicker } from './CityPicker';
 import { CountryPicker, SportTile, StepHeading } from './Shared';
 
 /** The coach and club path. Short: who they are, and who they are looking for. */
@@ -158,16 +159,25 @@ export function RecruiterRoleStep({
 export function RecruiterPlaceStep({
   country,
   city,
+  cityQuery,
+  requireCity,
   onChangeCountry,
   onChangeCity,
+  onCityQueryChange,
 }: {
   country: string | null;
   city: string;
+  cityQuery: string;
+  /** Adults must name a city. Under-18s can leave it empty. */
+  requireCity: boolean;
   onChangeCountry: (value: string) => void;
   onChangeCity: (value: string) => void;
+  onCityQueryChange: (value: string) => void;
 }) {
   const theme = useTheme();
   const t = useT();
+  const cityMissing =
+    requireCity && !!country?.trim() && cityFromPicker(city, cityQuery).length === 0;
 
   return (
     <View>
@@ -176,13 +186,23 @@ export function RecruiterPlaceStep({
         subtitle={t('onboarding.recruiterPlaceSubtitle')}
       />
       <View style={{ gap: theme.spacing.xl }}>
-        <CountryPicker value={country} onChange={onChangeCountry} />
-        <Input
-          label={t('onboarding.cityLabel')}
+        <CountryPicker
+          value={country}
+          onChange={(next) => {
+            onChangeCountry(next);
+            // A city belongs to the country it was picked under. The first
+            // load is not a change — only a tap here is.
+            if (next !== country) onChangeCity('');
+          }}
+        />
+        <CityPicker
+          country={country}
           value={city}
-          onChangeText={onChangeCity}
-          placeholder={t('onboarding.cityPlaceholder')}
-          autoCapitalize="words"
+          query={cityQuery}
+          onQueryChange={onCityQueryChange}
+          onChange={onChangeCity}
+          label={t('onboarding.cityLabel')}
+          hint={cityMissing ? t('onboarding.cityRequiredHint') : undefined}
           testID="recruiter-city"
         />
       </View>
@@ -207,6 +227,19 @@ export const RECRUITER_AGE_BANDS: AgeBandOption[] = [
   { key: '18_21', labelKey: 'onboarding.ageBand18To21', min: 18, max: 21 },
   { key: '21_plus', labelKey: 'onboarding.ageBand21Plus', min: 21, max: null },
 ];
+
+/**
+ * The chip that matches a brief already saved. A range this step cannot
+ * draw stays on Any, which is the same chip a first visit starts on.
+ */
+export function recruiterAgeBandKey(
+  ageMin: number | null | undefined,
+  ageMax: number | null | undefined,
+): string {
+  const min = ageMin ?? null;
+  const max = ageMax ?? null;
+  return RECRUITER_AGE_BANDS.find((band) => band.min === min && band.max === max)?.key ?? 'any';
+}
 
 export function RecruiterTargetStep({
   sports,

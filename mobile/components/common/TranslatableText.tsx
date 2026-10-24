@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { MentionText } from '@/components/feed/MentionText';
 import { Text } from '@/components/ui';
 import {
   translate,
@@ -9,6 +10,7 @@ import {
   type TranslationSource,
 } from '@/lib/api.translate';
 import { useI18n, useT } from '@/i18n';
+import type { MentionSpan } from '@/lib/mentions';
 
 /**
  * A body of text with "See translation" under it, the way Instagram does it.
@@ -27,6 +29,11 @@ import { useI18n, useT } from '@/i18n';
 
 interface Props {
   text: string | null | undefined;
+  /**
+   * Code-point spans for the original `text`. A translation has no spans:
+   * the offsets would point at the wrong characters, so it stays plain.
+   */
+  mentions?: readonly MentionSpan[] | null;
   /** Server-owned row whose current text is authorized before translation. */
   sourceRef?: TranslationSource;
   variant?: 'body' | 'caption' | 'bodyStrong';
@@ -56,6 +63,7 @@ interface Props {
 
 export function TranslatableText({
   text,
+  mentions,
   sourceRef,
   variant = 'body',
   tone,
@@ -105,17 +113,32 @@ export function TranslatableText({
   if (!text?.trim()) return null;
 
   const offer = !!sourceRef && offerProp && !unavailable && mightNeedTranslation(text, language);
-
-  const body = (
-    <Text variant={variant} tone={tone} color={color} numberOfLines={numberOfLines}>
-      {showing && translated ? translated : text}
-    </Text>
-  );
+  const showingTranslation = Boolean(showing && translated);
   const linkColour = onColour ? 'rgba(255,255,255,0.85)' : theme.colors.textMuted;
+
+  /* The translation is one block and can sit in a single press target. The
+     original is not: a name inside it is its own target, so the caption tap
+     lives on the plain spans and the "show more" line is a sibling. */
+  const body = showingTranslation ? (
+    <Text variant={variant} tone={tone} color={color} numberOfLines={numberOfLines}>
+      {translated}
+    </Text>
+  ) : (
+    <MentionText
+      text={text}
+      mentions={mentions}
+      variant={variant}
+      tone={tone}
+      color={color}
+      numberOfLines={numberOfLines}
+      onPressText={onPressText}
+      pressLabel={pressLabel}
+    />
+  );
 
   return (
     <View testID={testID}>
-      {onPressText ? (
+      {showingTranslation && onPressText ? (
         <Pressable
           onPress={onPressText}
           accessibilityRole="button"
@@ -127,7 +150,17 @@ export function TranslatableText({
       ) : (
         <>
           {body}
-          {footer}
+          {footer && onPressText ? (
+            <Pressable
+              onPress={onPressText}
+              accessibilityRole="button"
+              accessibilityLabel={pressLabel}
+            >
+              {footer}
+            </Pressable>
+          ) : (
+            footer
+          )}
         </>
       )}
 

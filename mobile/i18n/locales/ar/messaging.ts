@@ -161,4 +161,6 @@ export const messaging = {
   groupedTitle: '{{actors}}{{rest}}',
   unread: 'غير مقروء',
   meetupNearbyTitle: 'مباراة {{sport}} جديدة في {{city}}',
+  mentionedInPost: '{{name}} أشار إليك في منشور',
+  mentionedInComment: '{{name}} أشار إليك في تعليق',
 };

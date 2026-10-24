@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Easing,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -33,6 +35,24 @@ interface Props {
   scrollable?: boolean;
   contentStyle?: ViewStyle;
   testID?: string;
+  /**
+   * When false, nothing dismisses the sheet: no close button, backdrop taps
+   * do nothing, Escape is ignored, and the Android back button is swallowed.
+   * Leave unset for the usual sheet, which closes on all of those.
+   */
+  dismissable?: boolean;
+  /**
+   * Hide the close button while leaving backdrop, back, and swipe dismissal
+   * alone. Leave unset: a dismissable sheet with a title still shows the X.
+   */
+  hideClose?: boolean;
+  /**
+   * Dragging the sheet downward closes it. Off unless asked, so existing
+   * sheets do not gain a gesture.
+   */
+  swipeToDismiss?: boolean;
+  /** The line above `footer`. Leave unset to keep it. */
+  footerDivider?: boolean;
 }
 
 /**
@@ -50,6 +70,10 @@ export function Sheet({
   scrollable = true,
   contentStyle,
   testID,
+  dismissable = true,
+  hideClose = false,
+  swipeToDismiss = false,
+  footerDivider = true,
 }: Props) {
   const theme = useTheme();
   const t = useT();
@@ -79,13 +103,57 @@ export function Sheet({
   const sheetRef = useRef<View>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
+  const dismissableRef = useRef(dismissable);
+  const swipeRef = useRef(swipeToDismiss && dismissable);
+  const screenHRef = useRef(screenH);
+  const drag = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    dismissableRef.current = dismissable;
+    swipeRef.current = swipeToDismiss && dismissable;
+    screenHRef.current = screenH;
+  }, [onClose, dismissable, swipeToDismiss, screenH]);
+
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        swipeRef.current && gesture.dy > 8 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.2,
+      onPanResponderMove: (_, gesture) => {
+        drag.setValue(Math.max(0, gesture.dy));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const shouldClose = gesture.dy > 96 || gesture.vy > 0.9;
+        if (swipeRef.current && shouldClose) {
+          Animated.timing(drag, {
+            toValue: screenHRef.current,
+            duration: 180,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: NATIVE_DRIVER,
+          }).start(() => onCloseRef.current());
+          return;
+        }
+        Animated.spring(drag, {
+          toValue: 0,
+          useNativeDriver: NATIVE_DRIVER,
+          speed: 20,
+          bounciness: 4,
+        }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(drag, {
+          toValue: 0,
+          useNativeDriver: NATIVE_DRIVER,
+          speed: 20,
+          bounciness: 4,
+        }).start();
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     if (visible) {
+      drag.setValue(0);
       Animated.parallel([
         Animated.timing(translate, {
           toValue: 0,
@@ -99,7 +167,7 @@ export function Sheet({
       translate.setValue(screenH);
       backdrop.setValue(0);
     }
-  }, [visible, translate, backdrop, screenH]);
+  }, [visible, translate, backdrop, drag, screenH]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || !visible) return;
@@ -118,7 +186,7 @@ export function Sheet({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onCloseRef.current();
+        if (dismissableRef.current) onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -147,6 +215,14 @@ export function Sheet({
     };
   }, [visible]);
 
+  /* The navigator also listens for back. Swallowing it here keeps a forced
+     update from popping the screen underneath the sheet. */
+  useEffect(() => {
+    if (!visible || dismissable || Platform.OS !== 'android') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, [visible, dismissable]);
+
   const baseMaxHeight = height ? screenH * height : screenH * 0.88;
   const maxHeight =
     keyboardH > 0
@@ -162,7 +238,9 @@ export function Sheet({
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        if (dismissable) onClose();
+      }}
       statusBarTranslucent
       testID={testID}
     >
@@ -178,19 +256,28 @@ export function Sheet({
             opacity: backdrop,
           }}
         >
-          <Pressable
-            style={{ flex: 1 }}
-            onPress={onClose}
-            focusable={false}
-            accessibilityRole="button"
-            accessibilityLabel={t('common.close')}
-          />
+          {dismissable ? (
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={onClose}
+              focusable={false}
+              accessibilityRole="button"
+              accessibilityLabel={t('common.close')}
+            />
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
         </Animated.View>
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <Animated.View
+            {...(swipeToDismiss && dismissable ? pan.panHandlers : {})}
             style={{
-              transform: [{ translateY: translate }],
+              transform: [
+                {
+                  translateY: swipeToDismiss ? Animated.add(translate, drag) : translate,
+                },
+              ],
               backgroundColor: colors.surface,
               borderTopLeftRadius: radii.xxl,
               borderTopRightRadius: radii.xxl,
@@ -199,17 +286,20 @@ export function Sheet({
               ...theme.elevation(3),
             }}
           >
-            {/* grabber */}
-            <View style={{ alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.sm }}>
-              <View
-                style={{
-                  width: 44,
-                  height: 5,
-                  borderRadius: 3,
-                  backgroundColor: colors.borderStrong,
-                }}
-              />
-            </View>
+            {dismissable ? (
+              <View style={{ alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.sm }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 5,
+                    borderRadius: 3,
+                    backgroundColor: colors.borderStrong,
+                  }}
+                />
+              </View>
+            ) : (
+              <View style={{ height: spacing.lg }} />
+            )}
 
             {title ? (
               <View
@@ -229,22 +319,24 @@ export function Sheet({
                     </Text>
                   ) : null}
                 </View>
-                <Pressable
-                  onPress={onClose}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('common.close')}
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: colors.surfaceAlt,
-                  }}
-                >
-                  <X size={18} color={colors.textSecondary} />
-                </Pressable>
+                {dismissable && !hideClose ? (
+                  <Pressable
+                    onPress={onClose}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('common.close')}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: colors.surfaceAlt,
+                    }}
+                  >
+                    <X size={18} color={colors.textSecondary} />
+                  </Pressable>
+                ) : null}
               </View>
             ) : null}
 
@@ -265,7 +357,7 @@ export function Sheet({
                 style={{
                   paddingHorizontal: spacing.lg,
                   paddingTop: spacing.md,
-                  borderTopWidth: 1,
+                  borderTopWidth: footerDivider ? 1 : 0,
                   borderTopColor: colors.divider,
                 }}
               >

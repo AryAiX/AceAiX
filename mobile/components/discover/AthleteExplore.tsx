@@ -18,10 +18,11 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { PRIORITY_COUNTRIES, SPORTS, positionLabel, sportLabel } from '@/constants/sports';
+import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { searchOrganizations, searchPeople, toggleFollow } from '@/lib/api';
+import { searchOrganizations, searchPeople } from '@/lib/api';
+import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
   followedOrganizationIds,
   followedUserIds,
@@ -197,6 +198,11 @@ export function AthleteExplore({
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
+  const [countryQuery, setCountryQuery] = useState('');
+  const countryChoices = useMemo(
+    () => countryOptions(countryQuery, (name) => countryLabel(t, name)),
+    [countryQuery, t],
+  );
   /* Coaches: everyone, or only those who can be booked. */
   const [bookable, setBookable] = useState(false);
 
@@ -284,7 +290,13 @@ export function AthleteExplore({
       setPendingId(person.id);
       setPersonOverrides((o) => ({ ...o, [person.id]: next }));
       try {
-        const result = await toggleFollow(person.id);
+        const result = await applyToggleFollow({
+          targetId: person.id,
+          myId: viewerId,
+          wasFollowing: !next,
+          targetFollowers: knownFollowCount(person.id, 'followers') ?? person.followers_count,
+          myFollowing: knownFollowCount(viewerId ?? '', 'following') ?? profile?.following_count ?? 0,
+        });
         setPersonOverrides((o) => ({ ...o, [person.id]: result.following }));
       } catch (err) {
         setPersonOverrides((o) => ({ ...o, [person.id]: !next }));
@@ -293,7 +305,7 @@ export function AthleteExplore({
         setPendingId(null);
       }
     },
-    [toast],
+    [profile?.following_count, toast, viewerId],
   );
 
   const listStyle = {
@@ -441,14 +453,7 @@ export function AthleteExplore({
         }
         renderItem={({ item }) => (
           <CoachRow
-            person={{
-              ...item,
-              followers_count: shiftedCount(
-                item.followers_count,
-                personSet.has(item.id),
-                isPersonFollowed(item.id),
-              ),
-            }}
+            person={item}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
             onToggleFollow={onTogglePerson}
@@ -651,27 +656,43 @@ export function AthleteExplore({
         title={t('discover.explore.countryTitle')}
         subtitle={t('discover.explore.countrySubtitle')}
       >
+        <Input
+          placeholder={t('profile.searchCountries')}
+          value={countryQuery}
+          onChangeText={setCountryQuery}
+          icon={<Search size={18} color={colors.textMuted} />}
+          autoCorrect={false}
+          accessibilityLabel={t('profile.searchCountries')}
+          containerStyle={{ marginBottom: spacing.md }}
+        />
         <ListItem
           title={t('discover.explore.anywhere')}
           showChevron={false}
           onPress={() => {
             setCountry(undefined);
+            setCountryQuery('');
             setCountrySheet(false);
           }}
           right={!country ? <Check size={18} color={colors.primary} /> : undefined}
         />
-        {PRIORITY_COUNTRIES.map((name) => (
+        {countryChoices.map((name) => (
           <ListItem
             key={name}
-            title={name}
+            title={countryLabel(t, name)}
             showChevron={false}
             onPress={() => {
               setCountry(name);
+              setCountryQuery('');
               setCountrySheet(false);
             }}
             right={country === name ? <Check size={18} color={colors.primary} /> : undefined}
           />
         ))}
+        {countryChoices.length === 0 ? (
+          <Text variant="caption" tone="muted" align="center" style={{ paddingVertical: spacing.xl }}>
+            {t('onboarding.countryNoMatch')}
+          </Text>
+        ) : null}
       </Sheet>
     </View>
   );

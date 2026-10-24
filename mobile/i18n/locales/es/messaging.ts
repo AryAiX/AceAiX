@@ -158,4 +158,6 @@ export const messaging = {
   groupedTitle: '{{actors}}{{rest}}',
   unread: 'Sin leer',
   meetupNearbyTitle: 'Nuevo partido de {{sport}} en {{city}}',
+  mentionedInPost: '{{name}} te mencionó en una publicación',
+  mentionedInComment: '{{name}} te mencionó en un comentario',
 };

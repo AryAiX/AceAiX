@@ -19,7 +19,7 @@ import { ClubOpeningsTab } from '@/components/club/page/OpeningsTab';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { toggleSaveOpportunity } from '@/lib/api';
-import { getClubPage, setClubFollow } from '@/lib/api.club';
+import { getClubMapUrl, getClubPage, setClubFollow } from '@/lib/api.club';
 import { organizationOpenings } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
@@ -51,6 +51,7 @@ export default function OrganizationScreen() {
   const id = typeof raw === 'string' && UUID.test(raw) ? raw : null;
 
   const page = useAsync(() => getClubPage(id as string), [id], { enabled: !!id });
+  const mapLink = useAsync(() => getClubMapUrl(id as string), [id], { enabled: !!id });
   const club = page.data ?? null;
   const org = club?.organization ?? null;
 
@@ -101,9 +102,10 @@ export default function OrganizationScreen() {
     setFollowOverride(null);
     setFollowerDelta(0);
     page.refresh();
+    mapLink.refresh();
     if (tab === 'openings') openings.refresh();
     else setRefreshKeys((k) => ({ ...k, [tab]: (k[tab] ?? 0) + 1 }));
-  }, [page, openings, tab]);
+  }, [page, mapLink, openings, tab]);
 
   const onToggleFollow = useCallback(async () => {
     if (!org || followBusy) return;
@@ -216,7 +218,7 @@ export default function OrganizationScreen() {
       case 'awards':
         return <ClubAwardsTab {...common} refreshKey={refreshKey} />;
       case 'about':
-        return <ClubAboutTab page={club} />;
+        return <ClubAboutTab page={club} mapUrl={mapLink.data} />;
       case 'openings':
         return (
           <ClubOpeningsTab

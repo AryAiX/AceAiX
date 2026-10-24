@@ -53,6 +53,8 @@ export const coaching = {
   sTitle: 'Title',
   sTitlePlaceholder: 'One-to-one strength session',
   sDescription: 'What happens in it',
+  readMore: 'Read more',
+  showLess: 'Show less',
   sDuration: 'Length',
   minutes: '{{n}} min',
   sCapacity: 'Places in the class',

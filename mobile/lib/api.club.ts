@@ -18,9 +18,11 @@ import type {
 } from '@/lib/club';
 
 /**
- * Club and academy pages (1014/01). Every read and write is an RPC: the
+ * Club and academy pages (1014/01). Reads and writes go through RPCs: the
  * tables refuse direct writes, permissions (owner / manager / editor /
  * scorekeeper) and the youth naming rule are applied in the database.
+ * `map_url` is the exception: it is readable on `organizations` and written
+ * with `set_club_map_url`.
  *
  * Posts and stories are the exception: they are written exactly as before,
  * and a club account's own posts are tagged with its page by a trigger.
@@ -515,6 +517,24 @@ export async function getClubPage(orgId: string): Promise<ClubPage | null> {
   return unwrap<ClubPage | null>(await supabase.rpc('club_page', { p_org: orgId }));
 }
 
+/** The club's map link. Not part of `club_page`; `organizations` is readable directly. */
+export async function getClubMapUrl(orgId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('map_url')
+    .eq('id', orgId)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  const row = data as { map_url: string | null } | null;
+  const url = row?.map_url?.trim() ?? '';
+  return url || null;
+}
+
+/** Writes `organizations.map_url`. Null clears it. Same permission as `update_club_page`. */
+export async function setClubMapUrl(orgId: string, url: string | null): Promise<void> {
+  unwrap(await supabase.rpc('set_club_map_url', { p_org: orgId, p_url: url }));
+}
+
 export async function getClubPosts(orgId: string, before?: string | null): Promise<ClubPost[]> {
   return (
     unwrap<ClubPost[] | null>(
@@ -527,14 +547,18 @@ export async function getMyClubPages(): Promise<MyClubPage[]> {
   return unwrap<MyClubPage[] | null>(await supabase.rpc('my_club_pages')) ?? [];
 }
 
-/** The page this account runs as owner or manager, if any. */
-export async function getMyManagedClub(): Promise<MyClubPage | null> {
-  const pages = await getMyClubPages();
+/** The page this account runs: its own page first, then one it manages. */
+export function managedClubPage(pages: MyClubPage[]): MyClubPage | null {
   return (
     pages.find((p) => p.status === 'active' && p.role === 'owner') ??
     pages.find((p) => p.status === 'active' && p.role === 'manager') ??
     null
   );
+}
+
+/** The page this account runs as owner or manager, if any. */
+export async function getMyManagedClub(): Promise<MyClubPage | null> {
+  return managedClubPage(await getMyClubPages());
 }
 
 // ── Setting up and editing ───────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { signPostMedia } from '@/lib/api';
 import { AppError } from '@/lib/errors';
+import { attachPostMentions } from '@/lib/postMentions';
 import { supabase } from '@/lib/supabase';
 import type { FeedPost } from '@/types/models';
 
@@ -17,8 +18,9 @@ export async function getReels(params: { limit?: number; before?: string | null 
   });
   if (error) throw new AppError(error);
   const signed = await signPostMedia((data ?? []) as FeedPost[]);
+  const withMentions = await attachPostMentions(signed);
   /* A reel whose clip could not be signed has nothing to show. */
-  return signed.filter((post) => post.media.some((m) => m.type === 'video'));
+  return withMentions.filter((post) => post.media.some((m) => m.type === 'video'));
 }
 
 /** The first playable clip in a reel. */

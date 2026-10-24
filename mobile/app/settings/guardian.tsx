@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Brain, CalendarCheck, Check, Clock, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
+import { Brain, CalendarCheck, Check, Clock, Compass, Handshake, Mail, MessageCircle, Search, ShieldCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -97,6 +97,12 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
       label: t('coaching.scopeBookings'),
       off: t('coaching.scopeBookingsOff'),
     },
+    {
+      granted: !!consent.allow_mindset,
+      Icon: Compass,
+      label: t('sportFit.scopeMindset'),
+      off: t('sportFit.scopeMindsetOff'),
+    },
   ];
 
   return (
@@ -122,7 +128,7 @@ function ScopeList({ consent }: { consent: GuardianConsent }) {
 }
 
 /** A scope a minor can ask their guardian to add to a consent already given. */
-type AddScope = 'assessments' | 'sponsorship' | 'bookings';
+type AddScope = 'assessments' | 'sponsorship' | 'bookings' | 'mindset';
 
 const ADD_COPY: Record<AddScope, { title: string; hint: string; sent: string }> = {
   assessments: {
@@ -140,6 +146,11 @@ const ADD_COPY: Record<AddScope, { title: string; hint: string; sent: string }> 
     hint: 'coaching.addBookingsHint',
     sent: 'coaching.addBookingsSent',
   },
+  mindset: {
+    title: 'sportFit.addMindset',
+    hint: 'sportFit.addMindsetHint',
+    sent: 'sportFit.addMindsetSent',
+  },
 };
 
 // ── The minor's view ─────────────────────────────────────────────────────────
@@ -155,13 +166,19 @@ function MinorView() {
   /* `/settings/guardian?add=assessments` — sent here from Game Intelligence
      when a guardian approved the profile but not the games — and
      `?add=sponsorship` and `?add=bookings`, from the sponsorship and coach
-     booking screens, for the same reason. */
+     booking screens, and `?add=mindset` from Sport Fit, for the same reason. */
   const params = useLocalSearchParams<{ add?: string }>();
   const [asking, setAsking] = useState(
-    params.add === 'assessments' || params.add === 'sponsorship' || params.add === 'bookings',
+    params.add === 'assessments' || params.add === 'sponsorship' || params.add === 'bookings' || params.add === 'mindset',
   );
   const [addScope, setAddScope] = useState<AddScope>(
-    params.add === 'sponsorship' ? 'sponsorship' : params.add === 'bookings' ? 'bookings' : 'assessments',
+    params.add === 'sponsorship'
+      ? 'sponsorship'
+      : params.add === 'bookings'
+        ? 'bookings'
+        : params.add === 'mindset'
+          ? 'mindset'
+          : 'assessments',
   );
 
   const [name, setName] = useState('');
@@ -186,7 +203,8 @@ function MinorView() {
   const needsAssessments = !!granted && !granted.allow_assessments;
   const needsSponsorship = !!granted && !granted.allow_sponsorship;
   const needsBookings = !!granted && !granted.allow_bookings;
-  const needsMore = needsAssessments || needsSponsorship || needsBookings;
+  const needsMindset = !!granted && !granted.allow_mindset;
+  const needsMore = needsAssessments || needsSponsorship || needsBookings || needsMindset;
   const addCopy = ADD_COPY[addScope];
 
   /* Arriving from Game Intelligence opens the form straight away; fill it
@@ -362,6 +380,18 @@ function MinorView() {
               onPress={() => askToAdd('bookings')}
               style={{ marginTop: spacing.md }}
               testID="ask-add-bookings"
+            />
+          ) : null}
+          {needsMindset && !pending && !asking ? (
+            <Button
+              label={t('sportFit.addMindset')}
+              variant="secondary"
+              size="sm"
+              fullWidth
+              icon={<Compass size={16} color={colors.text} />}
+              onPress={() => askToAdd('mindset')}
+              style={{ marginTop: spacing.md }}
+              testID="ask-add-mindset"
             />
           ) : null}
 

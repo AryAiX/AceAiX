@@ -143,4 +143,6 @@ export const messaging = {
   groupedTitle: '{{actors}}{{rest}}',
   unread: '未读',
   meetupNearbyTitle: '{{city}}有新的{{sport}}比赛',
+  mentionedInPost: '{{name}}在一条动态里提到了你',
+  mentionedInComment: '{{name}}在一条评论里提到了你',
 };

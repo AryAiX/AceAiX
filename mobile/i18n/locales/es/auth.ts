@@ -97,16 +97,28 @@ export const auth = {
       'Usa tu nombre real: los entrenadores necesitan saber a quién están viendo.',
     nameSubtitleOther:
       'Usa tu nombre real: los deportistas y sus familias necesitan saber con quién hablan.',
+    nameTitleClub: '¿Quién gestiona tu club?',
+    nameSubtitleClub:
+      'Usa tu nombre real para que los deportistas y sus familias sepan con quién hablan. En el siguiente paso añadirás el nombre del club.',
     firstNameLabel: 'Nombre',
     firstNamePlaceholder: 'Sara',
     firstNameRequired: 'Escribe tu nombre.',
     lastNameLabel: 'Apellido',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Escribe tu apellido.',
+    brandTitle: '¿Cómo se llama tu marca?',
+    brandSubtitle: 'Este es el nombre que verán los deportistas y sus familias.',
+    brandNameLabel: 'Nombre de la empresa o marca',
+    brandNameRequired: 'Escribe el nombre de tu empresa o marca.',
 
     dobTitle: '¿Cuándo naciste?',
     dobSubtitle:
       'Te lo preguntamos para proteger a los deportistas más jóvenes. Tu fecha exacta no se le muestra nunca a nadie, solo un rango de edad.',
+    dobSubtitleOther:
+      'Te lo preguntamos para proteger a los miembros más jóvenes. Tu fecha exacta no se le muestra nunca a nadie, solo un rango de edad.',
+    dobTitleSponsor: 'Confirma que tienes 18 años o más',
+    dobSubtitleSponsor:
+      'Necesitamos la fecha de nacimiento de la persona que gestiona esta cuenta de marca. Nunca se muestra en el perfil de tu marca.',
     dobChoose: 'Elige tu fecha de nacimiento',
     dobChange: 'Cambiar',
     dobSelectedA11y: 'Fecha de nacimiento, {{date}}. Cambiarla',
@@ -116,15 +128,26 @@ export const auth = {
     dobMonthPlaceholder: '09',
     dobYearLabel: 'Año',
     dobYearPlaceholder: '2010',
-    dobTooYoung:
-      'Tienes que tener al menos {{age}} años para tener una cuenta de {{app}}. Toca {{action}} y te contamos qué hacer.',
+    dobTooYoungTitle: 'Tienes que tener 13 años o más',
+    dobTooYoungBody: 'Toca Continuar y te explicamos qué hacer después.',
     dobMinorTitle: 'Necesitas a tu madre, padre o tutor',
     dobMinorBody:
       'Como eres menor de 18, tu madre, padre o tutor tiene que aprobar tu perfil antes de que los entrenadores puedan encontrarte. Enseguida te pedimos su correo y le llega un mensaje corto con la explicación.',
+    dobAdultOnlyTitle: 'Tienes que tener 18 años o más',
+    dobAdultOnlyCoach:
+      'Entrenar en AceAiX es para adultos. Si eres deportista, vuelve atrás y elige Deportista.',
+    dobAdultOnlyClub:
+      'Los clubes y las academias los dirigen personas adultas. Pide a una persona adulta de tu club que cree la página.',
+    dobAdultOnlySponsor: 'Las cuentas de patrocinadores y marcas son para adultos.',
+    dobAdultOnlyGuardian:
+      'Las cuentas de madres, padres y tutores son para adultos. Si eres deportista, vuelve atrás y elige Deportista, y tu madre o padre puede aprobar tu cuenta por correo.',
+    dobChooseDifferentRole: 'Elegir otro rol',
 
     blockedTitle: 'Vuelve cuando cumplas {{age}}',
     blockedBody:
       '{{app}} es para deportistas de {{age}} años en adelante, así que todavía no podemos crearte una cuenta. Esa norma protege a los más pequeños en internet y no podemos hacer excepciones.',
+    blockedBodyOther:
+      '{{app}} es para personas de {{age}} años en adelante, así que todavía no podemos crearte una cuenta. Esa norma protege a los más pequeños en internet y no podemos hacer excepciones.',
     blockedEncouragement:
       'Sigue entrenando. Cuando cumplas {{age}}, vuelve: tu perfil te está esperando.',
     blockedBackToStart: 'Volver al principio',

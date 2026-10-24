@@ -105,6 +105,9 @@ export function NameStep({
   lastError,
   onSubmit,
   role,
+  brandName,
+  onChangeBrand,
+  brandError,
 }: {
   firstName: string;
   lastName: string;
@@ -114,21 +117,54 @@ export function NameStep({
   lastError: string | null;
   onSubmit: () => void;
   role?: SignupRole | null;
+  brandName: string;
+  onChangeBrand: (value: string) => void;
+  brandError: string | null;
 }) {
   const theme = useTheme();
   const t = useT();
   const lastRef = useRef<TextInput>(null);
+  const isSponsor = role === 'sponsor';
+  const isClub = role === 'club';
 
   return (
     <View>
       <StepHeading
-        title={t('auth.signUp.nameTitle')}
+        title={t(
+          isSponsor
+            ? 'auth.signUp.brandTitle'
+            : isClub
+              ? 'auth.signUp.nameTitleClub'
+              : 'auth.signUp.nameTitle',
+        )}
         subtitle={t(
-          !role || role === 'athlete'
-            ? 'auth.signUp.nameSubtitle'
-            : 'auth.signUp.nameSubtitleOther',
+          isSponsor
+            ? 'auth.signUp.brandSubtitle'
+            : isClub
+              ? 'auth.signUp.nameSubtitleClub'
+              : !role || role === 'athlete'
+                ? 'auth.signUp.nameSubtitle'
+                : 'auth.signUp.nameSubtitleOther',
         )}
       />
+      {isSponsor ? (
+        <Input
+          label={t('auth.signUp.brandNameLabel')}
+          required
+          value={brandName}
+          onChangeText={onChangeBrand}
+          error={brandError}
+          autoFocus
+          maxLength={80}
+          autoCapitalize="words"
+          autoCorrect={false}
+          spellCheck={false}
+          autoComplete="organization"
+          returnKeyType="done"
+          onSubmitEditing={onSubmit}
+          testID="signup-brand-name"
+        />
+      ) : (
       <View style={{ gap: theme.spacing.lg }}>
         {/*
           This is the first text field of the whole sign-up, so this is where
@@ -143,7 +179,6 @@ export function NameStep({
           value={firstName}
           onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
           error={firstError}
-          placeholder={t('auth.signUp.firstNamePlaceholder')}
           autoFocus
           autoCapitalize="words"
           autoCorrect={false}
@@ -161,7 +196,6 @@ export function NameStep({
           value={lastName}
           onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}
           error={lastError}
-          placeholder={t('auth.signUp.lastNamePlaceholder')}
           autoCapitalize="words"
           autoCorrect={false}
           spellCheck={false}
@@ -172,12 +206,20 @@ export function NameStep({
           testID="signup-last-name"
         />
       </View>
+      )}
     </View>
   );
 }
 
 // ── 3. Date of birth ─────────────────────────────────────────────────────────
 export const MINIMUM_AGE = 13;
+
+/** Coach, club, sponsor and guardian accounts are for adults. */
+export function signupRoleRequiresAdult(
+  role: SignupRole | null | undefined,
+): role is 'coach' | 'club' | 'sponsor' | 'guardian' {
+  return role === 'coach' || role === 'club' || role === 'sponsor' || role === 'guardian';
+}
 
 function defaultDobStart(): Date {
   // Opens the picker in the middle of our audience rather than on today.
@@ -285,12 +327,36 @@ function WebDateField({
   );
 }
 
+/** The under-13 and 13–17 adult-role warnings: same border, icon, title, and body. */
+function AgeWarningCard({ title, body }: { title: string; body: string }) {
+  const theme = useTheme();
+  const { colors, spacing } = theme;
+
+  return (
+    <Card tone="alt" style={{ borderColor: colors.danger }}>
+      <View style={{ flexDirection: 'row', gap: spacing.md }}>
+        <ShieldAlert size={20} color={colors.danger} />
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Text variant="bodyStrong">{title}</Text>
+          <Text variant="caption" tone="secondary">
+            {body}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  );
+}
+
 export function DateOfBirthStep({
   value,
   onChange,
+  role,
+  onChooseRole,
 }: {
   value: Date | null;
   onChange: (date: Date | null) => void;
+  role?: SignupRole | null;
+  onChooseRole: () => void;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -300,6 +366,8 @@ export function DateOfBirthStep({
   const age = value ? calculateAge(value) : null;
   const tooYoung = age !== null && age < MINIMUM_AGE;
   const isMinor = age !== null && age >= MINIMUM_AGE && age < 18;
+  const adultOnlyRole = isMinor && signupRoleRequiresAdult(role) ? role : null;
+  const isSponsor = role === 'sponsor';
 
   const maximumDate = new Date();
   const minimumDate = new Date();
@@ -308,8 +376,14 @@ export function DateOfBirthStep({
   return (
     <View>
       <StepHeading
-        title={t('auth.signUp.dobTitle')}
-        subtitle={t('auth.signUp.dobSubtitle')}
+        title={t(isSponsor ? 'auth.signUp.dobTitleSponsor' : 'auth.signUp.dobTitle')}
+        subtitle={t(
+          isSponsor
+            ? 'auth.signUp.dobSubtitleSponsor'
+            : !role || role === 'athlete'
+              ? 'auth.signUp.dobSubtitle'
+              : 'auth.signUp.dobSubtitleOther',
+        )}
       />
 
       <View style={{ gap: spacing.lg }}>
@@ -385,29 +459,43 @@ export function DateOfBirthStep({
         )}
 
         {tooYoung ? (
-          <Card tone="alt" style={{ borderColor: colors.danger }}>
-            <View style={{ flexDirection: 'row', gap: spacing.md }}>
-              <ShieldAlert size={20} color={colors.danger} />
-              <Text variant="caption" tone="secondary" style={{ flex: 1 }}>
-                {t('auth.signUp.dobTooYoung', {
-                  age: MINIMUM_AGE,
-                  app: t('common.appName'),
-                  action: t('common.continue'),
-                })}
-              </Text>
-            </View>
-          </Card>
+          <AgeWarningCard
+            title={t('auth.signUp.dobTooYoungTitle')}
+            body={t('auth.signUp.dobTooYoungBody')}
+          />
         ) : null}
 
-        {isMinor ? (
+        {adultOnlyRole ? (
+          <View style={{ gap: spacing.md }}>
+            <AgeWarningCard
+              title={t('auth.signUp.dobAdultOnlyTitle')}
+              body={t(
+                adultOnlyRole === 'coach'
+                  ? 'auth.signUp.dobAdultOnlyCoach'
+                  : adultOnlyRole === 'club'
+                    ? 'auth.signUp.dobAdultOnlyClub'
+                    : adultOnlyRole === 'sponsor'
+                      ? 'auth.signUp.dobAdultOnlySponsor'
+                      : 'auth.signUp.dobAdultOnlyGuardian',
+              )}
+            />
+            <Button
+              label={t('auth.signUp.dobChooseDifferentRole')}
+              variant="secondary"
+              fullWidth
+              onPress={onChooseRole}
+              testID="signup-dob-choose-role"
+            />
+          </View>
+        ) : null}
+
+        {isMinor && !adultOnlyRole ? (
           <Card tone="primarySoft">
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <Users size={20} color={colors.primary} />
               <View style={{ flex: 1, gap: spacing.xs }}>
                 <Text variant="bodyStrong">{t('auth.signUp.dobMinorTitle')}</Text>
-                <Text variant="caption" tone="secondary">
-                  {t('auth.signUp.dobMinorBody')}
-                </Text>
+                <Text variant="caption" tone="secondary">{t('auth.signUp.dobMinorBody')}</Text>
               </View>
             </View>
           </Card>
@@ -427,9 +515,11 @@ export function DateOfBirthStep({
 export function AgeGateBlocked({
   onChangeDate,
   onBackToWelcome,
+  role,
 }: {
   onChangeDate: () => void;
   onBackToWelcome: () => void;
+  role?: SignupRole | null;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -455,7 +545,12 @@ export function AgeGateBlocked({
           {t('auth.signUp.blockedTitle', { age: MINIMUM_AGE })}
         </Text>
         <Text variant="body" tone="secondary">
-          {t('auth.signUp.blockedBody', { age: MINIMUM_AGE, app: t('common.appName') })}
+          {t(
+            !role || role === 'athlete'
+              ? 'auth.signUp.blockedBody'
+              : 'auth.signUp.blockedBodyOther',
+            { age: MINIMUM_AGE, app: t('common.appName') },
+          )}
         </Text>
         <Text variant="body" tone="secondary">
           {t('auth.signUp.blockedEncouragement', { age: MINIMUM_AGE })}

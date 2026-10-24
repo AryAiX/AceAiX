@@ -164,17 +164,27 @@ approval link. That link is a bearer credential and must never be exposed to the
 
 ### 4.4 Confirm
 
-The guardian opens `GET /functions/v1/guardian-consent?token=…`, which renders a self-contained page
-— not a route on the marketing site, so the flow works the moment the function is deployed. The page
-states plainly that the profile is currently hidden and nobody can message the child, then offers
-the three scopes as checkboxes plus **Approve** and **Not right now**.
+The email links to `GET /functions/v1/guardian-consent?token=…`.
 
-Submitting calls `public.confirm_guardian_consent(token, allow_discovery, allow_messaging, allow_media)`.
-That function is granted to **`anon`** deliberately: a guardian does not have an AceAiX account, and
-the unguessable single-use token is the credential. It refuses a token that is not `pending`, and
-marks an expired one `expired` rather than granting.
+When `CONSENT_PAGE_URL` is set (the in-app page, for example
+`https://app.aceaix.com/parent-approval`), that GET redirects to
+`<CONSENT_PAGE_URL>?token=…`. The page reads `GET ?token=…&format=json` and submits
+`POST` JSON `{ token, decision, allow_* }`. The GET response is only the page state,
+the child name the page shows, and the checkbox defaults. It does not include the
+token, the guardian's email, or the minor's id.
 
-Declining sets the row to `revoked` directly from the edge function.
+When `CONSENT_PAGE_URL` is unset, the same GET still renders the self-contained HTML
+page and the form POST still records the decision. That fallback does not depend on
+the app route being deployed. `*.supabase.co` rewrites `text/html` from a function to
+`text/plain`, which is why the live page is the app route rather than this response.
+
+Approving calls `public.confirm_guardian_consent` with the same scope booleans as the
+form. That function is granted to **`anon`** deliberately: a guardian does not have an
+AceAiX account, and the unguessable single-use token is the credential. It refuses a
+token that is not `pending`, and marks an expired one `expired` rather than granting.
+
+Declining sets the row to `revoked` directly from the edge function. The JSON result
+is `{ ok, state }`.
 
 `private.apply_guardian_consent()` then fires on the status change and recomputes
 `user_profiles.is_discoverable` for the minor.

@@ -128,7 +128,7 @@ export default function SearchScreen() {
   const coaches = useAsync<Page<PersonResult>>(
     async () => ({ term: debounced, rows: await listCoaches(debounced, 20) }),
     [debounced],
-    { enabled: active && scope === 'coaches' },
+    { enabled: active && scope === 'coaches', refetchOnFocus: true },
   );
   const clubs = useAsync<Page<Organization>>(
     async () => ({ term: debounced, rows: await searchOrganizations(debounced, 20) }),

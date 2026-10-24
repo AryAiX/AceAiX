@@ -9,7 +9,9 @@ import { TagPicker } from '@/components/sponsorship/Tags';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { syncFullName } from '@/lib/api.profile';
 import { getMySponsorship, saveSponsorProfile } from '@/lib/api.sponsorship';
+import { useAuth } from '@/providers/AuthProvider';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { OFFERS, parseAmount, toggleTag, type Offer } from '@/lib/sponsorship';
@@ -24,6 +26,7 @@ export default function SponsorBrandScreen() {
   const toast = useToast();
 
   const mine = useAsync(getMySponsorship, []);
+  const { profile } = useAuth();
   const [company, setCompany] = useState('');
   const [industry, setIndustry] = useState('');
   const [website, setWebsite] = useState('');
@@ -39,7 +42,11 @@ export default function SponsorBrandScreen() {
   useEffect(() => {
     if (filled || !mine.data?.profile) return;
     const p = mine.data.profile;
-    setCompany(p.company_name ?? '');
+    const storedName = p.company_name?.trim() ?? '';
+    // Sign-up stores the brand on the account. Wait for that name before
+    // locking an empty company field in.
+    if (!storedName && !profile) return;
+    setCompany(storedName || profile?.full_name?.trim() || '');
     setIndustry(p.industry ?? '');
     setWebsite(p.website ?? '');
     setAbout(p.about ?? '');
@@ -48,7 +55,7 @@ export default function SponsorBrandScreen() {
     setMin(p.budget_min != null ? String(p.budget_min) : '');
     setMax(p.budget_max != null ? String(p.budget_max) : '');
     setFilled(true);
-  }, [mine.data, filled]);
+  }, [mine.data, filled, profile]);
 
   const close = () => {
     if (router.canGoBack()) router.back();
@@ -83,6 +90,7 @@ export default function SponsorBrandScreen() {
         budget_min: lo ?? null,
         budget_max: hi ?? null,
       });
+      await syncFullName(company, '');
       toast.success(t('sponsorship.brandSaved'));
       close();
     } catch (err) {
@@ -168,29 +176,36 @@ export default function SponsorBrandScreen() {
           onToggle={(tag) => setOffers((list) => toggleTag(list, tag))}
         />
 
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Input
-            label={t('sponsorship.bBudgetMin', { currency: CURRENCY })}
-            value={min}
-            onChangeText={(v) => {
-              setMin(v);
-              setErrors((e) => ({ ...e, range: undefined }));
-            }}
-            keyboardType="number-pad"
-            containerStyle={{ flex: 1 }}
-          />
-          <Input
-            label={t('sponsorship.bBudgetMax', { currency: CURRENCY })}
-            value={max}
-            onChangeText={(v) => {
-              setMax(v);
-              setErrors((e) => ({ ...e, range: undefined }));
-            }}
-            keyboardType="number-pad"
-            error={errors.range}
-            hint={t('sponsorship.bBudgetHint')}
-            containerStyle={{ flex: 1 }}
-          />
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="captionStrong" tone="secondary">
+            {t('sponsorship.bBudget', { currency: CURRENCY })}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+            <Input
+              label={t('sponsorship.bBudgetFrom')}
+              value={min}
+              onChangeText={(v) => {
+                setMin(v);
+                setErrors((e) => ({ ...e, range: undefined }));
+              }}
+              keyboardType="number-pad"
+              containerStyle={{ flex: 1 }}
+            />
+            <Input
+              label={t('sponsorship.bBudgetTo')}
+              value={max}
+              onChangeText={(v) => {
+                setMax(v);
+                setErrors((e) => ({ ...e, range: undefined }));
+              }}
+              keyboardType="number-pad"
+              error={errors.range}
+              containerStyle={{ flex: 1 }}
+            />
+          </View>
+          <Text variant="caption" tone="muted">
+            {t('sponsorship.bBudgetHint')}
+          </Text>
         </View>
       </View>
     </Screen>

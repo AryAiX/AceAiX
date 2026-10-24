@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ExternalLink, Lock, SearchX, Send, ShieldCheck } from 'lucide-react-native';
@@ -34,9 +34,11 @@ import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
-import { saveMatchPreferences } from '@/lib/api';
+import { addCustomCity, saveMatchPreferences } from '@/lib/api';
 import {
+  getClubMapUrl,
   getClubPage,
+  setClubMapUrl,
   submitClubVerification,
   updateClubPage,
   type ClubPageUpdate,
@@ -53,10 +55,12 @@ import {
   draftFromPage,
   emptyDraft,
   emptyVerification,
+  readMapPin,
   sportsPatch,
   verificationFromPage,
   whereErrors,
   wherePatch,
+  withCatalogueCities,
   type BasicsError,
   type ClubDraft,
   type ContactError,
@@ -83,7 +87,13 @@ export default function ClubEditScreen() {
   const params = useLocalSearchParams<{ orgId?: string }>();
   const orgId = typeof params.orgId === 'string' && params.orgId ? params.orgId : null;
 
-  const state = useAsync(() => getClubPage(orgId as string), [orgId], { enabled: !!orgId });
+  const state = useAsync(async () => {
+    const [page, mapUrl] = await Promise.all([
+      getClubPage(orgId as string),
+      getClubMapUrl(orgId as string),
+    ]);
+    return { page, mapUrl };
+  }, [orgId], { enabled: !!orgId });
 
   const [draft, setDraft] = useState<ClubDraft>(emptyDraft);
   const [papers, setPapers] = useState<VerificationDraft>(emptyVerification);
@@ -96,12 +106,15 @@ export default function ClubEditScreen() {
   const [sportsErr, setSportsErr] = useState(false);
   const [contactErr, setContactErr] = useState<Partial<Record<ContactError, true>>>({});
   const [verifyErr, setVerifyErr] = useState<Partial<Record<VerificationError, true>>>({});
+  /** The map link last loaded or saved, so an unchanged pin does not write again. */
+  const savedMapUrl = useRef<string | null>(null);
 
   useEffect(() => {
-    if (filled || !state.data) return;
-    setDraft(draftFromPage(state.data));
-    setPapers(verificationFromPage(state.data));
-    setStatus(state.data.organization.verification_status);
+    if (filled || !state.data?.page) return;
+    savedMapUrl.current = state.data.mapUrl;
+    setDraft(draftFromPage(state.data.page, state.data.mapUrl));
+    setPapers(verificationFromPage(state.data.page));
+    setStatus(state.data.page.organization.verification_status);
     setFilled(true);
   }, [state.data, filled]);
 
@@ -113,11 +126,15 @@ export default function ClubEditScreen() {
     else router.replace(Routes.home);
   };
 
-  const save = async (section: Section, patch: ClubPageUpdate, after?: () => Promise<void>) => {
+  const save = async (
+    section: Section,
+    patch: ClubPageUpdate | (() => Promise<ClubPageUpdate>),
+    after?: () => Promise<void>,
+  ) => {
     if (!orgId || saving) return;
     setSaving(section);
     try {
-      await updateClubPage(orgId, patch);
+      await updateClubPage(orgId, typeof patch === 'function' ? await patch() : patch);
       if (after) await after();
       toast.success(t('clubSetup.edit.saved'));
     } catch (err) {
@@ -145,7 +162,9 @@ export default function ClubEditScreen() {
     />
   );
 
-  if (!orgId || (!state.loading && !state.error && !state.data)) {
+  const loadedPage = state.data?.page ?? null;
+
+  if (!orgId || (!state.loading && !state.error && !loadedPage)) {
     return (
       <Screen header={header} testID="club-edit-screen">
         <EmptyState
@@ -158,14 +177,14 @@ export default function ClubEditScreen() {
       </Screen>
     );
   }
-  if (state.loading && !state.data) {
+  if (state.loading && !loadedPage) {
     return (
       <Screen header={header} testID="club-edit-screen">
         <SkeletonList count={4} variant="card" />
       </Screen>
     );
   }
-  if (!state.data) {
+  if (!loadedPage || !state.data) {
     return (
       <Screen header={header} testID="club-edit-screen">
         <ErrorState message={state.error ?? t('common.somethingWentWrong')} onRetry={state.reload} />
@@ -173,7 +192,7 @@ export default function ClubEditScreen() {
     );
   }
 
-  const page = state.data;
+  const page = loadedPage;
   if (!page.viewer.can_manage) {
     return (
       <Screen header={header} testID="club-edit-screen">
@@ -256,11 +275,14 @@ export default function ClubEditScreen() {
             label={t('clubSetup.edit.sendPapers')}
             fullWidth
             loading={saving === 'verify'}
-            disabled={busy}
+            disabled={busy || !papers.document_path}
             icon={<Send size={18} color={colors.textOnBrand} />}
             onPress={() => void sendPapers()}
             testID="club-edit-verify-send"
           />
+          <Text variant="caption" tone="secondary">
+            {t('clubSetup.verify.attachToSend')}
+          </Text>
         </Card>
 
         <EditSection
@@ -286,10 +308,28 @@ export default function ClubEditScreen() {
         <EditSection
           title={t('clubSetup.edit.whereTitle')}
           saving={saving === 'where'}
+          disabled={busy}
           onSave={() => {
             const found = whereErrors(draft);
             setWhereErr(found);
-            if (Object.keys(found).length === 0) void save('where', wherePatch(draft));
+            if (Object.keys(found).length === 0) {
+              let pin = draft.pin;
+              void save(
+                'where',
+                async () => {
+                  const next = await withCatalogueCities(draft, addCustomCity);
+                  setDraft(next);
+                  pin = next.pin;
+                  return wherePatch(next);
+                },
+                async () => {
+                  const nextUrl = readMapPin(pin)?.mapUrl ?? null;
+                  if (nextUrl === savedMapUrl.current) return;
+                  await setClubMapUrl(orgId, nextUrl);
+                  savedMapUrl.current = nextUrl;
+                },
+              );
+            }
           }}
           testID="club-edit-where"
         >

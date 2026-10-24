@@ -10,6 +10,7 @@ import { ScoreCard } from '@/components/profile/ScoreCard';
 import { CoachBookingCard } from '@/components/coaching/CoachingCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { TheirGiCard } from '@/components/intelligence/GiCard';
+import { TheirInviteBadge } from '@/components/invite/InviteCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
@@ -50,6 +51,7 @@ export default function PublicProfileScreen() {
 
   const bundle = useAsync(() => getProfile(userId as string), [userId], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
 
   const iBlocked = useAsync(
@@ -173,6 +175,7 @@ export default function PublicProfileScreen() {
           gap: spacing.lg,
         }}
       >
+        {athlete || data.user.role === 'coach' ? <TheirInviteBadge key={`ib-${childKey}`} userId={data.user.id} /> : null}
         {athlete ? <ScoreCard score={data.score} /> : null}
         {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}
         {data.user.role === 'coach' ? <CoachBookingCard coachId={data.user.id} refreshKey={childKey} /> : null}

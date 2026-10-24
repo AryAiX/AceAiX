@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { BadgeCheck, ChevronRight, ExternalLink, Handshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Button, Card, Text } from '@/components/ui';
+import { Badge, Button, Card, ExpandableText, Text } from '@/components/ui';
 import { sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
@@ -183,9 +183,7 @@ function SponsorCard({
         {metaLine(t('sponsorship.cardSponsor'), brand?.industry)}
       </Text>
       {brand?.about ? (
-        <Text variant="body" tone="secondary">
-          {brand.about}
-        </Text>
+        <ExpandableText text={brand.about} lines={3} variant="body" tone="secondary" />
       ) : null}
       <TagRow group="offer" tags={brand?.offers ?? []} />
       {brand?.sports?.length ? (

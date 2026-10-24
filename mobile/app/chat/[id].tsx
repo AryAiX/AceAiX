@@ -22,6 +22,7 @@ import {
   type ConversationPeer,
 } from '@/lib/api.messaging';
 import { toFriendlyError } from '@/lib/errors';
+import { setOpenConversation } from '@/lib/openScreen';
 import { Routes } from '@/lib/routes';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/providers/AuthProvider';
@@ -117,6 +118,19 @@ export default function ChatScreen() {
     useCallback(() => {
       markRead();
     }, [markRead]),
+  );
+
+  /* `conversationId` is the route param, and it is the id this screen's
+     realtime channel filters on (`conversation_id=eq.${conversationId}`).
+     Register it only while the thread is focused, including when the param
+     arrives on a later render, and clear it as soon as the thread is not
+     the screen in front. */
+  useFocusEffect(
+    useCallback(() => {
+      if (!conversationId) return;
+      const token = setOpenConversation(conversationId);
+      return () => setOpenConversation(null, token);
+    }, [conversationId]),
   );
 
   // ── Realtime ───────────────────────────────────────────────────────────────

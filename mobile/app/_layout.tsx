@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, usePathname, useRouter, useSegments, type Href } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -27,9 +27,12 @@ import { BrandSplash } from '@/components/common/BrandSplash';
 import { ConfigMissing } from '@/components/common/ConfigMissing';
 import { LanguageGate } from '@/components/common/LanguageGate';
 import { useInertInactiveScreens } from '@/hooks/useInertInactiveScreens';
+import { useNotificationBanner } from '@/hooks/useNotificationBanner';
+import { useAppVersionPrompts } from '@/hooks/useAppVersionPrompts';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { I18nProvider, primeLayoutDirection, useI18n } from '@/i18n';
-import { routeDecision } from '@/lib/routes';
+import { setCurrentPath } from '@/lib/openScreen';
+import { Routes, routeDecision, skipsLanguagePicker } from '@/lib/routes';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -43,9 +46,15 @@ const WEB_APP_MAX_WIDTH = 840;
  * each other, which is what used to produce the loops and dead ends.
  */
 function RouteGuard({ children }: { children: React.ReactNode }) {
-  const { session, profile, loading, configured } = useAuth();
+  const { session, profile, loading, configured, takePostOnboardingHref } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  /**
+   * The follow screen already pushed on top of home. Held until that screen
+   * is the one showing, or a redirect other than home takes over. A second
+   * pass of this effect must not replace the stack with the tabs alone.
+   */
+  const followedFromOnboarding = useRef<Href | null>(null);
 
   useEffect(() => {
     if (loading || !configured) return;
@@ -55,21 +64,68 @@ function RouteGuard({ children }: { children: React.ReactNode }) {
       profile,
       segments: segments as readonly string[],
     });
-    if (target) router.replace(target);
-  }, [session, profile, loading, configured, segments, router]);
+    const inOnboarding = segments[0] === '(onboarding)';
+    const here = `/${segments.join('/')}`;
+
+    /* Home is already underneath the follow screen. Dropping the guard early
+       lets a lagging segment list replace that stack with the tabs alone. */
+    if (followedFromOnboarding.current) {
+      const arrived = here === followedFromOnboarding.current;
+      if (arrived || (target && target !== Routes.home)) followedFromOnboarding.current = null;
+      else return;
+    }
+
+    if (!target) return;
+
+    if (target === Routes.home && inOnboarding) {
+      const follow = takePostOnboardingHref();
+      router.replace(Routes.home);
+      if (follow) {
+        followedFromOnboarding.current = follow;
+        router.push(follow);
+      }
+      return;
+    }
+
+    router.replace(target);
+  }, [session, profile, loading, configured, segments, router, takePostOnboardingHref]);
 
   return <>{children}</>;
 }
 
+/** Writes the path the banner reads. A committed render, not a closed-over one. */
+function CurrentPathTracker() {
+  const path = usePathname();
+  useLayoutEffect(() => {
+    setCurrentPath(path ?? '');
+  }, [path]);
+  return null;
+}
+
 function Shell() {
   const theme = useTheme();
+  const segments = useSegments();
+  const pathname = usePathname();
+  useNotificationBanner();
   const { loading, configured } = useAuth();
   const { hydrating: languageLoading, hasChosen } = useI18n();
+  const livePath =
+    pathname ||
+    (Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : '');
+  const skipLanguagePicker = skipsLanguagePicker({
+    segments: segments as readonly string[],
+    pathname: livePath,
+  });
 
   /* Registers the push token when permission already exists and routes a
      notification tap. It never *asks* for permission here — that request is
      made from Settings, after the person has a reason to say yes. */
   usePushNotifications();
+  /* Language first, then these sheets, so the copy matches the choice they
+     just made. The hook itself does nothing until that gate has opened. */
+  const versionPrompts = useAppVersionPrompts(
+    configured && !languageLoading && (hasChosen || skipLanguagePicker),
+  );
 
   /* Screens the navigator has hidden keep their place in the tab order until
      something tells the browser otherwise. */
@@ -94,9 +150,10 @@ function Shell() {
   /* Language comes before everything, including the session check: there is no
      point deciding which screen to show until we know what language to show it
      in. On every launch after the first, the stored choice makes this
-     invisible. */
+     invisible. The approval link is the exception — the provider has already
+     selected the device language and has not saved it. */
   if (languageLoading) return <BrandSplash />;
-  if (!hasChosen) return <LanguageGate />;
+  if (!hasChosen && !skipLanguagePicker) return <LanguageGate />;
 
   return (
     <View
@@ -135,8 +192,8 @@ function Shell() {
             name="opportunity/new"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
-          {/* Stories and reels are immersive: full screen, no chrome of the
-              app's own, and they arrive by fading up rather than sliding. */}
+          {/* Stories are immersive: full screen, no chrome of the app's own,
+              and they arrive by fading up rather than sliding. */}
           <Stack.Screen
             name="stories/[userId]"
             options={{ presentation: 'fullScreenModal', animation: 'fade' }}
@@ -145,16 +202,24 @@ function Shell() {
             name="stories/new"
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
-          <Stack.Screen
-            name="reels"
-            options={{ presentation: 'fullScreenModal', animation: 'fade' }}
-          />
+          {/* Reels is a normal card, not a modal. A full-screen modal stays
+              above anything pushed as a card, so a profile opened from a reel
+              was hidden underneath it. A card lets the profile, and the
+              follower lists, sit on top; back and the swipe return to the reel. */}
+          <Stack.Screen name="reels" options={{ presentation: 'card', gestureEnabled: true }} />
+          <Stack.Screen name="u/[id]" options={{ presentation: 'card' }} />
+          <Stack.Screen name="u/[id]/followers" options={{ presentation: 'card' }} />
+          <Stack.Screen name="u/[id]/following" options={{ presentation: 'card' }} />
           {/* Legal is reachable from the signed-out welcome screen, so it must
               not be gated behind a session. */}
           <Stack.Screen name="legal" />
+          {/* The guardian opens this from the consent email, signed in or not.
+              routeDecision keeps parent-approval off the auth and onboarding redirects. */}
+          <Stack.Screen name="parent-approval" options={{ animation: 'fade' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
       </RouteGuard>
+      {versionPrompts}
     </View>
   );
 }
@@ -181,6 +246,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <CurrentPathTracker />
       <SafeAreaProvider>
         <ThemeProvider>
           <I18nProvider>

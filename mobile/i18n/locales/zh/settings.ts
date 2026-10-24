@@ -136,6 +136,7 @@ export const settings = {
   notifyFollows: '新粉丝',
   notifyMessages: '私信',
   notifyComments: '评论',
+  notifyMentions: '提及',
   notifyLikes: '点赞',
   notifyMeetups: '约球的球局',
   meetupPlaces: '约球提醒地点',
@@ -160,7 +161,7 @@ export const settings = {
   scoutingIntro:
     '这些决定“发现”优先把谁推到你面前，以及我们会把哪些运动员告诉你。留空就表示“没有偏好”。',
   scoutingSports: '项目',
-  scoutingSportsHint: '只选你负责球探的那一个项目。',
+  scoutingSportsHint: '可以选择多个你负责球探的项目。',
   scoutingPositions: '位置',
   scoutingPositionsHint: '只包含你所选项目里的位置。',
   scoutingPositionsEmpty: '先选一个项目，它的位置就会出现在这里。',

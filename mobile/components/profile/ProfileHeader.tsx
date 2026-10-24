@@ -34,7 +34,13 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
-import { blockUser, canMessage, reportContent, startConversation, toggleFollow } from '@/lib/api';
+import { blockUser, canMessage, reportContent, startConversation } from '@/lib/api';
+import {
+  applyToggleFollow,
+  useFollowCount,
+  useRefreshFollowCountsOnFocus,
+} from '@/lib/followCounts';
+import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import {
   levelLabelI18n,
@@ -45,6 +51,7 @@ import {
 } from '@/constants/sports';
 import { COACH_ROLE_KEYS } from '@/components/onboarding/RecruiterSteps';
 import { ageBandLabel, compactNumber, displayName, metaLine, roleLabel } from '@/lib/format';
+import type { ClubType } from '@/lib/club';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
@@ -114,9 +121,21 @@ interface Props {
   bundle: ProfileBundle;
   /** Called after a change the parent should reload for (block, unblock). */
   onChanged?: () => void;
+  /**
+   * The page this club account runs, when the parent already loaded it.
+   * Club vs academy lives on the page, not on `user_profiles.role`.
+   */
+  pageType?: ClubType | null;
 }
 
-export function ProfileHeader({ bundle, onChanged }: Props) {
+/** The club/academy choice from setup step 1. Other page types keep the role label. */
+function managedPageLabel(t: (key: string) => string, pageType: ClubType | null | undefined): string | null {
+  if (pageType === 'academy') return t('clubSetup.basics.typeAcademy');
+  if (pageType === 'club') return t('clubSetup.basics.typeClub');
+  return null;
+}
+
+export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const router = useRouter();
@@ -125,11 +144,20 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
 
   const { user, athlete, coach, score, viewer } = bundle;
   const isSelf = viewer?.is_self === true;
+  const { user: account, profile: accountProfile } = useAuth();
 
-  // Optimistic follow state — the row flips instantly and rolls back on failure.
+  // The button flips instantly. Both totals live in the shared follow counts,
+  // so every other screen showing them moves in the same moment.
   const [following, setFollowing] = useState(viewer?.is_following === true);
-  const [followers, setFollowers] = useState(user?.followers_count ?? 0);
   const [followBusy, setFollowBusy] = useState(false);
+  const followers = useFollowCount(user.id, 'followers', user.followers_count);
+  const followingCount = useFollowCount(user.id, 'following', user.following_count);
+  const myFollowing = useFollowCount(
+    account?.id,
+    'following',
+    accountProfile?.following_count ?? 0,
+  );
+  useRefreshFollowCountsOnFocus(user.id);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
@@ -165,8 +193,11 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
     if (coach) {
       return metaLine(roleLabel(user?.role), coachRoleLabel(t, coach.specialty), coach.current_club);
     }
+    if (user?.role === 'club') {
+      return managedPageLabel(t, pageType) ?? roleLabel(user.role);
+    }
     return roleLabel(user?.role);
-  }, [athlete, coach, t, user?.role]);
+  }, [athlete, coach, pageType, t, user?.role]);
 
   const location = metaLine(user?.city, user?.country);
 
@@ -185,19 +216,22 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
     const next = !following;
     setFollowBusy(true);
     setFollowing(next);
-    setFollowers((count) => Math.max(0, count + (next ? 1 : -1)));
     try {
-      const result = await toggleFollow(user.id);
+      const result = await applyToggleFollow({
+        targetId: user.id,
+        myId: account?.id ?? null,
+        wasFollowing: following,
+        targetFollowers: followers,
+        myFollowing,
+      });
       setFollowing(result.following);
-      if (typeof result.followers_count === 'number') setFollowers(result.followers_count);
     } catch (err) {
       setFollowing(!next);
-      setFollowers((count) => Math.max(0, count + (next ? -1 : 1)));
       toast.error(errorMessage(err));
     } finally {
       setFollowBusy(false);
     }
-  }, [followBusy, following, toast, user.id]);
+  }, [account?.id, followBusy, followers, following, myFollowing, toast, user.id]);
 
   const onMessage = useCallback(async () => {
     if (messageBusy) return;
@@ -439,11 +473,11 @@ export function ProfileHeader({ bundle, onChanged }: Props) {
             accessibilityLabel={t('profile.followersA11y', { count: followers })}
           />
           <CountLink
-            value={user?.following_count ?? 0}
+            value={followingCount}
             label={t('common.followingCount')}
             onPress={() => router.push(Routes.following(user.id))}
             accessibilityLabel={t('profile.followingA11y', {
-              count: user?.following_count ?? 0,
+              count: followingCount,
             })}
           />
         </View>
