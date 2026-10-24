@@ -5869,5 +5869,64 @@ begin
     'an adult mention writes one notification and a minor mention is dropped');
 end $$;
 
+-- 20261024000002. A hidden minor cannot mention anyone, and a mention
+-- reaches only someone who may see the post. A view row needs a post the
+-- viewer may see.
+do $$
+declare
+  v_adult   uuid := '11111111-1111-1111-1111-111111111111';
+  v_minor   uuid := '22222222-2222-2222-2222-222222222222';
+  v_coach   uuid := '33333333-3333-3333-3333-333333333333';
+  v_post    uuid;
+  v_kept    jsonb;
+  v_raised  boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set is_discoverable = false where id = v_minor;
+  delete from public.follows where follower_id = v_coach and following_id = v_adult;
+  perform tests.ok(not (select is_discoverable from public.user_profiles where id = v_minor),
+    'the minor is hidden for this check');
+
+  perform tests.as_user(v_minor);
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (v_minor, 'standard', '@Coach hi', 'public',
+          jsonb_build_array(jsonb_build_object('user_id', v_coach, 'start', 0, 'length', 6)))
+  returning id, mentions into v_post, v_kept;
+  perform tests.ok(
+    coalesce(jsonb_array_length(v_kept), 0) = 0
+    and not exists (select 1 from public.notifications
+                     where user_id = v_coach and type = 'mention' and entity_id = v_post::text),
+    'a hidden minor cannot mention an adult');
+
+  perform tests.as_user(v_adult);
+  insert into public.posts (author_id, type, caption, audience, mentions)
+  values (v_adult, 'standard', '@Coach followers only', 'followers',
+          jsonb_build_array(jsonb_build_object('user_id', v_coach, 'start', 0, 'length', 6)))
+  returning id into v_post;
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                 where user_id = v_coach and type = 'mention' and entity_id = v_post::text),
+    'a mention in a followers-only post does not reach a non-follower');
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+  begin
+    insert into public.post_views (post_id, viewer_id) values (v_post, v_coach);
+  exception when others then v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(v_raised, 'a view cannot be written for a post the viewer may not see');
+
+  v_raised := false;
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  begin
+    insert into public.post_views (post_id, viewer_id) values (v_post, v_adult);
+  exception when others then v_raised := true;
+  end;
+  reset role;
+  perform tests.ok(v_raised, 'an author cannot write a view of their own post');
+end $$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
