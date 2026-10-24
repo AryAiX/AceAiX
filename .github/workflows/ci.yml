@@ -183,6 +183,13 @@ jobs:
       # Does a write by one person reach another person? The SQL suite runs
       # inside Postgres as the superuser; this signs in over HTTP with the anon
       # key, as the app does, and checks the result lands for somebody else.
+      # Invites ship switched off (20261024000001); the pipeline tests the
+      # feature itself, so this throwaway database turns it on.
+      - name: Switch invites on for the pipelines
+        run: |
+          /usr/lib/postgresql/16/bin/psql -p 5433 -U postgres -d aceaix_local -v ON_ERROR_STOP=1 -c \
+            "update public.platform_settings set value = jsonb_set(value, '{invites}', 'true') where key = 'features';"
+
       - name: Write pipelines
         working-directory: mobile
         run: npm run test:pipelines
