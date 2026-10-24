@@ -1,4 +1,4 @@
--- =====================================================
+-- ============================================================
 -- Functional tests for the AceAiX data layer
 --
 -- Run after run-migrations.sh against the same throwaway database:
@@ -5501,7 +5501,7 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
-=======
+
 -- QA-114. A watch counts once, never for the author, never for a post
 -- the viewer is not allowed to see.
 do $$
