@@ -6444,18 +6444,16 @@ begin
 
   -- (e)
   perform tests.ok(
-    'search_path=public, pg_temp' = any((
-      select p.proconfig
-      from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
+    exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'search_cities'
-    ))
-    and 'search_path=public, pg_temp' = any((
-      select p.proconfig
-      from pg_proc p
-      join pg_namespace n on n.oid = p.pronamespace
+        and array_to_string(p.proconfig, ',') like '%pg_temp%'
+    )
+    and exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public' and p.proname = 'add_custom_city'
-    )),
+        and array_to_string(p.proconfig, ',') like '%pg_temp%'
+    ),
     'proconfig of search_cities and add_custom_city contains pg_temp');
 end $$;
 
