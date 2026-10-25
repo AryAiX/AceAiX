@@ -6067,4 +6067,233 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- Invites abuse fixes (20261025000002)
+-- Fresh accounts only. Each write is its own statement, and the
+-- read that checks it is the next one. Notification counts are
+-- referral_joined and referral_token only.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites abuse fixes ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'true')
+ where key = 'features';
+
+insert into auth.users (id, email, raw_user_meta_data)
+select ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+       'abuse' || n || '@test.local',
+       jsonb_build_object('full_name', 'Abuse ' || n, 'first_name', 'Abuse' || n, 'role', 'athlete')
+from generate_series(1, 31) n
+where n in (1, 2) or n between 10 and 20 or n in (30, 31)
+on conflict do nothing;
+
+update public.user_private
+   set date_of_birth = current_date - interval '20 years'
+ where user_id::text like '7f100000-%';
+
+do $$
+declare
+  v_inviter   uuid := '7f100000-0000-4000-8000-000000000001';
+  v_invitee   uuid := '7f100000-0000-4000-8000-000000000002';
+  v_admin     uuid := 'ad111111-1111-1111-1111-111111111111';
+  v_inviter_d uuid := '7f100000-0000-4000-8000-000000000010';
+  v_dropped   uuid := '7f100000-0000-4000-8000-000000000011';
+  v_inviter_e uuid := '7f100000-0000-4000-8000-000000000030';
+  v_invitee_e uuid := '7f100000-0000-4000-8000-000000000031';
+  v_code      text;
+  v_code_d    text;
+  v_code_e    text;
+  v_denied    boolean := false;
+  v_stamp     timestamptz;
+  v_stamp2    timestamptz;
+  v_status    text;
+  v_joined    int;
+  v_joined2   int;
+  v_actors    int;
+  v_referral  uuid;
+  v_hint      text;
+  v_tokens    int;
+  v_qualified int;
+  v_id        uuid;
+  v_left      int;
+  n           int;
+begin
+  perform tests.ok(
+    (select value ->> 'invites' from public.platform_settings where key = 'features') = 'true',
+    'invites are on for the abuse checks');
+
+  -- (a) The completion date is not a column the client can write.
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  begin
+    update public.user_profiles
+       set onboarding_completed_at = now()
+     where id = v_invitee;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  select onboarding_completed_at into v_stamp
+    from public.user_profiles where id = v_invitee;
+  perform tests.ok(
+    v_denied and v_stamp is null,
+    'an authenticated user cannot update their own onboarding_completed_at');
+
+  -- (b) An adult who finishes onboarding makes the invite count, once.
+  perform tests.as_user(v_inviter);
+  v_code := public.referral_my_circle() ->> 'code';
+  perform tests.as_user(v_invitee);
+  perform public.referral_claim(v_code);
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  perform tests.ok(v_status = 'pending', 'the adult invite starts pending');
+
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter
+     and type = 'referral_joined'
+     and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp is not null and v_joined = 1 and v_actors = 1,
+    'an adult invitee who finishes onboarding is qualified, stamped, and sends one referral_joined as themselves');
+
+  select id into v_referral from public.referrals where referred_id = v_invitee;
+
+  -- (c) Turning completion off and on does not unqualify, restamp, or notify again.
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = false where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp2
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp2 = v_stamp and v_joined = 1 and v_actors = 1,
+    'setting onboarding_completed false leaves the invite qualified, the stamp unchanged, and one referral_joined');
+
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp2
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp2 = v_stamp and v_joined = 1 and v_actors = 1,
+    'setting onboarding_completed true again stays qualified, keeps the stamp, and still one referral_joined');
+
+  -- (f) Restore is refused unless the invite is revoked, and does not notify twice.
+  perform tests.as_user(v_admin);
+  v_hint := tests.hint_of(format(
+    'select public.admin_set_referral(%L, false, null)', v_referral));
+  select status into v_status from public.referrals where id = v_referral;
+  perform tests.ok(
+    v_hint = 'referral_not_revoked' and v_status = 'qualified',
+    'admin_set_referral restore on a non-revoked invite raises referral_not_revoked');
+
+  perform tests.as_user(v_admin);
+  perform public.admin_set_referral(v_referral, true, 'abuse check');
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+
+  perform tests.as_user(v_admin);
+  perform public.admin_set_referral(v_referral, false, null);
+  select status into v_status from public.referrals where id = v_referral;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined2, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_joined = 1 and v_joined2 = 1 and v_actors = 1 and v_status = 'qualified',
+    'revoke then restore sends no second referral_joined');
+
+  -- (d) Ten that count earn one token. Deleting one invitee gives it back.
+  perform tests.as_user(v_inviter_d);
+  v_code_d := public.referral_my_circle() ->> 'code';
+  for n in 11..20 loop
+    v_id := ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    perform public.referral_claim(v_code_d);
+  end loop;
+  for n in 11..20 loop
+    v_id := ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    set local role authenticated;
+    update public.user_profiles set onboarding_completed = true where id = v_id;
+    reset role;
+  end loop;
+
+  select count(*)::int into v_qualified
+    from public.referrals
+   where referrer_id = v_inviter_d and status = 'qualified';
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter_d;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter_d and type = 'referral_token';
+  perform tests.ok(
+    v_qualified = 10 and v_tokens = 1 and v_joined = 1,
+    'ten qualified invitees give the inviter one token and one referral_token notice');
+
+  delete from auth.users where id = v_dropped;
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter_d;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter_d and type = 'referral_token';
+  perform tests.ok(
+    v_tokens = 0 and v_joined = 1,
+    'deleting one invitee brings the token sum back to 0 without another referral_token notice');
+
+  -- (e) The inviter's own delete must not sync tokens for a row that is going too.
+  perform tests.as_user(v_inviter_e);
+  v_code_e := public.referral_my_circle() ->> 'code';
+  perform tests.as_user(v_invitee_e);
+  perform public.referral_claim(v_code_e);
+  select count(*)::int into v_left from public.referrals where referrer_id = v_inviter_e;
+  perform tests.ok(v_left = 1, 'the inviter has an invitee before the delete');
+
+  delete from auth.users where id = v_inviter_e;
+  select count(*)::int into v_left from public.user_profiles where id = v_inviter_e;
+  perform tests.ok(v_left = 0, 'deleting an inviter who has invitees does not error');
+
+  -- (g)
+  perform tests.ok(
+    strpos(pg_get_functiondef('private.referral_sync_tokens(uuid)'::regprocedure),
+           'pg_advisory_xact_lock') > 0,
+    'referral_sync_tokens takes a transaction advisory lock');
+end $$;
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'false')
+ where key = 'features';
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
