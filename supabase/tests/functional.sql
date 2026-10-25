@@ -6760,4 +6760,285 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- mentions cleared on edit
+-- Offsets point at coalesce(caption, text) and at a comment body.
+-- Editing that text drops the saved mentions. An audience change
+-- does not. Fresh discoverable adults only: a mention has to pass
+-- private.can_mention. Each write is its own statement, and the
+-- read that checks it is the next one. Notification counts are the
+-- mention type only.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── mentions cleared on edit ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f400000-0000-4000-8000-000000000001', 'mentions.author@test.local',
+   '{"full_name":"Ada Author","role":"athlete"}'),
+  ('7f400000-0000-4000-8000-000000000002', 'mentions.target@test.local',
+   '{"full_name":"Bea Target","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f400000-0000-4000-8000-000000000001',
+   '7f400000-0000-4000-8000-000000000002'
+ );
+
+update public.user_profiles
+   set is_discoverable = true
+ where id in (
+   '7f400000-0000-4000-8000-000000000001',
+   '7f400000-0000-4000-8000-000000000002'
+ );
+
+insert into public.notification_preferences (user_id, mentions)
+values
+  ('7f400000-0000-4000-8000-000000000001', true),
+  ('7f400000-0000-4000-8000-000000000002', true)
+on conflict (user_id) do update set mentions = true;
+
+select tests.ok(
+  (select count(*) = 2
+      and bool_and(not is_minor)
+      and bool_and(is_discoverable)
+      and bool_and(not coalesce(is_suspended, false))
+     from public.user_profiles
+    where id in (
+      '7f400000-0000-4000-8000-000000000001',
+      '7f400000-0000-4000-8000-000000000002'
+    )),
+  'the two new accounts are discoverable adults');
+
+-- (a) The author posts one mention of the other adult. caption and
+-- text are the same string, which is what createPost writes.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_caption text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.posts (id, author_id, type, caption, text, audience, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000010',
+    v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'a post created with one valid mention has 1 item in mentions');
+  perform tests.ok(v_count = 1, 'that post writes one mention notification');
+end $$;
+
+-- (a) Editing the caption and the text, as the author, drops them.
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.posts
+     set caption = 'No mention now',
+         text = 'No mention now'
+   where id = '7f400000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    v_mentions = '[]'::jsonb,
+    'editing the post caption and text leaves mentions empty');
+  perform tests.ok(
+    v_count = 1,
+    'editing the post does not create a new mention notification');
+end $$;
+
+-- (b) A second post. Changing its audience leaves the mention.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_caption text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.posts (id, author_id, type, caption, text, audience, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000011',
+    v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000011';
+  v_mentions jsonb;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'the audience post starts with one mention');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.posts
+     set audience = 'followers'
+   where id = '7f400000-0000-4000-8000-000000000011';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who      text;
+  v_len      integer;
+  v_caption  text;
+  v_text     text;
+  v_audience text;
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_len := char_length('@' || v_who);
+  select caption, text, audience, mentions
+    into v_caption, v_text, v_audience, v_mentions
+    from public.posts
+   where id = '7f400000-0000-4000-8000-000000000011';
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and entity_id = '7f400000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_audience = 'followers'
+    and v_caption = '@' || v_who || ' see this'
+    and v_text = v_caption
+    and v_mentions = jsonb_build_array(
+      jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len)
+    )
+    and v_count = 1,
+    'a post whose audience changes (text unchanged) keeps its mention');
+end $$;
+
+-- (c) A comment. Editing its body drops the mention.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_body   text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_body := '@' || v_who || ' nice';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.post_comments (id, post_id, author_id, body, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000020',
+    '7f400000-0000-4000-8000-000000000010',
+    v_author, v_body,
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_comment  uuid := '7f400000-0000-4000-8000-000000000020';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.post_comments where id = v_comment;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and data ->> 'comment_id' = v_comment::text;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'a comment created with one valid mention has 1 item in mentions');
+  perform tests.ok(v_count = 1, 'that comment writes one mention notification');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.post_comments
+     set body = 'No mention now'
+   where id = '7f400000-0000-4000-8000-000000000020';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_comment  uuid := '7f400000-0000-4000-8000-000000000020';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.post_comments where id = v_comment;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and data ->> 'comment_id' = v_comment::text;
+  perform tests.ok(
+    v_mentions = '[]'::jsonb,
+    'editing the comment body leaves mentions empty');
+  perform tests.ok(
+    v_count = 1,
+    'editing the comment does not create a new mention notification');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
