@@ -6296,4 +6296,172 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- Custom cities review (20261025000003)
+-- Fresh accounts only. A city someone adds is visible to them until an
+-- admin approves it for everyone else, or removes it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── custom cities review ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f200000-0000-4000-8000-000000000001', 'cities.adder@test.local',
+   '{"full_name":"City Adder","role":"athlete"}'),
+  ('7f200000-0000-4000-8000-000000000002', 'cities.other@test.local',
+   '{"full_name":"City Other","role":"athlete"}'),
+  ('7f200000-0000-4000-8000-000000000003', 'cities.admin@test.local',
+   '{"full_name":"City Admin","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f200000-0000-4000-8000-000000000001',
+   '7f200000-0000-4000-8000-000000000002',
+   '7f200000-0000-4000-8000-000000000003'
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f200000-0000-4000-8000-000000000003';
+
+do $$
+declare
+  v_a     uuid := '7f200000-0000-4000-8000-000000000001';
+  v_b     uuid := '7f200000-0000-4000-8000-000000000002';
+  v_admin uuid := '7f200000-0000-4000-8000-000000000003';
+  v_added text;
+  v_city  uuid;
+  v_gone  uuid;
+  v_count integer;
+  v_state text;
+  v_list  jsonb;
+begin
+  -- (a) The adder can search their own city. Someone else cannot.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_added := public.add_custom_city('Qatar', 'Zaab Review');
+  reset role;
+
+  select id into v_city
+    from public.cities
+   where created_by = v_a
+     and lower(btrim(name)) = 'zaab review'
+     and not is_curated;
+
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(
+    v_added = 'Zaab Review' and v_city is not null and v_count = 1,
+    'user A search_cities returns the city they just added');
+
+  perform tests.as_user(v_b);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(v_count = 0, 'user B search_cities does not return a city user A added');
+
+  -- (b) A non-admin is refused. The city is still there.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_state := null;
+  begin
+    perform public.admin_list_custom_cities();
+  exception when others then
+    v_state := sqlstate;
+  end;
+  reset role;
+  perform tests.ok(v_state = '42501', 'a non-admin cannot call admin_list_custom_cities');
+
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_state := null;
+  begin
+    perform public.admin_review_city(v_city, true);
+  exception when others then
+    v_state := sqlstate;
+  end;
+  reset role;
+  select count(*) into v_count from public.cities where id = v_city and not is_curated;
+  perform tests.ok(
+    v_state = '42501' and v_count = 1,
+    'a non-admin cannot call admin_review_city');
+
+  -- (c) An admin sees it, and approving it makes it searchable by B.
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  v_list := public.admin_list_custom_cities();
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from jsonb_array_elements(v_list) e
+      where e->>'id' = v_city::text
+        and e->>'name' = 'Zaab Review'
+        and e->>'country' = 'Qatar'
+        and e->>'created_by' = v_a::text
+        and e->>'full_name' = 'City Adder'
+    ),
+    'admin_list_custom_cities includes the city user A added');
+
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  perform public.admin_review_city(v_city, true);
+  reset role;
+
+  perform tests.as_user(v_b);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(v_count = 1, 'after approval, user B search_cities returns the city');
+
+  -- (d) Removing a second city deletes the row.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  perform public.add_custom_city('Qatar', 'Zaab Gone');
+  reset role;
+
+  select id into v_gone
+    from public.cities
+   where created_by = v_a
+     and lower(btrim(name)) = 'zaab gone'
+     and not is_curated;
+
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  perform public.admin_review_city(v_gone, false);
+  reset role;
+
+  select count(*) into v_count from public.cities where id = v_gone;
+  perform tests.ok(v_gone is not null and v_count = 0, 'admin_review_city(id, false) removes the city');
+
+  -- (e)
+  perform tests.ok(
+    'search_path=public, pg_temp' = any((
+      select p.proconfig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'search_cities'
+    ))
+    and 'search_path=public, pg_temp' = any((
+      select p.proconfig
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'add_custom_city'
+    )),
+    'proconfig of search_cities and add_custom_city contains pg_temp');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
