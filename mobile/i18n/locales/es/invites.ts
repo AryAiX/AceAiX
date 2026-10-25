@@ -76,4 +76,11 @@ export const invites = {
   landingSignedInBody: 'Si te uniste en los últimos 14 días, todavía puedes añadir esta invitación.',
   landingAddInvite: 'Añadir esta invitación',
   landingContinue: 'Continuar',
+  landingCopy: 'Copiar',
+  landingCopied: 'Código copiado',
+  landingCopyFailed: 'No se pudo copiar el código. Selecciónalo y cópialo tú.',
+  landingDownload:
+    'Descarga AceAiX, regístrate e introduce este código en la app durante tus primeros 14 días.',
+  landingAppStore: 'Consíguela en el App Store',
+  landingGooglePlay: 'Consíguela en Google Play',
 };

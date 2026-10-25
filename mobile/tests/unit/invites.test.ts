@@ -59,6 +59,7 @@ describe('invite codes', () => {
 describe('invite routing', () => {
   it('lets an invite link open without an account', () => {
     expect(routeDecision({ hasSession: false, profile: null, segments: ['i', '[code]'] })).toBeNull();
+    expect(routeDecision({ hasSession: false, profile: null, segments: ['app', 'i', '[code]'] })).toBeNull();
   });
 
   it('sends invite notifications to the circle', () => {

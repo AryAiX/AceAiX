@@ -76,4 +76,10 @@ export const invites = {
   landingSignedInBody: '如果你是在最近 14 天内加入的，仍然可以添加这个邀请。',
   landingAddInvite: '添加这个邀请',
   landingContinue: '继续',
+  landingCopy: '复制',
+  landingCopied: '邀请码已复制',
+  landingCopyFailed: '邀请码没能复制。请选中它，自己复制。',
+  landingDownload: '下载 AceAiX，注册账号，并在最初的 14 天内到应用里输入这个邀请码。',
+  landingAppStore: '前往 App Store',
+  landingGooglePlay: '前往 Google Play',
 };

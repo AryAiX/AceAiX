@@ -78,4 +78,11 @@ export const invites = {
   landingSignedInBody: 'Если с регистрации прошло не больше 14 дней, ты ещё можешь добавить это приглашение.',
   landingAddInvite: 'Добавить приглашение',
   landingContinue: 'Продолжить',
+  landingCopy: 'Копировать',
+  landingCopied: 'Код скопирован',
+  landingCopyFailed: 'Не получилось скопировать код. Выдели его и скопируй сам.',
+  landingDownload:
+    'Скачай AceAiX, зарегистрируйся и введи этот код в приложении в первые 14 дней.',
+  landingAppStore: 'Скачать в App Store',
+  landingGooglePlay: 'Скачать в Google Play',
 };

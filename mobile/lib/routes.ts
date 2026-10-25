@@ -182,9 +182,11 @@ export function routeDecision(input: {
   // The guardian approval link is opened from an email. Most parents have no
   // account; a parent who does must not be sent to welcome or onboarding.
   const isParentApproval = group === 'parent-approval';
-  /* An invite link (`/i/<code>`) must open before there is an account: that
-     is the point of it. The screen keeps the code and sends the visitor on. */
-  const isPublic = group === 'legal' || group === '+not-found' || group === 'i' || isParentApproval;
+  /* An invite link (`/i/<code>` and `/app/i/<code>`) must open before there
+     is an account: that is the point of it. The screen keeps the code and
+     sends the visitor on. */
+  const isInvite = group === 'i' || (group === 'app' && segments[1] === 'i');
+  const isPublic = group === 'legal' || group === '+not-found' || isInvite || isParentApproval;
   const atEntry = segments.length === 0;
 
   if (!hasSession) return !inAuth && !isPublic ? Routes.auth.welcome : null;
