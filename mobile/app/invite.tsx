@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Award, Gift, Link2, Share2, Ticket, UserCheck, UserPlus, Users } from 'lucide-react-native';
@@ -25,6 +25,7 @@ import {
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useUnread } from '@/providers/UnreadProvider';
 import { errorMessage } from '@/lib/errors';
 import { fullDate, roleLabel } from '@/lib/format';
 import { shareContent } from '@/lib/share';
@@ -47,7 +48,24 @@ export default function InviteScreen() {
   const { colors, spacing } = theme;
   const t = useT();
   const toast = useToast();
+  const { subscribeNotifications } = useUnread();
+  /*
+   * Coming back to this screen already refetches in the background:
+   * `refetchOnFocus` is a `useFocusEffect` inside `useAsync`, and that mode
+   * does not raise the full-screen loader while data is on screen.
+   */
   const circle = useAsync<MyCircle>(() => getMyCircle(), [], { refetchOnFocus: true });
+  const reloadCircle = useRef(circle.reload);
+  reloadCircle.current = circle.reload;
+
+  useEffect(() => {
+    return subscribeNotifications((payload) => {
+      if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') return;
+      const type = payload.new?.type;
+      if (type !== 'referral_joined' && type !== 'referral_token') return;
+      void reloadCircle.current();
+    });
+  }, [subscribeNotifications]);
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
