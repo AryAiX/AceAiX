@@ -13,6 +13,7 @@ import type { Href } from 'expo-router';
 
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { emailConfirmationRedirect, passwordResetRedirect } from '@/lib/authRedirect';
+import { clearPendingInvite } from '@/lib/api.invites';
 import { AppError } from '@/lib/errors';
 import type { SignupRole, UserRole, AgeBand } from '@/types/models';
 
@@ -30,6 +31,8 @@ export interface AccountProfile {
   is_suspended: boolean;
   suspended_reason: string | null;
   onboarding_completed: boolean;
+  /** When the server first recorded onboarding as finished. Absent until then. */
+  onboarding_completed_at?: string | null;
   allow_messages_from: string;
   followers_count: number;
   following_count: number;
@@ -212,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     postOnboardingHref.current = null;
     await supabase.auth.signOut();
+    await clearPendingInvite();
     setProfile(null);
     setSession(null);
   }, []);
