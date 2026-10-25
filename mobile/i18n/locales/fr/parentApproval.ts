@@ -7,6 +7,8 @@ export const parentApproval = {
   introCreated: 'Un profil AceAiX a été créé.',
   introHidden:
     'Comme cette personne a moins de 18 ans, rien ne se passe tant que vous n’acceptez pas. Le profil est masqué et personne ne peut lui écrire.',
+  introReviewing:
+    '{{name}} vous demande de revoir ce que vous avez approuvé sur AceAiX. Les cases ci-dessous montrent vos choix actuels ; ne changez que ce que vous voulez changer.',
   approving: 'Ce que vous approuvez',
   discoveryTitle: 'Laisser les entraîneurs et les clubs la trouver',
   discoveryBody:

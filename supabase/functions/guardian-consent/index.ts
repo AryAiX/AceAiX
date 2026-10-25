@@ -12,7 +12,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *        → ?format=json: the page as data, and nothing more
  *             { state: pending | answered | expired | invalid,
  *               child_name,   // the name the HTML page shows, or null
- *               options }     // checkbox defaults, or null when there is no form
+ *               options,      // checkbox defaults, or null when there is no form
+ *               reviewing }   // true when the boxes are an earlier approval
  *          Status codes match the HTML: 400 missing token, 404 unknown token,
  *          200 already answered, 410 expired, 200 pending.
  *        → CONSENT_PAGE_URL set, and format is not json: 302 to
@@ -29,6 +30,11 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *          Only JSON true counts as a ticked box.
  *        → { ok, state } with the form's status codes.
  *          state: granted | revoked | expired | invalid
+ *          A decline that changes no row reads the row again. granted
+ *          (the approved link) comes back as { ok: false, state: "granted" }.
+ *          revoked (this decline already landed) comes back as
+ *          { ok: true, state: "revoked" }. Anything else is the existing
+ *          invalid or expired state.
  *
  *   POST form-encoded          (submitted from the HTML fallback)
  *        → the same decision, rendered as HTML
@@ -441,6 +447,7 @@ function consentJson(view: ConsentView): Response {
       state: view.state,
       child_name: view.childName,
       options: view.options,
+      reviewing: view.reviewing,
     },
     view.status,
   );
@@ -520,13 +527,33 @@ async function recordDecision(input: DecisionInput): Promise<DecisionOutcome> {
       return { ok: false, state: "expired", status: 400 };
     }
 
-    const { error: declineError } = await admin
+    const { data: declined, error: declineError } = await admin
       .from("guardian_consents")
       .update({ status: "revoked", revoked_at: new Date().toISOString() })
       .eq("id", pending.id)
-      .eq("status", "pending");
+      .eq("status", "pending")
+      .select("id");
     if (declineError) return { ok: false, state: "invalid", status: 500 };
-    return { ok: true, state: "revoked", status: 200 };
+    if (declined && declined.length > 0) {
+      return { ok: true, state: "revoked", status: 200 };
+    }
+
+    /* Another decision landed between the read and this update. */
+    const { data: current } = await admin
+      .from("guardian_consents")
+      .select("status, token_expires_at")
+      .eq("token", input.token)
+      .maybeSingle();
+    if (current?.status === "granted") {
+      return { ok: false, state: "granted", status: 200 };
+    }
+    if (current?.status === "revoked") {
+      return { ok: true, state: "revoked", status: 200 };
+    }
+    if (current && new Date(current.token_expires_at).getTime() < Date.now()) {
+      return { ok: false, state: "expired", status: 400 };
+    }
+    return { ok: false, state: "invalid", status: 400 };
   }
 
   const { data, error } = await admin.rpc("confirm_guardian_consent", {
@@ -548,6 +575,14 @@ async function recordDecision(input: DecisionInput): Promise<DecisionOutcome> {
 }
 
 function decisionHtml(outcome: DecisionOutcome): Response {
+  if (!outcome.ok && outcome.state === "granted") {
+    return html(
+      page(`<h1>This request has already been answered</h1>
+          <p>Nothing further is needed. To change your decision, e-mail
+          <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
+      outcome.status,
+    );
+  }
   if (!outcome.ok) {
     if (outcome.status === 500) {
       return html(page("<h1>We couldn't record that</h1><p>Please try again.</p>"), 500);

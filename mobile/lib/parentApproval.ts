@@ -25,7 +25,7 @@ export type ConsentScreen =
   | { screen: 'invalid' }
   | { screen: 'expired' }
   | { screen: 'answered' }
-  | { screen: 'pending'; childName: string | null; options: ConsentOptions }
+  | { screen: 'pending'; childName: string | null; options: ConsentOptions; reviewing: boolean }
   | { screen: 'approved' }
   | { screen: 'declined' }
   | { screen: 'error' };
@@ -82,7 +82,13 @@ export function screenFromConsentGet(status: number, body: unknown): ConsentScre
   const data = record(body);
   const state = data?.state;
   if (state === 'pending') {
-    return { screen: 'pending', childName: childName(data), options: options(data) };
+    return {
+      screen: 'pending',
+      childName: childName(data),
+      options: options(data),
+      /* An older function omits the flag. That page is a first approval. */
+      reviewing: data?.reviewing === true,
+    };
   }
   if (state === 'answered') return { screen: 'answered' };
   if (state === 'expired') return { screen: 'expired' };
@@ -93,7 +99,8 @@ export function screenFromConsentGet(status: number, body: unknown): ConsentScre
 /**
  * POST { token, decision, allow_* }.
  * A 5xx is a failed write the parent can retry, even when `state` is invalid.
- * granted and revoked are the two success screens.
+ * granted and revoked are the two success screens. A decline that finds
+ * the link already granted is the same screen as opening that link.
  */
 export function screenFromConsentPost(status: number, body: unknown): ConsentScreen {
   if (status >= 500) return { screen: 'error' };
@@ -102,6 +109,7 @@ export function screenFromConsentPost(status: number, body: unknown): ConsentScr
   const state = data?.state;
   if (status === 200 && data?.ok === true && state === 'granted') return { screen: 'approved' };
   if (status === 200 && data?.ok === true && state === 'revoked') return { screen: 'declined' };
+  if (state === 'granted') return { screen: 'answered' };
   if (status === 410 || state === 'expired') return { screen: 'expired' };
   if (status === 400 || status === 404 || state === 'invalid') return { screen: 'invalid' };
   return { screen: 'error' };

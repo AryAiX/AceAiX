@@ -13,6 +13,8 @@ export const parentApproval = {
   introCreated: 'They have created an AceAiX profile.',
   introHidden:
     'Because they are under 18, nothing happens until you agree. Their profile is hidden and nobody can message them.',
+  introReviewing:
+    '{{name}} is asking you to review what you approved on AceAiX. The boxes below show your current choices; change only what you want to change.',
   approving: 'What you are approving',
   discoveryTitle: 'Let coaches and clubs find them',
   discoveryBody:

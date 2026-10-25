@@ -228,12 +228,20 @@ export default function ParentApprovalScreen() {
     body = (
       <Card padded="lg">
         <Text variant="heading">{t('parentApproval.heading', { name })}</Text>
-        <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
-          {t('parentApproval.introCreated')}
-        </Text>
-        <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
-          {t('parentApproval.introHidden')}
-        </Text>
+        {view.reviewing ? (
+          <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
+            {t('parentApproval.introReviewing', { name })}
+          </Text>
+        ) : (
+          <>
+            <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
+              {t('parentApproval.introCreated')}
+            </Text>
+            <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
+              {t('parentApproval.introHidden')}
+            </Text>
+          </>
+        )}
 
         <Text variant="subheading" style={{ marginTop: theme.spacing.xl }}>
           {t('parentApproval.approving')}

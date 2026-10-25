@@ -7,6 +7,8 @@ export const parentApproval = {
   introCreated: 'Es wurde ein Profil auf AceAiX angelegt.',
   introHidden:
     'Weil die Person unter 18 ist, passiert nichts, bis du zustimmst. Das Profil ist verborgen, und niemand kann ihr schreiben.',
+  introReviewing:
+    '{{name}} bittet dich, das zu prüfen, was du auf AceAiX schon zugestimmt hast. Die Kästchen unten zeigen deine aktuellen Entscheidungen; ändere nur, was du ändern möchtest.',
   approving: 'Was du genehmigst',
   discoveryTitle: 'Trainer und Vereine dürfen sie finden',
   discoveryBody:

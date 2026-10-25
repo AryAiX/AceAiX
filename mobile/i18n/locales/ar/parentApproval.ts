@@ -7,6 +7,8 @@ export const parentApproval = {
   introCreated: 'تم إنشاء ملف على AceAiX.',
   introHidden:
     'لأن العمر أقل من 18 عامًا، لا يحدث شيء حتى توافق. الملف مخفي ولا يستطيع أحد مراسلته.',
+  introReviewing:
+    '{{name}} يطلب منك مراجعة ما وافقت عليه في AceAiX. المربعات أدناه تعرض اختياراتك الحالية؛ غيّر فقط ما تريد تغييره.',
   approving: 'ما الذي توافق عليه',
   discoveryTitle: 'السماح للمدربين والأندية بالعثور عليه',
   discoveryBody:
