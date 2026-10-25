@@ -6464,4 +6464,300 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- counters and score
+-- A client cannot write a counter, and a highlight view does not
+-- recompute the Talent Score. Fresh accounts only. Each write is its
+-- own statement, and the read that checks it is the next one.
+-- talent_scores.computed_at is now() at the start of the recompute's
+-- transaction, so the snapshot and the write are separate statements
+-- with a sleep between them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── counters and score ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+drop table if exists counter_probe;
+create temporary table counter_probe (
+  k text primary key,
+  state text,
+  at timestamptz
+);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f300000-0000-4000-8000-000000000001', 'counters.owner@test.local',
+   '{"full_name":"Counter Owner","role":"athlete"}'),
+  ('7f300000-0000-4000-8000-000000000002', 'counters.viewer@test.local',
+   '{"full_name":"Counter Viewer","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f300000-0000-4000-8000-000000000001',
+   '7f300000-0000-4000-8000-000000000002'
+ );
+
+insert into counter_probe (k, at)
+select 'before_media', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+-- (b) (d) The owner's insert names forged counters. A public video recomputes.
+do $$
+declare
+  v_owner uuid := '7f300000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_owner;
+  perform tests.as_user(v_owner);
+  set local role authenticated;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public, views_count, likes_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000010',
+    v_athlete,
+    'Counter clip',
+    'video',
+    v_owner::text || '/highlights/counters.mp4',
+    true,
+    999,
+    999
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_likes integer;
+  v_before timestamptz;
+  v_after timestamptz;
+  v_videos integer;
+begin
+  select views_count, likes_count into v_views, v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    v_views = 0 and v_likes = 0,
+    'an authenticated insert of athlete_media stores views_count 0 and likes_count 0');
+
+  select at into v_before from counter_probe where k = 'before_media';
+  select ts.computed_at, (ts.inputs ->> 'video_items')::integer
+    into v_after, v_videos
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+  perform tests.ok(
+    v_after > v_before and v_videos = 1,
+    'inserting a public video recomputes the score (talent_scores.computed_at moves)');
+end $$;
+
+-- (a) The same owner cannot write either counter. A title change is allowed.
+do $$
+declare v_state text := 'updated';
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  begin
+    update public.athlete_media
+       set views_count = 999
+     where id = '7f300000-0000-4000-8000-000000000010';
+  exception when insufficient_privilege then
+    v_state := sqlstate;
+  end;
+  reset role;
+  insert into counter_probe (k, state) values ('views_update', v_state);
+end $$;
+
+do $$
+declare v_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    (select state from counter_probe where k = 'views_update') = '42501'
+    and v_views = 0,
+    'the owner cannot update athlete_media.views_count');
+end $$;
+
+do $$
+declare v_state text := 'updated';
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  begin
+    update public.athlete_media
+       set likes_count = 999
+     where id = '7f300000-0000-4000-8000-000000000010';
+  exception when insufficient_privilege then
+    v_state := sqlstate;
+  end;
+  reset role;
+  insert into counter_probe (k, state) values ('likes_update', v_state);
+end $$;
+
+do $$
+declare v_likes integer;
+begin
+  select likes_count into v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    (select state from counter_probe where k = 'likes_update') = '42501'
+    and v_likes = 0,
+    'the owner cannot update athlete_media.likes_count');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.athlete_media
+     set title = 'Renamed clip'
+   where id = '7f300000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare v_title text;
+begin
+  select title into v_title
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(v_title = 'Renamed clip', 'the owner can update athlete_media.title');
+end $$;
+
+insert into counter_probe (k, at)
+select 'before_view', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+-- (c) (d) Another user's watch adds one view and leaves computed_at alone.
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  perform public.record_highlight_view('7f300000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_before timestamptz;
+  v_after timestamptz;
+  v_media_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+
+  select at into v_before from counter_probe where k = 'before_view';
+  select ts.computed_at, (ts.inputs ->> 'media_views')::integer
+    into v_after, v_media_views
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 1,
+    'record_highlight_view by another user adds 1 to views_count');
+  perform tests.ok(
+    v_after = v_before and v_media_views = 0,
+    'a views_count change does not recompute the score (talent_scores.computed_at stays)');
+end $$;
+
+-- (b) A post insert cannot arrive with forged counters either.
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  insert into public.posts (
+    id, author_id, type, caption, audience,
+    view_count, like_count, comments_count, reactions_count, save_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000020',
+    '7f300000-0000-4000-8000-000000000001',
+    'standard', 'Counter post', 'public',
+    999, 999, 999, 999, 999
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_likes integer;
+  v_comments integer;
+  v_reactions integer;
+  v_saves integer;
+begin
+  select view_count, like_count, comments_count, reactions_count, save_count
+    into v_views, v_likes, v_comments, v_reactions, v_saves
+  from public.posts
+  where id = '7f300000-0000-4000-8000-000000000020';
+  perform tests.ok(
+    v_views = 0 and v_likes = 0 and v_comments = 0 and v_reactions = 0 and v_saves = 0,
+    'an authenticated insert of a post stores view_count 0 and like_count 0');
+end $$;
+
+-- A server-side writer is not anon or authenticated, so its counts stay.
+do $$
+declare v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '7f300000-0000-4000-8000-000000000001';
+  set local role service_role;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public, views_count, likes_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000011',
+    v_athlete, 'Server clip', 'image', 'server.jpg', false, 7, 3
+  );
+  reset role;
+end $$;
+
+do $$
+declare v_views integer; v_likes integer;
+begin
+  select views_count, likes_count into v_views, v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_views = 7 and v_likes = 3,
+    'a service_role insert keeps the counters it sets');
+end $$;
+
+-- (e)
+do $$
+declare v_same boolean;
+begin
+  perform tests.ok(
+    has_function_privilege('service_role', 'public.record_post_view(uuid)', 'EXECUTE')
+    and has_function_privilege('service_role', 'public.record_highlight_view(uuid)', 'EXECUTE'),
+    'service_role can execute record_post_view and record_highlight_view');
+
+  select coalesce(bool_and(
+    has_table_privilege('service_role', 'public.athlete_media_views', p)
+      = has_table_privilege('service_role', 'public.post_views', p)
+  ), false)
+    into v_same
+  from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as u(p);
+  perform tests.ok(
+    v_same,
+    'service_role has the same table privileges on athlete_media_views as on post_views');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
