@@ -5929,4 +5929,142 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Invites minor privacy (20261025000001)
+-- Fresh accounts only. Earlier blocks change the seeded minors.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites minor privacy ──'; end $$;
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f000000-0000-4000-8000-000000000001', 'privacy.lina@test.local',
+   '{"full_name":"Lina Privacy","first_name":"Lina","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000002', 'privacy.adult@test.local',
+   '{"full_name":"Adult Privacy","first_name":"Adult","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000003', 'privacy.noor@test.local',
+   '{"full_name":"Noor Privacy","first_name":"Noor","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000004', 'privacy.raya@test.local',
+   '{"full_name":"Raya Privacy","first_name":"Raya","role":"athlete"}')
+on conflict do nothing;
+
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id in (
+   '7f000000-0000-4000-8000-000000000001',
+   '7f000000-0000-4000-8000-000000000003',
+   '7f000000-0000-4000-8000-000000000004'
+ );
+update public.user_private set date_of_birth = current_date - interval '20 years'
+ where user_id = '7f000000-0000-4000-8000-000000000002';
+select tests.ok(
+  (select count(*) = 3 and bool_and(is_minor) from public.user_profiles
+    where id in (
+      '7f000000-0000-4000-8000-000000000001',
+      '7f000000-0000-4000-8000-000000000003',
+      '7f000000-0000-4000-8000-000000000004'
+    )),
+  'the three new accounts are minors');
+select tests.ok(
+  not (select is_minor from public.user_profiles where id = '7f000000-0000-4000-8000-000000000002'),
+  'the new adult account is not a minor');
+update public.user_profiles set avatar_url = 'https://cdn.test/lina.png'
+ where id = '7f000000-0000-4000-8000-000000000001';
+
+do $$
+declare
+  v_minor  uuid := '7f000000-0000-4000-8000-000000000001';
+  v_adult  uuid := '7f000000-0000-4000-8000-000000000002';
+  v_hidden uuid := '7f000000-0000-4000-8000-000000000003';
+  v_gated  uuid := '7f000000-0000-4000-8000-000000000004';
+  v_code   text;
+  v_anon   jsonb;
+  v_signed jsonb;
+  v_person jsonb;
+  v_circle jsonb;
+begin
+  update public.platform_settings
+     set value = jsonb_set(value, '{invites}', 'true')
+   where key = 'features';
+  perform tests.ok(
+    (select value ->> 'invites' from public.platform_settings where key = 'features') = 'true',
+    'invites are on for the minor-privacy checks');
+
+  perform tests.ok(not private.referral_can_invite(v_minor),
+    'a minor athlete without discovery consent cannot invite');
+
+  perform tests.ok(
+    (select avatar_url from public.user_profiles where id = v_minor) = 'https://cdn.test/lina.png',
+    'the minor profile still has an avatar');
+  select private.referral_person(v_minor) into v_person;
+  perform tests.ok(
+    v_person ->> 'first_name' = 'Lina' and v_person ->> 'avatar_url' is null,
+    'referral_person drops a minor''s avatar without discovery consent');
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
+  ) values (
+    v_minor, 'Parent', 'privacy.lina.parent@test.local', 'granted', now(), true
+  );
+  perform tests.ok(private.referral_can_invite(v_minor),
+    'a minor athlete with discovery consent can invite');
+
+  perform tests.as_user(v_minor);
+  select public.referral_my_circle() ->> 'code' into v_code;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  select public.referral_inviter(v_code) into v_anon;
+  reset role;
+  perform tests.ok(
+    v_anon ? 'first_name' and v_anon -> 'first_name' = 'null'::jsonb
+    and v_anon ? 'avatar_url' and v_anon -> 'avatar_url' = 'null'::jsonb
+    and v_anon ? 'role' and v_anon -> 'role' = 'null'::jsonb
+    and not (v_anon ? 'is_minor'),
+    'a signed-out visitor learns nothing about a minor inviter');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select public.referral_inviter(v_code) into v_signed;
+  reset role;
+  perform tests.ok(v_signed ->> 'first_name' = 'Lina',
+    'a signed-in visitor sees a consented minor inviter''s first name');
+
+  insert into public.referrals (referrer_id, referred_id, code)
+  values (v_adult, v_hidden, 'PRIVHID1');
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select public.referral_my_circle() into v_circle;
+  reset role;
+  perform tests.ok(
+    jsonb_array_length(v_circle -> 'members') = 0
+    and (v_circle ->> 'pending')::int = 1,
+    'a pending minor invitee without discovery consent is omitted from the circle and still counted');
+
+  insert into public.referrals (referrer_id, referred_id, code)
+  values (v_adult, v_gated, 'PRIVGAT1');
+  update public.user_profiles set onboarding_completed = true where id = v_gated;
+  insert into public.guardian_consents (
+    minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
+  ) values (
+    v_gated, 'Parent', 'privacy.raya.parent@test.local', 'granted', now(), false
+  );
+  perform tests.ok(
+    (select status = 'pending' from public.referrals where referred_id = v_gated),
+    'a minor invitee with consent but discovery off stays pending');
+  update public.guardian_consents
+     set allow_discovery = true
+   where minor_user_id = v_gated and status = 'granted';
+  perform tests.ok(
+    (select status = 'qualified' from public.referrals where referred_id = v_gated),
+    'turning discovery consent on makes the minor invite count');
+end $$;
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'false')
+ where key = 'features';
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
