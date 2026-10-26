@@ -73,7 +73,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
         ) : null}
       </View>
 
-      <TagRow group="need" tags={seeker.needs} label={t('sponsorship.needsLabel')} />
+      <TagRow group="need" tags={seeker.needs} otherText={seeker.needs_other} label={t('sponsorship.needsLabel')} />
       <TagRow group="give" tags={seeker.gives} label={t('sponsorship.givesLabel')} />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>

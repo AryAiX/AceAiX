@@ -37,9 +37,17 @@ export default function SponsorshipRequestScreen() {
   const [location, setLocation] = useState('');
   const [amount, setAmount] = useState('');
   const [needs, setNeeds] = useState<Need[]>([]);
+  const [needsOther, setNeedsOther] = useState('');
   const [gives, setGives] = useState<Give[]>([]);
   const [pitch, setPitch] = useState('');
-  const [errors, setErrors] = useState<{ title?: string; date?: string; amount?: string }>({});
+  const [errors, setErrors] = useState<{
+    title?: string;
+    date?: string;
+    amount?: string;
+    needs?: string;
+    needsOther?: string;
+    pitch?: string;
+  }>({});
   const [saving, setSaving] = useState(false);
   const [filled, setFilled] = useState(false);
 
@@ -54,6 +62,7 @@ export default function SponsorshipRequestScreen() {
     setLocation(existing.location ?? '');
     setAmount(existing.amount ? String(existing.amount) : '');
     setNeeds(existing.needs.filter((n): n is Need => (NEEDS as readonly string[]).includes(n)));
+    setNeedsOther(existing.needs_other ?? '');
     setGives(existing.gives.filter((g): g is Give => (GIVES as readonly string[]).includes(g)));
     setPitch(existing.pitch ?? '');
     setFilled(true);
@@ -67,13 +76,21 @@ export default function SponsorshipRequestScreen() {
   const submit = async () => {
     const day = parseDay(eventDate);
     const value = parseAmount(amount);
+    const otherText = needsOther.trim();
+    const wantsOther = needs.includes('other');
     const next = {
       title: title.trim().length < 3 ? t('sponsorship.titleRequired') : undefined,
       date: day === undefined ? t('sponsorship.dateInvalid') : undefined,
       amount: value === undefined ? t('sponsorship.amountInvalid') : undefined,
+      needs: needs.length === 0 ? t('sponsorship.needsRequired') : undefined,
+      needsOther:
+        wantsOther && (otherText.length < 2 || otherText.length > 60)
+          ? t('sponsorship.needsOtherRequired')
+          : undefined,
+      pitch: pitch.trim().length < 10 ? t('sponsorship.pitchRequired') : undefined,
     };
     setErrors(next);
-    if (next.title || next.date || next.amount) return;
+    if (next.title || next.date || next.amount || next.needs || next.needsOther || next.pitch) return;
 
     setSaving(true);
     try {
@@ -83,6 +100,7 @@ export default function SponsorshipRequestScreen() {
         event_date: day ?? null,
         location: location.trim(),
         needs,
+        needs_other: wantsOther ? otherText : '',
         gives,
         amount: value ?? null,
         pitch: pitch.trim(),
@@ -201,13 +219,34 @@ export default function SponsorshipRequestScreen() {
           error={errors.amount}
           testID="request-amount"
         />
-        <TagPicker
-          group="need"
-          label={t('sponsorship.fNeeds')}
-          options={NEEDS}
-          value={needs}
-          onToggle={(tag) => setNeeds((list) => toggleTag(list, tag))}
-        />
+        <View style={{ gap: spacing.md }}>
+          <TagPicker
+            group="need"
+            label={t('sponsorship.fNeeds')}
+            required
+            options={NEEDS}
+            value={needs}
+            error={errors.needs}
+            onToggle={(tag) => {
+              setNeeds((list) => toggleTag(list, tag));
+              setErrors((e) => ({ ...e, needs: undefined, needsOther: tag === 'other' ? undefined : e.needsOther }));
+            }}
+          />
+          {needs.includes('other') ? (
+            <Input
+              label={t('sponsorship.fNeedsOther')}
+              required
+              value={needsOther}
+              onChangeText={(v) => {
+                setNeedsOther(v);
+                setErrors((e) => ({ ...e, needsOther: undefined }));
+              }}
+              maxLength={60}
+              error={errors.needsOther}
+              testID="request-needs-other"
+            />
+          ) : null}
+        </View>
         <TagPicker
           group="give"
           label={t('sponsorship.fGives')}
@@ -217,11 +256,16 @@ export default function SponsorshipRequestScreen() {
         />
         <Input
           label={t('sponsorship.fPitch')}
+          required
           value={pitch}
-          onChangeText={setPitch}
+          onChangeText={(v) => {
+            setPitch(v);
+            setErrors((e) => ({ ...e, pitch: undefined }));
+          }}
           placeholder={t('sponsorship.fPitchPlaceholder')}
           multiline
           maxLength={600}
+          error={errors.pitch}
         />
         <Text variant="caption" tone="muted">
           {t('sponsorship.noMoneyNote')}

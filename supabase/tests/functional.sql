@@ -2435,7 +2435,8 @@ begin
   perform tests.as_user(v_minor);
   v_minor_req := public.save_sponsorship_request(null,
     '{"title":"Junior nationals travel","amount":1500,"event_name":"Junior nationals",
-      "event_date":"2027-05-01","location":"Abu Dhabi"}');
+      "event_date":"2027-05-01","location":"Abu Dhabi","needs":["travel"],
+      "pitch":"Travel to the junior nationals."}');
   perform tests.ok(v_minor_req is not null, 'with it, the minor can ask');
 
   perform tests.as_user(v_brand);
@@ -5926,6 +5927,117 @@ begin
   end;
   reset role;
   perform tests.ok(v_raised, 'an author cannot write a view of their own post');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sponsorship request needs ──'; end $$;
+
+/*
+ * 1026/01. A request has to name a need and a pitch. "Other" carries a short
+ * line of the athlete's own words. A minor's line is hidden from a plain
+ * viewer the same way the card hides when and where.
+ */
+do $$
+declare
+  v_athlete uuid := 'bbbbbbbb-1260-4000-8000-000000000001';
+  v_sponsor uuid := 'bbbbbbbb-1260-4000-8000-000000000002';
+  v_minor   uuid := 'bbbbbbbb-1260-4000-8000-000000000003';
+  v_viewer  uuid := '33333333-3333-3333-3333-333333333333';
+  v_req     uuid;
+  v_plain   uuid;
+  v_minor_req uuid;
+  v_hint    text;
+  v_token   text;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_athlete, 'needs.adult@test.local',  '{"full_name":"Needs Adult","role":"athlete"}'),
+    (v_sponsor, 'needs.brand@test.local',  '{"full_name":"Needs Brand","role":"sponsor"}'),
+    (v_minor,   'needs.minor@test.local',  '{"full_name":"Needs Minor","role":"athlete"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '22 years'
+   where user_id in (v_athlete, v_sponsor);
+  update public.user_private set date_of_birth = current_date - interval '15 years'
+   where user_id = v_minor;
+  update public.user_profiles set is_verified = true where id = v_sponsor;
+
+  perform tests.ok(
+    has_function_privilege(
+      'authenticated', 'public.sponsorship_seekers(text, text, text, integer, integer)', 'EXECUTE'),
+    'authenticated can execute sponsorship_seekers');
+  perform tests.ok(
+    not has_function_privilege(
+      'anon', 'public.sponsorship_seekers(text, text, text, integer, integer)', 'EXECUTE'),
+    'anon cannot execute sponsorship_seekers');
+
+  perform tests.as_user(v_athlete);
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"No needs listed","pitch":"A season of results to show."}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_needs', 'a request needs at least one need');
+
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"Other with no words","needs":["other"],"pitch":"A season of results to show."}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_needs_other', 'other needs a short description');
+
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"Pitch too short","needs":["travel"],"pitch":"Short"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_pitch', 'a pitch needs at least ten characters');
+
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Physio and travel","needs":["travel","other"],"needs_other":"Physio sessions",
+      "pitch":"Ranked in the national juniors."}');
+  perform tests.ok(
+    (select needs_other = 'Physio sessions' and 'other' = any (needs) and 'travel' = any (needs)
+     from public.sponsorship_requests where id = v_req),
+    'a valid request saves needs_other');
+
+  v_plain := public.save_sponsorship_request(null,
+    '{"title":"Entry fee only","needs":["entry_fee"],"needs_other":"Should be dropped",
+      "pitch":"A full season of match results."}');
+  perform tests.ok(
+    (select needs_other is null from public.sponsorship_requests where id = v_plain),
+    'needs_other is null when other is not chosen');
+
+  perform tests.as_user(v_sponsor);
+  perform tests.ok(
+    (select needs_other = 'Physio sessions'
+     from public.sponsorship_seekers() where request_id = v_req),
+    'a sponsor sees needs_other on an adult request');
+
+  /* Same consent path as the sponsorship block: the minor asks, the guardian
+     ticks discovery and sponsorship, then the profile is listed. */
+  perform tests.as_user(v_minor);
+  v_token := tests.request_consent('Parent Name', 'needs-parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true);
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+  v_minor_req := public.save_sponsorship_request(null,
+    '{"title":"Junior physio","needs":["other"],"needs_other":"Physio for the season",
+      "pitch":"I need help through the junior season."}');
+  perform tests.ok(
+    (select needs_other = 'Physio for the season'
+     from public.sponsorship_requests where id = v_minor_req),
+    'the minor''s request stores needs_other');
+
+  perform tests.as_user(v_viewer);
+  perform tests.ok(
+    (select r ->> 'needs_other' is null
+     from jsonb_array_elements(public.sponsorship_card(v_minor) -> 'requests') r
+     where r ->> 'id' = v_minor_req::text),
+    'a plain viewer does not see a minor''s needs_other');
+
+  delete from public.sponsorship_requests where athlete_user_id in (v_athlete, v_minor);
+  delete from auth.users where id in (v_athlete, v_sponsor, v_minor);
 end $$;
 
 -- ------------------------------------------------------------

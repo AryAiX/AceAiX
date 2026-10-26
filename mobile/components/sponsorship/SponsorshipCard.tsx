@@ -111,7 +111,7 @@ function SeekingCard({
                 amount,
               )}
             </Text>
-            <TagRow group="need" tags={request.needs} />
+            <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
             {request.my_offer_status ? (
               <Badge
                 label={

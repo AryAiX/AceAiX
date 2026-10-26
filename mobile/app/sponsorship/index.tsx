@@ -196,7 +196,7 @@ export default function SponsorshipPortalScreen() {
                       {request.pitch ? (
                         <ExpandableText text={request.pitch} lines={3} variant="body" tone="secondary" />
                       ) : null}
-                      <TagRow group="need" tags={request.needs} />
+                      <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
                       {request.pending_offers > 0 ? (
                         <Text variant="captionStrong" tone="primary">
                           {t('sponsorship.pendingOffers', { n: request.pending_offers })}
