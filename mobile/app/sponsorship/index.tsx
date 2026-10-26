@@ -33,7 +33,7 @@ import {
 import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
-import { amountLabel, rangeLabel, statusTone, type RequestStatus } from '@/lib/sponsorship';
+import { amountLabel, formatLocation, rangeLabel, statusTone, type RequestStatus } from '@/lib/sponsorship';
 
 /**
  * The sponsorship portal.
@@ -189,7 +189,7 @@ export default function SponsorshipPortalScreen() {
                         {metaLine(
                           request.event_name,
                           request.event_date ? fullDate(request.event_date) : null,
-                          request.location,
+                          formatLocation(request.location, t),
                           amount,
                         )}
                       </Text>
