@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, ErrorState, Header, Input, Screen, SkeletonList, Text, useToast } from '@/components/ui';
+import { Button, DateField, ErrorState, Header, Input, Screen, SkeletonList, Text, useToast } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
 import { TagPicker } from '@/components/sponsorship/Tags';
 import { useAsync } from '@/hooks/useAsync';
@@ -164,28 +164,30 @@ export default function SponsorshipRequestScreen() {
           error={errors.title}
           testID="request-title"
         />
-        <Input label={t('sponsorship.fEvent')} value={eventName} onChangeText={setEventName} maxLength={120} />
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Input
-            label={t('sponsorship.fDate')}
-            value={eventDate}
-            onChangeText={(v) => {
-              setEventDate(v);
-              setErrors((e) => ({ ...e, date: undefined }));
-            }}
-            placeholder="2027-03-10"
-            autoCapitalize="none"
-            error={errors.date}
-            containerStyle={{ flex: 1 }}
-          />
-          <Input
-            label={t('sponsorship.fLocation')}
-            value={location}
-            onChangeText={setLocation}
-            maxLength={120}
-            containerStyle={{ flex: 1 }}
-          />
-        </View>
+        <Input
+          label={t('sponsorship.fEvent')}
+          value={eventName}
+          onChangeText={setEventName}
+          placeholder={t('sponsorship.fEventPlaceholder')}
+          maxLength={120}
+        />
+        <DateField
+          label={t('sponsorship.fDate')}
+          value={eventDate || null}
+          onChange={(next) => {
+            setEventDate(next ?? '');
+            setErrors((e) => ({ ...e, date: undefined }));
+          }}
+          optional
+          error={errors.date}
+          testID="request-date"
+        />
+        <Input
+          label={t('sponsorship.fLocation')}
+          value={location}
+          onChangeText={setLocation}
+          maxLength={120}
+        />
         <Input
           label={t('sponsorship.fAmount', { currency: CURRENCY })}
           value={amount}
@@ -193,6 +195,7 @@ export default function SponsorshipRequestScreen() {
             setAmount(v);
             setErrors((e) => ({ ...e, amount: undefined }));
           }}
+          placeholder={t('sponsorship.fAmountPlaceholder')}
           keyboardType="number-pad"
           hint={t('sponsorship.fAmountHint')}
           error={errors.amount}

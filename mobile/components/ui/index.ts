@@ -15,6 +15,7 @@ export { RemoteImage } from './RemoteImage';
 export { Badge, Chip } from './Badge';
 export type { BadgeTone } from './Badge';
 export { Input } from './Input';
+export { DateField } from './DateField';
 export { ScoreRing, ScoreBar } from './ScoreRing';
 export { EmptyState, Skeleton, SkeletonList, Loader, ErrorState } from './Feedback';
 export { Sheet, ConfirmSheet } from './Sheet';
