@@ -111,6 +111,9 @@ function SeekingCard({
                 amount,
               )}
             </Text>
+            {request.pitch ? (
+              <ExpandableText text={request.pitch} lines={3} variant="body" tone="secondary" />
+            ) : null}
             <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
             {request.my_offer_status ? (
               <Badge
