@@ -87,8 +87,8 @@ begin
     return jsonb_build_object('ok', false, 'error', 'Password should be at least 8 characters');
   end if;
 
-  insert into auth.users (email, encrypted_password, raw_user_meta_data)
-  values (lower(trim(p_email)), crypt(p_password, gen_salt('bf')), coalesce(p_metadata, '{}'::jsonb))
+  insert into auth.users (email, encrypted_password, raw_user_meta_data, email_confirmed_at)
+  values (lower(trim(p_email)), crypt(p_password, gen_salt('bf')), coalesce(p_metadata, '{}'::jsonb), now())
   returning id into v_id;
 
   return jsonb_build_object(
