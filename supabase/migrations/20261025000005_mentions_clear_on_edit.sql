@@ -1,7 +1,8 @@
 -- Saved mention offsets go stale when the text they point into changes.
 -- authenticated can update that text and cannot update mentions
 -- (20260904000005), so the old offsets would land on the wrong
--- characters. Clear them. Audience, media, and tags are not in the
+-- characters. Clear them, unless the same update also writes mentions
+-- (a trusted writer re-tagging the new text). Audience, media, and tags are not in the
 -- column list, so those updates keep the mentions.
 --
 -- Which text. createPost writes the caption into both posts.caption
@@ -23,7 +24,8 @@ set search_path = public, pg_temp
 as $$
 begin
   if coalesce(new.caption, new.text, '')
-       is distinct from coalesce(old.caption, old.text, '') then
+       is distinct from coalesce(old.caption, old.text, '')
+     and new.mentions is not distinct from old.mentions then
     new.mentions := '[]'::jsonb;
   end if;
   return new;
@@ -37,7 +39,8 @@ security invoker
 set search_path = public, pg_temp
 as $$
 begin
-  if new.body is distinct from old.body then
+  if new.body is distinct from old.body
+     and new.mentions is not distinct from old.mentions then
     new.mentions := '[]'::jsonb;
   end if;
   return new;

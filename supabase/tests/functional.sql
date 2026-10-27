@@ -6881,6 +6881,23 @@ begin
     'editing the post does not create a new mention notification');
 end $$;
 
+-- (a2) A trusted writer that sets new text and new mentions together keeps them.
+do $$
+declare
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_tag      jsonb := jsonb_build_array(jsonb_build_object(
+                        'user_id', '7f400000-0000-4000-8000-000000000002', 'start', 0, 'length', 3));
+  v_mentions jsonb;
+begin
+  update public.posts
+     set caption = 'Hi! retagged', text = 'Hi! retagged', mentions = v_tag
+   where id = v_post;
+  select mentions into v_mentions from public.posts where id = v_post;
+  perform tests.ok(v_mentions = v_tag,
+    'a trusted update that writes text and mentions together keeps those mentions');
+  update public.posts set mentions = '[]'::jsonb where id = v_post;
+end $$;
+
 -- (b) A second post. Changing its audience leaves the mention.
 do $$
 declare

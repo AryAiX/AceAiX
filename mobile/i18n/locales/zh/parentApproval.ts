@@ -29,6 +29,9 @@ export const parentApproval = {
   approvedBody: '资料现在对经过核实的教练和俱乐部可见，权限以您选择的为准。',
   declinedTitle: '谢谢 — 没有分享任何内容',
   declinedBody: '资料保持隐藏，没有人可以发消息。如果您改变主意，以后可以再提出请求。',
+  declinedKeptTitle: '谢谢——没有任何变化',
+  declinedKeptBody:
+    '你之前批准的选项仍然有效。如需更改或撤回，请发送邮件至 safety@aceaix.com。',
   invalidTitle: '这个链接无效',
   invalidBody: '请让您的孩子在 AceAiX 应用里重新发送一次请求。',
   expiredTitle: '这个链接已过期',

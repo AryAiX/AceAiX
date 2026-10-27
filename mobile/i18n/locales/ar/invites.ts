@@ -78,6 +78,6 @@ export const invites = {
   landingCopied: 'تم نسخ الرمز',
   landingCopyFailed: 'تعذّر نسخ الرمز. حدّده وانسخه بنفسك.',
   landingDownload: 'نزّل AceAiX، أنشئ حسابك، وأدخل هذا الرمز في التطبيق خلال أول 14 يومًا.',
-  landingAppStore: 'آب ستور',
-  landingGooglePlay: 'جوجل بلاي',
+  landingAppStore: 'App Store',
+  landingGooglePlay: 'Google Play',
 };

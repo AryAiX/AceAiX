@@ -41,6 +41,9 @@ export const parentApproval = {
   declinedTitle: 'Thank you — nothing has been shared',
   declinedBody:
     'Their profile stays hidden and nobody can message them. They can ask again later if you change your mind.',
+  declinedKeptTitle: 'Thank you — nothing has changed',
+  declinedKeptBody:
+    'The choices you approved before still apply. To change or withdraw them, e-mail safety@aceaix.com.',
   invalidTitle: 'That link is not valid',
   invalidBody: 'Ask your child to send a new request from the AceAiX app.',
   expiredTitle: 'This link has expired',

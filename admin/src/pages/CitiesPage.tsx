@@ -38,7 +38,7 @@ export default function CitiesPage() {
 
   const remove = (row: CustomCity) => setDialog({
     title: `Remove ${row.name}?`,
-    body: <>It will no longer be suggested. <b>{row.full_name ?? 'The person who added it'}</b> can add it again.</>,
+    body: <>It will no longer be suggested. Profiles, clubs and games that already use this name keep it; edit or report those separately. <b>{row.full_name ?? 'The person who added it'}</b> can add it again.</>,
     confirm: 'Remove',
     tone: 'danger',
     reason: 'none',

@@ -37,6 +37,9 @@ export const parentApproval = {
   declinedTitle: 'Gracias — no se ha compartido nada',
   declinedBody:
     'Su perfil sigue oculto y nadie puede escribirle. Puede volver a pedirlo más adelante si cambias de opinión.',
+  declinedKeptTitle: 'Gracias — no ha cambiado nada',
+  declinedKeptBody:
+    'Las opciones que aprobaste antes siguen vigentes. Para cambiarlas o retirarlas, escribe a safety@aceaix.com.',
   invalidTitle: 'Ese enlace no es válido',
   invalidBody: 'Pide a tu hijo o hija que envíe una nueva solicitud desde la app de AceAiX.',
   expiredTitle: 'Este enlace ha caducado',

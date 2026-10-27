@@ -38,10 +38,14 @@ describe('invite codes', () => {
   it('finds the code in every shape of invite link', () => {
     expect(inviteCodeFromPath(inviteLink('ABCD2345'))).toBe('ABCD2345');
     expect(inviteCodeFromPath('aceaix://i/ABCD2345')).toBe('ABCD2345');
+    expect(inviteCodeFromPath('aceaix:///i/ABCD2345')).toBe('ABCD2345');
     expect(inviteCodeFromPath('/app/i/abcd2345?x=1')).toBe('ABCD2345');
     expect(inviteCodeFromPath('/i/ABCD2345')).toBe('ABCD2345');
     expect(inviteCodeFromPath('/u/ABCD2345')).toBeNull();
     expect(inviteCodeFromPath('/i/NOTACODE1')).toBeNull();
+    expect(inviteCodeFromPath('aceaix://auth/callback?next=/i/ABCD2345')).toBeNull();
+    expect(inviteCodeFromPath('https://aceaix.com/feed#/i/ABCD2345')).toBeNull();
+    expect(inviteCodeFromPath('/profile/i/ABCD2345')).toBeNull();
   });
 
   it('fills the ring toward the next token', () => {

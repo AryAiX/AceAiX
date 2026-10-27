@@ -37,6 +37,9 @@ export const parentApproval = {
   declinedTitle: 'Merci — rien n’a été partagé',
   declinedBody:
     'Le profil reste masqué et personne ne peut écrire. Une nouvelle demande pourra être faite plus tard si vous changez d’avis.',
+  declinedKeptTitle: 'Merci — rien n’a changé',
+  declinedKeptBody:
+    'Les choix que vous avez approuvés auparavant restent valables. Pour les modifier ou les retirer, écrivez à safety@aceaix.com.',
   invalidTitle: 'Ce lien n’est pas valable',
   invalidBody: 'Demandez à votre enfant d’envoyer une nouvelle demande depuis l’app AceAiX.',
   expiredTitle: 'Ce lien a expiré',

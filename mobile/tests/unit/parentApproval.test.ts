@@ -121,7 +121,11 @@ describe('screenFromConsentGet', () => {
 describe('screenFromConsentPost', () => {
   it('shows approved and declined from the success states', () => {
     expect(screenFromConsentPost(200, { ok: true, state: 'granted' })).toEqual({ screen: 'approved' });
-    expect(screenFromConsentPost(200, { ok: true, state: 'revoked' })).toEqual({ screen: 'declined' });
+    expect(screenFromConsentPost(200, { ok: true, state: 'revoked' })).toEqual({ screen: 'declined', keptPrevious: false });
+    expect(screenFromConsentPost(200, { ok: true, state: 'revoked', kept_previous: true })).toEqual({
+      screen: 'declined',
+      keptPrevious: true,
+    });
   });
 
   it('shows expired or invalid when the token can no longer be used', () => {

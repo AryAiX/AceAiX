@@ -28,8 +28,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *        → decline sets the row to revoked; approve calls
  *          confirm_guardian_consent with the same booleans as the form.
  *          Only JSON true counts as a ticked box.
- *        → { ok, state } with the form's status codes.
+ *        → { ok, state, kept_previous } with the form's status codes.
  *          state: granted | revoked | expired | invalid
+ *          kept_previous: a declined re-review left this guardian's earlier
+ *          approval in place
  *          A decline that changes no row reads the row again. granted
  *          (the approved link) comes back as { ok: false, state: "granted" }.
  *          revoked (this decline already landed) comes back as
@@ -418,17 +420,7 @@ async function describeConsent(token: string | null): Promise<ConsentView> {
   /* This guardian's own live approval, if any — submitting replaces it
      (confirm_guardian_consent, 1006/02). Another guardian's is not theirs
      to see or change. */
-  const { data: current } = await admin
-    .from("guardian_consents")
-    .select("allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings, allow_mindset")
-    .eq("minor_user_id", consent.minor_user_id)
-    .eq("guardian_email", consent.guardian_email)
-    .eq("status", "granted")
-    .order("granted_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const prior = (current as CurrentScopes | null) ?? null;
+  const prior = await liveGrantFor(consent.minor_user_id, consent.guardian_email);
   return {
     status: 200,
     state: "pending",
@@ -508,17 +500,35 @@ interface DecisionInput {
   allow_mindset: boolean;
 }
 
+/** This guardian's live approval for the child, matched on e-mail the way
+    confirm_guardian_consent matches it (case-insensitive). */
+async function liveGrantFor(minorId: string, guardianEmail: string): Promise<CurrentScopes | null> {
+  const { data } = await admin
+    .from("guardian_consents")
+    .select("guardian_email, allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings, allow_mindset")
+    .eq("minor_user_id", minorId)
+    .eq("status", "granted")
+    .order("granted_at", { ascending: false });
+  const email = guardianEmail.trim().toLowerCase();
+  const row = (data ?? []).find((r) => String(r.guardian_email ?? "").trim().toLowerCase() === email);
+  if (!row) return null;
+  const { guardian_email: _email, ...scopes } = row;
+  return scopes as CurrentScopes;
+}
+
 interface DecisionOutcome {
   ok: boolean;
   state: "granted" | "revoked" | "expired" | "invalid";
   status: 200 | 400 | 500;
+  /** Declined a re-review: the guardian's earlier approval still applies. */
+  keptPrevious?: boolean;
 }
 
 async function recordDecision(input: DecisionInput): Promise<DecisionOutcome> {
   if (input.decision === "decline") {
     const { data: pending } = await admin
       .from("guardian_consents")
-      .select("id, token_expires_at")
+      .select("id, token_expires_at, minor_user_id, guardian_email")
       .eq("token", input.token)
       .eq("status", "pending")
       .maybeSingle();
@@ -535,15 +545,17 @@ async function recordDecision(input: DecisionInput): Promise<DecisionOutcome> {
       .select("id");
     if (declineError) return { ok: false, state: "invalid", status: 500 };
     if (declined && declined.length > 0) {
-      return { ok: true, state: "revoked", status: 200 };
+      const kept = await liveGrantFor(pending.minor_user_id, pending.guardian_email);
+      return { ok: true, state: "revoked", status: 200, keptPrevious: kept !== null };
     }
 
     /* Another decision landed between the read and this update. */
-    const { data: current } = await admin
+    const { data: current, error: rereadError } = await admin
       .from("guardian_consents")
       .select("status, token_expires_at")
       .eq("token", input.token)
       .maybeSingle();
+    if (rereadError) return { ok: false, state: "invalid", status: 500 };
     if (current?.status === "granted") {
       return { ok: false, state: "granted", status: 200 };
     }
@@ -592,6 +604,14 @@ function decisionHtml(outcome: DecisionOutcome): Response {
             <p>The link may have expired or already been used. Contact
             <a href="mailto:safety@aceaix.com">safety@aceaix.com</a> and we will help.</p>`),
       outcome.status,
+    );
+  }
+  if (outcome.state === "revoked" && outcome.keptPrevious) {
+    return html(
+      page(`<div class="ok">✓</div>
+          <h1>Thank you — nothing has changed</h1>
+          <p>The choices you approved before still apply. To change or withdraw
+          them, e-mail <a href="mailto:safety@aceaix.com">safety@aceaix.com</a>.</p>`),
     );
   }
   if (outcome.state === "revoked") {
@@ -699,7 +719,10 @@ Deno.serve(async (req: Request) => {
       allow_bookings: optedIn(parsed.allow_bookings),
       allow_mindset: optedIn(parsed.allow_mindset),
     });
-    return json({ ok: outcome.ok, state: outcome.state }, outcome.status);
+    return json(
+      { ok: outcome.ok, state: outcome.state, kept_previous: outcome.keptPrevious === true },
+      outcome.status,
+    );
   }
 
   const payload = parsed as { consent_id?: string; resend?: boolean };

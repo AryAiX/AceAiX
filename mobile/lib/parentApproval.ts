@@ -27,7 +27,7 @@ export type ConsentScreen =
   | { screen: 'answered' }
   | { screen: 'pending'; childName: string | null; options: ConsentOptions; reviewing: boolean }
   | { screen: 'approved' }
-  | { screen: 'declined' }
+  | { screen: 'declined'; keptPrevious: boolean }
   | { screen: 'error' };
 
 const UNTICKED: ConsentOptions = {
@@ -108,7 +108,9 @@ export function screenFromConsentPost(status: number, body: unknown): ConsentScr
   const data = record(body);
   const state = data?.state;
   if (status === 200 && data?.ok === true && state === 'granted') return { screen: 'approved' };
-  if (status === 200 && data?.ok === true && state === 'revoked') return { screen: 'declined' };
+  if (status === 200 && data?.ok === true && state === 'revoked') {
+    return { screen: 'declined', keptPrevious: data?.kept_previous === true };
+  }
   if (state === 'granted') return { screen: 'answered' };
   if (status === 410 || state === 'expired') return { screen: 'expired' };
   if (status === 400 || status === 404 || state === 'invalid') return { screen: 'invalid' };
