@@ -7178,4 +7178,354 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- review nits
+-- An unapproved city is not handed to someone else. A client insert
+-- cannot choose transcode_status or ai_tags. Every 40th public view,
+-- up to 1000, recomputes the Talent Score. Fresh accounts only. Each
+-- write is its own statement, and the read that checks it is the next
+-- one. talent_scores.computed_at is now() at the start of the
+-- recompute's transaction, so the snapshot and the write are separate
+-- statements with a sleep between them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── review nits ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+drop table if exists review_nits_probe;
+create temporary table review_nits_probe (
+  k text primary key,
+  txt text,
+  at timestamptz
+);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f600000-0000-4000-8000-000000000001', 'nits.a@test.local',
+   '{"full_name":"Nit A","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000002', 'nits.b@test.local',
+   '{"full_name":"Nit B","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000003', 'nits.admin@test.local',
+   '{"full_name":"Nit Admin","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000004', 'nits.viewer@test.local',
+   '{"full_name":"Nit Viewer","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f600000-0000-4000-8000-000000000001',
+   '7f600000-0000-4000-8000-000000000002',
+   '7f600000-0000-4000-8000-000000000003',
+   '7f600000-0000-4000-8000-000000000004'
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f600000-0000-4000-8000-000000000003';
+
+-- (a) User A adds an unapproved city.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'Nitford');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('a_return', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'a_return';
+  select count(*), max(name), bool_or(is_curated)
+    into v_count, v_stored, v_curated
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'Nitford' and v_count = 1 and v_stored = 'Nitford' and v_curated = false,
+    'user A add_custom_city stores an unapproved city under their spelling');
+end $$;
+
+-- User B asks for the same city with different capitals.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'NITFORD');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('b_return', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_owner   uuid;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'b_return';
+  select count(*), max(name), bool_or(is_curated), max(created_by)
+    into v_count, v_stored, v_curated, v_owner
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'NITFORD'
+    and v_count = 1
+    and v_stored = 'Nitford'
+    and v_curated = false
+    and v_owner = '7f600000-0000-4000-8000-000000000001',
+    'user B adding the same city with different capitals gets their own spelling and no second row');
+end $$;
+
+-- An admin approves A's row.
+do $$
+declare v_city uuid;
+begin
+  select id into v_city
+    from public.cities
+   where created_by = '7f600000-0000-4000-8000-000000000001'
+     and lower(btrim(country)) = 'reviewland'
+     and lower(btrim(name)) = 'nitford'
+     and not is_curated;
+  perform tests.as_user('7f600000-0000-4000-8000-000000000003');
+  set local role authenticated;
+  perform public.admin_review_city(v_city, true);
+  reset role;
+end $$;
+
+do $$
+declare v_curated boolean;
+begin
+  select is_curated into v_curated
+    from public.cities
+   where created_by = '7f600000-0000-4000-8000-000000000001'
+     and lower(btrim(country)) = 'reviewland'
+     and lower(btrim(name)) = 'nitford';
+  perform tests.ok(v_curated = true, 'an admin approval marks the city curated');
+end $$;
+
+-- After approval, B's own capitals come back as the stored spelling.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'nitford');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('b_approved', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'b_approved';
+  select count(*), max(name), bool_or(is_curated)
+    into v_count, v_stored, v_curated
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'Nitford' and v_stored = 'Nitford' and v_count = 1 and v_curated = true,
+    'after an admin approves the city, user B gets the stored spelling');
+end $$;
+
+-- (b) An authenticated insert cannot choose transcode_status or ai_tags.
+do $$
+declare
+  v_owner   uuid := '7f600000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_owner;
+  perform tests.as_user(v_owner);
+  set local role authenticated;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public,
+    transcode_status, ai_tags
+  ) values (
+    '7f600000-0000-4000-8000-000000000010',
+    v_athlete,
+    'Nit clip',
+    'video',
+    v_owner::text || '/highlights/nits.mp4',
+    true,
+    'ready',
+    '["x"]'::jsonb
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_status text;
+  v_tags   jsonb;
+begin
+  select transcode_status, ai_tags into v_status, v_tags
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    v_status = 'pending' and v_tags = '[]'::jsonb,
+    'an authenticated insert stores transcode_status pending and ai_tags []');
+end $$;
+
+do $$
+declare v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '7f600000-0000-4000-8000-000000000001';
+  set local role service_role;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public,
+    transcode_status, ai_tags
+  ) values (
+    '7f600000-0000-4000-8000-000000000011',
+    v_athlete,
+    'Nit server clip',
+    'image',
+    'server-nits.jpg',
+    false,
+    'ready',
+    '["x"]'::jsonb
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_status text;
+  v_tags   jsonb;
+begin
+  select transcode_status, ai_tags into v_status, v_tags
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_status = 'ready' and v_tags = '["x"]'::jsonb,
+    'a service_role insert keeps transcode_status and ai_tags');
+end $$;
+
+-- (c) Park the public total at 39. The private server clip is not in it.
+do $$
+begin
+  set local role service_role;
+  update public.athlete_media
+     set views_count = 39
+   where id = '7f600000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare v_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+  perform tests.ok(v_views = 39, 'service_role can set athlete_media.views_count to 39');
+end $$;
+
+insert into review_nits_probe (k, at)
+select 'before_40', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+do $$
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  perform public.record_highlight_view('7f600000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views  integer;
+  v_total  integer;
+  v_before timestamptz;
+  v_after  timestamptz;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+
+  select coalesce(sum(m.views_count), 0)
+    into v_total
+  from public.athlete_media m
+  join public.athlete_profiles ap on ap.id = m.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001'
+    and m.is_public;
+
+  select at into v_before from review_nits_probe where k = 'before_40';
+  select ts.computed_at into v_after
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 40 and v_total = 40 and v_after > v_before,
+    'a highlight view that brings total public views to 40 recomputes the score');
+end $$;
+
+insert into review_nits_probe (k, at)
+select 'before_41', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+do $$
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000004');
+  set local role authenticated;
+  perform public.record_highlight_view('7f600000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views  integer;
+  v_total  integer;
+  v_before timestamptz;
+  v_after  timestamptz;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+
+  select coalesce(sum(m.views_count), 0)
+    into v_total
+  from public.athlete_media m
+  join public.athlete_profiles ap on ap.id = m.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001'
+    and m.is_public;
+
+  select at into v_before from review_nits_probe where k = 'before_41';
+  select ts.computed_at into v_after
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 41 and v_total = 41 and v_after = v_before,
+    'a highlight view that brings total public views to 41 does not recompute the score');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
