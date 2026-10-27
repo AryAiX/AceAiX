@@ -7271,7 +7271,7 @@ declare
   v_curated boolean;
 begin
   select txt into v_name from review_nits_probe where k = 'b_return';
-  select count(*), max(name), bool_or(is_curated), max(created_by)
+  select count(*), max(name), bool_or(is_curated), max(created_by::text)::uuid
     into v_count, v_stored, v_curated, v_owner
   from public.cities
   where lower(btrim(country)) = 'reviewland'
