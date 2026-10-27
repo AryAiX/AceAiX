@@ -59,13 +59,13 @@ are not about submission, is [`docs/15-known-gaps.md`](./15-known-gaps.md).
       What is actually retained is the guardian's name, email, the scopes approved,
       `consent_method = 'email_confirmation'` and `granted_at`. Either populate them
       in the `guardian-consent` edge function or correct the comment. Owner: backend.
-- [ ] **OPEN — deep-link association files are not served.** `mobile/app.json`
-      declares `associatedDomains: ["applinks:aceaix.com"]` and an `autoVerify`
-      Android intent filter for `https://aceaix.com/app`, but `web/public/` contains
-      only `aceaix-favicon.svg`, `aceaix-icon.png` and `aceaix-og.svg` — no
-      `.well-known/apple-app-site-association` and no `.well-known/assetlinks.json`.
-      Universal Links and Android App Links will not verify. Not a review blocker;
-      the links will simply open the browser. Owner: web.
+- [ ] **OPEN — deep-link association files are not on the live join site.**
+      `web/public/.well-known/` now has `apple-app-site-association` and
+      `assetlinks.json`, and `web/vercel.json` forwards `/app/i/*` to
+      `app.aceaix.com`. `www.aceaix.com` is a separate site and still does not
+      serve them, so Universal Links and Android App Links will not verify
+      until that site publishes both. Not a review blocker; the links open
+      the browser. Owner: web.
 
 ### Cleared since this list was written
 

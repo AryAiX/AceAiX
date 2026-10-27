@@ -56,6 +56,9 @@ export const errors = {
   inviteTooLate: 'Los códigos de invitación solo se pueden introducir durante los primeros 14 días después de registrarte.',
   inviteUnknownCode: 'Ese código de invitación no es válido. Revísalo e inténtalo de nuevo.',
   inviteOwnCode: 'No puedes usar tu propio código de invitación.',
+  inviteAfterSetup:
+    'Puedes añadir un código de invitación mientras configuras tu perfil, o durante el día siguiente.',
+  onboardingNotReady: 'Confirma tu correo y termina los datos obligatorios del perfil primero.',
   sponsorOnly: 'Solo una cuenta de patrocinador puede hacerlo.',
   sponsorNotVerified: 'Tu cuenta de patrocinador aún no está verificada.',
   athleteOnly: 'Solo un atleta puede hacerlo.',

@@ -16,7 +16,7 @@
 | Question | Decision |
 |---|---|
 | Who can invite? | Athletes and coaches who are not suspended. Clubs, scouts, sponsors, guardians and admins have no link. |
-| When does a friend count? | When their onboarding is complete. A friend under 18 also needs a **granted** guardian consent. |
+| When does a friend count? | When setup is finished on the server: the e-mail is confirmed, and an athlete has a sport saved. A friend under 18 also needs discovery consent. If that consent is withdrawn, they stop counting and the token is given back. |
 | What is a token? | In-app points. No cash value; cannot be bought, sold or transferred. The copy never calls them money or rewards. |
 | Minors | A minor can invite and earn tokens. Friends are only ever shown by first name. |
 | Who sees the circle? | Only its owner. Other profiles show a tier badge at 5, 10, 25, 50, 100 (none between blocked people). |
@@ -35,7 +35,7 @@ friend opens link ─▶ app installed?  yes → +native-intent → /i/<CODE>
      every 10 qualified → +1 token in token_ledger → inviter notified
 ```
 
-A new account can also type a code on `/invite` during its first **14 days**.
+A new account can also type a code on `/invite` during its first **14 days**, and only while setup is unfinished or within a day of finishing.
 
 ## 3. Backend
 
@@ -58,9 +58,10 @@ invite takes a token back with a negative ledger row. `export_my_data()` include
 
 ## 4. Deploy notes
 
-- The website must serve `aceaix.com/app/i/*`: the existing AASA / `assetlinks.json` already cover `/app`
-  (iOS `applinks:aceaix.com`, Android `pathPrefix: /app`). Without the app, that page should show the
-  code and link to the stores.
+- `web/public/.well-known/` holds `apple-app-site-association` and `assetlinks.json` for
+  `aceaix.com` (`/app/*`). `web/vercel.json` forwards `/app/i/*` to `app.aceaix.com/app/i/*`,
+  which is the landing screen. `www.aceaix.com` is still the separate join site, so these files
+  and the forward have to be published there before links open the app.
 - Migration `20261023000001_referrals.sql` runs after the Sport Fit migrations. No data backfill.
 - `supabase/seeds/admin-demo.sql` adds demo invites (Layla: 15, code `LAYLAPLY`; Marco: 6). LOCAL ONLY.
 

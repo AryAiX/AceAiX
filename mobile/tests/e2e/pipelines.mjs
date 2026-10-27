@@ -1066,6 +1066,10 @@ async function main() {
   });
 
   await step('the friend finishes onboarding; it counts and layla is told', async () => {
+    unwrap(
+      await friend.from('athlete_profiles').update({ sport: 'Football' }).eq('user_id', friendId),
+      'sport',
+    );
     unwrap(await friend.from('user_profiles').update({ onboarding_completed: true }).eq('id', friendId), 'onboarding');
     await eventually(async () =>
       (await notifications(clients.layla)).some((n) => n.type === 'referral_joined'),
