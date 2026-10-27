@@ -8,7 +8,9 @@
 -- discovery consent. Anonymous visitors to an invite link learn
 -- nothing about a minor inviter. A circle lists a minor friend only
 -- once discovery is allowed; the counts still include them. A minor's
--- invite qualifies only with that same scope.
+-- invite qualifies only with that same scope. Once qualified it stays
+-- counted if the guardian later withdraws discovery (20261025000002);
+-- the circle and the export hide the minor again.
 -- ============================================================
 
 create or replace function private.referral_can_invite(p_user uuid)

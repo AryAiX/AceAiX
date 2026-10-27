@@ -6039,6 +6039,13 @@ begin
     and (v_circle ->> 'pending')::int = 1,
     'a pending minor invitee without discovery consent is omitted from the circle and still counted');
 
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  perform tests.ok(
+    jsonb_array_length(public.export_my_data() -> 'invites' -> 'invited') = 0,
+    'download my data leaves out a minor invitee without discovery consent');
+  reset role;
+
   insert into public.referrals (referrer_id, referred_id, code)
   values (v_adult, v_gated, 'PRIVGAT1');
   update public.user_profiles set onboarding_completed = true where id = v_gated;

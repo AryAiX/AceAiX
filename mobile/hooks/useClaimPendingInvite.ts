@@ -47,19 +47,23 @@ export function useClaimPendingInvite() {
       const pending = await takePendingInvite();
       if (!pending) return;
       let completedAt: string | null = null;
+      let readFailed = false;
       try {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('onboarding_completed_at')
           .eq('id', userId)
           .maybeSingle();
-        if (!error && typeof data?.onboarding_completed_at === 'string') {
+        if (error) readFailed = true;
+        else if (typeof data?.onboarding_completed_at === 'string') {
           completedAt = data.onboarding_completed_at;
         }
       } catch {
-        completedAt = null;
+        readFailed = true;
       }
-      if (!shouldClaimStoredInvite(completedAt, pending.at)) {
+      /* Without the completion date there is no telling whether the link was
+         opened before onboarding finished, so the stored code is dropped. */
+      if (readFailed || !shouldClaimStoredInvite(completedAt, pending.at)) {
         await clearPendingInvite();
         return;
       }
