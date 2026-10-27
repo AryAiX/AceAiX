@@ -7209,9 +7209,9 @@ begin
   insert into public.guardian_consents (
     minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
   )
-  select ('7f500000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
-         'Parent', 'ready.parent.' || n || '@test.local', 'granted', now(), true
-  from generate_series(11, 20) n;
+  select ('7f500000-0000-4000-8000-' || lpad(g.k::text, 12, '0'))::uuid,
+         'Parent', 'ready.parent.' || g.k || '@test.local', 'granted', now(), true
+  from generate_series(11, 20) as g(k);
 
   select coalesce(sum(amount), 0) into v_tokens
     from public.token_ledger where user_id = v_inviter;
