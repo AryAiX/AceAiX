@@ -39,6 +39,7 @@ create table if not exists auth.users (
   phone              text,
   encrypted_password text,
   raw_user_meta_data jsonb not null default '{}'::jsonb,
+  email_confirmed_at timestamptz,
   created_at         timestamptz not null default now()
 );
 

@@ -83,10 +83,7 @@ export default function OnboardingPage() {
         if (athleteError) throw athleteError;
       }
 
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .update({ onboarding_completed: true })
-        .eq('id', profile.id);
+      const { error: profileError } = await supabase.rpc('complete_onboarding');
       if (profileError) throw profileError;
 
       await refreshProfile();

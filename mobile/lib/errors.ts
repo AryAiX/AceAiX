@@ -45,6 +45,9 @@ const EN: Record<string, string> = {
   'errors.inviteTooLate': 'Invite codes can be entered only in the first 14 days after signing up.',
   'errors.inviteUnknownCode': 'That invite code is not valid. Check it and try again.',
   'errors.inviteOwnCode': 'You cannot use your own invite code.',
+  'errors.inviteAfterSetup':
+    'Invite codes can be added while you set up your profile, or within a day after you finish.',
+  'errors.onboardingNotReady': 'Confirm your email and finish the required profile details first.',
   'errors.invalidCredentials': 'That email or password is not right.',
   'errors.emailNotConfirmed': 'Check your inbox and confirm your email address first.',
   'errors.emailInUse': 'An account already uses that email. Try signing in.',
@@ -162,6 +165,8 @@ const HINTS: Record<string, string> = {
   referral_too_late: 'errors.inviteTooLate',
   referral_unknown_code: 'errors.inviteUnknownCode',
   referral_own_code: 'errors.inviteOwnCode',
+  referral_after_setup: 'errors.inviteAfterSetup',
+  onboarding_not_ready: 'errors.onboardingNotReady',
   meetup_map_url_invalid: 'errors.meetupMapUrlInvalid',
   club_map_url_invalid: 'errors.clubMapUrlInvalid',
   meetup_place_invalid: 'errors.meetupPlaceInvalid',

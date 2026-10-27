@@ -51,7 +51,7 @@ export const invites = {
 
   // ── 手动输入邀请码 ─────────────────────────────────────────────────────────
   enterCodeTitle: '有人邀请你吗？',
-  enterCodeBody: '输入朋友的邀请码。注册后的前 14 天内都可以输入。',
+  enterCodeBody: '请在注册后的前 14 天内输入朋友的邀请码。个人资料设置完成后，你还有一天时间可以添加。',
   enterCodePlaceholder: '邀请码',
   enterCodeAction: '添加邀请码',
   enterCodeInvalid: '邀请码由 8 位字母和数字组成。',

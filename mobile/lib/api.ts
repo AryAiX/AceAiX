@@ -131,10 +131,7 @@ export async function setDateOfBirth(isoDate: string): Promise<void> {
 export async function completeOnboarding(): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new AppError('Not signed in');
-  const { error } = await supabase
-    .from('user_profiles')
-    .update({ onboarding_completed: true })
-    .eq('id', auth.user.id);
+  const { error } = await supabase.rpc('complete_onboarding');
   if (error) throw new AppError(error);
 }
 

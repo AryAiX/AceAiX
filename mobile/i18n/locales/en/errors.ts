@@ -56,6 +56,9 @@ export const errors = {
   inviteTooLate: 'Invite codes can be entered only in the first 14 days after signing up.',
   inviteUnknownCode: 'That invite code is not valid. Check it and try again.',
   inviteOwnCode: 'You cannot use your own invite code.',
+  inviteAfterSetup:
+    'Invite codes can be added while you set up your profile, or within a day after you finish.',
+  onboardingNotReady: 'Confirm your email and finish the required profile details first.',
   sponsorOnly: 'Only a sponsor account can do that.',
   sponsorNotVerified: 'Your sponsor account has not been verified yet.',
   athleteOnly: 'Only an athlete can do that.',

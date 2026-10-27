@@ -51,7 +51,8 @@ export const invites = {
 
   // ── Saisir un code à la main ───────────────────────────────────────────────
   enterCodeTitle: 'Tu as reçu une invitation ?',
-  enterCodeBody: 'Entre le code d’invitation de ton ami. Tu peux le faire pendant les 14 premiers jours après ton inscription.',
+  enterCodeBody:
+    'Entre le code d’invitation de ton ami pendant les 14 premiers jours. Une fois le profil terminé, tu as un jour pour l’ajouter.',
   enterCodePlaceholder: 'Code d’invitation',
   enterCodeAction: 'Ajouter le code',
   enterCodeInvalid: 'Un code d’invitation contient 8 lettres et chiffres.',

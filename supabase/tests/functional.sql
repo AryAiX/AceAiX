@@ -5371,6 +5371,8 @@ update public.user_private set date_of_birth = current_date - interval '20 years
  where user_id::text like '7e000000-%' and user_id <> '7e000000-0000-4000-8000-000000000012';
 update public.user_private set date_of_birth = current_date - interval '14 years'
  where user_id = '7e000000-0000-4000-8000-000000000012';
+update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now())
+ where id::text like '7e000000-%';
 
 -- Invites ship switched off (20261024000001); off closes every path.
 do $$
@@ -5966,6 +5968,11 @@ select tests.ok(
   'the new adult account is not a minor');
 update public.user_profiles set avatar_url = 'https://cdn.test/lina.png'
  where id = '7f000000-0000-4000-8000-000000000001';
+update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now())
+ where id::text like '7f000000-%';
+insert into public.athlete_profiles (user_id, sport)
+select id, 'Football' from public.user_profiles where id::text like '7f000000-%'
+on conflict (user_id) do update set sport = excluded.sport;
 
 do $$
 declare
@@ -6015,11 +6022,8 @@ begin
   select public.referral_inviter(v_code) into v_anon;
   reset role;
   perform tests.ok(
-    v_anon ? 'first_name' and v_anon -> 'first_name' = 'null'::jsonb
-    and v_anon ? 'avatar_url' and v_anon -> 'avatar_url' = 'null'::jsonb
-    and v_anon ? 'role' and v_anon -> 'role' = 'null'::jsonb
-    and not (v_anon ? 'is_minor'),
-    'a signed-out visitor learns nothing about a minor inviter');
+    v_anon is null,
+    'a signed-out visitor cannot tell a minor''s code from an unknown one');
 
   perform tests.as_user(v_adult);
   set local role authenticated;
@@ -6100,6 +6104,11 @@ on conflict do nothing;
 update public.user_private
    set date_of_birth = current_date - interval '20 years'
  where user_id::text like '7f100000-%';
+update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now())
+ where id::text like '7f100000-%';
+insert into public.athlete_profiles (user_id, sport)
+select id, 'Football' from public.user_profiles where id::text like '7f100000-%'
+on conflict (user_id) do update set sport = excluded.sport;
 
 do $$
 declare
@@ -7058,6 +7067,191 @@ begin
     v_count = 1,
     'editing the comment does not create a new mention notification');
 end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Invites can be switched on (20261026000001)
+-- A bare flag flip does not finish setup. A code cannot be added
+-- once setup has been finished for more than a day. Withdrawing
+-- discovery takes a minor's invite, and the token, back.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites ready to switch on ──'; end $$;
+
+insert into auth.users (id, email, raw_user_meta_data)
+select ('7f500000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+       'ready' || n || '@test.local',
+       jsonb_build_object('full_name', 'Ready ' || n, 'first_name', 'Ready' || n, 'role', 'athlete')
+from generate_series(1, 20) n
+where n between 1 and 4 or n between 11 and 20
+on conflict do nothing;
+
+update public.user_private set date_of_birth = current_date - interval '20 years'
+ where user_id in (
+   '7f500000-0000-4000-8000-000000000001',
+   '7f500000-0000-4000-8000-000000000002',
+   '7f500000-0000-4000-8000-000000000003',
+   '7f500000-0000-4000-8000-000000000004'
+ );
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id::text like '7f500000-%'
+   and user_id not in (
+     '7f500000-0000-4000-8000-000000000001',
+     '7f500000-0000-4000-8000-000000000002',
+     '7f500000-0000-4000-8000-000000000003',
+     '7f500000-0000-4000-8000-000000000004'
+   );
+
+update auth.users set email_confirmed_at = coalesce(email_confirmed_at, now())
+ where id::text like '7f500000-%'
+   and id <> '7f500000-0000-4000-8000-000000000002';
+
+insert into public.athlete_profiles (user_id, sport)
+select id, 'Football' from public.user_profiles where id::text like '7f500000-%'
+on conflict (user_id) do update set sport = excluded.sport;
+
+do $$
+declare
+  v_inviter uuid := '7f500000-0000-4000-8000-000000000001';
+  v_bare    uuid := '7f500000-0000-4000-8000-000000000002';
+  v_late    uuid := '7f500000-0000-4000-8000-000000000003';
+  v_rpc     uuid := '7f500000-0000-4000-8000-000000000004';
+  v_minor   uuid;
+  v_code    text;
+  v_hint    text;
+  v_stamp   timestamptz;
+  v_done    boolean;
+  v_tokens  int;
+  v_status  text;
+  v_joined  int;
+  v_enter   boolean;
+  n         int;
+begin
+  update public.platform_settings
+     set value = jsonb_set(value, '{invites}', 'true')
+   where key = 'features';
+
+  -- A client flag flip without a confirmed e-mail does not finish setup.
+  perform tests.as_user(v_bare);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_bare;
+  reset role;
+  select onboarding_completed, onboarding_completed_at
+    into v_done, v_stamp
+    from public.user_profiles where id = v_bare;
+  perform tests.ok(
+    v_done = false and v_stamp is null,
+    'a client cannot finish setup before the email is confirmed');
+
+  perform tests.as_user(v_bare);
+  v_hint := tests.hint_of('select public.complete_onboarding()');
+  perform tests.ok(
+    v_hint = 'onboarding_not_ready',
+    'complete_onboarding refuses an account whose email is not confirmed');
+
+  update auth.users set email_confirmed_at = now() where id = v_bare;
+  perform tests.as_user(v_bare);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_bare;
+  reset role;
+  select onboarding_completed_at into v_stamp from public.user_profiles where id = v_bare;
+  perform tests.ok(v_stamp is not null, 'a confirmed athlete with a sport gets a server stamp');
+
+  perform tests.as_user(v_rpc);
+  perform public.complete_onboarding();
+  select onboarding_completed_at into v_stamp from public.user_profiles where id = v_rpc;
+  perform tests.ok(v_stamp is not null, 'complete_onboarding stamps a ready account');
+
+  -- A code added a day after setup is refused. Within the day, it is kept.
+  perform tests.as_user(v_inviter);
+  v_code := public.referral_my_circle() ->> 'code';
+
+  alter table public.user_profiles disable trigger trg_user_profiles_onboarding_stamp;
+  update public.user_profiles
+     set onboarding_completed = true,
+         onboarding_completed_at = now() - interval '25 hours'
+   where id = v_late;
+  alter table public.user_profiles enable trigger trg_user_profiles_onboarding_stamp;
+
+  perform tests.as_user(v_late);
+  v_enter := (public.referral_my_circle() ->> 'can_enter_code')::boolean;
+  v_hint := tests.hint_of(format('select public.referral_claim(%L)', v_code));
+  perform tests.ok(
+    v_enter = false and v_hint = 'referral_after_setup'
+    and not exists (select 1 from public.referrals where referred_id = v_late),
+    'a code cannot be added once setup has been finished for more than a day');
+
+  alter table public.user_profiles disable trigger trg_user_profiles_onboarding_stamp;
+  update public.user_profiles
+     set onboarding_completed_at = now() - interval '1 hour'
+   where id = v_late;
+  alter table public.user_profiles enable trigger trg_user_profiles_onboarding_stamp;
+
+  perform tests.as_user(v_late);
+  perform public.referral_claim(v_code);
+  perform tests.ok(
+    (select status = 'qualified' from public.referrals where referred_id = v_late),
+    'a code added within a day of finishing setup counts');
+
+  -- Ten minors count, then one parent withdraws discovery.
+  for n in 11..20 loop
+    v_minor := ('7f500000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_minor);
+    perform public.referral_claim(v_code);
+  end loop;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  update public.user_profiles set onboarding_completed = true
+   where id::text like '7f500000-%' and id::text >= '7f500000-0000-4000-8000-000000000011';
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
+  )
+  select ('7f500000-0000-4000-8000-' || lpad(g.k::text, 12, '0'))::uuid,
+         'Parent', 'ready.parent.' || g.k || '@test.local', 'granted', now(), true
+  from generate_series(11, 20) as g(k);
+
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter;
+  perform tests.ok(
+    (select count(*) from public.referrals
+      where referrer_id = v_inviter and status = 'qualified') = 11
+    and v_tokens = 1,
+    'ten minors plus the adult who finished within a day earn one token');
+
+  update public.guardian_consents set allow_discovery = false
+   where minor_user_id in (
+     '7f500000-0000-4000-8000-000000000011',
+     '7f500000-0000-4000-8000-000000000012'
+   );
+  v_minor := '7f500000-0000-4000-8000-000000000011';
+  select status into v_status from public.referrals where referred_id = v_minor;
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_minor;
+  perform tests.ok(
+    v_status = 'pending' and v_tokens = 0 and v_joined = 1,
+    'withdrawing discovery un-counts the minor and gives the token back');
+
+  update public.guardian_consents set allow_discovery = true where minor_user_id = v_minor;
+  select status into v_status from public.referrals where referred_id = v_minor;
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_minor;
+  perform tests.ok(
+    v_status = 'qualified' and v_tokens = 1 and v_joined = 1,
+    'granting discovery again counts the minor, without a second joined notice');
+end $$;
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'false')
+ where key = 'features';
 
 reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
