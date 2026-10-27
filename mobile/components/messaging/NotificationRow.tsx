@@ -175,6 +175,41 @@ function nearbyCopy(
   };
 }
 
+const JOINED_SUFFIX = ' joined through your invite';
+const JOINED_ANONYMOUS = `A friend${JOINED_SUFFIX}`;
+const TOKEN_BODY = /^(\d+) friends have joined AceAiX through your invite\.?$/;
+
+/**
+ * The server stores these two sentences in English. The name is the first
+ * name it put in front of a fixed ending; the token body starts with the
+ * count. Anything we cannot recognise stays as the stored sentence.
+ */
+function referralCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type === 'referral_joined') {
+    if (n.title === JOINED_ANONYMOUS) {
+      return { title: t('messaging.referralJoinedNoName'), body: n.body };
+    }
+    if (n.title.endsWith(JOINED_SUFFIX)) {
+      const name = n.title.slice(0, -JOINED_SUFFIX.length).trim();
+      if (name) return { title: t('messaging.referralJoined', { name }), body: n.body };
+    }
+    return null;
+  }
+  if (n.type !== 'referral_token') return null;
+  const count = TOKEN_BODY.exec(n.body?.trim() ?? '');
+  const friends = count ? Number(count[1]) : null;
+  return {
+    title: t('messaging.referralTokenTitle'),
+    body:
+      friends == null
+        ? n.body
+        : t('messaging.referralTokenBody', { n: friends, count: friends }),
+  };
+}
+
 /** "{name} mentioned you in a post", or in a comment when `data.comment_id` is set. */
 function mentionCopy(
   n: AppNotification,
@@ -200,6 +235,8 @@ export function notificationCopy(
   if (nearby) return nearby;
   const mention = mentionCopy(n, t);
   if (mention) return mention;
+  const referral = referralCopy(n, t);
+  if (referral) return referral;
   return { title: notificationTitle(n, t), body: n.body };
 }
 

@@ -163,4 +163,13 @@ export const messaging = {
   meetupNearbyTitle: 'مباراة {{sport}} جديدة في {{city}}',
   mentionedInPost: '{{name}} أشار إليك في منشور',
   mentionedInComment: '{{name}} أشار إليك في تعليق',
+  referralJoined: 'انضم {{name}} عبر دعوتك',
+  referralJoinedNoName: 'انضم صديق عبر دعوتك',
+  referralTokenTitle: 'حصلت على توكن',
+  referralTokenBody_zero: 'لم ينضم أحد عبر دعوتك إلى AceAiX.',
+  referralTokenBody_one: 'انضم صديق واحد عبر دعوتك إلى AceAiX.',
+  referralTokenBody_two: 'انضم صديقان عبر دعوتك إلى AceAiX.',
+  referralTokenBody_few: 'انضم {{n}} أصدقاء عبر دعوتك إلى AceAiX.',
+  referralTokenBody_many: 'انضم {{n}} صديقًا عبر دعوتك إلى AceAiX.',
+  referralTokenBody_other: 'انضم {{n}} صديق عبر دعوتك إلى AceAiX.',
 };

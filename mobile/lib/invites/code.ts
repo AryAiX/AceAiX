@@ -29,7 +29,15 @@ export function inviteLink(code: string): string {
  * Accepts https://aceaix.com/app/i/CODE, aceaix://i/CODE, /app/i/CODE and /i/CODE.
  */
 export function inviteCodeFromPath(pathOrUrl: string | null | undefined): string | null {
-  const m = (pathOrUrl ?? '').match(/(?:^|\/)(?:app\/)?i\/([A-Za-z0-9-]{8,9})(?:[/?#]|$)/);
+  /* Only the path counts: an invite path inside a query string (an auth
+     callback's ?next=/i/…) must not turn that link into an invite. */
+  let path = (pathOrUrl ?? '').split(/[?#]/)[0];
+  const scheme = path.match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  if (scheme) {
+    const rest = path.slice(scheme[0].length);
+    path = /^https?$/i.test(scheme[1]) ? rest.replace(/^[^/]*/, '') : `/${rest}`;
+  }
+  const m = path.replace(/^\/+/, '/').match(/^\/?(?:app\/)?i\/([A-Za-z0-9-]{8,9})\/?$/);
   if (!m) return null;
   const code = m[1].replace(/-/g, '').toUpperCase();
   return isInviteCode(code) ? code : null;

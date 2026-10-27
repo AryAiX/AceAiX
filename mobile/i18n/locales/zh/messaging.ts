@@ -145,4 +145,8 @@ export const messaging = {
   meetupNearbyTitle: '{{city}}有新的{{sport}}比赛',
   mentionedInPost: '{{name}}在一条动态里提到了你',
   mentionedInComment: '{{name}}在一条评论里提到了你',
+  referralJoined: '{{name}}通过你的邀请加入了',
+  referralJoinedNoName: '有一位朋友通过你的邀请加入了',
+  referralTokenTitle: '你获得了 1 积分',
+  referralTokenBody_other: '已有 {{n}} 位朋友通过你的邀请加入 AceAiX。',
 };

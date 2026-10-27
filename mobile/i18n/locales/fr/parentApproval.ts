@@ -7,6 +7,8 @@ export const parentApproval = {
   introCreated: 'Un profil AceAiX a été créé.',
   introHidden:
     'Comme cette personne a moins de 18 ans, rien ne se passe tant que vous n’acceptez pas. Le profil est masqué et personne ne peut lui écrire.',
+  introReviewing:
+    '{{name}} vous demande de revoir ce que vous avez approuvé sur AceAiX. Les cases ci-dessous montrent vos choix actuels ; ne changez que ce que vous voulez changer.',
   approving: 'Ce que vous approuvez',
   discoveryTitle: 'Laisser les entraîneurs et les clubs la trouver',
   discoveryBody:
@@ -35,6 +37,9 @@ export const parentApproval = {
   declinedTitle: 'Merci — rien n’a été partagé',
   declinedBody:
     'Le profil reste masqué et personne ne peut écrire. Une nouvelle demande pourra être faite plus tard si vous changez d’avis.',
+  declinedKeptTitle: 'Merci — rien n’a changé',
+  declinedKeptBody:
+    'Les choix que vous avez approuvés auparavant restent valables. Pour les modifier ou les retirer, écrivez à safety@aceaix.com.',
   invalidTitle: 'Ce lien n’est pas valable',
   invalidBody: 'Demandez à votre enfant d’envoyer une nouvelle demande depuis l’app AceAiX.',
   expiredTitle: 'Ce lien a expiré',

@@ -540,6 +540,12 @@ const NOTIFICATION_TYPES: Array<{
   { type: 'gi_completed', title: 'Sam finished the Game Intelligence games' },
   { type: 'sport_fit_completed', title: 'Sam completed Sport Fit' },
   { type: 'system', title: 'Your account is verified' },
+  {
+    type: 'referral_joined',
+    title: 'Sam joined through your invite',
+    expectedTitle: 'Sam joined through your invite',
+  },
+  { type: 'referral_token', title: 'You earned a token', expectedTitle: 'You earned a token' },
 ];
 
 function asNotification(row: (typeof NOTIFICATION_TYPES)[number]): AppNotification {
@@ -603,6 +609,8 @@ describe('every notification type', () => {
       'gi_completed',
       'sport_fit_completed',
       'system',
+      'referral_joined',
+      'referral_token',
     ]);
 
     for (const row of NOTIFICATION_TYPES) {

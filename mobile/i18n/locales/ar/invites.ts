@@ -74,4 +74,10 @@ export const invites = {
   landingSignedInBody: 'إن كنت قد انضممت خلال آخر 14 يومًا، فلا يزال بإمكانك إضافة هذه الدعوة.',
   landingAddInvite: 'أضف هذه الدعوة',
   landingContinue: 'متابعة',
+  landingCopy: 'نسخ',
+  landingCopied: 'تم نسخ الرمز',
+  landingCopyFailed: 'تعذّر نسخ الرمز. حدّده وانسخه بنفسك.',
+  landingDownload: 'نزّل AceAiX، أنشئ حسابك، وأدخل هذا الرمز في التطبيق خلال أول 14 يومًا.',
+  landingAppStore: 'App Store',
+  landingGooglePlay: 'Google Play',
 };

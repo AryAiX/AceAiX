@@ -69,9 +69,10 @@ export async function getInviteBadge(userId: string): Promise<{ tier: number } |
 
 // ── A code that arrived before the account did ───────────────────────────────
 /*
- * Opening an invite link before signing up keeps the code here; once the new
- * account has finished onboarding, `useClaimPendingInvite` hands it to the
- * server and forgets it. Thirty days, then it is ignored.
+ * Opening an invite link before onboarding finishes keeps the code here; once
+ * the new account has finished onboarding, `useClaimPendingInvite` hands it to
+ * the server and forgets it. Thirty days, then it is ignored. Continue and
+ * sign-out drop it without claiming.
  */
 const PENDING_KEY = 'aceaix.pending-invite';
 const PENDING_DAYS = 30;
@@ -82,14 +83,20 @@ export async function savePendingInvite(code: string): Promise<void> {
   await AsyncStorage.setItem(PENDING_KEY, JSON.stringify({ code: normalized, at: Date.now() })).catch(() => {});
 }
 
-export async function takePendingInvite(): Promise<string | null> {
+/** Drops a kept code. Used when Continue, sign-out, or the wrong account should not claim it. */
+export async function clearPendingInvite(): Promise<void> {
+  await AsyncStorage.removeItem(PENDING_KEY).catch(() => {});
+}
+
+export async function takePendingInvite(): Promise<{ code: string; at: number } | null> {
   try {
     const raw = await AsyncStorage.getItem(PENDING_KEY);
     await AsyncStorage.removeItem(PENDING_KEY);
     if (!raw) return null;
-    const { code, at } = JSON.parse(raw) as { code: string; at: number };
+    const { code, at } = JSON.parse(raw) as { code?: string; at?: number };
+    if (typeof code !== 'string' || typeof at !== 'number' || !Number.isFinite(at)) return null;
     if (Date.now() - at > PENDING_DAYS * 86400000) return null;
-    return isInviteCode(code) ? code : null;
+    return isInviteCode(code) ? { code, at } : null;
   } catch {
     return null;
   }
