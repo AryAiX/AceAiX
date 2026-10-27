@@ -7,6 +7,8 @@ export const parentApproval = {
   introCreated: 'تم إنشاء ملف على AceAiX.',
   introHidden:
     'لأن العمر أقل من 18 عامًا، لا يحدث شيء حتى توافق. الملف مخفي ولا يستطيع أحد مراسلته.',
+  introReviewing:
+    '{{name}} يطلب منك مراجعة ما وافقت عليه في AceAiX. المربعات أدناه تعرض اختياراتك الحالية؛ غيّر فقط ما تريد تغييره.',
   approving: 'ما الذي توافق عليه',
   discoveryTitle: 'السماح للمدربين والأندية بالعثور عليه',
   discoveryBody:
@@ -30,6 +32,9 @@ export const parentApproval = {
   approvedBody: 'أصبح الملف ظاهرًا للمدربين والأندية الموثّقة، حسب الأذونات التي اخترتها.',
   declinedTitle: 'شكرًا لك — لم يُشارَك شيء',
   declinedBody: 'يبقى الملف مخفيًا ولا يستطيع أحد المراسلة. يمكن طلب ذلك لاحقًا إذا غيّرت رأيك.',
+  declinedKeptTitle: 'شكرًا لك — لم يتغير شيء',
+  declinedKeptBody:
+    'لا تزال الخيارات التي وافقت عليها سابقًا سارية. لتغييرها أو سحبها، راسلنا على safety@aceaix.com.',
   invalidTitle: 'هذا الرابط غير صالح',
   invalidBody: 'اطلب من طفلك إرسال طلب جديد من تطبيق AceAiX.',
   expiredTitle: 'انتهت صلاحية هذا الرابط',

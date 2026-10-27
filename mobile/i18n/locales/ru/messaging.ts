@@ -160,4 +160,11 @@ export const messaging = {
   meetupNearbyTitle: 'Новая игра: {{sport}}, {{city}}',
   mentionedInPost: '{{name}} упомянул тебя в посте',
   mentionedInComment: '{{name}} упомянул тебя в комментарии',
+  referralJoined: '{{name}} присоединился по твоему приглашению',
+  referralJoinedNoName: 'Друг присоединился по твоему приглашению',
+  referralTokenTitle: 'Ты получил токен',
+  referralTokenBody_one: '{{n}} друг присоединился к AceAiX по твоему приглашению.',
+  referralTokenBody_few: '{{n}} друга присоединились к AceAiX по твоему приглашению.',
+  referralTokenBody_many: '{{n}} друзей присоединились к AceAiX по твоему приглашению.',
+  referralTokenBody_other: '{{n}} друга присоединились к AceAiX по твоему приглашению.',
 };

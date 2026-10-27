@@ -308,6 +308,15 @@ export interface ReferralRow {
   id: string; status: 'pending' | 'qualified' | 'revoked'; revoked_reason: string | null;
   created_at: string; qualified_at: string | null; referrer: Person | null; referred: Person | null;
 }
+export interface CustomCity {
+  id: string;
+  country: string;
+  name: string;
+  created_at: string;
+  created_by: string | null;
+  full_name: string | null;
+}
+
 export interface ReferralsOverview {
   invites: number; qualified: number; pending: number; revoked: number; tokens: number; inviters: number;
   by_day: { day: string; count: number }[];
@@ -407,6 +416,10 @@ export const api = {
     }),
   reviewSportFitSport: (sport: string, reviewedBy: string | null) =>
     rpc<SportFitSport>('admin_review_sport_fit_sport', { p_sport: sport, p_reviewed_by: reviewedBy }),
+
+  customCities: () => rpc<CustomCity[]>('admin_list_custom_cities'),
+  reviewCity: (id: string, approve: boolean) =>
+    rpc<void>('admin_review_city', { p_city: id, p_approve: approve }),
 
   referrals: () => rpc<ReferralsOverview>('admin_referrals_overview'),
   setReferral: (id: string, revoke: boolean, reason: string | null) =>

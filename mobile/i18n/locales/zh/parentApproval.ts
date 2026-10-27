@@ -6,6 +6,8 @@ export const parentApproval = {
   heading: '{{name}}希望得到您的同意',
   introCreated: '对方已创建 AceAiX 个人资料。',
   introHidden: '因为未满 18 岁，在您同意之前不会发生任何事。资料处于隐藏状态，没有人可以发消息。',
+  introReviewing:
+    '{{name}}请您复查此前在 AceAiX 上同意的内容。下面的选项是您当前的选择；只更改您想更改的部分。',
   approving: '您正在同意的内容',
   discoveryTitle: '允许教练和俱乐部找到他们',
   discoveryBody: '经过核实的教练、俱乐部和学院可以找到这份资料，并且绝不会显示确切年龄。',
@@ -27,6 +29,9 @@ export const parentApproval = {
   approvedBody: '资料现在对经过核实的教练和俱乐部可见，权限以您选择的为准。',
   declinedTitle: '谢谢 — 没有分享任何内容',
   declinedBody: '资料保持隐藏，没有人可以发消息。如果您改变主意，以后可以再提出请求。',
+  declinedKeptTitle: '谢谢——没有任何变化',
+  declinedKeptBody:
+    '你之前批准的选项仍然有效。如需更改或撤回，请发送邮件至 safety@aceaix.com。',
   invalidTitle: '这个链接无效',
   invalidBody: '请让您的孩子在 AceAiX 应用里重新发送一次请求。',
   expiredTitle: '这个链接已过期',

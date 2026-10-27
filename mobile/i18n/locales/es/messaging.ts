@@ -160,4 +160,10 @@ export const messaging = {
   meetupNearbyTitle: 'Nuevo partido de {{sport}} en {{city}}',
   mentionedInPost: '{{name}} te mencionó en una publicación',
   mentionedInComment: '{{name}} te mencionó en un comentario',
+  referralJoined: '{{name}} se unió con tu invitación',
+  referralJoinedNoName: 'Un amigo se unió con tu invitación',
+  referralTokenTitle: 'Ganaste un token',
+  referralTokenBody_one: '{{n}} amigo se ha unido a AceAiX con tu invitación.',
+  referralTokenBody_many: '{{n}} amigos se han unido a AceAiX con tu invitación.',
+  referralTokenBody_other: '{{n}} amigos se han unido a AceAiX con tu invitación.',
 };

@@ -13,6 +13,8 @@ export const parentApproval = {
   introCreated: 'They have created an AceAiX profile.',
   introHidden:
     'Because they are under 18, nothing happens until you agree. Their profile is hidden and nobody can message them.',
+  introReviewing:
+    '{{name}} is asking you to review what you approved on AceAiX. The boxes below show your current choices; change only what you want to change.',
   approving: 'What you are approving',
   discoveryTitle: 'Let coaches and clubs find them',
   discoveryBody:
@@ -39,6 +41,9 @@ export const parentApproval = {
   declinedTitle: 'Thank you — nothing has been shared',
   declinedBody:
     'Their profile stays hidden and nobody can message them. They can ask again later if you change your mind.',
+  declinedKeptTitle: 'Thank you — nothing has changed',
+  declinedKeptBody:
+    'The choices you approved before still apply. To change or withdraw them, e-mail safety@aceaix.com.',
   invalidTitle: 'That link is not valid',
   invalidBody: 'Ask your child to send a new request from the AceAiX app.',
   expiredTitle: 'This link has expired',

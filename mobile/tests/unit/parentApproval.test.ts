@@ -54,7 +54,20 @@ describe('screenFromConsentGet', () => {
       screen: 'pending',
       childName: 'Mina',
       options: pendingBody.options,
+      reviewing: false,
     });
+  });
+
+  it('reads reviewing, and a missing flag is a first approval', () => {
+    expect(screenFromConsentGet(200, { ...pendingBody, reviewing: true })).toMatchObject({
+      screen: 'pending',
+      reviewing: true,
+      options: pendingBody.options,
+    });
+    expect(screenFromConsentGet(200, { ...pendingBody, reviewing: false })).toMatchObject({
+      reviewing: false,
+    });
+    expect(screenFromConsentGet(200, pendingBody)).toMatchObject({ reviewing: false });
   });
 
   it('uses no name and no ticks when those fields are null', () => {
@@ -63,6 +76,7 @@ describe('screenFromConsentGet', () => {
     ).toEqual({
       screen: 'pending',
       childName: null,
+      reviewing: false,
       options: {
         allow_discovery: false,
         allow_messaging: false,
@@ -85,6 +99,7 @@ describe('screenFromConsentGet', () => {
     ).toEqual({
       screen: 'pending',
       childName: null,
+      reviewing: false,
       options: {
         allow_discovery: false,
         allow_messaging: false,
@@ -106,7 +121,11 @@ describe('screenFromConsentGet', () => {
 describe('screenFromConsentPost', () => {
   it('shows approved and declined from the success states', () => {
     expect(screenFromConsentPost(200, { ok: true, state: 'granted' })).toEqual({ screen: 'approved' });
-    expect(screenFromConsentPost(200, { ok: true, state: 'revoked' })).toEqual({ screen: 'declined' });
+    expect(screenFromConsentPost(200, { ok: true, state: 'revoked' })).toEqual({ screen: 'declined', keptPrevious: false });
+    expect(screenFromConsentPost(200, { ok: true, state: 'revoked', kept_previous: true })).toEqual({
+      screen: 'declined',
+      keptPrevious: true,
+    });
   });
 
   it('shows expired or invalid when the token can no longer be used', () => {
@@ -116,5 +135,11 @@ describe('screenFromConsentPost', () => {
 
   it('keeps a failed write on the retry screen, even when state is invalid', () => {
     expect(screenFromConsentPost(500, { ok: false, state: 'invalid' })).toEqual({ screen: 'error' });
+  });
+
+  it('shows the already-answered screen when a decline lost to an approval', () => {
+    expect(screenFromConsentPost(200, { ok: false, state: 'granted' })).toEqual({
+      screen: 'answered',
+    });
   });
 });

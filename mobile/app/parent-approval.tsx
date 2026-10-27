@@ -220,7 +220,11 @@ export default function ParentApprovalScreen() {
   } else if (view.screen === 'approved') {
     body = <Status title={t('parentApproval.approvedTitle')} body={t('parentApproval.approvedBody')} />;
   } else if (view.screen === 'declined') {
-    body = <Status title={t('parentApproval.declinedTitle')} body={t('parentApproval.declinedBody')} />;
+    body = view.keptPrevious ? (
+      <Status title={t('parentApproval.declinedKeptTitle')} body={t('parentApproval.declinedKeptBody')} />
+    ) : (
+      <Status title={t('parentApproval.declinedTitle')} body={t('parentApproval.declinedBody')} />
+    );
   } else {
     const selected = choices ?? view.options;
     const name = view.childName ?? t('parentApproval.yourChild');
@@ -228,12 +232,20 @@ export default function ParentApprovalScreen() {
     body = (
       <Card padded="lg">
         <Text variant="heading">{t('parentApproval.heading', { name })}</Text>
-        <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
-          {t('parentApproval.introCreated')}
-        </Text>
-        <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
-          {t('parentApproval.introHidden')}
-        </Text>
+        {view.reviewing ? (
+          <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
+            {t('parentApproval.introReviewing', { name })}
+          </Text>
+        ) : (
+          <>
+            <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.md }}>
+              {t('parentApproval.introCreated')}
+            </Text>
+            <Text variant="body" tone="secondary" style={{ marginTop: theme.spacing.sm }}>
+              {t('parentApproval.introHidden')}
+            </Text>
+          </>
+        )}
 
         <Text variant="subheading" style={{ marginTop: theme.spacing.xl }}>
           {t('parentApproval.approving')}

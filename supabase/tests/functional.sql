@@ -5929,4 +5929,1139 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Invites minor privacy (20261025000001)
+-- Fresh accounts only. Earlier blocks change the seeded minors.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites minor privacy ──'; end $$;
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f000000-0000-4000-8000-000000000001', 'privacy.lina@test.local',
+   '{"full_name":"Lina Privacy","first_name":"Lina","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000002', 'privacy.adult@test.local',
+   '{"full_name":"Adult Privacy","first_name":"Adult","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000003', 'privacy.noor@test.local',
+   '{"full_name":"Noor Privacy","first_name":"Noor","role":"athlete"}'),
+  ('7f000000-0000-4000-8000-000000000004', 'privacy.raya@test.local',
+   '{"full_name":"Raya Privacy","first_name":"Raya","role":"athlete"}')
+on conflict do nothing;
+
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id in (
+   '7f000000-0000-4000-8000-000000000001',
+   '7f000000-0000-4000-8000-000000000003',
+   '7f000000-0000-4000-8000-000000000004'
+ );
+update public.user_private set date_of_birth = current_date - interval '20 years'
+ where user_id = '7f000000-0000-4000-8000-000000000002';
+select tests.ok(
+  (select count(*) = 3 and bool_and(is_minor) from public.user_profiles
+    where id in (
+      '7f000000-0000-4000-8000-000000000001',
+      '7f000000-0000-4000-8000-000000000003',
+      '7f000000-0000-4000-8000-000000000004'
+    )),
+  'the three new accounts are minors');
+select tests.ok(
+  not (select is_minor from public.user_profiles where id = '7f000000-0000-4000-8000-000000000002'),
+  'the new adult account is not a minor');
+update public.user_profiles set avatar_url = 'https://cdn.test/lina.png'
+ where id = '7f000000-0000-4000-8000-000000000001';
+
+do $$
+declare
+  v_minor  uuid := '7f000000-0000-4000-8000-000000000001';
+  v_adult  uuid := '7f000000-0000-4000-8000-000000000002';
+  v_hidden uuid := '7f000000-0000-4000-8000-000000000003';
+  v_gated  uuid := '7f000000-0000-4000-8000-000000000004';
+  v_code   text;
+  v_anon   jsonb;
+  v_signed jsonb;
+  v_person jsonb;
+  v_circle jsonb;
+begin
+  update public.platform_settings
+     set value = jsonb_set(value, '{invites}', 'true')
+   where key = 'features';
+  perform tests.ok(
+    (select value ->> 'invites' from public.platform_settings where key = 'features') = 'true',
+    'invites are on for the minor-privacy checks');
+
+  perform tests.ok(not private.referral_can_invite(v_minor),
+    'a minor athlete without discovery consent cannot invite');
+
+  perform tests.ok(
+    (select avatar_url from public.user_profiles where id = v_minor) = 'https://cdn.test/lina.png',
+    'the minor profile still has an avatar');
+  select private.referral_person(v_minor) into v_person;
+  perform tests.ok(
+    v_person ->> 'first_name' = 'Lina' and v_person ->> 'avatar_url' is null,
+    'referral_person drops a minor''s avatar without discovery consent');
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
+  ) values (
+    v_minor, 'Parent', 'privacy.lina.parent@test.local', 'granted', now(), true
+  );
+  perform tests.ok(private.referral_can_invite(v_minor),
+    'a minor athlete with discovery consent can invite');
+
+  perform tests.as_user(v_minor);
+  select public.referral_my_circle() ->> 'code' into v_code;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  select public.referral_inviter(v_code) into v_anon;
+  reset role;
+  perform tests.ok(
+    v_anon ? 'first_name' and v_anon -> 'first_name' = 'null'::jsonb
+    and v_anon ? 'avatar_url' and v_anon -> 'avatar_url' = 'null'::jsonb
+    and v_anon ? 'role' and v_anon -> 'role' = 'null'::jsonb
+    and not (v_anon ? 'is_minor'),
+    'a signed-out visitor learns nothing about a minor inviter');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select public.referral_inviter(v_code) into v_signed;
+  reset role;
+  perform tests.ok(v_signed ->> 'first_name' = 'Lina',
+    'a signed-in visitor sees a consented minor inviter''s first name');
+
+  insert into public.referrals (referrer_id, referred_id, code)
+  values (v_adult, v_hidden, 'PRIVHID1');
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  select public.referral_my_circle() into v_circle;
+  reset role;
+  perform tests.ok(
+    jsonb_array_length(v_circle -> 'members') = 0
+    and (v_circle ->> 'pending')::int = 1,
+    'a pending minor invitee without discovery consent is omitted from the circle and still counted');
+
+  perform tests.as_user(v_adult);
+  set local role authenticated;
+  v_circle := public.export_my_data();
+  reset role;
+  perform tests.ok(
+    jsonb_array_length(v_circle -> 'invites' -> 'invited') = 0,
+    'download my data leaves out a minor invitee without discovery consent');
+
+  insert into public.referrals (referrer_id, referred_id, code)
+  values (v_adult, v_gated, 'PRIVGAT1');
+  update public.user_profiles set onboarding_completed = true where id = v_gated;
+  insert into public.guardian_consents (
+    minor_user_id, guardian_name, guardian_email, status, granted_at, allow_discovery
+  ) values (
+    v_gated, 'Parent', 'privacy.raya.parent@test.local', 'granted', now(), false
+  );
+  perform tests.ok(
+    (select status = 'pending' from public.referrals where referred_id = v_gated),
+    'a minor invitee with consent but discovery off stays pending');
+  update public.guardian_consents
+     set allow_discovery = true
+   where minor_user_id = v_gated and status = 'granted';
+  perform tests.ok(
+    (select status = 'qualified' from public.referrals where referred_id = v_gated),
+    'turning discovery consent on makes the minor invite count');
+end $$;
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'false')
+ where key = 'features';
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Invites abuse fixes (20261025000002)
+-- Fresh accounts only. Each write is its own statement, and the
+-- read that checks it is the next one. Notification counts are
+-- referral_joined and referral_token only.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── invites abuse fixes ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'true')
+ where key = 'features';
+
+insert into auth.users (id, email, raw_user_meta_data)
+select ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+       'abuse' || n || '@test.local',
+       jsonb_build_object('full_name', 'Abuse ' || n, 'first_name', 'Abuse' || n, 'role', 'athlete')
+from generate_series(1, 31) n
+where n in (1, 2) or n between 10 and 20 or n in (30, 31)
+on conflict do nothing;
+
+update public.user_private
+   set date_of_birth = current_date - interval '20 years'
+ where user_id::text like '7f100000-%';
+
+do $$
+declare
+  v_inviter   uuid := '7f100000-0000-4000-8000-000000000001';
+  v_invitee   uuid := '7f100000-0000-4000-8000-000000000002';
+  v_admin     uuid := 'ad111111-1111-1111-1111-111111111111';
+  v_inviter_d uuid := '7f100000-0000-4000-8000-000000000010';
+  v_dropped   uuid := '7f100000-0000-4000-8000-000000000011';
+  v_inviter_e uuid := '7f100000-0000-4000-8000-000000000030';
+  v_invitee_e uuid := '7f100000-0000-4000-8000-000000000031';
+  v_code      text;
+  v_code_d    text;
+  v_code_e    text;
+  v_denied    boolean := false;
+  v_stamp     timestamptz;
+  v_stamp2    timestamptz;
+  v_status    text;
+  v_joined    int;
+  v_joined2   int;
+  v_actors    int;
+  v_referral  uuid;
+  v_hint      text;
+  v_tokens    int;
+  v_qualified int;
+  v_id        uuid;
+  v_left      int;
+  n           int;
+begin
+  perform tests.ok(
+    (select value ->> 'invites' from public.platform_settings where key = 'features') = 'true',
+    'invites are on for the abuse checks');
+
+  -- (a) The completion date is not a column the client can write.
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  begin
+    update public.user_profiles
+       set onboarding_completed_at = now()
+     where id = v_invitee;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  select onboarding_completed_at into v_stamp
+    from public.user_profiles where id = v_invitee;
+  perform tests.ok(
+    v_denied and v_stamp is null,
+    'an authenticated user cannot update their own onboarding_completed_at');
+
+  -- (b) An adult who finishes onboarding makes the invite count, once.
+  perform tests.as_user(v_inviter);
+  v_code := public.referral_my_circle() ->> 'code';
+  perform tests.as_user(v_invitee);
+  perform public.referral_claim(v_code);
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  perform tests.ok(v_status = 'pending', 'the adult invite starts pending');
+
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter
+     and type = 'referral_joined'
+     and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp is not null and v_joined = 1 and v_actors = 1,
+    'an adult invitee who finishes onboarding is qualified, stamped, and sends one referral_joined as themselves');
+
+  select id into v_referral from public.referrals where referred_id = v_invitee;
+
+  -- (c) Turning completion off and on does not unqualify, restamp, or notify again.
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = false where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp2
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp2 = v_stamp and v_joined = 1 and v_actors = 1,
+    'setting onboarding_completed false leaves the invite qualified, the stamp unchanged, and one referral_joined');
+
+  perform tests.as_user(v_invitee);
+  set local role authenticated;
+  update public.user_profiles set onboarding_completed = true where id = v_invitee;
+  reset role;
+
+  select status into v_status from public.referrals where referred_id = v_invitee;
+  select onboarding_completed_at into v_stamp2
+    from public.user_profiles where id = v_invitee;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_status = 'qualified' and v_stamp2 = v_stamp and v_joined = 1 and v_actors = 1,
+    'setting onboarding_completed true again stays qualified, keeps the stamp, and still one referral_joined');
+
+  -- (f) Restore is refused unless the invite is revoked, and does not notify twice.
+  perform tests.as_user(v_admin);
+  v_hint := tests.hint_of(format(
+    'select public.admin_set_referral(%L, false, null)', v_referral));
+  select status into v_status from public.referrals where id = v_referral;
+  perform tests.ok(
+    v_hint = 'referral_not_revoked' and v_status = 'qualified',
+    'admin_set_referral restore on a non-revoked invite raises referral_not_revoked');
+
+  perform tests.as_user(v_admin);
+  perform public.admin_set_referral(v_referral, true, 'abuse check');
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+
+  perform tests.as_user(v_admin);
+  perform public.admin_set_referral(v_referral, false, null);
+  select status into v_status from public.referrals where id = v_referral;
+  select count(*)::int, coalesce(max(actor_count), 0)
+    into v_joined2, v_actors
+    from public.notifications
+   where user_id = v_inviter and type = 'referral_joined' and actor_id = v_invitee;
+  perform tests.ok(
+    v_joined = 1 and v_joined2 = 1 and v_actors = 1 and v_status = 'qualified',
+    'revoke then restore sends no second referral_joined');
+
+  -- (d) Ten that count earn one token. Deleting one invitee gives it back.
+  perform tests.as_user(v_inviter_d);
+  v_code_d := public.referral_my_circle() ->> 'code';
+  for n in 11..20 loop
+    v_id := ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    perform public.referral_claim(v_code_d);
+  end loop;
+  for n in 11..20 loop
+    v_id := ('7f100000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid;
+    perform tests.as_user(v_id);
+    set local role authenticated;
+    update public.user_profiles set onboarding_completed = true where id = v_id;
+    reset role;
+  end loop;
+
+  select count(*)::int into v_qualified
+    from public.referrals
+   where referrer_id = v_inviter_d and status = 'qualified';
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter_d;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter_d and type = 'referral_token';
+  perform tests.ok(
+    v_qualified = 10 and v_tokens = 1 and v_joined = 1,
+    'ten qualified invitees give the inviter one token and one referral_token notice');
+
+  delete from auth.users where id = v_dropped;
+  select coalesce(sum(amount), 0) into v_tokens
+    from public.token_ledger where user_id = v_inviter_d;
+  select count(*)::int into v_joined
+    from public.notifications
+   where user_id = v_inviter_d and type = 'referral_token';
+  perform tests.ok(
+    v_tokens = 0 and v_joined = 1,
+    'deleting one invitee brings the token sum back to 0 without another referral_token notice');
+
+  -- (e) The inviter's own delete must not sync tokens for a row that is going too.
+  perform tests.as_user(v_inviter_e);
+  v_code_e := public.referral_my_circle() ->> 'code';
+  perform tests.as_user(v_invitee_e);
+  perform public.referral_claim(v_code_e);
+  select count(*)::int into v_left from public.referrals where referrer_id = v_inviter_e;
+  perform tests.ok(v_left = 1, 'the inviter has an invitee before the delete');
+
+  delete from auth.users where id = v_inviter_e;
+  select count(*)::int into v_left from public.user_profiles where id = v_inviter_e;
+  perform tests.ok(v_left = 0, 'deleting an inviter who has invitees does not error');
+
+  -- (g)
+  perform tests.ok(
+    strpos(pg_get_functiondef('private.referral_sync_tokens(uuid)'::regprocedure),
+           'pg_advisory_xact_lock') > 0,
+    'referral_sync_tokens takes a transaction advisory lock');
+end $$;
+
+update public.platform_settings
+   set value = jsonb_set(value, '{invites}', 'false')
+ where key = 'features';
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Custom cities review (20261025000003)
+-- Fresh accounts only. A city someone adds is visible to them until an
+-- admin approves it for everyone else, or removes it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── custom cities review ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f200000-0000-4000-8000-000000000001', 'cities.adder@test.local',
+   '{"full_name":"City Adder","role":"athlete"}'),
+  ('7f200000-0000-4000-8000-000000000002', 'cities.other@test.local',
+   '{"full_name":"City Other","role":"athlete"}'),
+  ('7f200000-0000-4000-8000-000000000003', 'cities.admin@test.local',
+   '{"full_name":"City Admin","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f200000-0000-4000-8000-000000000001',
+   '7f200000-0000-4000-8000-000000000002',
+   '7f200000-0000-4000-8000-000000000003'
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f200000-0000-4000-8000-000000000003';
+
+do $$
+declare
+  v_a     uuid := '7f200000-0000-4000-8000-000000000001';
+  v_b     uuid := '7f200000-0000-4000-8000-000000000002';
+  v_admin uuid := '7f200000-0000-4000-8000-000000000003';
+  v_added text;
+  v_city  uuid;
+  v_gone  uuid;
+  v_count integer;
+  v_state text;
+  v_list  jsonb;
+begin
+  -- (a) The adder can search their own city. Someone else cannot.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_added := public.add_custom_city('Qatar', 'Zaab Review');
+  reset role;
+
+  select id into v_city
+    from public.cities
+   where created_by = v_a
+     and lower(btrim(name)) = 'zaab review'
+     and not is_curated;
+
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(
+    v_added = 'Zaab Review' and v_city is not null and v_count = 1,
+    'user A search_cities returns the city they just added');
+
+  perform tests.as_user(v_b);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(v_count = 0, 'user B search_cities does not return a city user A added');
+
+  -- (b) A non-admin is refused. The city is still there.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_state := null;
+  begin
+    perform public.admin_list_custom_cities();
+  exception when others then
+    v_state := sqlstate;
+  end;
+  reset role;
+  perform tests.ok(v_state = '42501', 'a non-admin cannot call admin_list_custom_cities');
+
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  v_state := null;
+  begin
+    perform public.admin_review_city(v_city, true);
+  exception when others then
+    v_state := sqlstate;
+  end;
+  reset role;
+  select count(*) into v_count from public.cities where id = v_city and not is_curated;
+  perform tests.ok(
+    v_state = '42501' and v_count = 1,
+    'a non-admin cannot call admin_review_city');
+
+  -- (c) An admin sees it, and approving it makes it searchable by B.
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  v_list := public.admin_list_custom_cities();
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from jsonb_array_elements(v_list) e
+      where e->>'id' = v_city::text
+        and e->>'name' = 'Zaab Review'
+        and e->>'country' = 'Qatar'
+        and e->>'created_by' = v_a::text
+        and e->>'full_name' = 'City Adder'
+    ),
+    'admin_list_custom_cities includes the city user A added');
+
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  perform public.admin_review_city(v_city, true);
+  reset role;
+
+  perform tests.as_user(v_b);
+  set local role authenticated;
+  select count(*) into v_count
+    from public.search_cities('Qatar', 'zaab', 20) s
+   where s.name = 'Zaab Review';
+  reset role;
+  perform tests.ok(v_count = 1, 'after approval, user B search_cities returns the city');
+
+  -- (d) Removing a second city deletes the row.
+  perform tests.as_user(v_a);
+  set local role authenticated;
+  perform public.add_custom_city('Qatar', 'Zaab Gone');
+  reset role;
+
+  select id into v_gone
+    from public.cities
+   where created_by = v_a
+     and lower(btrim(name)) = 'zaab gone'
+     and not is_curated;
+
+  perform tests.as_user(v_admin);
+  set local role authenticated;
+  perform public.admin_review_city(v_gone, false);
+  reset role;
+
+  select count(*) into v_count from public.cities where id = v_gone;
+  perform tests.ok(v_gone is not null and v_count = 0, 'admin_review_city(id, false) removes the city');
+
+  -- (e)
+  perform tests.ok(
+    exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'search_cities'
+        and array_to_string(p.proconfig, ',') like '%pg_temp%'
+    )
+    and exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'add_custom_city'
+        and array_to_string(p.proconfig, ',') like '%pg_temp%'
+    ),
+    'proconfig of search_cities and add_custom_city contains pg_temp');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- counters and score
+-- A client cannot write a counter, and a highlight view does not
+-- recompute the Talent Score. Fresh accounts only. Each write is its
+-- own statement, and the read that checks it is the next one.
+-- talent_scores.computed_at is now() at the start of the recompute's
+-- transaction, so the snapshot and the write are separate statements
+-- with a sleep between them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── counters and score ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+drop table if exists counter_probe;
+create temporary table counter_probe (
+  k text primary key,
+  state text,
+  at timestamptz
+);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f300000-0000-4000-8000-000000000001', 'counters.owner@test.local',
+   '{"full_name":"Counter Owner","role":"athlete"}'),
+  ('7f300000-0000-4000-8000-000000000002', 'counters.viewer@test.local',
+   '{"full_name":"Counter Viewer","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f300000-0000-4000-8000-000000000001',
+   '7f300000-0000-4000-8000-000000000002'
+ );
+
+insert into counter_probe (k, at)
+select 'before_media', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+-- (b) (d) The owner's insert names forged counters. A public video recomputes.
+do $$
+declare
+  v_owner uuid := '7f300000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_owner;
+  perform tests.as_user(v_owner);
+  set local role authenticated;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public, views_count, likes_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000010',
+    v_athlete,
+    'Counter clip',
+    'video',
+    v_owner::text || '/highlights/counters.mp4',
+    true,
+    999,
+    999
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_likes integer;
+  v_before timestamptz;
+  v_after timestamptz;
+  v_videos integer;
+begin
+  select views_count, likes_count into v_views, v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    v_views = 0 and v_likes = 0,
+    'an authenticated insert of athlete_media stores views_count 0 and likes_count 0');
+
+  select at into v_before from counter_probe where k = 'before_media';
+  select ts.computed_at, (ts.inputs ->> 'video_items')::integer
+    into v_after, v_videos
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+  perform tests.ok(
+    v_after > v_before and v_videos = 1,
+    'inserting a public video recomputes the score (talent_scores.computed_at moves)');
+end $$;
+
+-- (a) The same owner cannot write either counter. A title change is allowed.
+do $$
+declare v_state text := 'updated';
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  begin
+    update public.athlete_media
+       set views_count = 999
+     where id = '7f300000-0000-4000-8000-000000000010';
+  exception when insufficient_privilege then
+    v_state := sqlstate;
+  end;
+  reset role;
+  insert into counter_probe (k, state) values ('views_update', v_state);
+end $$;
+
+do $$
+declare v_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    (select state from counter_probe where k = 'views_update') = '42501'
+    and v_views = 0,
+    'the owner cannot update athlete_media.views_count');
+end $$;
+
+do $$
+declare v_state text := 'updated';
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  begin
+    update public.athlete_media
+       set likes_count = 999
+     where id = '7f300000-0000-4000-8000-000000000010';
+  exception when insufficient_privilege then
+    v_state := sqlstate;
+  end;
+  reset role;
+  insert into counter_probe (k, state) values ('likes_update', v_state);
+end $$;
+
+do $$
+declare v_likes integer;
+begin
+  select likes_count into v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    (select state from counter_probe where k = 'likes_update') = '42501'
+    and v_likes = 0,
+    'the owner cannot update athlete_media.likes_count');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.athlete_media
+     set title = 'Renamed clip'
+   where id = '7f300000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare v_title text;
+begin
+  select title into v_title
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+  perform tests.ok(v_title = 'Renamed clip', 'the owner can update athlete_media.title');
+end $$;
+
+insert into counter_probe (k, at)
+select 'before_view', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+-- (c) (d) Another user's watch adds one view and leaves computed_at alone.
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  perform public.record_highlight_view('7f300000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_before timestamptz;
+  v_after timestamptz;
+  v_media_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000010';
+
+  select at into v_before from counter_probe where k = 'before_view';
+  select ts.computed_at, (ts.inputs ->> 'media_views')::integer
+    into v_after, v_media_views
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f300000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 1,
+    'record_highlight_view by another user adds 1 to views_count');
+  perform tests.ok(
+    v_after = v_before and v_media_views = 0,
+    'a views_count change does not recompute the score (talent_scores.computed_at stays)');
+end $$;
+
+-- (b) A post insert cannot arrive with forged counters either.
+do $$
+begin
+  perform tests.as_user('7f300000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  insert into public.posts (
+    id, author_id, type, caption, audience,
+    view_count, like_count, comments_count, reactions_count, save_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000020',
+    '7f300000-0000-4000-8000-000000000001',
+    'standard', 'Counter post', 'public',
+    999, 999, 999, 999, 999
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views integer;
+  v_likes integer;
+  v_comments integer;
+  v_reactions integer;
+  v_saves integer;
+begin
+  select view_count, like_count, comments_count, reactions_count, save_count
+    into v_views, v_likes, v_comments, v_reactions, v_saves
+  from public.posts
+  where id = '7f300000-0000-4000-8000-000000000020';
+  perform tests.ok(
+    v_views = 0 and v_likes = 0 and v_comments = 0 and v_reactions = 0 and v_saves = 0,
+    'an authenticated insert of a post stores view_count 0 and like_count 0');
+end $$;
+
+-- A server-side writer is not anon or authenticated, so its counts stay.
+do $$
+declare v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '7f300000-0000-4000-8000-000000000001';
+  set local role service_role;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public, views_count, likes_count
+  ) values (
+    '7f300000-0000-4000-8000-000000000011',
+    v_athlete, 'Server clip', 'image', 'server.jpg', false, 7, 3
+  );
+  reset role;
+end $$;
+
+do $$
+declare v_views integer; v_likes integer;
+begin
+  select views_count, likes_count into v_views, v_likes
+  from public.athlete_media
+  where id = '7f300000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_views = 7 and v_likes = 3,
+    'a service_role insert keeps the counters it sets');
+end $$;
+
+-- (e)
+do $$
+declare v_same boolean;
+begin
+  perform tests.ok(
+    has_function_privilege('service_role', 'public.record_post_view(uuid)', 'EXECUTE')
+    and has_function_privilege('service_role', 'public.record_highlight_view(uuid)', 'EXECUTE'),
+    'service_role can execute record_post_view and record_highlight_view');
+
+  select coalesce(bool_and(
+    has_table_privilege('service_role', 'public.athlete_media_views', p)
+      = has_table_privilege('service_role', 'public.post_views', p)
+  ), false)
+    into v_same
+  from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as u(p);
+  perform tests.ok(
+    v_same,
+    'service_role has the same table privileges on athlete_media_views as on post_views');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- mentions cleared on edit
+-- Offsets point at coalesce(caption, text) and at a comment body.
+-- Editing that text drops the saved mentions. An audience change
+-- does not. Fresh discoverable adults only: a mention has to pass
+-- private.can_mention. Each write is its own statement, and the
+-- read that checks it is the next one. Notification counts are the
+-- mention type only.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── mentions cleared on edit ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f400000-0000-4000-8000-000000000001', 'mentions.author@test.local',
+   '{"full_name":"Ada Author","role":"athlete"}'),
+  ('7f400000-0000-4000-8000-000000000002', 'mentions.target@test.local',
+   '{"full_name":"Bea Target","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f400000-0000-4000-8000-000000000001',
+   '7f400000-0000-4000-8000-000000000002'
+ );
+
+update public.user_profiles
+   set is_discoverable = true
+ where id in (
+   '7f400000-0000-4000-8000-000000000001',
+   '7f400000-0000-4000-8000-000000000002'
+ );
+
+insert into public.notification_preferences (user_id, mentions)
+values
+  ('7f400000-0000-4000-8000-000000000001', true),
+  ('7f400000-0000-4000-8000-000000000002', true)
+on conflict (user_id) do update set mentions = true;
+
+select tests.ok(
+  (select count(*) = 2
+      and bool_and(not is_minor)
+      and bool_and(is_discoverable)
+      and bool_and(not coalesce(is_suspended, false))
+     from public.user_profiles
+    where id in (
+      '7f400000-0000-4000-8000-000000000001',
+      '7f400000-0000-4000-8000-000000000002'
+    )),
+  'the two new accounts are discoverable adults');
+
+-- (a) The author posts one mention of the other adult. caption and
+-- text are the same string, which is what createPost writes.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_caption text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.posts (id, author_id, type, caption, text, audience, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000010',
+    v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'a post created with one valid mention has 1 item in mentions');
+  perform tests.ok(v_count = 1, 'that post writes one mention notification');
+end $$;
+
+-- (a) Editing the caption and the text, as the author, drops them.
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.posts
+     set caption = 'No mention now',
+         text = 'No mention now'
+   where id = '7f400000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target and type = 'mention' and entity_id = v_post::text;
+  perform tests.ok(
+    v_mentions = '[]'::jsonb,
+    'editing the post caption and text leaves mentions empty');
+  perform tests.ok(
+    v_count = 1,
+    'editing the post does not create a new mention notification');
+end $$;
+
+-- (a2) A trusted writer that sets new text and new mentions together keeps them.
+do $$
+declare
+  v_post     uuid := '7f400000-0000-4000-8000-000000000010';
+  v_tag      jsonb := jsonb_build_array(jsonb_build_object(
+                        'user_id', '7f400000-0000-4000-8000-000000000002', 'start', 0, 'length', 3));
+  v_mentions jsonb;
+begin
+  update public.posts
+     set caption = 'Hi! retagged', text = 'Hi! retagged', mentions = v_tag
+   where id = v_post;
+  select mentions into v_mentions from public.posts where id = v_post;
+  perform tests.ok(v_mentions = v_tag,
+    'a trusted update that writes text and mentions together keeps those mentions');
+  update public.posts set mentions = '[]'::jsonb where id = v_post;
+end $$;
+
+-- (b) A second post. Changing its audience leaves the mention.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_caption text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.posts (id, author_id, type, caption, text, audience, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000011',
+    v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_post     uuid := '7f400000-0000-4000-8000-000000000011';
+  v_mentions jsonb;
+begin
+  select mentions into v_mentions from public.posts where id = v_post;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'the audience post starts with one mention');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.posts
+     set audience = 'followers'
+   where id = '7f400000-0000-4000-8000-000000000011';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who      text;
+  v_len      integer;
+  v_caption  text;
+  v_text     text;
+  v_audience text;
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_len := char_length('@' || v_who);
+  select caption, text, audience, mentions
+    into v_caption, v_text, v_audience, v_mentions
+    from public.posts
+   where id = '7f400000-0000-4000-8000-000000000011';
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and entity_id = '7f400000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_audience = 'followers'
+    and v_caption = '@' || v_who || ' see this'
+    and v_text = v_caption
+    and v_mentions = jsonb_build_array(
+      jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len)
+    )
+    and v_count = 1,
+    'a post whose audience changes (text unchanged) keeps its mention');
+end $$;
+
+-- (c) A comment. Editing its body drops the mention.
+do $$
+declare
+  v_author uuid := '7f400000-0000-4000-8000-000000000001';
+  v_target uuid := '7f400000-0000-4000-8000-000000000002';
+  v_who    text;
+  v_body   text;
+  v_len    integer;
+begin
+  select full_name into v_who from public.user_profiles where id = v_target;
+  v_body := '@' || v_who || ' nice';
+  v_len := char_length('@' || v_who);
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  insert into public.post_comments (id, post_id, author_id, body, mentions)
+  values (
+    '7f400000-0000-4000-8000-000000000020',
+    '7f400000-0000-4000-8000-000000000010',
+    v_author, v_body,
+    jsonb_build_array(jsonb_build_object('user_id', v_target, 'start', 0, 'length', v_len))
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_comment  uuid := '7f400000-0000-4000-8000-000000000020';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.post_comments where id = v_comment;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and data ->> 'comment_id' = v_comment::text;
+  perform tests.ok(
+    jsonb_array_length(v_mentions) = 1
+    and (v_mentions -> 0 ->> 'user_id') = v_target::text,
+    'a comment created with one valid mention has 1 item in mentions');
+  perform tests.ok(v_count = 1, 'that comment writes one mention notification');
+end $$;
+
+do $$
+begin
+  perform tests.as_user('7f400000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  update public.post_comments
+     set body = 'No mention now'
+   where id = '7f400000-0000-4000-8000-000000000020';
+  reset role;
+end $$;
+
+do $$
+declare
+  v_target   uuid := '7f400000-0000-4000-8000-000000000002';
+  v_comment  uuid := '7f400000-0000-4000-8000-000000000020';
+  v_mentions jsonb;
+  v_count    integer;
+begin
+  select mentions into v_mentions from public.post_comments where id = v_comment;
+  select count(*) into v_count from public.notifications
+   where user_id = v_target
+     and type = 'mention'
+     and data ->> 'comment_id' = v_comment::text;
+  perform tests.ok(
+    v_mentions = '[]'::jsonb,
+    'editing the comment body leaves mentions empty');
+  perform tests.ok(
+    v_count = 1,
+    'editing the comment does not create a new mention notification');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
