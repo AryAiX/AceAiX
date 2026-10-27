@@ -6041,10 +6041,11 @@ begin
 
   perform tests.as_user(v_adult);
   set local role authenticated;
-  perform tests.ok(
-    jsonb_array_length(public.export_my_data() -> 'invites' -> 'invited') = 0,
-    'download my data leaves out a minor invitee without discovery consent');
+  v_circle := public.export_my_data();
   reset role;
+  perform tests.ok(
+    jsonb_array_length(v_circle -> 'invites' -> 'invited') = 0,
+    'download my data leaves out a minor invitee without discovery consent');
 
   insert into public.referrals (referrer_id, referred_id, code)
   values (v_adult, v_gated, 'PRIVGAT1');
