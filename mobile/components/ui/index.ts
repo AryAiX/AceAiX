@@ -28,6 +28,7 @@ export {
   SectionHeader,
 } from './Controls';
 export { Lightbox } from './Lightbox';
+export { CoverCropper } from './CoverCropper';
 export { Reveal, AnimatedGradient, Shine, Pulse } from './Motion';
 export { ToastProvider, useToast } from './Toast';
 export type { ToastTone } from './Toast';
