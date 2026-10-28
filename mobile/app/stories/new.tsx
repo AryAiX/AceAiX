@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Check, Globe, ImagePlus, UserCheck, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { Brand } from '@/theme/tokens';
 import {
   Button,
   Chip,
@@ -206,9 +207,20 @@ export default function NewStoryScreen() {
                 onPress={pickPhoto}
                 accessibilityRole="button"
                 accessibilityLabel={t('stories.changePhoto')}
-                style={{ flex: 1 }}
+                style={{ flex: 1, backgroundColor: Brand.ink }}
               >
-                <Image source={{ uri: photo.uri }} style={{ flex: 1 }} resizeMode="cover" />
+                <Image
+                  source={{ uri: photo.uri }}
+                  style={StyleSheet.absoluteFill}
+                  resizeMode="cover"
+                  blurRadius={30}
+                  accessible={false}
+                />
+                <View
+                  pointerEvents="none"
+                  style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
+                />
+                <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
                 {caption.trim() ? (
                   <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
                     <LinearGradient
