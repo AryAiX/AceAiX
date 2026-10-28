@@ -213,11 +213,20 @@ export function resolvedCoverPixels(reported: CoverSize, loaded: CoverSize): Cov
   return { width: rw, height: rh };
 }
 
+export interface RenderCoverOptions {
+  /**
+   * Also return the JPEG body. Profile covers upload the file URI and leave
+   * this off; club covers upload base64 through the existing avatar helper.
+   */
+  base64?: boolean;
+}
+
 /** Crop to the frame, then a 1500px-wide JPEG. Orientation is baked by the manipulator before the crop. */
 export async function renderCoverCrop(
   uri: string,
   crop: CoverCropRect,
-): Promise<{ uri: string; width: number; height: number }> {
+  options?: RenderCoverOptions,
+): Promise<{ uri: string; width: number; height: number; base64?: string }> {
   const { ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
   const context = ImageManipulator.manipulate(uri);
   try {
@@ -233,8 +242,14 @@ export async function renderCoverCrop(
       const saved = await rendered.saveAsync({
         compress: COVER_JPEG_QUALITY,
         format: SaveFormat.JPEG,
+        ...(options?.base64 ? { base64: true } : {}),
       });
-      return { uri: saved.uri, width: saved.width, height: saved.height };
+      return {
+        uri: saved.uri,
+        width: saved.width,
+        height: saved.height,
+        ...(options?.base64 && saved.base64 ? { base64: saved.base64 } : {}),
+      };
     } finally {
       rendered.release();
     }

@@ -11,11 +11,10 @@ import { countryLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { ClubPage } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
+import { COVER_ASPECT } from '@/lib/coverCrop';
 import { compactNumber, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 
-/** Matches the profile cover so the two page types feel like one app. */
-const COVER_HEIGHT = 148;
 const LOGO = 72;
 const RING = 3;
 
@@ -109,10 +108,11 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
 
   return (
     <View>
-      {/* Cover */}
+      {/* Cover. Same wide band as a profile cover, so a cropped photo fills it. */}
       <View
         style={{
-          height: COVER_HEIGHT,
+          width: '100%',
+          aspectRatio: COVER_ASPECT,
           backgroundColor: colors.surfaceAlt,
           borderBottomLeftRadius: radii.xl,
           borderBottomRightRadius: radii.xl,
@@ -123,7 +123,7 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           <Image
             source={{ uri: org.cover_url }}
             resizeMode="cover"
-            style={{ width: '100%', height: '100%' }}
+            style={StyleSheet.absoluteFill}
             accessibilityIgnoresInvertColors
           />
         ) : (
