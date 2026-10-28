@@ -29,6 +29,7 @@ import { errorMessage } from '@/lib/errors';
 import { SPORTS, countryLabel, countryOptions, sportLabel } from '@/constants/sports';
 import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
+import { COST_CURRENCIES, currencyForCountry, toCostNote } from '@/lib/meetupCost';
 
 /**
  * Posting a game.
@@ -91,7 +92,12 @@ export default function NewMeetupScreen() {
   const [spots, setSpots] = useState(2);
   const [level, setLevel] = useState<MeetupLevel>('any');
   const [note, setNote] = useState('');
-  const [cost, setCost] = useState('');
+  /** Null until the host picks. Tapping the selected chip clears it again. */
+  const [costKind, setCostKind] = useState<'free' | 'paid' | null>(null);
+  const [costAmount, setCostAmount] = useState('');
+  const [costCurrency, setCostCurrency] = useState('USD');
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const [currencySheet, setCurrencySheet] = useState(false);
 
   const [sportSheet, setSportSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
@@ -123,7 +129,7 @@ export default function NewMeetupScreen() {
     spots !== 2 ||
     level !== 'any' ||
     note.trim().length > 0 ||
-    cost.trim().length > 0;
+    costKind !== null;
 
   useEffect(() => {
     if (!canMeet || placeSeeded.current) return;
@@ -140,6 +146,12 @@ export default function NewMeetupScreen() {
     setCity((current) => (current.trim() ? current : profileCity));
     setSeededPlace({ country: profileCountry, city: profileCity });
   }, [canMeet, hostPlace.data, hostPlace.error, hostPlace.loading]);
+
+  /* A currency the host has not chosen follows the country. USD until then. */
+  useEffect(() => {
+    if (currencyTouched) return;
+    setCostCurrency(currencyForCountry(country));
+  }, [country, currencyTouched]);
 
   const chooseCountry = useCallback((next: string) => {
     placeTouched.current = true;
@@ -191,13 +203,23 @@ export default function NewMeetupScreen() {
      a name that is not in the list. */
   const resolvedCity = cityFromPicker(city, cityQuery).trim().slice(0, 80);
 
+  const costNote = toCostNote(
+    costKind === 'free'
+      ? { kind: 'free' }
+      : costKind === 'paid'
+        ? { kind: 'paid', amount: costAmount, currency: costCurrency }
+        : null,
+  );
+  const costInvalid = costKind === 'paid' && costNote == null;
+
   const ready =
     sport !== '' &&
     title.trim().length >= 4 &&
     country.trim() !== '' &&
     resolvedCity !== '' &&
     startsAt !== null &&
-    !mapLinkInvalid;
+    !mapLinkInvalid &&
+    !costInvalid;
 
   const countries = useMemo(
     () => countryOptions(countryQuery, (c) => countryLabel(t, c)),
@@ -219,7 +241,7 @@ export default function NewMeetupScreen() {
         venue: venue.trim() || null,
         level,
         note: note.trim() || null,
-        costNote: cost.trim() || null,
+        costNote,
       });
       let linkSaved = true;
       if (mapLinkTrimmed) {
@@ -238,7 +260,7 @@ export default function NewMeetupScreen() {
       setSaving(false);
     }
   }, [
-    area, cost, country, level, mapLinkTrimmed, note, ready, resolvedCity, router, spots, sport,
+    area, costNote, country, level, mapLinkTrimmed, note, ready, resolvedCity, router, spots, sport,
     startsAt, t, title, toast, venue,
   ]);
 
@@ -431,13 +453,55 @@ export default function NewMeetupScreen() {
             multiline
             maxLength={1000}
           />
-          <Input
-            label={t('meetups.fieldCost')}
-            placeholder={t('meetups.fieldCostPlaceholder')}
-            value={cost}
-            onChangeText={setCost}
-            maxLength={80}
-          />
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('meetups.fieldCost')}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              <Chip
+                label={t('meetups.costFree')}
+                selected={costKind === 'free'}
+                onPress={() => setCostKind((current) => (current === 'free' ? null : 'free'))}
+                testID="meetup-cost-free"
+              />
+              <Chip
+                label={t('meetups.costPaid')}
+                selected={costKind === 'paid'}
+                onPress={() => setCostKind((current) => (current === 'paid' ? null : 'paid'))}
+                testID="meetup-cost-paid"
+              />
+            </View>
+            {costKind === 'paid' ? (
+              /* Currency first, then the amount: in Arabic the row mirrors, so
+                 the code still sits in front of the number. */
+              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' }}>
+                <Pressable
+                  onPress={() => setCurrencySheet(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('meetups.costCurrency')}
+                  style={{ width: 132 }}
+                >
+                  <Input
+                    label={t('meetups.costCurrency')}
+                    value={costCurrency}
+                    editable={false}
+                    pointerEvents="none"
+                    testID="meetup-cost-currency"
+                  />
+                </Pressable>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label={t('meetups.costAmount')}
+                  value={costAmount}
+                  onChangeText={(text) => setCostAmount(text.replace(/\D/g, '').slice(0, 4))}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  error={costInvalid ? t('meetups.costAmountInvalid') : null}
+                  testID="meetup-cost-amount"
+                />
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -478,6 +542,27 @@ export default function NewMeetupScreen() {
               title={countryLabel(t, c)}
               right={country === c ? <Check size={20} color={colors.primary} /> : undefined}
               onPress={() => chooseCountry(c)}
+            />
+          </View>
+        ))}
+      </Sheet>
+
+      <Sheet
+        visible={currencySheet}
+        onClose={() => setCurrencySheet(false)}
+        title={t('meetups.costCurrency')}
+      >
+        {COST_CURRENCIES.map((code, index) => (
+          <View key={code}>
+            {index > 0 ? <Divider /> : null}
+            <ListItem
+              title={`\u2066${code}\u2069`}
+              right={costCurrency === code ? <Check size={20} color={colors.primary} /> : undefined}
+              onPress={() => {
+                setCurrencyTouched(true);
+                setCostCurrency(code);
+                setCurrencySheet(false);
+              }}
             />
           </View>
         ))}
