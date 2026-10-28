@@ -16,7 +16,7 @@ export const discover = {
   // ── 发现标签页 ─────────────────────────────────────────────────────────────
   title: '发现天赋',
   athleteSubtitle: '俱乐部、教练，以及你的位置',
-  searchPeople: '搜索人和俱乐部',
+  searchPeople: '搜索运动员、教练和俱乐部',
   queryPlaceholder: '姓名、俱乐部、位置',
   queryLabel: '搜索运动员',
   filterResults: '筛选结果',

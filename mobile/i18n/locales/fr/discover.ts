@@ -19,7 +19,7 @@ export const discover = {
   // ── Onglet Découvrir ───────────────────────────────────────────────────────
   title: 'Découvrir des talents',
   athleteSubtitle: 'Clubs, coachs et où tu en es',
-  searchPeople: 'Rechercher des personnes et des clubs',
+  searchPeople: 'Rechercher des athlètes, des coachs et des clubs',
   queryPlaceholder: 'Nom, club, poste',
   queryLabel: 'Rechercher des athlètes',
   filterResults: 'Filtrer les résultats',

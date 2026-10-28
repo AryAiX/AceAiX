@@ -19,7 +19,7 @@ export const discover = {
   // ── Pestaña Descubrir ──────────────────────────────────────────────────────
   title: 'Descubre talento',
   athleteSubtitle: 'Clubes, entrenadores y dónde estás tú',
-  searchPeople: 'Buscar personas y clubes',
+  searchPeople: 'Buscar deportistas, entrenadores y clubes',
   queryPlaceholder: 'Nombre, club, posición',
   queryLabel: 'Buscar deportistas',
   filterResults: 'Filtrar resultados',

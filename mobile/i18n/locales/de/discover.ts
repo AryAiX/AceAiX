@@ -18,7 +18,7 @@ export const discover = {
   // ── Tab „Entdecken“ ────────────────────────────────────────────────────────
   title: 'Talente entdecken',
   athleteSubtitle: 'Vereine, Trainer und wo du stehst',
-  searchPeople: 'Leute und Vereine suchen',
+  searchPeople: 'Sportler, Trainer und Vereine suchen',
   queryPlaceholder: 'Name, Verein, Position',
   queryLabel: 'Sportler suchen',
   filterResults: 'Treffer filtern',

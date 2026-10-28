@@ -17,7 +17,7 @@ export const discover = {
   // ── Discover tab ───────────────────────────────────────────────────────────
   title: 'Discover talent',
   athleteSubtitle: 'Clubs, coaches and where you stand',
-  searchPeople: 'Search people and clubs',
+  searchPeople: 'Search athletes, coaches and clubs',
   queryPlaceholder: 'Name, club, position',
   queryLabel: 'Search athletes',
   filterResults: 'Filter results',
