@@ -103,11 +103,12 @@ export default function NewStoryScreen() {
 
   const acceptAsset = useCallback(
     (asset: ImagePicker.ImagePickerAsset) => {
+      /* A camera stop at 15s can come back as 15.0x seconds. */
       if (
         asset.type === 'video' &&
         asset.duration != null &&
         Number.isFinite(asset.duration) &&
-        asset.duration > STORY_VIDEO_CAP_MS
+        asset.duration > STORY_VIDEO_CAP_MS + 500
       ) {
         toast.error(t('stories.videoTooLong'));
         return;
