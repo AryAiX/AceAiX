@@ -17,7 +17,7 @@ export const COVER_ASPECT = 2.4;
 export const COVER_MIN_ZOOM = 1;
 export const COVER_MAX_ZOOM = 3;
 
-/** Long edge of the JPEG written before upload. */
+/** Maximum width of the JPEG written before upload. A narrower crop stays as it is. */
 export const COVER_EXPORT_WIDTH = 1500;
 export const COVER_JPEG_QUALITY = 0.85;
 
@@ -221,7 +221,16 @@ export interface RenderCoverOptions {
   base64?: boolean;
 }
 
-/** Crop to the frame, then a 1500px-wide JPEG. Orientation is baked by the manipulator before the crop. */
+/**
+ * Width written after the crop. Wider than {@link COVER_EXPORT_WIDTH} shrinks
+ * to that cap. Anything already at or under the cap keeps its own width.
+ */
+export function coverExportWidth(cropWidth: number): number {
+  if (!Number.isFinite(cropWidth) || cropWidth <= 0) return 0;
+  return Math.min(cropWidth, COVER_EXPORT_WIDTH);
+}
+
+/** Crop to the frame, then a JPEG no wider than {@link COVER_EXPORT_WIDTH}. Orientation is baked by the manipulator before the crop. */
 export async function renderCoverCrop(
   uri: string,
   crop: CoverCropRect,
@@ -236,7 +245,10 @@ export async function renderCoverCrop(
       width: crop.width,
       height: crop.height,
     });
-    context.resize({ width: COVER_EXPORT_WIDTH });
+    const exportWidth = coverExportWidth(crop.width);
+    if (exportWidth > 0 && exportWidth < crop.width) {
+      context.resize({ width: exportWidth });
+    }
     const rendered = await context.renderAsync();
     try {
       const saved = await rendered.saveAsync({

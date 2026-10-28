@@ -42,11 +42,10 @@ import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@
 import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
 import {
   COVER_ASPECT,
-  exifOrientation,
   renderCoverCrop,
-  storedPixelsToVisual,
   type CoverCropRect,
 } from '@/lib/coverCrop';
+import { readCoverSize } from '@/lib/coverPick';
 import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
 import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
@@ -1189,27 +1188,6 @@ export default function EditProfileScreen() {
       />
     </Screen>
   );
-}
-
-/**
- * Pixel size for the cropper. The picker's width and height are already the
- * picture as shown. When they are missing, `Image.getSize` can still be the
- * stored size, so a 90° EXIF orientation swaps the axes.
- */
-async function readCoverSize(
-  asset: ImagePicker.ImagePickerAsset,
-): Promise<{ width: number; height: number }> {
-  if (asset.width > 0 && asset.height > 0) {
-    return { width: Math.round(asset.width), height: Math.round(asset.height) };
-  }
-  const measured = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-    Image.getSize(
-      asset.uri,
-      (width, height) => resolve({ width, height }),
-      (error) => reject(error instanceof Error ? error : new Error('Could not read that photo.')),
-    );
-  });
-  return storedPixelsToVisual(measured.width, measured.height, exifOrientation(asset.exif));
 }
 
 function toNumber(value: string): number | null {

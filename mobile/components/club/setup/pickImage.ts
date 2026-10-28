@@ -1,8 +1,7 @@
-import { Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 import type { PickedPhoto } from '@/components/onboarding/PhotoStep';
-import { exifOrientation, storedPixelsToVisual } from '@/lib/coverCrop';
+import { readCoverSize } from '@/lib/coverPick';
 import type { Translate } from '@/lib/i18n-bridge';
 
 export type PickSource = 'library' | 'camera';
@@ -69,7 +68,7 @@ export async function pickImage(source: PickSource, shape: PickShape): Promise<P
     if (!asset?.uri) return { ok: false, reason: 'unreadable' };
 
     if (wide) {
-      const size = await coverPixels(asset);
+      const size = await readCoverSize(asset);
       if (size.width < 1 || size.height < 1) return { ok: false, reason: 'unreadable' };
       return {
         ok: true,
@@ -97,27 +96,6 @@ export async function pickImage(source: PickSource, shape: PickShape): Promise<P
   } catch {
     return { ok: false, reason: 'failed' };
   }
-}
-
-/**
- * Pixel size for the cropper. The picker's width and height are already the
- * picture as shown. When they are missing, `Image.getSize` can still be the
- * stored size, so a 90° EXIF orientation swaps the axes.
- */
-async function coverPixels(
-  asset: ImagePicker.ImagePickerAsset,
-): Promise<{ width: number; height: number }> {
-  if (asset.width > 0 && asset.height > 0) {
-    return { width: Math.round(asset.width), height: Math.round(asset.height) };
-  }
-  const measured = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-    Image.getSize(
-      asset.uri,
-      (width, height) => resolve({ width, height }),
-      (error) => reject(error instanceof Error ? error : new Error('Could not read that photo.')),
-    );
-  });
-  return storedPixelsToVisual(measured.width, measured.height, exifOrientation(asset.exif));
 }
 
 /** What to tell the person when no photo came back. Null for a plain cancel. */

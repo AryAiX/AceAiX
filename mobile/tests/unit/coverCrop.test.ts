@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import {
   COVER_ASPECT,
+  COVER_EXPORT_WIDTH,
   coverCropRect,
+  coverExportWidth,
   resolvedCoverPixels,
   storedPixelsToVisual,
   type CoverCropInput,
@@ -157,6 +159,14 @@ describe('coverCropRect', () => {
     expect(rect.originY + rect.height).toBeLessThanOrEqual(5678);
     expect(rect.width).toBeGreaterThan(0);
     expect(rect.height).toBeGreaterThan(0);
+  });
+});
+
+describe('coverExportWidth', () => {
+  it('shrinks a crop wider than the cap and keeps a smaller one', () => {
+    expect(coverExportWidth(COVER_EXPORT_WIDTH + 400)).toBe(COVER_EXPORT_WIDTH);
+    expect(coverExportWidth(COVER_EXPORT_WIDTH)).toBe(COVER_EXPORT_WIDTH);
+    expect(coverExportWidth(800)).toBe(800);
   });
 });
 
