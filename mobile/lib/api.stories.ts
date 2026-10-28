@@ -1,4 +1,5 @@
 import { AppError } from '@/lib/errors';
+import { prepareVideo } from '@/lib/videoPrep';
 import { isAbsoluteMediaUrl, pathsToSign } from '@/lib/mediaUrl';
 import { Buckets, supabase } from '@/lib/supabase';
 import type { CardBackground, StoryKind } from '@/lib/stories';
@@ -115,6 +116,8 @@ export interface PendingStoryMedia {
   mimeType?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
+  width?: number;
+  height?: number;
 }
 
 const STORY_MAX_BYTES = 50 * 1024 * 1024;
@@ -172,12 +175,25 @@ export async function uploadStoryMedia(item: PendingStoryMedia): Promise<string>
     throw new AppError('That file is too big for a story.');
   }
 
-  const { ext, contentType } = storyFileType(item);
+  let { ext, contentType } = storyFileType(item);
+  let sourceUri = item.uri;
+
+  // Clips go up at phone-screen size (see lib/videoPrep.ts). A failed
+  // compress uploads the original: a heavy clip beats a lost story.
+  if (item.type === 'video') {
+    const prepared = await prepareVideo(sourceUri, item.width, item.height);
+    if (prepared) {
+      sourceUri = prepared.uri;
+      ext = prepared.ext;
+      contentType = prepared.contentType;
+    }
+  }
+
   const path = `${auth.user.id}/${randomId()}.${ext}`;
 
   let body: ArrayBuffer;
   try {
-    const response = await fetch(item.uri);
+    const response = await fetch(sourceUri);
     body = await response.arrayBuffer();
   } catch {
     throw new AppError('We could not read that file. Pick it again and retry.');

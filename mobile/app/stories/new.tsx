@@ -1,9 +1,10 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Check, Globe, ImagePlus, UserCheck, Users } from 'lucide-react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { Camera, Check, Globe, ImagePlus, UserCheck, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from '@/theme/tokens';
@@ -35,6 +36,7 @@ import {
   STORY_CAPTION_MAX,
   STORY_CARD_MAX,
   STORY_STAT_MAX,
+  STORY_VIDEO_CAP_MS,
   type CardBackground,
   type StickerKey,
 } from '@/lib/stories';
@@ -45,11 +47,11 @@ import type { PostAudience } from '@/types/models';
  *
  * Two ways in. A card needs nothing but a sentence — pick a background, a
  * sticker and, if there is one, the number that matters — and is how most
- * results and PBs will be posted. A photo is a photo with a caption. Both
- * show exactly what will appear before it goes up.
+ * results and PBs will be posted. A photo or a short video is a clip with a
+ * caption. Both show exactly what will appear before it goes up.
  */
 
-type Mode = 'card' | 'photo';
+type Mode = 'card' | 'media';
 
 const BACKGROUND_LABELS: Record<CardBackground, string> = {
   hero: 'stories.bgHero',
@@ -86,49 +88,88 @@ export default function NewStoryScreen() {
   const [background, setBackground] = useState<CardBackground>('action');
   const [sticker, setSticker] = useState<StickerKey | null>('goal');
   const [stat, setStat] = useState('');
-  const [photo, setPhoto] = useState<(PendingStoryMedia & { width?: number; height?: number }) | null>(null);
+  const [picked, setPicked] = useState<PendingStoryMedia | null>(null);
   const [caption, setCaption] = useState('');
   const [audience, setAudience] = useState<PostAudience>('followers');
   const [posting, setPosting] = useState(false);
 
   const trimmed = text.trim();
-  const canPost = !posting && (mode === 'card' ? trimmed.length > 0 : !!photo);
+  const canPost = !posting && (mode === 'card' ? trimmed.length > 0 : !!picked);
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
     else router.replace(Routes.home);
   }, [router]);
 
-  const pickPhoto = useCallback(async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      toast.error(t('stories.photoPermission'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: false,
-      quality: 0.85,
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    setPhoto({
-      uri: asset.uri,
-      type: 'photo',
-      mimeType: asset.mimeType ?? null,
-      fileName: asset.fileName ?? null,
-      fileSize: asset.fileSize ?? null,
-      width: asset.width,
-      height: asset.height,
-    });
-  }, [t, toast]);
+  const acceptAsset = useCallback(
+    (asset: ImagePicker.ImagePickerAsset) => {
+      if (
+        asset.type === 'video' &&
+        asset.duration != null &&
+        Number.isFinite(asset.duration) &&
+        asset.duration > STORY_VIDEO_CAP_MS
+      ) {
+        toast.error(t('stories.videoTooLong'));
+        return;
+      }
+      setPicked({
+        uri: asset.uri,
+        type: asset.type === 'video' ? 'video' : 'photo',
+        mimeType: asset.mimeType ?? null,
+        fileName: asset.fileName ?? null,
+        fileSize: asset.fileSize ?? null,
+        width: asset.width,
+        height: asset.height,
+      });
+    },
+    [t, toast],
+  );
+
+  const pickFrom = useCallback(
+    async (source: 'library' | 'camera') => {
+      if (posting) return;
+      try {
+        if (source === 'camera') {
+          const permission = await ImagePicker.requestCameraPermissionsAsync();
+          if (!permission.granted) {
+            toast.error(t('stories.cameraPermission'));
+            return;
+          }
+        } else {
+          const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permission.granted) {
+            toast.error(t('stories.photoPermission'));
+            return;
+          }
+        }
+        const options: ImagePicker.ImagePickerOptions = {
+          mediaTypes: ['images', 'videos'],
+          allowsMultipleSelection: false,
+          quality: 0.85,
+          videoMaxDuration: STORY_VIDEO_CAP_MS / 1000,
+        };
+        const result =
+          source === 'camera'
+            ? await ImagePicker.launchCameraAsync(options)
+            : await ImagePicker.launchImageLibraryAsync(options);
+        if (result.canceled || !result.assets?.[0]) return;
+        acceptAsset(result.assets[0]);
+      } catch (err) {
+        toast.error(errorMessage(err));
+      }
+    },
+    [acceptAsset, posting, t, toast],
+  );
+
+  const pickLibrary = useCallback(() => pickFrom('library'), [pickFrom]);
+  const pickCamera = useCallback(() => pickFrom('camera'), [pickFrom]);
 
   const post = useCallback(async () => {
     if (mode === 'card' && !trimmed) {
       toast.error(t('stories.needText'));
       return;
     }
-    if (mode === 'photo' && !photo) {
+    if (mode === 'media' && !picked) {
       toast.error(t('stories.needPhoto'));
       return;
     }
@@ -141,9 +182,14 @@ export default function NewStoryScreen() {
           card: { text: trimmed, background, sticker: sticker ?? '', stat: stat.trim() },
           audience,
         });
-      } else if (photo) {
-        uploaded = await uploadStoryMedia(photo);
-        await createStory({ kind: 'photo', mediaUrl: uploaded, caption, audience });
+      } else if (picked) {
+        uploaded = await uploadStoryMedia(picked);
+        await createStory({
+          kind: picked.type === 'video' ? 'video' : 'photo',
+          mediaUrl: uploaded,
+          caption,
+          audience,
+        });
       }
       toast.success(t('stories.posted'));
       close();
@@ -152,11 +198,11 @@ export default function NewStoryScreen() {
       toast.error(errorMessage(err));
       setPosting(false);
     }
-  }, [mode, trimmed, photo, background, sticker, stat, caption, audience, toast, t, close]);
+  }, [mode, trimmed, picked, background, sticker, stat, caption, audience, toast, t, close]);
 
   const modes: { value: Mode; label: string }[] = [
     { value: 'card', label: t('stories.modeCard') },
-    { value: 'photo', label: t('stories.modePhoto') },
+    { value: 'media', label: t('stories.modePhoto') },
   ];
 
   return (
@@ -202,27 +248,33 @@ export default function NewStoryScreen() {
                   stat: stat.trim(),
                 }}
               />
-            ) : photo ? (
+            ) : picked ? (
               <Pressable
-                onPress={pickPhoto}
+                onPress={pickLibrary}
                 accessibilityRole="button"
                 accessibilityLabel={t('stories.changePhoto')}
                 style={{ flex: 1, backgroundColor: Brand.ink }}
               >
-                <Image
-                  source={{ uri: photo.uri }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                  blurRadius={30}
-                  accessible={false}
-                />
-                <View
-                  pointerEvents="none"
-                  style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
-                />
-                <Image source={{ uri: photo.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
+                {picked.type === 'video' ? (
+                  <StoryVideoPreview uri={picked.uri} />
+                ) : (
+                  <>
+                    <Image
+                      source={{ uri: picked.uri }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                      blurRadius={30}
+                      accessible={false}
+                    />
+                    <View
+                      pointerEvents="none"
+                      style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]}
+                    />
+                    <Image source={{ uri: picked.uri }} style={StyleSheet.absoluteFill} resizeMode="contain" />
+                  </>
+                )}
                 {caption.trim() ? (
-                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}>
+                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }} pointerEvents="none">
                     <LinearGradient
                       colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
                       style={StyleSheet.absoluteFill}
@@ -236,13 +288,14 @@ export default function NewStoryScreen() {
                 ) : null}
               </Pressable>
             ) : (
-              <Tappable
-                onPress={pickPhoto}
-                accessibilityRole="button"
-                accessibilityLabel={t('stories.pickPhoto')}
-                containerStyle={{ flex: 1 }}
-                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md }}
-                testID="story-pick-photo"
+              <View
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.md,
+                  paddingHorizontal: spacing.md,
+                }}
               >
                 <View
                   style={{
@@ -264,10 +317,10 @@ export default function NewStoryScreen() {
                     <ImagePlus size={28} color={colors.textOnBrand} />
                   </View>
                 </View>
-                <Text variant="captionStrong" tone="secondary">
+                <Text variant="captionStrong" tone="secondary" align="center">
                   {t('stories.pickPhoto')}
                 </Text>
-              </Tappable>
+              </View>
             )}
           </View>
         </Reveal>
@@ -343,14 +396,26 @@ export default function NewStoryScreen() {
           </>
         ) : (
           <>
-            {photo ? (
+            <View style={{ gap: spacing.sm }}>
               <Button
-                label={t('stories.changePhoto')}
+                label={t('stories.chooseLibrary')}
                 variant="secondary"
                 icon={<ImagePlus size={18} color={colors.text} />}
-                onPress={pickPhoto}
+                onPress={pickLibrary}
+                disabled={posting}
+                fullWidth
+                testID="story-pick-library"
               />
-            ) : null}
+              <Button
+                label={t('stories.useCamera')}
+                variant="secondary"
+                icon={<Camera size={18} color={colors.text} />}
+                onPress={pickCamera}
+                disabled={posting}
+                fullWidth
+                testID="story-pick-camera"
+              />
+            </View>
             <Input
               label={t('stories.captionLabel')}
               value={caption}
@@ -400,6 +465,41 @@ export default function NewStoryScreen() {
         />
       </ScrollView>
     </Screen>
+  );
+}
+
+/** Muted, looping, shown whole on the same dark ground the viewer uses. */
+function StoryVideoPreview({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = true;
+  });
+
+  useEffect(() => {
+    try {
+      player.play();
+    } catch {
+      /* released underneath us */
+    }
+    return () => {
+      try {
+        player.pause();
+      } catch {
+        /* already gone */
+      }
+    };
+  }, [player]);
+
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="contain"
+      nativeControls={false}
+      fullscreenOptions={{ enable: false }}
+      allowsPictureInPicture={false}
+      pointerEvents="none"
+    />
   );
 }
 
