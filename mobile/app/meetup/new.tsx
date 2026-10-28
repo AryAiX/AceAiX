@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Check, Minus, Plus, Search } from 'lucide-react-native';
@@ -19,9 +19,12 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
+import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
+import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
+import { getMyProfile } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { SPORTS, countryLabel, countryOptions, sportLabel } from '@/constants/sports';
 import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
@@ -40,6 +43,10 @@ import { isAllowedMapUrl } from '@/lib/mapLinks';
  * because `@react-native-community/datetimepicker` is not in this project and
  * adding a native module for one screen would cost Expo Go compatibility — the
  * thing that lets anybody on the team open this app on their own phone.
+ *
+ * City is the same picker as onboarding. The country sheet still stores the
+ * English country name that picker searches with. A name that is not in the
+ * list is saved as typed; this screen does not add it to the city catalogue.
  */
 
 const LEVELS: MeetupLevel[] = ['any', 'beginner', 'intermediate', 'advanced', 'competitive'];
@@ -67,11 +74,15 @@ export default function NewMeetupScreen() {
   const toast = useToast();
   const { profile } = useAuth();
   const canMeet = profile?.is_minor === false;
+  // Same read as Edit profile: city and country live on the profile bundle,
+  // not on the signed-in account. Minors never reach the form.
+  const hostPlace = useAsync(() => getMyProfile(), [canMeet], { enabled: canMeet });
 
   const [sport, setSport] = useState('');
   const [title, setTitle] = useState('');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
   const [area, setArea] = useState('');
   const [venue, setVenue] = useState('');
   const [mapLink, setMapLink] = useState('');
@@ -87,12 +98,23 @@ export default function NewMeetupScreen() {
   const [countryQuery, setCountryQuery] = useState('');
   const [whenSheet, setWhenSheet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  /** A host who already picked a place must not be overwritten by a late profile. */
+  const placeTouched = useRef(false);
+  const placeSeeded = useRef(false);
+  /** Profile values the form opened with. Those are not unsaved edits. */
+  const [seededPlace, setSeededPlace] = useState<{ country: string; city: string } | null>(null);
+
+  const placeDirty =
+    country !== (seededPlace?.country ?? '') ||
+    city !== (seededPlace?.city ?? '') ||
+    cityQuery.trim() !== '';
 
   const hasContent =
     sport !== '' ||
     title.trim().length > 0 ||
-    country !== '' ||
-    city !== '' ||
+    placeDirty ||
     area.trim().length > 0 ||
     venue.trim().length > 0 ||
     mapLink.trim().length > 0 ||
@@ -103,7 +125,32 @@ export default function NewMeetupScreen() {
     note.trim().length > 0 ||
     cost.trim().length > 0;
 
-  const [discardOpen, setDiscardOpen] = useState(false);
+  useEffect(() => {
+    if (!canMeet || placeSeeded.current) return;
+    if (hostPlace.loading || (!hostPlace.data && !hostPlace.error)) return;
+    placeSeeded.current = true;
+    if (placeTouched.current || !hostPlace.data) {
+      setSeededPlace({ country: '', city: '' });
+      return;
+    }
+    const profileCountry = hostPlace.data.user.country?.trim() ?? '';
+    // A city with no country cannot be searched, so it is not offered.
+    const profileCity = profileCountry ? (hostPlace.data.user.city?.trim() ?? '') : '';
+    setCountry((current) => (current.trim() ? current : profileCountry));
+    setCity((current) => (current.trim() ? current : profileCity));
+    setSeededPlace({ country: profileCountry, city: profileCity });
+  }, [canMeet, hostPlace.data, hostPlace.error, hostPlace.loading]);
+
+  const chooseCountry = useCallback((next: string) => {
+    placeTouched.current = true;
+    if (next !== country) {
+      setCity('');
+      setCityQuery('');
+    }
+    setCountry(next);
+    setCountryQuery('');
+    setCountrySheet(false);
+  }, [country]);
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -139,11 +186,16 @@ export default function NewMeetupScreen() {
   const mapLinkTrimmed = mapLink.trim();
   const mapLinkInvalid = mapLinkTrimmed.length > 0 && !isAllowedMapUrl(mapLinkTrimmed);
 
+  /* A tapped chip, or two or more characters still in the box. The meetup
+     column accepts at most 80, which is also as long as the picker will offer
+     a name that is not in the list. */
+  const resolvedCity = cityFromPicker(city, cityQuery).trim().slice(0, 80);
+
   const ready =
     sport !== '' &&
     title.trim().length >= 4 &&
     country.trim() !== '' &&
-    city.trim() !== '' &&
+    resolvedCity !== '' &&
     startsAt !== null &&
     !mapLinkInvalid;
 
@@ -160,7 +212,7 @@ export default function NewMeetupScreen() {
         sport,
         title: title.trim(),
         country: country.trim(),
-        city: city.trim(),
+        city: resolvedCity,
         startsAt: startsAt.toISOString(),
         spotsTotal: spots,
         area: area.trim() || null,
@@ -186,7 +238,7 @@ export default function NewMeetupScreen() {
       setSaving(false);
     }
   }, [
-    area, city, cost, country, level, mapLinkTrimmed, note, ready, router, spots, sport,
+    area, cost, country, level, mapLinkTrimmed, note, ready, resolvedCity, router, spots, sport,
     startsAt, t, title, toast, venue,
   ]);
 
@@ -276,13 +328,17 @@ export default function NewMeetupScreen() {
               required
             />
           </Pressable>
-          <Input
-            label={t('meetups.fieldCity')}
+          <CityPicker
+            country={country.trim() ? country : null}
             value={city}
-            onChangeText={setCity}
-            maxLength={80}
-            autoCapitalize="words"
-            required
+            query={cityQuery}
+            onQueryChange={setCityQuery}
+            onChange={(next) => {
+              placeTouched.current = true;
+              setCity(next);
+            }}
+            label={t('meetups.fieldCity')}
+            testID="meetup-city"
           />
           <Input
             label={t('meetups.fieldArea')}
@@ -421,11 +477,7 @@ export default function NewMeetupScreen() {
             <ListItem
               title={countryLabel(t, c)}
               right={country === c ? <Check size={20} color={colors.primary} /> : undefined}
-              onPress={() => {
-                setCountry(c);
-                setCountryQuery('');
-                setCountrySheet(false);
-              }}
+              onPress={() => chooseCountry(c)}
             />
           </View>
         ))}
