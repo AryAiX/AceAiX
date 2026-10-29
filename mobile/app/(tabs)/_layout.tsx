@@ -305,8 +305,9 @@ export default function TabsLayout() {
    * because a destination that is always empty reads as a broken app rather
    * than as a rule, and there is nothing there for them to see.
    *
-   * `href: null` removes it from the bar without removing the route, so a deep
-   * link still resolves and the screen's own empty state handles it.
+   * Club accounts do not get the tab either. `href: null` removes it from the
+   * bar without removing the route, so a deep link still resolves and the
+   * screen's own empty state handles it.
    */
   const canMeet = profile?.is_minor === false;
 
@@ -386,7 +387,7 @@ export default function TabsLayout() {
         name="meetups"
         options={{
           title: t('common.tabMeetups'),
-          href: canMeet ? undefined : null,
+          href: canMeet && profile?.role !== 'club' ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Users}
