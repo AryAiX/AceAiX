@@ -4,7 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Compass, Handshake, HeartHandshake, Home, Plus, Target, User, Users } from 'lucide-react-native';
+import { Compass, Handshake, HeartHandshake, Home, Plus, Swords, Target, User, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -400,6 +400,26 @@ export default function TabsLayout() {
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('meetups', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="club-matches"
+        options={{
+          title: t('common.matches'),
+          /* Club accounts only. Everyone else keeps Play in this slot. */
+          href: profile?.role === 'club' ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Swords}
+              focused={focused}
+              label={t('common.matches')}
+              bump={bumpFor('club-matches')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('common.matches'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('club-matches', navigation.isFocused()),
         })}
       />
       <Tabs.Screen
