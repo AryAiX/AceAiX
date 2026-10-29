@@ -132,6 +132,24 @@ export default function MyProfileScreen() {
         </View>
       ) : null}
 
+      {/* Parent onboarding never asks where they live, but every account needs it (QA-156). */}
+      {data.user.role === 'guardian' && (!data.user.country || !data.user.city) ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+          <Card testID="location-reminder" style={{ gap: spacing.sm }}>
+            <Text variant="bodyStrong">{t('profile.locationReminderTitle')}</Text>
+            <Text variant="caption" tone="muted">
+              {t('profile.locationReminderBody')}
+            </Text>
+            <Button
+              label={t('profile.locationReminderCta')}
+              variant="secondary"
+              size="sm"
+              onPress={() => router.push(Routes.editProfile)}
+            />
+          </Card>
+        </View>
+      ) : null}
+
       <View
         style={{
           paddingHorizontal: spacing.lg,

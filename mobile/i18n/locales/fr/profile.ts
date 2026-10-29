@@ -312,6 +312,9 @@ export const profile = {
   alsoPlaysReminderBody:
     "Ajoute-en jusqu'à 3 pour que les athlètes et les entraîneurs aient une vue complète.",
   alsoPlaysReminderCta: 'Ajouter des sports',
+  locationReminderTitle: 'Ajoutez votre lieu de résidence',
+  locationReminderBody: 'Chaque compte AceAiX a besoin d’un pays et d’une ville. Ajoutez-les dans Modifier le profil.',
+  locationReminderCta: 'Ajouter pays et ville',
   sectionCoaching: "Activité d'entraîneur",
   sectionClub: 'Club',
   sport: 'Sport',
