@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: 'Ищут спонсора',
   portal: 'Портал спонсорства',
   openPortal: 'Открыть портал',
+  childrenSponsorship: 'Спонсорство детей',
   noMoneyNote: 'Деньги не проходят через AceAiX. Принять — значит договориться обсудить детали; договор и оплата остаются между вами.',
   need: {
     entry_fee: 'Стартовый взнос',

@@ -105,6 +105,7 @@ export const common = {
   followers: '粉丝',
   followingCount: '关注',
   posts: '动态',
+  children: '孩子',
   clips: '短片',
   matches: '比赛',
   endorsed: '推荐',
@@ -141,6 +142,8 @@ export const common = {
   tabDiscover: '发现',
   tabTrials: '试训',
   tabSponsorship: '门户',
+  tabChildren: '孩子',
+  tabChildrenA11y: '你照看的孩子',
   tabYou: '主页',
   tabCreate: '发布',
 

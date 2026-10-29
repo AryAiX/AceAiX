@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: 'Suchen Sponsoren',
   portal: 'Sponsoring-Portal',
   openPortal: 'Portal öffnen',
+  childrenSponsorship: 'Sponsoring der Kinder',
   noMoneyNote: 'Über AceAiX fließt kein Geld. Annehmen heißt: Ihr sprecht miteinander. Vertrag und Zahlung regelt ihr selbst.',
   need: {
     entry_fee: 'Startgebühr',

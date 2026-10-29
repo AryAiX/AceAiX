@@ -15,6 +15,8 @@ import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard
 import { MyBrandCard } from '@/components/sponsorship/SponsorshipPortal';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { CoachStats } from '@/components/profile/CoachStats';
+import { GuardianAthletesCard } from '@/components/guardian/GuardianAthletesCard';
+import { GuardianStats } from '@/components/profile/GuardianStats';
 import { SponsorStats } from '@/components/profile/SponsorStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
@@ -154,7 +156,8 @@ export default function MyProfileScreen() {
         <MyClubCard isClubAccount={data.user.role === 'club'} pages={clubPages.data} />
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
-        {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
+        {data.user.role === 'guardian' ? <GuardianAthletesCard refreshKey={childKey} /> : null}
+        {data.user.role !== 'coach' && data.user.role !== 'sponsor' && data.user.role !== 'guardian' ? (
           <Button
             label={t('coaching.myBookings')}
             variant="secondary"
@@ -170,15 +173,6 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
           />
         ) : null}
-        {data.user.role === 'guardian' ? (
-          <Button
-            label={t('sponsorship.openPortal')}
-            variant="secondary"
-            onPress={() => router.push(Routes.sponsorship)}
-            testID="open-sponsorship-portal"
-          />
-        ) : null}
-
         <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
 
         {athlete ? (
@@ -199,6 +193,14 @@ export default function MyProfileScreen() {
           />
         ) : data.user.role === 'sponsor' ? (
           <SponsorStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : data.user.role === 'guardian' ? (
+          <GuardianStats
             userId={data.user.id}
             isSelf
             posts={data.stats?.posts ?? 0}

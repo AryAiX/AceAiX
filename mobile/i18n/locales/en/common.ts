@@ -105,6 +105,7 @@ export const common = {
   followers: 'Followers',
   followingCount: 'Following',
   posts: 'Posts',
+  children: 'Children',
   clips: 'Clips',
   matches: 'Matches',
   endorsed: 'Endorsed',
@@ -146,6 +147,8 @@ export const common = {
   tabDiscover: 'Discover',
   tabTrials: 'Trials',
   tabSponsorship: 'Portal',
+  tabChildren: 'Children',
+  tabChildrenA11y: 'Children you look after',
   tabYou: 'Profile',
   tabCreate: 'Create',
 

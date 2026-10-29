@@ -7,6 +7,7 @@ export const sponsorship = {
   tabSeekers: 'Seeking sponsors',
   portal: 'Sponsorship portal',
   openPortal: 'Open portal',
+  childrenSponsorship: 'Children’s sponsorship',
   noMoneyNote: 'No money moves through AceAiX. Accepting means you agree to talk; the contract and payment happen between you.',
   need: {
     entry_fee: 'Entry fee',

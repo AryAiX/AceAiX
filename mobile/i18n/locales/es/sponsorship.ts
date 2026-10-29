@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: 'Buscan patrocinio',
   portal: 'Portal de patrocinio',
   openPortal: 'Abrir portal',
+  childrenSponsorship: 'Patrocinio de los hijos',
   noMoneyNote: 'El dinero no pasa por AceAiX. Aceptar significa que acordáis hablar; el contrato y el pago son entre vosotros.',
   need: {
     entry_fee: 'Inscripción',

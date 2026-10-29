@@ -13,6 +13,7 @@ import { TheirGiCard } from '@/components/intelligence/GiCard';
 import { TheirInviteBadge } from '@/components/invite/InviteCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { CoachStats } from '@/components/profile/CoachStats';
+import { GuardianStats } from '@/components/profile/GuardianStats';
 import { SponsorStats } from '@/components/profile/SponsorStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
@@ -200,6 +201,13 @@ export default function PublicProfileScreen() {
           />
         ) : data.user.role === 'sponsor' ? (
           <SponsorStats
+            userId={data.user.id}
+            isSelf={isSelf}
+            posts={data.stats?.posts ?? 0}
+            refreshKey={childKey}
+          />
+        ) : data.user.role === 'guardian' ? (
+          <GuardianStats
             userId={data.user.id}
             isSelf={isSelf}
             posts={data.stats?.posts ?? 0}

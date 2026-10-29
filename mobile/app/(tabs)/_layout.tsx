@@ -4,7 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Compass, Handshake, Home, Plus, Target, User, Users } from 'lucide-react-native';
+import { Compass, Handshake, HeartHandshake, Home, Plus, Target, User, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -296,7 +296,7 @@ export default function TabsLayout() {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { profile, isSponsor } = useAuth();
+  const { profile, isSponsor, isGuardian } = useAuth();
   useClaimPendingInvite();
 
   /*
@@ -405,8 +405,11 @@ export default function TabsLayout() {
         name="opportunities"
         options={{
           title: t('common.tabTrials'),
-          /* Sponsors cannot apply or enter. The route stays for deep links. */
-          href: isSponsor ? null : undefined,
+          /*
+           * Sponsors cannot apply or enter, and a guardian's bar shows
+           * Children in this slot instead. The route stays for deep links.
+           */
+          href: isSponsor || isGuardian ? null : undefined,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Target}
@@ -419,6 +422,26 @@ export default function TabsLayout() {
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('opportunities', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="children"
+        options={{
+          title: t('common.tabChildren'),
+          /* Hidden for every other role. The route stays for deep links. */
+          href: isGuardian ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={HeartHandshake}
+              focused={focused}
+              label={t('common.tabChildren')}
+              bump={bumpFor('children')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('common.tabChildrenA11y'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('children', navigation.isFocused()),
         })}
       />
       <Tabs.Screen

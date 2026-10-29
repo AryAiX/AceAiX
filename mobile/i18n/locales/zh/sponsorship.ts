@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: '寻求赞助',
   portal: '赞助中心',
   openPortal: '打开赞助中心',
+  childrenSponsorship: '孩子的赞助',
   noMoneyNote: '资金不经过 AceAiX。接受只表示双方同意沟通；合同与付款由你们自行完成。',
   need: {
     entry_fee: '报名费',

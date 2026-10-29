@@ -6,7 +6,7 @@ import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
 import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
-import { getUserPosts } from '@/lib/api';
+import { getUserPosts, myLinkedMinors } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
 import { randomUploadId } from '@/lib/uploadId';
@@ -726,6 +726,36 @@ export async function getSponsorStats(userId: string, isSelf: boolean): Promise<
     };
   } catch {
     return EMPTY_SPONSOR_STATS;
+  }
+}
+
+// ── Guardian profile stats ───────────────────────────────────────────────────
+export interface GuardianStats {
+  children: number;
+}
+
+const EMPTY_GUARDIAN_STATS: GuardianStats = {
+  children: 0,
+};
+
+/**
+ * How many children are linked to the signed-in guardian.
+ *
+ * The count is `my_linked_minors()`, one row per young person. The guardian
+ * settings screen reads each child's name and photo from that same RPC.
+ * This does not read `guardian_consents`: its select grant is column-limited,
+ * and a row there is a consent request, not a child.
+ * The RPC only returns the caller's own children, so a profile that is not
+ * your own never calls it.
+ * A failed read is a zero.
+ */
+export async function getGuardianStats(isSelf: boolean): Promise<GuardianStats> {
+  if (!isSelf) return EMPTY_GUARDIAN_STATS;
+  try {
+    const minors = await myLinkedMinors();
+    return { children: minors.length };
+  } catch {
+    return EMPTY_GUARDIAN_STATS;
   }
 }
 

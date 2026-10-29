@@ -54,9 +54,17 @@ function sectionParam(value: string | string[] | undefined): string | undefined 
  * requests for an athlete and My calls for a sponsor.
  *
  * The stack screen at `/sponsorship` shows a back button. The sponsor tab
- * does not: it is a destination, not a page you leave.
+ * does not: it is a destination, not a page you leave. The Children tab
+ * passes `embedded` and draws this same body inside its own screen.
  */
-export function SponsorshipPortal({ back = true }: { back?: boolean }) {
+export function SponsorshipPortal({
+  back = true,
+  embedded = false,
+}: {
+  back?: boolean;
+  /** Skip this component's own screen and header. The parent already has one. */
+  embedded?: boolean;
+}) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -67,11 +75,18 @@ export function SponsorshipPortal({ back = true }: { back?: boolean }) {
   const state = useAsync(getMySponsorship, [], { refetchOnFocus: true });
   const data = state.data;
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [picked, setPicked] = useState<string | undefined>(() => sectionParam(params.section));
+  /*
+   * `?section=deals` belongs to this portal. The Children tab uses the same
+   * param for sessions|sponsorship, so an embedded body must not read it.
+   */
+  const [picked, setPicked] = useState<string | undefined>(() =>
+    embedded ? undefined : sectionParam(params.section),
+  );
 
   useEffect(() => {
-    if (params.section) setPicked(sectionParam(params.section));
-  }, [params.section]);
+    if (embedded || !params.section) return;
+    setPicked(sectionParam(params.section));
+  }, [embedded, params.section]);
 
   const waiting = useMemo(() => (data?.deals ?? []).filter((d) => d.can_respond), [data]);
   const others = useMemo(() => (data?.deals ?? []).filter((d) => !d.can_respond), [data]);
@@ -91,20 +106,28 @@ export function SponsorshipPortal({ back = true }: { back?: boolean }) {
     [state, toast],
   );
 
-  const header = <Header title={t('sponsorship.portal')} back={back} />;
+  const header = embedded ? undefined : <Header title={t('sponsorship.portal')} back={back} />;
 
-  if (state.loading && !data) {
+  const frame = (body: React.ReactNode, refresh = false) => {
+    if (embedded) return body;
     return (
-      <Screen header={header} testID="sponsorship-portal">
-        <SkeletonList count={3} variant="card" />
+      <Screen
+        header={header}
+        onRefresh={refresh ? state.refresh : undefined}
+        refreshing={refresh ? state.refreshing : false}
+        testID="sponsorship-portal"
+      >
+        {body}
       </Screen>
     );
+  };
+
+  if (state.loading && !data) {
+    return frame(<SkeletonList count={3} variant="card" />);
   }
   if (!data) {
-    return (
-      <Screen header={header} testID="sponsorship-portal">
-        <ErrorState message={state.error ?? t('common.somethingWentWrong')} onRetry={state.reload} />
-      </Screen>
+    return frame(
+      <ErrorState message={state.error ?? t('common.somethingWentWrong')} onRetry={state.reload} />,
     );
   }
 
@@ -119,22 +142,19 @@ export function SponsorshipPortal({ back = true }: { back?: boolean }) {
   const showDeals = isAthlete ? athleteSection === 'deals' : isSponsor ? sponsorSection === 'deals' : true;
 
   if (!isAthlete && !isSponsor && data.deals.length === 0) {
-    return (
-      <Screen header={header} testID="sponsorship-portal">
-        <EmptyState
-          icon={<Handshake size={28} color={colors.textMuted} />}
-          title={isGuardian ? t('sponsorship.noDeals') : t('sponsorship.otherRoleTitle')}
-          body={isGuardian ? t('sponsorship.guardianIntro') : t('sponsorship.otherRoleBody')}
-          actionLabel={t('sponsorship.tabSponsors')}
-          onAction={() => router.push({ pathname: Routes.discover, params: { view: 'sponsors' } })}
-        />
-      </Screen>
+    return frame(
+      <EmptyState
+        icon={<Handshake size={28} color={colors.textMuted} />}
+        title={isGuardian ? t('sponsorship.noDeals') : t('sponsorship.otherRoleTitle')}
+        body={isGuardian ? t('sponsorship.guardianIntro') : t('sponsorship.otherRoleBody')}
+        actionLabel={t('sponsorship.tabSponsors')}
+        onAction={() => router.push({ pathname: Routes.discover, params: { view: 'sponsors' } })}
+      />,
     );
   }
 
-  return (
-    <Screen header={header} onRefresh={state.refresh} refreshing={state.refreshing} testID="sponsorship-portal">
-      <View style={{ gap: spacing.xl }}>
+  return frame(
+    <View style={{ gap: spacing.xl }}>
         {isGuardian ? (
           <Text variant="body" tone="secondary">
             {t('sponsorship.guardianIntro')}
@@ -398,8 +418,8 @@ export function SponsorshipPortal({ back = true }: { back?: boolean }) {
             testID="portal-new-request"
           />
         ) : null}
-      </View>
-    </Screen>
+      </View>,
+    true,
   );
 }
 

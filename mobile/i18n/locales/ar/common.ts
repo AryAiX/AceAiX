@@ -105,6 +105,7 @@ export const common = {
   followers: 'المتابِعون',
   followingCount: 'يتابع',
   posts: 'المنشورات',
+  children: 'الأبناء',
   clips: 'اللقطات',
   matches: 'المباريات',
   endorsed: 'التزكيات',
@@ -166,6 +167,8 @@ export const common = {
   tabDiscover: 'استكشاف',
   tabTrials: 'التجارب',
   tabSponsorship: 'البوابة',
+  tabChildren: 'الأبناء',
+  tabChildrenA11y: 'الأبناء تحت رعايتك',
   tabYou: 'الملف الشخصي',
   tabCreate: 'إنشاء',
 

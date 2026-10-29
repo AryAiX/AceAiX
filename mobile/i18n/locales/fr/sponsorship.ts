@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: 'Cherchent un sponsor',
   portal: 'Espace sponsoring',
   openPortal: 'Ouvrir l’espace',
+  childrenSponsorship: 'Sponsoring des enfants',
   noMoneyNote: 'Aucun argent ne transite par AceAiX. Accepter, c’est convenir d’en parler ; le contrat et le paiement se font entre vous.',
   need: {
     entry_fee: 'Frais d’inscription',

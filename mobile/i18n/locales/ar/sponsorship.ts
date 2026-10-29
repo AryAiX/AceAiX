@@ -5,6 +5,7 @@ export const sponsorship = {
   tabSeekers: 'يبحثون عن راعٍ',
   portal: 'بوابة الرعاية',
   openPortal: 'افتح البوابة',
+  childrenSponsorship: 'رعاية الأبناء',
   noMoneyNote: 'لا تمرّ أي أموال عبر AceAiX. القبول يعني الاتفاق على التواصل؛ العقد والدفع يتمّان بينكما.',
   need: {
     entry_fee: 'رسوم المشاركة',
