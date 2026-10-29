@@ -127,6 +127,7 @@ export const club = {
     storyA11y: "Story von {{name}} ansehen",
   },
   tabs: {
+    announcements: "Ankündigungen",
     posts: "Beiträge",
     matches: "Spiele",
     squads: "Teams",

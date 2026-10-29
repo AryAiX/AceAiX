@@ -5,6 +5,7 @@ import { Building2 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { EmptyState, ErrorState, Header, Screen, SkeletonList } from '@/components/ui';
+import { AnnouncementsSection } from '@/components/club/page/AnnouncementsSection';
 import { ClubHeader } from '@/components/club/page/ClubHeader';
 import { ClubBanners } from '@/components/club/page/ClubBanners';
 import { ClubSectionBody, type ClubSectionContext } from '@/components/club/page/ClubSectionBody';
@@ -22,8 +23,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * A club or academy page. Under the header, the visitor scrolls the whole
- * club: a short preview of each section that has something to show, and
- * "See all" opens that section on its own screen.
+ * club: announcements when this viewer has any, then a short preview of each
+ * section, and "See all" opens that section on its own screen.
  */
 export default function OrganizationScreen() {
   const t = useT();
@@ -156,6 +157,8 @@ export default function OrganizationScreen() {
 
           <ClubBanners page={club} onChanged={page.refresh} />
         </View>
+
+        <AnnouncementsSection orgId={org.id} refreshKey={refreshKey} />
 
         {CLUB_SECTIONS.map((name) => (
           <PreviewSection

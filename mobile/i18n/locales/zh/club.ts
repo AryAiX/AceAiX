@@ -127,6 +127,7 @@ export const club = {
     storyA11y: "查看 {{name}} 的快拍",
   },
   tabs: {
+    announcements: "公告",
     posts: "动态",
     matches: "比赛",
     squads: "阵容",
