@@ -180,8 +180,10 @@ export const discover = {
     emptyTitle: 'В этом рейтинге пока пусто',
     emptyBody: 'Попробуй другой вид спорта или страну — или займи здесь первое место.',
     you: 'Ты',
+    yourChild: 'Ваш ребёнок',
     rankA11y: 'Номер {{rank}}',
     youA11y: '{{name}}, это ты',
+    childA11y: '{{name}}, ваш ребёнок',
     scoreA11y: 'оценка таланта {{score}}, уровень {{tier}}',
   },
 

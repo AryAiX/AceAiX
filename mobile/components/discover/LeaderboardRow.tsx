@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { HeartHandshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -24,9 +25,11 @@ interface Props {
   entry: LeaderboardEntry;
   /** Highlights the viewer's own row. */
   isYou: boolean;
+  /** Highlights a guardian's approved child. Yields to isYou. */
+  isChild?: boolean;
 }
 
-export function LeaderboardRow({ entry, isYou }: Props) {
+export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, radii, spacing } = theme;
@@ -49,7 +52,11 @@ export function LeaderboardRow({ entry, isYou }: Props) {
       accessibilityRole="button"
       accessibilityLabel={metaLine(
         t('discover.board.rankA11y', { rank: entry.rank }),
-        isYou ? t('discover.board.youA11y', { name }) : name,
+        isYou
+          ? t('discover.board.youA11y', { name })
+          : isChild
+            ? t('discover.board.childA11y', { name })
+            : name,
         meta,
         t('discover.board.scoreA11y', { score: entry.overall, tier: tierName }),
       )}
@@ -62,9 +69,9 @@ export function LeaderboardRow({ entry, isYou }: Props) {
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm,
         borderRadius: radii.md,
-        borderWidth: isYou ? 1.5 : 1,
-        borderColor: isYou ? colors.primaryBorder : colors.border,
-        backgroundColor: isYou ? colors.primarySoft : colors.surface,
+        borderWidth: isYou || isChild ? 1.5 : 1,
+        borderColor: isYou ? colors.primaryBorder : isChild ? colors.info : colors.border,
+        backgroundColor: isYou ? colors.primarySoft : isChild ? colors.infoSoft : colors.surface,
         opacity: pressed ? 0.75 : 1,
       })}
     >
@@ -82,6 +89,13 @@ export function LeaderboardRow({ entry, isYou }: Props) {
             {name}
           </Text>
           {isYou ? <Badge label={t('discover.board.you')} tone="primary" /> : null}
+          {isChild && !isYou ? (
+            <Badge
+              label={t('discover.board.yourChild')}
+              tone="info"
+              icon={<HeartHandshake size={12} color={colors.info} />}
+            />
+          ) : null}
         </View>
         {meta ? (
           <Text variant="caption" tone="muted" numberOfLines={1}>

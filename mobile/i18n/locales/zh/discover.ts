@@ -168,8 +168,10 @@ export const discover = {
     emptyTitle: '这个榜单还是空的',
     emptyBody: '换个项目或国家试试 —— 或者做第一个上榜的人。',
     you: '你',
+    yourChild: '您的孩子',
     rankA11y: '第{{rank}}名',
     youA11y: '{{name}}，这是你',
+    childA11y: '{{name}}，您的孩子',
     scoreA11y: '天赋分{{score}}，{{tier}}段位',
   },
 

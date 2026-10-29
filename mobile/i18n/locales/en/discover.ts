@@ -172,8 +172,10 @@ export const discover = {
     emptyTitle: 'Nothing on this board yet',
     emptyBody: 'Try another sport or country — or be the first one here.',
     you: 'You',
+    yourChild: 'Your child',
     rankA11y: 'Number {{rank}}',
     youA11y: '{{name}}, this is you',
+    childA11y: '{{name}}, your child',
     scoreA11y: 'talent score {{score}}, {{tier}} tier',
   },
 

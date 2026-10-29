@@ -180,8 +180,10 @@ export const discover = {
     emptyTitle: 'لا شيء على هذه اللوحة بعد',
     emptyBody: 'جرّب رياضة أو دولة أخرى — أو كن أول من هنا.',
     you: 'أنت',
+    yourChild: 'طفلك',
     rankA11y: 'المركز {{rank}}',
     youA11y: '{{name}}، هذا أنت',
+    childA11y: '{{name}}، طفلك',
     scoreA11y: 'درجة الموهبة {{score}}، فئة {{tier}}',
   },
 
