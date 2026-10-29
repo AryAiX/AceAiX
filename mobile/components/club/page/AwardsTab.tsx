@@ -10,7 +10,8 @@ import { useAsync } from '@/hooks/useAsync';
 import { getClubAwards, type ClubAward } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
 import { AwardCard } from './AwardCard';
-import { TabAction, type ClubTabProps } from './shared';
+import { PreviewRow } from './PreviewRow';
+import { PreviewEmpty, previewPending, TabAction, useReportItems, type ClubTabProps } from './shared';
 
 /** Group by year, else season label; undated awards last. Order kept from the API. */
 function shelves(awards: ClubAward[]): { key: string; label: string | null; rows: ClubAward[] }[] {
@@ -25,14 +26,25 @@ function shelves(awards: ClubAward[]): { key: string; label: string | null; rows
   return [...list.filter((g) => g.label), ...list.filter((g) => !g.label)];
 }
 
-export function ClubAwardsTab({ orgId, canPost, refreshKey }: ClubTabProps) {
+export function ClubAwardsTab({ orgId, canPost, refreshKey, limit, onHasItems }: ClubTabProps) {
   const t = useT();
   const { colors, spacing } = useTheme();
   const router = useRouter();
 
   const awards = useAsync(() => getClubAwards(orgId), [orgId, refreshKey]);
+  const preview = limit != null;
+  const loaded = awards.data;
+  const rows = loaded == null ? [] : preview ? loaded.slice(0, limit) : loaded;
+  const has = !preview
+    ? null
+    : previewPending(loaded, awards.error)
+      ? null
+      : awards.error && !loaded
+        ? true
+        : rows.length > 0;
+  useReportItems(onHasItems, has);
 
-  const add = canPost ? (
+  const add = !preview && canPost ? (
     <TabAction
       label={t('club.awards.add')}
       onPress={() => router.push(Routes.clubAward(orgId))}
@@ -40,11 +52,22 @@ export function ClubAwardsTab({ orgId, canPost, refreshKey }: ClubTabProps) {
     />
   ) : null;
 
+  if (preview && awards.error && !loaded) return <ErrorState message={awards.error} onRetry={awards.reload} compact />;
+  if (preview && has === false) return <PreviewEmpty title={t('club.awards.emptyTitle')} />;
+  if (preview && has !== true) return null;
+  if (preview) {
+    return (
+      <PreviewRow>
+        {rows.map((a) => (
+          <AwardCard key={a.id} award={a} />
+        ))}
+      </PreviewRow>
+    );
+  }
   if (awards.loading) return <SkeletonList count={2} variant="row" />;
   if (awards.error) return <ErrorState message={awards.error} onRetry={awards.reload} compact />;
 
-  const rows = awards.data ?? [];
-  if (rows.length === 0) {
+  if (!preview && rows.length === 0) {
     return (
       <View style={{ gap: spacing.md }}>
         {add}

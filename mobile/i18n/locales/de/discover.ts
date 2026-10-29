@@ -18,7 +18,7 @@ export const discover = {
   // ── Tab „Entdecken“ ────────────────────────────────────────────────────────
   title: 'Talente entdecken',
   athleteSubtitle: 'Vereine, Trainer und wo du stehst',
-  searchPeople: 'Leute und Vereine suchen',
+  searchPeople: 'Sportler, Trainer und Vereine suchen',
   queryPlaceholder: 'Name, Verein, Position',
   queryLabel: 'Sportler suchen',
   filterResults: 'Treffer filtern',
@@ -173,8 +173,10 @@ export const discover = {
     emptyTitle: 'Auf dieser Rangliste steht noch nichts',
     emptyBody: 'Versuch eine andere Sportart oder ein anderes Land — oder sei die Erste hier.',
     you: 'Du',
+    yourChild: 'Dein Kind',
     rankA11y: 'Nummer {{rank}}',
     youA11y: '{{name}}, das bist du',
+    childA11y: '{{name}}, dein Kind',
     scoreA11y: 'Talent Score {{score}}, Stufe {{tier}}',
   },
 

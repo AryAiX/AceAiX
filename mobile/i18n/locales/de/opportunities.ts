@@ -280,7 +280,6 @@ export const opportunities = {
     positionAny: 'Egal',
 
     whereLabel: 'Wo',
-    wherePlaceholder: 'Dubai, VAE',
     whereError: 'Wo findet das statt?',
 
     deadlineLabel: 'Bewerbungsschluss',

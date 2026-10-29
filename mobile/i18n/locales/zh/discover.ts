@@ -16,7 +16,7 @@ export const discover = {
   // ── 发现标签页 ─────────────────────────────────────────────────────────────
   title: '发现天赋',
   athleteSubtitle: '俱乐部、教练，以及你的位置',
-  searchPeople: '搜索人和俱乐部',
+  searchPeople: '搜索运动员、教练和俱乐部',
   queryPlaceholder: '姓名、俱乐部、位置',
   queryLabel: '搜索运动员',
   filterResults: '筛选结果',
@@ -168,8 +168,10 @@ export const discover = {
     emptyTitle: '这个榜单还是空的',
     emptyBody: '换个项目或国家试试 —— 或者做第一个上榜的人。',
     you: '你',
+    yourChild: '您的孩子',
     rankA11y: '第{{rank}}名',
     youA11y: '{{name}}，这是你',
+    childA11y: '{{name}}，您的孩子',
     scoreA11y: '天赋分{{score}}，{{tier}}段位',
   },
 

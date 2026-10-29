@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { BellRing, Cake, Handshake } from 'lucide-react-native';
+import { Cake, Handshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -432,29 +432,8 @@ export default function ScoutingPreferencesScreen() {
               />
             </View>
 
-            <Divider style={{ marginVertical: spacing.sm }} />
-
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.md,
-                minHeight: theme.hit.min,
-              }}
-            >
-              <BellRing size={18} color={colors.textSecondary} />
-              <View style={{ flex: 1 }}>
-                <Text variant="bodyStrong">{t('settings.notifyNewMatches')}</Text>
-                <Text variant="caption" tone="muted">
-                  {t('settings.notifyNewMatchesHint')}
-                </Text>
-              </View>
-              <Switch
-                value={draft.notify_on_match}
-                onValueChange={(v) => setDraft((c) => ({ ...c, notify_on_match: v }))}
-                accessibilityLabel={t('settings.notifyNewMatches')}
-              />
-            </View>
+            {/* Hidden until new-match notifications exist (QA-144).
+                notify_on_match stays on the draft and is saved unchanged. */}
           </Card>
         </View>
       </View>

@@ -3,9 +3,10 @@ import { File as FsFile } from 'expo-file-system';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
+import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
-import { getUserPosts } from '@/lib/api';
+import { getUserPosts, myLinkedMinors } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
 import { randomUploadId } from '@/lib/uploadId';
@@ -608,6 +609,154 @@ export async function saveCertifications(items: CertificationEntry[]): Promise<v
     .update({ certifications: items })
     .eq('user_id', uid);
   if (error) throw new AppError(error);
+}
+
+// ── Coach profile stats ──────────────────────────────────────────────────────
+export interface CoachStats {
+  opportunities: number;
+  challenges: number;
+}
+
+const EMPTY_COACH_STATS: CoachStats = {
+  opportunities: 0,
+  challenges: 0,
+};
+
+/** A failed count is a zero on the card, never a broken profile. */
+async function exactCount(
+  query: PromiseLike<{ count: number | null; error: { message?: string } | null }>,
+): Promise<number> {
+  try {
+    const { count, error } = await query;
+    if (error || count == null) return 0;
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Opportunities a coach posted and challenges they set.
+ *
+ * Own profile counts everything of theirs. Someone else's profile counts only
+ * what is still open: active opportunities and challenges with status `open`.
+ * Reads go through the tables' RLS.
+ */
+export async function getCoachStats(userId: string, isSelf: boolean): Promise<CoachStats> {
+  try {
+    let opportunities = supabase
+      .from('opportunities')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by_id', userId);
+    if (!isSelf) opportunities = opportunities.eq('is_active', true);
+
+    let challenges = supabase
+      .from('challenges')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by', userId);
+    if (!isSelf) challenges = challenges.eq('status', 'open');
+
+    const [opportunityCount, challengeCount] = await Promise.all([
+      exactCount(opportunities),
+      exactCount(challenges),
+    ]);
+
+    return {
+      opportunities: opportunityCount,
+      challenges: challengeCount,
+    };
+  } catch {
+    return EMPTY_COACH_STATS;
+  }
+}
+
+// ── Sponsor profile stats ────────────────────────────────────────────────────
+export interface SponsorStats {
+  calls: number;
+  deals: number;
+}
+
+const EMPTY_SPONSOR_STATS: SponsorStats = {
+  calls: 0,
+  deals: 0,
+};
+
+/**
+ * Calls a sponsor posted, and deals they have accepted.
+ *
+ * Own profile counts every call of theirs, and every `sponsorship_deals` row
+ * in the accepted state (`status = 'accepted'`), through the tables' RLS.
+ * Someone else's profile cannot read `sponsor_calls` (that policy is
+ * owner-only), so the call count is the length of the `calls` list on
+ * `sponsorship_card` — the same public list as the profile card, which
+ * already applies blocks and visibility. A null card, or a card that is not
+ * a sponsor's, counts as zero. Deals stay at 0 for anyone else: they are
+ * private to the parties, and the card does not show them.
+ * A failed read is a zero.
+ */
+export async function getSponsorStats(userId: string, isSelf: boolean): Promise<SponsorStats> {
+  try {
+    if (!isSelf) {
+      const card = await getSponsorshipCard(userId);
+      return {
+        calls: card?.kind === 'sponsor' ? card.calls.length : 0,
+        deals: 0,
+      };
+    }
+
+    const [callCount, dealCount] = await Promise.all([
+      exactCount(
+        supabase
+          .from('sponsor_calls')
+          .select('id', { count: 'exact', head: true })
+          .eq('sponsor_user_id', userId),
+      ),
+      exactCount(
+        supabase
+          .from('sponsorship_deals')
+          .select('id', { count: 'exact', head: true })
+          .eq('sponsor_user_id', userId)
+          .eq('status', 'accepted'),
+      ),
+    ]);
+
+    return {
+      calls: callCount,
+      deals: dealCount,
+    };
+  } catch {
+    return EMPTY_SPONSOR_STATS;
+  }
+}
+
+// ── Guardian profile stats ───────────────────────────────────────────────────
+export interface GuardianStats {
+  children: number;
+}
+
+const EMPTY_GUARDIAN_STATS: GuardianStats = {
+  children: 0,
+};
+
+/**
+ * How many children are linked to the signed-in guardian.
+ *
+ * The count is `my_linked_minors()`, one row per young person. The guardian
+ * settings screen reads each child's name and photo from that same RPC.
+ * This does not read `guardian_consents`: its select grant is column-limited,
+ * and a row there is a consent request, not a child.
+ * The RPC only returns the caller's own children, so a profile that is not
+ * your own never calls it.
+ * A failed read is a zero.
+ */
+export async function getGuardianStats(isSelf: boolean): Promise<GuardianStats> {
+  if (!isSelf) return EMPTY_GUARDIAN_STATS;
+  try {
+    const minors = await myLinkedMinors();
+    return { children: minors.length };
+  } catch {
+    return EMPTY_GUARDIAN_STATS;
+  }
 }
 
 // ── Blocking ─────────────────────────────────────────────────────────────────

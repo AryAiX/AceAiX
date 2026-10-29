@@ -1,5 +1,6 @@
 import type { Href } from 'expo-router';
 
+import type { ClubSectionName } from '@/lib/clubSection';
 import type { AppNotification } from '@/types/models';
 import { WEB_APP_ORIGIN } from '@/lib/webLinks';
 
@@ -17,6 +18,8 @@ export const Routes = {
   discover: '/(tabs)/discover' as const,
   opportunities: '/(tabs)/opportunities' as const,
   myProfile: '/(tabs)/profile' as const,
+  /** The guardian's Children tab: sessions, sponsorship, and approvals. */
+  childrenTab: '/(tabs)/children' as const,
 
   compose: '/compose' as const,
   notifications: '/notifications' as const,
@@ -50,11 +53,16 @@ export const Routes = {
   opportunity: (id: string) => `/opportunity/${id}` as const,
   applicants: (id: string) => `/opportunity/${id}/applicants` as const,
   organization: (id: string) => `/org/${id}` as const,
+  /** One public club section in full. `name` is a `ClubSectionName`. */
+  clubSection: (orgId: string, name: ClubSectionName) =>
+    ({ pathname: '/club/[orgId]/section' as const, params: { orgId, name } }),
   followers: (userId: string) => `/u/${userId}/followers` as const,
   following: (userId: string) => `/u/${userId}/following` as const,
 
   /** The sponsorship portal: requests, calls, offers and applications. */
   sponsorship: '/sponsorship' as const,
+  /** The same portal as a tab. `section` is `calls` or `deals`. */
+  sponsorshipTab: '/(tabs)/sponsorship' as const,
   /** Create a request, or edit one with `id` as a param. */
   sponsorshipRequest: '/sponsorship/request' as const,
   /** Create a call, or edit one with `id` as a param. */
@@ -74,8 +82,12 @@ export const Routes = {
   clubSetup: '/club/setup' as const,
   /** The page team's hub: everything a club runs, one tap each. */
   clubManage: (orgId: string) => `/club/${orgId}/manage` as const,
-  /** Page details, sports, branches, branding and verification papers. */
-  clubEdit: (orgId: string) => `/club/${orgId}/edit` as const,
+  /** Page details, sports, branches, branding and verification papers.
+   *  `{ section: 'verification' }` opens only the papers card. */
+  clubEdit: (orgId: string, params?: { section: 'verification' }) =>
+    params
+      ? { pathname: '/club/[orgId]/edit' as const, params: { orgId, section: params.section } }
+      : (`/club/${orgId}/edit` as const),
   clubTeam: (orgId: string) => `/club/${orgId}/team` as const,
   clubBroadcast: (orgId: string) => `/club/${orgId}/broadcast` as const,
   clubSquads: (orgId: string) => `/club/${orgId}/squads` as const,
@@ -257,6 +269,9 @@ export function notificationTarget(n: AppNotification): Href | null {
       return id ? Routes.match(id) : null;
     case 'club_event':
       return id ? Routes.clubEvent(id) : null;
+    case 'guardian_consent':
+      // A parent approved, changed or withdrew: the child's own consent screen.
+      return Routes.settingsGuardian;
     case 'referral':
       // A friend joined through my invite, or I earned a token.
       return Routes.invite;

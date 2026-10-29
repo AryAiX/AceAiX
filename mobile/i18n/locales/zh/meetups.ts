@@ -87,6 +87,11 @@ export const meetups = {
   fieldNotePlaceholder: '记得带球鞋。打完一般还会一起喝一杯。',
   fieldCost: '每人多少钱',
   fieldCostPlaceholder: '25 迪拉姆，或者免费',
+  costFree: '免费',
+  costPaid: '付费',
+  costAmount: '金额',
+  costCurrency: '货币',
+  costAmountInvalid: '请输入 1 到 9999 之间的整数。',
   post: '发出去',
   posted: '发好了，现在别人能找到它了。',
 

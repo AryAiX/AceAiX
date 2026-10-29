@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, ChevronRight, Settings2, ShieldCheck } from 'lucide-react-native';
+import { BadgeCheck, ChevronRight, ShieldCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Text } from '@/components/ui';
@@ -11,11 +11,10 @@ import { countryLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { ClubPage } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
+import { COVER_ASPECT } from '@/lib/coverCrop';
 import { compactNumber, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 
-/** Matches the profile cover so the two page types feel like one app. */
-const COVER_HEIGHT = 148;
 const LOGO = 72;
 const RING = 3;
 
@@ -28,8 +27,7 @@ interface Props {
 }
 
 /**
- * Cover, crest, name and the two buttons people come for: Follow, and — for
- * the page team — Manage.
+ * Cover, crest, name, and Follow. Manage lives on the viewer's own profile.
  */
 export function ClubHeader({ page, following, followers, followBusy, onToggleFollow }: Props) {
   const t = useT();
@@ -109,10 +107,11 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
 
   return (
     <View>
-      {/* Cover */}
+      {/* Cover. Same wide band as a profile cover, so a cropped photo fills it. */}
       <View
         style={{
-          height: COVER_HEIGHT,
+          width: '100%',
+          aspectRatio: COVER_ASPECT,
           backgroundColor: colors.surfaceAlt,
           borderBottomLeftRadius: radii.xl,
           borderBottomRightRadius: radii.xl,
@@ -123,7 +122,7 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           <Image
             source={{ uri: org.cover_url }}
             resizeMode="cover"
-            style={{ width: '100%', height: '100%' }}
+            style={StyleSheet.absoluteFill}
             accessibilityIgnoresInvertColors
           />
         ) : (
@@ -148,16 +147,6 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           }}
         >
           {logo}
-          {team ? (
-            <Button
-              label={t('club.page.manage')}
-              size="sm"
-              icon={<Settings2 size={16} color={colors.textOnBrand} />}
-              onPress={() => router.push(Routes.clubManage(org.id))}
-              accessibilityLabel={t('club.page.manageA11y', { name: org.name })}
-              testID="club-manage"
-            />
-          ) : null}
         </View>
 
         <View style={{ gap: 4 }}>
@@ -197,7 +186,7 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
 
         {showStatus ? (
           <Pressable
-            onPress={() => router.push(Routes.clubEdit(org.id))}
+            onPress={() => router.push(Routes.clubEdit(org.id, { section: 'verification' }))}
             accessibilityRole="button"
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -225,19 +214,21 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           <Text variant="captionStrong" tone="secondary" style={{ flex: 1 }}>
             {followerLabel}
           </Text>
-          <Button
-            label={following ? t('common.following') : t('common.follow')}
-            variant={following ? 'secondary' : 'primary'}
-            size="sm"
-            loading={followBusy}
-            onPress={onToggleFollow}
-            accessibilityLabel={
-              following
-                ? t('opportunities.org.unfollowA11y', { name: org.name })
-                : t('opportunities.org.followA11y', { name: org.name })
-            }
-            testID="club-follow"
-          />
+          {team ? null : (
+            <Button
+              label={following ? t('common.following') : t('common.follow')}
+              variant={following ? 'secondary' : 'primary'}
+              size="sm"
+              loading={followBusy}
+              onPress={onToggleFollow}
+              accessibilityLabel={
+                following
+                  ? t('opportunities.org.unfollowA11y', { name: org.name })
+                  : t('opportunities.org.followA11y', { name: org.name })
+              }
+              testID="club-follow"
+            />
+          )}
         </View>
       </View>
     </View>

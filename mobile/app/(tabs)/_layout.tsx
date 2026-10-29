@@ -4,7 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Compass, Home, Plus, Target, User, Users } from 'lucide-react-native';
+import { Compass, Handshake, HeartHandshake, Home, Plus, Swords, Target, User, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -106,8 +106,10 @@ function TabIcon({
       <Text
         variant="overline"
         color={color}
-        style={{ fontSize: 9.5, letterSpacing: 0.4, marginTop: 3 }}
+        style={{ fontSize: 9.5, letterSpacing: 0.4, marginTop: 3, width: '100%', textAlign: 'center' }}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {label}
       </Text>
@@ -294,7 +296,7 @@ export default function TabsLayout() {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { profile } = useAuth();
+  const { profile, isSponsor, isGuardian } = useAuth();
   useClaimPendingInvite();
 
   /*
@@ -303,8 +305,9 @@ export default function TabsLayout() {
    * because a destination that is always empty reads as a broken app rather
    * than as a rule, and there is nothing there for them to see.
    *
-   * `href: null` removes it from the bar without removing the route, so a deep
-   * link still resolves and the screen's own empty state handles it.
+   * Club accounts do not get the tab either. `href: null` removes it from the
+   * bar without removing the route, so a deep link still resolves and the
+   * screen's own empty state handles it.
    */
   const canMeet = profile?.is_minor === false;
 
@@ -384,7 +387,7 @@ export default function TabsLayout() {
         name="meetups"
         options={{
           title: t('common.tabMeetups'),
-          href: canMeet ? undefined : null,
+          href: canMeet && profile?.role !== 'club' ? undefined : null,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Users}
@@ -400,9 +403,34 @@ export default function TabsLayout() {
         })}
       />
       <Tabs.Screen
+        name="club-matches"
+        options={{
+          title: t('common.matches'),
+          /* Club accounts only. Everyone else keeps Play in this slot. */
+          href: profile?.role === 'club' ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Swords}
+              focused={focused}
+              label={t('common.matches')}
+              bump={bumpFor('club-matches')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('common.matches'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('club-matches', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
         name="opportunities"
         options={{
           title: t('common.tabTrials'),
+          /*
+           * Sponsors cannot apply or enter, and a guardian's bar shows
+           * Children in this slot instead. The route stays for deep links.
+           */
+          href: isSponsor || isGuardian ? null : undefined,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Target}
@@ -415,6 +443,45 @@ export default function TabsLayout() {
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('opportunities', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="children"
+        options={{
+          title: t('common.tabChildren'),
+          /* Hidden for every other role. The route stays for deep links. */
+          href: isGuardian ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={HeartHandshake}
+              focused={focused}
+              label={t('common.tabChildren')}
+              bump={bumpFor('children')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('common.tabChildrenA11y'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('children', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="sponsorship"
+        options={{
+          title: t('common.tabSponsorship'),
+          href: isSponsor ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Handshake}
+              focused={focused}
+              label={t('common.tabSponsorship')}
+              bump={bumpFor('sponsorship')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('sponsorship.portal'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('sponsorship', navigation.isFocused()),
         })}
       />
       <Tabs.Screen

@@ -20,6 +20,7 @@ import {
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
+  Avatar,
   Badge,
   Button,
   Card,
@@ -27,6 +28,7 @@ import {
   Divider,
   EmptyState,
   ErrorState,
+  ExpandableText,
   Header,
   IconButton,
   Input,
@@ -60,7 +62,8 @@ import {
   reapplyToOpportunity,
 } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
-import { fullDate } from '@/lib/format';
+import { fullDate, roleLabel } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
@@ -298,7 +301,16 @@ export default function OpportunityDetailScreen() {
     );
   }
 
+  const poster = opportunity.org_id ? null : opportunity.poster ?? null;
   const club = opportunity.org_name?.trim() || t('opportunities.card.independent');
+  const byline = poster?.full_name || club;
+  const openClub = opportunity.org_id
+    ? () => router.push(Routes.organization(opportunity.org_id as string))
+    : undefined;
+  const openPoster = poster
+    ? () => router.push(Routes.profile(opportunity.created_by_id))
+    : undefined;
+  const openByline = openClub ?? openPoster;
   const typeLabel = opportunityTypeLabel(t, opportunity.type);
 
   // ── Sticky bar ──
@@ -409,17 +421,17 @@ export default function OpportunityDetailScreen() {
         testID="opportunity-detail"
       >
         <View style={{ gap: spacing.xl }}>
-          {/* Club */}
+          {/* Club, or the person who posted a personal listing. */}
           <Pressable
-            onPress={
-              opportunity.org_id
-                ? () => router.push(Routes.organization(opportunity.org_id as string))
-                : undefined
-            }
-            disabled={!opportunity.org_id}
-            accessibilityRole={opportunity.org_id ? 'button' : undefined}
+            onPress={openByline}
+            disabled={!openByline}
+            accessibilityRole={openByline ? 'button' : undefined}
             accessibilityLabel={
-              opportunity.org_id ? t('opportunities.detail.openClub', { club }) : club
+              opportunity.org_id
+                ? t('opportunities.detail.openClub', { club })
+                : poster
+                  ? t('profile.openProfileA11y', { name: poster.full_name })
+                  : byline
             }
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -429,13 +441,17 @@ export default function OpportunityDetailScreen() {
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <ClubLogo uri={opportunity.org_logo} name={club} />
+            {poster ? (
+              <Avatar uri={poster.avatar_url} name={poster.full_name} size="md" />
+            ) : (
+              <ClubLogo uri={opportunity.org_logo} name={club} />
+            )}
             <View style={{ flex: 1, gap: 2 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
                 <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
-                  {club}
+                  {byline}
                 </Text>
-                {opportunity.org_verified ? (
+                {(poster ? poster.is_verified : opportunity.org_verified) ? (
                   <BadgeCheck
                     size={15}
                     color={colors.info}
@@ -447,7 +463,9 @@ export default function OpportunityDetailScreen() {
               <Text variant="caption" tone="muted">
                 {opportunity.org_id
                   ? t('opportunities.detail.viewClub')
-                  : t('opportunities.detail.postedByMember')}
+                  : poster
+                    ? roleLabel(poster.role)
+                    : t('opportunities.detail.postedByMember')}
               </Text>
             </View>
           </Pressable>
@@ -471,9 +489,12 @@ export default function OpportunityDetailScreen() {
           {opportunity.description?.trim() ? (
             <View style={{ gap: spacing.sm }}>
               <Text variant="heading">{t('opportunities.detail.about')}</Text>
-              <Text variant="body" tone="secondary">
-                {opportunity.description.trim()}
-              </Text>
+              <ExpandableText
+                text={opportunity.description.trim()}
+                lines={6}
+                variant="body"
+                tone="secondary"
+              />
             </View>
           ) : null}
 
@@ -507,7 +528,7 @@ export default function OpportunityDetailScreen() {
                 <Fact
                   icon={<MapPin size={14} color={colors.textMuted} />}
                   label={t('opportunities.detail.factWhere')}
-                  value={opportunity.location}
+                  value={formatLocation(opportunity.location, t)}
                 />
               ) : null}
               <Fact

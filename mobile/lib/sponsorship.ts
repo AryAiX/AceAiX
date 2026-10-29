@@ -6,6 +6,8 @@
  * `save_sponsor_call` and `save_sponsor_profile` (1008/02). A tag that is not
  * here is dropped by the database, so adding one means adding it there first.
  */
+export { LOCATION_MAX, formatLocation, joinLocation, parseLocation } from '@/lib/location';
+
 export const NEEDS = ['entry_fee', 'travel', 'equipment', 'coaching', 'nutrition', 'other'] as const;
 export const GIVES = ['logo_on_kit', 'social_posts', 'appearances', 'content', 'testimonial'] as const;
 export const OFFERS = ['cash', 'equipment', 'travel', 'coaching', 'nutrition'] as const;

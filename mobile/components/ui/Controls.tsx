@@ -358,7 +358,16 @@ export function SectionHeader({
         style,
       ]}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+      <View
+        style={{
+          flexGrow: 1,
+          flexShrink: 1,
+          minWidth: 0,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: theme.spacing.sm,
+        }}
+      >
         {/* A short coloured bar. Twelve of these down a screen is what stops a
             list of sections reading as a list of grey headings. */}
         <LinearGradient
@@ -367,10 +376,12 @@ export function SectionHeader({
           end={{ x: 0, y: 1 }}
           style={{ width: 4, height: 20, borderRadius: 2 }}
         />
-        <Text variant="heading">{title}</Text>
+        <Text variant="heading" style={{ flexShrink: 1 }}>
+          {title}
+        </Text>
       </View>
       {action && onAction ? (
-        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button">
+        <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexShrink: 0 }}>
           <Text variant="captionStrong" tone="primary">
             {action}
           </Text>

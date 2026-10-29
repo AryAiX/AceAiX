@@ -130,6 +130,7 @@ export const club = {
     storyA11y: "Watch {{name}}’s story",
   },
   tabs: {
+    announcements: "Announcements",
     posts: "Posts",
     matches: "Matches",
     squads: "Squads",

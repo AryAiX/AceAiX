@@ -274,7 +274,6 @@ export const opportunities = {
     positionAny: '不限',
 
     whereLabel: '地点',
-    wherePlaceholder: '迪拜，阿联酋',
     whereError: '这件事在哪里进行？',
 
     deadlineLabel: '申请截止',

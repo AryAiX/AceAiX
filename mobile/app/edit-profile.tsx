@@ -13,6 +13,7 @@ import {
   Card,
   Chip,
   ConfirmSheet,
+  CoverCropper,
   Divider,
   ErrorState,
   Header,
@@ -39,6 +40,12 @@ import {
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
 import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import {
+  COVER_ASPECT,
+  renderCoverCrop,
+  type CoverCropRect,
+} from '@/lib/coverCrop';
+import { readCoverSize } from '@/lib/coverPick';
 import { Routes } from '@/lib/routes';
 import { sanitizeNameInput } from '@/lib/nameInput';
 import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
@@ -140,6 +147,9 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [coverPick, setCoverPick] = useState<{ uri: string; width: number; height: number } | null>(
+    null,
+  );
   const [photoOpen, setPhotoOpen] = useState(false);
   const [sportSheet, setSportSheet] = useState(false);
   const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
@@ -260,48 +270,71 @@ export default function EditProfileScreen() {
   }, []);
 
   /**
-   * One picker for both pictures.
-   *
-   * The only differences are the crop ratio, the upload function and which
-   * field the URL lands in — writing it twice was how the cover ended up with
-   * no picker at all, so it is written once.
+   * One entry for both pictures. The avatar still uses the system square crop.
+   * The cover does not: on iOS `allowsEditing` ignores `aspect` and always
+   * returns a square, which is not the band the header draws.
    */
   const pickImage = useCallback(
     async (kind: 'avatar' | 'cover') => {
-      const isAvatar = kind === 'avatar';
       try {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
           toast.error(t('profile.photoPermission'));
           return;
         }
+        if (kind === 'avatar') {
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.85,
+          });
+          if (result.canceled || result.assets.length === 0) return;
+          const asset = result.assets[0];
+          setUploadingAvatar(true);
+          set('avatarUrl', await uploadAvatar(asset.uri, asset.mimeType ?? 'image/jpeg'));
+          return;
+        }
+
         const result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ['images'],
-          allowsEditing: true,
-          /* A cover is a landscape band behind the avatar; cropping it square
-             and letting the header cut it is how you lose someone's head. */
-          aspect: isAvatar ? [1, 1] : [16, 9],
-          quality: 0.85,
+          allowsEditing: false,
+          exif: true,
+          quality: 1,
         });
         if (result.canceled || result.assets.length === 0) return;
-
         const asset = result.assets[0];
-        const type = asset.mimeType ?? 'image/jpeg';
-        if (isAvatar) {
-          setUploadingAvatar(true);
-          set('avatarUrl', await uploadAvatar(asset.uri, type));
-        } else {
-          setUploadingCover(true);
-          set('coverUrl', await uploadCover(asset.uri, type));
+        const size = await readCoverSize(asset);
+        if (size.width < 1 || size.height < 1) {
+          toast.error(t('common.somethingWentWrong'));
+          return;
         }
+        setCoverPick({ uri: asset.uri, width: size.width, height: size.height });
       } catch (err) {
         toast.error(errorMessage(err));
       } finally {
         setUploadingAvatar(false);
-        setUploadingCover(false);
       }
     },
     [set, t, toast],
+  );
+
+  const onUseCover = useCallback(
+    async (crop: CoverCropRect) => {
+      const picked = coverPick;
+      setCoverPick(null);
+      if (!picked) return;
+      setUploadingCover(true);
+      try {
+        const cropped = await renderCoverCrop(picked.uri, crop);
+        set('coverUrl', await uploadCover(cropped.uri, 'image/jpeg'));
+      } catch (err) {
+        toast.error(errorMessage(err));
+      } finally {
+        setUploadingCover(false);
+      }
+    },
+    [coverPick, set, toast],
   );
 
   const onSave = useCallback(async () => {
@@ -494,7 +527,8 @@ export default function EditProfileScreen() {
           accessibilityState={{ busy: uploadingCover }}
           testID="edit-cover"
           style={({ pressed }) => ({
-            height: 132,
+            width: '100%',
+            aspectRatio: COVER_ASPECT,
             borderRadius: theme.radii.lg,
             overflow: 'hidden',
             opacity: pressed || uploadingCover ? 0.75 : 1,
@@ -1129,6 +1163,15 @@ export default function EditProfileScreen() {
           </Text>
         ) : null}
       </Sheet>
+
+      <CoverCropper
+        visible={coverPick != null}
+        uri={coverPick?.uri ?? null}
+        width={coverPick?.width ?? 0}
+        height={coverPick?.height ?? 0}
+        onCancel={() => setCoverPick(null)}
+        onConfirm={onUseCover}
+      />
 
       <ConfirmSheet
         visible={discardOpen}

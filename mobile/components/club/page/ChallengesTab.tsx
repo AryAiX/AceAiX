@@ -12,7 +12,8 @@ import { getClubChallenges, type ClubChallenge } from '@/lib/api.club';
 import { deadlineLabel, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import { agesLabel } from './EventCard';
-import { TabAction, type ClubTabProps } from './shared';
+import { PreviewRow } from './PreviewRow';
+import { PreviewEmpty, previewPending, TabAction, useReportItems, type ClubTabProps } from './shared';
 
 export function ChallengeCard({ challenge }: { challenge: ClubChallenge }) {
   const t = useT();
@@ -69,14 +70,25 @@ export function ChallengeCard({ challenge }: { challenge: ClubChallenge }) {
   );
 }
 
-export function ClubChallengesTab({ orgId, canPost, refreshKey }: ClubTabProps) {
+export function ClubChallengesTab({ orgId, canPost, refreshKey, limit, onHasItems }: ClubTabProps) {
   const t = useT();
   const { colors, spacing } = useTheme();
   const router = useRouter();
 
   const challenges = useAsync(() => getClubChallenges(orgId), [orgId, refreshKey]);
+  const preview = limit != null;
+  const loaded = challenges.data;
+  const rows = loaded == null ? [] : preview ? loaded.slice(0, limit) : loaded;
+  const has = !preview
+    ? null
+    : previewPending(loaded, challenges.error)
+      ? null
+      : challenges.error && !loaded
+        ? true
+        : rows.length > 0;
+  useReportItems(onHasItems, has);
 
-  const add = canPost ? (
+  const add = !preview && canPost ? (
     <TabAction
       label={t('club.challenges.add')}
       onPress={() => router.push({ pathname: Routes.newChallenge, params: { org: orgId } })}
@@ -84,15 +96,27 @@ export function ClubChallengesTab({ orgId, canPost, refreshKey }: ClubTabProps) 
     />
   ) : null;
 
+  if (preview && challenges.error && !loaded) {
+    return <ErrorState message={challenges.error} onRetry={challenges.reload} compact />;
+  }
+  if (preview && has === false) return <PreviewEmpty title={t('club.challenges.emptyTitle')} />;
+  if (preview && has !== true) return null;
+  if (preview) {
+    return (
+      <PreviewRow>
+        {rows.map((c) => (
+          <ChallengeCard key={c.id} challenge={c} />
+        ))}
+      </PreviewRow>
+    );
+  }
   if (challenges.loading) return <SkeletonList count={2} />;
   if (challenges.error) return <ErrorState message={challenges.error} onRetry={challenges.reload} compact />;
-
-  const rows = challenges.data ?? [];
 
   return (
     <View style={{ gap: spacing.md }}>
       {add}
-      {rows.length === 0 ? (
+      {!preview && rows.length === 0 ? (
         <EmptyState
           compact
           icon={<Flame size={26} color={colors.textMuted} />}

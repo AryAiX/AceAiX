@@ -3,6 +3,8 @@ export const coaching = {
   title: 'Entrenamiento',
   calendarTitle: 'Calendario de entrenamiento',
   myBookings: 'Mis sesiones',
+  childrenSessions: 'Sesiones de los hijos',
+  sessions: 'Sesiones',
   kind: {
     session: 'Sesión individual',
     consultation: 'Consulta',

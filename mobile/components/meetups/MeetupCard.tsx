@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Badge, Card, Tappable, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { deadlineLabel, metaLine } from '@/lib/format';
+import { costLabel } from '@/lib/meetupCost';
 import type { MeetupStatus, MyMeetupStatus } from '@/lib/api.meetups';
 
 /**
@@ -67,6 +68,7 @@ export function MeetupRow({
 
   const where = metaLine(meetup.venue, meetup.area, meetup.city);
   const when = deadlineLabel(meetup.starts_at);
+  const cost = costLabel(meetup.cost_note, t);
 
   return (
     <Tappable
@@ -104,9 +106,7 @@ export function MeetupRow({
                 <CalendarDays size={13} color={colors.textMuted} />
                 <Text variant="caption" tone="muted" numberOfLines={1}>
                   {when}
-                  {meetup.cost_note
-                    ? ` · ${t('meetups.costEach', { cost: meetup.cost_note })}`
-                    : ''}
+                  {cost ? ` · ${cost}` : ''}
                 </Text>
               </View>
             ) : null}

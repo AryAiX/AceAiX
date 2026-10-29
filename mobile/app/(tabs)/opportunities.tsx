@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bookmark,
   Flame,
@@ -42,16 +42,18 @@ import {
 } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { openChallenges, recommendedOpportunities, toggleSaveOpportunity } from '@/lib/api';
+import { openChallenges, toggleSaveOpportunity } from '@/lib/api';
 import {
   allApplicants,
   myApplicationsDetailed,
   myPostings,
+  openOpportunities,
   savedOpportunities,
 } from '@/lib/api.opportunities';
 import type { PostedOpportunity, RankedApplicant } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
@@ -71,7 +73,7 @@ function AthleteOpportunities() {
   const [sport, setSport] = useState<string | null>(null);
   const [type, setType] = useState<string | null>(null);
 
-  const open = useAsync(() => recommendedOpportunities(30), []);
+  const open = useAsync(() => openOpportunities(30), []);
   const saved = useAsync(() => savedOpportunities(), [], { refetchOnFocus: true });
   const applied = useAsync(() => myApplicationsDetailed(), [], { refetchOnFocus: true });
 
@@ -354,7 +356,7 @@ function PostingRow({ posting }: { posting: PostedOpportunity }) {
   const meta = metaLine(
     opportunityTypeLabel(t, posting.type),
     sportLabel(t, posting.sport),
-    posting.location,
+    formatLocation(posting.location, t),
   );
   const applicants = t('common.applicants', { count: posting.applicant_count });
 
@@ -420,8 +422,17 @@ function RecruiterOpportunities() {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requested = Array.isArray(params.tab) ? params.tab[0] : params.tab;
 
-  const [tab, setTab] = useState<RecruiterTab>('postings');
+  const [tab, setTab] = useState<RecruiterTab>(
+    requested === 'applicants' ? 'applicants' : 'postings',
+  );
+
+  // A coach's profile stat opens this screen on the postings list.
+  useEffect(() => {
+    if (requested === 'postings' || requested === 'applicants') setTab(requested);
+  }, [requested]);
 
   const postings = useAsync(() => myPostings(), [], { refetchOnFocus: true });
   const applicants = useAsync(() => allApplicants(), [], { refetchOnFocus: true });

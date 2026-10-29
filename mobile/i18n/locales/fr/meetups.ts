@@ -88,6 +88,11 @@ export const meetups = {
   fieldNotePlaceholder: 'Prends tes crampons. On boit souvent un verre après.',
   fieldCost: 'Prix par personne',
   fieldCostPlaceholder: '25 AED, ou gratuit',
+  costFree: 'Gratuit',
+  costPaid: 'Payant',
+  costAmount: 'Montant',
+  costCurrency: 'Devise',
+  costAmountInvalid: 'Saisis un nombre entier entre 1 et 9999.',
   post: 'Publier',
   posted: 'Publié. Les gens peuvent le trouver.',
 

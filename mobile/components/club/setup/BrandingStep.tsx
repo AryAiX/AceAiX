@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View } from 'react-native';
 import { Camera, ImagePlus, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Text } from '@/components/ui';
+import { Button, CoverCropper, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { uploadClubImage } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
+import { COVER_ASPECT, renderCoverCrop, type CoverCropRect } from '@/lib/coverCrop';
 import { errorMessage } from '@/lib/errors';
 import type { ClubDraft } from '@/lib/clubSetup';
 import { GroupLabel } from './Bits';
@@ -15,13 +16,17 @@ import { pickErrorMessage, pickImage, type PickSource } from './pickImage';
 
 type Kind = 'logo' | 'cover';
 
-/** Matches the club page's own cover. */
-const COVER_HEIGHT = 128;
+interface CoverPick {
+  uri: string;
+  width: number;
+  height: number;
+}
 
 /**
  * Step 5: the logo and the cover, previewed the way the page will show them.
- * Each picture is uploaded as soon as it is picked; the page itself is saved
- * when the person moves on (or taps Save on the edit screen).
+ * The logo uploads as soon as it is picked. The cover opens the cropper first;
+ * cancel keeps the current cover, and Use photo uploads the cropped JPEG.
+ * The page itself is saved when the person moves on (or taps Save on the edit screen).
  */
 export function BrandingFields({
   draft,
@@ -40,21 +45,38 @@ export function BrandingFields({
     logo: null,
     cover: null,
   });
+  const [coverPick, setCoverPick] = useState<CoverPick | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const logo = preview.logo ?? draft.logo_url;
   const cover = preview.cover ?? draft.cover_url;
+  const locked = !!busy || coverPick != null;
 
   const choose = async (kind: Kind, source: PickSource) => {
-    if (busy) return;
+    if (locked) return;
     setError(null);
-    const result = await pickImage(source, kind === 'logo' ? 'square' : 'wide');
+    if (kind === 'cover') {
+      const result = await pickImage(source, 'wide');
+      if (!result.ok) {
+        setError(pickErrorMessage(t, result.reason, source));
+        return;
+      }
+      // The cropper confirms the frame. Cancel leaves the current cover alone.
+      setCoverPick({
+        uri: result.photo.uri,
+        width: result.photo.width,
+        height: result.photo.height,
+      });
+      return;
+    }
+
+    const result = await pickImage(source, 'square');
     if (!result.ok) {
       setError(pickErrorMessage(t, result.reason, source));
       return;
     }
-    setPreview((p) => ({ ...p, [kind]: result.photo.uri }));
-    setBusy(kind);
+    setPreview((p) => ({ ...p, logo: result.photo.uri }));
+    setBusy('logo');
     onBusyChange?.(true);
     try {
       const url = await uploadClubImage({
@@ -62,11 +84,40 @@ export function BrandingFields({
         fileName: result.photo.fileName,
         mimeType: result.photo.mimeType,
       });
-      onChange(kind === 'logo' ? { logo_url: url } : { cover_url: url });
+      onChange({ logo_url: url });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
-      setPreview((p) => ({ ...p, [kind]: null }));
+      setPreview((p) => ({ ...p, logo: null }));
+      setBusy(null);
+      onBusyChange?.(false);
+    }
+  };
+
+  const onUseCover = async (crop: CoverCropRect) => {
+    const picked = coverPick;
+    setCoverPick(null);
+    if (!picked) return;
+    setError(null);
+    setBusy('cover');
+    onBusyChange?.(true);
+    try {
+      const cropped = await renderCoverCrop(picked.uri, crop, { base64: true });
+      if (!cropped.base64) {
+        setError(t('clubSetup.pick.unreadable'));
+        return;
+      }
+      setPreview((p) => ({ ...p, cover: cropped.uri }));
+      const url = await uploadClubImage({
+        base64: cropped.base64,
+        fileName: 'cover.jpg',
+        mimeType: 'image/jpeg',
+      });
+      onChange({ cover_url: url });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setPreview((p) => ({ ...p, cover: null }));
       setBusy(null);
       onBusyChange?.(false);
     }
@@ -96,7 +147,7 @@ export function BrandingFields({
         label={has ? t('clubSetup.branding.change') : t('clubSetup.branding.choose')}
         variant="secondary"
         size="sm"
-        disabled={!!busy}
+        disabled={locked}
         icon={<ImagePlus size={16} color={colors.text} />}
         onPress={() => void choose(kind, 'library')}
         accessibilityLabel={kind === 'logo' ? t('clubSetup.branding.chooseLogoA11y') : t('clubSetup.branding.chooseCoverA11y')}
@@ -106,7 +157,7 @@ export function BrandingFields({
         label={t('clubSetup.branding.camera')}
         variant="ghost"
         size="sm"
-        disabled={!!busy}
+        disabled={locked}
         icon={<Camera size={16} color={colors.primary} />}
         onPress={() => void choose(kind, 'camera')}
         accessibilityLabel={kind === 'logo' ? t('clubSetup.branding.cameraLogoA11y') : t('clubSetup.branding.cameraCoverA11y')}
@@ -117,7 +168,7 @@ export function BrandingFields({
           label={t('clubSetup.branding.remove')}
           variant="ghost"
           size="sm"
-          disabled={!!busy}
+          disabled={locked}
           icon={<X size={16} color={colors.primary} />}
           onPress={() => remove(kind)}
           accessibilityLabel={kind === 'logo' ? t('clubSetup.branding.removeLogoA11y') : t('clubSetup.branding.removeCoverA11y')}
@@ -140,16 +191,16 @@ export function BrandingFields({
           overflow: 'hidden',
         }}
       >
-        <View style={{ height: COVER_HEIGHT, backgroundColor: colors.surfaceAlt }}>
+        <View style={{ width: '100%', aspectRatio: COVER_ASPECT, backgroundColor: colors.surfaceAlt }}>
           {cover ? (
             <Image
               source={{ uri: cover }}
               resizeMode="cover"
-              style={{ width: '100%', height: '100%' }}
+              style={StyleSheet.absoluteFill}
               accessibilityIgnoresInvertColors
             />
           ) : (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
               <Text variant="caption" tone="muted">
                 {t('clubSetup.branding.noCover')}
               </Text>
@@ -185,6 +236,15 @@ export function BrandingFields({
         <GroupLabel hint={t('clubSetup.branding.coverHint')}>{t('clubSetup.branding.coverTitle')}</GroupLabel>
         {controls('cover', !!draft.cover_url)}
       </View>
+
+      <CoverCropper
+        visible={coverPick != null}
+        uri={coverPick?.uri ?? null}
+        width={coverPick?.width ?? 0}
+        height={coverPick?.height ?? 0}
+        onCancel={() => setCoverPick(null)}
+        onConfirm={(crop) => void onUseCover(crop)}
+      />
     </View>
   );
 }

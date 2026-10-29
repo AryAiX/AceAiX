@@ -2435,7 +2435,8 @@ begin
   perform tests.as_user(v_minor);
   v_minor_req := public.save_sponsorship_request(null,
     '{"title":"Junior nationals travel","amount":1500,"event_name":"Junior nationals",
-      "event_date":"2027-05-01","location":"Abu Dhabi"}');
+      "event_date":"2027-05-01","location":"Abu Dhabi","needs":["travel"],
+      "pitch":"Travel to the junior nationals."}');
   perform tests.ok(v_minor_req is not null, 'with it, the minor can ask');
 
   perform tests.as_user(v_brand);
@@ -7062,6 +7063,1021 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- Sponsorship request needs (QA-128, QA-129)
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sponsorship request needs ──'; end $$;
+
+/*
+ * 1026/01. A request has to name a need and a pitch. "Other" carries a short
+ * line of the athlete's own words. A minor's line is hidden from a plain
+ * viewer the same way the card hides when and where.
+ */
+do $$
+declare
+  v_athlete uuid := 'bbbbbbbb-1260-4000-8000-000000000001';
+  v_sponsor uuid := 'bbbbbbbb-1260-4000-8000-000000000002';
+  v_minor   uuid := 'bbbbbbbb-1260-4000-8000-000000000003';
+  v_viewer  uuid := '33333333-3333-3333-3333-333333333333';
+  v_req     uuid;
+  v_plain   uuid;
+  v_minor_req uuid;
+  v_hint    text;
+  v_token   text;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_athlete, 'needs.adult@test.local',  '{"full_name":"Needs Adult","role":"athlete"}'),
+    (v_sponsor, 'needs.brand@test.local',  '{"full_name":"Needs Brand","role":"sponsor"}'),
+    (v_minor,   'needs.minor@test.local',  '{"full_name":"Needs Minor","role":"athlete"}')
+  on conflict do nothing;
+  update public.user_private set date_of_birth = current_date - interval '22 years'
+   where user_id in (v_athlete, v_sponsor);
+  update public.user_private set date_of_birth = current_date - interval '15 years'
+   where user_id = v_minor;
+  update public.user_profiles set is_verified = true where id = v_sponsor;
+
+  perform tests.ok(
+    has_function_privilege(
+      'authenticated', 'public.sponsorship_seekers(text, text, text, integer, integer)', 'EXECUTE'),
+    'authenticated can execute sponsorship_seekers');
+  perform tests.ok(
+    not has_function_privilege(
+      'anon', 'public.sponsorship_seekers(text, text, text, integer, integer)', 'EXECUTE'),
+    'anon cannot execute sponsorship_seekers');
+
+  perform tests.as_user(v_athlete);
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"No needs listed","pitch":"A season of results to show."}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_needs', 'a request needs at least one need');
+
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"Other with no words","needs":["other"],"pitch":"A season of results to show."}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_needs_other', 'other needs a short description');
+
+  v_hint := null;
+  begin
+    perform public.save_sponsorship_request(null,
+      '{"title":"Pitch too short","needs":["travel"],"pitch":"Short"}');
+  exception when others then get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(v_hint = 'sponsorship_pitch', 'a pitch needs at least ten characters');
+
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Physio and travel","needs":["travel","other"],"needs_other":"Physio sessions",
+      "pitch":"Ranked in the national juniors."}');
+  perform tests.ok(
+    (select needs_other = 'Physio sessions' and 'other' = any (needs) and 'travel' = any (needs)
+     from public.sponsorship_requests where id = v_req),
+    'a valid request saves needs_other');
+
+  v_plain := public.save_sponsorship_request(null,
+    '{"title":"Entry fee only","needs":["entry_fee"],"needs_other":"Should be dropped",
+      "pitch":"A full season of match results."}');
+  perform tests.ok(
+    (select needs_other is null from public.sponsorship_requests where id = v_plain),
+    'needs_other is null when other is not chosen');
+
+  perform tests.as_user(v_sponsor);
+  perform tests.ok(
+    (select needs_other = 'Physio sessions'
+     from public.sponsorship_seekers() where request_id = v_req),
+    'a sponsor sees needs_other on an adult request');
+
+  /* Same consent path as the sponsorship block: the minor asks, the guardian
+     ticks discovery and sponsorship, then the profile is listed. */
+  perform tests.as_user(v_minor);
+  v_token := tests.request_consent('Parent Name', 'needs-parent@test.local', 'parent');
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true);
+  update public.user_profiles set is_discoverable = true where id = v_minor;
+  v_minor_req := public.save_sponsorship_request(null,
+    '{"title":"Junior physio","needs":["other"],"needs_other":"Physio for the season",
+      "pitch":"I need help through the junior season."}');
+  perform tests.ok(
+    (select needs_other = 'Physio for the season'
+     from public.sponsorship_requests where id = v_minor_req),
+    'the minor''s request stores needs_other');
+
+  perform tests.as_user(v_viewer);
+  perform tests.ok(
+    (select r ->> 'needs_other' is null
+     from jsonb_array_elements(public.sponsorship_card(v_minor) -> 'requests') r
+     where r ->> 'id' = v_minor_req::text),
+    'a plain viewer does not see a minor''s needs_other');
+
+  delete from public.sponsorship_requests where athlete_user_id in (v_athlete, v_minor);
+  delete from auth.users where id in (v_athlete, v_sponsor, v_minor);
+end $$;
+
+-- ------------------------------------------------------------
+-- review nits
+-- An unapproved city is not handed to someone else. A client insert
+-- cannot choose transcode_status or ai_tags. Every 40th public view,
+-- up to 1000, recomputes the Talent Score. Fresh accounts only. Each
+-- write is its own statement, and the read that checks it is the next
+-- one. talent_scores.computed_at is now() at the start of the
+-- recompute's transaction, so the snapshot and the write are separate
+-- statements with a sleep between them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── review nits ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', true);
+select set_config('request.jwt.claim.sub', '', true);
+
+drop table if exists review_nits_probe;
+create temporary table review_nits_probe (
+  k text primary key,
+  txt text,
+  at timestamptz
+);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f600000-0000-4000-8000-000000000001', 'nits.a@test.local',
+   '{"full_name":"Nit A","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000002', 'nits.b@test.local',
+   '{"full_name":"Nit B","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000003', 'nits.admin@test.local',
+   '{"full_name":"Nit Admin","role":"athlete"}'),
+  ('7f600000-0000-4000-8000-000000000004', 'nits.viewer@test.local',
+   '{"full_name":"Nit Viewer","role":"athlete"}');
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f600000-0000-4000-8000-000000000001',
+   '7f600000-0000-4000-8000-000000000002',
+   '7f600000-0000-4000-8000-000000000003',
+   '7f600000-0000-4000-8000-000000000004'
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f600000-0000-4000-8000-000000000003';
+
+-- (a) User A adds an unapproved city.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'Nitford');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('a_return', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'a_return';
+  select count(*), max(name), bool_or(is_curated)
+    into v_count, v_stored, v_curated
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'Nitford' and v_count = 1 and v_stored = 'Nitford' and v_curated = false,
+    'user A add_custom_city stores an unapproved city under their spelling');
+end $$;
+
+-- User B asks for the same city with different capitals.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'NITFORD');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('b_return', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_owner   uuid;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'b_return';
+  select count(*), max(name), bool_or(is_curated), max(created_by::text)::uuid
+    into v_count, v_stored, v_curated, v_owner
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'NITFORD'
+    and v_count = 1
+    and v_stored = 'Nitford'
+    and v_curated = false
+    and v_owner = '7f600000-0000-4000-8000-000000000001',
+    'user B adding the same city with different capitals gets their own spelling and no second row');
+end $$;
+
+-- An admin approves A's row.
+do $$
+declare v_city uuid;
+begin
+  select id into v_city
+    from public.cities
+   where created_by = '7f600000-0000-4000-8000-000000000001'
+     and lower(btrim(country)) = 'reviewland'
+     and lower(btrim(name)) = 'nitford'
+     and not is_curated;
+  perform tests.as_user('7f600000-0000-4000-8000-000000000003');
+  set local role authenticated;
+  perform public.admin_review_city(v_city, true);
+  reset role;
+end $$;
+
+do $$
+declare v_curated boolean;
+begin
+  select is_curated into v_curated
+    from public.cities
+   where created_by = '7f600000-0000-4000-8000-000000000001'
+     and lower(btrim(country)) = 'reviewland'
+     and lower(btrim(name)) = 'nitford';
+  perform tests.ok(v_curated = true, 'an admin approval marks the city curated');
+end $$;
+
+-- After approval, B's own capitals come back as the stored spelling.
+do $$
+declare v_name text;
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  v_name := public.add_custom_city('Reviewland', 'nitford');
+  reset role;
+  insert into review_nits_probe (k, txt) values ('b_approved', v_name);
+end $$;
+
+do $$
+declare
+  v_name    text;
+  v_stored  text;
+  v_count   integer;
+  v_curated boolean;
+begin
+  select txt into v_name from review_nits_probe where k = 'b_approved';
+  select count(*), max(name), bool_or(is_curated)
+    into v_count, v_stored, v_curated
+  from public.cities
+  where lower(btrim(country)) = 'reviewland'
+    and lower(btrim(name)) = 'nitford';
+  perform tests.ok(
+    v_name = 'Nitford' and v_stored = 'Nitford' and v_count = 1 and v_curated = true,
+    'after an admin approves the city, user B gets the stored spelling');
+end $$;
+
+-- (b) An authenticated insert cannot choose transcode_status or ai_tags.
+do $$
+declare
+  v_owner   uuid := '7f600000-0000-4000-8000-000000000001';
+  v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles where user_id = v_owner;
+  perform tests.as_user(v_owner);
+  set local role authenticated;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public,
+    transcode_status, ai_tags
+  ) values (
+    '7f600000-0000-4000-8000-000000000010',
+    v_athlete,
+    'Nit clip',
+    'video',
+    v_owner::text || '/highlights/nits.mp4',
+    true,
+    'ready',
+    '["x"]'::jsonb
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_status text;
+  v_tags   jsonb;
+begin
+  select transcode_status, ai_tags into v_status, v_tags
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+  perform tests.ok(
+    v_status = 'pending' and v_tags = '[]'::jsonb,
+    'an authenticated insert stores transcode_status pending and ai_tags []');
+end $$;
+
+do $$
+declare v_athlete uuid;
+begin
+  select id into v_athlete from public.athlete_profiles
+   where user_id = '7f600000-0000-4000-8000-000000000001';
+  set local role service_role;
+  insert into public.athlete_media (
+    id, athlete_id, title, media_type, storage_url, is_public,
+    transcode_status, ai_tags
+  ) values (
+    '7f600000-0000-4000-8000-000000000011',
+    v_athlete,
+    'Nit server clip',
+    'image',
+    'server-nits.jpg',
+    false,
+    'ready',
+    '["x"]'::jsonb
+  );
+  reset role;
+end $$;
+
+do $$
+declare
+  v_status text;
+  v_tags   jsonb;
+begin
+  select transcode_status, ai_tags into v_status, v_tags
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000011';
+  perform tests.ok(
+    v_status = 'ready' and v_tags = '["x"]'::jsonb,
+    'a service_role insert keeps transcode_status and ai_tags');
+end $$;
+
+-- (c) Park the public total at 39. The private server clip is not in it.
+do $$
+begin
+  set local role service_role;
+  update public.athlete_media
+     set views_count = 39
+   where id = '7f600000-0000-4000-8000-000000000010';
+  reset role;
+end $$;
+
+do $$
+declare v_views integer;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+  perform tests.ok(v_views = 39, 'service_role can set athlete_media.views_count to 39');
+end $$;
+
+insert into review_nits_probe (k, at)
+select 'before_40', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+do $$
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000002');
+  set local role authenticated;
+  perform public.record_highlight_view('7f600000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views  integer;
+  v_total  integer;
+  v_before timestamptz;
+  v_after  timestamptz;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+
+  select coalesce(sum(m.views_count), 0)
+    into v_total
+  from public.athlete_media m
+  join public.athlete_profiles ap on ap.id = m.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001'
+    and m.is_public;
+
+  select at into v_before from review_nits_probe where k = 'before_40';
+  select ts.computed_at into v_after
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 40 and v_total = 40 and v_after > v_before,
+    'a highlight view that brings total public views to 40 recomputes the score');
+end $$;
+
+insert into review_nits_probe (k, at)
+select 'before_41', ts.computed_at
+from public.talent_scores ts
+join public.athlete_profiles ap on ap.id = ts.athlete_id
+where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+select pg_sleep(0.05);
+
+do $$
+begin
+  perform tests.as_user('7f600000-0000-4000-8000-000000000004');
+  set local role authenticated;
+  perform public.record_highlight_view('7f600000-0000-4000-8000-000000000010');
+  reset role;
+end $$;
+
+do $$
+declare
+  v_views  integer;
+  v_total  integer;
+  v_before timestamptz;
+  v_after  timestamptz;
+begin
+  select views_count into v_views
+  from public.athlete_media
+  where id = '7f600000-0000-4000-8000-000000000010';
+
+  select coalesce(sum(m.views_count), 0)
+    into v_total
+  from public.athlete_media m
+  join public.athlete_profiles ap on ap.id = m.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001'
+    and m.is_public;
+
+  select at into v_before from review_nits_probe where k = 'before_41';
+  select ts.computed_at into v_after
+  from public.talent_scores ts
+  join public.athlete_profiles ap on ap.id = ts.athlete_id
+  where ap.user_id = '7f600000-0000-4000-8000-000000000001';
+
+  perform tests.ok(
+    v_views = 41 and v_total = 41 and v_after = v_before,
+    'a highlight view that brings total public views to 41 does not recompute the score');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- profile_cards (20261029000001)
+-- Fresh accounts only (7f700000). Each write is its own statement.
+-- The read that checks it is the next one.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── profile cards ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f700000-0000-4000-8000-000000000001', 'cards.viewer@test.local',
+   '{"full_name":"Poster Viewer","role":"athlete"}'),
+  ('7f700000-0000-4000-8000-000000000002', 'cards.adult@test.local',
+   '{"full_name":"Poster Adult","role":"coach"}'),
+  ('7f700000-0000-4000-8000-000000000003', 'cards.blocked@test.local',
+   '{"full_name":"Poster Blocked","role":"scout"}'),
+  ('7f700000-0000-4000-8000-000000000004', 'cards.suspended@test.local',
+   '{"full_name":"Poster Suspended","role":"coach"}'),
+  ('7f700000-0000-4000-8000-000000000005', 'cards.minor@test.local',
+   '{"full_name":"Poster Minor","role":"athlete"}'),
+  ('7f700000-0000-4000-8000-000000000006', 'cards.admin@test.local',
+   '{"full_name":"Poster Admin","role":"athlete"}');
+
+insert into auth.users (id, email, raw_user_meta_data)
+select
+  ('7f700000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'cards.bulk.' || n || '@test.local',
+  jsonb_build_object('full_name', 'Card Bulk ' || n, 'role', 'athlete')
+from generate_series(10, 60) as n;
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f700000-0000-4000-8000-000000000001',
+   '7f700000-0000-4000-8000-000000000002',
+   '7f700000-0000-4000-8000-000000000003',
+   '7f700000-0000-4000-8000-000000000004',
+   '7f700000-0000-4000-8000-000000000006'
+ )
+ or (
+   user_id >= '7f700000-0000-4000-8000-000000000010'::uuid
+   and user_id <= '7f700000-0000-4000-8000-000000000060'::uuid
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f700000-0000-4000-8000-000000000006';
+
+update public.user_profiles
+   set is_verified = true,
+       avatar_url = 'https://cdn.test/card-adult.png'
+ where id = '7f700000-0000-4000-8000-000000000002';
+
+do $$
+declare
+  v_cards jsonb;
+  v_row jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000002']::uuid[]);
+  reset role;
+  select e into v_row
+  from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+  where e ->> 'id' = '7f700000-0000-4000-8000-000000000002';
+  perform tests.ok(
+    v_row ->> 'full_name' = 'Poster Adult'
+    and v_row ->> 'avatar_url' = 'https://cdn.test/card-adult.png'
+    and (v_row ->> 'is_verified') = 'true'
+    and v_row ->> 'role' = 'coach',
+    'a normal adult is returned by profile_cards');
+end $$;
+
+do $$
+declare
+  v_cards jsonb;
+  v_row jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000001']::uuid[]);
+  reset role;
+  select e into v_row
+  from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+  where e ->> 'id' = '7f700000-0000-4000-8000-000000000001';
+  perform tests.ok(
+    v_row ->> 'full_name' = 'Poster Viewer'
+    and v_row ->> 'role' = 'athlete',
+    'the caller sees themselves in profile_cards');
+end $$;
+
+insert into public.user_blocks (blocker_id, blocked_id) values
+  ('7f700000-0000-4000-8000-000000000001', '7f700000-0000-4000-8000-000000000003');
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000003']::uuid[]);
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from public.user_blocks
+      where blocker_id = '7f700000-0000-4000-8000-000000000001'
+        and blocked_id = '7f700000-0000-4000-8000-000000000003'
+    )
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000003'
+    ),
+    'a user the viewer blocked is omitted from profile_cards');
+end $$;
+
+delete from public.user_blocks
+ where blocker_id = '7f700000-0000-4000-8000-000000000001'
+   and blocked_id = '7f700000-0000-4000-8000-000000000003';
+
+insert into public.user_blocks (blocker_id, blocked_id) values
+  ('7f700000-0000-4000-8000-000000000003', '7f700000-0000-4000-8000-000000000001');
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000003']::uuid[]);
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from public.user_blocks
+      where blocker_id = '7f700000-0000-4000-8000-000000000003'
+        and blocked_id = '7f700000-0000-4000-8000-000000000001'
+    )
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000003'
+    ),
+    'a user who blocked the viewer is omitted from profile_cards');
+end $$;
+
+update public.user_profiles
+   set is_suspended = true
+ where id = '7f700000-0000-4000-8000-000000000004';
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000004']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_suspended from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000004')
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000004'
+    ),
+    'a suspended user is omitted from profile_cards for a normal viewer');
+end $$;
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000006');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000004']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_suspended from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000004')
+    and exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000004'
+        and e ->> 'full_name' = 'Poster Suspended'
+        and e ->> 'role' = 'coach'
+    ),
+    'an admin sees a suspended account in profile_cards');
+end $$;
+
+update public.user_private
+   set date_of_birth = current_date - interval '15 years'
+ where user_id = '7f700000-0000-4000-8000-000000000005';
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000005']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_minor and not coalesce(is_discoverable, false)
+       from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000005')
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000005'
+    ),
+    'a hidden minor is omitted from profile_cards');
+end $$;
+
+do $$
+declare
+  v_ids uuid[];
+  v_cards jsonb;
+  v_n integer;
+begin
+  select array_agg(u order by u)
+    into v_ids
+  from (
+    select ('7f700000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid as u
+    from generate_series(10, 60) as n
+  ) s;
+
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(v_ids);
+  reset role;
+  v_n := coalesce(jsonb_array_length(v_cards), 0);
+  perform tests.ok(
+    array_length(v_ids, 1) = 51 and v_n <= 50 and v_n = 50,
+    'more than 50 ids returns at most 50 profile cards');
+end $$;
+
+select tests.ok(
+  not has_function_privilege('anon', 'public.profile_cards(uuid[])', 'EXECUTE'),
+  'anon cannot execute profile_cards');
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- What a parent's answer tells everyone else (20261029000002, QA-154)
+-- Fresh accounts only (7f800000): a minor, their parent, a verified coach,
+-- a verified sponsor and an adult stranger.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── parent answers for a child ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f800000-0000-4000-8000-000000000001', 'pa.kid@test.local',
+   '{"full_name":"Kid Runner","role":"athlete"}'),
+  ('7f800000-0000-4000-8000-000000000002', 'pa.parent@test.local',
+   '{"full_name":"Parent Runner","role":"guardian"}'),
+  ('7f800000-0000-4000-8000-000000000003', 'pa.coach@test.local',
+   '{"full_name":"Coach Runner","role":"coach"}'),
+  ('7f800000-0000-4000-8000-000000000004', 'pa.brand@test.local',
+   '{"full_name":"Brand Person","role":"sponsor"}'),
+  ('7f800000-0000-4000-8000-000000000005', 'pa.stranger@test.local',
+   '{"full_name":"Stranger Runner","role":"athlete"}');
+
+update public.user_private set date_of_birth = current_date - interval '15 years'
+ where user_id = '7f800000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '40 years'
+ where user_id in ('7f800000-0000-4000-8000-000000000002', '7f800000-0000-4000-8000-000000000003',
+                   '7f800000-0000-4000-8000-000000000004', '7f800000-0000-4000-8000-000000000005');
+update public.user_profiles set is_verified = true
+ where id in ('7f800000-0000-4000-8000-000000000003', '7f800000-0000-4000-8000-000000000004');
+update public.user_profiles set is_discoverable = true
+ where id = '7f800000-0000-4000-8000-000000000001';
+insert into public.guardian_consents
+  (minor_user_id, guardian_name, guardian_email, guardian_user_id, relationship, status, granted_at,
+   allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings)
+values
+  ('7f800000-0000-4000-8000-000000000001', 'Parent Runner', 'pa.parent@test.local',
+   '7f800000-0000-4000-8000-000000000002', 'parent', 'granted', now(),
+   true, true, true, true, true, true);
+
+do $$
+declare
+  v_kid      uuid := '7f800000-0000-4000-8000-000000000001';
+  v_parent   uuid := '7f800000-0000-4000-8000-000000000002';
+  v_coach    uuid := '7f800000-0000-4000-8000-000000000003';
+  v_brand    uuid := '7f800000-0000-4000-8000-000000000004';
+  v_stranger uuid := '7f800000-0000-4000-8000-000000000005';
+  v_service  uuid;
+  v_slot     uuid;
+  v_booking  uuid;
+  v_req      uuid;
+  v_call     uuid;
+  v_deal     uuid;
+  v_app      uuid;
+  v_t        timestamptz := date_trunc('hour', now()) + interval '3 days';
+begin
+  perform tests.ok(
+    (select is_minor from public.user_profiles where id = v_kid)
+    and private.has_guardian_consent(v_kid, 'bookings')
+    and private.has_guardian_consent(v_kid, 'sponsorship'),
+    'the child is a minor and the parent approved bookings and sponsorship');
+
+  /* ── A parent cancels the child's session ── */
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_status(true, null);
+  v_service := public.save_coaching_service(null,
+    '{"kind":"session","title":"Sprint drills","duration_minutes":60,
+      "location_mode":"fixed","location":"Track 1"}');
+  perform public.add_coaching_slots(v_service, array[v_t]);
+  select id into v_slot from public.coaching_slots where service_id = v_service;
+
+  perform tests.as_user(v_kid);
+  v_booking := public.book_coaching_slot(v_slot);
+
+  perform tests.as_user(v_parent);
+  perform public.cancel_coaching_booking(v_booking);
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'guardian'
+     from public.coaching_bookings where id = v_booking),
+    'a parent can cancel their child''s session');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_coach and type = 'coaching_cancelled' and entity_id = v_booking::text
+              and title = 'Kid Runner''s parent cancelled Sprint drills'),
+    'the coach reads that the child''s parent cancelled');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'coaching_cancelled' and entity_id = v_booking::text
+              and title = 'Your parent cancelled Sprint drills'),
+    'the child reads that their parent cancelled');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type = 'coaching_cancelled' and entity_id = v_booking::text),
+    'the parent is not told about their own cancellation');
+
+  /* ── The parent sees the amount; a stranger does not ── */
+  perform tests.as_user(v_brand);
+  perform public.save_sponsor_profile('{"company_name":"Brand Co"}');
+
+  perform tests.as_user(v_kid);
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Junior nationals travel","amount":1500,"needs":["travel"],
+      "pitch":"Fastest 800m in my age group this year."}');
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(
+    (select (r ->> 'amount')::integer = 1500
+     from jsonb_array_elements(public.sponsorship_card(v_kid) -> 'requests') r
+     where r ->> 'id' = v_req::text),
+    'the parent sees how much their child asked for');
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    public.sponsorship_card(v_kid) is null
+    or coalesce((select bool_and(r ->> 'amount' is null)
+                 from jsonb_array_elements(public.sponsorship_card(v_kid) -> 'requests') r), true),
+    'a stranger does not see the amount');
+
+  /* ── A parent declines an offer for the child ── */
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'Travel for the season.', 1500);
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(public.respond_sponsorship(v_deal, false) = 'declined',
+    'a parent can decline an offer for their child');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Kid Runner''s parent declined your sponsorship offer'),
+    'the sponsor reads that the child''s parent declined');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Your parent declined the sponsorship offer from Brand Co'),
+    'the child is told their parent declined the offer');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'the parent is not told about their own answer');
+
+  /* ── A parent withdraws the child's application to a call ── */
+  perform tests.as_user(v_brand);
+  v_call := public.save_sponsor_call(null, '{"title":"Junior runners 2027","open_to_minors":true}');
+
+  perform tests.as_user(v_kid);
+  v_app := public.apply_to_sponsor_call(v_call, 'I run the 800m.');
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(public.respond_sponsorship(v_app, false) = 'declined',
+    'a parent can withdraw their child''s application');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_app::text
+              and title = 'Kid Runner''s parent withdrew the application to your call'),
+    'the sponsor is told the application was withdrawn');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'sponsorship_response' and entity_id = v_app::text
+              and title = 'Your parent withdrew your application to Brand Co'),
+    'the child is told their parent withdrew it');
+
+  /* ── When the athlete answers, the old wording stays ── */
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'Second try.', 1000);
+  perform tests.as_user(v_kid);
+  perform public.respond_sponsorship(v_deal, true);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Kid Runner accepted your sponsorship offer'),
+    'an athlete who answers is still named as before');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_parent and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'and the parent still hears about it');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
+-- The child hears what their parent decided (20261029000003, QA-155)
+-- Fresh accounts only (7f900000): a minor and their parent.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── the child hears the parent''s decision ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f900000-0000-4000-8000-000000000001', 'cn.kid@test.local',
+   '{"full_name":"Kid Notice","role":"athlete"}'),
+  ('7f900000-0000-4000-8000-000000000002', 'cn.parent@test.local',
+   '{"full_name":"Parent Notice","role":"guardian"}');
+
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id = '7f900000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '45 years'
+ where user_id = '7f900000-0000-4000-8000-000000000002';
+
+do $$
+declare
+  v_kid    uuid := '7f900000-0000-4000-8000-000000000001';
+  v_parent uuid := '7f900000-0000-4000-8000-000000000002';
+  v_token  text;
+  v_first  uuid;
+  v_second uuid;
+  v_n      integer;
+begin
+  /* ── The parent approves from the e-mail page ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select id into v_first from public.guardian_consents where token = v_token;
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_kid and type like 'guardian_consent%'),
+    'asking a parent sends the child no notice');
+
+  perform tests.as_user(null);
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true, true);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_granted'
+              and title = 'Your parent approved your account'
+              and entity_type = 'guardian_consent' and entity_id = v_first::text),
+    'the child is told their parent approved');
+
+  update public.guardian_consents set guardian_user_id = v_parent where id = v_first;
+
+  /* ── The parent approves again with fewer boxes ticked ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select id into v_second from public.guardian_consents where token = v_token;
+  update public.guardian_consents set guardian_user_id = v_parent where id = v_second;
+  perform tests.as_user(null);
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true, false);
+  perform tests.ok(
+    (select status from public.guardian_consents where id = v_first) = 'expired'
+    and exists (select 1 from public.notifications
+                where user_id = v_kid and type = 'guardian_consent_changed'
+                  and title = 'Your parent changed what you can do'
+                  and actor_id = v_parent and entity_id = v_second::text),
+    'approving again tells the child their permissions changed, shown as the parent');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_kid and type = 'guardian_consent_revoked'),
+    'the approval it replaced does not read as withdrawn');
+
+  /* ── A permission is switched off on the approval in force ── */
+  select count(*) into v_n from public.notifications
+   where user_id = v_kid and type = 'guardian_consent_changed';
+  update public.guardian_consents set allow_sponsorship = false where id = v_second;
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_kid and type = 'guardian_consent_changed') = v_n + 1,
+    'switching a permission off tells the child');
+
+  /* ── Notification settings cannot mute it ── */
+  insert into public.notification_preferences (user_id) values (v_kid) on conflict (user_id) do nothing;
+  update public.notification_preferences
+     set follows = false, messages = false, comments = false, likes = false, opportunities = false,
+         applications = false, scout_interest = false, score_updates = false, meetups = false,
+         club_updates = false, mentions = false
+   where user_id = v_kid;
+
+  /* ── The parent withdraws the approval in the app ── */
+  perform tests.as_user(v_parent);
+  perform public.revoke_guardian_consent(v_second);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_revoked'
+              and title = 'Your parent approval was withdrawn' and actor_id = v_parent),
+    'the child is told the approval was withdrawn, even with every setting off');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type like 'guardian_consent%'),
+    'the parent is not told about their own decision');
+
+  /* ── The parent says no to a new request ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  perform tests.as_user(null);
+  update public.guardian_consents set status = 'revoked', revoked_at = now()
+   where token = v_token and status = 'pending';
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_revoked'
+              and title = 'Your parent did not approve your request'),
+    'the child is told the parent said no');
+
+  /* ── The child withdraws their own request: nothing to tell ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select count(*) into v_n from public.notifications where user_id = v_kid and type like 'guardian_consent%';
+  perform public.revoke_guardian_consent((select id from public.guardian_consents where token = v_token));
+  perform tests.ok(
+    (select count(*) from public.notifications where user_id = v_kid and type like 'guardian_consent%') = v_n,
+    'a child who withdraws their own request is not notified about it');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- Signed-in users can read challenges; writes still go through the functions.
+do $$
+begin
+  perform tests.ok(
+    has_table_privilege('authenticated', 'public.challenges', 'SELECT')
+    and not has_table_privilege('anon', 'public.challenges', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.challenges', 'INSERT'),
+    'signed-in users can read challenges (writes still go through the functions)');
+end $$;
 
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

@@ -1,9 +1,16 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useContext, useRef } from 'react';
 import { Animated, Pressable, View, ViewProps, ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { NATIVE_DRIVER } from '@/lib/motion';
+
+/** Stretch every card inside to the height of the tallest one. */
+const CardFillContext = React.createContext(false);
+
+export function CardFill({ children }: { children: React.ReactNode }) {
+  return <CardFillContext.Provider value={true}>{children}</CardFillContext.Provider>;
+}
 
 interface Props extends ViewProps {
   /** 0 = flat with border, 1–3 = raised. */
@@ -25,6 +32,7 @@ export function Card({
   children,
   ...rest
 }: Props) {
+  const fill = useContext(CardFillContext);
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const reduced = useReducedMotion();
@@ -68,9 +76,13 @@ export function Card({
     ...theme.elevation(level),
   };
 
+  // The press animation lives on a wrapper that otherwise ignores flex, so a
+  // stretched card has to opt in on both layers.
+  const stretch: ViewStyle | null = fill ? { flex: 1, alignSelf: 'stretch', height: '100%' } : null;
+
   if (onPress) {
     return (
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View style={[stretch, { transform: [{ scale }] }]}>
         <Pressable
           accessibilityRole="button"
           onPress={onPress}
@@ -78,6 +90,7 @@ export function Card({
           onPressOut={() => press(false)}
           style={({ pressed }) => [
             base,
+            stretch,
             pressed && { opacity: reduced ? 0.85 : 0.94 },
             style as ViewStyle,
           ]}
@@ -90,7 +103,7 @@ export function Card({
   }
 
   return (
-    <View style={[base, style as ViewStyle]} {...rest}>
+    <View style={[base, stretch, style as ViewStyle]} {...rest}>
       {children}
     </View>
   );

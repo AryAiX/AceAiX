@@ -489,12 +489,26 @@ export async function searchPeople(
   return (data ?? []) as PersonResult[];
 }
 
+/* Verified first, then name. The database applies that before `limit`, so a
+   verified club is not dropped to make room for an unverified one. The page
+   is sorted again case-insensitively: Postgres orders text by code point, and
+   a case-insensitive collation would be a schema change. No club is hidden. */
+function compareOrganizations(a: Organization, b: Organization): number {
+  if (a.is_verified !== b.is_verified) return a.is_verified ? -1 : 1;
+  return a.name.localeCompare(b.name, undefined, { sensitivity: 'accent' });
+}
+
 export async function searchOrganizations(query: string, limit = 20): Promise<Organization[]> {
-  let q = supabase.from('organizations').select('*').limit(limit);
+  let q = supabase
+    .from('organizations')
+    .select('*')
+    .order('is_verified', { ascending: false })
+    .order('name', { ascending: true })
+    .limit(limit);
   if (query.trim()) q = q.ilike('name', `%${query.trim()}%`);
   const { data, error } = await q;
   if (error) throw new AppError(error);
-  return (data ?? []) as Organization[];
+  return ((data ?? []) as Organization[]).sort(compareOrganizations);
 }
 
 export async function getMatchPreferences(): Promise<MatchPreferences | null> {
