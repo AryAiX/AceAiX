@@ -8069,5 +8069,15 @@ reset role;
 select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
+-- Signed-in users can read challenges; writes still go through the functions.
+do $$
+begin
+  perform tests.ok(
+    has_table_privilege('authenticated', 'public.challenges', 'SELECT')
+    and not has_table_privilege('anon', 'public.challenges', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.challenges', 'INSERT'),
+    'signed-in users can read challenges (writes still go through the functions)');
+end $$;
+
 -- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
