@@ -150,6 +150,7 @@ export const common = {
   tabHome: 'Inicio',
   tabDiscover: 'Descubrir',
   tabTrials: 'Pruebas',
+  tabSponsorship: 'Portal',
   tabYou: 'Perfil',
   tabCreate: 'Crear',
 

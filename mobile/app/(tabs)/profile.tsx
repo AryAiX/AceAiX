@@ -12,6 +12,7 @@ import { MyGiCard } from '@/components/intelligence/GiCard';
 import { MySportFitCard } from '@/components/sportfit/SportFitCard';
 import { MyInviteCard } from '@/components/invite/InviteCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
+import { MyBrandCard } from '@/components/sponsorship/SponsorshipPortal';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { CoachStats } from '@/components/profile/CoachStats';
 import { SponsorStats } from '@/components/profile/SponsorStats';
@@ -136,6 +137,8 @@ export default function MyProfileScreen() {
           gap: spacing.lg,
         }}
       >
+        {data.user.role === 'sponsor' ? <MyBrandCard refreshKey={childKey} /> : null}
+
         {athlete ? (
           <ScoreCard score={liveScore} onPress={() => router.push(Routes.score)} />
         ) : null}
@@ -167,7 +170,7 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
           />
         ) : null}
-        {data.user.role === 'sponsor' || data.user.role === 'guardian' ? (
+        {data.user.role === 'guardian' ? (
           <Button
             label={t('sponsorship.openPortal')}
             variant="secondary"

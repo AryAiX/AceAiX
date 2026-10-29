@@ -140,6 +140,7 @@ export const common = {
   tabHome: '首页',
   tabDiscover: '发现',
   tabTrials: '试训',
+  tabSponsorship: '门户',
   tabYou: '主页',
   tabCreate: '发布',
 

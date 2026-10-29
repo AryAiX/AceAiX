@@ -23,8 +23,9 @@ const SPONSORSHIP_NOTIFICATIONS = new Set([
  * The numbers on a sponsor profile.
  *
  * Posts behave as they do for every other role. Calls and deals are tappable
- * only on your own profile, and both open the sponsorship portal. Someone
- * else's profile shows posts and open calls only — deals stay private.
+ * only on your own profile: Calls opens the portal tab on My calls, Deals
+ * opens it on Sent and answered. Someone else's profile shows posts and
+ * open calls only — deals stay private.
  */
 export function SponsorStats({
   userId,
@@ -66,7 +67,8 @@ export function SponsorStats({
     calls: 0,
     deals: 0,
   };
-  const openPortal = () => router.push(Routes.sponsorship);
+  const openPortal = (section: 'calls' | 'deals') =>
+    router.push({ pathname: Routes.sponsorshipTab, params: { section } });
 
   const items: StatItem[] = [
     {
@@ -79,7 +81,7 @@ export function SponsorStats({
       key: 'calls',
       label: t('sponsorship.calls'),
       value: compactNumber(counts.calls),
-      onPress: isSelf ? openPortal : undefined,
+      onPress: isSelf ? () => openPortal('calls') : undefined,
     },
   ];
 
@@ -88,7 +90,7 @@ export function SponsorStats({
       key: 'deals',
       label: t('sponsorship.deals'),
       value: compactNumber(counts.deals),
-      onPress: openPortal,
+      onPress: () => openPortal('deals'),
     });
   }
 

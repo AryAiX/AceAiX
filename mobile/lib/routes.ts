@@ -55,6 +55,8 @@ export const Routes = {
 
   /** The sponsorship portal: requests, calls, offers and applications. */
   sponsorship: '/sponsorship' as const,
+  /** The same portal as a tab. `section` is `calls` or `deals`. */
+  sponsorshipTab: '/(tabs)/sponsorship' as const,
   /** Create a request, or edit one with `id` as a param. */
   sponsorshipRequest: '/sponsorship/request' as const,
   /** Create a call, or edit one with `id` as a param. */

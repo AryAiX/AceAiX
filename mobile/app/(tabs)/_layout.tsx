@@ -4,7 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { Compass, Home, Plus, Target, User, Users } from 'lucide-react-native';
+import { Compass, Handshake, Home, Plus, Target, User, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -106,8 +106,10 @@ function TabIcon({
       <Text
         variant="overline"
         color={color}
-        style={{ fontSize: 9.5, letterSpacing: 0.4, marginTop: 3 }}
+        style={{ fontSize: 9.5, letterSpacing: 0.4, marginTop: 3, width: '100%', textAlign: 'center' }}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
       >
         {label}
       </Text>
@@ -294,7 +296,7 @@ export default function TabsLayout() {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { profile } = useAuth();
+  const { profile, isSponsor } = useAuth();
   useClaimPendingInvite();
 
   /*
@@ -403,6 +405,8 @@ export default function TabsLayout() {
         name="opportunities"
         options={{
           title: t('common.tabTrials'),
+          /* Sponsors cannot apply or enter. The route stays for deep links. */
+          href: isSponsor ? null : undefined,
           tabBarIcon: ({ focused }) => (
             <TabIcon
               Icon={Target}
@@ -415,6 +419,25 @@ export default function TabsLayout() {
         }}
         listeners={({ navigation }) => ({
           tabPress: () => onTabPress('opportunities', navigation.isFocused()),
+        })}
+      />
+      <Tabs.Screen
+        name="sponsorship"
+        options={{
+          title: t('common.tabSponsorship'),
+          href: isSponsor ? undefined : null,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              Icon={Handshake}
+              focused={focused}
+              label={t('common.tabSponsorship')}
+              bump={bumpFor('sponsorship')}
+            />
+          ),
+          tabBarAccessibilityLabel: t('sponsorship.portal'),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => onTabPress('sponsorship', navigation.isFocused()),
         })}
       />
       <Tabs.Screen

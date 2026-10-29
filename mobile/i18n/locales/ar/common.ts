@@ -165,6 +165,7 @@ export const common = {
   tabHome: 'الرئيسية',
   tabDiscover: 'استكشاف',
   tabTrials: 'التجارب',
+  tabSponsorship: 'البوابة',
   tabYou: 'الملف الشخصي',
   tabCreate: 'إنشاء',
 
