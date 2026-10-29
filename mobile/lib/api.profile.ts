@@ -3,6 +3,7 @@ import { File as FsFile } from 'expo-file-system';
 import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
+import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import { getUserPosts } from '@/lib/api';
@@ -666,6 +667,65 @@ export async function getCoachStats(userId: string, isSelf: boolean): Promise<Co
     };
   } catch {
     return EMPTY_COACH_STATS;
+  }
+}
+
+// ── Sponsor profile stats ────────────────────────────────────────────────────
+export interface SponsorStats {
+  calls: number;
+  deals: number;
+}
+
+const EMPTY_SPONSOR_STATS: SponsorStats = {
+  calls: 0,
+  deals: 0,
+};
+
+/**
+ * Calls a sponsor posted, and deals they have accepted.
+ *
+ * Own profile counts every call of theirs, and every `sponsorship_deals` row
+ * in the accepted state (`status = 'accepted'`), through the tables' RLS.
+ * Someone else's profile cannot read `sponsor_calls` (that policy is
+ * owner-only), so the call count is the length of the `calls` list on
+ * `sponsorship_card` — the same public list as the profile card, which
+ * already applies blocks and visibility. A null card, or a card that is not
+ * a sponsor's, counts as zero. Deals stay at 0 for anyone else: they are
+ * private to the parties, and the card does not show them.
+ * A failed read is a zero.
+ */
+export async function getSponsorStats(userId: string, isSelf: boolean): Promise<SponsorStats> {
+  try {
+    if (!isSelf) {
+      const card = await getSponsorshipCard(userId);
+      return {
+        calls: card?.kind === 'sponsor' ? card.calls.length : 0,
+        deals: 0,
+      };
+    }
+
+    const [callCount, dealCount] = await Promise.all([
+      exactCount(
+        supabase
+          .from('sponsor_calls')
+          .select('id', { count: 'exact', head: true })
+          .eq('sponsor_user_id', userId),
+      ),
+      exactCount(
+        supabase
+          .from('sponsorship_deals')
+          .select('id', { count: 'exact', head: true })
+          .eq('sponsor_user_id', userId)
+          .eq('status', 'accepted'),
+      ),
+    ]);
+
+    return {
+      calls: callCount,
+      deals: dealCount,
+    };
+  } catch {
+    return EMPTY_SPONSOR_STATS;
   }
 }
 

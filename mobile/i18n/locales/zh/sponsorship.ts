@@ -90,6 +90,8 @@ export const sponsorship = {
   closeRequest: '关闭申请',
   reopen: '重新开放',
   edit: '编辑',
+  calls: '征集',
+  deals: '成交',
   myCalls: '我的征集',
   newCall: '新建征集',
   noCalls: '还没有征集',

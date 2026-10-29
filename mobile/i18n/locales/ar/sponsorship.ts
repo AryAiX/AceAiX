@@ -90,6 +90,8 @@ export const sponsorship = {
   closeRequest: 'أغلق الطلب',
   reopen: 'أعد الفتح',
   edit: 'تعديل',
+  calls: 'دعوات',
+  deals: 'صفقات',
   myCalls: 'دعواتي',
   newCall: 'دعوة جديدة',
   noCalls: 'لا توجد دعوات بعد',

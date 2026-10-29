@@ -14,6 +14,7 @@ import { MyInviteCard } from '@/components/invite/InviteCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
 import { CoachStats } from '@/components/profile/CoachStats';
+import { SponsorStats } from '@/components/profile/SponsorStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -187,6 +188,14 @@ export default function MyProfileScreen() {
 
         {data.user.role === 'coach' ? (
           <CoachStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : data.user.role === 'sponsor' ? (
+          <SponsorStats
             userId={data.user.id}
             isSelf
             posts={data.stats?.posts ?? 0}
