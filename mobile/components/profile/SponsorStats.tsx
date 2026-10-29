@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 
 import { StatItem, StatRow } from '@/components/profile/StatRow';
@@ -7,6 +7,17 @@ import { useT } from '@/i18n';
 import { getSponsorStats } from '@/lib/api.profile';
 import { compactNumber } from '@/lib/format';
 import { Routes } from '@/lib/routes';
+import { useUnread } from '@/providers/UnreadProvider';
+
+/**
+ * What `private.notify` writes for a sponsorship deal (1008/02).
+ * Accept and decline are both `sponsorship_response`; the status is in the row.
+ */
+const SPONSORSHIP_NOTIFICATIONS = new Set([
+  'sponsorship_offer',
+  'sponsorship_application',
+  'sponsorship_response',
+]);
 
 /**
  * The numbers on a sponsor profile.
@@ -30,9 +41,27 @@ export function SponsorStats({
 }) {
   const t = useT();
   const router = useRouter();
+  const { subscribeNotifications } = useUnread();
+  /*
+   * Coming back to the profile refetches in the background. That mode keeps
+   * the numbers on screen until the new counts arrive.
+   */
   const stats = useAsync(() => getSponsorStats(userId, isSelf), [userId, isSelf, refreshKey], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
+  const reloadStats = useRef(stats.reload);
+  reloadStats.current = stats.reload;
+
+  useEffect(() => {
+    if (!isSelf) return;
+    return subscribeNotifications((payload) => {
+      if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') return;
+      const type = payload.new?.type;
+      if (typeof type !== 'string' || !SPONSORSHIP_NOTIFICATIONS.has(type)) return;
+      void reloadStats.current();
+    });
+  }, [isSelf, subscribeNotifications]);
   const counts = stats.data ?? {
     calls: 0,
     deals: 0,

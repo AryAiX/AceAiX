@@ -30,8 +30,13 @@ export function CoachStats({
 }) {
   const t = useT();
   const router = useRouter();
+  /*
+   * Coming back to the profile refetches in the background. That mode keeps
+   * the numbers on screen until the new counts arrive.
+   */
   const stats = useAsync(() => getCoachStats(userId, isSelf), [userId, isSelf, refreshKey], {
     enabled: !!userId,
+    refetchOnFocus: true,
   });
   const counts = stats.data ?? {
     opportunities: 0,
