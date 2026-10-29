@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Card, IconButton, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { metaLine } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { opportunityTypeLabel, positionLabel, sportLabel } from '@/constants/sports';
 import type { Opportunity } from '@/types/models';
@@ -45,6 +46,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
   const sport = sportLabel(t, opportunity.sport);
   const position = positionLabel(t, opportunity.position);
   const club = opportunity.org_name?.trim() || t('opportunities.card.independent');
+  const place = formatLocation(opportunity.location, t);
 
   const summary = metaLine(
     opportunity.title,
@@ -52,7 +54,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
     typeLabel,
     sport,
     position,
-    opportunity.location,
+    place,
     match ? t('opportunities.match.percentA11y', { percent: match.percent }) : null,
     match ? match.reasons.join(', ') : null,
     closed ? t('opportunities.card.closedA11y') : null,
@@ -108,9 +110,9 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
         {typeLabel ? <Badge label={typeLabel} tone="primary" /> : null}
         {sport ? <Badge label={sport} tone="neutral" /> : null}
         {position ? <Badge label={position} tone="neutral" /> : null}
-        {opportunity.location ? (
+        {place ? (
           <Badge
-            label={opportunity.location}
+            label={place}
             tone="neutral"
             icon={<MapPin size={11} color={colors.textSecondary} strokeWidth={2.4} />}
           />

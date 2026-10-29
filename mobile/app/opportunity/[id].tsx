@@ -61,6 +61,7 @@ import {
 } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
@@ -507,7 +508,7 @@ export default function OpportunityDetailScreen() {
                 <Fact
                   icon={<MapPin size={14} color={colors.textMuted} />}
                   label={t('opportunities.detail.factWhere')}
-                  value={opportunity.location}
+                  value={formatLocation(opportunity.location, t)}
                 />
               ) : null}
               <Fact

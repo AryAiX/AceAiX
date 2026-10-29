@@ -280,7 +280,6 @@ export const opportunities = {
     positionAny: 'Tous',
 
     whereLabel: 'Lieu',
-    wherePlaceholder: 'Dubaï, Émirats arabes unis',
     whereError: 'Ça se passe où ?',
 
     deadlineLabel: 'Clôture des candidatures',

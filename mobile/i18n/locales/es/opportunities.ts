@@ -283,7 +283,6 @@ export const opportunities = {
     positionAny: 'Cualquiera',
 
     whereLabel: 'Dónde',
-    wherePlaceholder: 'Dubái, EAU',
     whereError: '¿Dónde ocurre esto?',
 
     deadlineLabel: 'Las solicitudes cierran',

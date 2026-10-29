@@ -6,60 +6,7 @@
  * `save_sponsor_call` and `save_sponsor_profile` (1008/02). A tag that is not
  * here is dropped by the database, so adding one means adding it there first.
  */
-import { ALL_COUNTRIES, COUNTRY_KEYS, countryLabel } from '@/constants/sports';
-
-/** `sponsorship_requests.location` is `text` with `length <= 120`. */
-export const LOCATION_MAX = 120;
-
-const KNOWN_COUNTRIES = new Set<string>([...ALL_COUNTRIES, ...Object.keys(COUNTRY_KEYS)]);
-
-type Translate = (key: string, vars?: Record<string, string | number>) => string;
-
-/**
- * "City, Country", or just "Country". The country is the English name
- * CountryPicker stores. Empty when there is no country. Cut from the city
- * so a long name still fits the column.
- */
-export function joinLocation(city: string | null | undefined, country: string | null | undefined): string | null {
-  const place = (country ?? '').trim();
-  const town = (city ?? '').trim();
-  if (!place) return null;
-  if (!town) return place.length <= LOCATION_MAX ? place : place.slice(0, LOCATION_MAX);
-  const joined = `${town}, ${place}`;
-  if (joined.length <= LOCATION_MAX) return joined;
-  const room = LOCATION_MAX - place.length - 2;
-  if (room < 1) return place.slice(0, LOCATION_MAX);
-  return `${town.slice(0, room).trimEnd()}, ${place}`;
-}
-
-/**
- * Split a stored location only when the part after the last ", " — or the
- * whole text, when there is no comma — is a country the picker knows.
- * Older free text ("Abu Dhabi", "Dubai, Muscat, Manama") stays unparsed.
- */
-export function parseLocation(text: string | null | undefined): { city: string; country: string } | null {
-  const trimmed = text?.trim() ?? '';
-  if (!trimmed) return null;
-  const splitAt = trimmed.lastIndexOf(', ');
-  const city = splitAt >= 0 ? trimmed.slice(0, splitAt).trim() : '';
-  const country = (splitAt >= 0 ? trimmed.slice(splitAt + 2) : trimmed).trim();
-  if (!country || !KNOWN_COUNTRIES.has(country)) return null;
-  if (splitAt >= 0 && !city) return null;
-  return { city, country };
-}
-
-/**
- * A parsed location, with the country translated. The locale string decides
- * the order and the comma. Anything that does not parse is returned as stored.
- */
-export function formatLocation(text: string | null | undefined, t: Translate): string {
-  if (text == null) return '';
-  const parsed = parseLocation(text);
-  if (!parsed) return text;
-  const country = countryLabel(t, parsed.country);
-  if (!parsed.city) return country;
-  return t('sponsorship.locationFormat', { city: parsed.city, country });
-}
+export { LOCATION_MAX, formatLocation, joinLocation, parseLocation } from '@/lib/location';
 
 export const NEEDS = ['entry_fee', 'travel', 'equipment', 'coaching', 'nutrition', 'other'] as const;
 export const GIVES = ['logo_on_kit', 'social_posts', 'appearances', 'content', 'testimonial'] as const;

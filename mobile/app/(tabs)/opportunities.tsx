@@ -52,6 +52,7 @@ import {
 import type { PostedOpportunity, RankedApplicant } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
@@ -354,7 +355,7 @@ function PostingRow({ posting }: { posting: PostedOpportunity }) {
   const meta = metaLine(
     opportunityTypeLabel(t, posting.type),
     sportLabel(t, posting.sport),
-    posting.location,
+    formatLocation(posting.location, t),
   );
   const applicants = t('common.applicants', { count: posting.applicant_count });
 
