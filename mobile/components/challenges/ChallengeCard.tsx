@@ -5,7 +5,8 @@ import { BadgeCheck, Clock, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Card, Tappable, Text } from '@/components/ui';
-import { deadlineLabel } from '@/lib/format';
+import { sportLabel } from '@/constants/sports';
+import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { Challenge } from '@/types/models';
 
@@ -40,7 +41,10 @@ export function ChallengeCard({
           : null;
 
   return (
-    <Tappable onPress={onPress} accessibilityLabel={challenge.title}>
+    <Tappable
+      onPress={onPress}
+      accessibilityLabel={metaLine(challenge.title, sportLabel(t, challenge.sport))}
+    >
       <Card padded={false} style={{ overflow: 'hidden' }}>
         {/* A quiet wash rather than a photograph: every challenge would
             otherwise need artwork nobody has time to make. */}
@@ -82,6 +86,9 @@ export function ChallengeCard({
               marginTop: spacing.xs,
             }}
           >
+            <Text variant="caption" tone="muted">
+              {sportLabel(t, challenge.sport)}
+            </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Clock size={14} color={colors.textMuted} />
               <Text variant="caption" tone="muted">
