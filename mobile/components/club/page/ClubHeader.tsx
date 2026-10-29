@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, ChevronRight, Settings2, ShieldCheck } from 'lucide-react-native';
+import { BadgeCheck, ChevronRight, ShieldCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Text } from '@/components/ui';
@@ -27,8 +27,7 @@ interface Props {
 }
 
 /**
- * Cover, crest, name and the two buttons people come for: Follow, and — for
- * the page team — Manage.
+ * Cover, crest, name, and Follow. Manage lives on the viewer's own profile.
  */
 export function ClubHeader({ page, following, followers, followBusy, onToggleFollow }: Props) {
   const t = useT();
@@ -148,16 +147,6 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           }}
         >
           {logo}
-          {team ? (
-            <Button
-              label={t('club.page.manage')}
-              size="sm"
-              icon={<Settings2 size={16} color={colors.textOnBrand} />}
-              onPress={() => router.push(Routes.clubManage(org.id))}
-              accessibilityLabel={t('club.page.manageA11y', { name: org.name })}
-              testID="club-manage"
-            />
-          ) : null}
         </View>
 
         <View style={{ gap: 4 }}>

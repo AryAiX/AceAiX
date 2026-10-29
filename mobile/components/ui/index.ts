@@ -5,7 +5,7 @@ export { ExpandableText } from './ExpandableText';
 export { Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 
-export { Card } from './Card';
+export { Card, CardFill } from './Card';
 export { Tappable } from './Pressable';
 export type { TappableProps } from './Pressable';
 export { AnimatedNumber } from './AnimatedNumber';

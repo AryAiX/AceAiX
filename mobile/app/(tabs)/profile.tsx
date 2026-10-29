@@ -178,7 +178,11 @@ export default function MyProfileScreen() {
         {athlete || data.user.role === 'coach' ? <MyInviteCard refreshKey={childKey} /> : null}
 
         {/* QA-157: a club account that already runs a page gets the control room here. */}
-        {data.user.role === 'club' && clubPage.data ? <ClubManageHub page={clubPage.data} /> : null}
+        {data.user.role === 'club' && clubPage.data ? (
+          <ClubManageHub page={clubPage.data} />
+        ) : data.user.role === 'club' && clubPage.error ? (
+          <ErrorState message={clubPage.error} onRetry={clubPage.reload} compact />
+        ) : null}
         <MyClubCard
           isClubAccount={data.user.role === 'club'}
           pages={clubPages.data}
@@ -275,21 +279,16 @@ export default function MyProfileScreen() {
 
         {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
 
-        {!athlete || tab === 'posts' ? (
-          <PostsTab
-            userId={data.user.id}
-            isSelf
-            refreshKey={childKey}
-            hideEmpty={data.user.role === 'club'}
-          />
-        ) : tab === 'highlights' ? (
+        {data.user.role !== 'club' && (!athlete || tab === 'posts') ? (
+          <PostsTab userId={data.user.id} isSelf refreshKey={childKey} />
+        ) : athlete && tab === 'highlights' ? (
           <HighlightsTab
             athleteId={athlete.id}
             isSelf
             refreshKey={childKey}
             onChanged={onTabDataChanged}
           />
-        ) : (
+        ) : athlete ? (
           <CareerTab
             athleteId={athlete.id}
             isSelf
@@ -298,7 +297,7 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
             onChanged={onTabDataChanged}
           />
-        )}
+        ) : null}
       </View>
     </Screen>
   );

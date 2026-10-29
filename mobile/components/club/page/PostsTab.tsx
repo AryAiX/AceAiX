@@ -14,7 +14,7 @@ import { errorMessage } from '@/lib/errors';
 import { relativeTime, truncate } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import type { PostMedia } from '@/types/models';
-import type { ClubTabProps } from './shared';
+import { PreviewEmpty, useReportItems, type ClubTabProps } from './shared';
 
 const PAGE = 24;
 
@@ -52,7 +52,14 @@ async function loadPosts(orgId: string, before: string | null): Promise<Loaded> 
   };
 }
 
-export function ClubPostsTab({ orgId, canPost, refreshKey, clubName }: ClubTabProps & { clubName: string }) {
+export function ClubPostsTab({
+  orgId,
+  canPost,
+  refreshKey,
+  clubName,
+  limit,
+  onHasItems,
+}: ClubTabProps & { clubName: string }) {
   const t = useT();
   const theme = useTheme();
   const { colors, spacing } = theme;
@@ -69,6 +76,20 @@ export function ClubPostsTab({ orgId, canPost, refreshKey, clubName }: ClubTabPr
 
   const last = extra.length > 0 ? extra[extra.length - 1] : first.data;
   const tiles = [...(first.data?.tiles ?? []), ...extra.flatMap((p) => p.tiles)];
+  const preview = limit != null;
+  const pinnedCount = broadcasts.data?.length ?? 0;
+  const previewHas: boolean | null = !preview
+    ? null
+    : first.data == null && !first.error
+      ? null
+      : first.error && !first.data
+        ? true
+        : tiles.length > 0 || pinnedCount > 0
+          ? true
+          : broadcasts.data == null && !broadcasts.error
+            ? null
+            : false;
+  useReportItems(onHasItems, previewHas);
 
   const loadMore = useCallback(async () => {
     if (!last?.cursor || loadingMore) return;
@@ -123,6 +144,21 @@ export function ClubPostsTab({ orgId, canPost, refreshKey, clubName }: ClubTabPr
       </Text>
     </Card>
   ));
+
+  if (limit != null) {
+    if (first.error && !first.data) return <ErrorState message={first.error} onRetry={first.reload} compact />;
+    if (previewHas === false) return <PreviewEmpty title={t('club.posts.emptyTitle')} />;
+    if (previewHas !== true) return null;
+    const grid = tiles.slice(0, limit);
+    return (
+      <View style={{ gap: spacing.md }}>
+        {pinned}
+        {grid.length > 0 ? (
+          <MediaGrid tiles={grid} onPressTile={(id) => router.push(Routes.post(id))} />
+        ) : null}
+      </View>
+    );
+  }
 
   let body: React.ReactNode;
   if (first.loading) body = <SkeletonList count={2} />;

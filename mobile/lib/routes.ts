@@ -1,5 +1,6 @@
 import type { Href } from 'expo-router';
 
+import type { ClubSectionName } from '@/lib/clubSection';
 import type { AppNotification } from '@/types/models';
 import { WEB_APP_ORIGIN } from '@/lib/webLinks';
 
@@ -52,6 +53,9 @@ export const Routes = {
   opportunity: (id: string) => `/opportunity/${id}` as const,
   applicants: (id: string) => `/opportunity/${id}/applicants` as const,
   organization: (id: string) => `/org/${id}` as const,
+  /** One public club section in full. `name` is a `ClubSectionName`. */
+  clubSection: (orgId: string, name: ClubSectionName) =>
+    ({ pathname: '/club/[orgId]/section' as const, params: { orgId, name } }),
   followers: (userId: string) => `/u/${userId}/followers` as const,
   following: (userId: string) => `/u/${userId}/following` as const,
 
