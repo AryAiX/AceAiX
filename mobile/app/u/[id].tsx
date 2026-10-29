@@ -12,6 +12,7 @@ import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard
 import { TheirGiCard } from '@/components/intelligence/GiCard';
 import { TheirInviteBadge } from '@/components/invite/InviteCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
+import { CoachStats } from '@/components/profile/CoachStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -189,30 +190,39 @@ export default function PublicProfileScreen() {
 
         <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
 
-        <StatRow
-          items={[
-            {
-              key: 'posts',
-              label: t('common.posts'),
-              value: compactNumber(data.stats?.posts ?? 0),
-            },
-            {
-              key: 'media',
-              label: t('common.clips'),
-              value: compactNumber(data.stats?.media ?? 0),
-            },
-            {
-              key: 'matches',
-              label: t('common.matches'),
-              value: compactNumber(data.stats?.matches ?? 0),
-            },
-            {
-              key: 'endorsements',
-              label: t('common.endorsed'),
-              value: compactNumber(data.stats?.endorsements ?? 0),
-            },
-          ]}
-        />
+        {data.user.role === 'coach' ? (
+          <CoachStats
+            userId={data.user.id}
+            isSelf={isSelf}
+            posts={data.stats?.posts ?? 0}
+            refreshKey={childKey}
+          />
+        ) : (
+          <StatRow
+            items={[
+              {
+                key: 'posts',
+                label: t('common.posts'),
+                value: compactNumber(data.stats?.posts ?? 0),
+              },
+              {
+                key: 'media',
+                label: t('common.clips'),
+                value: compactNumber(data.stats?.media ?? 0),
+              },
+              {
+                key: 'matches',
+                label: t('common.matches'),
+                value: compactNumber(data.stats?.matches ?? 0),
+              },
+              {
+                key: 'endorsements',
+                label: t('common.endorsed'),
+                value: compactNumber(data.stats?.endorsements ?? 0),
+              },
+            ]}
+          />
+        )}
 
         {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
 

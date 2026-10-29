@@ -13,6 +13,7 @@ import { MySportFitCard } from '@/components/sportfit/SportFitCard';
 import { MyInviteCard } from '@/components/invite/InviteCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
 import { SupportsRow } from '@/components/profile/SupportsRow';
+import { CoachStats } from '@/components/profile/CoachStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -184,34 +185,44 @@ export default function MyProfileScreen() {
           />
         ) : null}
 
-        <StatRow
-          items={[
-            {
-              key: 'posts',
-              label: t('common.posts'),
-              value: compactNumber(data.stats?.posts ?? 0),
-              onPress: () => setTab('posts'),
-            },
-            {
-              key: 'media',
-              label: t('common.clips'),
-              value: compactNumber(data.stats?.media ?? 0),
-              onPress: () => setTab('highlights'),
-            },
-            {
-              key: 'matches',
-              label: t('common.matches'),
-              value: compactNumber(data.stats?.matches ?? 0),
-              onPress: () => setTab('career'),
-            },
-            {
-              key: 'endorsements',
-              label: t('common.endorsed'),
-              value: compactNumber(data.stats?.endorsements ?? 0),
-              onPress: () => setTab('career'),
-            },
-          ]}
-        />
+        {data.user.role === 'coach' ? (
+          <CoachStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : (
+          <StatRow
+            items={[
+              {
+                key: 'posts',
+                label: t('common.posts'),
+                value: compactNumber(data.stats?.posts ?? 0),
+                onPress: () => setTab('posts'),
+              },
+              {
+                key: 'media',
+                label: t('common.clips'),
+                value: compactNumber(data.stats?.media ?? 0),
+                onPress: () => setTab('highlights'),
+              },
+              {
+                key: 'matches',
+                label: t('common.matches'),
+                value: compactNumber(data.stats?.matches ?? 0),
+                onPress: () => setTab('career'),
+              },
+              {
+                key: 'endorsements',
+                label: t('common.endorsed'),
+                value: compactNumber(data.stats?.endorsements ?? 0),
+                onPress: () => setTab('career'),
+              },
+            ]}
+          />
+        )}
 
         {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
 

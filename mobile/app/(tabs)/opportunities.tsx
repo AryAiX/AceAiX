@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bookmark,
   Flame,
@@ -422,8 +422,17 @@ function RecruiterOpportunities() {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requested = Array.isArray(params.tab) ? params.tab[0] : params.tab;
 
-  const [tab, setTab] = useState<RecruiterTab>('postings');
+  const [tab, setTab] = useState<RecruiterTab>(
+    requested === 'applicants' ? 'applicants' : 'postings',
+  );
+
+  // A coach's profile stat opens this screen on the postings list.
+  useEffect(() => {
+    if (requested === 'postings' || requested === 'applicants') setTab(requested);
+  }, [requested]);
 
   const postings = useAsync(() => myPostings(), [], { refetchOnFocus: true });
   const applicants = useAsync(() => allApplicants(), [], { refetchOnFocus: true });

@@ -610,6 +610,65 @@ export async function saveCertifications(items: CertificationEntry[]): Promise<v
   if (error) throw new AppError(error);
 }
 
+// ── Coach profile stats ──────────────────────────────────────────────────────
+export interface CoachStats {
+  opportunities: number;
+  challenges: number;
+}
+
+const EMPTY_COACH_STATS: CoachStats = {
+  opportunities: 0,
+  challenges: 0,
+};
+
+/** A failed count is a zero on the card, never a broken profile. */
+async function exactCount(
+  query: PromiseLike<{ count: number | null; error: { message?: string } | null }>,
+): Promise<number> {
+  try {
+    const { count, error } = await query;
+    if (error || count == null) return 0;
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Opportunities a coach posted and challenges they set.
+ *
+ * Own profile counts everything of theirs. Someone else's profile counts only
+ * what is still open: active opportunities and challenges with status `open`.
+ * Reads go through the tables' RLS.
+ */
+export async function getCoachStats(userId: string, isSelf: boolean): Promise<CoachStats> {
+  try {
+    let opportunities = supabase
+      .from('opportunities')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by_id', userId);
+    if (!isSelf) opportunities = opportunities.eq('is_active', true);
+
+    let challenges = supabase
+      .from('challenges')
+      .select('id', { count: 'exact', head: true })
+      .eq('created_by', userId);
+    if (!isSelf) challenges = challenges.eq('status', 'open');
+
+    const [opportunityCount, challengeCount] = await Promise.all([
+      exactCount(opportunities),
+      exactCount(challenges),
+    ]);
+
+    return {
+      opportunities: opportunityCount,
+      challenges: challengeCount,
+    };
+  } catch {
+    return EMPTY_COACH_STATS;
+  }
+}
+
 // ── Blocking ─────────────────────────────────────────────────────────────────
 /**
  * `get_profile_bundle` says a profile is blocked but not by whom, and RLS only
