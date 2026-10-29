@@ -78,8 +78,12 @@ export const Routes = {
   clubSetup: '/club/setup' as const,
   /** The page team's hub: everything a club runs, one tap each. */
   clubManage: (orgId: string) => `/club/${orgId}/manage` as const,
-  /** Page details, sports, branches, branding and verification papers. */
-  clubEdit: (orgId: string) => `/club/${orgId}/edit` as const,
+  /** Page details, sports, branches, branding and verification papers.
+   *  `{ section: 'verification' }` opens only the papers card. */
+  clubEdit: (orgId: string, params?: { section: 'verification' }) =>
+    params
+      ? { pathname: '/club/[orgId]/edit' as const, params: { orgId, section: params.section } }
+      : (`/club/${orgId}/edit` as const),
   clubTeam: (orgId: string) => `/club/${orgId}/team` as const,
   clubBroadcast: (orgId: string) => `/club/${orgId}/broadcast` as const,
   clubSquads: (orgId: string) => `/club/${orgId}/squads` as const,

@@ -197,7 +197,7 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
 
         {showStatus ? (
           <Pressable
-            onPress={() => router.push(Routes.clubEdit(org.id))}
+            onPress={() => router.push(Routes.clubEdit(org.id, { section: 'verification' }))}
             accessibilityRole="button"
             style={({ pressed }) => ({
               flexDirection: 'row',
@@ -225,19 +225,21 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           <Text variant="captionStrong" tone="secondary" style={{ flex: 1 }}>
             {followerLabel}
           </Text>
-          <Button
-            label={following ? t('common.following') : t('common.follow')}
-            variant={following ? 'secondary' : 'primary'}
-            size="sm"
-            loading={followBusy}
-            onPress={onToggleFollow}
-            accessibilityLabel={
-              following
-                ? t('opportunities.org.unfollowA11y', { name: org.name })
-                : t('opportunities.org.followA11y', { name: org.name })
-            }
-            testID="club-follow"
-          />
+          {team ? null : (
+            <Button
+              label={following ? t('common.following') : t('common.follow')}
+              variant={following ? 'secondary' : 'primary'}
+              size="sm"
+              loading={followBusy}
+              onPress={onToggleFollow}
+              accessibilityLabel={
+                following
+                  ? t('opportunities.org.unfollowA11y', { name: org.name })
+                  : t('opportunities.org.followA11y', { name: org.name })
+              }
+              testID="club-follow"
+            />
+          )}
         </View>
       </View>
     </View>

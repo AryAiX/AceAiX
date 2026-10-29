@@ -7,6 +7,7 @@ import { Button, Card, ErrorState, Screen, SkeletonList, Text } from '@/componen
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { MyCoachingCard } from '@/components/coaching/CoachingCard';
+import { ClubManageHub } from '@/components/club/manage/ClubManageHub';
 import { MyClubCard } from '@/components/club/manage/MyClubCard';
 import { MyGiCard } from '@/components/intelligence/GiCard';
 import { MySportFitCard } from '@/components/sportfit/SportFitCard';
@@ -25,7 +26,7 @@ import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
 import { getMyProfile, getMyTalentScore } from '@/lib/api';
-import { getMyClubPages, managedClubPage } from '@/lib/api.club';
+import { getClubPage, getMyClubPages, managedClubPage } from '@/lib/api.club';
 import type { ClubType } from '@/lib/club';
 import { Routes } from '@/lib/routes';
 import { compactNumber } from '@/lib/format';
@@ -65,6 +66,13 @@ export default function MyProfileScreen() {
     enabled: !!user?.id,
     refetchOnFocus: true,
   });
+  const managed =
+    bundle.data?.user.role === 'club' ? managedClubPage(clubPages.data ?? []) : null;
+  // The control room needs the full page, not just the summary on `my_club_pages`.
+  const clubPage = useAsync(() => getClubPage(managed?.id ?? ''), [managed?.id, childKey], {
+    enabled: !!managed?.id,
+    refetchOnFocus: true,
+  });
 
   const reloadAll = useCallback(() => {
     bundle.refresh();
@@ -99,7 +107,6 @@ export default function MyProfileScreen() {
   const data = bundle.data;
   const athlete = data.athlete;
   const liveScore = score.data ?? data.score;
-  const managed = data.user.role === 'club' ? managedClubPage(clubPages.data ?? []) : null;
   const pageType: ClubType | null =
     managed?.type === 'club' || managed?.type === 'academy' ? managed.type : null;
 
@@ -170,12 +177,20 @@ export default function MyProfileScreen() {
 
         {athlete || data.user.role === 'coach' ? <MyInviteCard refreshKey={childKey} /> : null}
 
-        {/* The page a club runs, or an invitation to help run one. */}
-        <MyClubCard isClubAccount={data.user.role === 'club'} pages={clubPages.data} />
+        {/* QA-157: a club account that already runs a page gets the control room here. */}
+        {data.user.role === 'club' && clubPage.data ? <ClubManageHub page={clubPage.data} /> : null}
+        <MyClubCard
+          isClubAccount={data.user.role === 'club'}
+          pages={clubPages.data}
+          hideManagedCard={data.user.role === 'club' && !!managed}
+        />
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
         {data.user.role === 'guardian' ? <GuardianAthletesCard refreshKey={childKey} /> : null}
-        {data.user.role !== 'coach' && data.user.role !== 'sponsor' && data.user.role !== 'guardian' ? (
+        {data.user.role !== 'coach' &&
+        data.user.role !== 'sponsor' &&
+        data.user.role !== 'guardian' &&
+        data.user.role !== 'club' ? (
           <Button
             label={t('coaching.myBookings')}
             variant="secondary"
@@ -191,7 +206,9 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
           />
         ) : null}
-        <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
+        {data.user.role !== 'club' ? (
+          <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
+        ) : null}
 
         {athlete ? (
           <Button
@@ -225,7 +242,7 @@ export default function MyProfileScreen() {
             onPosts={() => setTab('posts')}
             refreshKey={childKey}
           />
-        ) : (
+        ) : data.user.role !== 'club' ? (
           <StatRow
             items={[
               {
@@ -254,12 +271,17 @@ export default function MyProfileScreen() {
               },
             ]}
           />
-        )}
+        ) : null}
 
         {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
 
         {!athlete || tab === 'posts' ? (
-          <PostsTab userId={data.user.id} isSelf refreshKey={childKey} />
+          <PostsTab
+            userId={data.user.id}
+            isSelf
+            refreshKey={childKey}
+            hideEmpty={data.user.role === 'club'}
+          />
         ) : tab === 'highlights' ? (
           <HighlightsTab
             athleteId={athlete.id}

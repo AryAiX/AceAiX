@@ -14,7 +14,8 @@ interface Props {
   data: Opportunity[] | null;
   onRetry: () => void;
   following: boolean;
-  onFollow: () => void;
+  /** Absent when the viewer runs the page, so the empty state never offers Follow. */
+  onFollow?: () => void;
   saved: Record<string, boolean>;
   onToggleSave: (opportunity: Opportunity, next: boolean) => void;
 }
@@ -33,6 +34,7 @@ export function ClubOpeningsTab({
   const t = useT();
   const { colors, spacing } = useTheme();
   const rows = data ?? [];
+  const offerFollow = !following && !!onFollow;
 
   return (
     <View style={{ gap: spacing.md }}>
@@ -46,10 +48,14 @@ export function ClubOpeningsTab({
           icon={<Target size={26} color={colors.textMuted} />}
           title={t('opportunities.org.openingsEmptyTitle')}
           body={
-            following ? t('opportunities.org.openingsEmptyFollowing') : t('opportunities.org.openingsEmptyBody')
+            following
+              ? t('opportunities.org.openingsEmptyFollowing')
+              : offerFollow
+                ? t('opportunities.org.openingsEmptyBody')
+                : undefined
           }
-          actionLabel={following ? undefined : t('common.follow')}
-          onAction={following ? undefined : onFollow}
+          actionLabel={offerFollow ? t('common.follow') : undefined}
+          onAction={offerFollow ? onFollow : undefined}
         />
       ) : (
         rows.map((opportunity) => (

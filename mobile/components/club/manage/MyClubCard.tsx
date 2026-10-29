@@ -14,14 +14,20 @@ import { Routes } from '@/lib/routes';
 /**
  * On my own profile: the club page I run (or the way to set one up, for a club
  * account), and any page team I have been invited to help run.
+ *
+ * A club account that already runs a page hides this card's View page / Manage
+ * row; the profile draws the control room there instead.
  */
 export function MyClubCard({
   isClubAccount,
   pages,
+  hideManagedCard = false,
 }: {
   isClubAccount: boolean;
   /** From the profile screen's `my_club_pages` load. Null while that is still out. */
   pages: MyClubPage[] | null;
+  /** Skip the View page / Manage card. Setup and invitations still render. */
+  hideManagedCard?: boolean;
 }) {
   const theme = useTheme();
   const { colors, spacing } = theme;
@@ -34,7 +40,7 @@ export function MyClubCard({
 
   return (
     <>
-      {managed ? (
+      {managed && !hideManagedCard ? (
         <Card padded level={1} style={{ gap: spacing.md }} testID="my-club-card">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <ClubLogo uri={managed.logo_url} name={managed.name} size="md" />
@@ -66,7 +72,7 @@ export function MyClubCard({
             />
           </View>
         </Card>
-      ) : isClubAccount ? (
+      ) : !managed && isClubAccount ? (
         <Card padded tone="primarySoft" style={{ gap: spacing.md }} testID="my-club-setup-card">
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Building2 size={20} color={colors.primary} />

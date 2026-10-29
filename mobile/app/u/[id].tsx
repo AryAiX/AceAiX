@@ -190,7 +190,9 @@ export default function PublicProfileScreen() {
           />
         ) : null}
 
-        <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
+        {data.user.role !== 'club' ? (
+          <SupportsRow userId={data.user.id} isSelf={false} sport={athlete?.sport} />
+        ) : null}
 
         {data.user.role === 'coach' ? (
           <CoachStats

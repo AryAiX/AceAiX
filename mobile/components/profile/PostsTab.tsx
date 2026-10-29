@@ -16,9 +16,11 @@ interface Props {
   isSelf: boolean;
   /** Bumped by the parent's pull-to-refresh so this list reloads with it. */
   refreshKey?: number;
+  /** Render nothing when there are no posts. Posts still list as usual. */
+  hideEmpty?: boolean;
 }
 
-export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
+export function PostsTab({ userId, isSelf, refreshKey = 0, hideEmpty = false }: Props) {
   const theme = useTheme();
   const router = useRouter();
   const t = useT();
@@ -33,6 +35,7 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
   const rows = posts.data ?? [];
 
   if (rows.length === 0) {
+    if (hideEmpty) return null;
     return (
       <EmptyState
         compact

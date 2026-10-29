@@ -84,8 +84,10 @@ export default function ClubEditScreen() {
   const router = useRouter();
   const toast = useToast();
   const { profile } = useAuth();
-  const params = useLocalSearchParams<{ orgId?: string }>();
+  const params = useLocalSearchParams<{ orgId?: string; section?: string }>();
   const orgId = typeof params.orgId === 'string' && params.orgId ? params.orgId : null;
+  /** `section=verification` opens only the papers card. */
+  const verifyOnly = params.section === 'verification';
 
   const state = useAsync(async () => {
     const [page, mapUrl] = await Promise.all([
@@ -146,7 +148,7 @@ export default function ClubEditScreen() {
 
   const header = (
     <Header
-      title={t('clubSetup.edit.title')}
+      title={verifyOnly ? t('clubSetup.edit.verifyTitle') : t('clubSetup.edit.title')}
       back
       onBack={close}
       right={
@@ -285,6 +287,8 @@ export default function ClubEditScreen() {
           </Text>
         </Card>
 
+        {verifyOnly ? null : (
+        <>
         <EditSection
           title={t('clubSetup.edit.basicsTitle')}
           saving={saving === 'basics'}
@@ -407,6 +411,8 @@ export default function ClubEditScreen() {
         >
           <AboutFields draft={draft} onChange={change} />
         </EditSection>
+        </>
+        )}
       </View>
     </Screen>
   );

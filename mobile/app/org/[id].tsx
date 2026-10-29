@@ -186,6 +186,7 @@ export default function OrganizationScreen() {
   }
 
   const viewer = club.viewer;
+  const onTeam = viewer.can_manage || viewer.can_post || viewer.can_score;
   const counts = club.counts;
   const openCount = openings.data?.length ?? 0;
   const followers = Math.max(0, org.followers_count + followerDelta);
@@ -227,7 +228,7 @@ export default function OrganizationScreen() {
             data={openings.data}
             onRetry={openings.reload}
             following={following}
-            onFollow={onToggleFollow}
+            onFollow={onTeam ? undefined : onToggleFollow}
             saved={savedOverrides}
             onToggleSave={onToggleSave}
           />
