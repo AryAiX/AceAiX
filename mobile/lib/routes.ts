@@ -261,6 +261,9 @@ export function notificationTarget(n: AppNotification): Href | null {
       return id ? Routes.match(id) : null;
     case 'club_event':
       return id ? Routes.clubEvent(id) : null;
+    case 'guardian_consent':
+      // A parent approved, changed or withdrew: the child's own consent screen.
+      return Routes.settingsGuardian;
     case 'referral':
       // A friend joined through my invite, or I earned a token.
       return Routes.invite;

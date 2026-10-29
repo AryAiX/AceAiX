@@ -382,6 +382,9 @@ export type NotificationType =
   | 'sponsorship_response'
   | 'coaching_booked'
   | 'coaching_cancelled'
+  | 'guardian_consent_granted'
+  | 'guardian_consent_changed'
+  | 'guardian_consent_revoked'
   | 'referral_joined'
   | 'referral_token'
   | 'meetup_request'
@@ -425,6 +428,7 @@ export interface AppNotification {
     | 'organization'
     | 'club_match'
     | 'club_event'
+    | 'guardian_consent'
     | null;
   entity_id: string | null;
   actor_count: number;

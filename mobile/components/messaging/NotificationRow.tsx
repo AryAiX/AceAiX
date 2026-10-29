@@ -7,6 +7,7 @@ import {
   Building2,
   Megaphone,
   Radio,
+  ShieldAlert,
   ShieldCheck,
   Trophy,
   Briefcase,
@@ -87,6 +88,12 @@ function skinFor(type: NotificationType): Skin {
       return { Icon: CalendarCheck, tint: 'success' };
     case 'coaching_cancelled':
       return { Icon: CalendarX, tint: 'danger' };
+    case 'guardian_consent_granted':
+      return { Icon: ShieldCheck, tint: 'success' };
+    case 'guardian_consent_changed':
+      return { Icon: ShieldCheck, tint: 'info' };
+    case 'guardian_consent_revoked':
+      return { Icon: ShieldAlert, tint: 'warning' };
     case 'meetup_request':
     case 'meetup_accepted':
     case 'meetup_declined':

@@ -7947,4 +7947,127 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- The child hears what their parent decided (20261029000003, QA-155)
+-- Fresh accounts only (7f900000): a minor and their parent.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── the child hears the parent''s decision ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f900000-0000-4000-8000-000000000001', 'cn.kid@test.local',
+   '{"full_name":"Kid Notice","role":"athlete"}'),
+  ('7f900000-0000-4000-8000-000000000002', 'cn.parent@test.local',
+   '{"full_name":"Parent Notice","role":"guardian"}');
+
+update public.user_private set date_of_birth = current_date - interval '14 years'
+ where user_id = '7f900000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '45 years'
+ where user_id = '7f900000-0000-4000-8000-000000000002';
+
+do $$
+declare
+  v_kid    uuid := '7f900000-0000-4000-8000-000000000001';
+  v_parent uuid := '7f900000-0000-4000-8000-000000000002';
+  v_token  text;
+  v_first  uuid;
+  v_second uuid;
+  v_n      integer;
+begin
+  /* ── The parent approves from the e-mail page ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select id into v_first from public.guardian_consents where token = v_token;
+  perform tests.ok(
+    not exists (select 1 from public.notifications where user_id = v_kid and type like 'guardian_consent%'),
+    'asking a parent sends the child no notice');
+
+  perform tests.as_user(null);
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true, true);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_granted'
+              and title = 'Your parent approved your account'
+              and entity_type = 'guardian_consent' and entity_id = v_first::text),
+    'the child is told their parent approved');
+
+  update public.guardian_consents set guardian_user_id = v_parent where id = v_first;
+
+  /* ── The parent approves again with fewer boxes ticked ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select id into v_second from public.guardian_consents where token = v_token;
+  update public.guardian_consents set guardian_user_id = v_parent where id = v_second;
+  perform tests.as_user(null);
+  perform public.confirm_guardian_consent(v_token, true, true, true, false, true, false);
+  perform tests.ok(
+    (select status from public.guardian_consents where id = v_first) = 'expired'
+    and exists (select 1 from public.notifications
+                where user_id = v_kid and type = 'guardian_consent_changed'
+                  and title = 'Your parent changed what you can do'
+                  and actor_id = v_parent and entity_id = v_second::text),
+    'approving again tells the child their permissions changed, shown as the parent');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_kid and type = 'guardian_consent_revoked'),
+    'the approval it replaced does not read as withdrawn');
+
+  /* ── A permission is switched off on the approval in force ── */
+  select count(*) into v_n from public.notifications
+   where user_id = v_kid and type = 'guardian_consent_changed';
+  update public.guardian_consents set allow_sponsorship = false where id = v_second;
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_kid and type = 'guardian_consent_changed') = v_n + 1,
+    'switching a permission off tells the child');
+
+  /* ── Notification settings cannot mute it ── */
+  insert into public.notification_preferences (user_id) values (v_kid) on conflict (user_id) do nothing;
+  update public.notification_preferences
+     set follows = false, messages = false, comments = false, likes = false, opportunities = false,
+         applications = false, scout_interest = false, score_updates = false, meetups = false,
+         club_updates = false, mentions = false
+   where user_id = v_kid;
+
+  /* ── The parent withdraws the approval in the app ── */
+  perform tests.as_user(v_parent);
+  perform public.revoke_guardian_consent(v_second);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_revoked'
+              and title = 'Your parent approval was withdrawn' and actor_id = v_parent),
+    'the child is told the approval was withdrawn, even with every setting off');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type like 'guardian_consent%'),
+    'the parent is not told about their own decision');
+
+  /* ── The parent says no to a new request ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  perform tests.as_user(null);
+  update public.guardian_consents set status = 'revoked', revoked_at = now()
+   where token = v_token and status = 'pending';
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'guardian_consent_revoked'
+              and title = 'Your parent did not approve your request'),
+    'the child is told the parent said no');
+
+  /* ── The child withdraws their own request: nothing to tell ── */
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent Notice', 'cn.parent@test.local', 'parent');
+  select count(*) into v_n from public.notifications where user_id = v_kid and type like 'guardian_consent%';
+  perform public.revoke_guardian_consent((select id from public.guardian_consents where token = v_token));
+  perform tests.ok(
+    (select count(*) from public.notifications where user_id = v_kid and type like 'guardian_consent%') = v_n,
+    'a child who withdraws their own request is not notified about it');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
