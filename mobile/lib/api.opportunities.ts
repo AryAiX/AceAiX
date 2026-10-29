@@ -505,23 +505,54 @@ export async function allApplicants(maxPostings = 12): Promise<RankedApplicant[]
     );
 }
 
-/** The organisation this account posts on behalf of, if any. */
+/** Roles the opportunity insert rule lets post a trial for a page, best first. */
+const TRIAL_POST_ROLES = ['owner', 'manager', 'scout', 'coach'] as const;
+
+function trialRoleRank(role: string): number {
+  switch (role) {
+    case 'owner':
+      return 0;
+    case 'manager':
+      return 1;
+    case 'scout':
+      return 2;
+    case 'coach':
+      return 3;
+    default:
+      return 99;
+  }
+}
+
+/**
+ * The page this account may post a trial for.
+ * Owner, then manager, then scout, then coach; the oldest membership wins
+ * inside one role. Null means the trial is a personal one.
+ */
 export async function myOrganization(): Promise<Organization | null> {
   const uid = await requireUserId();
 
   const { data, error } = await supabase
     .from('organization_members')
-    .select(`organization:organizations(${ORG_COLUMNS})`)
+    .select(`member_role, created_at, organization:organizations(${ORG_COLUMNS})`)
     .eq('user_id', uid)
     .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
+    .in('member_role', [...TRIAL_POST_ROLES]);
   if (error) throw new AppError(error);
-  if (!data) return null;
 
-  return one<Organization>(
-    (data as { organization?: Organization | Organization[] | null }).organization ?? null,
-  );
+  const rows = ((data ?? []) as {
+    member_role: string;
+    created_at: string;
+    organization?: Organization | Organization[] | null;
+  }[])
+    .map((row) => ({ ...row, organization: one<Organization>(row.organization ?? null) }))
+    .filter((row): row is typeof row & { organization: Organization } => row.organization != null)
+    .sort(
+      (a, b) =>
+        trialRoleRank(a.member_role) - trialRoleRank(b.member_role) ||
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+
+  return rows[0]?.organization ?? null;
 }
 
 // ── Organisations ────────────────────────────────────────────────────────────
