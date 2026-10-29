@@ -7528,4 +7528,244 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- profile_cards (20261029000001)
+-- Fresh accounts only (7f700000). Each write is its own statement.
+-- The read that checks it is the next one.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── profile cards ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f700000-0000-4000-8000-000000000001', 'cards.viewer@test.local',
+   '{"full_name":"Poster Viewer","role":"athlete"}'),
+  ('7f700000-0000-4000-8000-000000000002', 'cards.adult@test.local',
+   '{"full_name":"Poster Adult","role":"coach"}'),
+  ('7f700000-0000-4000-8000-000000000003', 'cards.blocked@test.local',
+   '{"full_name":"Poster Blocked","role":"scout"}'),
+  ('7f700000-0000-4000-8000-000000000004', 'cards.suspended@test.local',
+   '{"full_name":"Poster Suspended","role":"coach"}'),
+  ('7f700000-0000-4000-8000-000000000005', 'cards.minor@test.local',
+   '{"full_name":"Poster Minor","role":"athlete"}'),
+  ('7f700000-0000-4000-8000-000000000006', 'cards.admin@test.local',
+   '{"full_name":"Poster Admin","role":"athlete"}');
+
+insert into auth.users (id, email, raw_user_meta_data)
+select
+  ('7f700000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+  'cards.bulk.' || n || '@test.local',
+  jsonb_build_object('full_name', 'Card Bulk ' || n, 'role', 'athlete')
+from generate_series(10, 60) as n;
+
+update public.user_private
+   set date_of_birth = current_date - interval '30 years'
+ where user_id in (
+   '7f700000-0000-4000-8000-000000000001',
+   '7f700000-0000-4000-8000-000000000002',
+   '7f700000-0000-4000-8000-000000000003',
+   '7f700000-0000-4000-8000-000000000004',
+   '7f700000-0000-4000-8000-000000000006'
+ )
+ or (
+   user_id >= '7f700000-0000-4000-8000-000000000010'::uuid
+   and user_id <= '7f700000-0000-4000-8000-000000000060'::uuid
+ );
+
+update public.user_profiles
+   set role = 'admin'
+ where id = '7f700000-0000-4000-8000-000000000006';
+
+update public.user_profiles
+   set is_verified = true,
+       avatar_url = 'https://cdn.test/card-adult.png'
+ where id = '7f700000-0000-4000-8000-000000000002';
+
+do $$
+declare
+  v_cards jsonb;
+  v_row jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000002']::uuid[]);
+  reset role;
+  select e into v_row
+  from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+  where e ->> 'id' = '7f700000-0000-4000-8000-000000000002';
+  perform tests.ok(
+    v_row ->> 'full_name' = 'Poster Adult'
+    and v_row ->> 'avatar_url' = 'https://cdn.test/card-adult.png'
+    and (v_row ->> 'is_verified') = 'true'
+    and v_row ->> 'role' = 'coach',
+    'a normal adult is returned by profile_cards');
+end $$;
+
+do $$
+declare
+  v_cards jsonb;
+  v_row jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000001']::uuid[]);
+  reset role;
+  select e into v_row
+  from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+  where e ->> 'id' = '7f700000-0000-4000-8000-000000000001';
+  perform tests.ok(
+    v_row ->> 'full_name' = 'Poster Viewer'
+    and v_row ->> 'role' = 'athlete',
+    'the caller sees themselves in profile_cards');
+end $$;
+
+insert into public.user_blocks (blocker_id, blocked_id) values
+  ('7f700000-0000-4000-8000-000000000001', '7f700000-0000-4000-8000-000000000003');
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000003']::uuid[]);
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from public.user_blocks
+      where blocker_id = '7f700000-0000-4000-8000-000000000001'
+        and blocked_id = '7f700000-0000-4000-8000-000000000003'
+    )
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000003'
+    ),
+    'a user the viewer blocked is omitted from profile_cards');
+end $$;
+
+delete from public.user_blocks
+ where blocker_id = '7f700000-0000-4000-8000-000000000001'
+   and blocked_id = '7f700000-0000-4000-8000-000000000003';
+
+insert into public.user_blocks (blocker_id, blocked_id) values
+  ('7f700000-0000-4000-8000-000000000003', '7f700000-0000-4000-8000-000000000001');
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000003']::uuid[]);
+  reset role;
+  perform tests.ok(
+    exists (
+      select 1 from public.user_blocks
+      where blocker_id = '7f700000-0000-4000-8000-000000000003'
+        and blocked_id = '7f700000-0000-4000-8000-000000000001'
+    )
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000003'
+    ),
+    'a user who blocked the viewer is omitted from profile_cards');
+end $$;
+
+update public.user_profiles
+   set is_suspended = true
+ where id = '7f700000-0000-4000-8000-000000000004';
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000004']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_suspended from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000004')
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000004'
+    ),
+    'a suspended user is omitted from profile_cards for a normal viewer');
+end $$;
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000006');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000004']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_suspended from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000004')
+    and exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000004'
+        and e ->> 'full_name' = 'Poster Suspended'
+        and e ->> 'role' = 'coach'
+    ),
+    'an admin sees a suspended account in profile_cards');
+end $$;
+
+update public.user_private
+   set date_of_birth = current_date - interval '15 years'
+ where user_id = '7f700000-0000-4000-8000-000000000005';
+
+do $$
+declare
+  v_cards jsonb;
+begin
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(array['7f700000-0000-4000-8000-000000000005']::uuid[]);
+  reset role;
+  perform tests.ok(
+    (select is_minor and not coalesce(is_discoverable, false)
+       from public.user_profiles
+      where id = '7f700000-0000-4000-8000-000000000005')
+    and not exists (
+      select 1 from jsonb_array_elements(coalesce(v_cards, '[]'::jsonb)) e
+      where e ->> 'id' = '7f700000-0000-4000-8000-000000000005'
+    ),
+    'a hidden minor is omitted from profile_cards');
+end $$;
+
+do $$
+declare
+  v_ids uuid[];
+  v_cards jsonb;
+  v_n integer;
+begin
+  select array_agg(u order by u)
+    into v_ids
+  from (
+    select ('7f700000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid as u
+    from generate_series(10, 60) as n
+  ) s;
+
+  perform tests.as_user('7f700000-0000-4000-8000-000000000001');
+  set local role authenticated;
+  v_cards := public.profile_cards(v_ids);
+  reset role;
+  v_n := coalesce(jsonb_array_length(v_cards), 0);
+  perform tests.ok(
+    array_length(v_ids, 1) = 51 and v_n <= 50 and v_n = 50,
+    'more than 50 ids returns at most 50 profile cards');
+end $$;
+
+select tests.ok(
+  not has_function_privilege('anon', 'public.profile_cards(uuid[])', 'EXECUTE'),
+  'anon cannot execute profile_cards');
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

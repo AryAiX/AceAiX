@@ -262,6 +262,15 @@ export interface DiscoveryFilters {
   sort?: 'match' | 'score' | 'recent' | 'name';
 }
 
+/** One person from `profile_cards`: only someone the viewer is allowed to see. */
+export interface ProfileCard {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  is_verified: boolean;
+  role: string;
+}
+
 // ── Opportunities ────────────────────────────────────────────────────────────
 export interface Opportunity {
   id: string;
@@ -276,6 +285,11 @@ export interface Opportunity {
   org_name: string | null;
   org_logo: string | null;
   org_verified: boolean;
+  /**
+   * Personal listings only. Set when `profile_cards` can show the poster.
+   * Absent or null means the independent-listing fallback.
+   */
+  poster?: ProfileCard | null;
   match_percent: number;
   reasons: string[];
   has_applied: boolean;

@@ -11,6 +11,7 @@ import type {
   ApplicationStatus,
   Opportunity,
   Organization,
+  ProfileCard,
 } from '@/types/models';
 
 /**
@@ -129,6 +130,72 @@ function toOpportunity(
   };
 }
 
+const PROFILE_CARDS_LIMIT = 50;
+
+function asProfileCard(value: unknown): ProfileCard | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== 'string') return null;
+  const fullName = typeof row.full_name === 'string' ? row.full_name.trim() : '';
+  if (!fullName) return null;
+  const avatar = typeof row.avatar_url === 'string' ? row.avatar_url.trim() : '';
+  return {
+    id: row.id,
+    full_name: fullName,
+    avatar_url: avatar || null,
+    is_verified: row.is_verified === true,
+    role: typeof row.role === 'string' ? row.role : '',
+  };
+}
+
+/** One `profile_cards` call. Empty input does not hit the network. */
+async function profileCards(ids: readonly string[]): Promise<Map<string, ProfileCard>> {
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    unique.push(id);
+    if (unique.length === PROFILE_CARDS_LIMIT) break;
+  }
+
+  const cards = new Map<string, ProfileCard>();
+  if (unique.length === 0) return cards;
+
+  const { data, error } = await supabase.rpc('profile_cards', { p_ids: unique });
+  if (error) throw new AppError(error);
+  if (!Array.isArray(data)) return cards;
+  for (const row of data) {
+    const card = asProfileCard(row);
+    if (card) cards.set(card.id, card);
+  }
+  return cards;
+}
+
+/**
+ * Personal listings (no organisation) pick up a poster the viewer is allowed
+ * to see. Organisation rows are left untouched. A missing card stays unset
+ * so the UI keeps the independent-listing fallback.
+ */
+async function withPosters(
+  opportunities: Opportunity[],
+  createdBy: ReadonlyMap<string, string>,
+): Promise<Opportunity[]> {
+  const ids: string[] = [];
+  for (const opportunity of opportunities) {
+    if (opportunity.org_id) continue;
+    const id = createdBy.get(opportunity.id);
+    if (id) ids.push(id);
+  }
+  const cards = await profileCards(ids);
+  if (cards.size === 0) return opportunities;
+  return opportunities.map((opportunity) => {
+    if (opportunity.org_id) return opportunity;
+    const poster = cards.get(createdBy.get(opportunity.id) ?? '');
+    return poster ? { ...opportunity, poster } : opportunity;
+  });
+}
+
 /**
  * Match percentage and reasons for every opportunity currently open to this
  * athlete, keyed by id. Used to enrich rows that came from the table.
@@ -169,7 +236,7 @@ export async function getOpportunity(id: string): Promise<OpportunityDetail | nu
   const row = data as OpportunityRow & { organization?: Organization | Organization[] | null };
   const organization = one<Organization>(row.organization ?? null);
 
-  const [application, save, count] = await Promise.all([
+  const [application, save, count, posters] = await Promise.all([
     supabase
       .from('applications')
       .select('id, status, created_at')
@@ -188,6 +255,9 @@ export async function getOpportunity(id: string): Promise<OpportunityDetail | nu
           .select('id', { count: 'exact', head: true })
           .eq('opportunity_id', id)
       : Promise.resolve({ count: 0 }),
+    row.organization_id
+      ? Promise.resolve(new Map<string, ProfileCard>())
+      : profileCards([row.created_by_id]),
   ]);
 
   const mine = (application.data ?? null) as
@@ -199,12 +269,37 @@ export async function getOpportunity(id: string): Promise<OpportunityDetail | nu
       has_applied: !!mine && mine.status !== 'withdrawn',
       is_saved: !!save.data,
     }),
+    poster: row.organization_id ? null : posters.get(row.created_by_id) ?? null,
     created_by_id: row.created_by_id,
     is_active: row.is_active,
     organization,
     application: mine,
     applicant_count: Number(count.count ?? 0),
   };
+}
+
+/**
+ * Live openings for the opportunities tab.
+ *
+ * `recommended_opportunities` does not name the poster. Personal listings
+ * load `created_by_id` in one follow-up read, then one `profile_cards` call.
+ */
+export async function openOpportunities(limit = 30): Promise<Opportunity[]> {
+  const rows = await recommendedOpportunities(limit);
+  const independentIds = rows.filter((row) => !row.org_id).map((row) => row.id);
+  if (independentIds.length === 0) return rows;
+
+  const { data, error } = await supabase
+    .from('opportunities')
+    .select('id, created_by_id')
+    .in('id', independentIds);
+  if (error) throw new AppError(error);
+
+  const createdBy = new Map<string, string>();
+  for (const row of (data ?? []) as { id: string; created_by_id: string | null }[]) {
+    if (row.created_by_id) createdBy.set(row.id, row.created_by_id);
+  }
+  return withPosters(rows, createdBy);
 }
 
 /** The match for one opportunity, or null when it cannot be explained. */
@@ -255,17 +350,21 @@ export async function savedOpportunities(): Promise<Opportunity[]> {
       | null;
   }[];
 
-  return rows
+  const savedRows = rows
     .map((r) => one(r.opportunity ?? null))
-    .filter((row): row is OpportunityRow & { organization?: Organization | Organization[] | null } => !!row)
-    .map((row) => {
+    .filter((row): row is OpportunityRow & { organization?: Organization | Organization[] | null } => !!row);
+  const createdBy = new Map(savedRows.map((row) => [row.id, row.created_by_id]));
+  return withPosters(
+    savedRows.map((row) => {
       const match = matches.get(row.id);
       return toOpportunity(row, one<Organization>(row.organization ?? null), {
         is_saved: true,
         match_percent: match?.percent ?? 0,
         reasons: match?.reasons ?? [],
       });
-    });
+    }),
+    createdBy,
+  );
 }
 
 // ── Applied ──────────────────────────────────────────────────────────────────
@@ -304,16 +403,24 @@ export async function myApplicationsDetailed(): Promise<AppliedOpportunity[]> {
     for (const org of (data ?? []) as Organization[]) orgs.set(org.id, org);
   }
 
-  return withOpportunity.map((r) => ({
+  const createdBy = new Map(withOpportunity.map((r) => [r.opportunity.id, r.opportunity.created_by_id]));
+  const opportunities = await withPosters(
+    withOpportunity.map((r) =>
+      toOpportunity(
+        r.opportunity,
+        r.opportunity.organization_id ? orgs.get(r.opportunity.organization_id) ?? null : null,
+        { has_applied: r.status !== 'withdrawn' },
+      ),
+    ),
+    createdBy,
+  );
+
+  return withOpportunity.map((r, index) => ({
     application_id: r.id,
     status: r.status,
     message: r.message,
     applied_at: r.created_at,
-    opportunity: toOpportunity(
-      r.opportunity,
-      r.opportunity.organization_id ? orgs.get(r.opportunity.organization_id) ?? null : null,
-      { has_applied: r.status !== 'withdrawn' },
-    ),
+    opportunity: opportunities[index],
   }));
 }
 

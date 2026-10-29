@@ -42,11 +42,12 @@ import {
 } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { openChallenges, recommendedOpportunities, toggleSaveOpportunity } from '@/lib/api';
+import { openChallenges, toggleSaveOpportunity } from '@/lib/api';
 import {
   allApplicants,
   myApplicationsDetailed,
   myPostings,
+  openOpportunities,
   savedOpportunities,
 } from '@/lib/api.opportunities';
 import type { PostedOpportunity, RankedApplicant } from '@/lib/api.opportunities';
@@ -72,7 +73,7 @@ function AthleteOpportunities() {
   const [sport, setSport] = useState<string | null>(null);
   const [type, setType] = useState<string | null>(null);
 
-  const open = useAsync(() => recommendedOpportunities(30), []);
+  const open = useAsync(() => openOpportunities(30), []);
   const saved = useAsync(() => savedOpportunities(), [], { refetchOnFocus: true });
   const applied = useAsync(() => myApplicationsDetailed(), [], { refetchOnFocus: true });
 
