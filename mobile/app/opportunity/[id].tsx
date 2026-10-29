@@ -27,6 +27,7 @@ import {
   Divider,
   EmptyState,
   ErrorState,
+  ExpandableText,
   Header,
   IconButton,
   Input,
@@ -472,9 +473,12 @@ export default function OpportunityDetailScreen() {
           {opportunity.description?.trim() ? (
             <View style={{ gap: spacing.sm }}>
               <Text variant="heading">{t('opportunities.detail.about')}</Text>
-              <Text variant="body" tone="secondary">
-                {opportunity.description.trim()}
-              </Text>
+              <ExpandableText
+                text={opportunity.description.trim()}
+                lines={6}
+                variant="body"
+                tone="secondary"
+              />
             </View>
           ) : null}
 
