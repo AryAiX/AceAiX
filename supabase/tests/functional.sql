@@ -7768,4 +7768,183 @@ select set_config('request.jwt.claim.role', 'service_role', false);
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ------------------------------------------------------------
+-- What a parent's answer tells everyone else (20261029000002, QA-154)
+-- Fresh accounts only (7f800000): a minor, their parent, a verified coach,
+-- a verified sponsor and an adult stranger.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── parent answers for a child ──'; end $$;
+
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('7f800000-0000-4000-8000-000000000001', 'pa.kid@test.local',
+   '{"full_name":"Kid Runner","role":"athlete"}'),
+  ('7f800000-0000-4000-8000-000000000002', 'pa.parent@test.local',
+   '{"full_name":"Parent Runner","role":"guardian"}'),
+  ('7f800000-0000-4000-8000-000000000003', 'pa.coach@test.local',
+   '{"full_name":"Coach Runner","role":"coach"}'),
+  ('7f800000-0000-4000-8000-000000000004', 'pa.brand@test.local',
+   '{"full_name":"Brand Person","role":"sponsor"}'),
+  ('7f800000-0000-4000-8000-000000000005', 'pa.stranger@test.local',
+   '{"full_name":"Stranger Runner","role":"athlete"}');
+
+update public.user_private set date_of_birth = current_date - interval '15 years'
+ where user_id = '7f800000-0000-4000-8000-000000000001';
+update public.user_private set date_of_birth = current_date - interval '40 years'
+ where user_id in ('7f800000-0000-4000-8000-000000000002', '7f800000-0000-4000-8000-000000000003',
+                   '7f800000-0000-4000-8000-000000000004', '7f800000-0000-4000-8000-000000000005');
+update public.user_profiles set is_verified = true
+ where id in ('7f800000-0000-4000-8000-000000000003', '7f800000-0000-4000-8000-000000000004');
+update public.user_profiles set is_discoverable = true
+ where id = '7f800000-0000-4000-8000-000000000001';
+insert into public.guardian_consents
+  (minor_user_id, guardian_name, guardian_email, guardian_user_id, relationship, status, granted_at,
+   allow_discovery, allow_messaging, allow_media, allow_assessments, allow_sponsorship, allow_bookings)
+values
+  ('7f800000-0000-4000-8000-000000000001', 'Parent Runner', 'pa.parent@test.local',
+   '7f800000-0000-4000-8000-000000000002', 'parent', 'granted', now(),
+   true, true, true, true, true, true);
+
+do $$
+declare
+  v_kid      uuid := '7f800000-0000-4000-8000-000000000001';
+  v_parent   uuid := '7f800000-0000-4000-8000-000000000002';
+  v_coach    uuid := '7f800000-0000-4000-8000-000000000003';
+  v_brand    uuid := '7f800000-0000-4000-8000-000000000004';
+  v_stranger uuid := '7f800000-0000-4000-8000-000000000005';
+  v_service  uuid;
+  v_slot     uuid;
+  v_booking  uuid;
+  v_req      uuid;
+  v_call     uuid;
+  v_deal     uuid;
+  v_app      uuid;
+  v_t        timestamptz := date_trunc('hour', now()) + interval '3 days';
+begin
+  perform tests.ok(
+    (select is_minor from public.user_profiles where id = v_kid)
+    and private.has_guardian_consent(v_kid, 'bookings')
+    and private.has_guardian_consent(v_kid, 'sponsorship'),
+    'the child is a minor and the parent approved bookings and sponsorship');
+
+  /* ── A parent cancels the child's session ── */
+  perform tests.as_user(v_coach);
+  perform public.set_coaching_status(true, null);
+  v_service := public.save_coaching_service(null,
+    '{"kind":"session","title":"Sprint drills","duration_minutes":60,
+      "location_mode":"fixed","location":"Track 1"}');
+  perform public.add_coaching_slots(v_service, array[v_t]);
+  select id into v_slot from public.coaching_slots where service_id = v_service;
+
+  perform tests.as_user(v_kid);
+  v_booking := public.book_coaching_slot(v_slot);
+
+  perform tests.as_user(v_parent);
+  perform public.cancel_coaching_booking(v_booking);
+  perform tests.ok(
+    (select status = 'cancelled' and cancelled_by = 'guardian'
+     from public.coaching_bookings where id = v_booking),
+    'a parent can cancel their child''s session');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_coach and type = 'coaching_cancelled' and entity_id = v_booking::text
+              and title = 'Kid Runner''s parent cancelled Sprint drills'),
+    'the coach reads that the child''s parent cancelled');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'coaching_cancelled' and entity_id = v_booking::text
+              and title = 'Your parent cancelled Sprint drills'),
+    'the child reads that their parent cancelled');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type = 'coaching_cancelled' and entity_id = v_booking::text),
+    'the parent is not told about their own cancellation');
+
+  /* ── The parent sees the amount; a stranger does not ── */
+  perform tests.as_user(v_brand);
+  perform public.save_sponsor_profile('{"company_name":"Brand Co"}');
+
+  perform tests.as_user(v_kid);
+  v_req := public.save_sponsorship_request(null,
+    '{"title":"Junior nationals travel","amount":1500,"needs":["travel"],
+      "pitch":"Fastest 800m in my age group this year."}');
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(
+    (select (r ->> 'amount')::integer = 1500
+     from jsonb_array_elements(public.sponsorship_card(v_kid) -> 'requests') r
+     where r ->> 'id' = v_req::text),
+    'the parent sees how much their child asked for');
+  perform tests.as_user(v_stranger);
+  perform tests.ok(
+    public.sponsorship_card(v_kid) is null
+    or coalesce((select bool_and(r ->> 'amount' is null)
+                 from jsonb_array_elements(public.sponsorship_card(v_kid) -> 'requests') r), true),
+    'a stranger does not see the amount');
+
+  /* ── A parent declines an offer for the child ── */
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'Travel for the season.', 1500);
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(public.respond_sponsorship(v_deal, false) = 'declined',
+    'a parent can decline an offer for their child');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Kid Runner''s parent declined your sponsorship offer'),
+    'the sponsor reads that the child''s parent declined');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Your parent declined the sponsorship offer from Brand Co'),
+    'the child is told their parent declined the offer');
+  perform tests.ok(
+    not exists (select 1 from public.notifications
+                where user_id = v_parent and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'the parent is not told about their own answer');
+
+  /* ── A parent withdraws the child's application to a call ── */
+  perform tests.as_user(v_brand);
+  v_call := public.save_sponsor_call(null, '{"title":"Junior runners 2027","open_to_minors":true}');
+
+  perform tests.as_user(v_kid);
+  v_app := public.apply_to_sponsor_call(v_call, 'I run the 800m.');
+
+  perform tests.as_user(v_parent);
+  perform tests.ok(public.respond_sponsorship(v_app, false) = 'declined',
+    'a parent can withdraw their child''s application');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_app::text
+              and title = 'Kid Runner''s parent withdrew the application to your call'),
+    'the sponsor is told the application was withdrawn');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_kid and type = 'sponsorship_response' and entity_id = v_app::text
+              and title = 'Your parent withdrew your application to Brand Co'),
+    'the child is told their parent withdrew it');
+
+  /* ── When the athlete answers, the old wording stays ── */
+  perform tests.as_user(v_brand);
+  v_deal := public.sponsor_make_offer(v_req, 'Second try.', 1000);
+  perform tests.as_user(v_kid);
+  perform public.respond_sponsorship(v_deal, true);
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_brand and type = 'sponsorship_response' and entity_id = v_deal::text
+              and title = 'Kid Runner accepted your sponsorship offer'),
+    'an athlete who answers is still named as before');
+  perform tests.ok(
+    exists (select 1 from public.notifications
+            where user_id = v_parent and type = 'sponsorship_response' and entity_id = v_deal::text),
+    'and the parent still hears about it');
+end $$;
+
+reset role;
+select set_config('request.jwt.claim.role', 'service_role', false);
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
