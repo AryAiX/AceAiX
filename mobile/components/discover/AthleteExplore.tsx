@@ -571,7 +571,7 @@ export function AthleteExplore({
           />
         )}
         ListFooterComponent={
-          rows.length > 0 && viewerId && !youAreOnIt ? (
+          rows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
             <Text
               variant="caption"
               tone="muted"
