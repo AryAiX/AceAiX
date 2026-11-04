@@ -32,6 +32,8 @@ interface Props {
   saved?: boolean;
   /** Omit to render the card without the shortlist action (search results). */
   onToggleSave?: (athlete: DiscoveredAthlete, nextSaved: boolean) => void;
+  /** Called just before the profile opens. */
+  onOpen?: () => void;
   /** Carousel variant: narrower, fewer lines. */
   compact?: boolean;
 }
@@ -90,7 +92,7 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
  * not appear at all when no criteria were set — with an empty brief the
  * database's fit score is only the talent score in disguise.
  */
-export function AthleteCard({ athlete, criteria, saved, onToggleSave, compact }: Props) {
+export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, compact }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -110,7 +112,10 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, compact }:
   );
   const place = metaLine(athlete.club, athlete.country);
 
-  const open = () => router.push(Routes.profile(athlete.user_id));
+  const open = () => {
+    onOpen?.();
+    router.push(Routes.profile(athlete.user_id));
+  };
 
   const summary = [
     name,

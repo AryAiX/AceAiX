@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowUpDown, Bookmark, Check, Compass, Handshake, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
+import { ArrowUpDown, Bookmark, Check, Compass, Search, SlidersHorizontal, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -606,10 +606,10 @@ export default function DiscoverScreen() {
           large
           right={
             <IconButton
-              icon={<Handshake size={20} color={theme.colors.text} />}
-              label={t('sponsorship.openPortal')}
+              icon={<Search size={20} color={theme.colors.text} />}
+              label={t('discover.searchPeople')}
               size={theme.hit.min}
-              onPress={() => router.push(Routes.sponsorship)}
+              onPress={() => router.push(Routes.search)}
             />
           }
         />

@@ -44,7 +44,7 @@ export function HomeSpotlight() {
   const { spacing } = theme;
   const t = useT();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, isGuardian } = useAuth();
 
   const isAthlete = profile?.role === 'athlete';
 
@@ -52,10 +52,16 @@ export function HomeSpotlight() {
     enabled: isAthlete,
     refetchOnFocus: true,
   });
-  const challenges = useAsync(() => openChallenges(null, 5, 0), [], { refetchOnFocus: true });
+  const challenges = useAsync(() => openChallenges(null, 5, 0), [], {
+    enabled: !isGuardian,
+    refetchOnFocus: true,
+  });
 
   const views = digest.data;
-  const challenge = (challenges.data ?? []).find((c) => c.status === 'open') ?? null;
+  // Parents cannot enter challenges, so the card has nothing for them (QA-151).
+  const challenge = isGuardian
+    ? null
+    : ((challenges.data ?? []).find((c) => c.status === 'open') ?? null);
 
   if (!views?.total && !challenge) return null;
 

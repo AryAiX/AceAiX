@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
+  Chip,
   EmptyState,
   Header,
   Input,
@@ -18,11 +19,20 @@ import {
 } from '@/components/ui';
 import { useAction, useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
-import { createChallenge } from '@/lib/api';
+import { createChallenge, getMatchPreferences, getMyProfile } from '@/lib/api';
 import { getClubPage } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
-import { SPORTS } from '@/constants/sports';
+import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+
+const FALLBACK_SPORT = SPORTS[0]?.key ?? 'Football';
+
+/** Stored sport names are the English keys. Older rows sometimes lowercased them. */
+function knownSport(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const hit = SPORTS.find((sport) => sport.key.toLowerCase() === value.trim().toLowerCase());
+  return hit?.key ?? null;
+}
 
 type Kind = 'measured' | 'judged';
 type Window = '7' | '14' | '30';
@@ -51,8 +61,35 @@ export default function NewChallengeScreen() {
       (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout')) ||
     (!!clubPage && clubPage.organization.is_verified && clubPage.viewer.can_post);
 
-  const [sport, setSport] = useState<string>(SPORTS[0]?.key ?? 'Football');
-  const sports = useMemo(() => SPORTS.map((s) => ({ value: s.key, label: s.label })), []);
+  const [sport, setSport] = useState(FALLBACK_SPORT);
+  const [sportChosen, setSportChosen] = useState(false);
+  const recruiter =
+    profile?.role === 'coach' || profile?.role === 'club' || profile?.role === 'scout';
+  /* Coaches, clubs and scouts keep their sport on match preferences, the same
+     place onboarding and scouting settings read it. Anyone else posting for a
+     club page has it on their athlete profile. */
+  const ownSport = useAsync(
+    async () => {
+      if (recruiter) {
+        const prefs = await getMatchPreferences();
+        for (const candidate of prefs?.sports ?? []) {
+          const key = knownSport(candidate);
+          if (key) return key;
+        }
+        return null;
+      }
+      const bundle = await getMyProfile();
+      return knownSport(bundle.athlete?.sport);
+    },
+    [recruiter],
+    { enabled: !!profile },
+  );
+
+  useEffect(() => {
+    if (sportChosen || !ownSport.data) return;
+    setSport(ownSport.data);
+  }, [ownSport.data, sportChosen]);
+
   const [title, setTitle] = useState('');
   const [brief, setBrief] = useState('');
   const [rules, setRules] = useState('');
@@ -149,7 +186,20 @@ export default function NewChallengeScreen() {
           {t('challenges.newBody')}
         </Text>
 
-        <SegmentedControl options={sports.slice(0, 3)} value={sport} onChange={setSport} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+          {SPORTS.map((item) => (
+            <Chip
+              key={item.key}
+              label={sportLabel(t, item.key)}
+              icon={<Text variant="caption">{item.emoji}</Text>}
+              selected={sport === item.key}
+              onPress={() => {
+                setSportChosen(true);
+                setSport(item.key);
+              }}
+            />
+          ))}
+        </View>
 
         <Input
           label={t('challenges.fieldTitle')}

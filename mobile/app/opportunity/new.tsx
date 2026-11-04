@@ -14,9 +14,12 @@ import {
   Header,
   Input,
   Screen,
+  Skeleton,
   Text,
   useToast,
 } from '@/components/ui';
+import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
+import { CountryPicker } from '@/components/onboarding/Shared';
 import { OpportunityCard } from '@/components/opportunities/OpportunityCard';
 import {
   OPPORTUNITY_TYPES,
@@ -29,10 +32,11 @@ import {
 } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { createOpportunity } from '@/lib/api';
+import { createOpportunity, getMyProfile } from '@/lib/api';
 import { myOrganization } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
+import { joinLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
@@ -149,12 +153,21 @@ export default function NewOpportunityScreen() {
   const { profile, isRecruiter } = useAuth();
 
   const organization = useAsync(() => myOrganization(), []);
+  const poster = useAsync(() => getMyProfile(), []);
 
   const [title, setTitle] = useState('');
   const [type, setType] = useState<string | null>(null);
   const [sport, setSport] = useState<string | null>(null);
   const [position, setPosition] = useState<string | null>(null);
-  const [location, setLocation] = useState('');
+  const [country, setCountry] = useState<string | null>(null);
+  const [city, setCity] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
+  /** The place we filled in, so opening the screen is not itself a draft. */
+  const [seed, setSeed] = useState<{ country: string | null; city: string }>({
+    country: null,
+    city: '',
+  });
+  const [placeReady, setPlaceReady] = useState(false);
   const [deadline, setDeadline] = useState<Date | null>(null);
   const [description, setDescription] = useState('');
 
@@ -162,9 +175,51 @@ export default function NewOpportunityScreen() {
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
 
+  /* A club post starts from the club. Anyone else starts from their own
+     profile, loaded the same way edit profile loads it. No screen edits an
+     existing posting, so there is no saved location to parse. */
+  useEffect(() => {
+    if (placeReady) return;
+    if (organization.loading && !organization.data && !organization.error) return;
+
+    const orgCountry = organization.data?.country?.trim() ?? '';
+    if (organization.data && orgCountry) {
+      const orgCity = organization.data.city?.trim() ?? '';
+      setCountry(orgCountry);
+      setCity(orgCity);
+      setSeed({ country: orgCountry, city: orgCity });
+      setPlaceReady(true);
+      setErrors((current) => (current.location ? { ...current, location: undefined } : current));
+      return;
+    }
+
+    if (poster.loading && !poster.data && !poster.error) return;
+    const profileCountry = poster.data?.user.country?.trim() || null;
+    const profileCity = profileCountry ? (poster.data?.user.city?.trim() ?? '') : '';
+    setCountry(profileCountry);
+    setCity(profileCity);
+    setSeed({ country: profileCountry, city: profileCity });
+    setPlaceReady(true);
+    if (profileCountry) {
+      setErrors((current) => (current.location ? { ...current, location: undefined } : current));
+    }
+  }, [
+    placeReady,
+    organization.loading,
+    organization.data,
+    organization.error,
+    poster.loading,
+    poster.data,
+    poster.error,
+  ]);
+
+  const draftedCity = cityFromPicker(city, cityQuery);
+  const location = country ? joinLocation(draftedCity, country) : null;
+  const placeChanged = country !== seed.country || draftedCity !== seed.city;
+
   const hasContent =
     title.trim().length > 0 ||
-    location.trim().length > 0 ||
+    placeChanged ||
     description.trim().length > 0 ||
     type !== null ||
     sport !== null ||
@@ -209,7 +264,7 @@ export default function NewOpportunityScreen() {
       title: title.trim() || t('opportunities.post.previewPlaceholder'),
       type,
       description: description.trim() || null,
-      location: location.trim() || null,
+      location,
       sport,
       position,
       deadline: deadline ? toIsoDate(deadline) : null,
@@ -231,7 +286,7 @@ export default function NewOpportunityScreen() {
     if (title.trim().length < 4) next.title = t('opportunities.post.titleError');
     if (!type) next.type = t('opportunities.post.typeError');
     if (!sport) next.sport = t('opportunities.post.sportError');
-    if (location.trim().length < 2) next.location = t('opportunities.post.whereError');
+    if (!country) next.location = t('opportunities.post.whereError');
     if (description.trim().length < DESCRIPTION_MIN) {
       next.description = t('opportunities.post.detailsError', { count: DESCRIPTION_MIN });
     }
@@ -257,7 +312,7 @@ export default function NewOpportunityScreen() {
         type: type as string,
         sport: sport as string,
         position: position ?? null,
-        location: location.trim() || null,
+        location,
         deadline: deadline ? toIsoDate(deadline) : null,
         organizationId: organization.data?.id ?? null,
       });
@@ -399,18 +454,75 @@ export default function NewOpportunityScreen() {
           </View>
         ) : null}
 
-        <Input
-          label={t('opportunities.post.whereLabel')}
-          required
-          placeholder={t('opportunities.post.wherePlaceholder')}
-          value={location}
-          onChangeText={(value) => {
-            setLocation(value);
-            if (errors.location) setErrors((e) => ({ ...e, location: undefined }));
-          }}
-          maxLength={120}
-          error={errors.location}
-        />
+        <View style={{ gap: spacing.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: spacing.md,
+            }}
+          >
+            <Text variant="captionStrong" tone="secondary">
+              {t('opportunities.post.whereLabel')}
+              <Text variant="captionStrong" tone="danger">{' *'}</Text>
+            </Text>
+            {country || city.trim() || cityQuery.trim() ? (
+              <Pressable
+                onPress={() => {
+                  setCountry(null);
+                  setCity('');
+                  setCityQuery('');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={t('common.clear')}
+                hitSlop={8}
+                style={{ minHeight: 44, justifyContent: 'center' }}
+              >
+                <Text variant="captionStrong" tone="primary">
+                  {t('common.clear')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+          {placeReady ? (
+            <>
+              <CountryPicker
+                value={country}
+                onChange={(next) => {
+                  if (next !== country) {
+                    setCity('');
+                    setCityQuery('');
+                  }
+                  setCountry(next);
+                  if (errors.location) setErrors((current) => ({ ...current, location: undefined }));
+                }}
+              />
+              <CityPicker
+                country={country}
+                value={city}
+                query={cityQuery}
+                onQueryChange={setCityQuery}
+                onChange={(next) => {
+                  setCity(next);
+                  if (errors.location) setErrors((current) => ({ ...current, location: undefined }));
+                }}
+                label={t('onboarding.cityLabel')}
+                testID="opportunity-city"
+              />
+            </>
+          ) : (
+            <View style={{ gap: spacing.md }}>
+              <Skeleton height={52} radius={radii.md} />
+              <Skeleton height={52} radius={radii.md} />
+            </View>
+          )}
+          {errors.location ? (
+            <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+              {errors.location}
+            </Text>
+          ) : null}
+        </View>
 
         {/* The browser's date input is transparent over the same visible
             control as native, preserving both V2 UI and browser validation. */}

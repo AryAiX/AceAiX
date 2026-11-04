@@ -89,6 +89,11 @@ export const meetups = {
   fieldNotePlaceholder: 'Возьми бутсы. После обычно идём куда-нибудь посидеть.',
   fieldCost: 'Сколько с человека',
   fieldCostPlaceholder: '25 AED или бесплатно',
+  costFree: 'Бесплатно',
+  costPaid: 'Платно',
+  costAmount: 'Сумма',
+  costCurrency: 'Валюта',
+  costAmountInvalid: 'Введи целое число от 1 до 9999.',
   post: 'Выложить',
   posted: 'Готово. Теперь игру можно найти.',
 

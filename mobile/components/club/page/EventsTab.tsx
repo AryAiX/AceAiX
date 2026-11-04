@@ -10,16 +10,28 @@ import { useAsync } from '@/hooks/useAsync';
 import { getClubEvents } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
 import { EventCard } from './EventCard';
-import { TabAction, type ClubTabProps } from './shared';
+import { PreviewRow } from './PreviewRow';
+import { PreviewEmpty, previewPending, TabAction, useReportItems, type ClubTabProps } from './shared';
 
-export function ClubEventsTab({ orgId, canPost, refreshKey }: ClubTabProps) {
+export function ClubEventsTab({ orgId, canPost, refreshKey, limit, onHasItems }: ClubTabProps) {
   const t = useT();
   const { colors, spacing } = useTheme();
   const router = useRouter();
 
   const events = useAsync(() => getClubEvents(orgId), [orgId, refreshKey]);
+  const preview = limit != null;
+  const loaded = events.data;
+  const rows = loaded == null ? [] : preview ? loaded.slice(0, limit) : loaded;
+  const has = !preview
+    ? null
+    : previewPending(loaded, events.error)
+      ? null
+      : events.error && !loaded
+        ? true
+        : rows.length > 0;
+  useReportItems(onHasItems, has);
 
-  const add = canPost ? (
+  const add = !preview && canPost ? (
     <TabAction
       label={t('club.events.add')}
       onPress={() => router.push(Routes.clubEventEdit(orgId))}
@@ -27,14 +39,25 @@ export function ClubEventsTab({ orgId, canPost, refreshKey }: ClubTabProps) {
     />
   ) : null;
 
+  if (preview && events.error && !loaded) return <ErrorState message={events.error} onRetry={events.reload} compact />;
+  if (preview && has === false) return <PreviewEmpty title={t('club.events.emptyTitle')} />;
+  if (preview && has !== true) return null;
+  if (preview) {
+    return (
+      <PreviewRow>
+        {rows.map((e) => (
+          <EventCard key={e.id} event={e} />
+        ))}
+      </PreviewRow>
+    );
+  }
   if (events.loading) return <SkeletonList count={2} />;
   if (events.error) return <ErrorState message={events.error} onRetry={events.reload} compact />;
 
-  const rows = events.data ?? [];
   const upcoming = rows.filter((e) => e.is_upcoming);
   const past = rows.filter((e) => !e.is_upcoming);
 
-  if (rows.length === 0) {
+  if (!preview && rows.length === 0) {
     return (
       <View style={{ gap: spacing.md }}>
         {add}

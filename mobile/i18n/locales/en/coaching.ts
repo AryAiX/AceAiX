@@ -5,6 +5,8 @@ export const coaching = {
   title: 'Coaching',
   calendarTitle: 'Coaching calendar',
   myBookings: 'My sessions',
+  childrenSessions: 'Children’s sessions',
+  sessions: 'Sessions',
   kind: {
     session: 'One-to-one session',
     consultation: 'Consultation',

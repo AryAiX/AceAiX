@@ -9,6 +9,7 @@ export interface StatItem {
   key: string;
   label: string;
   value: string;
+  /** Omit to show a number that is not a button. */
   onPress?: () => void;
 }
 
@@ -41,6 +42,12 @@ export function StatRow({ items }: { items: StatItem[] }) {
           </View>
         );
 
+        const frame = {
+          minHeight: 44,
+          justifyContent: 'center' as const,
+          paddingHorizontal: spacing.xs,
+        };
+
         return (
           <View
             key={item.key}
@@ -59,8 +66,7 @@ export function StatRow({ items }: { items: StatItem[] }) {
                   label: item.label,
                 })}
                 style={({ pressed }) => ({
-                  minHeight: 44,
-                  justifyContent: 'center',
+                  ...frame,
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
@@ -72,7 +78,7 @@ export function StatRow({ items }: { items: StatItem[] }) {
                   value: item.value,
                   label: item.label,
                 })}
-                style={{ minHeight: 44, justifyContent: 'center' }}
+                style={frame}
               >
                 {body}
               </View>

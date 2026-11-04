@@ -17,9 +17,11 @@ interface Props {
   pending?: boolean;
   /** Omit to render the row without a follow action (search results). */
   onToggleFollow?: (person: PersonResult, nextFollowing: boolean) => void;
+  /** Called just before the profile opens. */
+  onOpen?: () => void;
 }
 
-export function CoachRow({ person, following, pending, onToggleFollow }: Props) {
+export function CoachRow({ person, following, pending, onToggleFollow, onOpen }: Props) {
   const theme = useTheme();
   const t = useT();
   const { spacing } = theme;
@@ -37,7 +39,10 @@ export function CoachRow({ person, following, pending, onToggleFollow }: Props) 
 
   return (
     <Card
-      onPress={() => router.push(Routes.profile(person.id))}
+      onPress={() => {
+        onOpen?.();
+        router.push(Routes.profile(person.id));
+      }}
       padded="sm"
       accessibilityLabel={metaLine(
         name,

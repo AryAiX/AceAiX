@@ -7,12 +7,18 @@ import { Button, Card, ErrorState, Screen, SkeletonList, Text } from '@/componen
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { MyCoachingCard } from '@/components/coaching/CoachingCard';
+import { ClubManageHub } from '@/components/club/manage/ClubManageHub';
 import { MyClubCard } from '@/components/club/manage/MyClubCard';
 import { MyGiCard } from '@/components/intelligence/GiCard';
 import { MySportFitCard } from '@/components/sportfit/SportFitCard';
 import { MyInviteCard } from '@/components/invite/InviteCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
+import { MyBrandCard } from '@/components/sponsorship/SponsorshipPortal';
 import { SupportsRow } from '@/components/profile/SupportsRow';
+import { CoachStats } from '@/components/profile/CoachStats';
+import { GuardianAthletesCard } from '@/components/guardian/GuardianAthletesCard';
+import { GuardianStats } from '@/components/profile/GuardianStats';
+import { SponsorStats } from '@/components/profile/SponsorStats';
 import { StatRow } from '@/components/profile/StatRow';
 import { ProfileTabs, ProfileTab, toProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
@@ -20,7 +26,7 @@ import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
 import { getMyProfile, getMyTalentScore } from '@/lib/api';
-import { getMyClubPages, managedClubPage } from '@/lib/api.club';
+import { getClubPage, getMyClubPages, managedClubPage } from '@/lib/api.club';
 import type { ClubType } from '@/lib/club';
 import { Routes } from '@/lib/routes';
 import { compactNumber } from '@/lib/format';
@@ -60,6 +66,13 @@ export default function MyProfileScreen() {
     enabled: !!user?.id,
     refetchOnFocus: true,
   });
+  const managed =
+    bundle.data?.user.role === 'club' ? managedClubPage(clubPages.data ?? []) : null;
+  // The control room needs the full page, not just the summary on `my_club_pages`.
+  const clubPage = useAsync(() => getClubPage(managed?.id ?? ''), [managed?.id, childKey], {
+    enabled: !!managed?.id,
+    refetchOnFocus: true,
+  });
 
   const reloadAll = useCallback(() => {
     bundle.refresh();
@@ -94,7 +107,6 @@ export default function MyProfileScreen() {
   const data = bundle.data;
   const athlete = data.athlete;
   const liveScore = score.data ?? data.score;
-  const managed = data.user.role === 'club' ? managedClubPage(clubPages.data ?? []) : null;
   const pageType: ClubType | null =
     managed?.type === 'club' || managed?.type === 'academy' ? managed.type : null;
 
@@ -127,6 +139,24 @@ export default function MyProfileScreen() {
         </View>
       ) : null}
 
+      {/* Parent onboarding never asks where they live, but every account needs it (QA-156). */}
+      {data.user.role === 'guardian' && (!data.user.country || !data.user.city) ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>
+          <Card testID="location-reminder" style={{ gap: spacing.sm }}>
+            <Text variant="bodyStrong">{t('profile.locationReminderTitle')}</Text>
+            <Text variant="caption" tone="muted">
+              {t('profile.locationReminderBody')}
+            </Text>
+            <Button
+              label={t('profile.locationReminderCta')}
+              variant="secondary"
+              size="sm"
+              onPress={() => router.push(Routes.editProfile)}
+            />
+          </Card>
+        </View>
+      ) : null}
+
       <View
         style={{
           paddingHorizontal: spacing.lg,
@@ -134,6 +164,8 @@ export default function MyProfileScreen() {
           gap: spacing.lg,
         }}
       >
+        {data.user.role === 'sponsor' ? <MyBrandCard refreshKey={childKey} /> : null}
+
         {athlete ? (
           <ScoreCard score={liveScore} onPress={() => router.push(Routes.score)} />
         ) : null}
@@ -145,11 +177,24 @@ export default function MyProfileScreen() {
 
         {athlete || data.user.role === 'coach' ? <MyInviteCard refreshKey={childKey} /> : null}
 
-        {/* The page a club runs, or an invitation to help run one. */}
-        <MyClubCard isClubAccount={data.user.role === 'club'} pages={clubPages.data} />
+        {/* QA-157: a club account that already runs a page gets the control room here. */}
+        {data.user.role === 'club' && clubPage.data ? (
+          <ClubManageHub page={clubPage.data} />
+        ) : data.user.role === 'club' && clubPage.error ? (
+          <ErrorState message={clubPage.error} onRetry={clubPage.reload} compact />
+        ) : null}
+        <MyClubCard
+          isClubAccount={data.user.role === 'club'}
+          pages={clubPages.data}
+          hideManagedCard={data.user.role === 'club' && !!managed}
+        />
 
         {data.user.role === 'coach' ? <MyCoachingCard refreshKey={childKey} /> : null}
-        {data.user.role !== 'coach' && data.user.role !== 'sponsor' ? (
+        {data.user.role === 'guardian' ? <GuardianAthletesCard refreshKey={childKey} /> : null}
+        {data.user.role !== 'coach' &&
+        data.user.role !== 'sponsor' &&
+        data.user.role !== 'guardian' &&
+        data.user.role !== 'club' ? (
           <Button
             label={t('coaching.myBookings')}
             variant="secondary"
@@ -165,16 +210,9 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
           />
         ) : null}
-        {data.user.role === 'sponsor' || data.user.role === 'guardian' ? (
-          <Button
-            label={t('sponsorship.openPortal')}
-            variant="secondary"
-            onPress={() => router.push(Routes.sponsorship)}
-            testID="open-sponsorship-portal"
-          />
+        {data.user.role !== 'club' ? (
+          <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
         ) : null}
-
-        <SupportsRow userId={data.user.id} isSelf sport={athlete?.sport} />
 
         {athlete ? (
           <Button
@@ -184,47 +222,73 @@ export default function MyProfileScreen() {
           />
         ) : null}
 
-        <StatRow
-          items={[
-            {
-              key: 'posts',
-              label: t('common.posts'),
-              value: compactNumber(data.stats?.posts ?? 0),
-              onPress: () => setTab('posts'),
-            },
-            {
-              key: 'media',
-              label: t('common.clips'),
-              value: compactNumber(data.stats?.media ?? 0),
-              onPress: () => setTab('highlights'),
-            },
-            {
-              key: 'matches',
-              label: t('common.matches'),
-              value: compactNumber(data.stats?.matches ?? 0),
-              onPress: () => setTab('career'),
-            },
-            {
-              key: 'endorsements',
-              label: t('common.endorsed'),
-              value: compactNumber(data.stats?.endorsements ?? 0),
-              onPress: () => setTab('career'),
-            },
-          ]}
-        />
+        {data.user.role === 'coach' ? (
+          <CoachStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : data.user.role === 'sponsor' ? (
+          <SponsorStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : data.user.role === 'guardian' ? (
+          <GuardianStats
+            userId={data.user.id}
+            isSelf
+            posts={data.stats?.posts ?? 0}
+            onPosts={() => setTab('posts')}
+            refreshKey={childKey}
+          />
+        ) : data.user.role !== 'club' ? (
+          <StatRow
+            items={[
+              {
+                key: 'posts',
+                label: t('common.posts'),
+                value: compactNumber(data.stats?.posts ?? 0),
+                onPress: () => setTab('posts'),
+              },
+              {
+                key: 'media',
+                label: t('common.clips'),
+                value: compactNumber(data.stats?.media ?? 0),
+                onPress: () => setTab('highlights'),
+              },
+              {
+                key: 'matches',
+                label: t('common.matches'),
+                value: compactNumber(data.stats?.matches ?? 0),
+                onPress: () => setTab('career'),
+              },
+              {
+                key: 'endorsements',
+                label: t('common.endorsed'),
+                value: compactNumber(data.stats?.endorsements ?? 0),
+                onPress: () => setTab('career'),
+              },
+            ]}
+          />
+        ) : null}
 
         {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
 
-        {!athlete || tab === 'posts' ? (
+        {data.user.role !== 'club' && (!athlete || tab === 'posts') ? (
           <PostsTab userId={data.user.id} isSelf refreshKey={childKey} />
-        ) : tab === 'highlights' ? (
+        ) : athlete && tab === 'highlights' ? (
           <HighlightsTab
             athleteId={athlete.id}
             isSelf
             refreshKey={childKey}
             onChanged={onTabDataChanged}
           />
-        ) : (
+        ) : athlete ? (
           <CareerTab
             athleteId={athlete.id}
             isSelf
@@ -233,7 +297,7 @@ export default function MyProfileScreen() {
             refreshKey={childKey}
             onChanged={onTabDataChanged}
           />
-        )}
+        ) : null}
       </View>
     </Screen>
   );

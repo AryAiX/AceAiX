@@ -623,6 +623,23 @@ export function sportLabel(t: Translate, sport: string | null | undefined): stri
   return key ? t(key) : sport;
 }
 
+/**
+ * The English sport name a search should send, when `term` is a sport's
+ * translated label.
+ *
+ * The box and the recent-search list keep the words the person typed or
+ * tapped. This turns "كرة القدم" back into "Football" before it is queried.
+ * The match is the whole term, ignoring case, against `sportLabel` for every
+ * sport. A name, a city or a fragment is returned unchanged.
+ */
+export function englishSportTerm(t: Translate, term: string): string {
+  const clean = term.trim();
+  if (!clean) return clean;
+  const folded = clean.toLowerCase();
+  const sport = SPORTS.find((entry) => sportLabel(t, entry.key).toLowerCase() === folded);
+  return sport ? sport.label : clean;
+}
+
 export function positionLabel(t: Translate, position: string | null | undefined): string {
   if (!position) return '';
   const key = POSITION_KEYS[position] ?? POSITION_KEYS_LC[position.toLowerCase()];

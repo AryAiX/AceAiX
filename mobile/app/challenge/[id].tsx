@@ -33,7 +33,8 @@ import {
   withdrawChallengeEntry,
 } from '@/lib/api';
 import { Routes } from '@/lib/routes';
-import { ageBandLabel, deadlineLabel, displayName, relativeTime } from '@/lib/format';
+import { sportLabel } from '@/constants/sports';
+import { ageBandLabel, deadlineLabel, displayName, metaLine, relativeTime } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { Challenge, ChallengeEntry } from '@/types/models';
 
@@ -200,9 +201,10 @@ export default function ChallengeScreen() {
                 ) : null}
               </View>
               <Text variant="caption" tone="muted">
-                {challenge.status === 'closed' || !closing
-                  ? t('challenges.closed')
-                  : closing}
+                {metaLine(
+                  sportLabel(t, challenge.sport),
+                  challenge.status === 'closed' || !closing ? t('challenges.closed') : closing,
+                )}
               </Text>
             </View>
             <Badge

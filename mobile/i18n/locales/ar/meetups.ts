@@ -95,6 +95,11 @@ export const meetups = {
   fieldNotePlaceholder: 'أحضر حذاءك. عادةً نشرب قهوة بعدها.',
   fieldCost: 'التكلفة للفرد',
   fieldCostPlaceholder: '25 درهمًا، أو مجانًا',
+  costFree: 'مجاني',
+  costPaid: 'مدفوع',
+  costAmount: 'المبلغ',
+  costCurrency: 'العملة',
+  costAmountInvalid: 'أدخل عددًا صحيحًا من 1 إلى 9999.',
   post: 'انشرها',
   posted: 'نُشرت. يستطيع الناس أن يجدوها الآن.',
 

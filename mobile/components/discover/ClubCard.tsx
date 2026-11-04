@@ -25,9 +25,11 @@ interface Props {
   pending?: boolean;
   /** Omit to render the row without a follow action (search results). */
   onToggleFollow?: (organization: Organization, nextFollowing: boolean) => void;
+  /** Called just before the club page opens. */
+  onOpen?: () => void;
 }
 
-export function ClubCard({ organization, following, pending, onToggleFollow }: Props) {
+export function ClubCard({ organization, following, pending, onToggleFollow, onOpen }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -46,7 +48,10 @@ export function ClubCard({ organization, following, pending, onToggleFollow }: P
 
   return (
     <Card
-      onPress={() => router.push(Routes.organization(organization.id))}
+      onPress={() => {
+        onOpen?.();
+        router.push(Routes.organization(organization.id));
+      }}
       padded="sm"
       accessibilityLabel={metaLine(
         organization.name,
