@@ -8,6 +8,7 @@ import { Chip, EmptyState, ErrorState, Input, Reveal, SkeletonList, Text } from 
 import { InfoNote } from '@/components/settings/Notes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getSeekers, type Seeker } from '@/lib/api.sponsorship';
 import { displayName } from '@/lib/format';
@@ -47,6 +48,9 @@ export function SeekersList() {
   });
   const openProfile = useCallback((id: string) => router.push(Routes.profile(id)), [router]);
   const rows = seekers.data ?? [];
+  const listRef = useTabReselect(() => {
+    seekers.reload();
+  });
 
   const header = (
     <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
@@ -97,6 +101,7 @@ export function SeekersList() {
   return (
     <View style={{ flex: 1 }} testID="seekers-list">
       <FlatList
+        ref={listRef}
         data={seekers.loading && !seekers.data ? [] : rows}
         keyExtractor={(row) => row.request_id}
         contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.md }}

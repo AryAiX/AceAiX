@@ -21,6 +21,7 @@ import {
 import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { myLinkedMinors, searchOrganizations, searchPeople } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
@@ -324,6 +325,19 @@ export function AthleteExplore({
     [profile?.following_count, toast, viewerId],
   );
 
+  /* Tap Discover while on Discover. Clubs, coaches and the leaderboard are
+     lists drawn here, one at a time, so they share one ref. Explore, Sponsors
+     and "Taking students" draw their own lists and answer the tap themselves.
+     Each reload mirrors that list's pull-to-refresh, minus the spinner. */
+  const attachList = useTabReselect(() => {
+    if (tab === 'clubs') clubs.reload();
+    else if (tab === 'coaches' && !bookable) coaches.reload();
+    else if (tab === 'leaderboard') {
+      if (searchingBoard) athletes.reload();
+      else board.reload();
+    }
+  });
+
   const listStyle = {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.giant,
@@ -402,6 +416,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<Organization>
+        ref={attachList}
         style={{ flex: 1 }}
         data={clubs.data?.rows ?? []}
         keyExtractor={(item) => item.id}
@@ -456,6 +471,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<PersonResult>
+        ref={attachList}
         style={{ flex: 1 }}
         data={coaches.data?.rows ?? []}
         keyExtractor={(item) => item.id}
@@ -502,6 +518,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<PersonResult>
+        ref={attachList}
         style={{ flex: 1 }}
         data={athleteHits}
         keyExtractor={(item) => item.id}
@@ -546,6 +563,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<LeaderboardEntry>
+        ref={attachList}
         style={{ flex: 1 }}
         data={rows}
         keyExtractor={(item) => item.athlete_id}

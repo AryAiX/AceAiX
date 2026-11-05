@@ -21,6 +21,7 @@ import {
   type ContentTarget,
 } from '@/components/feed/ContentActionsSheet';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
@@ -151,6 +152,18 @@ export default function HomeScreen() {
     setReachedEnd(false);
     refetch();
   }, [refetch]);
+
+  /* Tap Home while on Home: back to the top and a fresh first page. Quietly —
+     a `refreshing` flag set without a finger-pull sticks on iOS (see
+     hooks/useAsync.ts). Older pages are dropped once the new page is in, so
+     the list does not shrink under the scroll on its way up. `reload` never
+     rejects (useAsync catches), so the `then` always runs. */
+  const listRef = useTabReselect(() => {
+    void feed.reload().then(() => {
+      setOlder([]);
+      setReachedEnd(false);
+    });
+  });
 
   const loadMore = useCallback(async () => {
     if (loadingMore || reachedEnd || feed.loading || items.length === 0) return;
@@ -355,6 +368,7 @@ export default function HomeScreen() {
         </View>
       ) : (
       <FlatList
+        ref={listRef}
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}

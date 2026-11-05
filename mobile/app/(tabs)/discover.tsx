@@ -36,6 +36,7 @@ import {
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { discoverAthletes, getMatchPreferences } from '@/lib/api';
 import {
   addToShortlist,
@@ -178,6 +179,12 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
   useEffect(() => {
     load(0, 'initial');
   }, [load]);
+
+  /* Tap Discover while on Athletes: back to the top and reload. The list stays
+     on screen; only the count line reads "Searching…" for a moment. */
+  const listRef = useTabReselect(() => {
+    load(0, 'initial');
+  });
 
   // ── Shortlist ──
   const shortlist = useAsync(() => shortlistedAthleteIds(), [], { refetchOnFocus: true });
@@ -409,6 +416,7 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
       </View>
 
       <FlatList<DiscoveredAthlete>
+        ref={listRef}
         data={items}
         keyExtractor={(item) => item.athlete_id}
         style={{ flex: 1 }}

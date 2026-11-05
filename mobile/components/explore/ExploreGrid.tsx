@@ -20,6 +20,7 @@ import { Avatar, Chip, EmptyState, ErrorState, Reveal, Skeleton, Tappable, Text 
 import { sportConfig, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { EXPLORE_PAGE, getExploreSports, getExploreVideos, isHighlight } from '@/lib/api.explore';
 import { getReels, reelVideo } from '@/lib/api.reels';
@@ -152,7 +153,9 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
   );
 
   const load = useCallback(
-    async (mode: 'initial' | 'refresh' | 'more', offset: number) => {
+    /* `background`: replace the grid with no skeleton and no spinner (a re-tap
+       of the tab). */
+    async (mode: 'initial' | 'refresh' | 'more' | 'background', offset: number) => {
       const id = ++runId.current;
       if (mode === 'initial') setLoading(true);
       if (mode === 'refresh') setRefreshing(true);
@@ -173,7 +176,8 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
       } catch (err) {
         if (!mounted.current || id !== runId.current) return;
         if (mode === 'more') setMoreError(true);
-        else setError(errorMessage(err));
+        /* A quiet reload that fails leaves the grid as it is. */
+        else if (mode !== 'background') setError(errorMessage(err));
       } finally {
         if (mounted.current && id === runId.current) {
           setLoading(false);
@@ -188,6 +192,12 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
   useEffect(() => {
     load('initial', 0);
   }, [load]);
+
+  /* Tap Discover while on Explore: back to the top and a quiet reload. */
+  const listRef = useTabReselect(() => {
+    sports.reload();
+    void load('background', 0);
+  });
 
   const rows = useMemo(() => mosaicRows(items), [items]);
   const metrics = useMemo(() => mosaicMetrics(width, GAP), [width]);
@@ -328,6 +338,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
   return (
     <View style={{ flex: 1 }} onLayout={onLayout} testID={fromReels ? 'reels-grid' : 'explore-grid'}>
       <FlatList
+        ref={listRef}
         data={loading || width === 0 ? [] : rows}
         keyExtractor={(row) => row.key}
         renderItem={renderRow}

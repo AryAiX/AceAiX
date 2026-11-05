@@ -17,6 +17,7 @@ import {
 } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import {
   getMySponsorship,
@@ -60,6 +61,13 @@ export function SponsorsTab({ query }: { query: string }) {
     setRefreshing(false);
   }, [mine, calls, sponsors]);
 
+  /* Tap Discover while on Sponsors: back to the top and a quiet reload. */
+  const scrollRef = useTabReselect(() => {
+    mine.reload();
+    calls.reload();
+    sponsors.reload();
+  });
+
   const openProfile = useCallback((id: string) => router.push(Routes.profile(id)), [router]);
   const openRequests = useMemo(
     () => (mine.data?.requests ?? []).filter((r) => r.status === 'open'),
@@ -69,6 +77,7 @@ export function SponsorsTab({ query }: { query: string }) {
 
   return (
     <ScrollView
+      ref={scrollRef}
       contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.xl }}
       showsVerticalScrollIndicator={false}
       refreshControl={
