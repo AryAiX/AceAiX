@@ -25,7 +25,7 @@ import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
-import { getReels } from '@/lib/api.reels';
+import { followedOnly, getReels } from '@/lib/api.reels';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
@@ -48,8 +48,11 @@ import type { FeedPost } from '@/types/models';
  */
 
 const PAGE_SIZE = 20;
-/** The Reels strip sits after this many posts — or after the last, if fewer. */
+/** Your Rundown sits after this many posts — or after the last, if fewer. */
 const REELS_AFTER = 3;
+/** Posters in Your Rundown. A wider page is read so enough followed clips survive the filter. */
+const RUNDOWN_SHOWN = 6;
+const RUNDOWN_READ = 30;
 
 type Scope = 'for_you' | 'following';
 
@@ -86,8 +89,13 @@ export default function HomeScreen() {
 
   /* Loaded here, not inside the strip: the strip now sits in a list cell, and
      a cell scrolled far enough away is unmounted. Loading on remount would pop
-     the strip in from nothing and jump the feed under your thumb. */
-  const reels = useAsync(() => getReels({ limit: 6 }), [], { refetchOnFocus: true });
+     the strip in from nothing and jump the feed under your thumb. Only clips
+     from people you follow: Your Rundown lives on the Following tab. */
+  const reels = useAsync(
+    () => getReels({ limit: RUNDOWN_READ }).then((rows) => followedOnly(rows).slice(0, RUNDOWN_SHOWN)),
+    [],
+    { refetchOnFocus: true },
+  );
 
   useEffect(() => {
     setOlder([]);
@@ -235,8 +243,9 @@ export default function HomeScreen() {
     },
   ).current;
 
-  /* The Reels strip rides in the stream after the third post (or the last, if
-     there are fewer). -1 means "no posts", so it never shows on an empty feed. */
+  /* Your Rundown rides in the Following stream after the third post (or the
+     last, if there are fewer). -1 means "no posts", so it never shows on an
+     empty feed, and Playfeed never shows it. */
   const reelsAt = Math.min(REELS_AFTER, items.length) - 1;
   const reelItems = reels.data;
 
@@ -259,7 +268,7 @@ export default function HomeScreen() {
           />
         </Reveal>
       );
-      if (index !== reelsAt || !reelItems?.length) return card;
+      if (scope !== 'following' || index !== reelsAt || !reelItems?.length) return card;
       return (
         <View style={{ gap: spacing.md }}>
           {card}
@@ -267,14 +276,14 @@ export default function HomeScreen() {
         </View>
       );
     },
-    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, reelsAt, reelItems, spacing],
+    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, scope, reelsAt, reelItems, spacing],
   );
 
   /* Everything renderItem reads besides `data`, so the list redraws when any of
      it changes — FlatList is a PureComponent and only compares `extraData`. */
   const listExtra = useMemo(
-    () => ({ activeId, reelsAt, reelItems }),
-    [activeId, reelsAt, reelItems],
+    () => ({ activeId, scope, reelsAt, reelItems }),
+    [activeId, scope, reelsAt, reelItems],
   );
 
   /* Returns an element, not a component: a fresh component type on every

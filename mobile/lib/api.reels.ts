@@ -23,6 +23,16 @@ export async function getReels(params: { limit?: number; before?: string | null 
   return withMentions.filter((post) => post.media.some((m) => m.type === 'video'));
 }
 
+/**
+ * Your Rundown keeps only the clips from people and club pages the viewer
+ * follows. `get_reels` has no scope of its own, so this filters rows the
+ * database has already cleared: `viewer_follows` is true for an author you
+ * follow and for a post from a club or academy page you follow.
+ */
+export function followedOnly(posts: FeedPost[]): FeedPost[] {
+  return posts.filter((post) => post.viewer_follows === true);
+}
+
 /** The first playable clip in a reel. */
 export function reelVideo(post: FeedPost) {
   return post.media.find((m) => m.type === 'video') ?? null;

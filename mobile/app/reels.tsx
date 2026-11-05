@@ -17,7 +17,7 @@ import { toggleLike } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import { postLink } from '@/lib/api.feed';
 import { getExploreVideos, isHighlight } from '@/lib/api.explore';
-import { getReels } from '@/lib/api.reels';
+import { followedOnly, getReels } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
@@ -47,7 +47,8 @@ export default function ReelsScreen() {
   const params = useLocalSearchParams<{ start?: string; source?: string; sport?: string }>();
 
   /* Opened from Explore, the pager plays the grid the tap came from — the
-     same clips, the same filter — so swiping carries on where the eye was. */
+     same clips, the same filter — so swiping carries on where the eye was.
+     Otherwise it was opened from Your Rundown, which is people you follow. */
   const fromExplore = params.source === 'explore';
   const sport = typeof params.sport === 'string' && params.sport ? params.sport : null;
   const reels = useAsync(
@@ -56,7 +57,7 @@ export default function ReelsScreen() {
         ? getExploreVideos({ limit: 60, sport }).then((rows) =>
             rows.filter((post) => post.media.some((m) => m.type === 'video')),
           )
-        : getReels({ limit: 30 }),
+        : getReels({ limit: 30 }).then(followedOnly),
     [fromExplore, sport],
   );
   const { mutate } = reels;

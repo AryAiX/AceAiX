@@ -23,7 +23,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { EXPLORE_PAGE, getExploreSports, getExploreVideos, isHighlight } from '@/lib/api.explore';
-import { getReels, reelVideo } from '@/lib/api.reels';
+import { followedOnly, getReels, reelVideo } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { mergeClips, mosaicMetrics, mosaicRows, type MosaicRow } from '@/lib/explore';
 import { compactNumber, displayName } from '@/lib/format';
@@ -59,8 +59,8 @@ const SMALL = { fontSize: 11, lineHeight: 14 } as const;
 interface Props {
   /**
    * What fills the grid. `explore` is every public clip, with sport chips;
-   * `reels` is the viewer's own reels feed (people they follow included), the
-   * collection behind "See all" on Home.
+   * `reels` is Your Rundown: clips from people and club pages the viewer
+   * follows, the collection behind "See all" on Home.
    */
   source?: 'explore' | 'reels';
   /** Shown above the grid, scrolling away with it. */
@@ -162,16 +162,19 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
       if (mode === 'more') setLoadingMore(true);
       setMoreError(false);
       try {
-        const rows = fromReels
+        const page = fromReels
           ? await getReels({ limit: EXPLORE_PAGE, before: mode === 'more' ? lastSeen.current : null })
           : await getExploreVideos({ offset, sport });
-        if (rows.length > 0) lastSeen.current = rows[rows.length - 1].created_at;
+        /* The cursor and the end come from the whole page; only what is shown
+           is filtered, so paging never skips or stalls. */
+        if (page.length > 0) lastSeen.current = page[page.length - 1].created_at;
+        const rows = fromReels ? followedOnly(page) : page;
         /* A slower earlier request must never overwrite a newer filter's grid. */
         if (!mounted.current || id !== runId.current) return;
         setItems((current) =>
           (mode === 'more' ? mergeClips(current, rows) : rows).map(withKnownView),
         );
-        setDone(rows.length < EXPLORE_PAGE);
+        setDone(page.length < EXPLORE_PAGE);
         setError(null);
       } catch (err) {
         if (!mounted.current || id !== runId.current) return;
