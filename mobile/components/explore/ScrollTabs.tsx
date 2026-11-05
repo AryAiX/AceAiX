@@ -44,7 +44,7 @@ export function ScrollTabs<T extends string>({ options, value, onChange, testID 
             style={({ pressed }) => ({
               minHeight: 40,
               paddingHorizontal: spacing.lg,
-              borderRadius: radii.pill,
+              borderRadius: radii.button,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: selected ? colors.text : colors.surfaceSunken,

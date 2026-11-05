@@ -360,7 +360,7 @@ function PostCardBase({
           style={({ pressed }) => ({
             width: theme.hit.min,
             height: theme.hit.min,
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: pressed ? colors.surfaceAlt : 'transparent',

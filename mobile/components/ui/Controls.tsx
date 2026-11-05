@@ -69,8 +69,8 @@ export function SegmentedControl<T extends string>({
       style={[
         {
           flexDirection: 'row',
-          backgroundColor: colors.surfaceSunken,
-          borderRadius: radii.pill,
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radii.button,
           padding: TRACK_PAD,
           position: 'relative',
         },
@@ -86,7 +86,7 @@ export function SegmentedControl<T extends string>({
           left: TRACK_PAD,
           width: segmentWidth,
           opacity: segmentWidth === 0 ? 0 : 1,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           backgroundColor: colors.surface,
           transform: [{ translateX: indicator }],
           ...theme.elevation(1),
@@ -284,7 +284,7 @@ export function IconButton({
         {
           width: size,
           height: size,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           backgroundColor: bg,
           alignItems: 'center',
           justifyContent: 'center',

@@ -77,7 +77,7 @@ function FilterButton({ active, onPress }: { active: boolean; onPress: () => voi
       style={({ pressed }) => ({
         width: theme.hit.min,
         height: theme.hit.min,
-        borderRadius: radii.pill,
+        borderRadius: radii.button,
         backgroundColor: active ? colors.primarySoft : colors.surfaceAlt,
         alignItems: 'center',
         justifyContent: 'center',

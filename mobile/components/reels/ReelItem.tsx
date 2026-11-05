@@ -267,7 +267,7 @@ function ReelItemBase({
               style={({ pressed }) => ({
                 paddingHorizontal: spacing.md,
                 height: 30,
-                borderRadius: 15,
+                borderRadius: theme.radii.button,
                 borderWidth: 1.5,
                 borderColor: ON_VIDEO,
                 alignItems: 'center',
@@ -400,6 +400,7 @@ function RailButton({
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
+  const theme = useTheme();
   const press = (to: number) => {
     if (reduced) return;
     Animated.spring(scale, { toValue: to, speed: 50, bounciness: 10, useNativeDriver: NATIVE_DRIVER }).start();
@@ -420,7 +421,7 @@ function RailButton({
         style={{
           width: 48,
           height: 48,
-          borderRadius: 24,
+          borderRadius: theme.radii.button,
           backgroundColor: CHIP,
           alignItems: 'center',
           justifyContent: 'center',

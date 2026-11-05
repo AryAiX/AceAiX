@@ -125,7 +125,7 @@ export function StreakChip({ current, style, testID }: Props) {
             gap: 5,
             minHeight: hit.min - 8,
             paddingHorizontal: spacing.md,
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             backgroundColor: colors.primarySoft,
             borderWidth: 1,
             borderColor: colors.primaryBorder,

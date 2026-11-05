@@ -260,7 +260,7 @@ function Action({
         minWidth: theme.hit.min,
         justifyContent: 'center',
         paddingHorizontal: spacing.sm,
-        borderRadius: radii.pill,
+        borderRadius: radii.button,
         backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
       })}
     >

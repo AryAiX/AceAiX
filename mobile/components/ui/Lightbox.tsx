@@ -241,7 +241,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
             right: spacing.xl,
             width: 44,
             height: 44,
-            borderRadius: 22,
+            borderRadius: radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: 'rgba(255,255,255,0.14)',

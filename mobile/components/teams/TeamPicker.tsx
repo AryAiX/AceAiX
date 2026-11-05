@@ -135,7 +135,7 @@ export function TeamPicker({
                     paddingVertical: 8,
                     paddingLeft: 12,
                     paddingRight: 8,
-                    borderRadius: 999,
+                    borderRadius: theme.radii.button,
                     backgroundColor: theme.alpha(colors.primary, 0.14),
                     borderWidth: 1,
                     borderColor: theme.alpha(colors.primary, 0.35),
@@ -177,7 +177,7 @@ export function TeamPicker({
                 style={{
                   paddingVertical: 9,
                   paddingHorizontal: 13,
-                  borderRadius: 999,
+                  borderRadius: theme.radii.button,
                   backgroundColor: colors.surfaceAlt,
                   borderWidth: 1,
                   borderColor: colors.border,

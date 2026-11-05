@@ -137,7 +137,7 @@ export function Button({
           {
             height: heights[size],
             paddingHorizontal: paddings[size],
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             backgroundColor: gradient ? skin.pressedBg : pressed ? skin.pressedBg : skin.bg,
             borderColor: skin.border,
             borderWidth: skin.border === 'transparent' ? 0 : 1.5,

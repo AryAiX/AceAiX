@@ -98,7 +98,7 @@ export function SupportsRow({
                     style={{
                       paddingVertical: 7,
                       paddingHorizontal: 12,
-                      borderRadius: 999,
+                      borderRadius: theme.radii.button,
                       backgroundColor: theme.alpha(colors.primary, 0.12),
                       borderWidth: 1,
                       borderColor: theme.alpha(colors.primary, 0.3),

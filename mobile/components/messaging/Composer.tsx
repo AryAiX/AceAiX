@@ -120,7 +120,7 @@ export function Composer({
         style={({ pressed }) => ({
           width: hit.min,
           height: hit.min,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: canSend ? colors.primary : colors.surfaceSunken,

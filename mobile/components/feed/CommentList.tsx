@@ -326,7 +326,7 @@ export function CommentComposer({
           style={({ pressed }) => ({
             width: 44,
             height: 44,
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: canSend ? colors.primary : colors.surfaceAlt,

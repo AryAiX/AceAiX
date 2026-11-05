@@ -329,7 +329,7 @@ export function Sheet({
                     style={{
                       width: 32,
                       height: 32,
-                      borderRadius: 16,
+                      borderRadius: radii.button,
                       alignItems: 'center',
                       justifyContent: 'center',
                       backgroundColor: colors.surfaceAlt,
