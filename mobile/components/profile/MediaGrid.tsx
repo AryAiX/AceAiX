@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, View } from 'react-native';
-import { ImageOff, Play, Plus } from 'lucide-react-native';
+import { ImageOff, Play, Plus, Quote } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { RemoteImage, Text } from '@/components/ui';
@@ -47,6 +47,20 @@ export function MediaGrid({
 
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
 
+  /* Text-only posts become quote tiles in a rotating colour: blue, orange,
+     green, yellow, purple, then round again. Only text tiles move the
+     rotation, so five text posts are always five different colours however
+     many photos sit between them. Yellow tints from the bright sun but writes
+     its mark in the darker onSun, so it reads. */
+  const quoteColours = [
+    { ink: colors.primary, tint: colors.primary },
+    { ink: theme.play.flame, tint: theme.play.flame },
+    { ink: colors.success, tint: colors.success },
+    { ink: colors.onSun, tint: colors.sun },
+    { ink: colors.accent, tint: colors.accent },
+  ];
+  let textCount = 0;
+
   return (
     <View onLayout={onLayout} style={{ flexDirection: 'row', flexWrap: 'wrap', gap }}>
       {onAdd ? (
@@ -84,7 +98,9 @@ export function MediaGrid({
         </Pressable>
       ) : null}
 
-      {tiles.map((tile) => (
+      {tiles.map((tile) => {
+        const quote = !tile.uri && !!tile.caption ? quoteColours[textCount++ % quoteColours.length] : null;
+        return (
         <Pressable
           key={tile.id}
           onPress={onPressTile ? () => onPressTile(tile.id) : undefined}
@@ -99,14 +115,21 @@ export function MediaGrid({
             height: size || undefined,
             borderRadius: radii.md,
             overflow: 'hidden',
-            backgroundColor: colors.surfaceAlt,
+            backgroundColor: quote ? theme.alpha(quote.tint, 0.12) : colors.surfaceAlt,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: quote ? theme.alpha(quote.tint, 0.3) : colors.border,
             opacity: pressed ? 0.8 : 1,
           })}
         >
           {tile.uri ? (
             <RemoteImage uri={tile.uri} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          ) : quote ? (
+            <View style={{ flex: 1, padding: spacing.md, justifyContent: 'space-between' }}>
+              <Quote size={20} color={quote.ink} />
+              <Text variant="bodyStrong" color={colors.text} numberOfLines={4}>
+                {tile.caption}
+              </Text>
+            </View>
           ) : (
             <View
               style={{
@@ -118,11 +141,6 @@ export function MediaGrid({
               }}
             >
               <ImageOff size={18} color={colors.textMuted} />
-              {tile.caption ? (
-                <Text variant="caption" tone="muted" align="center" numberOfLines={3}>
-                  {tile.caption}
-                </Text>
-              ) : null}
             </View>
           )}
 
@@ -146,7 +164,8 @@ export function MediaGrid({
             </View>
           ) : null}
         </Pressable>
-      ))}
+        );
+      })}
     </View>
   );
 }
