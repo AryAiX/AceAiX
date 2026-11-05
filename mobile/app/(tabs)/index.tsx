@@ -48,8 +48,6 @@ import type { FeedPost } from '@/types/models';
  */
 
 const PAGE_SIZE = 20;
-/** Your Rundown sits after this many posts — or after the last, if fewer. */
-const REELS_AFTER = 3;
 /** Posters in Your Rundown. A wider page is read so enough followed clips survive the filter. */
 const RUNDOWN_SHOWN = 6;
 const RUNDOWN_READ = 30;
@@ -243,11 +241,8 @@ export default function HomeScreen() {
     },
   ).current;
 
-  /* Your Rundown rides in the Following stream after the third post (or the
-     last, if there are fewer). -1 means "no posts", so it never shows on an
-     empty feed, and Playfeed never shows it. */
-  const reelsAt = Math.min(REELS_AFTER, items.length) - 1;
-  const reelItems = reels.data;
+  /* Your Rundown sits right under Stories, on the Following tab only. */
+  const rundown = scope === 'following' && reels.data?.length ? reels.data : null;
 
   const renderItem = useCallback(
     /* The stagger is keyed off the position in the list, and `Reveal` caps it
@@ -268,22 +263,16 @@ export default function HomeScreen() {
           />
         </Reveal>
       );
-      if (scope !== 'following' || index !== reelsAt || !reelItems?.length) return card;
-      return (
-        <View style={{ gap: spacing.md }}>
-          {card}
-          <ReelsStrip items={reelItems} />
-        </View>
-      );
+      return card;
     },
-    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, scope, reelsAt, reelItems, spacing],
+    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed],
   );
 
   /* Everything renderItem reads besides `data`, so the list redraws when any of
      it changes — FlatList is a PureComponent and only compares `extraData`. */
   const listExtra = useMemo(
-    () => ({ activeId, scope, reelsAt, reelItems }),
-    [activeId, scope, reelsAt, reelItems],
+    () => ({ activeId }),
+    [activeId],
   );
 
   /* Returns an element, not a component: a fresh component type on every
@@ -398,12 +387,17 @@ export default function HomeScreen() {
           flexGrow: 1,
         }}
         ListHeaderComponent={
-          /* Stories, then your week, then one matched trial — each arriving a
-             beat after the one above it. Reels are in the stream itself. */
+          /* Stories, then Your Rundown (Following only), then your week, then
+             one matched trial — each arriving a beat after the one above it. */
           <View style={{ gap: spacing.lg }}>
             <Reveal index={0}>
               <StoryRail />
             </Reveal>
+            {rundown ? (
+              <Reveal index={1}>
+                <ReelsStrip items={rundown} />
+              </Reveal>
+            ) : null}
             <Reveal index={1}>
               <HomeSpotlight />
             </Reveal>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, Clapperboard, Play } from 'lucide-react-native';
+import { ChevronRight, Play, Zap } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Reveal, Tappable, Text } from '@/components/ui';
@@ -70,13 +70,14 @@ export function ReelsStrip({ items: given }: { items?: FeedPost[] }) {
           }}
         >
           <LinearGradient
-            colors={theme.gradients.party}
+            colors={theme.gradients.cool}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
           <View>
-            <Clapperboard size={16} color={ON_POSTER} strokeWidth={2.2} />
+            {/* A bolt, not a clapperboard: a quick catch-up, not Reels. */}
+            <Zap size={16} color={ON_POSTER} fill={ON_POSTER} strokeWidth={2} />
           </View>
         </View>
         <View style={{ flex: 1 }}>

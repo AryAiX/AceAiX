@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'expo-router';
-import { Clapperboard } from 'lucide-react-native';
+import { Zap } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Header, IconButton, Screen } from '@/components/ui';
@@ -31,7 +31,7 @@ export default function ReelsCollectionScreen() {
           back
           right={
             <IconButton
-              icon={<Clapperboard size={20} color={theme.colors.text} />}
+              icon={<Zap size={20} color={theme.colors.text} />}
               label={t('reels.open')}
               size={theme.hit.min}
               onPress={() => router.push(Routes.reels)}
