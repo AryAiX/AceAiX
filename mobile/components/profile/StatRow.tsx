@@ -35,8 +35,11 @@ export function StatRow({ items }: { items: StatItem[] }) {
       {items.map((item, index) => {
         const body = (
           <View style={{ alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-            <Text variant="stat">{item.value}</Text>
-            <Text variant="caption" tone="muted" numberOfLines={1}>
+            {/* Numbers in the mono face, labels as small spaced capitals. */}
+            <Text variant="numberStrong" style={{ fontSize: theme.size.xl }}>
+              {item.value}
+            </Text>
+            <Text variant="meta" tone="muted" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
               {item.label}
             </Text>
           </View>

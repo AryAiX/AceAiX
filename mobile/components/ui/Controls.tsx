@@ -348,11 +348,20 @@ export function SectionHeader({
   action,
   onAction,
   style,
+  color,
+  count,
+  compact,
 }: {
   title: string;
   action?: string;
   onAction?: () => void;
   style?: ViewStyle;
+  /** One flat colour for the bar instead of the ombre (e.g. a Career section's colour). */
+  color?: string;
+  /** A small number after the title, e.g. "Matches 2". Hidden when undefined. */
+  count?: number;
+  /** A smaller heading and bar, for sections inside a tab. */
+  compact?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -379,15 +388,31 @@ export function SectionHeader({
       >
         {/* A short coloured bar. Twelve of these down a screen is what stops a
             list of sections reading as a list of grey headings. */}
-        <LinearGradient
-          colors={theme.gradients.action}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ width: 4, height: 20, borderRadius: 2 }}
-        />
-        <Text variant="heading" style={{ flexShrink: 1 }}>
+        {color ? (
+          <View
+            style={{
+              width: compact ? 3 : 4,
+              height: compact ? 16 : 20,
+              borderRadius: 2,
+              backgroundColor: color,
+            }}
+          />
+        ) : (
+          <LinearGradient
+            colors={theme.gradients.action}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={{ width: compact ? 3 : 4, height: compact ? 16 : 20, borderRadius: 2 }}
+          />
+        )}
+        <Text variant={compact ? 'subheading' : 'heading'} style={{ flexShrink: 1 }}>
           {title}
         </Text>
+        {count != null ? (
+          <Text variant="number" tone="muted" style={{ fontSize: theme.size.sm }}>
+            {count}
+          </Text>
+        ) : null}
       </View>
       {action && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexShrink: 0 }}>

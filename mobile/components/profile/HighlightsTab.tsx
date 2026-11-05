@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Clapperboard } from 'lucide-react-native';
+import { Clapperboard, ImagePlus, Play } from 'lucide-react-native';
 
 import { useCachedVideoSource } from '@/lib/videoCache';
 
@@ -258,14 +258,72 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, ti
     const clipTip = tips.find((tip) => tip.key === 'add_highlights') ?? null;
     return (
       <>
-        <EmptyState
-          compact
-          icon={<Clapperboard size={26} color={colors.textMuted} />}
-          title={t(isSelf ? 'profile.clipsEmptyTitleSelf' : 'profile.clipsEmptyTitleOther')}
-          body={t(isSelf ? 'profile.clipsEmptyBodySelf' : 'profile.clipsEmptyBodyOther')}
-          actionLabel={isSelf ? t('profile.clipsEmptyAction') : undefined}
-          onAction={isSelf ? pick : undefined}
-        />
+        {isSelf ? (
+          /* Your own empty reel: three slots to fill, the first one lit. */
+          <View
+            style={{
+              gap: spacing.md,
+              padding: spacing.lg,
+              borderRadius: radii.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <View style={{ gap: spacing.xs }}>
+              <Text variant="heading" align="center">
+                {t('profile.clipsEmptyTitleSelf')}
+              </Text>
+              <Text variant="caption" tone="muted" align="center">
+                {t('profile.clipsEmptyBodySelf')}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {[1, 2, 3].map((slot) => {
+                const lit = slot === 1;
+                return (
+                  <Pressable
+                    key={slot}
+                    onPress={pick}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('profile.clipsEmptyAction')}
+                    testID={`clip-slot-${slot}`}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      aspectRatio: 0.78,
+                      borderRadius: radii.md,
+                      borderWidth: 1.5,
+                      borderStyle: 'dashed',
+                      borderColor: lit ? colors.primary : colors.border,
+                      backgroundColor: lit ? colors.primarySoft : colors.surfaceAlt,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.xs,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    {lit ? (
+                      <ImagePlus size={20} color={colors.primary} />
+                    ) : (
+                      <Play size={18} color={colors.textMuted} />
+                    )}
+                    <Text variant="number" color={lit ? colors.primary : colors.textMuted}>
+                      {slot}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Button label={t('profile.clipsEmptyAction')} fullWidth onPress={pick} />
+          </View>
+        ) : (
+          <EmptyState
+            compact
+            icon={<Clapperboard size={26} color={colors.textMuted} />}
+            title={t('profile.clipsEmptyTitleOther')}
+            body={t('profile.clipsEmptyBodyOther')}
+          />
+        )}
         {isSelf && clipTip ? (
           <View
             style={{
@@ -285,6 +343,11 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, ti
               {t('profile.clipsWorthTail')}
             </Text>
           </View>
+        ) : null}
+        {isSelf ? (
+          <Text variant="caption" tone="muted" align="center" style={{ marginTop: spacing.sm }}>
+            {t('profile.holdToRemoveClip')}
+          </Text>
         ) : null}
         {isSelf ? uploadSheet : null}
       </>

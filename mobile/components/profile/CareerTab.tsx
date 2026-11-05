@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { Award, BadgeCheck, Flag, ScrollText, Star, Trophy, X, type LucideIcon } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
+import { Award, BadgeCheck, Flag, Plus, ScrollText, Star, Trophy, X, type LucideIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from '@/theme/tokens';
@@ -413,7 +413,7 @@ export function CareerTab({
       {/* ── Your best ── */}
       {best.length > 0 ? (
         <View>
-          <SectionHeader title={t('profile.yourBest')} />
+          <SectionHeader title={t('profile.yourBest')} compact />
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             {best.map((item) => (
               <Card
@@ -446,6 +446,9 @@ export function CareerTab({
       <View>
         <SectionHeader
           title={t('common.matches')}
+          compact
+          color={sectionColour.matches}
+          count={(matches.data ?? []).length || undefined}
           action={isSelf ? t('profile.add') : undefined}
           onAction={
             isSelf
@@ -462,9 +465,9 @@ export function CareerTab({
         ) : matches.error ? (
           <ErrorState message={matches.error} onRetry={matches.reload} compact />
         ) : (matches.data ?? []).length === 0 ? (
-          <EmptyState
-            compact
-            icon={<ScrollText size={24} color={colors.textMuted} />}
+          <SectionEmpty
+            accent={sectionColour.matches}
+            icon={<ScrollText size={18} color={sectionColour.matches} />}
             title={t(
               isSelf ? 'profile.matchesEmptyTitleSelf' : 'profile.matchesEmptyTitleOther',
             )}
@@ -529,6 +532,9 @@ export function CareerTab({
       <View>
         <SectionHeader
           title={t('profile.honoursTitle')}
+          compact
+          color={sectionColour.honours}
+          count={honorList.length || undefined}
           action={isSelf ? t('profile.add') : undefined}
           onAction={
             isSelf
@@ -541,9 +547,9 @@ export function CareerTab({
           }
         />
         {honorList.length === 0 ? (
-          <EmptyState
-            compact
-            icon={<Trophy size={24} color={colors.textMuted} />}
+          <SectionEmpty
+            accent={sectionColour.honours}
+            icon={<Trophy size={18} color={sectionColour.honours} />}
             title={t(
               isSelf ? 'profile.honoursEmptyTitleSelf' : 'profile.honoursEmptyTitleOther',
             )}
@@ -610,6 +616,9 @@ export function CareerTab({
       <View>
         <SectionHeader
           title={t('profile.certificatesTitle')}
+          compact
+          color={sectionColour.certificates}
+          count={certList.length || undefined}
           action={isSelf ? t('profile.add') : undefined}
           onAction={
             isSelf
@@ -622,9 +631,9 @@ export function CareerTab({
           }
         />
         {certList.length === 0 ? (
-          <EmptyState
-            compact
-            icon={<Award size={24} color={colors.textMuted} />}
+          <SectionEmpty
+            accent={sectionColour.certificates}
+            icon={<Award size={18} color={sectionColour.certificates} />}
             title={t(
               isSelf
                 ? 'profile.certificatesEmptyTitleSelf'
@@ -689,6 +698,9 @@ export function CareerTab({
       <View>
         <SectionHeader
           title={t('profile.endorsementsTitle')}
+          compact
+          color={sectionColour.endorsements}
+          count={(endorsements.data ?? []).length || undefined}
           /* On somebody else's profile this reads "Endorse"; on a second visit
              it reads "Edit", because the row already exists and endorsing the
              same skill again updates it. On your own profile there is nothing
@@ -706,9 +718,9 @@ export function CareerTab({
         ) : endorsements.error ? (
           <ErrorState message={endorsements.error} onRetry={endorsements.reload} compact />
         ) : (endorsements.data ?? []).length === 0 ? (
-          <EmptyState
-            compact
-            icon={<BadgeCheck size={24} color={colors.textMuted} />}
+          <SectionEmpty
+            accent={sectionColour.endorsements}
+            icon={<BadgeCheck size={18} color={sectionColour.endorsements} />}
             title={t('profile.endorsementsEmptyTitle')}
             body={
               isSelf
@@ -1104,4 +1116,73 @@ function toNumber(value: string): number | null {
   if (!trimmed) return null;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? Math.round(parsed) : null;
+}
+
+/**
+ * An empty Career section, kept short: one dashed row with the section's
+ * colour, what goes here, and a tap to add the first one — so a new profile's
+ * Career tab is not a long scroll of big empty states.
+ */
+function SectionEmpty({
+  accent,
+  icon,
+  title,
+  body,
+  actionLabel,
+  onAction,
+}: {
+  accent: string;
+  icon?: React.ReactNode;
+  title: string;
+  body?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const theme = useTheme();
+  const { colors, radii, spacing } = theme;
+  const actionable = !!actionLabel && !!onAction;
+  return (
+    <Pressable
+      onPress={actionable ? onAction : undefined}
+      disabled={!actionable}
+      accessibilityRole={actionable ? 'button' : undefined}
+      accessibilityLabel={actionable ? actionLabel : title}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        padding: spacing.md,
+        borderRadius: radii.md,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderColor: theme.alpha(accent, 0.45),
+        backgroundColor: theme.alpha(accent, 0.06),
+        opacity: pressed ? 0.7 : 1,
+      })}
+    >
+      {icon ? (
+        <View
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: radii.button,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.alpha(accent, 0.14),
+          }}
+        >
+          {icon}
+        </View>
+      ) : null}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="captionStrong">{title}</Text>
+        {body ? (
+          <Text variant="caption" tone="muted">
+            {body}
+          </Text>
+        ) : null}
+      </View>
+      {actionable ? <Plus size={18} color={colors.primary} /> : null}
+    </Pressable>
+  );
 }
