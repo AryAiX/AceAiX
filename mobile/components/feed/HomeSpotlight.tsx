@@ -21,7 +21,7 @@ import { useT } from '@/i18n';
  * counts down, nothing says you are behind, a row with nothing to say is left
  * out — and with nothing at all, so is the block.
  */
-export function HomeSpotlight() {
+export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolean } = {}) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -41,7 +41,8 @@ export function HomeSpotlight() {
 
   const views = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
   // Parents cannot enter challenges, so the row has nothing for them (QA-151).
-  const challenge = isGuardian
+  // Home's Following tab is people, so the challenge row stays on Playfeed.
+  const challenge = isGuardian || !showChallenge
     ? null
     : ((challenges.data ?? []).find((c) => c.status === 'open') ?? null);
 

@@ -388,7 +388,9 @@ export default function HomeScreen() {
         }}
         ListHeaderComponent={
           /* Stories, then Your Rundown (Following only), then your week, then
-             one matched trial — each arriving a beat after the one above it. */
+             one matched trial — each arriving a beat after the one above it.
+             The challenge and the matched trial are Playfeed only: Following
+             is the people you follow. */
           <View style={{ gap: spacing.lg }}>
             <Reveal index={0}>
               <StoryRail />
@@ -399,11 +401,13 @@ export default function HomeScreen() {
               </Reveal>
             ) : null}
             <Reveal index={1}>
-              <HomeSpotlight />
+              <HomeSpotlight showChallenge={scope === 'for_you'} />
             </Reveal>
-            <Reveal index={2}>
-              <MatchedTrial />
-            </Reveal>
+            {scope === 'for_you' ? (
+              <Reveal index={2}>
+                <MatchedTrial />
+              </Reveal>
+            ) : null}
           </View>
         }
         showsVerticalScrollIndicator={false}
