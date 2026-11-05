@@ -306,7 +306,12 @@ export default function OnboardingScreen() {
     setScoreLoading(true);
     setScoreError(null);
     try {
-      const [nextScore, nextBundle] = await Promise.all([refreshMyTalentScore(), getMyProfile()]);
+      /* The profile is only for the player card. If it fails, the score still
+         shows (FinishStep falls back to the ring). */
+      const [nextScore, nextBundle] = await Promise.all([
+        refreshMyTalentScore(),
+        getMyProfile().catch(() => null),
+      ]);
       setScore(nextScore);
       setCardBundle(nextBundle);
     } catch (err) {

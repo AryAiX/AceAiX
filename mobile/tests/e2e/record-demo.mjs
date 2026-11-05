@@ -291,7 +291,7 @@ async function playGameIntelligence(page) {
   for (let i = 0; i < 20 && !(await page.getByTestId('gi-hub').count()); i += 1) {
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="warmup-circle"]');
-      return !el || getComputedStyle(el).backgroundColor.includes('16, 213');
+      return !el || getComputedStyle(el).backgroundColor.includes('25, 199');
     }, null, { timeout: 4000 }).catch(() => {});
     await page.getByTestId('warmup-circle').click({ timeout: 800 }).catch(() => {});
     await page.waitForTimeout(400);

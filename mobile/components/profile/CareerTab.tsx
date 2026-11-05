@@ -110,7 +110,9 @@ export function CareerTab({
   /* One colour per section, so a glance tells a match from an honour:
      matches sky, honours warm, certificates violet, endorsements mint. */
   const sectionColour: Record<CareerSection, string> = {
-    matches: Brand.sky,
+    /* Sky is too pale to read as text on a white card; light mode takes a
+       deeper sky, dark mode keeps the brand sky. */
+    matches: theme.scheme === 'dark' ? Brand.sky : '#1D8BD8',
     honours: colors.play.amber,
     certificates: colors.accent,
     endorsements: colors.play.mint,

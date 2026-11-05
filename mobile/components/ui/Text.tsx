@@ -165,7 +165,7 @@ export function Text({
       {...rest}
       style={[
         variantStyle[variant],
-        variant === 'overline' || variant === 'meta' ? RTL_OVERLINE : null,
+        variant === 'overline' || variant === 'meta' || variant === 'name' ? RTL_OVERLINE : null,
         { color: color ?? toneColor[tone] },
         align ? { textAlign: align } : START_ALIGN,
         style,

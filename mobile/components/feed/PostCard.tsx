@@ -149,8 +149,13 @@ function PostCardBase({
   const isOwnPost = !!user && post.author_id === user.id;
   const [followTapped, setFollowTapped] = useState(false);
   const [followPending, setFollowPending] = useState(false);
+  /* A club is followed through its club page (organization_follows), not
+     through the account that posted — so a club's post never offers this. */
   const showFollow =
-    !!onFollowChange && !isOwnPost && (!post.viewer_follows || followTapped);
+    !!onFollowChange &&
+    !isOwnPost &&
+    post.author_role !== 'club' &&
+    (!post.viewer_follows || followTapped);
 
   const handleFollow = useCallback(async () => {
     if (!onFollowChange || followPending) return;
