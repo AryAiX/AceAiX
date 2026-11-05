@@ -150,7 +150,7 @@ export const common = {
   // Pestañas
   tabHome: 'Inicio',
   tabDiscover: 'Descubrir',
-  tabTrials: 'Oportunidades',
+  tabTrials: 'Pruebas',
   tabSponsorship: 'Portal',
   tabChildren: 'Hijos',
   tabChildrenA11y: 'Hijos a tu cargo',

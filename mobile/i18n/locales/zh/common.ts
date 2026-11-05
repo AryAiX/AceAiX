@@ -140,7 +140,7 @@ export const common = {
   // 标签栏
   tabHome: '首页',
   tabDiscover: '发现',
-  tabTrials: '机会',
+  tabTrials: '试训',
   tabSponsorship: '门户',
   tabChildren: '孩子',
   tabChildrenA11y: '你照看的孩子',

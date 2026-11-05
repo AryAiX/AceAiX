@@ -165,7 +165,7 @@ export const common = {
   // التبويبات
   tabHome: 'الرئيسية',
   tabDiscover: 'استكشاف',
-  tabTrials: 'الفرص',
+  tabTrials: 'التجارب',
   tabSponsorship: 'البوابة',
   tabChildren: 'الأبناء',
   tabChildrenA11y: 'الأبناء تحت رعايتك',
