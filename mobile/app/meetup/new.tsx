@@ -19,6 +19,8 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
+import { CalendarPicker } from '@/components/meetups/CalendarPicker';
+import { TimeWheel } from '@/components/meetups/TimeWheel';
 import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
@@ -40,10 +42,9 @@ import { COST_CURRENCIES, currencyForCountry, toCostNote } from '@/lib/meetupCos
  * the only thing that distinguishes them, so it gets a stepper rather than a
  * text field and starts at 2.
  *
- * The date is entered as a day and an hour rather than through a native picker,
- * because `@react-native-community/datetimepicker` is not in this project and
- * adding a native module for one screen would cost Expo Go compatibility — the
- * thing that lets anybody on the team open this app on their own phone.
+ * The date is a month calendar (the next two weeks can be picked) and the time
+ * is two wheels, hours and quarter hours, like the iOS alarm. Both are drawn
+ * in plain React Native, so they look the same on iOS, Android and the web.
  *
  * City is the same picker as onboarding. The country sheet still stores the
  * English country name that picker searches with. A name that is not in the
@@ -66,6 +67,10 @@ function nextDays(count = 14): Date[] {
 }
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00 → 22:00
+/** Quarter hours on the minute wheel. */
+const MINUTES = [0, 15, 30, 45];
+/** The time the wheel opens on before anything is picked. */
+const DEFAULT_HOUR = 18;
 
 export default function NewMeetupScreen() {
   const theme = useTheme();
@@ -89,6 +94,7 @@ export default function NewMeetupScreen() {
   const [mapLink, setMapLink] = useState('');
   const [day, setDay] = useState<Date | null>(null);
   const [hour, setHour] = useState<number | null>(null);
+  const [minute, setMinute] = useState(0);
   const [spots, setSpots] = useState(2);
   const [level, setLevel] = useState<MeetupLevel>('any');
   const [note, setNote] = useState('');
@@ -191,9 +197,9 @@ export default function NewMeetupScreen() {
   const startsAt = useMemo(() => {
     if (!day || hour == null) return null;
     const d = new Date(day);
-    d.setHours(hour, 0, 0, 0);
+    d.setHours(hour, minute, 0, 0);
     return d;
-  }, [day, hour]);
+  }, [day, hour, minute]);
 
   const mapLinkTrimmed = mapLink.trim();
   const mapLinkInvalid = mapLinkTrimmed.length > 0 && !isAllowedMapUrl(mapLinkTrimmed);
@@ -570,40 +576,50 @@ export default function NewMeetupScreen() {
       </Sheet>
 
       <Sheet visible={whenSheet} onClose={() => setWhenSheet(false)} title={t('meetups.fieldWhen')}>
+        {/* A month calendar for the day (the next two weeks can be picked)
+            and two wheels for the time, like the iOS alarm. */}
         <Text variant="captionStrong" tone="secondary">
-          {t('meetups.fieldWhen')}
+          {t('meetups.fieldDay')}
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
-          {days.map((d) => (
-            <Chip
-              key={d.toISOString()}
-              label={d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })}
-              selected={day?.toDateString() === d.toDateString()}
-              onPress={() => setDay(d)}
-            />
-          ))}
+        <View style={{ marginTop: spacing.sm }}>
+          <CalendarPicker
+            value={day}
+            onChange={setDay}
+            min={days[0]}
+            max={days[days.length - 1]}
+            testID="meetup-day"
+          />
         </View>
 
         <Text variant="captionStrong" tone="secondary" style={{ marginTop: spacing.xl }}>
-          {t('meetups.fieldWhen')}
+          {t('meetups.fieldTime')}
         </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm }}>
-          {HOURS.map((h) => (
-            <Chip
-              key={h}
-              label={`${String(h).padStart(2, '0')}:00`}
-              selected={hour === h}
-              onPress={() => setHour(h)}
-            />
-          ))}
+        <View style={{ marginTop: spacing.sm }}>
+          <TimeWheel
+            hour={hour ?? DEFAULT_HOUR}
+            minute={minute}
+            hours={HOURS}
+            minutes={MINUTES}
+            onChange={(next) => {
+              setHour(next.hour);
+              setMinute(next.minute);
+            }}
+            hourLabel={t('meetups.timeHour')}
+            minuteLabel={t('meetups.timeMinute')}
+            testID="meetup-time"
+          />
         </View>
 
         <Button
           label={t('common.done')}
           fullWidth
-          disabled={!day || hour == null}
+          disabled={!day}
           style={{ marginTop: spacing.xl }}
-          onPress={() => setWhenSheet(false)}
+          onPress={() => {
+            /* The wheel opens on 18:00; leaving it there is a choice. */
+            if (hour == null) setHour(DEFAULT_HOUR);
+            setWhenSheet(false);
+          }}
         />
       </Sheet>
 
