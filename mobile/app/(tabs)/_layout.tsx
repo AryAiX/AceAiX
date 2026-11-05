@@ -14,6 +14,20 @@ import { useAuth } from '@/providers/AuthProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useClaimPendingInvite } from '@/hooks/useClaimPendingInvite';
 
+/** The bar's height above the home indicator. */
+const BAR_HEIGHT = 60;
+/** The colour line along the bar's top edge: violet tips, cobalt under the + . */
+const RAIL = 3;
+/** The compose button: a square seated across the top edge, above the centre tab. */
+const CREATE_SIZE = 38;
+/** The soft ring around it (lavender on light, slate on dark), which cuts the rail. */
+const RING = 3;
+/** How far the button (ring included) reaches down into the bar. The square's
+    centre sits just above the rail, so it reads as lifted out of the bar. */
+const DIP = 13;
+/** The centre tab's icon and label move down by this much, to clear the + . */
+const CENTRE_DROP = 6;
+
 /**
  * Five destinations, and only five. Everything else in the app is reachable
  * from one of them — the previous build had sixteen screens hidden behind a
@@ -35,12 +49,15 @@ function TabIcon({
   focused,
   label,
   bump = 0,
+  centre = false,
 }: {
   Icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>;
   focused: boolean;
   label: string;
   /** Increments every time an already-open tab is tapped again. */
   bump?: number;
+  /** The tab under the + : drawn a little lower so the button never covers it. */
+  centre?: boolean;
 }) {
   const theme = useTheme();
   const { colors } = theme;
@@ -72,7 +89,7 @@ function TabIcon({
   const color = focused ? colors.primary : colors.textMuted;
 
   return (
-    <View style={styles.tabItem}>
+    <View style={[styles.tabItem, centre ? { transform: [{ translateY: CENTRE_DROP }] } : null]}>
       <Animated.View
         style={{
           alignItems: 'center',
@@ -118,10 +135,18 @@ function TabIcon({
 }
 
 /**
- * The compose action, floating above the tab bar.
+ * The compose action, seated across the top edge of the tab bar, above the
+ * centre tab.
  *
  * Positioned against the screen, not against a tab slot, so it is centred by
- * arithmetic that cannot drift when a destination is added or removed.
+ * arithmetic that cannot drift when a destination is added or removed. With
+ * five tabs the centre slot is Play (Matches for a club), and its icon and
+ * label stay in view below the button; with four (under-18s have no Play) the
+ * button sits over the gap between Discover and Trials.
+ *
+ * A 38pt square in the action gradient, 10pt corners, inside a 3pt soft ring
+ * (lavender on light, slate on dark) that cuts the rail around it, with a soft
+ * shadow so it reads as lifted. No halo and no breathing.
  */
 function CreateButton({ bottom }: { bottom: number }) {
   const theme = useTheme();
@@ -129,8 +154,6 @@ function CreateButton({ bottom }: { bottom: number }) {
   const reduced = useReducedMotion();
   const t = useT();
   const scale = useRef(new Animated.Value(1)).current;
-  const breath = useRef(new Animated.Value(0)).current;
-  const glow = useRef(new Animated.Value(0)).current;
 
   const press = (to: number) => {
     if (reduced) {
@@ -140,75 +163,13 @@ function CreateButton({ bottom }: { bottom: number }) {
     Animated.spring(scale, { toValue: to, useNativeDriver: NATIVE_DRIVER, speed: 50, bounciness: 6 }).start();
   };
 
-  /**
-   * A slow breath, 2.5% either side of resting. It is meant to be noticed only
-   * once — the button is alive, not asking for anything — so it stays well
-   * under the threshold where something in the corner of your eye starts to
-   * nag. Reduce-motion switches it off entirely.
-   */
-  useEffect(() => {
-    if (reduced) {
-      breath.setValue(0);
-      return;
-    }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(breath, {
-            toValue: 1,
-            duration: 2600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: NATIVE_DRIVER,
-          }),
-          Animated.timing(glow, {
-            toValue: 1,
-            duration: 2600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: NATIVE_DRIVER,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(breath, {
-            toValue: 0,
-            duration: 2600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: NATIVE_DRIVER,
-          }),
-          Animated.timing(glow, {
-            toValue: 0,
-            duration: 2600,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: NATIVE_DRIVER,
-          }),
-        ]),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [breath, glow, reduced]);
-
   /*
-   * `left: 0, right: 0` with `alignItems: 'center'` centres against the screen.
-   * Its predecessor was a `tabBarButton`, centred by react-navigation's own
-   * item style, which it ignored — so the circle sat at the leading edge of a
-   * flex:1 slot, thirteen points left of centre on a 414pt screen. Being out
-   * of the bar means neither mistake is available any more: there is no slot
-   * to be misaligned within, and no tab count that can move it.
-   *
    * Two views, and the split is the point. The outer one positions, and is the
    * width of the screen; the inner one animates, and is the width of the
-   * button. Scaling the outer one — which is what this did first — grows a
-   * 414pt box to 426pt, so it hangs six points past both edges of the screen.
-   * A phone shows nothing for that. The web build is a real document, so the
-   * page becomes wider than the viewport, the whole app slides sideways under
-   * a finger, and a strip of bare page sits down the right-hand edge of every
-   * screen in the app. Every margin looks wrong at once and the cause is
-   * nowhere near any of them.
-   *
-   * A 56pt button scaled by that same 3% grows by under a point, well inside
-   * its own margin. `tests/e2e/look.mjs` now asserts the document is never
-   * wider than the viewport, on every screen, because nobody would find this
-   * one by reading the tab bar.
+   * button. Scaling the outer one grows a 414pt box past both edges of the
+   * screen; on the web build the page becomes wider than the viewport and the
+   * whole app slides sideways under a finger. `tests/e2e/look.mjs` asserts the
+   * document is never wider than the viewport, on every screen.
    */
   return (
     <View
@@ -226,32 +187,20 @@ function CreateButton({ bottom }: { bottom: number }) {
         style={{
           alignItems: 'center',
           justifyContent: 'center',
-          transform: [
-            { scale },
-            { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) },
-          ],
+          borderRadius: theme.radii.button + RING,
+          backgroundColor: theme.colors.surfaceAlt,
+          /* Lifted: a soft shadow under the ring, so it sits above the rail. */
+          ...theme.elevation(2),
+          transform: [{ scale }],
         }}
       >
-        {/* A soft halo that pulses with the breath — colour, not chrome. */}
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: -6,
-            width: 68,
-            height: 68,
-            borderRadius: 34,
-            backgroundColor: theme.alpha(theme.colors.primary, 0.28),
-            opacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.85] }),
-            transform: [
-              { scale: glow.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.08] }) },
-            ],
-          }}
-        />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('common.tabCreate')}
           testID="tab-create"
+          /* Up to the 44pt minimum target on three sides, none below — so a
+             tap meant for Play's icon is never taken by the button. */
+          hitSlop={{ top: 4, left: 4, right: 4, bottom: 0 }}
           onPressIn={() => press(0.92)}
           onPressOut={() => press(1)}
           onPress={() => {
@@ -261,15 +210,14 @@ function CreateButton({ bottom }: { bottom: number }) {
             router.push('/compose');
           }}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: CREATE_SIZE + RING * 2,
+            height: CREATE_SIZE + RING * 2,
+            borderRadius: theme.radii.button + RING,
             alignItems: 'center',
             justifyContent: 'center',
-            borderWidth: 4,
-            borderColor: theme.colors.tabBar,
+            borderWidth: RING,
+            borderColor: theme.colors.surfaceAlt,
             overflow: 'hidden',
-            ...theme.elevation(2),
           }}
         >
           <LinearGradient
@@ -283,7 +231,7 @@ function CreateButton({ bottom }: { bottom: number }) {
               the source order, so an unwrapped <svg> disappears under the
               gradient. A View gives it a stacking context of its own. */}
           <View>
-            <Plus size={26} color={theme.colors.textOnBrand} strokeWidth={2.8} />
+            <Plus size={20} color={theme.colors.textOnBrand} strokeWidth={2.6} />
           </View>
         </Pressable>
       </Animated.View>
@@ -326,8 +274,22 @@ export default function TabsLayout() {
 
   const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
 
-  /* Clear of the bar and of the home indicator, so it never covers a label. */
-  const fabBottom = 60 + insets.bottom + 12;
+  /* Seated across the top edge: the button's ring dips DIP points into the
+     bar's top padding, so it cuts the rail and everything below it — Play's
+     icon and label — stays in view. */
+  const barHeight = BAR_HEIGHT + insets.bottom;
+  const fabBottom = barHeight - DIP;
+  /* The rail: nearly the full width of the bar, cobalt under the button and
+     strong violet towards both tips, fading out only at the very edges. */
+  const railColors = [
+    theme.alpha(colors.accent, 0),
+    colors.accent,
+    colors.primary,
+    colors.primary,
+    colors.accent,
+    theme.alpha(colors.accent, 0),
+  ] as const;
+  const railStops = [0, 0.1, 0.4, 0.6, 0.9, 1] as const;
 
   return (
     <View style={{ flex: 1 }}>
@@ -339,7 +301,7 @@ export default function TabsLayout() {
           backgroundColor: colors.tabBar,
           borderTopWidth: StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
-          height: 60 + insets.bottom,
+          height: barHeight,
           paddingTop: 8,
           paddingBottom: insets.bottom || 8,
           elevation: 0,
@@ -394,6 +356,7 @@ export default function TabsLayout() {
               focused={focused}
               label={t('common.tabMeetups')}
               bump={bumpFor('meetups')}
+              centre
             />
           ),
           tabBarAccessibilityLabel: t('common.tabMeetups'),
@@ -414,6 +377,7 @@ export default function TabsLayout() {
               focused={focused}
               label={t('common.matches')}
               bump={bumpFor('club-matches')}
+              centre
             />
           ),
           tabBarAccessibilityLabel: t('common.matches'),
@@ -498,6 +462,19 @@ export default function TabsLayout() {
         })}
       />
       </Tabs>
+
+      {/* The rail. A sibling rather than part of `tabBarStyle`, which takes a
+          flat colour only. It lies on the bar's top edge, never over an icon,
+          takes no touches, and is full width and never scaled — so it cannot
+          widen the page (tests/e2e/look.mjs). No glow. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={railColors}
+        locations={railStops}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - RAIL, height: RAIL }}
+      />
 
       <CreateButton bottom={fabBottom} />
     </View>
