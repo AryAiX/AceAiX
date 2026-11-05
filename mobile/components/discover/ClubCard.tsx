@@ -66,7 +66,7 @@ export function ClubCard({ organization, following, pending, onToggleFollow, onO
 
       <View style={{ flex: 1, gap: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+          <Text variant="name" numberOfLines={1} style={{ flexShrink: 1 }}>
             {organization.name}
           </Text>
           {organization.is_verified ? (

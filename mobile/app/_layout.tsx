@@ -17,6 +17,11 @@ import {
   SairaCondensed_700Bold,
   SairaCondensed_800ExtraBold,
 } from '@expo-google-fonts/saira-condensed';
+import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
+import {
+  BarlowSemiCondensed_600SemiBold,
+  BarlowSemiCondensed_700Bold,
+} from '@expo-google-fonts/barlow-semi-condensed';
 
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { ToastProvider } from '@/components/ui';
@@ -235,6 +240,10 @@ export default function RootLayout() {
     SairaCondensed_600SemiBold,
     SairaCondensed_700Bold,
     SairaCondensed_800ExtraBold,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_700Bold,
+    BarlowSemiCondensed_600SemiBold,
+    BarlowSemiCondensed_700Bold,
   });
 
   useEffect(() => {

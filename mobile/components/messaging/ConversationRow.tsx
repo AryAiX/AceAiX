@@ -141,7 +141,7 @@ export function ConversationRow({ conversation, muted, onPress, onOpenActions }:
               <Text
                 variant={unread && !muted ? 'subheading' : 'body'}
                 numberOfLines={1}
-                style={{ flex: 1 }}
+                style={{ flex: 1, fontFamily: unread && !muted ? theme.font.nameBold : theme.font.name }}
               >
                 {name}
               </Text>

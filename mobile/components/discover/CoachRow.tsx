@@ -56,7 +56,7 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen }:
       <Avatar uri={person.avatar_url} name={name} size="md" verified={person.is_verified} />
 
       <View style={{ flex: 1, gap: 1 }}>
-        <Text variant="bodyStrong" numberOfLines={1}>
+        <Text variant="name" numberOfLines={1}>
           {name}
         </Text>
         <Text variant="caption" tone="muted" numberOfLines={1}>

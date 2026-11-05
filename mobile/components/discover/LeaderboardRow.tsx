@@ -85,7 +85,7 @@ export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
 
       <View style={{ flex: 1, gap: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-          <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+          <Text variant="name" numberOfLines={1} style={{ flexShrink: 1 }}>
             {name}
           </Text>
           {isYou ? <Badge label={t('discover.board.you')} tone="primary" /> : null}

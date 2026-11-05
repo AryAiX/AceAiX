@@ -378,7 +378,11 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
           <View
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}
           >
-            <Text variant="title" numberOfLines={2} style={{ flexShrink: 1 }}>
+            <Text
+              variant="title"
+              numberOfLines={2}
+              style={{ flexShrink: 1, fontFamily: theme.font.nameBold }}
+            >
               {name}
             </Text>
             {user?.is_verified ? (
@@ -685,7 +689,7 @@ function CountLink({
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text variant="bodyStrong">{compactNumber(value)}</Text>
+      <Text variant="numberStrong">{compactNumber(value)}</Text>
       <Text variant="caption" tone="muted">
         {label}
       </Text>

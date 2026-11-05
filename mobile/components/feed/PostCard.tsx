@@ -340,7 +340,7 @@ function PostCardBase({
             verified={post.author_verified}
           />
           <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={1}>
+            <Text variant="name" numberOfLines={1}>
               {name}
             </Text>
             {meta ? (

@@ -22,7 +22,11 @@ export type TextVariant =
   | 'caption'
   | 'captionStrong'
   | 'overline'      // ALL-CAPS label
-  | 'stat';         // condensed numeric
+  | 'stat'          // condensed numeric
+  | 'name'          // a person, coach or club name — Barlow Semi Condensed
+  | 'meta'          // the small spaced-capitals line under a name
+  | 'number'        // a count, score or time — JetBrains Mono
+  | 'numberStrong'; // the same, bold
 
 export type TextTone =
   | 'default'
@@ -118,6 +122,29 @@ export function Text({
       lineHeight: size.xl * lineHeight.tight,
       letterSpacing: 0.3,
     },
+    name: {
+      fontFamily: font.name,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.snug,
+      letterSpacing: 0.2,
+    },
+    meta: {
+      fontFamily: font.semibold,
+      fontSize: size.xxs,
+      lineHeight: size.xxs * lineHeight.normal,
+      letterSpacing: 1.1,
+      textTransform: 'uppercase',
+    },
+    number: {
+      fontFamily: font.mono,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.normal,
+    },
+    numberStrong: {
+      fontFamily: font.monoBold,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.normal,
+    },
   };
 
   const toneColor: Record<TextTone, string> = {
@@ -138,7 +165,7 @@ export function Text({
       {...rest}
       style={[
         variantStyle[variant],
-        variant === 'overline' ? RTL_OVERLINE : null,
+        variant === 'overline' || variant === 'meta' ? RTL_OVERLINE : null,
         { color: color ?? toneColor[tone] },
         align ? { textAlign: align } : START_ALIGN,
         style,

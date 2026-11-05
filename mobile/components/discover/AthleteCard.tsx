@@ -173,7 +173,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
         </View>
 
         <View>
-          <Text variant="bodyStrong" numberOfLines={1}>
+          <Text variant="name" numberOfLines={1}>
             {name}
           </Text>
           {role ? (
@@ -212,7 +212,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
         />
 
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyStrong" numberOfLines={1}>
+          <Text variant="name" numberOfLines={1}>
             {name}
           </Text>
           {role ? (
