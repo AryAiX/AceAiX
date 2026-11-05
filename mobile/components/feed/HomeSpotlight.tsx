@@ -13,6 +13,9 @@ import { Routes } from '@/lib/routes';
 import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 
+/** Ink for words and icons on the sunny ombre: dark enough to read on yellow. */
+const WARM_INK = '#9A3A06';
+
 /**
  * Your week — the block above the feed.
  *
@@ -79,66 +82,67 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
   }
 
   if (challenge) {
-    /* The challenge is a little banner of its own: a soft yellow → orange
-       ombre, mostly yellow, washed out enough that the words stay plain ink. */
     rows.push(
-      <View
+      <ListItem
         key="challenge"
-        style={{
-          marginHorizontal: spacing.sm,
-          marginBottom: spacing.sm,
-          borderRadius: theme.radii.md,
-          overflow: 'hidden',
-        }}
-      >
+        inset
+        title={challenge.title}
+        subtitle={metaLine(
+          t('challenges.homeTitle'),
+          deadlineLabel(challenge.closes_at),
+          t('challenges.entries', { count: challenge.entry_count }),
+        )}
+        left={
+          <RowIcon color={colors.warning} fill={theme.alpha('#FFFFFF', 0.7)}>
+            <Flame size={18} color={WARM_INK} strokeWidth={2.4} />
+          </RowIcon>
+        }
+        right={
+          <Text variant="captionStrong" color={WARM_INK}>
+            {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
+          </Text>
+        }
+        onPress={() => router.push(Routes.challenge(challenge.id))}
+        testID="your-week-challenge"
+      />,
+    );
+  }
+
+  /* With a challenge on, the whole block wears a sunny yellow → orange ombre
+     (mostly yellow) and a warm rim: a challenge has a clock on it, and warm is
+     the colour of time. Without one it stays a plain card. */
+  const sunny = !!challenge;
+
+  return (
+    <Card
+      padded={false}
+      style={sunny ? { overflow: 'hidden', borderWidth: 1.5, borderColor: theme.play.amber } : undefined}
+      testID="your-week"
+    >
+      {sunny ? (
         <LinearGradient
           colors={[
-            theme.alpha(theme.colors.sun, 0.42),
-            theme.alpha(theme.play.amber, 0.3),
-            theme.alpha(theme.play.flame, 0.24),
+            theme.alpha(theme.colors.sun, 0.62),
+            theme.alpha(theme.play.amber, 0.5),
+            theme.alpha(theme.play.flame, 0.42),
           ]}
           locations={[0, 0.6, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        <ListItem
-          style={{ paddingHorizontal: spacing.md }}
-          title={challenge.title}
-          subtitle={metaLine(
-            t('challenges.homeTitle'),
-            deadlineLabel(challenge.closes_at),
-            t('challenges.entries', { count: challenge.entry_count }),
-          )}
-          left={
-            <RowIcon color={colors.warning}>
-              <Flame size={18} color={colors.warning} />
-            </RowIcon>
-          }
-          right={
-            <Text variant="captionStrong" tone="primary">
-              {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
-            </Text>
-          }
-          onPress={() => router.push(Routes.challenge(challenge.id))}
-          testID="your-week-challenge"
-        />
-      </View>,
-    );
-  }
-
-  return (
-    <Card padded={false} testID="your-week">
+      ) : null}
       <Text
         variant="overline"
-        tone="muted"
+        color={sunny ? WARM_INK : undefined}
+        tone={sunny ? undefined : 'muted'}
         style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
       >
         {t('feed.yourWeek')}
       </Text>
       {rows.map((row, index) => (
         <React.Fragment key={row.key ?? index}>
-          {index > 0 && row.key !== 'challenge' ? <Divider inset={spacing.lg} /> : null}
+          {index > 0 ? <Divider inset={spacing.lg} /> : null}
           {row}
         </React.Fragment>
       ))}
@@ -147,7 +151,16 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
 }
 
 /** A small tinted square for a row's icon. */
-function RowIcon({ color, children }: { color: string; children: React.ReactNode }) {
+function RowIcon({
+  color,
+  fill,
+  children,
+}: {
+  color: string;
+  /** Overrides the tint, e.g. a light chip on the ombre. */
+  fill?: string;
+  children: React.ReactNode;
+}) {
   const theme = useTheme();
   return (
     <View
@@ -157,7 +170,7 @@ function RowIcon({ color, children }: { color: string; children: React.ReactNode
         borderRadius: theme.radii.sm,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: theme.alpha(color, 0.14),
+        backgroundColor: fill ?? theme.alpha(color, 0.14),
       }}
     >
       {children}
