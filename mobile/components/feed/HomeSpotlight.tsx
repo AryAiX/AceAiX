@@ -1,50 +1,38 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, Flame } from 'lucide-react-native';
+import { Eye, Flame, Gauge } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import {
-  AnimatedGradient,
-  AnimatedNumber,
-  Reveal,
-  Shine,
-  Tappable,
-  Text,
-  ChevronForward,
-} from '@/components/ui';
+import { TierColors, tierForScore } from '@/theme/tokens';
+import { Badge, Card, Divider, ListItem, Text } from '@/components/ui';
+import { tierLabel } from '@/components/discover/MatchBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
+import { useProgress } from '@/providers/ProgressProvider';
 import { openChallenges, profileViewDigest } from '@/lib/api';
 import { Routes } from '@/lib/routes';
-import { deadlineLabel } from '@/lib/format';
+import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 
 /**
- * The two things above the feed.
+ * Your week — the block above the feed.
  *
- * Both answer "why open this today" without asking for anything: who has been
- * reading your profile, and what a coach has asked for this week. Neither
- * counts down, neither says you are behind, and both disappear entirely when
- * there is nothing to say — an empty card is worse than no card.
- *
- * They used to be ordinary cards under a 20%-opacity tint, which on the light
- * scheme is a white card with a suggestion of colour on one corner. They are
- * now the colour: a full gradient, white type, and a highlight that crosses
- * every few seconds. These are the two tiles at the top of the app's first
- * screen, and they should look like the best thing on it.
+ * Three things Home already had, in one place: who has been reading your
+ * profile, where your Talent Score stands, and what a coach has asked for this
+ * week. The views and the challenge load here, as they always did; the score
+ * is the snapshot ProgressProvider holds for the whole app (the streak chip in
+ * the header reads the same one). Nothing counts down, nothing says you are
+ * behind, a row with nothing to say is left out — and with nothing at all, so
+ * is the block.
  */
-/* Both tiles are saturated in either scheme, so their type is white in either
-   scheme — this is one of the few places a literal belongs over a token. */
-const ON_COLOUR = '#FFFFFF';
-const SOFT_ON_COLOUR = 'rgba(255,255,255,0.82)';
-
 export function HomeSpotlight() {
   const theme = useTheme();
-  const { spacing } = theme;
+  const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
   const { profile, isGuardian } = useAuth();
+  const { progress } = useProgress();
 
   const isAthlete = profile?.role === 'athlete';
 
@@ -57,142 +45,132 @@ export function HomeSpotlight() {
     refetchOnFocus: true,
   });
 
-  const views = digest.data;
-  // Parents cannot enter challenges, so the card has nothing for them (QA-151).
+  const views = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
+  const score = progress?.score ?? null;
+  // Parents cannot enter challenges, so the row has nothing for them (QA-151).
   const challenge = isGuardian
     ? null
     : ((challenges.data ?? []).find((c) => c.status === 'open') ?? null);
 
-  if (!views?.total && !challenge) return null;
+  if (!views && !score && !challenge) return null;
+
+  const rows: React.ReactElement[] = [];
+
+  if (views) {
+    rows.push(
+      <ListItem
+        key="views"
+        inset
+        title={t('views.homeTitle', { count: views.total })}
+        subtitle={
+          views.professional > 0
+            ? t('views.homeProfessional', { count: views.professional })
+            : t('views.homeEmptyBody')
+        }
+        left={
+          <RowIcon color={colors.info}>
+            <Eye size={18} color={colors.info} />
+          </RowIcon>
+        }
+        right={
+          views.new_since_seen > 0 ? (
+            <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
+          ) : undefined
+        }
+        onPress={() => router.push(Routes.profileViews)}
+        testID="your-week-views"
+      />,
+    );
+  }
+
+  if (score) {
+    /* Derived from the number, as ScoreCard does, so a tier string the client
+       does not know can never index past TierColors. */
+    const tier = tierForScore(score.overall);
+    const tierColor = TierColors[tier];
+    rows.push(
+      <ListItem
+        key="score"
+        inset
+        title={t('common.talentScore')}
+        subtitle={t('score.tierLine', { tier: tierLabel(t, tier) })}
+        left={
+          <RowIcon color={tierColor}>
+            <Gauge size={18} color={tierColor} />
+          </RowIcon>
+        }
+        right={
+          <Text variant="stat" color={tierColor} style={{ fontSize: 22 }}>
+            {Math.round(score.overall)}
+          </Text>
+        }
+        onPress={() => router.push(Routes.score)}
+        testID="your-week-score"
+      />,
+    );
+  }
+
+  if (challenge) {
+    rows.push(
+      <ListItem
+        key="challenge"
+        inset
+        title={challenge.title}
+        subtitle={metaLine(
+          t('challenges.homeTitle'),
+          deadlineLabel(challenge.closes_at),
+          t('challenges.entries', { count: challenge.entry_count }),
+        )}
+        left={
+          <RowIcon color={colors.warning}>
+            <Flame size={18} color={colors.warning} />
+          </RowIcon>
+        }
+        right={
+          <Text variant="captionStrong" tone="primary">
+            {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
+          </Text>
+        }
+        onPress={() => router.push(Routes.challenge(challenge.id))}
+        testID="your-week-challenge"
+      />,
+    );
+  }
 
   return (
-    <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
-      {isAthlete && views && views.total > 0 ? (
-        <Reveal from="scale">
-          <Tappable
-            onPress={() => router.push(Routes.profileViews)}
-            accessibilityLabel={t('views.title')}
-          >
-            <AnimatedGradient
-              colors={theme.gradients.cool}
-              period={11}
-              radius={theme.radii.lg}
-              style={theme.elevation(2)}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.md,
-                  padding: spacing.lg,
-                }}
-              >
-                <View
-                  style={{
-                    width: 46,
-                    height: 46,
-                    borderRadius: 23,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(255,255,255,0.22)',
-                  }}
-                >
-                  <Eye size={22} color={ON_COLOUR} />
-                </View>
+    <Card padded={false} testID="your-week">
+      <Text
+        variant="overline"
+        tone="muted"
+        style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
+      >
+        {t('feed.yourWeek')}
+      </Text>
+      {rows.map((row, index) => (
+        <React.Fragment key={row.key ?? index}>
+          {index > 0 ? <Divider inset={spacing.lg} /> : null}
+          {row}
+        </React.Fragment>
+      ))}
+    </Card>
+  );
+}
 
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                    <AnimatedNumber value={views.total} variant="stat" color={ON_COLOUR} />
-                    <Text
-                      variant="bodyStrong"
-                      color={ON_COLOUR}
-                      numberOfLines={1}
-                      style={{ flex: 1 }}
-                    >
-                      {t('views.title')}
-                    </Text>
-                  </View>
-                  <Text variant="caption" color={SOFT_ON_COLOUR} numberOfLines={1}>
-                    {views.professional > 0
-                      ? t('views.homeProfessional', { count: views.professional })
-                      : t('views.homeEmptyBody')}
-                  </Text>
-                </View>
-
-                {views.new_since_seen > 0 ? (
-                  /* `Badge` paints from the palette, and every one of its tones
-                     is tuned for a surface — on a saturated tile they all read
-                     as smudges. White pill, tile-coloured type. */
-                  <View
-                    style={{
-                      backgroundColor: ON_COLOUR,
-                      borderRadius: 999,
-                      paddingHorizontal: spacing.sm + 2,
-                      paddingVertical: 3,
-                    }}
-                  >
-                    <Text variant="overline" color={theme.gradients.cool[2]}>
-                      {t('views.newBadge', { count: views.new_since_seen })}
-                    </Text>
-                  </View>
-                ) : (
-                  <ChevronForward size={18} color={SOFT_ON_COLOUR} />
-                )}
-              </View>
-              <Shine every={6} radius={theme.radii.lg} />
-            </AnimatedGradient>
-          </Tappable>
-        </Reveal>
-      ) : null}
-
-      {challenge ? (
-        <Reveal from="scale" index={1}>
-          <Tappable
-            onPress={() => router.push(Routes.challenge(challenge.id))}
-            accessibilityLabel={challenge.title}
-          >
-            <AnimatedGradient
-              colors={theme.gradients.warm}
-              period={9}
-              radius={theme.radii.lg}
-              style={theme.elevation(2)}
-            >
-              <View style={{ padding: spacing.lg, gap: 4 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Flame size={14} color={ON_COLOUR} />
-                  <Text variant="overline" color={ON_COLOUR}>
-                    {t('challenges.homeTitle')}
-                  </Text>
-                </View>
-
-                <Text variant="subheading" color={ON_COLOUR} numberOfLines={2}>
-                  {challenge.title}
-                </Text>
-
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginTop: spacing.xs,
-                  }}
-                >
-                  <Text variant="caption" color={SOFT_ON_COLOUR}>
-                    {deadlineLabel(challenge.closes_at) ?? ''}
-                    {' · '}
-                    {t('challenges.entries', { count: challenge.entry_count })}
-                  </Text>
-                  <Text variant="captionStrong" color={ON_COLOUR}>
-                    {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
-                  </Text>
-                </View>
-              </View>
-              <Shine every={8} radius={theme.radii.lg} />
-            </AnimatedGradient>
-          </Tappable>
-        </Reveal>
-      ) : null}
-
+/** A small tinted square for a row's icon. */
+function RowIcon({ color, children }: { color: string; children: React.ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: theme.radii.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.alpha(color, 0.14),
+      }}
+    >
+      {children}
     </View>
   );
 }

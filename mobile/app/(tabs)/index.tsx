@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, type ListViewToken as ViewToken } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FlatList, RefreshControl, View, type ListViewToken as ViewToken } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Clapperboard, MessageSquare, Users } from 'lucide-react-native';
+import { Bell, MessageSquare, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -14,7 +13,6 @@ import {
   Screen,
   SegmentedControl,
   SkeletonList,
-  Tappable,
 } from '@/components/ui';
 import { PostCard } from '@/components/feed/PostCard';
 import { CommentSheet } from '@/components/feed/CommentSheet';
@@ -26,12 +24,13 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
+import { getReels } from '@/lib/api.reels';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { MatchedTrial } from '@/components/feed/MatchedTrial';
 import { StoryRail } from '@/components/stories/StoryRail';
 import { ReelsStrip } from '@/components/reels/ReelsStrip';
-import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Wordmark } from '@/components/common/Wordmark';
 import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
@@ -47,6 +46,8 @@ import type { FeedPost } from '@/types/models';
  */
 
 const PAGE_SIZE = 20;
+/** The Reels strip sits after this many posts — or after the last, if fewer. */
+const REELS_AFTER = 3;
 
 type Scope = 'for_you' | 'following';
 
@@ -80,6 +81,11 @@ export default function HomeScreen() {
     [scope],
     { refetchOnFocus: true },
   );
+
+  /* Loaded here, not inside the strip: the strip now sits in a list cell, and
+     a cell scrolled far enough away is unmounted. Loading on remount would pop
+     the strip in from nothing and jump the feed under your thumb. */
+  const reels = useAsync(() => getReels({ limit: 6 }), [], { refetchOnFocus: true });
 
   useEffect(() => {
     setOlder([]);
@@ -123,6 +129,19 @@ export default function HomeScreen() {
       const drop = (list: FeedPost[]) => list.filter((p) => p.author_id !== authorId);
       mutate((current) => (current ? drop(current) : current));
       setOlder(drop);
+    },
+    [mutate],
+  );
+
+  /* A follow from one card applies to every post by that author on screen, so
+     a second card by the same person can never offer (and toggle back off)
+     the follow that was just made. */
+  const setAuthorFollowed = useCallback(
+    (authorId: string, following: boolean) => {
+      const apply = (list: FeedPost[]) =>
+        list.map((p) => (p.author_id === authorId ? { ...p, viewer_follows: following } : p));
+      mutate((current) => (current ? apply(current) : current));
+      setOlder(apply);
     },
     [mutate],
   );
@@ -202,24 +221,46 @@ export default function HomeScreen() {
     },
   ).current;
 
+  /* The Reels strip rides in the stream after the third post (or the last, if
+     there are fewer). -1 means "no posts", so it never shows on an empty feed. */
+  const reelsAt = Math.min(REELS_AFTER, items.length) - 1;
+  const reelItems = reels.data;
+
   const renderItem = useCallback(
     /* The stagger is keyed off the position in the list, and `Reveal` caps it
        at six — so the first screenful arrives in sequence and everything the
        person scrolls to afterwards is already in place. */
-    ({ item, index }: { item: FeedPost; index: number }) => (
-      <Reveal index={index}>
-        <PostCard
-          post={item}
-          isActive={item.id === activeId}
-          onPatch={patchPost}
-          onOpenComments={setCommentsFor}
-          onOpenActions={openActions}
-          onOpenProfile={openProfile}
-          onOpenPost={openPost}
-        />
-      </Reveal>
-    ),
-    [activeId, patchPost, openActions, openProfile, openPost],
+    ({ item, index }: { item: FeedPost; index: number }) => {
+      const card = (
+        <Reveal index={index}>
+          <PostCard
+            post={item}
+            isActive={item.id === activeId}
+            onPatch={patchPost}
+            onOpenComments={setCommentsFor}
+            onOpenActions={openActions}
+            onOpenProfile={openProfile}
+            onOpenPost={openPost}
+            onFollowChange={setAuthorFollowed}
+          />
+        </Reveal>
+      );
+      if (index !== reelsAt || !reelItems?.length) return card;
+      return (
+        <View style={{ gap: spacing.md }}>
+          {card}
+          <ReelsStrip items={reelItems} />
+        </View>
+      );
+    },
+    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, reelsAt, reelItems, spacing],
+  );
+
+  /* Everything renderItem reads besides `data`, so the list redraws when any of
+     it changes — FlatList is a PureComponent and only compares `extraData`. */
+  const listExtra = useMemo(
+    () => ({ activeId, reelsAt, reelItems }),
+    [activeId, reelsAt, reelItems],
   );
 
   /* Returns an element, not a component: a fresh component type on every
@@ -267,14 +308,10 @@ export default function HomeScreen() {
 
         {/* The streak sits before the inbox icons: it is the one thing in the
             header that rewards opening the app rather than asking something
-            of you. */}
+            of you. Theme lives in Settings › Appearance; Reels open from the
+            strip in the feed. */}
         <StreakChip testID="home-streak" />
 
-        {/* Light and dark are one tap apart, because nobody walks into the sun
-            and then goes looking through a settings tree. */}
-        <ThemeToggle testID="home-theme" />
-
-        <ReelsButton label={t('reels.open')} onPress={() => router.push(Routes.reels)} />
         <IconButton
           icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
           label={
@@ -301,16 +338,19 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* The Playfeed switch sits above the list, outside it, so it stays put
+          while stories and posts scroll under it. */}
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
+        <SegmentedControl
+          options={scopes}
+          value={scope}
+          onChange={setScope}
+          testID="home-scope"
+        />
+      </View>
+
       {feed.error ? (
         <View style={{ flex: 1 }}>
-          <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-            <SegmentedControl
-              options={scopes}
-              value={scope}
-              onChange={setScope}
-              testID="home-scope"
-            />
-          </View>
           <ErrorState message={feed.error} onRetry={feed.reload} />
         </View>
       ) : (
@@ -318,7 +358,7 @@ export default function HomeScreen() {
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={activeId}
+        extraData={listExtra}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
           paddingBottom: spacing.giant,
@@ -326,25 +366,17 @@ export default function HomeScreen() {
           flexGrow: 1,
         }}
         ListHeaderComponent={
-          /* Stories, then reels, then the spotlight, then the feed's own
-             switch — each arriving a beat after the one above it. */
+          /* Stories, then your week, then one matched trial — each arriving a
+             beat after the one above it. Reels are in the stream itself. */
           <View style={{ gap: spacing.lg }}>
             <Reveal index={0}>
               <StoryRail />
             </Reveal>
             <Reveal index={1}>
-              <ReelsStrip />
-            </Reveal>
-            <Reveal index={2}>
               <HomeSpotlight />
             </Reveal>
-            <Reveal index={3}>
-              <SegmentedControl
-                options={scopes}
-                value={scope}
-                onChange={setScope}
-                testID="home-scope"
-              />
+            <Reveal index={2}>
+              <MatchedTrial />
             </Reveal>
           </View>
         }
@@ -393,42 +425,5 @@ export default function HomeScreen() {
         onBlocked={removeAuthor}
       />
     </Screen>
-  );
-}
-
-/**
- * The way into Reels from the header. The one header button painted rather
- * than outlined, because it is the one that leads somewhere that moves.
- */
-function ReelsButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Tappable
-      onPress={onPress}
-      scaleTo={0.88}
-      haptic="light"
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      testID="home-reels"
-      style={{
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <LinearGradient
-        colors={theme.gradients.party}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View>
-        <Clapperboard size={19} color={theme.colors.textOnBrand} strokeWidth={2.1} />
-      </View>
-    </Tappable>
   );
 }

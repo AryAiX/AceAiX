@@ -11,8 +11,9 @@
  */
 export const feed = {
   // ── Accueil ────────────────────────────────────────────────────────────────
-  scopeForYou: 'Pour toi',
+  scopeForYou: 'Playfeed',
   scopeFollowing: 'Abonnements',
+  yourWeek: 'Ta semaine',
 
   messages: 'Messages',
   messagesUnread_one: 'Messages, {{count}} non lu',

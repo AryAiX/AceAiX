@@ -151,7 +151,7 @@ export const common = {
   // Onglets
   tabHome: 'Accueil',
   tabDiscover: 'Découvrir',
-  tabTrials: 'Essais',
+  tabTrials: 'Opportunités',
   tabSponsorship: 'Portail',
   tabChildren: 'Enfants',
   tabChildrenA11y: 'Enfants dont tu t’occupes',

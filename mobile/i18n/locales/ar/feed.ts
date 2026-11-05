@@ -10,8 +10,9 @@
  */
 export const feed = {
   // ── الرئيسية ──────────────────────────────────────────────────────────────
-  scopeForYou: 'لك',
+  scopeForYou: 'Playfeed',
   scopeFollowing: 'من تتابعهم',
+  yourWeek: 'أسبوعك',
 
   messages: 'الرسائل',
   messagesUnread_zero: 'الرسائل، لا رسائل غير مقروءة',

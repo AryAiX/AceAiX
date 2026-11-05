@@ -9,8 +9,11 @@ import { Avatar, Divider, ListItem, Sheet, Tappable, Text, useToast } from '@/co
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
+import { FollowButton } from '@/components/discover/FollowButton';
+import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { useAuth } from '@/providers/AuthProvider';
 import { toggleLike, toggleSave } from '@/lib/api';
+import { applyToggleFollow } from '@/lib/followCounts';
 import { getPostAudience, postLink } from '@/lib/api.feed';
 import { brandedShareCaption, buildBrandedImage, type BrandedKind } from '@/lib/brandedShare';
 import { errorMessage } from '@/lib/errors';
@@ -52,6 +55,12 @@ export interface PostCardProps {
   onOpenProfile: (userId: string) => void;
   /** Omit on the single-post screen — there is nowhere further to go. */
   onOpenPost?: (post: FeedPost) => void;
+  /**
+   * Home only. When passed, the card offers Follow for an author you do not
+   * follow yet, and reports the change so the list can update every post by
+   * that author. Saved and the single-post screen leave it out.
+   */
+  onFollowChange?: (authorId: string, following: boolean) => void;
 }
 
 function PostCardBase({
@@ -63,6 +72,7 @@ function PostCardBase({
   onOpenActions,
   onOpenProfile,
   onOpenPost,
+  onFollowChange,
 }: PostCardProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -126,6 +136,52 @@ function PostCardBase({
       toast.error(errorMessage(err));
     }
   }, [post.id, post.viewer_saved, onPatch, toast, t]);
+
+  /*
+   * Quick follow (Home only — the list passes `onFollowChange`).
+   *
+   * Offered only to someone you do not follow yet. `viewer_follows` is also
+   * true when you follow the club a post was made for, and FeedPost carries no
+   * club id, so a toggle on the author from here could not undo that — those
+   * posts never show the button. Once tapped, it stays on this card, so the
+   * person can see, and undo, what they did.
+   */
+  const isOwnPost = !!user && post.author_id === user.id;
+  const [followTapped, setFollowTapped] = useState(false);
+  const [followPending, setFollowPending] = useState(false);
+  const showFollow =
+    !!onFollowChange && !isOwnPost && (!post.viewer_follows || followTapped);
+
+  const handleFollow = useCallback(async () => {
+    if (!onFollowChange || followPending) return;
+    const next = !post.viewer_follows;
+    setFollowTapped(true);
+    setFollowPending(true);
+    onFollowChange(post.author_id, next);
+    try {
+      const result = await applyToggleFollow({
+        targetId: post.author_id,
+        myId: user?.id ?? null,
+        wasFollowing: !next,
+        targetFollowers: null,
+        myFollowing: profile?.following_count ?? 0,
+      });
+      if (result.following !== next) onFollowChange(post.author_id, result.following);
+    } catch (err) {
+      onFollowChange(post.author_id, !next);
+      toast.error(errorMessage(err));
+    } finally {
+      setFollowPending(false);
+    }
+  }, [
+    onFollowChange,
+    followPending,
+    post.viewer_follows,
+    post.author_id,
+    user?.id,
+    profile?.following_count,
+    toast,
+  ]);
 
   const firstMedia = post.media[0];
   const canBrandShare =
@@ -332,13 +388,18 @@ function PostCardBase({
             minHeight: theme.hit.min,
           }}
         >
-          <Avatar
-            uri={post.author_avatar}
-            name={name}
-            size="md"
-            score={post.author_score}
-            verified={post.author_verified}
-          />
+          {post.author_role === 'club' ? (
+            /* Square, so a club never reads as a person. */
+            <ClubLogo uri={post.author_avatar} name={name} size="sm" />
+          ) : (
+            <Avatar
+              uri={post.author_avatar}
+              name={name}
+              size="md"
+              score={post.author_score}
+              verified={post.author_verified}
+            />
+          )}
           <View style={{ flex: 1 }}>
             <Text variant="name" numberOfLines={1}>
               {name}
@@ -350,6 +411,19 @@ function PostCardBase({
             ) : null}
           </View>
         </Tappable>
+
+        {showFollow ? (
+          /* Wrapped: Button sets `alignSelf: 'flex-start'`, which in this row
+             would pin it to the top instead of centring it on the name. */
+          <View>
+            <FollowButton
+              following={post.viewer_follows}
+              pending={followPending}
+              onPress={handleFollow}
+              name={name}
+            />
+          </View>
+        ) : null}
 
         <Tappable
           onPress={() => onOpenActions(post)}

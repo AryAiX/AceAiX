@@ -26,14 +26,19 @@ const CARD_W = 118;
 const CARD_H = 196;
 const ON_POSTER = '#FFFFFF';
 
-export function ReelsStrip() {
+export function ReelsStrip({ items: given }: { items?: FeedPost[] }) {
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
   const t = useT();
 
-  const reels = useAsync(() => getReels({ limit: 6 }), [], { refetchOnFocus: true });
-  const items = reels.data ?? [];
+  /* Home passes its own copy, because a list cell can unmount and remount;
+     anywhere else the strip still loads for itself. */
+  const reels = useAsync(() => getReels({ limit: 6 }), [], {
+    enabled: !given,
+    refetchOnFocus: true,
+  });
+  const items = given ?? reels.data ?? [];
   if (items.length === 0) return null;
 
   /* A poster plays that reel; "See all" opens the whole collection as a grid. */

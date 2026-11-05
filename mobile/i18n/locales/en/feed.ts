@@ -10,8 +10,9 @@
  */
 export const feed = {
   // ── Home ───────────────────────────────────────────────────────────────────
-  scopeForYou: 'For you',
+  scopeForYou: 'Playfeed',
   scopeFollowing: 'Following',
+  yourWeek: 'Your week',
 
   messages: 'Messages',
   messagesUnread_one: 'Messages, {{count}} unread',

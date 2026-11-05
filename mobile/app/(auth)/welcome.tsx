@@ -10,7 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { AnimatedGradient, Button, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { LegalLine } from '@/components/onboarding/Shared';
-import { LogoMark } from '@/components/common/Logo';
+import { LogoMark, LogoWord } from '@/components/common/Logo';
 import { Routes } from '@/lib/routes';
 import { NATIVE_DRIVER } from '@/lib/motion';
 
@@ -143,9 +143,7 @@ export default function WelcomeScreen() {
             <View style={{ paddingTop: spacing.xl, gap: spacing.xs }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <LogoMark size={34} />
-                <Text variant="title" style={{ letterSpacing: 0.4 }}>
-                  Ace<Text variant="title" tone="primary">AiX</Text>
-                </Text>
+                <LogoWord height={20} />
               </View>
               <Text variant="overline" tone="primary">
                 {t('common.tagline')}

@@ -156,7 +156,7 @@ export const common = {
   // Вкладки
   tabHome: 'Главная',
   tabDiscover: 'Поиск',
-  tabTrials: 'Отборы',
+  tabTrials: 'Возможности',
   tabSponsorship: 'Портал',
   tabChildren: 'Дети',
   tabChildrenA11y: 'Дети, за которыми ты присматриваешь',

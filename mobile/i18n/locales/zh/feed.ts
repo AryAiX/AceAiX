@@ -9,8 +9,9 @@
  */
 export const feed = {
   // ── 首页 ───────────────────────────────────────────────────────────────────
-  scopeForYou: '推荐',
+  scopeForYou: 'Playfeed',
   scopeFollowing: '关注',
+  yourWeek: '你的一周',
 
   messages: '私信',
   messagesUnread_other: '私信，{{count}}条未读',
