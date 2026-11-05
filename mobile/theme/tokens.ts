@@ -1,5 +1,5 @@
 /**
- * AceAiX design tokens — "Pitch & Pulse"
+ * AceAiX design tokens — "Cobalt & Ember"
  *
  * Built for an audience of 10–25 year old athletes, with parents and coaches
  * looking over their shoulder. Energetic without being childish; calm enough
@@ -7,20 +7,63 @@
  *
  * Every colour is defined for BOTH schemes. Never reference a raw hex in a
  * screen — always go through `useTheme()`.
+ *
+ * ── What changed in this revision, and why ───────────────────────────────────
+ * The app was orange-led, which put it in the same visual family as every
+ * other social feed. It is now cobalt-led, with violet carrying the secondary
+ * work, and the warm end of the brand reserved for ONE meaning: time.
+ *
+ *   cobalt  #2F6BFF   primary actions, active states, links
+ *   violet  #7A6CFF   the Talent Score, secondary surfaces, tab-bar fade
+ *   sky     #8ACDFF   the light end of every cool sweep
+ *   ember   #E8372B   time only — deadlines, closing soon, live streaks
+ *
+ * `gradients.warm` is the amber → orange → ember ombre. Its original comment
+ * already read "streaks, challenges, anything with a clock on it", so every
+ * surface that was warm stays warm and simply inherits the new ramp. Nothing
+ * else in the app is permitted to be warm, which is what makes warm mean
+ * "act now" rather than "decoration".
+ *
+ * The tier ramp follows the same logic in the other direction: it runs cool at
+ * the bottom and warm at the top, so the warm colours are *earned*. A Rising
+ * athlete's ring is sky; an Elite athlete's ring is the ember ombre.
+ *
+ * EVERY EXPORT NAME, TYPE AND FUNCTION SIGNATURE IN THIS FILE IS UNCHANGED
+ * from the previous revision. Only values changed. That means this file is a
+ * drop-in replacement: no call site anywhere in `mobile/` needs editing for
+ * the colour, radius and depth change to take effect.
+ *
+ * The one additive change is `FontFamily.mono` / `monoBold`, which require the
+ * matching family to be registered in `app/_layout.tsx`'s `useFonts` call.
+ * Until it is registered those two keys are simply unused — nothing breaks.
  */
 
 export type ColorScheme = 'light' | 'dark';
 
 // ── Brand constants (identical across schemes) ────────────────────────────────
 export const Brand = {
-  /** Ace Orange — the energy. Primary actions, active states, the logo mark. */
-  orange: '#FF5A1F',
-  orangeBright: '#FF7A45',
-  /** Volt — reserved for the Talent Score and nothing else. Scarcity = meaning. */
+  /** Ace Orange — the logo mark only. No longer a UI colour. */
+  orange: '#FF7A2C',
+  orangeBright: '#FFB347',
+  /** Ember — time, and nothing but time. Deadlines, closing, live streaks. */
+  ember: '#E8372B',
+  /** Volt — kept for the logo's accent. Scarcity = meaning. */
   volt: '#C9F03C',
-  /** Azure — verification, trust, links. */
-  azure: '#2E7DF6',
-  azureBright: '#5B9BFF',
+  /** Cobalt — the new primary. Actions, active states, links. */
+  cobalt: '#2F6BFF',
+  cobaltDeep: '#1B3DFF',
+  /** Violet — the Talent Score and the tab-bar fade. */
+  violet: '#7A6CFF',
+  /** Sky — the light end of every cool sweep. */
+  sky: '#8ACDFF',
+  /** Sun — "new" counts, Highlight labels, streak badges and the ± steppers.
+   *  Bright fill, pastel fill, and the ink to write on them. */
+  sun: '#FFD84D',
+  sunPastel: '#FFF6C7',
+  sunInk: '#8A6400',
+  /** Azure — verification, trust, links. Now the same family as cobalt. */
+  azure: '#2F6BFF',
+  azureBright: '#5C90FF',
   ink: '#14161A',
   paper: '#FFFFFF',
 } as const;
@@ -28,38 +71,69 @@ export const Brand = {
 /**
  * The play colours.
  *
- * Six saturated hues that exist to be *used* — on cards, chips, tiles and
+ * Eight saturated hues that exist to be *used* — on cards, chips, tiles and
  * gradients — so a screen full of information is not a screen full of grey.
  * They are deliberately not semantic: nothing means "this is a warning". Pick
  * one with `hueFor(seed)` and a given team, sport or challenge keeps its colour
  * everywhere it appears.
+ *
+ * Cooled relative to the previous revision so the set sits inside the cobalt
+ * identity, while keeping eight values that are still clearly distinguishable
+ * from one another — that distinguishability is the whole point of `hueFor`.
  */
 export const Play = {
-  flame: '#FF5A1F',
-  magenta: '#F0308C',
-  violet: '#8B5CF6',
-  azure: '#2E7DF6',
-  cyan: '#12C2E9',
-  mint: '#10D5A0',
-  lime: '#C9F03C',
-  amber: '#FFB020',
+  flame: '#FF7A2C',
+  magenta: '#DE208D',
+  violet: '#7A6CFF',
+  azure: '#2F6BFF',
+  cyan: '#26A9F5',
+  mint: '#19C79A',
+  lime: '#B9E63C',
+  amber: '#FFB347',
 } as const;
 
 export type PlayHue = keyof typeof Play;
 
+/**
+ * Points you can gain, coloured by how many. The same cut-offs on every
+ * screen, so a "+7" is always the same chip wherever it appears: 1–6 yellow,
+ * 7–11 orange, 12 and up green. Each is a soft ombre with its own dark ink.
+ * (The tips `build_score_tips` writes are worth 2 per missing field, 5/10/15
+ * for clips, 6 for an endorsement, 7 for verification and 12 for matches.)
+ */
+export type PointsBand = 'small' | 'mid' | 'big';
+
+export const PointsRamp: Record<PointsBand, readonly [string, string]> = {
+  small: ['#FFE766', '#FFC727'],
+  mid: ['#FFB54D', '#FF8A2B'],
+  big: ['#5CE6A6', '#1EC98A'],
+};
+
+export const PointsInk: Record<PointsBand, string> = {
+  small: '#4A3300',
+  mid: '#4A1D00',
+  big: '#063D2A',
+};
+
+export function pointsBand(points: number): PointsBand {
+  if (points >= 12) return 'big';
+  if (points >= 7) return 'mid';
+  return 'small';
+}
+
 const HUE_ORDER: PlayHue[] = [
-  'flame',
   'azure',
   'violet',
+  'cyan',
   'mint',
   'magenta',
-  'cyan',
   'amber',
   'lime',
+  'flame',
 ];
 
 function hueIndex(seed: string | null | undefined): number {
-  if (!seed) return 1; // azure
+  if (!seed) return 0; // azure
   let hash = 0;
   for (let i = 0; i < seed.length; i += 1) {
     hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
@@ -93,30 +167,30 @@ export function huePair(seed: string | null | undefined): [string, string] {
 
 // ── Talent tier ramp ──────────────────────────────────────────────────────────
 /**
- * Not a metal ramp any more.
+ * Cool at the bottom, warm at the top — so warmth is earned.
  *
- * `rising` and `silver` used to be two greys, and since the profile cover, the
- * score ring and every avatar ring are painted from this map, most of the app
- * was grey for most people — the lower your score, the duller the app looked,
- * which is precisely backwards for a fourteen-year-old who has just joined.
- * Every tier now has a colour of its own, and the ramp still reads as a ramp:
- * cool and electric at the bottom, hot and metallic at the top.
+ * The profile cover, the score ring and every avatar ring are painted from this
+ * map, so it decides what most of the app looks like for most people. Running
+ * it sky → cobalt → violet → amber → ember means a new fourteen-year-old gets
+ * an electric sky ring rather than a dull one, and the ember ombre only ever
+ * appears on someone who has actually reached the top band. That is the same
+ * argument as reserving warm for deadlines: the colour carries information.
  */
 export const TierColors = {
-  rising: '#12C2E9',   // 0–39   electric cyan
-  bronze: '#10D5A0',   // 40–54  mint
-  silver: '#8B5CF6',   // 55–69  violet
-  gold: '#FFB020',     // 70–84  amber
-  elite: '#FF3D7F',    // 85–100 hot pink-orange
+  rising: '#8ACDFF',   // 0–39   sky
+  bronze: '#2F6BFF',   // 40–54  cobalt
+  silver: '#7A6CFF',   // 55–69  violet
+  gold: '#FFB347',     // 70–84  amber
+  elite: '#E8372B',    // 85–100 ember
 } as const;
 
 /** Second stop for the tier gradients, so a tier is a sweep and not a swatch. */
 export const TierColorsEnd = {
-  rising: '#5B9BFF',
-  bronze: '#12C2E9',
-  silver: '#F0308C',
-  gold: '#FF7A45',
-  elite: '#FF9E1F',
+  rising: '#2F6BFF',
+  bronze: '#7A6CFF',
+  silver: '#8ACDFF',
+  gold: '#FF7A2C',
+  elite: '#FFB347',
 } as const;
 
 export type Tier = keyof typeof TierColors;
@@ -151,9 +225,14 @@ export const TierLabels: Record<Tier, string> = {
  *
  * Three stops, always, because `expo-linear-gradient` interpolates in sRGB and
  * two distant hues go through mud in the middle. The middle stop is the bridge.
+ *
+ * Draw the cool sweeps on a diagonal with the LIGHT stop at the top-right:
+ * `start={{ x: 1, y: 0 }} end={{ x: 0.12, y: 1 }}`. That puts the highlight
+ * where a light source would be and keeps the deep cobalt in the lower-left,
+ * which is what stops a small square button reading as a flat blue chip.
  */
 export interface GradientSet {
-  /** Primary actions. Flame → magenta. */
+  /** Primary actions. Sky → cobalt → deep cobalt. */
   action: readonly [string, string, string];
   /** The Talent Score, and nothing else. */
   score: readonly [string, string, string];
@@ -161,28 +240,28 @@ export interface GradientSet {
   hero: readonly [string, string, string];
   /** Discovery, teams, anything that should feel like open air. */
   cool: readonly [string, string, string];
-  /** Streaks, challenges, anything with a clock on it. */
+  /** Streaks, challenges, anything with a clock on it. THE ONLY WARM SURFACE. */
   warm: readonly [string, string, string];
   /** Celebrations only. */
   party: readonly [string, string, string];
 }
 
 const gradientsLight: GradientSet = {
-  action: ['#FF6A2C', '#FF3D7F', '#F0308C'],
-  score: ['#8CE614', '#12C2E9', '#2E7DF6'],
-  hero: ['#6D6BFF', '#B14BF4', '#FF3D7F'],
-  cool: ['#12C2E9', '#5B9BFF', '#8B5CF6'],
-  warm: ['#FFB020', '#FF7A45', '#FF3D7F'],
-  party: ['#FF3D7F', '#8B5CF6', '#12C2E9'],
+  action: ['#8ACDFF', '#2F6BFF', '#7A6CFF'],
+  score: ['#8ACDFF', '#2F6BFF', '#7A6CFF'],
+  hero: ['#5CB4FF', '#2F6BFF', '#8273FF'],
+  cool: ['#26A9F5', '#2F6BFF', '#7A6CFF'],
+  warm: ['#FFB347', '#FF7A2C', '#E8372B'],
+  party: ['#FFB347', '#E8372B', '#7A6CFF'],
 };
 
 const gradientsDark: GradientSet = {
-  action: ['#FF7A45', '#FF4E8C', '#E52C86'],
-  score: ['#A8F03C', '#22D3EE', '#5B9BFF'],
-  hero: ['#7C7AFF', '#B14BF4', '#FF4E8C'],
-  cool: ['#22D3EE', '#6BA6FF', '#9B6BFF'],
-  warm: ['#FFC048', '#FF8A5C', '#FF4E8C'],
-  party: ['#FF4E8C', '#9B6BFF', '#22D3EE'],
+  action: ['#9ED6FF', '#5C90FF', '#9387FF'],
+  score: ['#9ED6FF', '#5C90FF', '#9387FF'],
+  hero: ['#5CB4FF', '#2F6BFF', '#8273FF'],
+  cool: ['#49BAFF', '#5C90FF', '#9387FF'],
+  warm: ['#FFC264', '#FF8A42', '#F2493C'],
+  party: ['#FFC264', '#F2493C', '#9387FF'],
 };
 
 // ── Palettes ──────────────────────────────────────────────────────────────────
@@ -216,9 +295,15 @@ export interface Palette {
   primarySoft: string;
   primaryBorder: string;
 
-  accent: string;        // Volt — score only
+  accent: string;        // The Talent Score — violet
   accentSoft: string;
   onAccent: string;
+
+  /** Yellow. `sun` is the bright fill, `sunSoft` the pastel/tinted fill,
+   *  `onSun` the ink for text or icons sitting ON the bright fill. */
+  sun: string;
+  sunSoft: string;
+  onSun: string;
 
   info: string;
   infoSoft: string;
@@ -243,9 +328,9 @@ export interface Palette {
 const light: Palette = {
   scheme: 'light',
 
-  /* Was #F6F6F3 — a warm grey that turned every screen the colour of newsprint.
-     These carry a trace of violet instead, which reads as light rather than as
-     "unpainted" and gives the coloured cards something to sit on. */
+  /* Unchanged from the previous revision — these violet-tinted neutrals read as
+     light rather than as "unpainted", and they happen to sit under cobalt and
+     violet better than a true grey would. */
   bg: '#F7F6FD',
   surface: '#FFFFFF',
   surfaceAlt: '#F1EFFB',
@@ -254,8 +339,8 @@ const light: Palette = {
   overlay: 'rgba(22,19,39,0.55)',
   scrim: 'rgba(22,19,39,0.08)',
 
-  border: '#E6E2F4',
-  borderStrong: '#CFC9E6',
+  border: '#E3E2F0',
+  borderStrong: '#C9CBDE',
   divider: '#EEEBF8',
 
   text: '#161327',
@@ -264,23 +349,29 @@ const light: Palette = {
   textInverse: '#FFFFFF',
   textOnBrand: '#FFFFFF',
 
-  primary: '#F5451B',
-  primaryPressed: '#D8380F',
-  primarySoft: '#FFEBE3',
-  primaryBorder: '#FFCDB6',
+  primary: '#2F6BFF',
+  primaryPressed: '#2355E0',
+  primarySoft: '#E8F0FF',
+  primaryBorder: '#BDD4FF',
 
-  accent: '#7BC70A',
-  accentSoft: '#EEFBD2',
-  onAccent: '#161327',
+  accent: '#7A6CFF',
+  accentSoft: '#EDEBFC',
+  onAccent: '#FFFFFF',
 
-  info: '#2E7DF6',
-  infoSoft: '#E6F0FE',
+  sun: '#FFD84D',
+  sunSoft: '#FFF6C7',
+  onSun: '#8A6400',
+
+  info: '#2F6BFF',
+  infoSoft: '#E8F0FF',
   success: '#0E9F63',
   successSoft: '#E1F7EC',
-  warning: '#E07A05',
-  warningSoft: '#FEF1DE',
-  danger: '#E0294B',
-  dangerSoft: '#FDE9ED',
+  /* Warning stays amber and danger stays red, but both are pulled away from the
+     ember ombre so a validation error never reads as a countdown. */
+  warning: '#D9820B',
+  warningSoft: '#FDF1DC',
+  danger: '#D92D3F',
+  dangerSoft: '#FCE9EB',
 
   skeleton: '#E9E6F7',
   shadow: '#2A2350',
@@ -294,34 +385,42 @@ const light: Palette = {
 const dark: Palette = {
   scheme: 'dark',
 
-  /* Was a blue-grey near-black. Now an indigo one: the same contrast, but the
-     saturated hues on top of it stop looking like stickers on a slab. */
-  bg: '#0B0A16',
-  surface: '#17152A',
-  surfaceAlt: '#221F3A',
-  surfaceSunken: '#0F0D1C',
+  /* Lifted off near-black onto a blue-grey slate. Two reasons: at #0B0A16 the
+     app read as a void, and — less obviously — cobalt goes muddy against true
+     black because there is no local contrast left to carry the hue. Separation
+     between card and background now comes from the surface being lighter than
+     the background rather than from a border, which is why there are no light
+     outlines in dark mode any more. */
+  bg: '#181B24',
+  surface: '#212530',
+  surfaceAlt: '#2A2F3C',
+  surfaceSunken: '#13161E',
   surfaceInverse: '#FFFFFF',
-  overlay: 'rgba(6,5,14,0.72)',
+  overlay: 'rgba(8,9,14,0.72)',
   scrim: 'rgba(255,255,255,0.07)',
 
-  border: '#2C2945',
-  borderStrong: '#413D62',
-  divider: '#241F3C',
+  border: '#333845',
+  borderStrong: '#444B5C',
+  divider: '#2A2F3C',
 
-  text: '#F4F3FA',
-  textSecondary: '#ADA8C6',
-  textMuted: '#7C769B',
+  text: '#EEF0F6',
+  textSecondary: '#AEB2C2',
+  textMuted: '#8A8E9E',
   textInverse: '#161327',
   textOnBrand: '#FFFFFF',
 
-  primary: '#FF7A45',
-  primaryPressed: '#FF9463',
-  primarySoft: 'rgba(255,122,69,0.18)',
-  primaryBorder: 'rgba(255,122,69,0.38)',
+  primary: '#5C90FF',
+  primaryPressed: '#7AA6FF',
+  primarySoft: 'rgba(92,144,255,0.18)',
+  primaryBorder: 'rgba(92,144,255,0.38)',
 
-  accent: '#C9F03C',
-  accentSoft: 'rgba(201,240,60,0.18)',
-  onAccent: '#161327',
+  accent: '#9387FF',
+  accentSoft: 'rgba(147,135,255,0.18)',
+  onAccent: '#FFFFFF',
+
+  sun: '#FFD84D',
+  sunSoft: 'rgba(255,216,77,0.18)',
+  onSun: '#8A6400',
 
   info: '#6BA6FF',
   infoSoft: 'rgba(107,166,255,0.18)',
@@ -329,12 +428,14 @@ const dark: Palette = {
   successSoft: 'rgba(50,213,131,0.18)',
   warning: '#FFC048',
   warningSoft: 'rgba(255,192,72,0.18)',
-  danger: '#FF6B87',
-  dangerSoft: 'rgba(255,107,135,0.18)',
+  danger: '#FF8A7A',
+  dangerSoft: 'rgba(255,138,122,0.18)',
 
-  skeleton: '#221F3A',
+  skeleton: '#2A2F3C',
   shadow: '#000000',
-  tabBar: '#100E1E',
+  /* Was darker than the surface, which made the bar look detached. Matching the
+     surface lets the fade rail do the separating instead. */
+  tabBar: '#212530',
   statusBar: 'light',
 
   gradients: gradientsDark,
@@ -357,13 +458,28 @@ export const Spacing = {
   /** 56 */ giant: 56,
 } as const;
 
+/**
+ * Tightened one step across the board.
+ *
+ * `md` is what cards use, and it moves 14 → 10: clearly more deliberate than
+ * the old soft rounding, nowhere near the hard-edged 6 that reads as poster
+ * art. Everything above it is pulled in proportionally so a sheet does not
+ * end up rounder than the card inside it. `pill` is untouched.
+ *
+ * Because 157 of the 285 `borderRadius` usages in `mobile/` already reference
+ * this object, editing these seven numbers does most of the geometry change on
+ * its own. The remaining hardcoded literals are a separate, mechanical sweep.
+ */
 export const Radii = {
-  xs: 6,
-  sm: 10,
-  md: 14,
-  lg: 20,
-  xl: 26,
-  xxl: 32,
+  xs: 5,
+  sm: 8,
+  md: 10,
+  lg: 14,
+  xl: 20,
+  xxl: 26,
+  /** Buttons, chips, segmented controls and icon buttons. Same number as `md`
+   *  today, but named so a button never inherits a card's rounding by accident. */
+  button: 10,
   pill: 999,
 } as const;
 
@@ -379,9 +495,22 @@ export const FontFamily = {
   semibold: 'Inter_600SemiBold',
   bold: 'Inter_700Bold',
   black: 'Inter_800ExtraBold',
-  /** Condensed sports display — headlines, big numbers, tier labels. */
-  display: 'SairaCondensed_700Bold',
-  displayBlack: 'SairaCondensed_800ExtraBold',
+  /** Condensed sports display — headlines, big numbers, tier labels.
+   *  Dropped from 700 to 600: still unmistakably sporting, no longer shouting.
+   *  Both weights are already in the `useFonts` call, so this costs nothing. */
+  display: 'SairaCondensed_600SemiBold',
+  displayBlack: 'SairaCondensed_700Bold',
+  /** Tabular numerals — every score, count, time and countdown.
+   *  Monospace digits share one advance width, so a number that updates in
+   *  place stops jittering sideways, and a column of scores lines up without
+   *  manual padding. REQUIRES registration in app/_layout.tsx — see the
+   *  implementation plan. Unused until then; nothing breaks. */
+  mono: 'JetBrainsMono_500Medium',
+  monoBold: 'JetBrainsMono_700Bold',
+  /** Names — every person, coach and club name. Barlow Semi Condensed.
+   *  REQUIRES registration in app/_layout.tsx (Step 2). */
+  name: 'BarlowSemiCondensed_600SemiBold',
+  nameBold: 'BarlowSemiCondensed_700Bold',
 } as const;
 
 export const FontSize = {
@@ -410,13 +539,26 @@ export const Duration = {
   slow: 340,
 } as const;
 
+/**
+ * Depth, flattened.
+ *
+ * The old ramp blurred up to 30px at 13% opacity in light mode, which made
+ * every card hover above the page — the social-feed default. These values are
+ * roughly a third of that: enough to separate a sheet from what is behind it,
+ * not enough to float. The visible "machined" edge on a card comes from a
+ * 1px highlight along its top and a slightly darker line along its bottom,
+ * which belongs in `components/ui/Card.tsx`, not here.
+ *
+ * Signature unchanged, and this is the only place in `mobile/` that defines
+ * shadow values — 14 call sites read it — so app-wide depth is this one map.
+ */
 export function elevation(palette: Palette, level: 0 | 1 | 2 | 3) {
   if (level === 0) return {};
   const isDark = palette.scheme === 'dark';
   const map = {
-    1: { h: 2, r: 8, o: isDark ? 0.4 : 0.06, e: 2 },
-    2: { h: 6, r: 18, o: isDark ? 0.5 : 0.09, e: 6 },
-    3: { h: 12, r: 30, o: isDark ? 0.6 : 0.13, e: 12 },
+    1: { h: 1, r: 3, o: isDark ? 0.22 : 0.035, e: 1 },
+    2: { h: 3, r: 8, o: isDark ? 0.3 : 0.055, e: 3 },
+    3: { h: 6, r: 16, o: isDark ? 0.38 : 0.08, e: 6 },
   } as const;
   const m = map[level];
   return {

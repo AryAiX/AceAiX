@@ -42,7 +42,7 @@ export function Badge({ label, tone = 'neutral', icon, size = 'sm', style, solid
     },
     accent: {
       bg: colors.accentSoft,
-      fg: colors.scheme === 'dark' ? colors.accent : '#5E7A00',
+      fg: colors.accent,
       solidBg: colors.accent,
       solidFg: colors.onAccent,
     },

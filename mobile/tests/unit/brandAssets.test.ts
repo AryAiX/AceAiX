@@ -134,8 +134,8 @@ describe('brand assets', () => {
       // A splash background that is not the app's background shows as a flash
       // of a different colour at the handover.
       expect(splash.backgroundColor).toBe('#F7F6FD'); // light `bg` in theme/tokens.ts
-      expect(splash.dark.backgroundColor).toBe('#0B0A16'); // dark `bg`
-      expect(app.expo.backgroundColor).toBe('#0B0A16');
+      expect(splash.dark.backgroundColor).toBe('#181B24'); // dark `bg`
+      expect(app.expo.backgroundColor).toBe('#181B24');
     });
   });
 
