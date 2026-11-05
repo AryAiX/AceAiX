@@ -49,6 +49,9 @@ export const onboarding = {
   citySearchPlaceholder: 'Поиск по городам',
   cityNoMatch: 'Такого города нет. Попробуй запрос покороче.',
   cityShowAll: 'Показать все города',
+  countryChoose: 'Выбери страну',
+  cityChoose: 'Выбери город',
+  cityUseTyped: 'Использовать «{{name}}»',
 
   // ── Спортсмен: физические данные ──────────────────────────────────────────
   physicalTitle: 'Немного цифр',

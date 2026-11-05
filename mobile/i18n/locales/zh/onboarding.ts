@@ -46,6 +46,9 @@ export const onboarding = {
   citySearchPlaceholder: '搜索城市',
   cityNoMatch: '没有匹配的城市。试试少输几个字。',
   cityShowAll: '显示所有城市',
+  countryChoose: '选择国家',
+  cityChoose: '选择城市',
+  cityUseTyped: '使用“{{name}}”',
 
   // ── 运动员：身体数据 ──────────────────────────────────────────────────────
   physicalTitle: '几个数字',

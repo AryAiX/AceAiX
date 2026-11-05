@@ -48,6 +48,9 @@ export const onboarding = {
   citySearchPlaceholder: 'Search cities',
   cityNoMatch: 'No city matches that. Try a shorter search.',
   cityShowAll: 'Show all cities',
+  countryChoose: 'Choose a country',
+  cityChoose: 'Choose a city',
+  cityUseTyped: 'Use “{{name}}”',
 
   // ── Athlete: physical ─────────────────────────────────────────────────────
   physicalTitle: 'A few numbers',
