@@ -40,7 +40,7 @@ import {
   uploadAvatar,
 } from '@/lib/api.auth';
 import { removeOwnProfileImage } from '@/lib/api.profile';
-import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
+import type { FullTalentScore, GuardianConsent, ProfileBundle, Team } from '@/types/models';
 import { cityFromPicker } from '@/components/onboarding/CityPicker';
 import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
 import {
@@ -174,6 +174,8 @@ export default function OnboardingScreen() {
   const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [score, setScore] = useState<FullTalentScore | null>(null);
+  /* The profile as saved by the wizard, re-read at the end for the card. */
+  const [cardBundle, setCardBundle] = useState<ProfileBundle | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
 
@@ -304,7 +306,9 @@ export default function OnboardingScreen() {
     setScoreLoading(true);
     setScoreError(null);
     try {
-      setScore(await refreshMyTalentScore());
+      const [nextScore, nextBundle] = await Promise.all([refreshMyTalentScore(), getMyProfile()]);
+      setScore(nextScore);
+      setCardBundle(nextBundle);
     } catch (err) {
       setScoreError(errorMessage(err));
     } finally {
@@ -877,6 +881,8 @@ export default function OnboardingScreen() {
             <AthleteFinishStep
               firstName={name}
               score={score}
+              bundle={cardBundle}
+              teams={favoriteTeams}
               loading={scoreLoading}
               error={scoreError}
               onRetry={() => void loadScore()}

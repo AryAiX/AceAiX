@@ -1,13 +1,22 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, useWindowDimensions } from 'react-native';
 import { PartyPopper, Sparkles, TrendingUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Card, ErrorState, PointsChip, ScoreRing, SkeletonList, Text } from '@/components/ui';
+import {
+  CARD_H,
+  CARD_W,
+  PlayerCardArt,
+  imageAsDataUri,
+  type PlayerCardData,
+} from '@/components/profile/PlayerCardArt';
+import { useAsync } from '@/hooks/useAsync';
 import { tipText } from '@/lib/scoreTips';
+import { displayName, initialsOf } from '@/lib/format';
 import { useT } from '@/i18n';
 import { Tier, tierForScore } from '@/theme/tokens';
-import type { FullTalentScore } from '@/types/models';
+import type { FullTalentScore, ProfileBundle, Team } from '@/types/models';
 
 /** The payoff. Everything before this was work; this is the reward. */
 
@@ -68,12 +77,17 @@ function TipCard({ label, detail, points }: { label: string; detail: string; poi
 export function AthleteFinishStep({
   firstName,
   score,
+  bundle,
+  teams,
   loading,
   error,
   onRetry,
 }: {
   firstName: string;
   score: FullTalentScore | null;
+  /** The profile as the wizard saved it, re-read at the end; null while loading. */
+  bundle: ProfileBundle | null;
+  teams: Team[];
   loading: boolean;
   error: string | null;
   onRetry: () => void;
@@ -81,6 +95,46 @@ export function AthleteFinishStep({
   const theme = useTheme();
   const t = useT();
   const { spacing } = theme;
+  const { width } = useWindowDimensions();
+
+  /* The card is the Profile › Player card, drawn here with the same mapping
+     as app/player-card.tsx. A new athlete has no counts yet, so no stats row. */
+  const photo = useAsync(
+    () => imageAsDataUri(bundle?.user?.avatar_url),
+    [bundle?.user?.avatar_url],
+    { enabled: !!bundle },
+  );
+  const card = useMemo<PlayerCardData | null>(() => {
+    if (!bundle || !score) return null;
+    const user = bundle.user;
+    const athlete = bundle.athlete;
+    const tier = tierForScore(score.overall);
+    const supports = teams.slice(0, 2).map((team) => team.name).join(' · ');
+    return {
+      name: displayName(user?.full_name, ''),
+      initials: initialsOf(user?.full_name),
+      line: [athlete?.position, athlete?.sport].filter(Boolean).join(' · '),
+      meta: [athlete?.club, [user?.city, user?.country].filter(Boolean).join(', ')]
+        .filter(Boolean)
+        .join(' · '),
+      overall: score.overall,
+      tier,
+      tierLabel: t(TIER_KEYS[tier]),
+      scoreLabel: t('common.talentScore'),
+      photo: photo.data ?? null,
+      pillars: [
+        { label: t('score.pillarPerformance'), value: score.pillars?.performance ?? 0 },
+        { label: t('score.pillarCredibility'), value: score.pillars?.credibility ?? 0 },
+        { label: t('score.pillarEngagement'), value: score.pillars?.engagement ?? 0 },
+        { label: t('score.pillarProfile'), value: score.pillars?.profile ?? 0 },
+        { label: t('score.pillarMedia'), value: score.pillars?.media ?? 0 },
+      ],
+      stats: [],
+      footerRight: supports ? `${t('teams.supportsTitle')}: ${supports}` : '',
+    };
+  }, [bundle, score, teams, photo.data, t]);
+  const cardWidth = Math.min(width - 32, 320);
+  const cardHeight = (cardWidth * CARD_H) / CARD_W;
 
   if (loading) {
     return (
@@ -121,7 +175,22 @@ export function AthleteFinishStep({
             : t('onboarding.athleteDoneNoScore')}
         </Text>
 
-        <ScoreRing score={score?.overall ?? null} size={168} style={{ marginTop: spacing.sm }} />
+        {card ? (
+          <View
+            style={{
+              width: cardWidth,
+              height: cardHeight,
+              borderRadius: (cardWidth * 56) / CARD_W,
+              overflow: 'hidden',
+              marginTop: spacing.sm,
+              ...theme.elevation(2),
+            }}
+          >
+            <PlayerCardArt data={card} width={cardWidth} height={cardHeight} />
+          </View>
+        ) : (
+          <ScoreRing score={score?.overall ?? null} size={168} style={{ marginTop: spacing.sm }} />
+        )}
       </View>
 
       {topTips.length > 0 ? (
