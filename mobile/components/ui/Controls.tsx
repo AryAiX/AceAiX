@@ -19,7 +19,8 @@ import { ChevronForward, isRTL } from './rtl';
 // ── SegmentedControl ──────────────────────────────────────────────────────────
 interface SegmentedProps<T extends string> {
   options: { value: T; label: string }[];
-  value: T;
+  /** `null` = nothing chosen yet: no pill is drawn until the first tap. */
+  value: T | null;
   onChange: (value: T) => void;
   style?: ViewStyle;
   testID?: string;
@@ -40,6 +41,7 @@ export function SegmentedControl<T extends string>({
   const [segmentWidth, setSegmentWidth] = useState(0);
 
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const hasValue = options.some((o) => o.value === value);
   /* forceRTL mirrors the row and swaps left/right, but translateX stays
      physical, so the pill has to travel the other way in Arabic. */
   const direction = isRTL ? -1 : 1;
@@ -85,7 +87,7 @@ export function SegmentedControl<T extends string>({
           bottom: TRACK_PAD,
           left: TRACK_PAD,
           width: segmentWidth,
-          opacity: segmentWidth === 0 ? 0 : 1,
+          opacity: segmentWidth === 0 || !hasValue ? 0 : 1,
           borderRadius: radii.button,
           backgroundColor: colors.surface,
           transform: [{ translateX: indicator }],
@@ -97,6 +99,7 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={opt.value}
+            testID={testID ? `${testID}-${opt.value}` : undefined}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => {
@@ -109,7 +112,13 @@ export function SegmentedControl<T extends string>({
               paddingVertical: spacing.sm + 2,
             }}
           >
-            <Text variant="captionStrong" tone={active ? 'default' : 'muted'}>
+            <Text
+              variant="captionStrong"
+              tone={active ? 'default' : 'muted'}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {opt.label}
             </Text>
           </Pressable>

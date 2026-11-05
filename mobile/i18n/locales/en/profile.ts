@@ -123,6 +123,13 @@ export const profile = {
   clipsEmptyBodySelf: 'Add your first clip. Three short ones is the sweet spot.',
   clipsEmptyBodyOther: 'When they upload a clip, it will show up here.',
   clipsEmptyAction: 'Add your first clip',
+  yourBest: 'Your best',
+  honourTypeLabel: 'Type of honour',
+  honourTypeTeam: 'Team',
+  honourTypeIndividual: 'Individual',
+  honourTypeNational: 'National',
+  clipsWorthLead: 'Worth up to',
+  clipsWorthTail: 'on your Talent Score',
 
   nameClipTitle: 'Name this clip',
   nameClipSubtitle: "A short title helps a coach know what they're watching.",

@@ -118,6 +118,13 @@ export const profile = {
   clipsEmptyBodySelf: '传上你的第一段短片。三段短的正好。',
   clipsEmptyBodyOther: '他们上传短片后，会显示在这里。',
   clipsEmptyAction: '添加第一段短片',
+  yourBest: '你的最佳',
+  honourTypeLabel: '荣誉类型',
+  honourTypeTeam: '团队',
+  honourTypeIndividual: '个人',
+  honourTypeNational: '国家级',
+  clipsWorthLead: '最多可得',
+  clipsWorthTail: '天赋分',
 
   nameClipTitle: '给这段短片起个名',
   nameClipSubtitle: '一个简短的标题能让教练知道自己在看什么。',

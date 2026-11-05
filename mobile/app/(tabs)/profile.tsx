@@ -287,6 +287,7 @@ export default function MyProfileScreen() {
             isSelf
             refreshKey={childKey}
             onChanged={onTabDataChanged}
+            tips={score.data?.tips ?? []}
           />
         ) : athlete ? (
           <CareerTab

@@ -1,13 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { Award, BadgeCheck, ScrollText, Trophy, X } from 'lucide-react-native';
+import { Award, BadgeCheck, Flag, ScrollText, Star, Trophy, X, type LucideIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { Brand } from '@/theme/tokens';
 import {
   Avatar,
   Badge,
   Button,
   Card,
+  Chip,
   Divider,
   EmptyState,
   ErrorState,
@@ -63,6 +65,30 @@ const EMPTY_MATCH = {
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/* Mirrors the web app's HonorsSection (trophy / star / flag). The type is a
+   stored value; only the label is translated. */
+const HONOR_TYPES: HonorEntry['type'][] = ['team', 'individual', 'national'];
+const HONOR_TYPE_META: Record<HonorEntry['type'], { icon: LucideIcon; labelKey: string }> = {
+  team: { icon: Trophy, labelKey: 'profile.honourTypeTeam' },
+  individual: { icon: Star, labelKey: 'profile.honourTypeIndividual' },
+  national: { icon: Flag, labelKey: 'profile.honourTypeNational' },
+};
+
+type CareerSection = 'matches' | 'honours' | 'certificates' | 'endorsements';
+
+const SECTION_LABEL_KEYS: Record<CareerSection, string> = {
+  matches: 'common.matches',
+  honours: 'profile.honoursTitle',
+  certificates: 'profile.certificatesTitle',
+  endorsements: 'profile.endorsementsTitle',
+};
+
+interface ShelfItem {
+  key: string;
+  section: CareerSection;
+  title: string;
+  meta: string;
+}
 
 const MIN_YEAR = 1950;
 function isValidYear(value: string): boolean {
@@ -81,6 +107,14 @@ export function CareerTab({
 }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
+  /* One colour per section, so a glance tells a match from an honour:
+     matches sky, honours warm, certificates violet, endorsements mint. */
+  const sectionColour: Record<CareerSection, string> = {
+    matches: Brand.sky,
+    honours: colors.play.amber,
+    certificates: colors.accent,
+    endorsements: colors.play.mint,
+  };
   const toast = useToast();
   const t = useT();
   const { user } = useAuth();
@@ -117,9 +151,12 @@ export function CareerTab({
   const [certError, setCertError] = useState<string | null>(null);
   const [honorYearError, setHonorYearError] = useState<string | null>(null);
   const [certYearError, setCertYearError] = useState<string | null>(null);
-  const [honorForm, setHonorForm] = useState<{ title: string; org: string; year: string } | null>(
-    null,
-  );
+  const [honorForm, setHonorForm] = useState<{
+    title: string;
+    org: string;
+    year: string;
+    type: HonorEntry['type'];
+  } | null>(null);
   const [certForm, setCertForm] = useState<{ title: string; issuer: string; date: string } | null>(
     null,
   );
@@ -251,7 +288,7 @@ export function CareerTab({
         title: honorForm.title.trim(),
         org: honorForm.org.trim() || null,
         year: honorForm.year.trim() || null,
-        type: 'individual',
+        type: honorForm.type,
       },
       ...honorList,
     ];
@@ -309,6 +346,56 @@ export function CareerTab({
     }
   }, [certForm, certList, onChanged, t, toast]);
 
+  /* Three things worth leading with, picked here from what is already loaded:
+     the standout honour (national > team > individual, newest first), the
+     latest match (a verified one wins), the newest endorsement. An empty slot
+     falls through to the newest certificate. */
+  const best = useMemo<ShelfItem[]>(() => {
+    const items: ShelfItem[] = [];
+    const typeRank: Record<HonorEntry['type'], number> = { national: 0, team: 1, individual: 2 };
+    const honour = [...honorList].sort(
+      (a, b) => typeRank[a.type] - typeRank[b.type] || (b.year ?? '').localeCompare(a.year ?? ''),
+    )[0];
+    if (honour) {
+      items.push({
+        key: `honour-${honour.title}`,
+        section: 'honours',
+        title: honour.title,
+        meta: metaLine(honour.org, honour.year),
+      });
+    }
+    const matchRows = matches.data ?? [];
+    const match = matchRows.find((m) => m.source === 'verified') ?? matchRows[0];
+    if (match) {
+      items.push({
+        key: `match-${match.id}`,
+        section: 'matches',
+        title: match.opponent
+          ? t('profile.matchVersus', { opponent: match.opponent })
+          : t('profile.matchFallback'),
+        meta: metaLine(match.result, fullDate(match.match_date)),
+      });
+    }
+    const endorsement = (endorsements.data ?? [])[0];
+    if (endorsement) {
+      items.push({
+        key: `endorse-${endorsement.id}`,
+        section: 'endorsements',
+        title: endorsement.skill_or_trait,
+        meta: displayName(endorsement.endorser?.full_name),
+      });
+    }
+    const cert = certList[0];
+    if (items.length < 3 && cert) {
+      items.push({
+        key: `cert-${cert.title}`,
+        section: 'certificates',
+        title: cert.title,
+        meta: metaLine(cert.issuer, cert.date),
+      });
+    }
+    return items.slice(0, 3);
+  }, [certList, endorsements.data, honorList, matches.data, t]);
   if (!athleteId) {
     return (
       <EmptyState
@@ -321,6 +408,38 @@ export function CareerTab({
 
   return (
     <View style={{ gap: spacing.xxl }}>
+      {/* ── Your best ── */}
+      {best.length > 0 ? (
+        <View>
+          <SectionHeader title={t('profile.yourBest')} />
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            {best.map((item) => (
+              <Card
+                key={item.key}
+                padded="sm"
+                style={{
+                  flex: 1,
+                  gap: 2,
+                  borderTopWidth: 3,
+                  borderTopColor: sectionColour[item.section],
+                }}
+              >
+                <Text variant="overline" color={sectionColour[item.section]} numberOfLines={1}>
+                  {t(SECTION_LABEL_KEYS[item.section])}
+                </Text>
+                <Text variant="captionStrong" numberOfLines={2}>
+                  {item.title}
+                </Text>
+                {item.meta ? (
+                  <Text variant="caption" tone="muted" numberOfLines={1}>
+                    {item.meta}
+                  </Text>
+                ) : null}
+              </Card>
+            ))}
+          </View>
+        </View>
+      ) : null}
       {/* ── Matches ── */}
       <View>
         <SectionHeader
@@ -362,7 +481,7 @@ export function CareerTab({
             }
           />
         ) : (
-          <Card padded={false}>
+          <Card padded={false} style={{ borderLeftWidth: 3, borderLeftColor: sectionColour.matches }}>
             {(matches.data ?? []).map((match, index) => (
               <View key={match.id}>
                 {index > 0 ? <Divider /> : null}
@@ -414,7 +533,7 @@ export function CareerTab({
               ? () => {
                   setHonorError(null);
                   setHonorYearError(null);
-                  setHonorForm({ title: '', org: '', year: '' });
+                  setHonorForm({ title: '', org: '', year: '', type: 'individual' });
                 }
               : undefined
           }
@@ -433,38 +552,54 @@ export function CareerTab({
                 ? () => {
                     setHonorError(null);
                     setHonorYearError(null);
-                    setHonorForm({ title: '', org: '', year: '' });
+                    setHonorForm({ title: '', org: '', year: '', type: 'individual' });
                   }
                 : undefined
             }
           />
         ) : (
-          <Card padded={false}>
-            {honorList.map((honor, index) => (
-              <View key={`${honor.title}-${index}`}>
-                {index > 0 ? <Divider /> : null}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.md,
-                    padding: spacing.lg,
-                  }}
-                >
-                  <Trophy size={18} color={colors.warning} />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyStrong" numberOfLines={2}>
-                      {honor.title}
-                    </Text>
-                    {metaLine(honor.org, honor.year) ? (
-                      <Text variant="caption" tone="muted">
-                        {metaLine(honor.org, honor.year)}
+          <Card padded={false} style={{ borderLeftWidth: 3, borderLeftColor: sectionColour.honours }}>
+            {honorList.map((honor, index) => {
+              const TypeIcon = HONOR_TYPE_META[honor.type].icon;
+              return (
+                <View key={`${honor.title}-${index}`}>
+                  {index > 0 ? <Divider /> : null}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: spacing.md,
+                      padding: spacing.lg,
+                    }}
+                  >
+                    {/* The medal: the type's icon on a soft tile of the section colour. */}
+                    <View
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: theme.radii.sm,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: theme.alpha(sectionColour.honours, 0.16),
+                      }}
+                    >
+                      <TypeIcon size={18} color={sectionColour.honours} />
+                    </View>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text variant="bodyStrong" numberOfLines={2}>
+                        {honor.title}
                       </Text>
-                    ) : null}
+                      {metaLine(honor.org, honor.year) ? (
+                        <Text variant="caption" tone="muted">
+                          {metaLine(honor.org, honor.year)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Badge label={t(HONOR_TYPE_META[honor.type].labelKey)} tone="neutral" />
                   </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </Card>
         )}
       </View>
@@ -506,7 +641,7 @@ export function CareerTab({
             }
           />
         ) : (
-          <Card padded={false}>
+          <Card padded={false} style={{ borderLeftWidth: 3, borderLeftColor: sectionColour.certificates }}>
             {certList.map((cert, index) => (
               <View key={`${cert.title}-${index}`}>
                 {index > 0 ? <Divider /> : null}
@@ -518,7 +653,18 @@ export function CareerTab({
                     padding: spacing.lg,
                   }}
                 >
-                  <Award size={18} color={colors.info} />
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: theme.radii.xs,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: theme.alpha(sectionColour.certificates, 0.16),
+                    }}
+                  >
+                    <Award size={18} color={sectionColour.certificates} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyStrong" numberOfLines={2}>
                       {cert.title}
@@ -573,7 +719,7 @@ export function CareerTab({
             onAction={canEndorse ? () => setEndorseForm({ skill: '', note: '' }) : undefined}
           />
         ) : (
-          <Card padded={false}>
+          <Card padded={false} style={{ borderLeftWidth: 3, borderLeftColor: sectionColour.endorsements }}>
             {(endorsements.data ?? []).map((item, index) => (
               <View key={item.id}>
                 {index > 0 ? <Divider /> : null}
@@ -591,14 +737,19 @@ export function CareerTab({
                     verified={item.endorser?.is_verified}
                   />
                   <View style={{ flex: 1, gap: 2 }}>
+                    {/* The skill is the headline; who said it sits underneath. */}
                     <Text variant="bodyStrong" numberOfLines={1}>
-                      {displayName(item.endorser?.full_name)}
+                      {item.skill_or_trait}
                     </Text>
                     <Text variant="caption" tone="muted">
-                      {metaLine(roleLabel(item.endorser_role), item.skill_or_trait)}
+                      {metaLine(displayName(item.endorser?.full_name), roleLabel(item.endorser_role))}
                     </Text>
                     {item.note ? (
-                      <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
+                      <Text
+                        variant="caption"
+                        tone="secondary"
+                        style={{ marginTop: 2, fontStyle: 'italic' }}
+                      >
                         “{item.note}”
                       </Text>
                     ) : null}
@@ -861,6 +1012,21 @@ export function CareerTab({
               setHonorForm((f) => (f ? { ...f, year: text } : f));
             }}
           />
+          <View style={{ gap: spacing.xs }}>
+            <Text variant="caption" tone="secondary">
+              {t('profile.honourTypeLabel')}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              {HONOR_TYPES.map((type) => (
+                <Chip
+                  key={type}
+                  label={t(HONOR_TYPE_META[type].labelKey)}
+                  selected={honorForm?.type === type}
+                  onPress={() => setHonorForm((f) => (f ? { ...f, type } : f))}
+                />
+              ))}
+            </View>
+          </View>
           {honorError ? (
             <Text variant="caption" style={{ color: colors.danger }}>
               {honorError}

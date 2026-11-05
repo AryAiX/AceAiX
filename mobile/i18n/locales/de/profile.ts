@@ -123,6 +123,13 @@ export const profile = {
   clipsEmptyBodySelf: 'Lade deinen ersten Clip hoch. Drei kurze sind genau richtig.',
   clipsEmptyBodyOther: 'Sobald ein Clip hochgeladen wird, steht er hier.',
   clipsEmptyAction: 'Ersten Clip hochladen',
+  yourBest: 'Deine Besten',
+  honourTypeLabel: 'Art der Auszeichnung',
+  honourTypeTeam: 'Team',
+  honourTypeIndividual: 'Einzel',
+  honourTypeNational: 'Landesweit',
+  clipsWorthLead: 'Bis zu',
+  clipsWorthTail: 'auf deinen Talent Score',
 
   nameClipTitle: 'Gib dem Clip einen Namen',
   nameClipSubtitle: 'Ein kurzer Titel sagt einem Trainer, was er gleich sieht.',

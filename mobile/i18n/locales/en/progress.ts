@@ -20,6 +20,7 @@ export const progress = {
   title: 'Achievements',
   subtitle: 'Every one of these comes from something you actually did.',
   earnedOf: '{{earned}} of {{total}}',
+  newTag: 'New',
   unlockedOn: 'Earned {{date}}',
   tileEarnedA11y: '{{title}}. Earned {{date}}. {{hint}}',
   tileLockedA11y: '{{title}}. Not earned yet. {{hint}}',

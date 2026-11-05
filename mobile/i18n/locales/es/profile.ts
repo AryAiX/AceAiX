@@ -129,6 +129,13 @@ export const profile = {
   clipsEmptyBodySelf: 'Añade tu primer clip. Tres cortos es el punto justo.',
   clipsEmptyBodyOther: 'Cuando suba un clip, aparecerá aquí.',
   clipsEmptyAction: 'Añadir tu primer clip',
+  yourBest: 'Lo mejor de ti',
+  honourTypeLabel: 'Tipo de reconocimiento',
+  honourTypeTeam: 'Equipo',
+  honourTypeIndividual: 'Individual',
+  honourTypeNational: 'Nacional',
+  clipsWorthLead: 'Vale hasta',
+  clipsWorthTail: 'en tu Puntuación de talento',
 
   nameClipTitle: 'Ponle nombre a este clip',
   nameClipSubtitle: 'Un título corto ayuda al entrenador a saber qué está viendo.',

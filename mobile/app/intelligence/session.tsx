@@ -19,12 +19,12 @@ import {
   Badge,
   Button,
   Card,
-  Chip,
   ErrorState,
   Header,
   Loader,
   Reveal,
   Screen,
+  SegmentedControl,
   Shine,
   Tappable,
   Text,
@@ -273,17 +273,13 @@ export default function GiSessionScreen() {
         </Card>
         <View style={{ gap: spacing.sm }}>
           <Text variant="subheading">{t('intelligence.readyFatigue')}</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {levels.map((n) => (
-              <Chip
-                key={n}
-                label={t(`intelligence.fatigue${n}`)}
-                selected={fatigue === n}
-                onPress={() => setFatigue(n)}
-                testID={`fatigue-${n}`}
-              />
-            ))}
-          </View>
+          {/* One bar, Fresh to Exhausted — nothing chosen until the athlete taps. */}
+          <SegmentedControl
+            options={levels.map((n) => ({ value: String(n), label: t(`intelligence.fatigue${n}`) }))}
+            value={fatigue == null ? null : String(fatigue)}
+            onChange={(v) => setFatigue(Number(v))}
+            testID="fatigue"
+          />
           {fatigue != null && fatigue >= 4 ? (
             <Text variant="caption" tone="warning">
               {t('intelligence.readyTiredHint')}
@@ -292,6 +288,7 @@ export default function GiSessionScreen() {
         </View>
         <Button
           label={t('intelligence.readyContinue')}
+          variant="gradient"
           fullWidth
           size="lg"
           disabled={fatigue == null}
@@ -396,6 +393,7 @@ export default function GiSessionScreen() {
           ) : null}
           <Button
             label={t('intelligence.hubFinish')}
+            variant="gradient"
             fullWidth
             size="lg"
             disabled={!anyPlayed}
@@ -477,6 +475,7 @@ export default function GiSessionScreen() {
                 </Text>
                 <Button
                   label={t('intelligence.practice')}
+                  variant="gradient"
                   fullWidth
                   size="lg"
                   onPress={() => setGame({ ...game, phase: 'practice' })}
@@ -493,6 +492,7 @@ export default function GiSessionScreen() {
                 </Text>
                 <Button
                   label={t('intelligence.startScored')}
+                  variant="gradient"
                   fullWidth
                   size="lg"
                   onPress={() => setGame({ ...game, phase: 'scored' })}

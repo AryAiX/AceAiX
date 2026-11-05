@@ -38,6 +38,7 @@ import { Confetti } from '@/components/celebrate/Confetti';
 import { InfoNote } from '@/components/settings/Notes';
 import { GiRing, SubScoreBar } from '@/components/intelligence/shared';
 import { TestIcon } from '@/components/intelligence/TestIcon';
+import { MedalChip } from '@/components/intelligence/Result';
 import { useAsync } from '@/hooks/useAsync';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAuth } from '@/providers/AuthProvider';
@@ -300,12 +301,19 @@ export default function GameIntelligenceScreen() {
       <View style={{ gap: spacing.md }}>
         {GI_TESTS.map((x, i) => (
           <Reveal key={x.key} index={i}>
-            <SubScoreBar
-              label={t(`intelligence.tests.${x.i18n}.name`)}
-              hint={t(`intelligence.tests.${x.i18n}.what`)}
-              value={gi.subscores[x.key]}
-              color={colors.play[x.hue]}
-            />
+            {/* Each game keeps its icon and hue, and the medal its last round earned. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TestIcon test={x.key} color={colors.play[x.hue]} size={40} />
+              <View style={{ flex: 1 }}>
+                <SubScoreBar
+                  label={t(`intelligence.tests.${x.i18n}.name`)}
+                  hint={t(`intelligence.tests.${x.i18n}.what`)}
+                  value={gi.subscores[x.key]}
+                  color={colors.play[x.hue]}
+                />
+              </View>
+              <MedalChip score={gi.subscores[x.key]} size={26} />
+            </View>
           </Reveal>
         ))}
       </View>

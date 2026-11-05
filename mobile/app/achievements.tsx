@@ -71,6 +71,13 @@ export default function AchievementsScreen() {
     }
     return map;
   }, [progress?.achievements]);
+  /* Earned but not yet celebrated. `my_progress` lists them in `unseen`; the
+     provider clears the list once the celebration has been dismissed, so this
+     is usually empty by the time the wall is opened. */
+  const unseen = useMemo(
+    () => new Set<AchievementKey>(progress?.unseen ?? []),
+    [progress?.unseen],
+  );
 
   const header = <Header back title={t('progress.title')} />;
 
@@ -128,7 +135,7 @@ export default function AchievementsScreen() {
 
       {/* ── The wall ── */}
       {ACHIEVEMENT_GROUPS.map((group) => (
-        <Group key={group} group={group} earned={earned} />
+        <Group key={group} group={group} earned={earned} unseen={unseen} />
       ))}
     </Screen>
   );
@@ -137,9 +144,11 @@ export default function AchievementsScreen() {
 function Group({
   group,
   earned,
+  unseen,
 }: {
   group: AchievementGroup;
   earned: Map<AchievementKey, string>;
+  unseen: Set<AchievementKey>;
 }) {
   const theme = useTheme();
   const { spacing } = theme;
@@ -187,16 +196,29 @@ function Group({
         }}
       >
         {entries.map((entry) => (
-          <Tile key={entry.key} meta={entry} unlockedAt={earned.get(entry.key) ?? null} />
+          <Tile
+            key={entry.key}
+            meta={entry}
+            unlockedAt={earned.get(entry.key) ?? null}
+            isNew={unseen.has(entry.key)}
+          />
         ))}
       </View>
     </View>
   );
 }
 
-function Tile({ meta, unlockedAt }: { meta: AchievementMeta; unlockedAt: string | null }) {
+function Tile({
+  meta,
+  unlockedAt,
+  isNew,
+}: {
+  meta: AchievementMeta;
+  unlockedAt: string | null;
+  isNew: boolean;
+}) {
   const theme = useTheme();
-  const { spacing } = theme;
+  const { colors, radii, spacing } = theme;
   const t = useT();
 
   const isEarned = unlockedAt !== null;
@@ -217,18 +239,41 @@ function Tile({ meta, unlockedAt }: { meta: AchievementMeta; unlockedAt: string 
       style={{
         width: '48%',
         alignItems: 'center',
-        gap: spacing.sm,
-        minHeight: 172,
+        gap: spacing.xs,
+        minHeight: 148,
         opacity: isEarned ? 1 : 0.85,
       }}
     >
-      <AchievementBadge meta={meta} earned={isEarned} size="md" />
+      {isNew ? (
+        <View
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: radii.xs,
+            backgroundColor: colors.sun,
+          }}
+        >
+          <Text variant="overline" color={colors.onSun}>
+            {t('progress.newTag')}
+          </Text>
+        </View>
+      ) : null}
 
-      <Text variant="captionStrong" align="center" tone={isEarned ? 'default' : 'secondary'}>
+      <AchievementBadge meta={meta} earned={isEarned} size="sm" />
+
+      <Text
+        variant="captionStrong"
+        align="center"
+        numberOfLines={2}
+        tone={isEarned ? 'default' : 'secondary'}
+      >
         {title}
       </Text>
 
-      <Text variant="caption" tone="muted" align="center" style={{ flex: 1 }}>
+      <Text variant="caption" tone="muted" align="center" numberOfLines={3} style={{ flex: 1 }}>
         {detail}
       </Text>
 

@@ -125,6 +125,13 @@ export const profile = {
   clipsEmptyBodySelf: 'Ajoute ton premier clip. Trois clips courts, c’est le bon dosage.',
   clipsEmptyBodyOther: 'Quand cette personne mettra un clip, ça apparaîtra ici.',
   clipsEmptyAction: 'Ajouter ton premier clip',
+  yourBest: 'Tes meilleurs',
+  honourTypeLabel: 'Type de distinction',
+  honourTypeTeam: 'Équipe',
+  honourTypeIndividual: 'Individuel',
+  honourTypeNational: 'Nationale',
+  clipsWorthLead: 'Jusqu’à',
+  clipsWorthTail: 'sur ton Score Talent',
 
   nameClipTitle: 'Nomme ce clip',
   nameClipSubtitle: 'Un titre court aide le coach à savoir ce qu’il regarde.',

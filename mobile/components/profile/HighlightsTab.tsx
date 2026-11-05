@@ -13,6 +13,7 @@ import {
   EmptyState,
   ErrorState,
   Input,
+  PointsChip,
   RemoteImage,
   Sheet,
   Skeleton,
@@ -32,6 +33,7 @@ import { knownViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
 import { fullDate } from '@/lib/format';
 import { useT } from '@/i18n';
+import type { ScoreTip } from '@/types/models';
 import { MediaGrid, MediaTile } from './MediaGrid';
 
 /**
@@ -48,6 +50,8 @@ interface Props {
   refreshKey?: number;
   /** Fired after an upload or delete, so the score can be re-read. */
   onChanged?: () => void;
+  /** The score's tips, so the empty state can say what clips are worth. */
+  tips?: ScoreTip[];
 }
 
 interface Picked {
@@ -58,7 +62,7 @@ interface Picked {
   durationSeconds: number | null;
 }
 
-export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: Props) {
+export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, tips = [] }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const toast = useToast();
@@ -251,6 +255,7 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
   if (media.error) return <ErrorState message={media.error} onRetry={media.reload} compact />;
 
   if (items.length === 0) {
+    const clipTip = tips.find((tip) => tip.key === 'add_highlights') ?? null;
     return (
       <>
         <EmptyState
@@ -261,6 +266,26 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
           actionLabel={isSelf ? t('profile.clipsEmptyAction') : undefined}
           onAction={isSelf ? pick : undefined}
         />
+        {isSelf && clipTip ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: spacing.xs,
+              marginTop: spacing.sm,
+            }}
+          >
+            <Text variant="caption" tone="muted">
+              {t('profile.clipsWorthLead')}
+            </Text>
+            <PointsChip points={clipTip.points} label={t('score.tipPoints', { points: clipTip.points })} />
+            <Text variant="caption" tone="muted">
+              {t('profile.clipsWorthTail')}
+            </Text>
+          </View>
+        ) : null}
         {isSelf ? uploadSheet : null}
       </>
     );

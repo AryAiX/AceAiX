@@ -129,6 +129,13 @@ export const profile = {
   clipsEmptyBodySelf: 'Добавь первый клип. Три коротких — самое то.',
   clipsEmptyBodyOther: 'Когда появится клип, он будет здесь.',
   clipsEmptyAction: 'Добавить первый клип',
+  yourBest: 'Твои лучшие',
+  honourTypeLabel: 'Тип награды',
+  honourTypeTeam: 'Команда',
+  honourTypeIndividual: 'Личная',
+  honourTypeNational: 'Национальная',
+  clipsWorthLead: 'До',
+  clipsWorthTail: 'к твоей Оценке таланта',
 
   nameClipTitle: 'Назови клип',
   nameClipSubtitle: 'Короткое название подскажет тренеру, что он смотрит.',

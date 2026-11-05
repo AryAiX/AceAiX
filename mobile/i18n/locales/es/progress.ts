@@ -9,6 +9,7 @@ export const progress = {
   title: 'Logros',
   subtitle: 'Todo lo que hay aquí viene de algo que hiciste de verdad.',
   earnedOf: '{{earned}} de {{total}}',
+  newTag: 'Nuevo',
   unlockedOn: 'Conseguido el {{date}}',
   tileEarnedA11y: '{{title}}. Conseguido el {{date}}. {{hint}}',
   tileLockedA11y: '{{title}}. Todavía no conseguido. {{hint}}',

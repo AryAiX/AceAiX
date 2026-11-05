@@ -131,6 +131,13 @@ export const profile = {
   clipsEmptyBodySelf: 'أضف أول لقطة لك. ثلاث لقطات قصيرة هي العدد المثالي.',
   clipsEmptyBodyOther: 'عندما يرفع لقطة، ستظهر هنا.',
   clipsEmptyAction: 'أضف أول لقطة',
+  yourBest: 'أفضل ما لديك',
+  honourTypeLabel: 'نوع التكريم',
+  honourTypeTeam: 'فريق',
+  honourTypeIndividual: 'فردي',
+  honourTypeNational: 'وطني',
+  clipsWorthLead: 'تصل قيمتها إلى',
+  clipsWorthTail: 'في درجة موهبتك',
 
   nameClipTitle: 'سمِّ هذه اللقطة',
   nameClipSubtitle: 'عنوان قصير يساعد المدرّب على معرفة ما يشاهده.',

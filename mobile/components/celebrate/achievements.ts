@@ -293,7 +293,7 @@ export function raritySkin(rarity: Rarity, theme: Theme, earned = true): RarityS
   const base: Record<Rarity, string> = {
     common: TierColors.silver,
     rare: TierColors.gold,
-    epic: colors.primary,
+    epic: TierColors.elite,
   };
 
   const fg = base[rarity];
