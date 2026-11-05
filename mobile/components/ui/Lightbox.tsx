@@ -9,6 +9,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RemoteImage } from './RemoteImage';
@@ -55,7 +56,7 @@ export function Lightbox({ visible, uri, caption, onClose }: Props) {
   const { width, height } = useWindowDimensions();
 
   const enter = useRef(new Animated.Value(0)).current;
-  const closeRef = useRef<View>(null);
+  const closeRef = useRef<ViewInstance>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {

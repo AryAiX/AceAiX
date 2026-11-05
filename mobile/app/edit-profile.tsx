@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Image, InteractionManager, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -212,15 +212,18 @@ export default function EditProfileScreen() {
     if (form.otherSports.length >= MAX_OTHER_SPORTS) return;
 
     let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
+    const run = () => {
       if (cancelled) return;
       alsoPlaysFocusHandled.current = true;
       setAlsoPlaysSheet(true);
       router.setParams({ focus: undefined });
-    });
+    };
+    // InteractionManager is gone in React Native 0.88. Wait until the push
+    // animation is idle; Safari on the web has no requestIdleCallback.
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run);
+    else setTimeout(run, 300);
     return () => {
       cancelled = true;
-      task.cancel();
     };
   }, [focus, form, bundle.data, router]);
 

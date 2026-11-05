@@ -5,10 +5,10 @@ import {
   Text as RNText,
   TextInput,
   View,
-  type NativeSyntheticEvent,
   type StyleProp,
+  type TextInputInstance,
   type TextInputProps,
-  type TextInputSelectionChangeEventData,
+  type TextInputSelectionChangeEvent,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
@@ -94,7 +94,7 @@ function coloredRuns(
   return runs;
 }
 
-export const MentionInput = forwardRef<TextInput, MentionInputProps>(function MentionInput(
+export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(function MentionInput(
   {
     value,
     onChangeText,
@@ -110,7 +110,7 @@ export const MentionInput = forwardRef<TextInput, MentionInputProps>(function Me
 ) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const valueRef = useRef(value);
   const mentionsRef = useRef<MentionSpan[]>([]);
   const cursorRef = useRef(value.length);
@@ -129,7 +129,7 @@ export const MentionInput = forwardRef<TextInput, MentionInputProps>(function Me
   const activeRef = useRef(active);
   activeRef.current = active;
 
-  const setRef = (node: TextInput | null) => {
+  const setRef = (node: TextInputInstance | null) => {
     inputRef.current = node;
     if (typeof ref === 'function') ref(node);
     else if (ref) ref.current = node;
@@ -197,7 +197,7 @@ export const MentionInput = forwardRef<TextInput, MentionInputProps>(function Me
     publishQuery(next, cursor, nextMentions);
   };
 
-  const handleSelection = (event: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+  const handleSelection = (event: TextInputSelectionChangeEvent) => {
     if (Date.now() < ignoreSelectionUntil.current) return;
     const selection = event.nativeEvent.selection;
     if (pinnedCaret != null && (selection.start !== pinnedCaret || selection.end !== pinnedCaret)) {
@@ -231,14 +231,22 @@ export const MentionInput = forwardRef<TextInput, MentionInputProps>(function Me
     onChangeText(result.text);
     inputRef.current?.focus();
     requestAnimationFrame(() => {
-      inputRef.current?.setNativeProps({
-        selection: { start: result.cursor, end: result.cursor },
-      });
+      inputRef.current?.setSelection(result.cursor, result.cursor);
       choosingRef.current = false;
     });
   };
 
   const flat = StyleSheet.flatten(style) ?? {};
+  const {
+    margin: _margin,
+    marginTop: _marginTop,
+    marginBottom: _marginBottom,
+    marginLeft: _marginLeft,
+    marginRight: _marginRight,
+    marginHorizontal: _marginHorizontal,
+    marginVertical: _marginVertical,
+    ...inputStyle
+  }: TextStyle = flat;
   const marginStyle: ViewStyle = {
     margin: flat.margin,
     marginTop: flat.marginTop,
@@ -248,14 +256,6 @@ export const MentionInput = forwardRef<TextInput, MentionInputProps>(function Me
     marginHorizontal: flat.marginHorizontal,
     marginVertical: flat.marginVertical,
   };
-  const inputStyle: TextStyle = { ...flat };
-  delete inputStyle.margin;
-  delete inputStyle.marginTop;
-  delete inputStyle.marginBottom;
-  delete inputStyle.marginLeft;
-  delete inputStyle.marginRight;
-  delete inputStyle.marginHorizontal;
-  delete inputStyle.marginVertical;
   const typeStyle: TextStyle = {
     fontFamily: flat.fontFamily,
     fontSize: flat.fontSize,

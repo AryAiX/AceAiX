@@ -455,7 +455,7 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
             >
               {error}
             </Text>
-          ) : null
+          ) : undefined
         }
         /* The header carries the filters, so it stays mounted through every
            state — a skeleton must never take the controls away. */

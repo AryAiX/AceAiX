@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, View, type TextInputInstance } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarDays, Lock, Mail, ShieldAlert, Users } from 'lucide-react-native';
 
@@ -123,7 +123,7 @@ export function NameStep({
 }) {
   const theme = useTheme();
   const t = useT();
-  const lastRef = useRef<TextInput>(null);
+  const lastRef = useRef<TextInputInstance>(null);
   const isSponsor = role === 'sponsor';
   const isClub = role === 'club';
 
@@ -606,7 +606,7 @@ export function AccountStep({
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const strength = passwordStrength(password);
 
   return (

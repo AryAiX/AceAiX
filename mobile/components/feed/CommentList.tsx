@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View, type TextInputInstance } from 'react-native';
 import { Heart, MoreHorizontal, Send, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -240,7 +240,7 @@ export function CommentComposer({
   const { colors, radii, spacing } = theme;
   const t = useT();
   const { profile } = useAuth();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   useEffect(() => {
     if (focusSignal > 0) inputRef.current?.focus();

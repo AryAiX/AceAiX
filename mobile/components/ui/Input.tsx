@@ -5,6 +5,7 @@ import {
   TextInputProps,
   View,
   ViewStyle,
+  type TextInputInstance,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 
@@ -25,7 +26,7 @@ interface Props extends Omit<TextInputProps, 'style'> {
   required?: boolean;
 }
 
-export const Input = forwardRef<TextInput, Props>(function Input(
+export const Input = forwardRef<TextInputInstance, Props>(function Input(
   {
     label,
     hint,

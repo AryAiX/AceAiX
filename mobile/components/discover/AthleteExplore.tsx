@@ -561,7 +561,7 @@ export function AthleteExplore({
             <Text variant="caption" tone="muted" style={{ marginBottom: spacing.xs }}>
               {t('discover.board.caption', { scope })}
             </Text>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <LeaderboardRow
@@ -580,7 +580,7 @@ export function AthleteExplore({
             >
               {t('discover.board.keepBuilding')}
             </Text>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <EmptyState

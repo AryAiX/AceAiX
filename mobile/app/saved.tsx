@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, View, type ViewToken } from 'react-native';
+import { FlatList, RefreshControl, View, type ListViewToken as ViewToken } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Bookmark } from 'lucide-react-native';
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, View, type LayoutChangeEvent, type ViewToken } from 'react-native';
+import { FlatList, Pressable, View, type LayoutChangeEvent, type ListViewToken as ViewToken } from 'react-native';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';

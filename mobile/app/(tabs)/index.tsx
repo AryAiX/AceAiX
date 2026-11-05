@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, type ViewToken } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View, type ListViewToken as ViewToken } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Bell, Clapperboard, MessageSquare, Users } from 'lucide-react-native';

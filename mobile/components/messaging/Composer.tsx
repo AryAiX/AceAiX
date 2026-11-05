@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform, Pressable, TextInput, View } from 'react-native';
+import { Keyboard, Platform, Pressable, TextInput, View, type TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Send } from 'lucide-react-native';
 
@@ -30,7 +30,7 @@ export function Composer({
   const { colors, radii, spacing, font, size, lineHeight, hit } = theme;
   const t = useT();
   const insets = useSafeAreaInsets();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   const lineH = Math.round(size.md * lineHeight.normal);
   const minHeight: number = hit.min;

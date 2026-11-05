@@ -8,7 +8,7 @@ import {
   StyleSheet,
   View,
   type LayoutChangeEvent,
-  type ViewToken,
+  type ListViewToken as ViewToken,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -331,7 +331,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         renderItem={renderRow}
         extraData={visible}
         ListHeaderComponent={top}
-        ListEmptyComponent={width === 0 ? null : empty}
+        ListEmptyComponent={width === 0 ? undefined : empty}
         ItemSeparatorComponent={RowGap}
         contentContainerStyle={{ paddingBottom: spacing.giant }}
         showsVerticalScrollIndicator={false}
@@ -359,7 +359,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
             <Text variant="caption" tone="danger" align="center" style={{ margin: spacing.lg }}>
               {t('explore.loadMoreFailed')}
             </Text>
-          ) : null
+          ) : undefined
         }
       />
     </View>

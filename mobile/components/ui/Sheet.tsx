@@ -13,6 +13,7 @@ import {
   View,
   ViewStyle,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -100,7 +101,7 @@ export function Sheet({
 
   const translate = useRef(new Animated.Value(screenH)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
-  const sheetRef = useRef<View>(null);
+  const sheetRef = useRef<ViewInstance>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const dismissableRef = useRef(dismissable);

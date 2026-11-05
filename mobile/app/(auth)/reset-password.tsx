@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { KeyRound, Lock } from 'lucide-react-native';
 
@@ -39,7 +39,7 @@ export default function ResetPasswordScreen() {
     refresh_token?: string;
   }>();
 
-  const confirmRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInputInstance>(null);
 
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
