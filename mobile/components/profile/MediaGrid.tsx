@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, View } from 'react-native';
-import { ImageOff, Play, Plus, Quote } from 'lucide-react-native';
+import { ImageOff, Play, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { RemoteImage, Text } from '@/components/ui';
@@ -125,7 +125,10 @@ export function MediaGrid({
             <RemoteImage uri={tile.uri} style={{ width: '100%', height: '100%' }} contentFit="cover" />
           ) : quote ? (
             <View style={{ flex: 1, padding: spacing.md, justifyContent: 'space-between' }}>
-              <Quote size={20} color={quote.ink} />
+              {/* A typed quote mark, not an icon: it can never go missing. */}
+              <Text variant="title" color={quote.ink} style={{ fontSize: 34, lineHeight: 34 }} allowFontScaling={false}>
+                “
+              </Text>
               <Text variant="bodyStrong" color={colors.text} numberOfLines={4}>
                 {tile.caption}
               </Text>
