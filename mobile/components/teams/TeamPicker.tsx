@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { Plus, Search, X } from 'lucide-react-native';
+import { Plus, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Button, Card, Input, Tappable, Text, useToast } from '@/components/ui';
+import { Badge, Button, Card, Input, Text, useToast } from '@/components/ui';
+import { OptionList, SelectedPills } from '@/components/onboarding/PickerSheet';
 import { addCustomTeam, searchTeams } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
@@ -118,37 +119,19 @@ export function TeamPicker({
 
   return (
     <View style={{ gap: spacing.md }}>
-      {/* ── What they have picked ── */}
+      {/* ── What they have picked: tap one to remove it ── */}
       {value.length > 0 ? (
         <View style={{ gap: spacing.xs }}>
           <Text variant="overline" tone="muted">
             {t('teams.selected', { count: value.length })}
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-            {value.map((team) => (
-              <Tappable key={team.id} onPress={() => toggle(team)} accessibilityLabel={team.name}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
-                    paddingVertical: 8,
-                    paddingLeft: 12,
-                    paddingRight: 8,
-                    borderRadius: theme.radii.button,
-                    backgroundColor: theme.alpha(colors.primary, 0.14),
-                    borderWidth: 1,
-                    borderColor: theme.alpha(colors.primary, 0.35),
-                  }}
-                >
-                  <Text variant="captionStrong" tone="primary">
-                    {team.name}
-                  </Text>
-                  <X size={13} color={colors.primary} />
-                </View>
-              </Tappable>
-            ))}
-          </View>
+          <SelectedPills
+            items={value.map((team) => ({ key: team.id, label: team.name }))}
+            onRemove={(id) => {
+              const team = value.find((v) => v.id === id);
+              if (team) toggle(team);
+            }}
+          />
         </View>
       ) : null}
 
@@ -168,31 +151,18 @@ export function TeamPicker({
         </Text>
       ) : null}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-        {results
+      {/* A short list under the box that narrows as they type. */}
+      <OptionList
+        rows={results
           .filter((r) => !chosen.has(r.id))
-          .map((team) => (
-            <Tappable key={team.id} onPress={() => toggle(team)} accessibilityLabel={team.name}>
-              <View
-                style={{
-                  paddingVertical: 9,
-                  paddingHorizontal: 13,
-                  borderRadius: theme.radii.button,
-                  backgroundColor: colors.surfaceAlt,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Text variant="caption">{team.name}</Text>
-                {team.country ? (
-                  <Text variant="caption" tone="muted" style={{ fontSize: 11 }}>
-                    {team.country}
-                  </Text>
-                ) : null}
-              </View>
-            </Tappable>
-          ))}
-      </View>
+          .map((team) => ({ key: team.id, label: team.name, sublabel: team.country }))}
+        onPick={(id) => {
+          const team = results.find((r) => r.id === id);
+          if (team) toggle(team);
+        }}
+        limit={8}
+        testID="team-options"
+      />
 
       {query && !loading && results.length === 0 ? (
         <Text variant="caption" tone="muted">

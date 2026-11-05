@@ -1,6 +1,6 @@
 import React from 'react';
 import { FlatList, Pressable, View } from 'react-native';
-import { Check, ChevronDown, Search } from 'lucide-react-native';
+import { Check, ChevronDown, Search, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Input, Sheet, Text } from '@/components/ui';
@@ -193,5 +193,140 @@ export function PickerSheet({
         style={{ flexShrink: 1 }}
       />
     </Sheet>
+  );
+}
+
+/**
+ * The same rows as `PickerSheet`, drawn inline in a bordered box — for a
+ * picker that already lives inside a sheet (a sheet cannot safely open a
+ * second one) or under a search box on a form. Shows at most `limit` rows; the
+ * caller says what to do about the rest (usually "keep typing").
+ */
+export function OptionList({
+  rows,
+  onPick,
+  selected = [],
+  limit = 8,
+  extraRow,
+  emptyText,
+  testID,
+}: {
+  rows: (PickerRow & { sublabel?: string | null })[];
+  onPick: (key: string) => void;
+  selected?: string[];
+  limit?: number;
+  extraRow?: PickerRow | null;
+  /** Shown when there are no rows and no `extraRow`. Omit to show nothing. */
+  emptyText?: string;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const { colors, radii, spacing } = theme;
+  const shown = rows.slice(0, limit);
+  const all = extraRow ? [extraRow, ...shown] : shown;
+
+  if (all.length === 0) {
+    return emptyText ? (
+      <Text variant="caption" tone="muted">
+        {emptyText}
+      </Text>
+    ) : null;
+  }
+
+  return (
+    <View
+      testID={testID}
+      style={{
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: radii.md,
+        backgroundColor: colors.surface,
+        overflow: 'hidden',
+      }}
+    >
+      {all.map((item, index) => {
+        const on = selected.includes(item.key);
+        const sub = 'sublabel' in item ? (item as { sublabel?: string | null }).sublabel : null;
+        return (
+          <Pressable
+            key={item.key}
+            onPress={() => onPick(item.key)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={item.label}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.sm,
+              minHeight: 46,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 6,
+              borderTopWidth: index === 0 ? 0 : 1,
+              borderTopColor: colors.divider,
+              backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
+            })}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                variant={on ? 'bodyStrong' : 'body'}
+                color={on ? colors.primary : colors.text}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+              {sub ? (
+                <Text variant="caption" tone="muted" numberOfLines={1}>
+                  {sub}
+                </Text>
+              ) : null}
+            </View>
+            {on ? <Check size={18} color={colors.primary} strokeWidth={2.6} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** What has been picked, as removable pills. Tapping one removes it. */
+export function SelectedPills({
+  items,
+  onRemove,
+}: {
+  items: PickerRow[];
+  onRemove: (key: string) => void;
+}) {
+  const theme = useTheme();
+  const { colors, spacing } = theme;
+  if (items.length === 0) return null;
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+      {items.map((item) => (
+        <Pressable
+          key={item.key}
+          onPress={() => onRemove(item.key)}
+          accessibilityRole="button"
+          accessibilityLabel={item.label}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            paddingVertical: 8,
+            paddingLeft: 12,
+            paddingRight: 8,
+            borderRadius: theme.radii.button,
+            backgroundColor: theme.alpha(colors.primary, 0.12),
+            borderWidth: 1.5,
+            borderColor: colors.primary,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Text variant="captionStrong" tone="primary">
+            {item.label}
+          </Text>
+          <X size={13} color={colors.primary} />
+        </Pressable>
+      ))}
+    </View>
   );
 }

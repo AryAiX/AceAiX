@@ -18,6 +18,7 @@ import {
   sportEmoji,
   sportLabel,
 } from '@/constants/sports';
+import { OptionList, SelectedPills } from '@/components/onboarding/PickerSheet';
 import { useT } from '@/i18n';
 import { saveMatchPreferences } from '@/lib/api';
 import { countDiscoverAthletes } from '@/lib/api.discover';
@@ -34,7 +35,7 @@ const DEFAULT_AGE_MIN = 13;
 const DEFAULT_AGE_MAX = 25;
 const SCORE_STEP = 5;
 const SCORE_CEILING = 90;
-const COUNTRY_PAGE = 10;
+const COUNTRY_PAGE = 6;
 const COUNT_DEBOUNCE_MS = 350;
 
 interface Draft {
@@ -610,22 +611,19 @@ export function FilterSheet({
             icon={<Search size={18} color={colors.textMuted} />}
             containerStyle={{ marginBottom: spacing.md }}
           />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {draft.countries.map((country) => (
-              <Chip
-                key={country}
-                label={countryLabel(t, country)}
-                selected
-                onPress={() => patch({ countries: toggle(draft.countries, country) })}
-              />
-            ))}
-            {visibleCountries.map((country) => (
-              <Chip
-                key={country}
-                label={countryLabel(t, country)}
-                onPress={() => patch({ countries: toggle(draft.countries, country) })}
-              />
-            ))}
+          <View style={{ gap: spacing.sm }}>
+            <SelectedPills
+              items={draft.countries.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+              onRemove={(country) => patch({ countries: toggle(draft.countries, country) })}
+            />
+            <OptionList
+              rows={visibleCountries.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+              onPick={(country) => {
+                patch({ countries: toggle(draft.countries, country) });
+                setCountryQuery('');
+              }}
+              limit={COUNTRY_PAGE}
+            />
           </View>
           {hiddenCountries > 0 ? (
             <Text variant="caption" tone="muted" style={{ marginTop: spacing.sm }}>
