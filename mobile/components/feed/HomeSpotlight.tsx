@@ -1,15 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, Flame, Gauge } from 'lucide-react-native';
+import { Eye, Flame } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, tierForScore } from '@/theme/tokens';
 import { Badge, Card, Divider, ListItem, Text } from '@/components/ui';
-import { tierLabel } from '@/components/discover/MatchBadge';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
-import { useProgress } from '@/providers/ProgressProvider';
 import { openChallenges, profileViewDigest } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { deadlineLabel, metaLine } from '@/lib/format';
@@ -18,13 +15,11 @@ import { useT } from '@/i18n';
 /**
  * Your week — the block above the feed.
  *
- * Three things Home already had, in one place: who has been reading your
- * profile, where your Talent Score stands, and what a coach has asked for this
- * week. The views and the challenge load here, as they always did; the score
- * is the snapshot ProgressProvider holds for the whole app (the streak chip in
- * the header reads the same one). Nothing counts down, nothing says you are
- * behind, a row with nothing to say is left out — and with nothing at all, so
- * is the block.
+ * Two things Home already had, in one place: who has been reading your
+ * profile, and what a coach has asked for this week. The Talent Score lives on
+ * Profile only, so Home is not one more place to watch a number. Nothing
+ * counts down, nothing says you are behind, a row with nothing to say is left
+ * out — and with nothing at all, so is the block.
  */
 export function HomeSpotlight() {
   const theme = useTheme();
@@ -32,7 +27,6 @@ export function HomeSpotlight() {
   const t = useT();
   const router = useRouter();
   const { profile, isGuardian } = useAuth();
-  const { progress } = useProgress();
 
   const isAthlete = profile?.role === 'athlete';
 
@@ -46,13 +40,12 @@ export function HomeSpotlight() {
   });
 
   const views = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
-  const score = progress?.score ?? null;
   // Parents cannot enter challenges, so the row has nothing for them (QA-151).
   const challenge = isGuardian
     ? null
     : ((challenges.data ?? []).find((c) => c.status === 'open') ?? null);
 
-  if (!views && !score && !challenge) return null;
+  if (!views && !challenge) return null;
 
   const rows: React.ReactElement[] = [];
 
@@ -79,33 +72,6 @@ export function HomeSpotlight() {
         }
         onPress={() => router.push(Routes.profileViews)}
         testID="your-week-views"
-      />,
-    );
-  }
-
-  if (score) {
-    /* Derived from the number, as ScoreCard does, so a tier string the client
-       does not know can never index past TierColors. */
-    const tier = tierForScore(score.overall);
-    const tierColor = TierColors[tier];
-    rows.push(
-      <ListItem
-        key="score"
-        inset
-        title={t('common.talentScore')}
-        subtitle={t('score.tierLine', { tier: tierLabel(t, tier) })}
-        left={
-          <RowIcon color={tierColor}>
-            <Gauge size={18} color={tierColor} />
-          </RowIcon>
-        }
-        right={
-          <Text variant="stat" color={tierColor} style={{ fontSize: 22 }}>
-            {Math.round(score.overall)}
-          </Text>
-        }
-        onPress={() => router.push(Routes.score)}
-        testID="your-week-score"
       />,
     );
   }

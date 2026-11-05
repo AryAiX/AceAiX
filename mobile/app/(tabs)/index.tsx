@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, RefreshControl, View, type ListViewToken as ViewToken } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, MessageSquare, Users } from 'lucide-react-native';
+import { Bell, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -29,6 +29,7 @@ import { getReels } from '@/lib/api.reels';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { MessagesButton } from '@/components/feed/MessagesButton';
 import { MatchedTrial } from '@/components/feed/MatchedTrial';
 import { StoryRail } from '@/components/stories/StoryRail';
 import { ReelsStrip } from '@/components/reels/ReelsStrip';
@@ -319,24 +320,11 @@ export default function HomeScreen() {
       >
         <Wordmark />
 
-        {/* The streak sits before the inbox icons: it is the one thing in the
-            header that rewards opening the app rather than asking something
-            of you. Theme lives in Settings › Appearance; Reels open from the
-            strip in the feed. */}
+        {/* The streak sits before the bell: it is the one thing in the header
+            that rewards opening the app rather than asking something of you.
+            Messages moved down beside the Playfeed switch. */}
         <StreakChip testID="home-streak" />
 
-        <IconButton
-          icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
-          label={
-            unread.messages > 0
-              ? t('feed.messagesUnread', { count: unread.messages })
-              : t('feed.messages')
-          }
-          badge={unread.messages}
-          size={38}
-          onPress={() => router.push(Routes.inbox)}
-          testID="home-messages"
-        />
         <IconButton
           icon={<Bell size={20} color={colors.text} strokeWidth={1.9} />}
           label={
@@ -352,13 +340,34 @@ export default function HomeScreen() {
       </View>
 
       {/* The Playfeed switch sits above the list, outside it, so it stays put
-          while stories and posts scroll under it. */}
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-        <SegmentedControl
-          options={scopes}
-          value={scope}
-          onChange={setScope}
-          testID="home-scope"
+          while stories and posts scroll under it — and Messages with it. Home
+          is the only way into the inbox, so this button must never go. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.md,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <SegmentedControl
+            options={scopes}
+            value={scope}
+            onChange={setScope}
+            testID="home-scope"
+          />
+        </View>
+        <MessagesButton
+          count={unread.messages}
+          label={
+            unread.messages > 0
+              ? t('feed.messagesUnread', { count: unread.messages })
+              : t('feed.messages')
+          }
+          onPress={() => router.push(Routes.inbox)}
+          testID="home-messages"
         />
       </View>
 

@@ -31,7 +31,7 @@ interface Props {
  */
 export function StreakChip({ current, style, testID }: Props) {
   const theme = useTheme();
-  const { colors, radii, spacing, hit } = theme;
+  const { radii, spacing } = theme;
   const t = useT();
   const reduceMotion = useReducedMotion();
   const { progress, streak } = useProgress();
@@ -100,6 +100,14 @@ export function StreakChip({ current, style, testID }: Props) {
   const incomingY = roll.interpolate({ inputRange: [0, 1], outputRange: [rowHeight, 0] });
   const flameScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.28] });
 
+  /* A soft amber outline, not a fill: the warm gradient button beside the
+     Playfeed switch is Messages, and the two must not read as a pair. Dark
+     mode keeps the outline and tints the fill instead of using cream. */
+  const dark = theme.scheme === 'dark';
+  const chipFill = dark ? theme.alpha(theme.gradients.warm[0], 0.14) : '#FFF4EA';
+  const chipBorder = theme.gradients.warm[0];
+  const chipInk = dark ? theme.gradients.warm[0] : '#B5410A';
+
   const label = t('progress.streakChipA11y', {
     days: t('progress.days', { count: value }),
   });
@@ -122,27 +130,27 @@ export function StreakChip({ current, style, testID }: Props) {
           {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 5,
-            minHeight: hit.min - 8,
-            paddingHorizontal: spacing.md,
-            borderRadius: radii.button,
-            backgroundColor: colors.primarySoft,
-            borderWidth: 1,
-            borderColor: colors.primaryBorder,
+            gap: 4,
+            minHeight: 30,
+            paddingHorizontal: spacing.sm + 2,
+            borderRadius: radii.pill,
+            backgroundColor: chipFill,
+            borderWidth: 1.5,
+            borderColor: chipBorder,
             opacity: pressed ? 0.75 : 1,
           },
           style,
         ]}
       >
         <Animated.View style={{ transform: [{ scale: flameScale }] }}>
-          <Flame size={16} color={colors.primary} fill={value > 0 ? colors.primary : 'none'} />
+          <Flame size={14} color={chipInk} strokeWidth={2.4} />
         </Animated.View>
 
         <View style={{ height: rowHeight, overflow: 'hidden', justifyContent: 'center' }}>
           <Animated.View style={{ transform: [{ translateY: outgoingY }] }}>
             <Text
               variant="captionStrong"
-              color={colors.primary}
+              color={chipInk}
               style={{ lineHeight: rowHeight }}
               allowFontScaling={false}
             >
@@ -160,7 +168,7 @@ export function StreakChip({ current, style, testID }: Props) {
             >
               <Text
                 variant="captionStrong"
-                color={colors.primary}
+                color={chipInk}
                 style={{ lineHeight: rowHeight }}
                 allowFontScaling={false}
               >
