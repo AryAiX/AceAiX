@@ -1,6 +1,7 @@
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, Flame } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -78,29 +79,51 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
   }
 
   if (challenge) {
+    /* The challenge is a little banner of its own: a soft yellow → orange
+       ombre, mostly yellow, washed out enough that the words stay plain ink. */
     rows.push(
-      <ListItem
+      <View
         key="challenge"
-        inset
-        title={challenge.title}
-        subtitle={metaLine(
-          t('challenges.homeTitle'),
-          deadlineLabel(challenge.closes_at),
-          t('challenges.entries', { count: challenge.entry_count }),
-        )}
-        left={
-          <RowIcon color={colors.warning}>
-            <Flame size={18} color={colors.warning} />
-          </RowIcon>
-        }
-        right={
-          <Text variant="captionStrong" tone="primary">
-            {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
-          </Text>
-        }
-        onPress={() => router.push(Routes.challenge(challenge.id))}
-        testID="your-week-challenge"
-      />,
+        style={{
+          marginHorizontal: spacing.sm,
+          marginBottom: spacing.sm,
+          borderRadius: theme.radii.md,
+          overflow: 'hidden',
+        }}
+      >
+        <LinearGradient
+          colors={[
+            theme.alpha(theme.colors.sun, 0.42),
+            theme.alpha(theme.play.amber, 0.3),
+            theme.alpha(theme.play.flame, 0.24),
+          ]}
+          locations={[0, 0.6, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <ListItem
+          style={{ paddingHorizontal: spacing.md }}
+          title={challenge.title}
+          subtitle={metaLine(
+            t('challenges.homeTitle'),
+            deadlineLabel(challenge.closes_at),
+            t('challenges.entries', { count: challenge.entry_count }),
+          )}
+          left={
+            <RowIcon color={colors.warning}>
+              <Flame size={18} color={colors.warning} />
+            </RowIcon>
+          }
+          right={
+            <Text variant="captionStrong" tone="primary">
+              {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
+            </Text>
+          }
+          onPress={() => router.push(Routes.challenge(challenge.id))}
+          testID="your-week-challenge"
+        />
+      </View>,
     );
   }
 
@@ -115,7 +138,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
       </Text>
       {rows.map((row, index) => (
         <React.Fragment key={row.key ?? index}>
-          {index > 0 ? <Divider inset={spacing.lg} /> : null}
+          {index > 0 && row.key !== 'challenge' ? <Divider inset={spacing.lg} /> : null}
           {row}
         </React.Fragment>
       ))}
