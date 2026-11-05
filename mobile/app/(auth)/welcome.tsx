@@ -192,6 +192,7 @@ export default function WelcomeScreen() {
             <View style={{ gap: spacing.md }}>
               <Button
                 label={t('auth.createAccount')}
+                variant="gradient"
                 size="lg"
                 fullWidth
                 onPress={() => router.push(Routes.auth.signUp)}

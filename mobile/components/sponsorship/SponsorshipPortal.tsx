@@ -233,6 +233,7 @@ export function SponsorshipPortal({
                 title={t('sponsorship.noRequests')}
                 body={t('sponsorship.seekBody')}
                 actionLabel={data.gate === 'ok' ? t('sponsorship.seekCta') : undefined}
+                actionVariant="warm"
                 onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipRequest) : undefined}
               />
             ) : (
@@ -266,7 +267,7 @@ export function SponsorshipPortal({
                       ) : null}
                       <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
                       {request.pending_offers > 0 ? (
-                        <Text variant="captionStrong" tone="primary">
+                        <Text variant="captionStrong" tone="warning">
                           {t('sponsorship.pendingOffers', { n: request.pending_offers })}
                         </Text>
                       ) : null}

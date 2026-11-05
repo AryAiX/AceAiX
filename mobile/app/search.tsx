@@ -280,6 +280,7 @@ export default function SearchScreen() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {SUGGESTED_SPORTS.map((sport) => (
             <Chip
+              tone="accent"
               key={sport.key}
               label={sportLabel(t, sport.key)}
               icon={<Text variant="caption">{sport.emoji}</Text>}

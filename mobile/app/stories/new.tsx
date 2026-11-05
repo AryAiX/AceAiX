@@ -378,7 +378,7 @@ export default function NewStoryScreen() {
                       <StickerIcon
                         sticker={key}
                         size={15}
-                        color={sticker === key ? colors.textOnBrand : colors.textSecondary}
+                        color={sticker === key ? colors.primary : colors.textSecondary}
                       />
                     }
                   />
@@ -443,7 +443,7 @@ export default function NewStoryScreen() {
                 icon={
                   <AudienceIcon
                     value={option.value}
-                    color={audience === option.value ? colors.textOnBrand : colors.textSecondary}
+                    color={audience === option.value ? colors.primary : colors.textSecondary}
                   />
                 }
                 testID={`story-audience-${option.value}`}
@@ -457,6 +457,7 @@ export default function NewStoryScreen() {
 
         <Button
           label={t('stories.share')}
+          variant="gradient"
           onPress={post}
           loading={posting}
           disabled={!canPost}

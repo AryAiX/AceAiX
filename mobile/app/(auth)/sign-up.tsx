@@ -231,6 +231,7 @@ export default function SignUpScreen() {
       footer={
         <Button
           label={step === 'account' ? t('auth.createAccount') : t('common.continue')}
+          variant="gradient"
           size="lg"
           fullWidth
           disabled={!canContinue()}

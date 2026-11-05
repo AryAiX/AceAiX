@@ -189,6 +189,7 @@ export default function NewChallengeScreen() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {SPORTS.map((item) => (
             <Chip
+              tone="accent"
               key={item.key}
               label={sportLabel(t, item.key)}
               icon={<Text variant="caption">{item.emoji}</Text>}

@@ -526,7 +526,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
             <>
               <Button
                 label={t(following ? 'common.following' : 'common.follow')}
-                variant={following ? 'secondary' : 'primary'}
+                variant={following ? 'secondary' : 'soft'}
                 style={{ flex: 1 }}
                 fullWidth
                 loading={followBusy}

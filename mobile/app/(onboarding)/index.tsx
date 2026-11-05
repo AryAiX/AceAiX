@@ -690,6 +690,7 @@ export default function OnboardingScreen() {
       ) : (
         <Button
           label={continueLabel}
+          variant="gradient"
           size="lg"
           fullWidth
           loading={saving}

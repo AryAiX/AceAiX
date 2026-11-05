@@ -244,6 +244,7 @@ export default function ScoutingPreferencesScreen() {
         </Text>
 
         <ChipPicker
+          tone="accent"
           label={t('settings.scoutingSports')}
           hint={t('settings.scoutingSportsHint')}
           options={sportOptions}

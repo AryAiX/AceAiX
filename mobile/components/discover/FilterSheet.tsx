@@ -252,6 +252,7 @@ function PreferenceSports({
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
           {SPORTS.map((sport) => (
             <Chip
+              tone="accent"
               key={sport.key}
               label={sportLabel(t, sport.key)}
               icon={<Text variant="caption">{sport.emoji}</Text>}
@@ -261,6 +262,7 @@ function PreferenceSports({
           ))}
           {extraSports.map((sport) => (
             <Chip
+              tone="accent"
               key={sport}
               label={sportLabel(t, sport)}
               icon={<Text variant="caption">{sportEmoji(sport)}</Text>}
@@ -534,6 +536,7 @@ export function FilterSheet({
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                 {SPORTS.map((sport) => (
                   <Chip
+                    tone="accent"
                     key={sport.key}
                     label={sportLabel(t, sport.key)}
                     icon={<Text variant="caption">{sport.emoji}</Text>}

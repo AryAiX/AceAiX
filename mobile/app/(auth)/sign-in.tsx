@@ -155,6 +155,7 @@ export default function SignInScreen() {
 
         <Button
           label={t('auth.signIn.submit')}
+          variant="gradient"
           size="lg"
           fullWidth
           loading={submitting}

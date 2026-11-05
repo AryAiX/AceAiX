@@ -431,6 +431,7 @@ export default function MeetupScreen() {
           ) : (
             <Button
               label={full ? t('meetups.full') : t('meetups.askToJoin')}
+              variant="gradient"
               fullWidth
               disabled={full}
               onPress={() => setAskOpen(true)}

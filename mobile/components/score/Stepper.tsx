@@ -50,12 +50,12 @@ export function Stepper({
         style={{
           width: 38,
           height: 38,
-          borderRadius: 19,
+          borderRadius: radii.button,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: enabled ? colors.surfaceAlt : 'transparent',
+          backgroundColor: enabled ? colors.sun : 'transparent',
           borderWidth: 1,
-          borderColor: enabled ? colors.border : colors.divider,
+          borderColor: enabled ? colors.sun : colors.divider,
           opacity: enabled ? 1 : 0.4,
         }}
       >
@@ -72,7 +72,7 @@ export function Stepper({
         </Text>
 
         {button(
-          <Minus size={16} color={colors.text} />,
+          <Minus size={16} color={clamped > min ? colors.onSun : colors.text} />,
           Math.max(min, clamped - step),
           clamped > min,
           `${label} −`,
@@ -87,7 +87,7 @@ export function Stepper({
         </Text>
 
         {button(
-          <Plus size={16} color={colors.text} />,
+          <Plus size={16} color={clamped < max ? colors.onSun : colors.text} />,
           Math.min(max, clamped + step),
           clamped < max,
           `${label} +`,

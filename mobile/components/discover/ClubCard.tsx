@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import { BadgeCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Card, Text } from '@/components/ui';
+import { Card, Text } from '@/components/ui';
+import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { useT } from '@/i18n';
 import { compactNumber, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
@@ -62,7 +63,7 @@ export function ClubCard({ organization, following, pending, onToggleFollow, onO
       accessibilityHint={t('discover.club.openClub')}
       style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
     >
-      <Avatar uri={organization.logo_url} name={organization.name} size="md" />
+      <ClubLogo uri={organization.logo_url} name={organization.name} size="md" />
 
       <View style={{ flex: 1, gap: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>

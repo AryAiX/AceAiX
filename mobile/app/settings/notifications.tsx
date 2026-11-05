@@ -208,8 +208,8 @@ export default function NotificationSettingsScreen() {
   }, [loaded, placeDraft, toast]);
 
   const icon = useCallback(
-    (Icon: typeof Bell) => <Icon size={17} color={colors.text} />,
-    [colors.text],
+    (Icon: typeof Bell) => <Icon size={17} color={colors.primary} />,
+    [colors.primary],
   );
 
   const activityRows = useMemo(

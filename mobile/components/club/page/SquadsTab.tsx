@@ -107,6 +107,7 @@ export function ClubSquadsTab({
         ? chipRow(
             [ALL, ...sports].map((value) => (
               <Chip
+                tone="accent"
                 key={value}
                 label={value === ALL ? t('club.squads.allSports') : sportLabel(t, value)}
                 selected={value === sport || (value === ALL && !sports.includes(sport))}

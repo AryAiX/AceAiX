@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock, SearchX } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, EmptyState, ErrorState, Screen, SkeletonList, Text } from '@/components/ui';
+import { Chip, EmptyState, ErrorState, Screen, SkeletonList, Text, type ChipTone } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { ClubPage } from '@/lib/api.club';
 import { metaLine } from '@/lib/format';
@@ -83,12 +83,15 @@ export function ChipField<T extends string>({
   value,
   onChange,
   hint,
+  tone,
 }: {
   label: string;
   options: { value: T; label: string }[];
   value: T | null;
   onChange: (v: T) => void;
   hint?: string;
+  /** `accent` for the sport field; everything else stays on the default. */
+  tone?: ChipTone;
 }) {
   const { spacing } = useTheme();
   return (
@@ -98,7 +101,7 @@ export function ChipField<T extends string>({
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {options.map((o) => (
-          <Chip key={o.value} label={o.label} selected={value === o.value} onPress={() => onChange(o.value)} />
+          <Chip key={o.value} label={o.label} selected={value === o.value} onPress={() => onChange(o.value)} tone={tone} />
         ))}
       </View>
       {hint ? (

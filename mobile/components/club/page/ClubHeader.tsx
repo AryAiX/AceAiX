@@ -217,7 +217,7 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           {team ? null : (
             <Button
               label={following ? t('common.following') : t('common.follow')}
-              variant={following ? 'secondary' : 'primary'}
+              variant={following ? 'secondary' : 'soft'}
               size="sm"
               loading={followBusy}
               onPress={onToggleFollow}

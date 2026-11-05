@@ -14,7 +14,7 @@ import { useT } from '@/i18n';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { NATIVE_DRIVER } from '@/lib/motion';
-import { Button } from './Button';
+import { Button, type ButtonVariant } from './Button';
 import { Text } from './Text';
 
 // ── EmptyState ────────────────────────────────────────────────────────────────
@@ -24,6 +24,8 @@ interface EmptyStateProps {
   body?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** Leave unset for the flat default. */
+  actionVariant?: ButtonVariant;
   secondaryLabel?: string;
   onSecondary?: () => void;
   style?: ViewStyle;
@@ -36,6 +38,7 @@ export function EmptyState({
   body,
   actionLabel,
   onAction,
+  actionVariant,
   secondaryLabel,
   onSecondary,
   style,
@@ -95,7 +98,7 @@ export function EmptyState({
         </Text>
       ) : null}
       {actionLabel && onAction ? (
-        <Button label={actionLabel} onPress={onAction} style={{ marginTop: spacing.sm, alignSelf: 'center' }} />
+        <Button label={actionLabel} variant={actionVariant} onPress={onAction} style={{ marginTop: spacing.sm, alignSelf: 'center' }} />
       ) : null}
       {secondaryLabel && onSecondary ? (
         <Button label={secondaryLabel} variant="ghost" size="sm" onPress={onSecondary} />

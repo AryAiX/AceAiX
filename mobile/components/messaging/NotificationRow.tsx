@@ -343,7 +343,7 @@ export function NotificationRow({ notification, onPress }: Props) {
             width: 9,
             height: 9,
             borderRadius: radii.pill,
-            backgroundColor: colors.primary,
+            backgroundColor: colors.warning,
             marginTop: spacing.sm,
           }}
         />

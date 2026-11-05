@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { PartyPopper, Sparkles, TrendingUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Card, ErrorState, ScoreRing, SkeletonList, Text } from '@/components/ui';
+import { Card, ErrorState, PointsChip, ScoreRing, SkeletonList, Text } from '@/components/ui';
 import { tipText } from '@/lib/scoreTips';
 import { useT } from '@/i18n';
 import { Tier, tierForScore } from '@/theme/tokens';
@@ -55,18 +55,10 @@ function TipCard({ label, detail, points }: { label: string; detail: string; poi
         </View>
 
         {points > 0 ? (
-          <View
-            style={{
-              paddingHorizontal: spacing.sm,
-              paddingVertical: 3,
-              borderRadius: radii.pill,
-              backgroundColor: colors.primarySoft,
-            }}
-          >
-            <Text variant="overline" tone="primary">
-              {t('onboarding.tipPoints', { points: Math.round(points) })}
-            </Text>
-          </View>
+          <PointsChip
+            points={Math.round(points)}
+            label={t('onboarding.tipPoints', { points: Math.round(points) })}
+          />
         ) : null}
       </View>
     </Card>

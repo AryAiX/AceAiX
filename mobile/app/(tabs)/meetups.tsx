@@ -110,8 +110,9 @@ export default function MeetupsScreen() {
       right={
         <Button
           label={t('meetups.createTitle')}
+          variant="soft"
           size="sm"
-          icon={<Plus size={16} color={colors.textOnBrand} />}
+          icon={<Plus size={16} color={colors.primary} />}
           onPress={() => router.push(Routes.newMeetup)}
         />
       }
@@ -156,12 +157,14 @@ export default function MeetupsScreen() {
             contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
           >
             <Chip
+              tone="accent"
               label={t('meetups.anySport')}
               selected={sport === null}
               onPress={() => setSport(null)}
             />
             {SPORTS.map((s) => (
               <Chip
+                tone="accent"
                 key={s.key}
                 label={`${s.emoji} ${sportLabel(t, s.key)}`}
                 selected={sport === s.key}

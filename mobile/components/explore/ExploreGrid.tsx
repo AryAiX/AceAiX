@@ -275,13 +275,15 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         testID="explore-sports"
       >
         <Chip
+          tone="accent"
           label={t('explore.allSports')}
-          icon={<Sparkles size={14} color={sport ? colors.textSecondary : colors.textOnBrand} />}
+          icon={<Sparkles size={14} color={sport ? colors.textSecondary : colors.accent} />}
           selected={!sport}
           onPress={() => setSport(null)}
         />
         {sportRows.map((row) => (
           <Chip
+            tone="accent"
             key={row.sport}
             label={sportLabel(t, row.sport)}
             icon={<Text variant="caption">{sportConfig(row.sport)?.emoji ?? '🎽'}</Text>}

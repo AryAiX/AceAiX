@@ -171,6 +171,7 @@ export default function ChallengeScreen() {
           <View style={{ gap: spacing.sm }}>
             <Button
               label={t(challenge.my_entry_id ? 'challenges.enterAgain' : 'challenges.enter')}
+              variant="gradient"
               fullWidth
               onPress={() => setEntering(true)}
             />

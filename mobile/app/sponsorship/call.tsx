@@ -194,9 +194,10 @@ export default function SponsorCallScreen() {
             {t('sponsorship.cSport')}
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-            <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} />
+            <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} tone="accent" />
             {SPORTS.map((s) => (
               <Chip
+                tone="accent"
                 key={s.key}
                 label={sportLabel(t, s.key)}
                 icon={<Text variant="caption">{s.emoji}</Text>}

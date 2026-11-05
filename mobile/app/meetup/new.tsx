@@ -295,6 +295,7 @@ export default function NewMeetupScreen() {
           right={
             <Button
               label={t('meetups.post')}
+              variant="gradient"
               size="sm"
               disabled={!ready || saving}
               loading={saving}
@@ -650,12 +651,12 @@ function Stepper({
       style={({ pressed }) => ({
         width: 52,
         height: 52,
-        borderRadius: 26,
+        borderRadius: theme.radii.button,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: colors.surfaceAlt,
+        backgroundColor: colors.sun,
         borderWidth: 1,
-        borderColor: colors.border,
+        borderColor: colors.sun,
         opacity: (delta < 0 ? value <= min : value >= max) ? 0.4 : pressed ? 0.7 : 1,
       })}
     >
@@ -668,11 +669,11 @@ function Stepper({
       style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg }}
       accessibilityLabel={`${label}: ${value}`}
     >
-      {button(-1, <Minus size={20} color={colors.text} />, `${label} −`)}
+      {button(-1, <Minus size={20} color={colors.onSun} />, `${label} −`)}
       <Text variant="display" style={{ minWidth: 64, textAlign: 'center' }}>
         {value}
       </Text>
-      {button(1, <Plus size={20} color={colors.text} />, `${label} +`)}
+      {button(1, <Plus size={20} color={colors.onSun} />, `${label} +`)}
     </View>
   );
 }

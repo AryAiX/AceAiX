@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, Text } from '@/components/ui';
+import { Chip, Text, type ChipTone } from '@/components/ui';
 import { useT } from '@/i18n';
 
 interface Props {
@@ -15,6 +15,8 @@ interface Props {
   labelOf?: (value: string) => string;
   /** Shown instead of the chips when `options` is empty. */
   emptyHint?: string;
+  /** `accent` for a sport picker; everything else stays on the default. */
+  tone?: ChipTone;
 }
 
 /**
@@ -31,6 +33,7 @@ export function ChipPicker({
   onToggle,
   labelOf,
   emptyHint,
+  tone,
 }: Props) {
   const theme = useTheme();
   const { spacing } = theme;
@@ -61,6 +64,7 @@ export function ChipPicker({
               label={labelOf ? labelOf(option) : option}
               selected={selected.includes(option)}
               onPress={() => onToggle(option)}
+              tone={tone}
             />
           ))}
         </View>

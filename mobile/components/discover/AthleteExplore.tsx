@@ -378,12 +378,14 @@ export function AthleteExplore({
         onPress={() => setCountrySheet(true)}
       />
       <Chip
+        tone="accent"
         label={t('sports.allSports')}
         selected={!sport}
         onPress={() => setSport(undefined)}
       />
       {SPORTS.map((s) => (
         <Chip
+          tone="accent"
           key={s.key}
           label={sportLabel(t, s.key)}
           icon={<Text variant="caption">{s.emoji}</Text>}

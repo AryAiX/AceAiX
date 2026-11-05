@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck, Handshake, Megaphone } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -80,19 +79,22 @@ export function SponsorsTab({ query }: { query: string }) {
       {isAthlete ? (
         <Reveal>
           <View style={{ borderRadius: theme.radii.xl, overflow: 'hidden' }}>
-            <LinearGradient
-              colors={theme.gradients.warm}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: spacing.lg, gap: spacing.sm }}
+            <View
+              style={{
+                padding: spacing.lg,
+                gap: spacing.sm,
+                backgroundColor: colors.warningSoft,
+                borderWidth: 1,
+                borderColor: colors.warning,
+              }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-                <Handshake size={22} color="#FFFFFF" />
-                <Text variant="heading" color="#FFFFFF" style={{ flex: 1 }}>
+                <Handshake size={22} color={colors.warning} />
+                <Text variant="heading" style={{ flex: 1 }}>
                   {openRequests.length > 0 ? t('sponsorship.seekingNow') : t('sponsorship.seekTitle')}
                 </Text>
               </View>
-              <Text variant="body" color="rgba(255,255,255,0.9)">
+              <Text variant="body" tone="secondary">
                 {openRequests.length > 0
                   ? openRequests.map((r) => r.title).join(' · ')
                   : gate === 'guardian_consent_required'
@@ -119,7 +121,7 @@ export function SponsorsTab({ query }: { query: string }) {
                 ) : (
                   <Button
                     label={t('sponsorship.seekCta')}
-                    variant="secondary"
+                    variant="warm"
                     size="sm"
                     onPress={() => router.push(Routes.sponsorshipRequest)}
                     testID="sponsorship-seek"
@@ -134,7 +136,7 @@ export function SponsorsTab({ query }: { query: string }) {
                   />
                 ) : null}
               </View>
-            </LinearGradient>
+            </View>
           </View>
         </Reveal>
       ) : null}

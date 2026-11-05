@@ -124,9 +124,10 @@ function AthleteOpportunities() {
         style={{ marginHorizontal: -spacing.lg }}
         contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}
       >
-        <Chip label={t('sports.allSports')} selected={!sport} onPress={() => setSport(null)} />
+        <Chip label={t('sports.allSports')} selected={!sport} onPress={() => setSport(null)} tone="accent" />
         {SPORTS.map((s) => (
           <Chip
+            tone="accent"
             key={s.key}
             label={sportLabel(t, s.key)}
             icon={<Text variant="caption">{s.emoji}</Text>}

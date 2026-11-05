@@ -212,6 +212,7 @@ export default function ClubEventEditScreen() {
         />
         {page.data.sports.length > 0 ? (
           <ChipField
+            tone="accent"
             label={t('clubMatch.eventForm.sport')}
             options={[
               { value: NO_SPORT, label: t('clubMatch.eventForm.anySport') },

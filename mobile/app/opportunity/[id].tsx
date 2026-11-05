@@ -399,6 +399,7 @@ export default function OpportunityDetailScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <Button
           label={t('common.apply')}
+          variant="gradient"
           fullWidth
           style={{ flex: 1 }}
           onPress={() => setApplyOpen(true)}
@@ -647,6 +648,7 @@ export default function OpportunityDetailScreen() {
         footer={
           <Button
             label={t('opportunities.apply.send')}
+            variant="gradient"
             fullWidth
             loading={busy}
             onPress={onApply}

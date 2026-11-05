@@ -158,6 +158,7 @@ export default function SponsorBrandScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             {SPORTS.map((s) => (
               <Chip
+                tone="accent"
                 key={s.key}
                 label={sportLabel(t, s.key)}
                 icon={<Text variant="caption">{s.emoji}</Text>}

@@ -16,7 +16,15 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
+export type ButtonVariant =
+  | 'primary'   // flat cobalt — the default
+  | 'gradient'  // the blue ombre: at most one per screen
+  | 'warm'      // the warm ombre: stakes only (Ask for sponsorship, challenges, streaks)
+  | 'soft'      // soft blue fill, cobalt text: Follow, View, Apply in lists, Post a game
+  | 'secondary'
+  | 'ghost'
+  | 'danger'
+  | 'accent';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
@@ -51,7 +59,9 @@ export function Button({
   const scale = useRef(new Animated.Value(1)).current;
 
   const isDisabled = disabled || loading;
-  const shouldHaptic = haptic ?? (variant === 'primary' || variant === 'accent');
+  const shouldHaptic =
+    haptic ??
+    (variant === 'primary' || variant === 'gradient' || variant === 'warm' || variant === 'accent');
 
   const heights: Record<ButtonSize, number> = { sm: 40, md: 52, lg: 58 };
   const paddings: Record<ButtonSize, number> = {
@@ -64,11 +74,35 @@ export function Button({
     ButtonVariant,
     { bg: string; border: string; fg: string; pressedBg: string }
   > = {
+    /* Flat cobalt. One flat colour is the rule; the ombre is the exception. */
     primary: {
       bg: colors.primary,
       border: 'transparent',
       fg: colors.textOnBrand,
       pressedBg: colors.primaryPressed,
+    },
+    /* The blue ombre — the + on tab screens, or the one main button on any
+       other screen (Apply, Post, Create account…). `bg`/`pressedBg` show
+       through the gradient when it dims on press. */
+    gradient: {
+      bg: colors.primary,
+      border: 'transparent',
+      fg: colors.textOnBrand,
+      pressedBg: colors.primaryPressed,
+    },
+    /* The warm ombre — stakes only. */
+    warm: {
+      bg: colors.warning,
+      border: 'transparent',
+      fg: colors.textOnBrand,
+      pressedBg: colors.warning,
+    },
+    /* Soft blue fill with cobalt text, no shadow — small list actions. */
+    soft: {
+      bg: colors.primarySoft,
+      border: 'transparent',
+      fg: colors.primary,
+      pressedBg: colors.primaryBorder,
     },
     accent: {
       bg: colors.accent,
@@ -98,10 +132,15 @@ export function Button({
 
   const skin = skins[variant];
 
-  /* The primary action is the one thing on most screens that has permission to
-     be loud, and a flat fill wastes it. Gradient underneath, transparent fill
-     on top; the pressed state stays a flat colour so the press still reads. */
-  const gradient = variant === 'primary' ? theme.gradients.action : null;
+  /* Only the two ombre variants paint a gradient. Gradient underneath,
+     transparent fill on top; the pressed state dims it so the press still
+     reads. Everything else is one flat colour. */
+  const gradient =
+    variant === 'gradient'
+      ? theme.gradients.action
+      : variant === 'warm'
+        ? theme.gradients.warm
+        : null;
 
   const animate = (to: number) =>
     Animated.spring(scale, {

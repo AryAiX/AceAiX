@@ -270,6 +270,7 @@ export default function PlayerCardScreen() {
       footer={
         <Button
           label={t('profile.playerCardShare')}
+          variant="gradient"
           fullWidth
           loading={busy}
           onPress={exportCard}

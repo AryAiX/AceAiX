@@ -170,7 +170,7 @@ export function ConversationRow({ conversation, muted, onPress, onOpenActions }:
                     borderRadius: radii.pill,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: muted ? colors.surfaceSunken : colors.primary,
+                    backgroundColor: muted ? colors.surfaceSunken : colors.warning,
                   }}
                 >
                   <Text

@@ -88,6 +88,10 @@ export function Badge({ label, tone = 'neutral', icon, size = 'sm', style, solid
   );
 }
 
+/** Which colour a selected chip takes. Sport pickers are `accent` (violet);
+ *  type, date, level and every other filter are `primary` (cobalt). */
+export type ChipTone = 'primary' | 'accent';
+
 interface ChipProps {
   label: string;
   selected?: boolean;
@@ -96,12 +100,29 @@ interface ChipProps {
   disabled?: boolean;
   style?: ViewStyle;
   testID?: string;
+  tone?: ChipTone;
 }
 
-/** Filter chip — tappable, with a clear selected state. */
-export function Chip({ label, selected, onPress, icon, disabled, style, testID }: ChipProps) {
+/**
+ * Filter chip — tappable, with a clear selected state.
+ *
+ * Selected is an OUTLINE, not a fill: surface background, a 1.5pt border in
+ * the tone colour and the label in the tone colour. Pass the same tone colour
+ * to any `icon` you draw for the selected state.
+ */
+export function Chip({
+  label,
+  selected,
+  onPress,
+  icon,
+  disabled,
+  style,
+  testID,
+  tone = 'primary',
+}: ChipProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
+  const toneColor = tone === 'accent' ? colors.accent : colors.primary;
 
   return (
     <Pressable
@@ -118,17 +139,17 @@ export function Chip({ label, selected, onPress, icon, disabled, style, testID }
           gap: 6,
           minHeight: 38,
           paddingHorizontal: spacing.lg,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           borderWidth: 1.5,
-          backgroundColor: selected ? colors.primary : colors.surface,
-          borderColor: selected ? colors.primary : colors.border,
+          backgroundColor: colors.surface,
+          borderColor: selected ? toneColor : colors.border,
           opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
         },
         style,
       ]}
     >
       {icon}
-      <Text variant="captionStrong" color={selected ? colors.textOnBrand : colors.textSecondary}>
+      <Text variant="captionStrong" color={selected ? toneColor : colors.textSecondary}>
         {label}
       </Text>
     </Pressable>

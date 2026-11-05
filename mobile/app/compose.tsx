@@ -247,6 +247,7 @@ export default function ComposeScreen() {
             right={
               <Button
                 label={t('feed.postButton')}
+                variant="gradient"
                 size="sm"
                 loading={posting}
                 disabled={!canPost}

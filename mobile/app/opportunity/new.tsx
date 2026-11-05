@@ -408,6 +408,7 @@ export default function NewOpportunityScreen() {
           >
             {SPORTS.map((s) => (
               <Chip
+                tone="accent"
                 key={s.key}
                 label={sportLabel(t, s.key)}
                 icon={<Text variant="caption">{s.emoji}</Text>}

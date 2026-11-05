@@ -179,7 +179,7 @@ export function PeopleList({
               {isMe ? null : (
                 <Button
                   label={t(isFollowing ? 'common.following' : 'common.follow')}
-                  variant={isFollowing ? 'secondary' : 'primary'}
+                  variant={isFollowing ? 'secondary' : 'soft'}
                   size="sm"
                   /* The pill is 40pt tall to fit the row; the slop takes the
                      real target past 44. */

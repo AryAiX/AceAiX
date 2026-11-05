@@ -309,12 +309,14 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
         style={{ marginHorizontal: -spacing.lg }}
       >
         <Chip
+          tone="accent"
           label={t('sports.allSports')}
           selected={!filters.sport}
           onPress={() => setFilters((f) => ({ ...f, sport: undefined, positions: [] }))}
         />
         {SPORTS.map((sport) => (
           <Chip
+            tone="accent"
             key={sport.key}
             label={sportLabel(t, sport.key)}
             icon={<Text variant="caption">{sport.emoji}</Text>}

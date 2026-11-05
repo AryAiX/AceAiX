@@ -17,7 +17,7 @@ export function FollowButton({ following, pending, onPress, name }: Props) {
   return (
     <Button
       label={following ? t('common.following') : t('common.follow')}
-      variant={following ? 'secondary' : 'primary'}
+      variant={following ? 'secondary' : 'soft'}
       size="sm"
       loading={pending}
       onPress={onPress}

@@ -304,7 +304,7 @@ export function IconButton({
             height: 18,
             paddingHorizontal: 4,
             borderRadius: 9,
-            backgroundColor: colors.primary,
+            backgroundColor: colors.warning,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
