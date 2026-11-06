@@ -87,6 +87,8 @@ export default function MeetupsScreen() {
     enabled: tab === 'mine',
     refetchOnFocus: true,
   });
+  /* Mine has loaded and holds nothing: the empty card is shown in the header. */
+  const mineEmpty = tab === 'mine' && !mine.loading && !mine.error && (mine.data?.length ?? 0) === 0;
 
   const tabs = useMemo(
     () => [
@@ -154,7 +156,10 @@ export default function MeetupsScreen() {
         marginHorizontal: -spacing.lg,
         paddingTop: insets.top + spacing.lg,
         paddingHorizontal: spacing.lg,
-        paddingBottom: tab === 'find' ? 74 : spacing.xl,
+        /* Room for a card to float over the bottom edge: the search card on
+           Nearby, the empty card on Mine. With games listed on Mine there is
+           nothing to float, so the block ends sooner. */
+        paddingBottom: tab === 'find' || mineEmpty ? 74 : spacing.xl,
         borderBottomLeftRadius: 28,
         borderBottomRightRadius: 28,
         overflow: 'hidden',
@@ -173,11 +178,9 @@ export default function MeetupsScreen() {
         </Text>
         {toggle}
       </View>
-      {tab === 'find' ? (
-        <Text variant="caption" color={theme.alpha('#FFFFFF', 0.9)} style={{ marginTop: spacing.xs }}>
-          {t('meetups.subtitle')}
-        </Text>
-      ) : null}
+      <Text variant="caption" color={theme.alpha('#FFFFFF', 0.9)} style={{ marginTop: spacing.xs }}>
+        {t(tab === 'find' ? 'meetups.subtitle' : 'meetups.mineSubtitle')}
+      </Text>
     </View>
   );
 
@@ -296,7 +299,32 @@ export default function MeetupsScreen() {
         </Sheet>
       </View>
     ) : (
-      <View style={{ paddingBottom: spacing.md }}>{hero}</View>
+      <View style={{ paddingBottom: spacing.md }}>
+        {hero}
+        {mineEmpty ? (
+          /* The empty card floats over the header's edge, like the search
+             card on Nearby, so the two tabs are built the same way. */
+          <View
+            style={{
+              marginTop: -58,
+              borderRadius: radii.lg,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              ...theme.elevation(1),
+            }}
+          >
+            <EmptyState
+              icon={<CalendarDays size={26} color={colors.textMuted} />}
+              title={t('meetups.mineEmptyTitle')}
+              body={t('meetups.mineEmptyBody')}
+              actionLabel={t('meetups.emptyAction')}
+              onAction={() => router.push(Routes.newMeetup)}
+              style={{ paddingVertical: spacing.xl }}
+            />
+          </View>
+        ) : null}
+      </View>
     );
 
   /* With games listed the empty state's button is gone, so a quiet one sits
@@ -348,16 +376,7 @@ export default function MeetupsScreen() {
               <SkeletonList count={3} variant="row" />
             ) : mine.error ? (
               <ErrorState message={mine.error} onRetry={mine.reload} />
-            ) : (
-              <EmptyState
-                icon={<CalendarDays size={26} color={colors.textMuted} />}
-                title={t('meetups.mineEmptyTitle')}
-                body={t('meetups.mineEmptyBody')}
-                actionLabel={t('meetups.emptyAction')}
-                onAction={() => router.push(Routes.newMeetup)}
-                style={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
-              />
-            )
+            ) : undefined
           }
         />
       </Screen>

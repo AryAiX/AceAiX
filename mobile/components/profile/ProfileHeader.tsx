@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RemoteImage } from '@/components/ui/RemoteImage';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -127,6 +128,8 @@ interface Props {
    * Club vs academy lives on the page, not on `user_profiles.role`.
    */
   pageType?: ClubType | null;
+  /** Run the cover up under the status bar (own profile tab, no header). */
+  coverUnderStatusBar?: boolean;
 }
 
 /** The club/academy choice from setup step 1. Other page types keep the role label. */
@@ -136,9 +139,10 @@ function managedPageLabel(t: (key: string) => string, pageType: ClubType | null 
   return null;
 }
 
-export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
+export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar = false }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
   const t = useT();
@@ -313,7 +317,9 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
       <View
         style={{
           width: '100%',
-          aspectRatio: COVER_ASPECT,
+          /* Under the status bar the band grows by the bar's height, so the
+             part below it keeps the cover's shape. */
+          paddingTop: coverUnderStatusBar ? insets.top : 0,
           borderBottomLeftRadius: radii.xl,
           borderBottomRightRadius: radii.xl,
           overflow: 'hidden',
@@ -343,6 +349,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
           pointerEvents="none"
         />
         <Shine every={7} />
+        <View style={{ width: '100%', aspectRatio: COVER_ASPECT }} pointerEvents="none" />
       </View>
 
       {/* 48 = half the 88pt avatar, plus its 3pt ring, plus a point. The circle

@@ -27,6 +27,7 @@ export const meetups = {
   subtitle: 'Finde Leute zum Spielen, egal wo du gerade bist',
   nearby: 'In der Nähe',
   fieldWhere: 'Wo',
+  mineSubtitle: 'Spiele, die du gepostet hast oder bei denen du dabei bist',
   adultsOnlyBody: 'Mitspieler finden ist erst ab 18 möglich. Bis dahin nutze Entdecken, Challenges und Chancen.',
   adultsOnlyTitle: 'Spielen ist für Erwachsene',
 

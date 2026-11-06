@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Card, ErrorState, Screen, SkeletonList, Text } from '@/components/ui';
@@ -40,6 +41,7 @@ import { useAuth } from '@/providers/AuthProvider';
  * and every tab below it is a way to move that number.
  */
 export default function MyProfileScreen() {
+  const focused = useIsFocused();
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
@@ -114,11 +116,14 @@ export default function MyProfileScreen() {
     <Screen
       scroll
       padded={false}
+      edges={[]}
       onRefresh={reloadAll}
       refreshing={bundle.refreshing || score.refreshing}
       testID="my-profile"
     >
-      <ProfileHeader bundle={data} onChanged={reloadAll} pageType={pageType} />
+      {/* White status-bar icons over the cover, only while this tab is open. */}
+      {focused ? <StatusBar style="light" /> : null}
+      <ProfileHeader bundle={data} onChanged={reloadAll} pageType={pageType} coverUnderStatusBar />
 
       {data.athlete && (data.athlete.other_sports ?? []).length === 0 ? (
         <View style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xl }}>

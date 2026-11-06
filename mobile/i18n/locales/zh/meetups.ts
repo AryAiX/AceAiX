@@ -26,6 +26,7 @@ export const meetups = {
   subtitle: '不管你在哪儿，都能找到人一起打',
   nearby: '附近',
   fieldWhere: '地点',
+  mineSubtitle: '你发布或加入的比赛',
   adultsOnlyBody: '约人一起打球仅限年满 18 岁。在此之前请使用发现、挑战与机会。',
   adultsOnlyTitle: '约球仅限成人',
 

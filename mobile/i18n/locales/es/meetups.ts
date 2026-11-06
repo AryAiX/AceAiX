@@ -24,6 +24,7 @@ export const meetups = {
   subtitle: 'Encuentra gente con quien jugar, estés donde estés',
   nearby: 'Cerca',
   fieldWhere: 'Dónde',
+  mineSubtitle: 'Partidos que has publicado o a los que te has unido',
   adultsOnlyBody: 'Buscar gente para jugar solo está disponible a partir de los 18. Hasta entonces, usa Descubrir, Desafíos y Oportunidades.',
   adultsOnlyTitle: 'Jugar es para adultos',
 
