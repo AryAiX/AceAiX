@@ -15,6 +15,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { NotificationRow } from '@/components/messaging/NotificationRow';
+import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotifications, markNotificationsRead } from '@/lib/api';
@@ -262,6 +263,13 @@ export default function NotificationsScreen() {
             colors={[colors.primary]}
             progressBackgroundColor={colors.surface}
           />
+        }
+        ListHeaderComponent={
+          /* Who viewed your profile and the open challenge stay here even
+             after they are put away on Home, so nothing is lost. */
+          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <HomeSpotlight pinned />
+          </View>
         }
         ListEmptyComponent={renderEmpty()}
         testID="notifications-list"

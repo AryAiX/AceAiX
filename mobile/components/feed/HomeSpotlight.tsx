@@ -20,22 +20,43 @@ import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 const OMBRE: [string, string] = ['#F06A4E', '#E3428A'];
 const ON_OMBRE = '#FFFFFF';
 
-/* What was put away, so a dismissed card stays away until there is something
-   new: the views card until the count changes, the challenge card for that
-   challenge. Kept on the phone only. */
-const DISMISS_VIEWS = 'home.yourWeek.dismissedViews';
-const DISMISS_CHALLENGE = 'home.yourWeek.dismissedChallenge';
+/* Profile views: put away until someone new looks. What was on screen when
+   the × was tapped is kept on the phone, and the pop-up comes back as soon as
+   the total or the "new" count goes past it. */
+const VIEWS_BASELINE = 'home.yourWeek.viewsBaseline';
+/* Keys from the first version, cleared once so nothing old lingers. */
+const OLD_KEYS = ['home.yourWeek.dismissedViews', 'home.yourWeek.dismissedChallenge'];
 
-async function readDismissed(): Promise<{ views: string | null; challenge: string | null }> {
+type ViewsBaseline = { total: number; fresh: number };
+
+async function readViewsBaseline(): Promise<ViewsBaseline | null> {
   try {
-    const [views, challenge] = await Promise.all([
-      AsyncStorage.getItem(DISMISS_VIEWS),
-      AsyncStorage.getItem(DISMISS_CHALLENGE),
-    ]);
-    return { views, challenge };
+    const raw = await AsyncStorage.getItem(VIEWS_BASELINE);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ViewsBaseline>;
+    return typeof parsed.total === 'number' && typeof parsed.fresh === 'number'
+      ? { total: parsed.total, fresh: parsed.fresh }
+      : null;
   } catch {
-    return { views: null, challenge: null };
+    return null;
   }
+}
+
+function saveViewsBaseline(baseline: ViewsBaseline | null) {
+  const write = baseline
+    ? AsyncStorage.setItem(VIEWS_BASELINE, JSON.stringify(baseline))
+    : AsyncStorage.removeItem(VIEWS_BASELINE);
+  write.catch(() => undefined);
+}
+
+/* The challenge: put away for as long as the app is open. Kept in memory only,
+   so closing the app fully (swiping it away) and opening it again brings the
+   challenge back. Going to the background and back does not. */
+let challengePutAwayThisRun: string | null = null;
+
+/** Kept outside the component, the same way the feed's mute setting is. */
+function putChallengeAwayForThisRun(id: string) {
+  challengePutAwayThisRun = id;
 }
 
 /**
@@ -43,12 +64,20 @@ async function readDismissed(): Promise<{ views: string | null; challenge: strin
  *
  * Who has been reading your profile, on a white pop-up with a blue round
  * icon; this week's challenge, on the coral → pink ombre. Each floats on its
- * own like a notification and can be put away with its ×; it comes back when
- * there is something new. The Talent
+ * own like a notification and can be put away with its ×: the views pop-up
+ * comes back with the next new view, the challenge the next time the app is
+ * opened from closed. Notifications shows both, always. The Talent
  * Score lives on Profile only, so Home is not one more place to watch a
  * number. With nothing to say, nothing is shown.
  */
-export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolean } = {}) {
+export function HomeSpotlight({
+  showChallenge = true,
+  pinned = false,
+}: {
+  showChallenge?: boolean;
+  /** Notifications: always shown, no ×, whatever was put away on Home. */
+  pinned?: boolean;
+} = {}) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
@@ -66,30 +95,59 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
     refetchOnFocus: true,
   });
 
-  const [dismissed, setDismissed] = useState<{ views: string | null; challenge: string | null }>({
-    views: null,
-    challenge: null,
-  });
+  /* undefined until the phone has been read, so a put-away pop-up does not
+     flash up for a moment on every open. */
+  const [baseline, setBaseline] = useState<ViewsBaseline | null | undefined>(undefined);
+  const [challengePutAway, setChallengePutAway] = useState<string | null>(challengePutAwayThisRun);
   useEffect(() => {
-    void readDismissed().then(setDismissed);
+    void readViewsBaseline().then(setBaseline);
+    AsyncStorage.multiRemove(OLD_KEYS).catch(() => undefined);
   }, []);
 
   const rawViews = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
-  // Parents cannot enter challenges, so the card has nothing for them (QA-151).
-  // Home's Following tab is people, so the challenge card stays on Playfeed.
-  const rawChallenge = isGuardian || !showChallenge
-    ? null
-    : ((challenges.data ?? []).find(isChallengeLive) ?? null);
 
-  const viewsKey = rawViews ? String(rawViews.total) : null;
-  const views = rawViews && dismissed.views !== viewsKey ? rawViews : null;
-  const challenge = rawChallenge && dismissed.challenge !== rawChallenge.id ? rawChallenge : null;
+  /* The week is a rolling seven days, so the total can drop as old views age
+     out, and opening the list resets the "new" count. Follow both down, so the
+     next new view is always a step up from where things stand. */
+  useEffect(() => {
+    if (!baseline || !digest.data) return;
+    const total = Math.min(baseline.total, digest.data.total);
+    const fresh = Math.min(baseline.fresh, digest.data.new_since_seen);
+    if (total !== baseline.total || fresh !== baseline.fresh) {
+      const next = { total, fresh };
+      setBaseline(next);
+      saveViewsBaseline(next);
+    }
+  }, [baseline, digest.data]);
+
+  // Parents cannot enter challenges, so the card has nothing for them (QA-151).
+  // Home's Following tab is people, so the challenge card stays on Playfeed;
+  // Notifications always shows it.
+  const rawChallenge =
+    isGuardian || (!showChallenge && !pinned)
+      ? null
+      : ((challenges.data ?? []).find(isChallengeLive) ?? null);
+
+  const somethingNew =
+    baseline === null ||
+    (baseline !== undefined &&
+      rawViews != null &&
+      (rawViews.total > baseline.total || rawViews.new_since_seen > baseline.fresh));
+  const views = rawViews && (pinned || somethingNew) ? rawViews : null;
+  const challenge =
+    rawChallenge && (pinned || challengePutAway !== rawChallenge.id) ? rawChallenge : null;
 
   if (!views && !challenge) return null;
 
-  const dismiss = (which: 'views' | 'challenge', value: string) => {
-    setDismissed((d) => ({ ...d, [which]: value }));
-    AsyncStorage.setItem(which === 'views' ? DISMISS_VIEWS : DISMISS_CHALLENGE, value).catch(() => undefined);
+  const putAwayViews = () => {
+    if (!rawViews) return;
+    const next = { total: rawViews.total, fresh: rawViews.new_since_seen };
+    setBaseline(next);
+    saveViewsBaseline(next);
+  };
+  const putAwayChallenge = (id: string) => {
+    putChallengeAwayForThisRun(id);
+    setChallengePutAway(id);
   };
 
   /** The × in a card's corner. */
@@ -156,7 +214,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
           {views.new_since_seen > 0 ? (
             <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
           ) : null}
-          {close(() => dismiss('views', viewsKey ?? ''), colors.textMuted, 'your-week-views-close')}
+          {pinned ? null : close(putAwayViews, colors.textMuted, 'your-week-views-close')}
         </Pressable>
       ) : null}
 
@@ -200,7 +258,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
           <Text variant="captionStrong" color={ON_OMBRE}>
             {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
           </Text>
-          {close(() => dismiss('challenge', challenge.id), ON_OMBRE, 'your-week-challenge-close')}
+          {pinned ? null : close(() => putAwayChallenge(challenge.id), ON_OMBRE, 'your-week-challenge-close')}
         </Pressable>
       ) : null}
     </View>
