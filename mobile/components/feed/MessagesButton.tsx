@@ -8,8 +8,6 @@ import { Text } from '@/components/ui';
 
 const SIZE = 44;
 const INK = '#FFFFFF';
-/** The count's ink on its white badge: the darkest step of the warm ramp. */
-const BADGE_INK = '#A8400A';
 
 /**
  * The way into Messages, beside the Playfeed switch on Home.
@@ -17,8 +15,8 @@ const BADGE_INK = '#A8400A';
  * Home is the only door to the inbox, so this button has to be found without
  * looking for it: a warm sweep with a white icon. It is the one place warm is
  * used for something other than time — a deliberate exception, agreed in the
- * design review. The unread count sits on a white badge rimmed in the page
- * colour, so it reads on the gradient in both themes.
+ * design review. The unread count sits on a green badge with a white number,
+ * rimmed in the page colour so it reads against the orange in both themes.
  */
 export function MessagesButton({
   count,
@@ -79,14 +77,14 @@ export function MessagesButton({
             height: 18,
             paddingHorizontal: 4,
             borderRadius: 9,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.success,
             borderWidth: 2,
             borderColor: colors.bg,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text variant="overline" color={BADGE_INK} style={{ fontSize: 10 }} allowFontScaling={false}>
+          <Text variant="overline" color={INK} style={{ fontSize: 10 }} allowFontScaling={false}>
             {count > 99 ? '99+' : count}
           </Text>
         </View>
