@@ -37,6 +37,11 @@ export const opportunities = {
 
   /** Sports come from `sports.allSports`; only the type row is ours. */
   allTypes: 'Everything',
+  searchPlaceholder: 'Search trials or clubs',
+  filters: 'Filters',
+  removeFilter: 'Remove {{label}}',
+  showResults_one: 'Show {{count}} result',
+  showResults_other: 'Show {{count}} results',
 
   athlete: {
     appliedOn: 'Applied {{date}}',

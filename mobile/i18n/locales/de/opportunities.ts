@@ -39,6 +39,11 @@ export const opportunities = {
 
   /** Sportarten kommen aus `sports.allSports`; nur die Art gehört uns. */
   allTypes: 'Alles',
+  searchPlaceholder: 'Trials oder Vereine suchen',
+  filters: 'Filter',
+  removeFilter: '{{label}} entfernen',
+  showResults_one: '{{count}} Ergebnis zeigen',
+  showResults_other: '{{count}} Ergebnisse zeigen',
 
   athlete: {
     appliedOn: 'Beworben am {{date}}',

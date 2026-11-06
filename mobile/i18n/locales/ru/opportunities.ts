@@ -37,6 +37,13 @@ export const opportunities = {
 
   /** Виды спорта берутся из `sports.allSports`; наша здесь только строка типа. */
   allTypes: 'Всё',
+  searchPlaceholder: 'Поиск просмотров или клубов',
+  filters: 'Фильтры',
+  removeFilter: 'Убрать «{{label}}»',
+  showResults_one: 'Показать {{count}} результат',
+  showResults_few: 'Показать {{count}} результата',
+  showResults_many: 'Показать {{count}} результатов',
+  showResults_other: 'Показать {{count}} результата',
 
   athlete: {
     appliedOn: 'Отклик {{date}}',

@@ -35,6 +35,15 @@ export const opportunities = {
 
   /** الرياضات تأتي من `sports.allSports`؛ صف النوع وحده من عندنا. */
   allTypes: 'كل الأنواع',
+  searchPlaceholder: 'ابحث عن تجارب أو أندية',
+  filters: 'الفلاتر',
+  removeFilter: 'إزالة {{label}}',
+  showResults_zero: 'لا نتائج',
+  showResults_one: 'عرض نتيجة واحدة',
+  showResults_two: 'عرض نتيجتين',
+  showResults_few: 'عرض {{count}} نتائج',
+  showResults_many: 'عرض {{count}} نتيجة',
+  showResults_other: 'عرض {{count}} نتيجة',
 
   athlete: {
     appliedOn: 'قدّمت في {{date}}',

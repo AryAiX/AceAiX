@@ -34,6 +34,10 @@ export const opportunities = {
 
   /** 项目来自 `sports.allSports`；只有类型这一行是我们的。 */
   allTypes: '全部',
+  searchPlaceholder: '搜索试训或俱乐部',
+  filters: '筛选',
+  removeFilter: '移除{{label}}',
+  showResults_other: '查看 {{count}} 条结果',
 
   athlete: {
     appliedOn: '{{date}}申请',

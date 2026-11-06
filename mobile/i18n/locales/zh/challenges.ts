@@ -27,6 +27,8 @@ export const challenges = {
   closed: '已截止',
   judging: '评定中',
   entries_other: '{{count}}人参加',
+  allTitle: '全部挑战',
+  allSubtitle_other: '{{count}} 个开放中 · 传一段短片，让人看过',
   ageRange: '{{min}}–{{max}}岁',
   ageMin: '{{min}}岁及以上',
   ageMax: '未满{{max}}岁',

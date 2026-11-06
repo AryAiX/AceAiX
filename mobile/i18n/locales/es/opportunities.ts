@@ -39,6 +39,12 @@ export const opportunities = {
 
   /** Los deportes vienen de `sports.allSports`; solo la fila de tipo es nuestra. */
   allTypes: 'Todo',
+  searchPlaceholder: 'Busca pruebas o clubes',
+  filters: 'Filtros',
+  removeFilter: 'Quitar {{label}}',
+  showResults_one: 'Ver {{count}} resultado',
+  showResults_many: 'Ver {{count}} resultados',
+  showResults_other: 'Ver {{count}} resultados',
 
   athlete: {
     appliedOn: 'Solicitada el {{date}}',
