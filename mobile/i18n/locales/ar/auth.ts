@@ -66,6 +66,10 @@ export const auth = {
     highlightTrials: 'تجارب وفرص حقيقية من الأندية والأكاديميات',
     highlightGuardian: 'دون 18؟ يوافق أحد والديك على ملفك قبل أن يجدك أحد',
     signIn: 'لديّ حساب بالفعل',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: 'اختارك في القائمة المختصرة لفريق تحت 21',
+    demoScoreDelta: '+{{count}} هذا الشهر',
+    demoScouts: '{{count}} كشافين شاهدوا هذا الأسبوع',
   },
 
   // ── تسجيل الدخول ──────────────────────────────────────────────────────────

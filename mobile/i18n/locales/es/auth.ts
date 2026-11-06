@@ -62,6 +62,10 @@ export const auth = {
     highlightGuardian:
       '¿Menor de 18? Tu madre, padre o tutor aprueba tu perfil antes de que nadie pueda encontrarte',
     signIn: 'Ya tengo cuenta',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: 'Te preseleccionó para el equipo sub-21',
+    demoScoreDelta: '+{{count}} este mes',
+    demoScouts: '{{count}} ojeadores miraron esta semana',
   },
 
   // ── Iniciar sesión ────────────────────────────────────────────────────────

@@ -59,6 +59,10 @@ export const auth = {
     highlightTrials: 'Real trials and openings from clubs and academies',
     highlightGuardian: 'Under 18? A parent approves your profile before anyone can find you',
     signIn: 'I already have an account',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: 'Shortlisted you for the U21 squad',
+    demoScoreDelta: '+{{count}} this month',
+    demoScouts: '{{count}} scouts looked this week',
   },
 
   // ── Sign in ───────────────────────────────────────────────────────────────

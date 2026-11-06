@@ -88,10 +88,13 @@ export function LogoMark({
  */
 export function LogoWord({
   height = 14,
+  onDark = false,
   style,
   testID,
 }: {
   height?: number;
+  /** White word whatever the scheme, for a coloured or photo background. */
+  onDark?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }) {
@@ -107,7 +110,7 @@ export function LogoWord({
       accessibilityLabel="AceAiX"
     >
       <Image
-        source={scheme === 'dark' ? LOCKUP_DARK : LOCKUP_LIGHT}
+        source={onDark || scheme === 'dark' ? LOCKUP_DARK : LOCKUP_LIGHT}
         style={{
           position: 'absolute',
           left: 0,

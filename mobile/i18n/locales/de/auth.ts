@@ -59,6 +59,10 @@ export const auth = {
     highlightTrials: 'Echte Probetrainings und Plätze von Vereinen und Akademien',
     highlightGuardian: 'Unter 18? Ein Elternteil gibt dein Profil frei, bevor dich jemand findet',
     signIn: 'Ich habe schon ein Konto',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: 'Hat dich für den U21-Kader vorgemerkt',
+    demoScoreDelta: '+{{count}} diesen Monat',
+    demoScouts: '{{count}} Scouts haben diese Woche geschaut',
   },
 
   // ── Anmelden ──────────────────────────────────────────────────────────────
