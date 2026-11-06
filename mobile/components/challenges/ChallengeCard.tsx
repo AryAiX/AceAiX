@@ -1,21 +1,41 @@
 import React from 'react';
 import { View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, Clock, Users } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, BadgeCheck, Check, Flame, Star } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Card, Tappable, Text } from '@/components/ui';
-import { sportLabel } from '@/constants/sports';
-import { deadlineLabel, metaLine } from '@/lib/format';
+import { Card, ChevronForward, Text } from '@/components/ui';
+import { SPORTS, sportLabel } from '@/constants/sports';
+import { daysUntil, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { Challenge } from '@/types/models';
 
 /**
- * One challenge, as a card.
+ * Open, and still taking clips: the status says open and the closing time has
+ * not passed. A challenge can say "open" for a while after it closes, until
+ * the server moves it on, so the phone checks the clock too.
+ */
+export function isChallengeLive(challenge: Challenge): boolean {
+  if (challenge.status !== 'open') return false;
+  const closes = new Date(challenge.closes_at).getTime();
+  return Number.isNaN(closes) || closes > Date.now();
+}
+
+/** Readable orange for words on a light page; the plain flame in dark mode. */
+export function useChallengeInk(): string {
+  const theme = useTheme();
+  return theme.scheme === 'dark' ? theme.play.flame : '#D9480F';
+}
+
+/** Inside a week counts as closing soon. */
+export const CLOSING_SOON_DAYS = 7;
+
+/**
+ * One challenge, as a calm row card.
  *
- * The two facts a fourteen-year-old decides on are what to film and how long
- * they have, so those are the two largest things here. The entry count sits
- * third — it is social proof, not pressure, so it never says "hurry".
+ * What a fourteen-year-old decides on is what it is and how long is left, so
+ * the title and the days-left tag lead. Orange is kept for two small things —
+ * the tag when it is closing soon, and the way in — so a list of them stays
+ * quiet. The entry count is social proof, not pressure: it never says hurry.
  */
 export function ChallengeCard({
   challenge,
@@ -25,11 +45,20 @@ export function ChallengeCard({
   onPress?: () => void;
 }) {
   const theme = useTheme();
-  const { colors, spacing } = theme;
+  const { colors, spacing, radii } = theme;
   const t = useT();
+  const ink = useChallengeInk();
 
-  const closing = deadlineLabel(challenge.closes_at);
+  const live = isChallengeLive(challenge);
   const entered = !!challenge.my_entry_id;
+  const days = daysUntil(challenge.closes_at);
+  const soon = live && days != null && days <= CLOSING_SOON_DAYS;
+
+  const sport = sportLabel(t, challenge.sport);
+  const emoji = SPORTS.find(
+    (s) => s.key.toLowerCase() === (challenge.sport ?? '').toLowerCase(),
+  )?.emoji;
+  const who = challenge.org_name ?? challenge.setter_name ?? null;
 
   const ages =
     challenge.age_min != null && challenge.age_max != null
@@ -40,100 +69,100 @@ export function ChallengeCard({
           ? t('challenges.ageMax', { max: challenge.age_max })
           : null;
 
+  const tag =
+    challenge.status === 'judging'
+      ? t('challenges.judging')
+      : !live
+        ? t('challenges.closed')
+        : t('challenges.daysLeft', { count: Math.max(days ?? 0, 0) });
+
+  const entries = t('challenges.entries', { count: challenge.entry_count });
+  const rule = challenge.metric_label
+    ? metaLine(
+        challenge.metric_label,
+        challenge.metric_better === 'lower' ? t('challenges.lowerWins') : t('challenges.higherWins'),
+        entries,
+      )
+    : metaLine(t('challenges.measuredNo'), entries);
+  const RuleIcon = challenge.metric_label
+    ? challenge.metric_better === 'lower'
+      ? ArrowDown
+      : ArrowUp
+    : Star;
+
   return (
-    <Tappable
+    <Card
       onPress={onPress}
-      accessibilityLabel={metaLine(challenge.title, sportLabel(t, challenge.sport))}
+      accessibilityLabel={metaLine(challenge.title, who, sport, tag, rule)}
+      style={{ gap: spacing.md, opacity: live || entered ? 1 : 0.6 }}
     >
-      <Card padded={false} style={{ overflow: 'hidden' }}>
-        {/* A quiet wash rather than a photograph: every challenge would
-            otherwise need artwork nobody has time to make. */}
-        <LinearGradient
-          colors={[theme.alpha(colors.primary, 0.22), 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 96 }}
-          pointerEvents="none"
-        />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: radii.md,
+            backgroundColor: theme.alpha(theme.play.flame, live ? 0.12 : 0.06),
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {emoji ? (
+            <Text style={{ fontSize: 22 }}>{emoji}</Text>
+          ) : (
+            <Flame size={20} color={ink} strokeWidth={2.2} />
+          )}
+        </View>
 
-        <View style={{ padding: spacing.lg, gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-            {challenge.metric_label ? (
-              <Badge label={challenge.metric_label} tone="primary" />
-            ) : (
-              <Badge label={t('challenges.measuredNo')} tone="neutral" />
-            )}
-            {entered ? <Badge label={t('challenges.tabEntered')} tone="success" /> : null}
-            {challenge.status === 'judging' ? (
-              <Badge label={t('challenges.judging')} tone="warning" />
-            ) : null}
-          </View>
-
-          <Text variant="subheading" numberOfLines={2}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="bodyStrong" numberOfLines={2}>
             {challenge.title}
           </Text>
-
-          <Text variant="body" tone="secondary" numberOfLines={2}>
-            {challenge.brief}
-          </Text>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: spacing.md,
-              marginTop: spacing.xs,
-            }}
-          >
-            <Text variant="caption" tone="muted">
-              {sportLabel(t, challenge.sport)}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Clock size={14} color={colors.textMuted} />
-              <Text variant="caption" tone="muted">
-                {challenge.status === 'closed' || !closing
-                  ? t('challenges.closed')
-                  : closing}
-              </Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Users size={14} color={colors.textMuted} />
-              <Text variant="caption" tone="muted">
-                {t('challenges.entries', { count: challenge.entry_count })}
-              </Text>
-            </View>
-
-            {ages ? (
-              <Text variant="caption" tone="muted">
-                {ages}
-              </Text>
-            ) : null}
-          </View>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              marginTop: spacing.xs,
-              paddingTop: spacing.sm,
-              borderTopWidth: 1,
-              borderTopColor: colors.divider,
-            }}
-          >
-            <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
-              {t('challenges.setBy', {
-                name: challenge.org_name ?? challenge.setter_name ?? '',
-              })}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {metaLine(who, sport, ages)}
             </Text>
             {challenge.setter_verified ? (
               <BadgeCheck size={14} color={colors.info} fill={theme.alpha(colors.info, 0.16)} />
             ) : null}
           </View>
         </View>
-      </Card>
-    </Tappable>
+
+        <View
+          style={{
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 4,
+            borderRadius: radii.pill,
+            backgroundColor: soon ? theme.alpha(theme.play.flame, 0.14) : colors.surfaceAlt,
+          }}
+        >
+          <Text variant="captionStrong" color={soon ? ink : colors.textSecondary} numberOfLines={1}>
+            {tag}
+          </Text>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <RuleIcon size={14} color={colors.textMuted} strokeWidth={2.4} />
+        <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+          {rule}
+        </Text>
+        {entered ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Check size={14} color={colors.success} strokeWidth={2.6} />
+            <Text variant="captionStrong" color={colors.success}>
+              {t('challenges.tabEntered')}
+            </Text>
+          </View>
+        ) : live ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Text variant="bodyStrong" color={ink}>
+              {t('challenges.enter')}
+            </Text>
+            <ChevronForward size={16} color={ink} />
+          </View>
+        ) : null}
+      </View>
+    </Card>
   );
 }

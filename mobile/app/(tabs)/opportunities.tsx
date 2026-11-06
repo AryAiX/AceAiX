@@ -38,6 +38,7 @@ import { ApplicationStatusBadge } from '@/components/opportunities/ApplicationSt
 import { ApplicantRow } from '@/components/opportunities/ApplicantRow';
 import { DeadlineChip } from '@/components/opportunities/DeadlineChip';
 import { OpportunityCard } from '@/components/opportunities/OpportunityCard';
+import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 import {
   OPPORTUNITY_TYPES,
   SPORTS,
@@ -783,7 +784,7 @@ function ChallengesLink() {
   const { radii, spacing } = theme;
   const router = useRouter();
   const { data } = useAsync(() => openChallenges(null, 5, 0), [], { refetchOnFocus: true });
-  const open = (data ?? []).filter((c) => c.status === 'open').length;
+  const open = (data ?? []).filter((c) => !c.my_entry_id && isChallengeLive(c)).length;
 
   return (
     <Tappable

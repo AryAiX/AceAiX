@@ -13,6 +13,7 @@ import { openChallenges, profileViewDigest } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
+import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 
 /** The challenge ombre, coral to pink — the same sweep as Play's + button —
     with white words on it. */
@@ -78,7 +79,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
   // Home's Following tab is people, so the challenge card stays on Playfeed.
   const rawChallenge = isGuardian || !showChallenge
     ? null
-    : ((challenges.data ?? []).find((c) => c.status === 'open') ?? null);
+    : ((challenges.data ?? []).find(isChallengeLive) ?? null);
 
   const viewsKey = rawViews ? String(rawViews.total) : null;
   const views = rawViews && dismissed.views !== viewsKey ? rawViews : null;

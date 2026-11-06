@@ -10,19 +10,30 @@ import {
   ErrorState,
   Header,
   Screen,
-  SegmentedControl,
   SkeletonList,
   Text,
+  TextTabs,
 } from '@/components/ui';
-import { ChallengeCard } from '@/components/challenges/ChallengeCard';
+import {
+  CLOSING_SOON_DAYS,
+  ChallengeCard,
+  isChallengeLive,
+  useChallengeInk,
+} from '@/components/challenges/ChallengeCard';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import { openChallenges } from '@/lib/api';
 import { Routes } from '@/lib/routes';
+import { daysUntil } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { Challenge } from '@/types/models';
 
 type Tab = 'open' | 'entered' | 'mine';
+
+/** A list row: a small section label, or one challenge. */
+type Row =
+  | { kind: 'section'; key: string; label: string }
+  | { kind: 'card'; key: string; challenge: Challenge };
 
 function tabFromParam(raw: string | string[] | undefined): Tab | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -44,6 +55,7 @@ export default function ChallengesScreen() {
   const t = useT();
   const router = useRouter();
   const { profile } = useAuth();
+  const ink = useChallengeInk();
 
   const isSetter =
     profile?.role === 'coach' || profile?.role === 'club' || profile?.role === 'scout';
@@ -68,29 +80,57 @@ export default function ChallengesScreen() {
     { refetchOnFocus: true },
   );
 
-  const rows = useMemo(() => {
+  /* Open is split by time: inside a week first, then the rest. A challenge
+     whose closing time has passed is shown faded at the bottom instead of
+     mixed in with the ones still taking clips. */
+  const open = useMemo(() => {
+    const all = (data ?? []).filter((c) => !c.my_entry_id);
+    const live = all.filter(isChallengeLive);
+    const soon = live.filter((c) => (daysUntil(c.closes_at) ?? Infinity) <= CLOSING_SOON_DAYS);
+    const later = live.filter((c) => !soon.includes(c));
+    const ended = all.filter((c) => c.status === 'open' && !isChallengeLive(c));
+    return { live, soon, later, ended };
+  }, [data]);
+
+  const rows = useMemo<Row[]>(() => {
     const all = data ?? [];
-    if (tab === 'entered') return all.filter((c) => c.my_entry_id);
-    if (tab === 'mine') return all.filter((c) => c.setter_id === profile?.id);
-    return all.filter((c) => !c.my_entry_id && c.status === 'open');
-  }, [data, tab, profile?.id]);
+    const cards = (list: Challenge[]): Row[] =>
+      list.map((c) => ({ kind: 'card', key: c.id, challenge: c }));
+    if (tab === 'entered') return cards(all.filter((c) => c.my_entry_id));
+    if (tab === 'mine') return cards(all.filter((c) => c.setter_id === profile?.id));
+    if (open.live.length === 0) return [];
+    const split = open.soon.length > 0 && open.later.length > 0;
+    return [
+      ...(split ? [{ kind: 'section' as const, key: 'soon', label: t('challenges.closingSoon') }] : []),
+      ...cards(open.soon),
+      ...(split ? [{ kind: 'section' as const, key: 'more', label: t('challenges.moreChallenges') }] : []),
+      ...cards(open.later),
+      ...cards(open.ended),
+    ];
+  }, [data, tab, profile?.id, open, t]);
 
   const tabs = useMemo(() => {
+    const count = open.live.length;
     const base = [
-      { value: 'open' as Tab, label: t('challenges.tabOpen') },
+      {
+        value: 'open' as Tab,
+        label: count > 0 ? `${t('challenges.tabOpen')} · ${count}` : t('challenges.tabOpen'),
+      },
       { value: 'entered' as Tab, label: t('challenges.tabEntered') },
     ];
     return isSetter ? [...base, { value: 'mine' as Tab, label: t('challenges.tabMine') }] : base;
-  }, [isSetter, t]);
+  }, [isSetter, t, open.live.length]);
 
   const empty = useCallback(() => {
     if (tab === 'entered') {
       return (
         <EmptyState
-          icon={<Flame size={26} color={theme.colors.textMuted} />}
+          compact
+          icon={<Flame size={24} color={ink} />}
           title={t('challenges.emptyEnteredTitle')}
           body={t('challenges.emptyEnteredBody')}
-          actionLabel={t('challenges.tabOpen')}
+          actionLabel={t('challenges.seeOpen')}
+          actionVariant="soft"
           onAction={() => setTab('open')}
         />
       );
@@ -98,28 +138,31 @@ export default function ChallengesScreen() {
     if (tab === 'mine') {
       return (
         <EmptyState
-          icon={<Trophy size={26} color={theme.colors.textMuted} />}
+          compact
+          icon={<Trophy size={24} color={ink} />}
           title={t('challenges.emptyMineTitle')}
           body={t('challenges.emptyMineBody')}
           actionLabel={t('challenges.newTitle')}
+          actionVariant="soft"
           onAction={() => router.push(Routes.newChallenge)}
         />
       );
     }
     return (
       <EmptyState
-        icon={<Trophy size={26} color={theme.colors.textMuted} />}
+        compact
+        icon={<Trophy size={24} color={ink} />}
         title={t('challenges.emptyTitle')}
         body={t('challenges.emptyBody')}
       />
     );
-  }, [tab, t, router, theme.colors.textMuted]);
+  }, [tab, t, router, ink]);
 
   return (
     <Screen
       scroll={false}
       padded={false}
-      header={<Header title={t('challenges.title')} back bordered />}
+      header={<Header title={t('challenges.allTitle')} back large />}
       testID="challenges-screen"
     >
       {loading && !data ? (
@@ -129,27 +172,28 @@ export default function ChallengesScreen() {
       ) : error && !data ? (
         <ErrorState message={error} onRetry={reload} />
       ) : (
-        <FlatList
+        <FlatList<Row>
           data={rows}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.key}
           refreshing={refreshing}
           onRefresh={refresh}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            padding: spacing.lg,
+            paddingHorizontal: spacing.lg,
             paddingBottom: spacing.xxl,
             gap: spacing.md,
             flexGrow: 1,
           }}
           ListHeaderComponent={
-            <View style={{ gap: spacing.md, marginBottom: spacing.xs }}>
+            <View style={{ gap: spacing.lg, marginBottom: spacing.xs }}>
               <Text variant="body" tone="secondary">
                 {t('challenges.subtitle')}
               </Text>
-              <SegmentedControl
+              <TextTabs<Tab>
                 options={tabs}
                 value={tab}
-                onChange={(v) => setTab(v as Tab)}
+                onChange={setTab}
+                color={theme.play.flame}
                 testID="challenge-tabs"
               />
               {isSetter ? (
@@ -161,13 +205,19 @@ export default function ChallengesScreen() {
               ) : null}
             </View>
           }
-          ListEmptyComponent={<View style={{ paddingTop: spacing.xxl }}>{empty()}</View>}
-          renderItem={({ item }) => (
-            <ChallengeCard
-              challenge={item}
-              onPress={() => router.push(Routes.challenge(item.id))}
-            />
-          )}
+          ListEmptyComponent={empty()}
+          renderItem={({ item }) =>
+            item.kind === 'section' ? (
+              <Text variant="overline" tone="muted" style={{ marginTop: spacing.xs }}>
+                {item.label}
+              </Text>
+            ) : (
+              <ChallengeCard
+                challenge={item.challenge}
+                onPress={() => router.push(Routes.challenge(item.challenge.id))}
+              />
+            )
+          }
         />
       )}
     </Screen>
