@@ -1,11 +1,12 @@
 import React from 'react';
 import { ViewStyle } from 'react-native';
-import { CalendarClock } from 'lucide-react-native';
+import { CalendarClock, Clock } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge } from '@/components/ui';
 import type { BadgeTone } from '@/components/ui';
 import { daysUntil, deadlineLabel } from '@/lib/format';
+import { Tag, useTagInk } from './Tag';
 
 export { daysUntil };
 
@@ -47,6 +48,37 @@ export function DeadlineChip({
       size={size}
       style={style}
       icon={<CalendarClock size={size === 'sm' ? 11 : 13} color={iconColor} strokeWidth={2.4} />}
+    />
+  );
+}
+
+/**
+ * The time left on a trial, as the board shows it.
+ *
+ * Orange while it is counting down (two weeks or less), red once it has
+ * passed, and plain grey with the date when it is still far off — so the
+ * orange on a card always means "this one is closing".
+ */
+export function DaysLeftTag({
+  deadline,
+  size = 'sm',
+}: {
+  deadline: string | null | undefined;
+  size?: 'sm' | 'md';
+}) {
+  const days = daysUntil(deadline);
+  const tone = days == null ? 'neutral' : days < 0 ? 'danger' : days <= 14 ? 'warm' : 'neutral';
+  const ink = useTagInk(tone);
+
+  const label = deadlineLabel(deadline);
+  if (!label) return null;
+
+  return (
+    <Tag
+      label={label}
+      tone={tone}
+      size={size}
+      icon={<Clock size={size === 'sm' ? 12 : 14} color={ink} strokeWidth={2.4} />}
     />
   );
 }

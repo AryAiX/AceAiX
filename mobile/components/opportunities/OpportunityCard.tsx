@@ -4,16 +4,17 @@ import { useRouter } from 'expo-router';
 import { BadgeCheck, Bookmark, BookmarkCheck, MapPin } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Badge, Card, IconButton, Text } from '@/components/ui';
+import { Avatar, Card, IconButton, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { metaLine } from '@/lib/format';
 import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
-import { opportunityTypeLabel, positionLabel, sportLabel } from '@/constants/sports';
+import { SPORTS, opportunityTypeLabel, positionLabel, sportLabel } from '@/constants/sports';
 import type { Opportunity } from '@/types/models';
 import { ClubLogo } from './ClubLogo';
-import { DeadlineChip, isClosed } from './DeadlineChip';
-import { MatchPill, explainMatch } from './MatchExplain';
+import { DaysLeftTag, isClosed } from './DeadlineChip';
+import { MatchRing, explainMatch } from './MatchExplain';
+import { Tag } from './Tag';
 
 interface Props {
   opportunity: Opportunity;
@@ -44,6 +45,9 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
   const match = explainMatch(t, opportunity);
   const typeLabel = opportunityTypeLabel(t, opportunity.type);
   const sport = sportLabel(t, opportunity.sport);
+  const emoji = SPORTS.find(
+    (s) => s.key.toLowerCase() === (opportunity.sport ?? '').toLowerCase(),
+  )?.emoji;
   const position = positionLabel(t, opportunity.position);
   const poster = opportunity.org_id ? null : opportunity.poster ?? null;
   const club =
@@ -116,29 +120,39 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-        {typeLabel ? <Badge label={typeLabel} tone="primary" /> : null}
-        {sport ? <Badge label={sport} tone="neutral" /> : null}
-        {position ? <Badge label={position} tone="neutral" /> : null}
+        {typeLabel ? <Tag label={typeLabel} tone="blue" /> : null}
+        {sport ? <Tag label={emoji ? `${emoji} ${sport}` : sport} /> : null}
+        {position ? <Tag label={position} /> : null}
         {place ? (
-          <Badge
+          <Tag
             label={place}
-            tone="neutral"
-            icon={<MapPin size={11} color={colors.textSecondary} strokeWidth={2.4} />}
+            icon={<MapPin size={12} color={colors.textSecondary} strokeWidth={2.4} />}
           />
         ) : null}
-        <DeadlineChip deadline={opportunity.deadline} />
       </View>
 
+      {/* The fit and the time left share one quiet line at the bottom: the
+          match ring on the start side, the days-left tag on the end side. */}
       {match ? (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <MatchPill percent={match.percent} size="sm" />
-          <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-            {match.reasons.slice(0, 2).map((reason) => (
-              <Badge key={reason} label={reason} tone="neutral" />
-            ))}
-          </View>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingTop: spacing.md,
+            borderTopWidth: 1,
+            borderTopColor: colors.divider,
+          }}
+        >
+          <MatchRing percent={match.percent} />
+          <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+            {metaLine(t('common.match'), match.reasons.slice(0, 2).join(', '))}
+          </Text>
+          <DaysLeftTag deadline={opportunity.deadline} />
         </View>
-      ) : null}
+      ) : (
+        <DaysLeftTag deadline={opportunity.deadline} />
+      )}
 
       {footer}
     </Card>
