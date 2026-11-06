@@ -43,6 +43,14 @@ export const feed = {
 
   // ── Liken, kommentieren, teilen, sichern ───────────────────────────────────
   likePost: 'Diesen Beitrag liken',
+  likersTitle: 'Gefällt',
+  likedBy: 'Gefällt {{name}}',
+  likedByOthers_one: 'Gefällt {{name}} und {{count}} weiteren Person',
+  likedByOthers_other: 'Gefällt {{name}} und {{count}} weiteren Personen',
+  likedByCount_one: 'Gefällt {{count}} Person',
+  likedByCount_other: 'Gefällt {{count}} Personen',
+  likersHidden_one: '{{count}} weiteres privates Profil',
+  likersHidden_other: '{{count}} weitere private Profile',
   unlikePost: 'Like zurücknehmen',
   readAndAddComments: 'Kommentare lesen und schreiben',
   sharePost: 'Diesen Beitrag teilen',

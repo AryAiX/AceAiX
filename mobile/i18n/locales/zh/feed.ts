@@ -41,6 +41,11 @@ export const feed = {
 
   // ── 点赞、评论、分享、收藏 ─────────────────────────────────────────────────
   likePost: '给这条动态点赞',
+  likersTitle: '赞过的人',
+  likedBy: '{{name}} 赞了',
+  likedByOthers_other: '{{name}} 和另外 {{count}} 人赞了',
+  likedByCount_other: '{{count}} 人赞了',
+  likersHidden_other: '另有 {{count}} 位来自私密资料',
   unlikePost: '取消点赞',
   readAndAddComments: '查看和发表评论',
   sharePost: '分享这条动态',

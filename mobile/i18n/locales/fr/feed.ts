@@ -47,6 +47,17 @@ export const feed = {
 
   // ── Like, commentaire, partage, enregistrement ─────────────────────────────
   likePost: 'Liker ce post',
+  likersTitle: 'Aimé par',
+  likedBy: 'Aimé par {{name}}',
+  likedByOthers_one: 'Aimé par {{name}} et {{count}} autre personne',
+  likedByOthers_many: 'Aimé par {{name}} et {{count}} autres personnes',
+  likedByOthers_other: 'Aimé par {{name}} et {{count}} autres personnes',
+  likedByCount_one: 'Aimé par {{count}} personne',
+  likedByCount_many: 'Aimé par {{count}} personnes',
+  likedByCount_other: 'Aimé par {{count}} personnes',
+  likersHidden_one: '{{count}} de plus, profil privé',
+  likersHidden_many: '{{count}} de plus, profils privés',
+  likersHidden_other: '{{count}} de plus, profils privés',
   unlikePost: 'Retirer le like',
   readAndAddComments: 'Lire et ajouter des commentaires',
   sharePost: 'Partager ce post',

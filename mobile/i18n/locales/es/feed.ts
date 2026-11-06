@@ -49,6 +49,17 @@ export const feed = {
 
   // ── Me gusta, comentar, compartir, guardar ─────────────────────────────────
   likePost: 'Dar me gusta a esta publicación',
+  likersTitle: 'Les gusta a',
+  likedBy: 'Le gusta a {{name}}',
+  likedByOthers_one: 'Le gusta a {{name}} y a {{count}} persona más',
+  likedByOthers_many: 'Le gusta a {{name}} y a {{count}} personas más',
+  likedByOthers_other: 'Le gusta a {{name}} y a {{count}} personas más',
+  likedByCount_one: 'Le gusta a {{count}} persona',
+  likedByCount_many: 'Le gusta a {{count}} personas',
+  likedByCount_other: 'Le gusta a {{count}} personas',
+  likersHidden_one: '{{count}} más de un perfil privado',
+  likersHidden_many: '{{count}} más de perfiles privados',
+  likersHidden_other: '{{count}} más de perfiles privados',
   unlikePost: 'Quitar el me gusta de esta publicación',
   readAndAddComments: 'Leer y añadir comentarios',
   sharePost: 'Compartir esta publicación',

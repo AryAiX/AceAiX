@@ -24,6 +24,7 @@ import { OffscreenBrandedCard } from './BrandedShareCard';
 import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
 import { PostActions } from './PostActions';
+import { LikedBy } from './PostLikers';
 
 /**
  * The most-seen component in the app.
@@ -498,6 +499,9 @@ function PostCardBase({
         onShare={onShare}
         onSave={handleSave}
       />
+
+      {/* Who liked it — only on your own posts. */}
+      {isOwnPost ? <LikedBy postId={post.id} likeCount={post.like_count} /> : null}
 
       {rendering ? <OffscreenBrandedCard /> : null}
 

@@ -429,3 +429,37 @@ export async function recordPostView(postId: string): Promise<void> {
     /* A missed view is not worth an error on screen. */
   }
 }
+
+/** Someone who liked a post, as the "Liked by" list shows them. */
+export interface PostLiker {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole | null;
+  is_verified: boolean | null;
+}
+
+/**
+ * Who liked a post, newest first, read straight from `post_likes` (any
+ * signed-in account may read it, so this needs no new RPC). Profiles the
+ * viewer is not allowed to see — a hidden minor, a suspended account — come
+ * back empty from the join and are left out; the caller shows them as a count.
+ */
+export async function postLikers(postId: string, limit = 100): Promise<PostLiker[]> {
+  const { data, error } = await supabase
+    .from('post_likes')
+    .select('created_at, user:user_profiles(id, full_name, avatar_url, role, is_verified)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new AppError(error);
+  return (data ?? [])
+    .map((row) => {
+      const value = (row as { user?: unknown }).user;
+      const person = Array.isArray(value) ? value[0] : value;
+      return person && typeof person === 'object' && typeof (person as PostLiker).id === 'string'
+        ? (person as PostLiker)
+        : null;
+    })
+    .filter((person): person is PostLiker => person != null);
+}
