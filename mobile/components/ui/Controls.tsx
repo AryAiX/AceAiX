@@ -138,6 +138,9 @@ interface ListItemProps {
   showChevron?: boolean;
   destructive?: boolean;
   disabled?: boolean;
+  /** Draws the title and subtitle in this colour, for a row on a coloured
+      background (the subtitle a little softer). Omit for the normal inks. */
+  onColor?: string;
   /**
    * Pad the row's own left and right edges.
    *
@@ -168,6 +171,7 @@ export function ListItem({
   destructive,
   disabled,
   inset = false,
+  onColor,
   style,
   testID,
 }: ListItemProps) {
@@ -191,11 +195,22 @@ export function ListItem({
     >
       {left}
       <View style={{ flex: 1 }}>
-        <Text variant="bodyStrong" tone={destructive ? 'danger' : 'default'} numberOfLines={1}>
+        <Text
+          variant="bodyStrong"
+          tone={onColor ? undefined : destructive ? 'danger' : 'default'}
+          color={onColor}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" tone="muted" numberOfLines={2} style={{ marginTop: 1 }}>
+          <Text
+            variant="caption"
+            tone={onColor ? undefined : 'muted'}
+            color={onColor}
+            numberOfLines={2}
+            style={{ marginTop: 1, opacity: onColor ? 0.88 : 1 }}
+          >
             {subtitle}
           </Text>
         ) : null}

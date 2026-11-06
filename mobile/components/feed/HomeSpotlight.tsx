@@ -13,8 +13,10 @@ import { Routes } from '@/lib/routes';
 import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 
-/** Ink for words and icons on the sunny ombre: dark enough to read on yellow. */
-const WARM_INK = '#9A3A06';
+/** The challenge ombre, coral to pink — the same sweep as Play's + button —
+    with white words on it. */
+const OMBRE: [string, string] = ['#F06A4E', '#E3428A'];
+const ON_OMBRE = '#FFFFFF';
 
 /**
  * Your week — the block above the feed.
@@ -53,12 +55,17 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
   if (!views && !challenge) return null;
 
   const rows: React.ReactElement[] = [];
+  /* With a challenge on, the whole block wears the coral → pink ombre, white
+     words on it. Without one it stays a plain card. */
+  const sunny = !!challenge;
+  const onTile = theme.alpha('#FFFFFF', 0.22);
 
   if (views) {
     rows.push(
       <ListItem
         key="views"
         inset
+        onColor={sunny ? ON_OMBRE : undefined}
         title={t('views.homeTitle', { count: views.total })}
         subtitle={
           views.professional > 0
@@ -66,8 +73,8 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
             : t('views.homeEmptyBody')
         }
         left={
-          <RowIcon color={colors.info}>
-            <Eye size={18} color={colors.info} />
+          <RowIcon color={colors.info} fill={sunny ? onTile : undefined}>
+            <Eye size={18} color={sunny ? ON_OMBRE : colors.info} />
           </RowIcon>
         }
         right={
@@ -86,6 +93,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
       <ListItem
         key="challenge"
         inset
+        onColor={ON_OMBRE}
         title={challenge.title}
         subtitle={metaLine(
           t('challenges.homeTitle'),
@@ -93,12 +101,12 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
           t('challenges.entries', { count: challenge.entry_count }),
         )}
         left={
-          <RowIcon color={colors.warning} fill={theme.alpha('#FFFFFF', 0.7)}>
-            <Flame size={18} color={WARM_INK} strokeWidth={2.4} />
+          <RowIcon color={colors.warning} fill={onTile}>
+            <Flame size={18} color={ON_OMBRE} strokeWidth={2.4} />
           </RowIcon>
         }
         right={
-          <Text variant="captionStrong" color={WARM_INK}>
+          <Text variant="captionStrong" color={ON_OMBRE}>
             {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
           </Text>
         }
@@ -108,25 +116,15 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
     );
   }
 
-  /* With a challenge on, the whole block wears a sunny yellow → orange ombre
-     (mostly yellow) and a warm rim: a challenge has a clock on it, and warm is
-     the colour of time. Without one it stays a plain card. */
-  const sunny = !!challenge;
-
   return (
     <Card
       padded={false}
-      style={sunny ? { overflow: 'hidden', borderWidth: 1.5, borderColor: theme.play.amber } : undefined}
+      style={sunny ? { overflow: 'hidden', borderWidth: 0 } : undefined}
       testID="your-week"
     >
       {sunny ? (
         <LinearGradient
-          colors={[
-            theme.alpha(theme.colors.sun, 0.62),
-            theme.alpha(theme.play.amber, 0.5),
-            theme.alpha(theme.play.flame, 0.42),
-          ]}
-          locations={[0, 0.6, 1]}
+          colors={OMBRE}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
@@ -134,7 +132,7 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
       ) : null}
       <Text
         variant="overline"
-        color={sunny ? WARM_INK : undefined}
+        color={sunny ? ON_OMBRE : undefined}
         tone={sunny ? undefined : 'muted'}
         style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md }}
       >
@@ -142,7 +140,13 @@ export function HomeSpotlight({ showChallenge = true }: { showChallenge?: boolea
       </Text>
       {rows.map((row, index) => (
         <React.Fragment key={row.key ?? index}>
-          {index > 0 ? <Divider inset={spacing.lg} /> : null}
+          {index > 0 ? (
+            sunny ? (
+              <View style={{ height: 1, marginLeft: spacing.lg, backgroundColor: theme.alpha('#FFFFFF', 0.3) }} />
+            ) : (
+              <Divider inset={spacing.lg} />
+            )
+          ) : null}
           {row}
         </React.Fragment>
       ))}
