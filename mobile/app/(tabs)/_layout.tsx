@@ -3,6 +3,7 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-n
 import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { Compass, Handshake, HeartHandshake, Home, Plus, Swords, Target, User, Users } from 'lucide-react-native';
 
@@ -22,11 +23,32 @@ const RAIL = 3;
 const CREATE_SIZE = 38;
 /** The soft ring around it (lavender on light, slate on dark), which cuts the rail. */
 const RING = 3;
-/** How far the button (ring included) reaches down into the bar. The square's
-    centre sits just above the rail, so it reads as lifted out of the bar. */
-const DIP = 13;
 /** The centre tab's icon and label move down by this much, to clear the + . */
 const CENTRE_DROP = 6;
+/** The rail swells into a soft hill under the + : this tall, and this far out
+    from the centre on each side before it is flat again. */
+const HUMP = 20;
+const HUMP_HALF = 66;
+
+/**
+ * The rail's path: flat along the bar's top edge, rising into a smooth hill
+ * that cradles the + and falling back on the other side. `base` is the rail's
+ * line; `fill` closes the same hill a little lower, to paint the bar colour
+ * under it (and over the hairline edge).
+ */
+function railPath(width: number, base: number, close?: number): string {
+  const cx = width / 2;
+  const top = base - HUMP;
+  const l = cx - HUMP_HALF;
+  const r = cx + HUMP_HALF;
+  const half = HUMP_HALF / 2;
+  const hill =
+    `L ${l} ${base} ` +
+    `C ${l + half} ${base} ${cx - half} ${top} ${cx} ${top} ` +
+    `C ${cx + half} ${top} ${r - half} ${base} ${r} ${base} `;
+  if (close === undefined) return `M 0 ${base} ${hill}L ${width} ${base}`;
+  return `M ${l} ${close} L ${l} ${base} ${hill.slice(hill.indexOf('C'))}L ${r} ${close} Z`;
+}
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
@@ -274,11 +296,30 @@ export default function TabsLayout() {
 
   const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
 
-  /* Seated across the top edge: the button's ring dips DIP points into the
-     bar's top padding, so it cuts the rail and everything below it — Play's
-     icon and label — stays in view. */
+  /* Seated on the rail's hill above Play, so Play's icon and label below it
+     stay in view. */
   const barHeight = BAR_HEIGHT + insets.bottom;
-  const fabBottom = barHeight - DIP;
+  /* The button sits on the crest of the rail's hill, its centre on the top
+     of the curve, so the line seems to lift it out of the bar. */
+  const fabBottom = barHeight + HUMP - (CREATE_SIZE + RING * 2) / 2;
+  const [barWidth, setBarWidth] = useState(0);
+  /* The svg's own box: the rail's line sits 2pt above its bottom edge, which
+     is placed 2pt below the bar's top edge — so the line is the edge. */
+  /* Room above and below the line for the glow. */
+  const GLOW_PAD = 8;
+  const svgHeight = HUMP + RAIL + GLOW_PAD * 2;
+  const railBase = svgHeight - GLOW_PAD;
+  /* The glow gathers around the hill and fades out along the flat rail. */
+  const glowStops = [
+    { offset: 0, color: colors.accent, opacity: 0 },
+    { offset: 0.22, color: colors.accent, opacity: 0.12 },
+    { offset: 0.38, color: colors.primary, opacity: 0.55 },
+    { offset: 0.5, color: colors.primary, opacity: 1 },
+    { offset: 0.62, color: colors.primary, opacity: 0.55 },
+    { offset: 0.78, color: colors.accent, opacity: 0.12 },
+    { offset: 1, color: colors.accent, opacity: 0 },
+  ];
+  const dark = theme.scheme === 'dark';
   /* The rail: nearly the full width of the bar, cobalt under the button and
      strong violet towards both tips, fading out only at the very edges. */
   const railColors = [
@@ -292,7 +333,7 @@ export default function TabsLayout() {
   const railStops = [0, 0.1, 0.4, 0.6, 0.9, 1] as const;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1 }} onLayout={(e) => setBarWidth(Math.round(e.nativeEvent.layout.width))}>
       <Tabs
       screenOptions={{
         headerShown: false,
@@ -467,14 +508,56 @@ export default function TabsLayout() {
           flat colour only. It lies on the bar's top edge, never over an icon,
           takes no touches, and is full width and never scaled — so it cannot
           widen the page (tests/e2e/look.mjs). No glow. */}
-      <LinearGradient
-        pointerEvents="none"
-        colors={railColors}
-        locations={railStops}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - RAIL, height: RAIL }}
-      />
+      {barWidth > 0 ? (
+        <View
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - GLOW_PAD, height: svgHeight }}
+        >
+          <Svg width={barWidth} height={svgHeight}>
+            <Defs>
+              <SvgGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+                {railColors.map((c, i) => (
+                  <Stop key={i} offset={railStops[i]} stopColor={c} />
+                ))}
+              </SvgGradient>
+              <SvgGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+                {glowStops.map((s) => (
+                  <Stop key={s.offset} offset={s.offset} stopColor={s.color} stopOpacity={s.opacity} />
+                ))}
+              </SvgGradient>
+              <SvgGradient id="hillTint" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset={0} stopColor={colors.primary} stopOpacity={dark ? 0.28 : 0.16} />
+                <Stop offset={1} stopColor={colors.primary} stopOpacity={0} />
+              </SvgGradient>
+            </Defs>
+            {/* The glow: three soft, widening strokes in place of a blur (a
+                blur filter is not drawn the same on every phone). */}
+            {[14, 9, 6].map((w, i) => (
+              <Path
+                key={w}
+                d={railPath(barWidth, railBase)}
+                stroke="url(#glow)"
+                strokeWidth={w}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                fill="none"
+                opacity={(dark ? [0.14, 0.22, 0.3] : [0.08, 0.14, 0.2])[i]}
+              />
+            ))}
+            {/* The bar's colour under the hill, a faint tint inside it, then
+                the line on top. */}
+            <Path d={railPath(barWidth, railBase, railBase + 2)} fill={colors.tabBar} />
+            <Path d={railPath(barWidth, railBase, railBase + 2)} fill="url(#hillTint)" />
+            <Path
+              d={railPath(barWidth, railBase)}
+              stroke="url(#rail)"
+              strokeWidth={RAIL}
+              strokeLinecap="round"
+              fill="none"
+            />
+          </Svg>
+        </View>
+      ) : null}
 
       <CreateButton bottom={fabBottom} />
     </View>
