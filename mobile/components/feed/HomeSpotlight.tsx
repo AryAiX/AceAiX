@@ -157,18 +157,27 @@ export function HomeSpotlight({
   };
 
   /** The × in a card's corner. */
+  /** The × tucked into a card's top corner, so the card itself reads the same
+      as its pinned copy in Notifications. */
   const close = (onPress: () => void, color: string, testID: string) => (
     <Pressable
       onPress={onPress}
-      hitSlop={10}
+      hitSlop={12}
       accessibilityRole="button"
       accessibilityLabel={t('common.close')}
       testID={testID}
-      style={({ pressed }) => ({ padding: 2, opacity: pressed ? 0.5 : 0.75 })}
+      style={({ pressed }) => ({
+        position: 'absolute',
+        top: 5,
+        right: 5,
+        padding: 3,
+        opacity: pressed ? 0.5 : 0.7,
+      })}
     >
-      <X size={16} color={color} />
+      <X size={14} color={color} strokeWidth={2.4} />
     </Pressable>
   );
+
 
   const card = {
     flexDirection: 'row' as const,
