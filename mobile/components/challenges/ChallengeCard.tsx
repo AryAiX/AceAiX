@@ -1,10 +1,10 @@
 import React from 'react';
 import { View } from 'react-native';
-import { ArrowDown, ArrowUp, BadgeCheck, Check, Flame, Star } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, BadgeCheck, Check, Star } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Card, ChevronForward, Text } from '@/components/ui';
-import { SPORTS, sportLabel } from '@/constants/sports';
+import { sportLabel } from '@/constants/sports';
 import { daysUntil, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { Challenge } from '@/types/models';
@@ -33,7 +33,8 @@ export const CLOSING_SOON_DAYS = 7;
  * One challenge, as a calm row card.
  *
  * What a fourteen-year-old decides on is what it is and how long is left, so
- * the title and the days-left tag lead. Orange is kept for two small things —
+ * the title and the days-left tag lead. No picture: a challenge has none of
+ * its own, and a stand-in only took room from the title. Orange is kept for two small things —
  * the tag when it is closing soon, and the way in — so a list of them stays
  * quiet. The entry count is social proof, not pressure: it never says hurry.
  */
@@ -55,9 +56,6 @@ export function ChallengeCard({
   const soon = live && days != null && days <= CLOSING_SOON_DAYS;
 
   const sport = sportLabel(t, challenge.sport);
-  const emoji = SPORTS.find(
-    (s) => s.key.toLowerCase() === (challenge.sport ?? '').toLowerCase(),
-  )?.emoji;
   const who = challenge.org_name ?? challenge.setter_name ?? null;
 
   const ages =
@@ -97,23 +95,6 @@ export function ChallengeCard({
       style={{ gap: spacing.md, opacity: live || entered ? 1 : 0.6 }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md }}>
-        <View
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: radii.md,
-            backgroundColor: theme.alpha(theme.play.flame, live ? 0.12 : 0.06),
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {emoji ? (
-            <Text style={{ fontSize: 22 }}>{emoji}</Text>
-          ) : (
-            <Flame size={20} color={ink} strokeWidth={2.2} />
-          )}
-        </View>
-
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodyStrong" numberOfLines={2}>
             {challenge.title}
