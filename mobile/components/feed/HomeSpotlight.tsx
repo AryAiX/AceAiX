@@ -3,10 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Eye, Flame, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Eye, Flame, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Text } from '@/components/ui';
+import { Badge, Text, isRTL } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import { openChallenges, profileViewDigest } from '@/lib/api';
@@ -19,6 +19,12 @@ import { isChallengeLive } from '@/components/challenges/ChallengeCard';
     with white words on it. */
 const OMBRE: [string, string] = ['#F06A4E', '#E3428A'];
 const ON_OMBRE = '#FFFFFF';
+
+/** The flame red-orange of the AceAiX logo: the views title label and its arrow.
+    The same in light and dark mode. */
+const FLAME_LABEL = '#F04A23';
+/** Points the way "forward" reads: right, or left in Arabic. */
+const ArrowForward = isRTL ? ArrowLeft : ArrowRight;
 
 /* Profile views: put away until someone new looks. What was on screen when
    the × was tapped is kept on the phone, and the pop-up comes back as soon as
@@ -201,19 +207,50 @@ export function HomeSpotlight({
           <View style={[tile, { backgroundColor: colors.primary }]}>
             <Eye size={19} color={ON_OMBRE} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={1}>
-              {t('views.homeTitle', { count: views.total })}
-            </Text>
-            <Text variant="caption" tone="muted" numberOfLines={1}>
-              {views.professional > 0
-                ? t('views.homeProfessional', { count: views.professional })
-                : t('views.homeEmptyBody')}
-            </Text>
+          <View style={{ flex: 1, gap: 5 }}>
+            <View
+              style={{
+                alignSelf: 'flex-start',
+                maxWidth: '100%',
+                backgroundColor: FLAME_LABEL,
+                borderRadius: 7,
+                paddingVertical: 5,
+                paddingHorizontal: 9,
+              }}
+            >
+              {/* Two lines at most: with the arrow and the × beside it, one
+                  line cut the title short on an ordinary phone. */}
+              <Text variant="captionStrong" color="#FFFFFF" numberOfLines={2}>
+                {t('views.homeTitle', { count: views.total })}
+              </Text>
+            </View>
+            {/* The "new" badge rides on the subtitle line, so the title gets the width. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+              {views.new_since_seen > 0 ? (
+                <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
+              ) : null}
+              <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {views.professional > 0
+                  ? t('views.homeProfessional', { count: views.professional })
+                  : t('views.homeEmptyBody')}
+              </Text>
+            </View>
           </View>
-          {views.new_since_seen > 0 ? (
-            <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
-          ) : null}
+          {/* Decorative: the whole card is already the way in. */}
+          <View
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: theme.alpha(FLAME_LABEL, 0.12),
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ArrowForward size={17} color={FLAME_LABEL} strokeWidth={2.4} />
+          </View>
           {pinned ? null : close(putAwayViews, colors.textMuted, 'your-week-views-close')}
         </Pressable>
       ) : null}
