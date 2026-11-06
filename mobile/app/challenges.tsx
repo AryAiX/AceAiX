@@ -59,7 +59,7 @@ export default function ChallengesScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const ink = useChallengeInk();
-  const [sport, setSport] = useState<string | null>(null);
+  const [sports, setSports] = useState<string[]>([]);
   const [sportOpen, setSportOpen] = useState(false);
 
   const isSetter =
@@ -85,18 +85,20 @@ export default function ChallengesScreen() {
     { refetchOnFocus: true },
   );
 
-  /* The sports that actually have a challenge, so the sheet never offers a
-     sport that leads to an empty list. */
-  const sportsHere = useMemo(() => {
-    const present = new Set((data ?? []).map((c) => (c.sport ?? '').toLowerCase()));
-    return SPORTS.filter((entry) => present.has(entry.key.toLowerCase()));
-  }, [data]);
+  /* Which sports have a challenge right now. The sheet lists every sport;
+     the ones with nothing open are faded, but can still be picked. */
+  const sportsHere = useMemo(
+    () => new Set((data ?? []).map((c) => (c.sport ?? '').toLowerCase())),
+    [data],
+  );
   const shown = useMemo(
     () =>
-      sport
-        ? (data ?? []).filter((c) => (c.sport ?? '').toLowerCase() === sport.toLowerCase())
+      sports.length > 0
+        ? (data ?? []).filter((c) =>
+            sports.some((key) => key.toLowerCase() === (c.sport ?? '').toLowerCase()),
+          )
         : (data ?? []),
-    [data, sport],
+    [data, sports],
   );
 
   /* Open is split by time: inside a week first, then the rest. A challenge
@@ -141,7 +143,7 @@ export default function ChallengesScreen() {
   }, [isSetter, t, open.live.length]);
 
   const empty = useCallback(() => {
-    if (sport) {
+    if (sports.length > 0) {
       return (
         <EmptyState
           compact
@@ -150,7 +152,7 @@ export default function ChallengesScreen() {
           body={t('challenges.emptyBody')}
           actionLabel={t('opportunities.athlete.clearFilters')}
           actionVariant="soft"
-          onAction={() => setSport(null)}
+          onAction={() => setSports([])}
         />
       );
     }
@@ -188,18 +190,25 @@ export default function ChallengesScreen() {
         body={t('challenges.emptyBody')}
       />
     );
-  }, [tab, t, router, ink, sport]);
+  }, [tab, t, router, ink, sports.length]);
 
-  const picked = sport ? SPORTS.find((entry) => entry.key === sport) : undefined;
+  const toggleSport = (key: string) =>
+    setSports((current) =>
+      current.includes(key) ? current.filter((k) => k !== key) : [...current, key],
+    );
 
-  /** One soft pill: "All sports ▾" until a sport is picked, then that sport in
-      solid blue with an × to clear it. */
-  const sportChip = (
-    <View style={{ flexDirection: 'row' }}>
+  /* The filter pill always stays, so more sports can be added; each chosen
+     sport sits beside it as its emoji in solid blue, with its own × to take it off. */
+  const sportChips = (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
       <Pressable
         onPress={() => setSportOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={sport ? sportLabel(t, sport) : t('sports.allSports')}
+        accessibilityLabel={
+          sports.length > 0
+            ? `${t('opportunities.detail.factSport')} (${sports.length})`
+            : t('sports.allSports')
+        }
         testID="challenges-sport"
         hitSlop={6}
         style={({ pressed }) => ({
@@ -207,49 +216,74 @@ export default function ChallengesScreen() {
           alignItems: 'center',
           gap: 6,
           paddingVertical: 7,
-          paddingLeft: spacing.md,
-          paddingRight: sport ? 6 : spacing.md,
+          paddingHorizontal: spacing.md,
           borderRadius: radii.pill,
-          backgroundColor: sport ? colors.primary : colors.surfaceAlt,
+          backgroundColor: colors.surfaceAlt,
           opacity: pressed ? 0.75 : 1,
-          ...(sport
-            ? {
-                shadowColor: colors.primary,
-                shadowOpacity: 0.25,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 3,
-              }
-            : null),
         })}
       >
-        {sport ? null : <SlidersHorizontal size={14} color={colors.textSecondary} strokeWidth={2.4} />}
-        <Text variant="captionStrong" color={sport ? colors.textOnBrand : colors.textSecondary}>
-          {sport
-            ? `${picked?.emoji ? `${picked.emoji} ` : ''}${sportLabel(t, sport)}`
-            : t('sports.allSports')}
+        <SlidersHorizontal size={14} color={colors.textSecondary} strokeWidth={2.4} />
+        <Text variant="captionStrong" color={colors.textSecondary}>
+          {sports.length > 0 ? t('opportunities.detail.factSport') : t('sports.allSports')}
         </Text>
-        {sport ? (
-          <Pressable
-            onPress={() => setSport(null)}
-            accessibilityRole="button"
-            accessibilityLabel={t('opportunities.removeFilter', { label: sportLabel(t, sport) })}
-            hitSlop={10}
-            style={{
-              width: 20,
-              height: 20,
-              borderRadius: 10,
-              backgroundColor: 'rgba(255,255,255,0.25)',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={12} color={colors.textOnBrand} strokeWidth={3} />
-          </Pressable>
-        ) : (
-          <ChevronDown size={14} color={colors.textSecondary} strokeWidth={2.6} />
-        )}
+        <ChevronDown size={14} color={colors.textSecondary} strokeWidth={2.6} />
       </Pressable>
+
+      {sports.map((key) => {
+        const label = sportLabel(t, key);
+        const found = SPORTS.find((entry) => entry.key === key)?.emoji;
+        /* Tennis and padel share 🎾, so a shared emoji keeps its name. */
+        const shared = !!found && SPORTS.filter((entry) => entry.emoji === found).length > 1;
+        const emoji = found && !shared ? found : undefined;
+        return (
+          <Pressable
+            key={key}
+            onPress={() => toggleSport(key)}
+            accessibilityRole="button"
+            accessibilityLabel={t('opportunities.removeFilter', { label })}
+            testID={`challenges-sport-${key}`}
+            hitSlop={4}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              paddingVertical: 7,
+              paddingLeft: emoji ? spacing.sm : spacing.md,
+              paddingRight: 6,
+              borderRadius: radii.pill,
+              backgroundColor: colors.primary,
+              opacity: pressed ? 0.75 : 1,
+              shadowColor: colors.primary,
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 3,
+            })}
+          >
+            {/* Just the sport's emoji, to keep the row light; the name is still
+                read out to screen readers. */}
+            <Text
+              variant="captionStrong"
+              color={colors.textOnBrand}
+              style={emoji ? { fontSize: 15 } : undefined}
+            >
+              {emoji ?? (found ? `${found} ${label}` : label)}
+            </Text>
+            <View
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: 10,
+                backgroundColor: 'rgba(255,255,255,0.25)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <X size={12} color={colors.textOnBrand} strokeWidth={3} />
+            </View>
+          </Pressable>
+        );
+      })}
     </View>
   );
 
@@ -291,7 +325,7 @@ export default function ChallengesScreen() {
                 color={theme.play.flame}
                 testID="challenge-tabs"
               />
-              {sportsHere.length > 1 || sport ? sportChip : null}
+              {sportChips}
               {isSetter ? (
                 <Button
                   label={t('challenges.newTitle')}
@@ -322,20 +356,30 @@ export default function ChallengesScreen() {
         onClose={() => setSportOpen(false)}
         title={t('opportunities.detail.factSport')}
         testID="challenges-sport-sheet"
+        footer={
+          <Button
+            label={t('opportunities.showResults', { count: open.live.length })}
+            fullWidth
+            onPress={() => setSportOpen(false)}
+            testID="challenges-sport-show"
+          />
+        }
       >
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingBottom: spacing.lg }}>
-          {sportsHere.map((entry) => (
-            <Chip
-              key={entry.key}
-              label={sportLabel(t, entry.key)}
-              icon={<Text variant="caption">{entry.emoji}</Text>}
-              selected={sport === entry.key}
-              onPress={() => {
-                setSport((current) => (current === entry.key ? null : entry.key));
-                setSportOpen(false);
-              }}
-            />
-          ))}
+          {SPORTS.map((entry) => {
+            const selected = sports.includes(entry.key);
+            const none = !sportsHere.has(entry.key.toLowerCase());
+            return (
+              <Chip
+                key={entry.key}
+                label={sportLabel(t, entry.key)}
+                icon={<Text variant="caption">{entry.emoji}</Text>}
+                selected={selected}
+                onPress={() => toggleSport(entry.key)}
+                style={none && !selected ? { opacity: 0.45 } : undefined}
+              />
+            );
+          })}
         </View>
       </Sheet>
     </Screen>
