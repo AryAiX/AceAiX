@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, TextStyle, View, ViewStyle } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Check } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -16,7 +17,16 @@ import { PickerSheet, SelectField } from './PickerSheet';
  */
 
 // ── Progress ─────────────────────────────────────────────────────────────────
-export function WizardProgress({ step, total }: { step: number; total: number }) {
+export function WizardProgress({
+  step,
+  total,
+  warm = false,
+}: {
+  step: number;
+  total: number;
+  /** Fill with the warm ombre, as the joining flow's buttons are. */
+  warm?: boolean;
+}) {
   const theme = useTheme();
   const t = useT();
   const { colors, radii, duration } = theme;
@@ -51,13 +61,23 @@ export function WizardProgress({ step, total }: { step: number; total: number })
         style={{
           height: '100%',
           borderRadius: radii.pill,
-          backgroundColor: colors.primary,
+          backgroundColor: warm ? theme.gradients.warm[1] : colors.primary,
+          overflow: 'hidden',
           width: width.interpolate({
             inputRange: [0, 1],
             outputRange: ['0%', '100%'],
           }),
         }}
-      />
+      >
+        {warm ? (
+          <LinearGradient
+            colors={theme.gradients.warm}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+      </Animated.View>
     </View>
   );
 }
@@ -70,6 +90,7 @@ export function WizardTopBar({
   backLabel,
   hideBack = false,
   right,
+  warm = false,
 }: {
   step: number;
   total: number;
@@ -78,6 +99,8 @@ export function WizardTopBar({
   /** Keeps the layout steady on the first step, where there is no way back. */
   hideBack?: boolean;
   right?: React.ReactNode;
+  /** The joining flow's warm progress bar. */
+  warm?: boolean;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -115,7 +138,7 @@ export function WizardTopBar({
         </Pressable>
       )}
 
-      <WizardProgress step={step} total={total} />
+      <WizardProgress step={step} total={total} warm={warm} />
 
       {right ?? (
         <Text variant="caption" tone="muted" style={{ minWidth: 40, textAlign: 'right' }}>

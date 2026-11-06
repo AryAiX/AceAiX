@@ -227,11 +227,13 @@ export default function SignUpScreen() {
   return (
     <Screen
       keyboardAvoiding
-      header={<WizardTopBar step={stepIndex} total={STEPS.length} onBack={goBack} />}
+      header={<WizardTopBar step={stepIndex} total={STEPS.length} onBack={goBack} warm />}
       footer={
         <Button
           label={step === 'account' ? t('auth.createAccount') : t('common.continue')}
-          variant="gradient"
+          /* The warm ombre of Create account on the welcome screen carries
+             through the whole joining flow; signing in stays blue. */
+          variant="warm"
           size="lg"
           fullWidth
           disabled={!canContinue()}

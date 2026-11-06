@@ -699,7 +699,9 @@ export default function OnboardingScreen() {
       ) : (
         <Button
           label={continueLabel}
-          variant="gradient"
+          /* The warm ombre of Create account on the welcome screen carries
+             through the whole joining flow; signing in stays blue. */
+          variant="warm"
           size="lg"
           fullWidth
           loading={saving}
@@ -727,6 +729,7 @@ export default function OnboardingScreen() {
       dropFooterInsetWithKeyboard
       header={
         <WizardTopBar
+          warm
           step={safeIndex}
           total={steps.length}
           hideBack={safeIndex === 0}
