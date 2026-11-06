@@ -23,6 +23,8 @@ export const meetups = {
   // ── L’onglet ───────────────────────────────────────────────────────────────
   title: 'Jouer',
   subtitle: 'Trouve des gens avec qui jouer, où que tu sois',
+  nearby: 'À proximité',
+  fieldWhere: 'Où',
   adultsOnlyBody: 'Trouver des partenaires de jeu n’est possible qu’à partir de 18 ans. En attendant, utilisez Découvrir, Défis et Opportunités.',
   adultsOnlyTitle: 'Jouer est réservé aux adultes',
 

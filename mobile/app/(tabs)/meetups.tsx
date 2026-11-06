@@ -1,22 +1,24 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { CalendarDays, Plus, Search, Users } from 'lucide-react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from 'react-native';
+import { useIsFocused, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CalendarDays, ChevronDown, MapPin, Plus, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
-  Chip,
   EmptyState,
   ErrorState,
   Header,
-  Input,
   Reveal,
   Screen,
-  SegmentedControl,
+  Sheet,
   SkeletonList,
   Text,
 } from '@/components/ui';
+import { OptionList } from '@/components/onboarding/PickerSheet';
 import { MeetupRow } from '@/components/meetups/MeetupCard';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
@@ -52,7 +54,11 @@ function windowRange(w: Window): { from: string | null; to: string | null } {
 
 export default function MeetupsScreen() {
   const theme = useTheme();
-  const { colors, spacing } = theme;
+  const { colors, spacing, radii } = theme;
+  const insets = useSafeAreaInsets();
+  /* White status-bar icons over the gradient, only while this tab is on
+     screen; leaving it hands the bar back to the other screens. */
+  const focused = useIsFocused();
   const router = useRouter();
   const t = useT();
   const { profile } = useAuth();
@@ -62,6 +68,8 @@ export default function MeetupsScreen() {
   const [place, setPlace] = useState('');
   const [sport, setSport] = useState<string | null>(null);
   const [when, setWhen] = useState<Window>('any');
+  /* Which picker is open from the search card, if any. */
+  const [picking, setPicking] = useState<'sport' | 'when' | null>(null);
 
   /* The typed place is not a dependency of the query — searching on every
      keystroke would fire a request per letter. The submit handler reloads. */
@@ -82,7 +90,7 @@ export default function MeetupsScreen() {
 
   const tabs = useMemo(
     () => [
-      { value: 'find' as Tab, label: t('meetups.title') },
+      { value: 'find' as Tab, label: t('meetups.nearby') },
       { value: 'mine' as Tab, label: t('meetups.mine') },
     ],
     [t],
@@ -103,93 +111,204 @@ export default function MeetupsScreen() {
     [router],
   );
 
-  const header = (
-    <Header
-      title={t('meetups.title')}
-      large
-      right={
-        <Button
-          label={t('meetups.createTitle')}
-          variant="soft"
-          size="sm"
-          icon={<Plus size={16} color={colors.primary} />}
-          onPress={() => router.push(Routes.newMeetup)}
-        />
-      }
-    />
+  /* A small Nearby / Mine toggle beside the title, so "Play" is said once. */
+  const toggle = (
+    <View
+      style={{ flexDirection: 'row', padding: 3, borderRadius: radii.pill, backgroundColor: theme.alpha('#FFFFFF', 0.18) }}
+      testID="meetups-tabs"
+    >
+      {tabs.map((o) => {
+        const on = tab === o.value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => setTab(o.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            testID={`meetups-tab-${o.value}`}
+            style={{
+              paddingHorizontal: spacing.md,
+              paddingVertical: 7,
+              borderRadius: radii.pill,
+              backgroundColor: on ? '#FFFFFF' : 'transparent',
+            }}
+          >
+            <Text variant="captionStrong" color={on ? theme.gradients.action[1] : '#FFFFFF'}>
+              {o.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 
-  const filters = (
-    <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
-      <SegmentedControl value={tab} options={tabs} onChange={setTab} />
-      {/* In the body rather than the header, where the large title and the
-          action button had already squeezed it to "wherev…". */}
+  /*
+    The header is a blue → violet block that runs up under the status bar,
+    with the title, the toggle and (on Nearby) a short line in white. The
+    search card then floats over its bottom edge — half on the colour, half on
+    the page — which is what gives the screen its depth.
+  */
+  const hero = (
+    <View
+      style={{
+        marginHorizontal: -spacing.lg,
+        paddingTop: insets.top + spacing.lg,
+        paddingHorizontal: spacing.lg,
+        paddingBottom: tab === 'find' ? 74 : spacing.xl,
+        borderBottomLeftRadius: 28,
+        borderBottomRightRadius: 28,
+        overflow: 'hidden',
+      }}
+    >
+      {focused ? <StatusBar style="light" /> : null}
+      <LinearGradient
+        colors={theme.gradients.action}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text variant="title" color="#FFFFFF" accessibilityRole="header" numberOfLines={1}>
+          {t('meetups.title')}
+        </Text>
+        {toggle}
+      </View>
       {tab === 'find' ? (
-        <Text variant="caption" tone="muted">
+        <Text variant="caption" color={theme.alpha('#FFFFFF', 0.9)} style={{ marginTop: spacing.xs }}>
           {t('meetups.subtitle')}
         </Text>
       ) : null}
-
-      {tab === 'find' ? (
-        <>
-          <Input
-            placeholder={t('meetups.searchPlace')}
-            hint={t('meetups.searchPlaceHint')}
-            value={place}
-            onChangeText={setPlace}
-            onSubmitEditing={() => setApplied(place.trim())}
-            returnKeyType="search"
-            autoCorrect={false}
-            icon={<Search size={18} color={colors.textMuted} />}
-            accessibilityLabel={t('meetups.searchPlace')}
-          />
-
-          {/*
-            Both rows scroll sideways rather than wrapping. Twelve sports and
-            four date ranges wrapped to seven rows of chips — a full screen of
-            filters above the first game, which is the one thing this screen
-            exists to show. A horizontal row costs one gesture and gives the
-            list back its space.
-          */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
-          >
-            <Chip
-              tone="accent"
-              label={t('meetups.anySport')}
-              selected={sport === null}
-              onPress={() => setSport(null)}
-            />
-            {SPORTS.map((s) => (
-              <Chip
-                tone="accent"
-                key={s.key}
-                label={`${s.emoji} ${sportLabel(t, s.key)}`}
-                selected={sport === s.key}
-                onPress={() => setSport(sport === s.key ? null : s.key)}
-              />
-            ))}
-          </ScrollView>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
-          >
-            {windows.map((w) => (
-              <Chip
-                key={w.value}
-                label={w.label}
-                selected={when === w.value}
-                onPress={() => setWhen(w.value)}
-              />
-            ))}
-          </ScrollView>
-        </>
-      ) : null}
     </View>
+  );
+
+  const sportName = sport ? sportLabel(t, sport) : t('meetups.anySport');
+  const whenName = windows.find((w) => w.value === when)?.label ?? t('meetups.anyDate');
+
+  /** One labelled cell of the search card: a small caps label over a value. */
+  const cell = (label: string, value: string, onPress: () => void, testID: string) => (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
+      testID={testID}
+      style={({ pressed }) => ({ flex: 1, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, opacity: pressed ? 0.7 : 1 })}
+    >
+      <Text variant="overline" tone="muted">
+        {label}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+          {value}
+        </Text>
+        <ChevronDown size={16} color={colors.textMuted} />
+      </View>
+    </Pressable>
+  );
+
+  /*
+    Where, sport and when in one card, like a travel search: the place on top,
+    the two choices side by side under it. Sport and date open short lists in
+    a sheet instead of two rows of chips running off the screen.
+  */
+  const filters =
+    tab === 'find' ? (
+      <View style={{ paddingBottom: spacing.lg }}>
+        {hero}
+        <View
+          style={{
+            marginTop: -58,
+            borderRadius: radii.lg,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            ...theme.elevation(1),
+          }}
+          testID="meetups-search"
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.divider,
+            }}
+          >
+            <MapPin size={20} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text variant="overline" tone="muted">
+                {t('meetups.fieldWhere')}
+              </Text>
+              <TextInput
+                value={place}
+                onChangeText={setPlace}
+                onSubmitEditing={() => setApplied(place.trim())}
+                onBlur={() => setApplied(place.trim())}
+                placeholder={t('meetups.searchPlace')}
+                placeholderTextColor={colors.textMuted}
+                returnKeyType="search"
+                autoCorrect={false}
+                accessibilityLabel={t('meetups.searchPlace')}
+                style={{ padding: 0, fontFamily: theme.font.semibold, fontSize: 16, color: colors.text }}
+                testID="meetups-where"
+              />
+            </View>
+          </View>
+          <View style={{ flexDirection: 'row' }}>
+            {cell(t('meetups.fieldSport'), sportName, () => setPicking('sport'), 'meetups-sport')}
+            <View style={{ width: 1, backgroundColor: colors.divider }} />
+            {cell(t('meetups.fieldWhen'), whenName, () => setPicking('when'), 'meetups-when')}
+          </View>
+        </View>
+
+        <Sheet
+          visible={picking !== null}
+          onClose={() => setPicking(null)}
+          title={picking === 'sport' ? t('meetups.fieldSport') : t('meetups.fieldWhen')}
+        >
+          {picking === 'sport' ? (
+            <OptionList
+              limit={SPORTS.length + 1}
+              selected={[sport ?? 'any']}
+              rows={[
+                { key: 'any', label: t('meetups.anySport') },
+                ...SPORTS.map((s) => ({ key: s.key, label: `${s.emoji} ${sportLabel(t, s.key)}` })),
+              ]}
+              onPick={(key) => {
+                setSport(key === 'any' ? null : key);
+                setPicking(null);
+              }}
+              testID="meetups-sport-options"
+            />
+          ) : picking === 'when' ? (
+            <OptionList
+              selected={[when]}
+              rows={windows.map((w) => ({ key: w.value, label: w.label }))}
+              onPick={(key) => {
+                setWhen(key as Window);
+                setPicking(null);
+              }}
+              testID="meetups-when-options"
+            />
+          ) : null}
+        </Sheet>
+      </View>
+    ) : (
+      <View style={{ paddingBottom: spacing.md }}>{hero}</View>
+    );
+
+  /* With games listed the empty state's button is gone, so a quiet one sits
+     under the list instead: one way to post a game on screen, always. */
+  const postFooter = (
+    <Button
+      label={t('meetups.createTitle')}
+      variant="soft"
+      icon={<Plus size={16} color={colors.primary} />}
+      onPress={() => router.push(Routes.newMeetup)}
+      style={{ alignSelf: 'center', marginTop: spacing.lg }}
+    />
   );
 
   if (!canMeet) {
@@ -206,7 +325,7 @@ export default function MeetupsScreen() {
 
   if (tab === 'mine') {
     return (
-      <Screen scroll={false} header={header} testID="meetups-screen">
+      <Screen scroll={false} padded={false} edges={[]} testID="meetups-screen">
         <FlatList
           data={mine.data ?? []}
           keyExtractor={(item) => item.id}
@@ -216,6 +335,7 @@ export default function MeetupsScreen() {
             <RefreshControl refreshing={mine.loading} onRefresh={mine.reload} tintColor={colors.primary} />
           }
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+          ListFooterComponent={mine.data?.length ? postFooter : undefined}
           renderItem={({ item, index }) => (
             <Reveal index={index}>
               {/* `my_meetups` returns no host — you already know who is running
@@ -245,7 +365,7 @@ export default function MeetupsScreen() {
   }
 
   return (
-    <Screen scroll={false} header={header} testID="meetups-screen">
+    <Screen scroll={false} padded={false} edges={[]} testID="meetups-screen">
       <FlatList
         data={found.data ?? []}
         keyExtractor={(item) => item.id}
@@ -255,6 +375,7 @@ export default function MeetupsScreen() {
           <RefreshControl refreshing={found.loading} onRefresh={found.reload} tintColor={colors.primary} />
         }
         ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
+        ListFooterComponent={found.data?.length ? postFooter : undefined}
         renderItem={({ item, index }) => (
           <Reveal index={index}>
             <MeetupRow meetup={item} onPress={() => openOne(item.id)} />
