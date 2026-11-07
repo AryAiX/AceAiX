@@ -1,0 +1,1025 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AceAiX — Executive Strategy · November 2026</title>
+<style>
+  :root {
+    --ink: #14161A;
+    --slate: #4A5160;
+    --muted: #8A919C;
+    --mist: #F3F5F8;
+    --line: #E1E5EA;
+    --orange: #FF5A1F;
+    --orange-soft: #FFA27F;
+    --azure: #2E7DF6;
+    --mint: #0FA37F;
+    --violet: #8B5CF6;
+    --amber: #E89A00;
+    --volt: #C9F03C;
+    --font: "Inter", "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0B0C0E; font-family: var(--font); color: var(--ink); }
+  body { overflow: hidden; }
+
+  #stage { position: fixed; inset: 0; display: grid; place-items: center; }
+  .deck { position: relative; width: 1280px; height: 720px; transform-origin: center center; }
+  .slide {
+    position: absolute; inset: 0; background: #fff; padding: 44px 64px 0;
+    display: none; flex-direction: column; overflow: hidden; border-radius: 6px;
+  }
+  .slide.active { display: flex; }
+  .slide.dark { background: var(--ink); color: #fff; }
+
+  .kicker { font-size: 14px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--orange); }
+  h1 { font-size: 36px; line-height: 1.15; margin: 8px 0 0; font-weight: 800; letter-spacing: -.01em; }
+  .body { flex: 1; position: relative; margin-top: 28px; min-height: 0; }
+  .footer {
+    height: 44px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--muted);
+  }
+  .muted { color: var(--slate); }
+  .small { font-size: 13px; color: var(--slate); line-height: 1.45; }
+  .panel { background: var(--mist); border-radius: 14px; }
+  .icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+  .icon svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  ul.list { margin: 0; padding-left: 20px; }
+  ul.list li { margin: 0 0 8px; line-height: 1.35; }
+
+  /* Title slide */
+  .title-slide { justify-content: center; padding: 0 96px; }
+  .pill { display: inline-block; background: var(--orange); color: #fff; font-weight: 800; font-size: 16px; letter-spacing: .1em; padding: 9px 22px; border-radius: 999px; }
+  .title-slide h1 { font-size: 56px; margin: 36px 0 22px; max-width: 980px; }
+  .title-slide .sub { font-size: 22px; color: #BFC5CF; }
+  .title-slide .disclaimer { position: absolute; left: 96px; bottom: 48px; font-size: 14px; color: var(--muted); }
+
+  /* Slide 1 clusters */
+  .clusters { position: absolute; left: 0; top: 0; width: 760px; height: 520px; }
+  .cluster { position: absolute; border-radius: 50%; border: 2px solid; }
+  .clabel { position: absolute; text-align: center; font-size: 13px; color: var(--slate); line-height: 1.35; }
+  .clabel b { display: block; font-size: 15px; margin-bottom: 3px; }
+  .foundation { position: absolute; left: 0; top: 478px; width: 720px; height: 40px; border-radius: 10px; background: var(--mist); font-size: 14px; color: var(--slate); display: flex; align-items: center; padding: 0 18px; }
+  .stats { position: absolute; left: 820px; top: 6px; width: 330px; display: grid; gap: 22px; }
+  .stat .v { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+  .stat .l { font-size: 15px; color: var(--slate); margin-top: 6px; }
+
+  /* Slide 2 cards */
+  .cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 24px; }
+  .cards .card { grid-column: span 2; }
+  .cards .card:nth-child(n+4) { grid-column: span 3; }
+  .card { padding: 26px; min-height: 226px; }
+  .card .head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .card h3 { font-size: 21px; margin: 0; line-height: 1.2; }
+  .card p { margin: 0; font-size: 18px; color: var(--slate); line-height: 1.45; }
+
+  /* Slide 3 */
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .two .panel { padding: 26px 28px; }
+  .two h3 { font-size: 21px; margin: 0; }
+  .two .head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; }
+  .two ul.list li { font-size: 20px; margin-bottom: 14px; }
+  .implication { margin-top: 28px; background: var(--ink); color: #fff; border-radius: 12px; padding: 16px 24px; font-size: 18px; }
+  .implication b { color: var(--volt); }
+
+  /* Options map */
+  .mission { background: var(--ink); color: #fff; border-radius: 12px; padding: 11px 20px; display: flex; gap: 16px; align-items: center; font-size: 19px; font-weight: 600; }
+  .mission b { color: var(--volt); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  .mission em { font-style: normal; font-weight: 800; }
+  .omap { display: grid; grid-template-columns: 1fr 250px; gap: 24px; margin-top: 14px; }
+  .oplot-wrap { position: relative; padding-left: 58px; }
+  .oy { position: absolute; left: -128px; top: 200px; width: 300px; transform: rotate(-90deg); text-align: center; font-size: 13px; font-weight: 800; color: var(--slate); }
+  .oy small { font-weight: 600; margin-left: 6px; }
+  .oplot { position: relative; width: 800px; height: 420px; border-left: 2px solid var(--line); border-bottom: 2px solid var(--line); background: linear-gradient(to top right, rgba(15,163,127,.09), rgba(255,255,255,0) 45%, rgba(255,255,255,0) 60%, rgba(229,72,77,.08)); }
+  .oq { position: absolute; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  .oq.good { left: 10px; bottom: 8px; color: var(--mint); }
+  .oq.bad { right: 10px; top: 8px; color: #E5484D; }
+  .obub { position: absolute; border-radius: 50%; background: color-mix(in srgb, var(--c) 30%, transparent); border: 2.5px solid var(--c); }
+  .obub.prop { border-style: dashed; background: color-mix(in srgb, var(--c) 14%, transparent); }
+  .olab { position: absolute; font-size: 13px; font-weight: 800; white-space: nowrap; line-height: 18px; }
+  .ox { position: relative; height: 18px; width: 800px; }
+  .ox span { position: absolute; top: 4px; transform: translateX(-50%); font-size: 12px; color: var(--slate); font-weight: 600; }
+  .oxl { width: 800px; text-align: center; font-size: 13px; font-weight: 800; color: var(--slate); margin-top: 6px; }
+  .okey { font-size: 14px; color: var(--ink); }
+  .okey h4 { margin: 2px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--slate); }
+  .okey h4:not(:first-child) { margin-top: 16px; }
+  .okey div { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+  .okey i { width: 16px; height: 16px; border-radius: 50%; display: inline-block; flex: none; }
+  .okey i.ring { background: #EEF1F5; border: 2.5px solid var(--slate); }
+  .okey i.ring.dash { border-style: dashed; background: transparent; }
+  .okey .small { color: var(--slate); font-size: 13px; }
+  .otake { display: block !important; margin-top: 16px !important; background: var(--mist); border-left: 4px solid var(--mint); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; line-height: 1.4; }
+
+  .cmap { display: grid; grid-template-columns: 760px 1fr; gap: 26px; margin-top: 14px; }
+  .cplot { position: relative; width: 760px; height: 420px; }
+  .lane { position: absolute; left: 0; width: 760px; height: 96px; border-radius: 12px; background: var(--mist); }
+  .lane b { position: absolute; left: 0; top: 0; width: 96px; height: 26px; transform-origin: 0 0; transform: translate(4px, 96px) rotate(-90deg); display: grid; place-items: center; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--slate); }
+  .ctime { position: relative; height: 20px; margin-top: 8px; border-top: 2px solid var(--line); }
+  .ctime span { position: absolute; top: 6px; transform: translateX(-50%); font-size: 12.5px; font-weight: 700; color: var(--slate); white-space: nowrap; }
+  .cplot svg { position: absolute; left: 0; top: 0; overflow: visible; }
+  .cedge { fill: none; stroke: #4A5160; stroke-width: 1.6; opacity: .75; }
+  .clab { position: absolute; transform: translate(-50%, -50%); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; color: var(--slate); white-space: nowrap; z-index: 2; }
+  .cbub { position: absolute; border-radius: 50%; background: var(--c); border: 2.5px solid var(--c); display: grid; place-items: center; text-align: center; z-index: 3; }
+  .cbub span { font-size: 11.5px; font-weight: 800; color: #fff; line-height: 1.2; padding: 0 6px; }
+  .cbub.prop { background: color-mix(in srgb, var(--c) 16%, #fff); border-style: dashed; }
+  .cbub.prop span { color: var(--c); }
+  .cside h4 { margin: 2px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #B42318; }
+  .dropt { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .dropt td { vertical-align: top; padding: 7px 4px; border-bottom: 1px solid var(--line); line-height: 1.35; color: var(--slate); }
+  .dropt td:first-child { font-weight: 800; color: var(--ink); width: 112px; text-decoration: line-through; text-decoration-color: #E5484D; }
+  .dropt i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .ckey { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--slate); margin-top: 12px; }
+  .ckey .arrow { width: 28px; height: 2px; background: #4A5160; position: relative; }
+  .ckey .arrow::after { content: ""; position: absolute; right: -2px; top: -4px; border-left: 7px solid #4A5160; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  .ckey .b { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--slate); }
+  .ckey .b.solid { background: var(--slate); }
+  .ckey .b.dash { border-style: dashed; }
+
+  /* Slide 4 timeline */
+  .timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; position: relative; }
+  .timeline::before { content: ""; position: absolute; left: 10%; right: 10%; top: 8px; height: 2px; background: var(--line); }
+  .phase { display: flex; flex-direction: column; align-items: stretch; position: relative; }
+  .phase .dot { width: 18px; height: 18px; border-radius: 50%; margin: 0 auto; border: 3px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+  .phase .when { text-align: center; font-size: 13px; font-weight: 700; color: var(--slate); margin: 8px 0 10px; }
+  .phase .hdr { color: #fff; border-radius: 10px; font-weight: 800; font-size: 16px; text-align: center; padding: 12px 8px; min-height: 64px; display: grid; place-items: center; line-height: 1.2; }
+  .phase .feats { margin-top: 10px; padding: 16px 14px 8px; flex: 1; }
+  .phase .feats ul { margin: 0; padding-left: 18px; font-size: 15.5px; }
+  .phase .feats li { margin-bottom: 9px; line-height: 1.28; }
+  .phase .rev { text-align: center; font-weight: 800; font-size: 14px; margin-top: 10px; }
+  .legend-line { margin-top: 10px; font-size: 13px; color: var(--slate); }
+  .across { margin-top: 12px; background: var(--ink); color: #fff; border-radius: 10px; padding: 10px 18px; display: flex; align-items: center; gap: 12px; font-size: 15px; }
+  .across b { color: var(--volt); margin-right: 6px; white-space: nowrap; }
+  .across span { background: rgba(255,255,255,.1); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+
+  /* Slide 5 gantt */
+  .gantt { position: relative; }
+  .g-head, .g-row { display: grid; grid-template-columns: 150px repeat(6, 1fr); align-items: center; }
+  .g-head div { text-align: center; font-size: 13px; font-weight: 700; color: var(--slate); padding-bottom: 8px; }
+  .g-row { height: 62px; }
+  .g-row .lbl { font-weight: 800; font-size: 16px; }
+  .g-track { grid-column: 2 / span 6; position: relative; height: 38px; }
+  .bar { position: absolute; top: 0; height: 38px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; text-align: center; padding: 0 8px; line-height: 1.15; }
+  .g-overlay { position: absolute; left: 150px; right: 0; top: 30px; bottom: 0; pointer-events: none; }
+  .ramadan { position: absolute; top: 0; bottom: 0; background: rgba(232,154,0,.14); }
+  .msline { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--ink); }
+  .g-bars { position: relative; z-index: 1; }
+  .g-foot { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 18px; font-size: 14px; line-height: 1.4; }
+  .swatch { display: inline-block; width: 18px; height: 12px; background: rgba(232,154,0,.25); vertical-align: middle; margin-right: 8px; border-radius: 2px; }
+
+  /* Financial slides */
+  .fin { display: grid; grid-template-columns: 560px 1fr; gap: 36px; height: 100%; }
+  .chart-title { font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--slate); margin-top: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  table.fin-t { width: 100%; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
+  table.fin-t th { background: var(--ink); color: #fff; font-weight: 700; padding: 8px 10px; text-align: right; }
+  table.fin-t th:first-child { text-align: left; border-radius: 8px 0 0 0; }
+  table.fin-t th:last-child { border-radius: 0 8px 0 0; }
+  table.fin-t td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--line); }
+  table.fin-t td:first-child { text-align: left; }
+  table.fin-t tr.b td { font-weight: 800; }
+  table.fin-t tr.net td { font-weight: 800; color: var(--orange); }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+  .kpi { padding: 12px 14px; }
+  .kpi .v { font-size: 26px; font-weight: 800; letter-spacing: -.01em; }
+  .kpi .l { font-size: 13px; color: var(--slate); }
+
+  .drivers { display: grid; gap: 12px; }
+  .driver { display: flex; gap: 14px; }
+  .num { width: 36px; height: 36px; border-radius: 50%; background: var(--orange); color: #fff; font-weight: 800; display: grid; place-items: center; flex: none; }
+  .driver h4 { margin: 2px 0 4px; font-size: 17px; }
+  .driver p { margin: 0; font-size: 15px; color: var(--slate); line-height: 1.4; }
+  .callout { background: var(--ink); color: #fff; border-radius: 14px; padding: 16px 22px; margin-top: 16px; }
+  .callout .v { color: var(--volt); font-size: 36px; font-weight: 800; }
+  .callout .l { font-size: 15px; margin-top: 4px; line-height: 1.4; }
+
+  /* Funding */
+  .fund { display: grid; grid-template-columns: 1fr 1fr 360px; gap: 26px; }
+  .stage { padding: 24px 26px; }
+  .stage .step { font-size: 13px; font-weight: 800; letter-spacing: .08em; }
+  .stage h3 { font-size: 22px; margin: 6px 0 4px; }
+  .stage .amt { font-size: 36px; font-weight: 800; margin-bottom: 16px; letter-spacing: -.01em; }
+  .stage ul.list li { font-size: 16px; }
+  .donut-wrap { display: flex; flex-direction: column; }
+  .donut-legend { display: grid; gap: 8px; font-size: 14px; color: var(--slate); margin-top: 8px; }
+  .donut-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+
+  /* Appendix: event demand plan */
+  .app { margin-top: 26px; }
+  .app .blocks { margin-bottom: 30px; }
+  .app .cycle { margin-bottom: 32px; }
+  .app .step { padding: 14px 12px; }
+  .app-label { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--slate); margin: 0 0 8px; }
+  .blocks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .block { padding: 14px 16px; }
+  .block h4 { margin: 0 0 6px; font-size: 18px; }
+  .block p { margin: 0 0 8px; font-size: 14.5px; line-height: 1.35; color: var(--ink); }
+  .block span { font-size: 13px; font-weight: 700; color: var(--slate); }
+  .cycle { display: flex; align-items: stretch; gap: 6px; margin-bottom: 22px; }
+  .cycle i { font-style: normal; color: var(--muted); display: grid; place-items: center; font-size: 18px; }
+  .step { flex: 1; background: var(--mist); border-radius: 10px; padding: 10px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .step b { font-size: 15px; }
+  .step span { font-size: 12.5px; color: var(--slate); line-height: 1.3; }
+  .step.gate { background: var(--ink); }
+  .step.gate b { color: var(--volt); }
+  .step.gate span { color: #E6E8EB; }
+  .app-bottom { display: grid; grid-template-columns: 1.3fr 1fr; gap: 36px; }
+  .chanbar { display: flex; height: 40px; border-radius: 8px; overflow: hidden; }
+  .chanbar div { color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; white-space: nowrap; overflow: hidden; }
+  .recruit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .recruit div { background: var(--mist); border-radius: 10px; padding: 9px 10px; font-size: 13.5px; color: var(--ink); line-height: 1.3; }
+  .recruit b { display: block; font-size: 12.5px; color: var(--mint); margin-bottom: 2px; }
+
+  /* Appendix: feature map */
+  .fmap { display: grid; grid-template-columns: 92px repeat(5, 1fr); gap: 5px; margin-top: 8px; }
+  .fmap .colh { font-size: 13.5px; font-weight: 800; text-align: center; padding: 6px 4px 4px; line-height: 1.2; }
+  .fmap .colh small { display: block; font-weight: 600; color: var(--slate); font-size: 12px; margin-top: 2px; }
+  .fmap .rowh { font-size: 13px; font-weight: 800; color: var(--slate); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; text-align: right; }
+  .fmap .cell { background: var(--mist); border-radius: 8px; padding: 6px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px; min-height: 66px; }
+  .fmap .drop-band { grid-column: 2 / span 5; background: #FFF4F2; border-radius: 8px; padding: 7px 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 0; }
+  .chip { font-size: 11.5px; font-weight: 700; padding: 3px 7px; border-radius: 6px; line-height: 1.25; }
+  .chip.new { background: var(--orange); color: #fff; }
+  .chip.imp { background: var(--azure); color: #fff; }
+  .chip.lock { background: #D5DAE1; color: var(--ink); }
+  .chip.drop { background: #FDE2DE; color: #B42318; text-decoration: line-through; }
+  .fmap.mkt { grid-template-columns: 92px 1.9fr 1fr 1fr 1fr 1fr; }
+  .fmap.mkt .cell { min-height: 0; }
+  .fmap.mkt .chip { font-size: 11px; padding: 3px 6px; }
+  .fkey { display: flex; gap: 18px; margin-top: 10px; font-size: 13px; color: var(--slate); align-items: center; }
+  .fkey .chip { font-size: 12px; }
+
+  svg text { font-family: var(--font); }
+
+  /* Chrome */
+  #controls { position: fixed; right: 16px; bottom: 14px; display: flex; gap: 8px; align-items: center; color: #9aa0aa; font-size: 13px; z-index: 5; transition: opacity .3s; }
+  body.idle #controls { opacity: 0; pointer-events: none; }
+  #controls button { background: #22252B; color: #E6E8EB; border: 0; border-radius: 8px; padding: 7px 11px; font-size: 13px; cursor: pointer; }
+  #controls button:hover { background: #30343B; }
+  #notes { position: fixed; left: 16px; right: 16px; bottom: 56px; max-height: 32vh; overflow: auto; background: rgba(20,22,26,.96); color: #E6E8EB; border-radius: 12px; padding: 16px 20px; font-size: 15px; line-height: 1.5; display: none; z-index: 6; }
+  #notes.show { display: block; }
+  #notes b { color: var(--volt); }
+  .notes { display: none; }
+
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { background: #fff; overflow: visible; height: auto; }
+    #stage { position: static; display: block; }
+    .deck { transform: none !important; width: 1280px; height: auto; }
+    .slide { position: relative; display: flex !important; width: 1280px; height: 720px; border-radius: 0; page-break-after: always; break-after: page; }
+    #controls, #notes { display: none !important; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div class="deck" id="deck">
+
+<!-- Title -->
+<section class="slide dark title-slide">
+  <div><span class="pill">ACEAIX</span></div>
+  <h1>AceAiX strategy: from a broad app to a focused revenue engine</h1>
+  <div class="sub">Executive team review · November 2026</div>
+  <div class="disclaimer">Figures are planning assumptions to validate, not forecasts of record.</div>
+  <div class="notes">Purpose: agree the strategic direction, the first six months of execution and the funding approach. All financial figures are planning assumptions built from the strategy document (docs/strategy.md) and must be validated with real event and sales results.</div>
+</section>
+
+<!-- 1. Current status -->
+<section class="slide">
+  <div class="kicker">1 · Current status</div>
+  <h1>Today AceAiX is five products in one app</h1>
+  <div class="body">
+    <div class="clusters">
+      <div class="cluster" style="left:46px;top:44px;width:268px;height:268px;border-color:var(--orange);background:rgba(255,90,31,.14)"></div>
+      <div class="cluster" style="left:236px;top:56px;width:282px;height:282px;border-color:var(--azure);background:rgba(46,125,246,.14)"></div>
+      <div class="cluster" style="left:452px;top:30px;width:256px;height:256px;border-color:var(--mint);background:rgba(15,163,127,.14)"></div>
+      <div class="cluster" style="left:290px;top:282px;width:184px;height:184px;border-color:var(--violet);background:rgba(139,92,246,.14)"></div>
+      <div class="cluster" style="left:580px;top:300px;width:158px;height:158px;border-color:var(--amber);background:rgba(232,154,0,.14)"></div>
+
+      <div class="clabel" style="left:66px;top:130px;width:170px"><b style="color:var(--orange)">Social &amp; content</b>Feed, stories, reels, follows, messaging</div>
+      <div class="clabel" style="left:300px;top:110px;width:160px"><b style="color:var(--azure)">Profiles &amp; discovery</b>Profiles, search, shortlists, trials</div>
+      <div class="clabel" style="left:530px;top:100px;width:160px"><b style="color:var(--mint)">Club &amp; academy</b>Pages, squads, live scores, events</div>
+      <div class="clabel" style="left:310px;top:352px;width:144px"><b style="color:var(--violet)">Intelligence</b>Talent Score, Game IQ, Sport Fit</div>
+      <div class="clabel" style="left:596px;top:344px;width:126px"><b style="color:var(--amber)">Marketplaces</b>Coaching, sponsors, meetups</div>
+
+      <div class="foundation"><b style="color:var(--ink);margin-right:6px">Foundation:</b> guardian consent, verification, moderation, 7 languages</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="v">5 clusters</div><div class="l">overlapping, with marketplaces off to the side</div></div>
+      <div class="stat"><div class="v">30+ features</div><div class="l">built and maintained by a small team</div></div>
+      <div class="stat"><div class="v" style="color:var(--orange)">0</div><div class="l">paid workflows today</div></div>
+      <div class="stat"><div class="v">180 · 3 · 2</div><div class="l">athletes · clubs · sponsors (UAE deck)</div></div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Overlaps: profiles connect social and discovery; club events and opportunities connect clubs and discovery; the Talent Score connects intelligence and discovery. Coaching, sponsorship and meetups are largely disjoint marketplaces. Everything sits on a strong youth-safety foundation. Traction figures are from the UAE presentation (launched 1 October).</div>
+</section>
+
+<!-- 2. Problem -->
+<section class="slide">
+  <div class="kicker">2 · The problem</div>
+  <h1>Breadth without a payer is risky with 6–10 months of runway</h1>
+  <div class="body">
+    <div class="cards">
+      <div class="card panel"><div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4"/></svg></span><h3>No one is paying</h3></div><p>No paid workflow; athletes are free and payments aren't integrated.</p></div>
+      <div class="card panel"><div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></span><h3>Too broad for the runway</h3></div><p>Every cluster needs QA, support, safety and roadmap time.</p></div>
+      <div class="card panel"><div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="16.8" cy="7.2" r=".6"/></svg></span><h3>Social can't win</h3></div><p>Feeds and reels compete with Instagram and TikTok, where athletes already are.</p></div>
+      <div class="card panel"><div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><path d="M4 19h16"/><path d="M5 15l4-4 3 3 6-7"/></svg></span><h3>Data isn't credible yet</h3></div><p>Talent Score reflects profile activity, not ability; Sport Fit is unvalidated.</p></div>
+      <div class="card panel"><div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><path d="M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4"/></svg></span><h3>Two-sided cold start</h3></div><p>Athletes need active clubs; clubs need enough credible athletes.</p></div>    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">The product proves the team can build. The risk is that with 6 to 10 months of runway, effort is spread across clusters that do not produce revenue.</div>
+</section>
+
+<!-- 3. Strengths and constraints -->
+<section class="slide">
+  <div class="kicker">3 · Strengths and constraints</div>
+  <h1>Our access is rare; our time and evidence are limited</h1>
+  <div class="body">
+    <div class="two">
+      <div class="panel">
+        <div class="head"><span class="icon" style="background:var(--mint)"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h3>Strengths</h3></div>
+        <ul class="list">
+          <li>Access to senior UAE sports and government figures</li>
+          <li>A working multi-role, multi-sport product</li>
+          <li>Youth safety and guardian consent built in</li>
+          <li>Events, live scoring and sponsorship already exist</li>
+          <li>Can combine offline events with an online record</li>
+          <li>Potential first-party athlete dataset</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div class="head"><span class="icon" style="background:var(--orange)"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg></span><h3>Constraints</h3></div>
+        <ul class="list">
+          <li>6–10 months of runway</li>
+          <li>No proven payer or price point</li>
+          <li>Product breadth stretches a small team</li>
+          <li>Weak performance evidence today</li>
+          <li>Government timelines can exceed our runway</li>
+          <li>Safeguarding duties for minors</li>
+        </ul>
+      </div>
+    </div>
+    <div class="implication"><b>Implication:</b> use access to make things happen fast (sponsors, scouts, cohorts), not just for awareness.</div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">A meeting or endorsement is not an advantage by itself. It becomes one when converted into a signed sponsor, a federation presence at an event, confirmed club scouts, or an athlete cohort.</div>
+</section>
+
+<!-- 4. Options map -->
+<section class="slide">
+  <div class="kicker">4 · Where the money and the mission are</div>
+  <h1>The mission-driving bets are also the fastest to revenue</h1>
+  <div class="body" style="margin-top:4px">
+    <div class="mission"><b>Mission</b><span><em style="color:#FF8A5C">Discover</em>, <em style="color:#7FB0FF">Develop</em>, <em style="color:#4FD3AE">Belong</em>: give every young athlete a path from being seen to being part of a team.</span></div>
+    <div class="omap">
+      <div class="oplot-wrap">
+        <div class="oy">Cost to achieve<small>marketing, sales, product</small></div>
+        <div class="oplot" id="oplot">
+          <div class="oq good">Fast and affordable</div>
+          <div class="oq bad">Slow and costly</div>
+        </div>
+        <div class="ox" id="oxticks"></div>
+        <div class="oxl">Time to monetization (months)</div>
+      </div>
+      <div class="okey">
+        <h4>Fit with the mission</h4>
+        <div><i style="background:var(--mint)"></i>Drives the mission</div>
+        <div><i style="background:var(--azure)"></i>Aligned with it</div>
+        <div><i style="background:var(--amber)"></i>Indifferent</div>
+        <div><i style="background:#E5484D"></i>Not aligned</div>
+        <h4>Bubble</h4>
+        <div><i class="ring"></i>Exists today (slide 1)</div>
+        <div><i class="ring dash"></i>Proposed (slide 6)</div>
+        <div class="small">Size = rough revenue potential</div>
+        <div class="otake">All four mission-driving bets earn within about 15 months at low to moderate cost. Social and adult meetups cost the most and do little for the mission.</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Positions are judgement, not measurement. Cost to achieve combines the marketing, sales and product effort still needed before the bubble earns money. Talent Days: about two months to first fees, mostly event operations and marketing, little new product. Academy subscription: about six months, product mostly exists, needs field sales. Profiles and discovery, and club and academy pages: largely built, monetized through the club pathway and academy subscription. Club pathway: needs credible profiles from Talent Days first. Institutional program: aligned and large, but sales cycles and government timelines are long and costly. Intelligence (Talent Score, Game IQ, Sport Fit): needs validation before anyone pays. Intelligence platform: the long-term category, the most expensive and slowest, and only reachable on data from the earlier stages. Coach booking and sponsor marketplace: aligned with developing athletes but each is a separate marketplace with its own cold start. Social and content: helps athletes be seen, but competes with Instagram and TikTok and has no near-term payer. Adult meetups (Play): serve casual adult players, outside the young-athlete mission.</div>
+  <script>
+  (function () {
+    const W = 800, H = 420, XMAX = 36, YMAX = 10;
+    const col = { drive: 'var(--mint)', align: 'var(--azure)', neutral: 'var(--amber)', off: '#E5484D' };
+    const size = { L: 84, M: 62, S: 44 };
+    const B = [
+      { n: 'Talent Days', x: 2, y: 3.4, s: 'L', c: 'drive', p: 1 },
+      { n: 'Academy subscription', x: 6, y: 5, s: 'L', c: 'drive', p: 1 },
+      { n: 'Club &amp; academy pages', x: 6.5, y: 1.5, s: 'M', c: 'align' },
+      { n: 'Profiles &amp; discovery', x: 12, y: 3, s: 'M', c: 'drive' },
+      { n: 'Club pathway', x: 15, y: 6, s: 'M', c: 'drive', p: 1, left: 1 },
+      { n: 'Coach booking', x: 8, y: 7.2, s: 'S', c: 'align' },
+      { n: 'Institutional program', x: 15, y: 8.2, s: 'M', c: 'align', p: 1 },
+      { n: 'Sponsor marketplace', x: 18, y: 4, s: 'S', c: 'align' },
+      { n: 'Intelligence (Score, Game IQ)', x: 20, y: 6.6, s: 'M', c: 'align' },
+      { n: 'Adult meetups (Play)', x: 28, y: 4.6, s: 'S', c: 'off', left: 1 },
+      { n: 'Social &amp; content', x: 34, y: 6, s: 'S', c: 'neutral', left: 1 },
+      { n: 'Intelligence platform', x: 26, y: 8.8, s: 'L', c: 'align', p: 1, left: 1 }
+    ];
+    const plot = document.getElementById('oplot');
+    B.forEach(b => {
+      const d = size[b.s], cx = b.x / XMAX * W, cy = H - b.y / YMAX * H;
+      const el = document.createElement('div');
+      el.className = 'obub' + (b.p ? ' prop' : '');
+      el.style.cssText = `left:${cx - d / 2}px;top:${cy - d / 2}px;width:${d}px;height:${d}px;--c:${col[b.c]}`;
+      plot.appendChild(el);
+      const lb = document.createElement('div');
+      lb.className = 'olab';
+      lb.innerHTML = b.n;
+      lb.style.cssText = b.left
+        ? `right:${W - cx + d / 2 + 6}px;top:${cy - 9}px;text-align:right;color:${col[b.c]}`
+        : `left:${cx + d / 2 + 6}px;top:${cy - 9}px;color:${col[b.c]}`;
+      plot.appendChild(lb);
+    });
+    const ticks = document.getElementById('oxticks');
+    [0, 6, 12, 18, 24, 30, 36].forEach(m => {
+      const t = document.createElement('span');
+      t.textContent = m === 36 ? '36+' : m;
+      t.style.left = (m / XMAX * W) + 'px';
+      ticks.appendChild(t);
+    });
+  })();
+  </script>
+</section>
+
+<!-- 5. Connected map -->
+<section class="slide">
+  <div class="kicker">5 · One connected strategy</div>
+  <h1>Keep eight pieces, each feeding the next</h1>
+  <div class="body" style="margin-top:4px">
+    <div class="cmap">
+      <div>
+        <div class="cplot" id="cplot">
+          <div class="lane" style="top:22px"><b>Institutions &amp; data</b></div>
+          <div class="lane" style="top:162px"><b>Athletes &amp; clubs</b></div>
+          <div class="lane" style="top:302px"><b>Academies</b></div>
+          <svg id="csvg" width="760" height="420"><defs><marker id="carr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#4A5160"/></marker></defs></svg>
+        </div>
+        <div class="ctime"><span style="left:105px">Months 0–3</span><span style="left:298px">Months 3–9</span><span style="left:491px">Months 6–18</span><span style="left:684px">Month 18+</span></div>
+      </div>
+      <div class="cside">
+        <h4>Dropped or frozen</h4>
+        <table class="dropt">
+          <tr><td><i style="background:var(--amber)"></i>Social &amp; content</td><td>Can't beat Instagram or TikTok and has no payer. Keep only result sharing.</td></tr>
+          <tr><td><i style="background:var(--azure)"></i>Coach booking</td><td>A separate marketplace with its own cold start; payment happens outside the app.</td></tr>
+          <tr><td><i style="background:var(--azure)"></i>Sponsor marketplace</td><td>Sponsors buy Talent Day packages directly; the marketplace adds no payer.</td></tr>
+          <tr><td><i style="background:#E5484D"></i>Adult meetups (Play)</td><td>Serves casual adults, outside the young-athlete mission.</td></tr>
+        </table>
+        <div class="ckey"><span class="arrow"></span>What one piece gives the next</div>
+        <div class="ckey"><span class="b solid"></span>Exists today<span class="b dash" style="margin-left:12px"></span>Proposed</div>
+        <div class="ckey"><span class="b" style="background:var(--mint);border-color:var(--mint)"></span>Drives mission<span class="b" style="background:var(--azure);border-color:var(--azure);margin-left:12px"></span>Aligned</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">The eight pieces kept from the previous slide, laid out by when they start earning, with the four unwanted bubbles removed. The chain: Talent Days recruit partner academies and produce verified results, which fill athlete profiles. Club and academy pages are the tool academies already use, so they become the academy subscription. Verified profiles and months of progress data give clubs a credible pool, which is the club pathway. Placement outcomes from clubs, plus the proven Talent Day format, are what an institutional program buys. Long-term academy data and who gets signed are what validate the Talent Score and Game IQ; validated scores and national cohorts become the intelligence platform. Dropped items are frozen in the app, not deleted, so they can return if evidence supports them.</div>
+  <script>
+  (function () {
+    const col = { drive: 'var(--mint)', align: 'var(--azure)' };
+    const N = {
+      td: { n: 'Talent Days', x: 105, y: 210, r: 48, c: 'drive', p: 1 },
+      pg: { n: 'Club &amp; academy pages', x: 88, y: 350, r: 40, c: 'align' },
+      pr: { n: 'Profiles &amp; discovery', x: 298, y: 210, r: 40, c: 'drive' },
+      ac: { n: 'Academy subscription', x: 298, y: 350, r: 48, c: 'drive', p: 1 },
+      cp: { n: 'Club pathway', x: 491, y: 210, r: 40, c: 'drive', p: 1 },
+      in: { n: 'Institutional program', x: 491, y: 70, r: 40, c: 'align', p: 1 },
+      iq: { n: 'Intelligence (Score, Game IQ)', x: 684, y: 210, r: 40, c: 'align' },
+      ip: { n: 'Intelligence platform', x: 684, y: 70, r: 48, c: 'align', p: 1 }
+    };
+    const E = [
+      ['td', 'pr', 'verified results'],
+      ['td', 'ac', 'partner academies'],
+      ['pg', 'ac', 'squads &amp; pages'],
+      ['td', 'in', 'proven event format'],
+      ['pr', 'cp', 'credible pool'],
+      ['ac', 'cp', 'progress data', 0.4],
+      ['ac', 'iq', 'long-term data', 0.68],
+      ['cp', 'in', 'placement outcomes'],
+      ['cp', 'iq', 'who gets signed'],
+      ['in', 'ip', 'cohort data'],
+      ['iq', 'ip', 'validated scores']
+    ];
+    const plot = document.getElementById('cplot'), svg = document.getElementById('csvg');
+    E.forEach(([a, b, t, f = 0.5]) => {
+      const A = N[a], B = N[b];
+      const L = Math.hypot(B.x - A.x, B.y - A.y), ux = (B.x - A.x) / L, uy = (B.y - A.y) / L;
+      const sx = A.x + ux * (A.r + 3), sy = A.y + uy * (A.r + 3), ex = B.x - ux * (B.r + 6), ey = B.y - uy * (B.r + 6);
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', `M${sx},${sy} L${ex},${ey}`);
+      p.setAttribute('class', 'cedge');
+      p.setAttribute('marker-end', 'url(#carr)');
+      svg.appendChild(p);
+      const lb = document.createElement('div');
+      lb.className = 'clab';
+      lb.innerHTML = t;
+      lb.style.cssText = `left:${sx + (ex - sx) * f}px;top:${sy + (ey - sy) * f}px`;
+      plot.appendChild(lb);
+    });
+    Object.values(N).forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'cbub' + (b.p ? ' prop' : '');
+      el.style.cssText = `left:${b.x - b.r}px;top:${b.y - b.r}px;width:${2 * b.r}px;height:${2 * b.r}px;--c:${col[b.c]}`;
+      el.innerHTML = `<span>${b.n}</span>`;
+      plot.appendChild(el);
+    });
+  })();
+  </script>
+</section>
+
+<!-- 6. Strategy -->
+<section class="slide">
+  <div class="kicker">6 · Proposed strategy</div>
+  <h1>Start with paid Talent Days, then layer recurring products</h1>
+  <div class="body">
+    <div class="timeline">
+      <div class="phase"><span class="dot" style="background:var(--orange)"></span><div class="when">Months 0–6</div><div class="hdr" style="background:var(--orange)">1. Talent Days</div>
+        <div class="feats panel"><ul><li>Event registration &amp; payment</li><li>Assessment results entry</li><li>Individual athlete reports</li><li>"Assessed" verified badge</li><li>Consent-based leaderboards</li></ul></div>
+        <div class="rev" style="color:var(--orange)">Families + sponsors</div></div>
+      <div class="phase"><span class="dot" style="background:var(--azure)"></span><div class="when">Months 3–12</div><div class="hdr" style="background:var(--azure)">2. Academy subscription</div>
+        <div class="feats panel"><ul><li>Repeat assessments</li><li>Coach observations</li><li>Development goals</li><li>Parent progress reports</li><li>Academy cohort dashboard</li></ul></div>
+        <div class="rev" style="color:var(--azure)">Academy subscriptions</div></div>
+      <div class="phase"><span class="dot" style="background:var(--mint)"></span><div class="when">Months 6–18</div><div class="hdr" style="background:var(--mint)">3. Club pathway</div>
+        <div class="feats panel"><ul><li>Filter athletes by event</li><li>Shortlists &amp; trial requests</li><li>Club recruitment briefs</li><li>Trial outcome tracking</li></ul></div>
+        <div class="rev" style="color:var(--mint)">Club access fees</div></div>
+      <div class="phase"><span class="dot" style="background:var(--violet)"></span><div class="when">When ready</div><div class="hdr" style="background:var(--violet)">4. Institutional program</div>
+        <div class="feats panel"><ul><li>Multi-site event operations</li><li>Program dashboards</li><li>Data-sharing controls</li><li>Co-branded programs</li></ul></div>
+        <div class="rev" style="color:var(--violet)">Program contracts</div></div>
+      <div class="phase"><span class="dot" style="background:var(--ink)"></span><div class="when">Month 18+</div><div class="hdr" style="background:var(--ink)">5. Intelligence platform</div>
+        <div class="feats panel"><ul><li>Benchmarks by age &amp; sport</li><li>Validated progress models</li><li>Wearable integrations</li><li>Matching recommendations</li></ul></div>
+        <div class="rev" style="color:var(--ink)">Data &amp; analytics</div></div>
+    </div>
+    <div class="across"><b>Across all stages</b><span>Verified athlete profiles</span><span>Shareable event content</span><span>Event &amp; academy community</span><span>Guardian consent &amp; safety</span></div>
+    <div class="legend-line">Grey panels: product features to build · Coloured text: new revenue stream · Bottom band: existing features kept</div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">The long-term category is unchanged: a verified athlete intelligence and opportunity network. Talent Days are the entry point because they produce cash within 30–60 days, use our UAE access directly (patrons, federation presence, scouts, sponsors), and create the assessed athletes that matchmaking and the data platform need. Each later stage reuses what the earlier one built. Social features are not a stage or revenue stream: profiles, shareable event content (to Instagram and TikTok) and community within events and academies run across every stage; the general feed and new content formats are frozen.</div>
+</section>
+
+<!-- 7. First six months -->
+<section class="slide">
+  <div class="kicker">7 · First six months</div>
+  <h1>Six workstreams, two checkpoints</h1>
+  <div class="body">
+    <div class="gantt" id="gantt"></div>
+    <div class="g-foot">
+      <div><span class="swatch"></span>Ramadan (approx. 8 Feb – 9 Mar 2027)</div>
+      <div><b>Day 90:</b> 2 events, AED 150k+ revenue, 300+ profiles, 2–3&nbsp;academies</div>
+      <div><b>Month 6:</b> 5 events, 2–3 club partners, seed term sheet</div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Partner academy recruitment starts in November, before M1, so 10–15 academies are signed by late November and the Event 1 interest page launches in early December (see Appendix A). Ramadan 2027 is expected around 8 February to 9 March; run Event 2 before it starts or as an evening format, and resume monthly events after Eid. Day-90 targets come from the strategy document. Stop and revise if the first event cannot attract a title sponsor or 100 paying athletes.</div>
+</section>
+
+<!-- 8. Year 1 -->
+<section class="slide">
+  <div class="kicker">8 · Year 1 plan</div>
+  <h1>Year 1: about AED 1.55M revenue, with no summer dip</h1>
+  <div class="body">
+    <div class="fin">
+      <div>
+        <div class="chart-title">Revenue by quarter (AED thousands)</div>
+        <div id="chart-y1"></div>
+        <div class="legend" id="legend-y1"></div>
+      </div>
+      <div>
+        <div class="kpis">
+          <div class="kpi panel"><div class="v">AED 1.55M</div><div class="l">revenue (≈ USD 0.42M)</div></div>
+          <div class="kpi panel"><div class="v">AED 1.04M</div><div class="l">contribution after direct costs</div></div>
+          <div class="kpi panel"><div class="v">12</div><div class="l">academies by year-end</div></div>
+        </div>
+        <table class="fin-t">
+          <tr><th></th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th><th>Year</th></tr>
+          <tr><td>Talent Days</td><td>2</td><td>3</td><td>2</td><td>4</td><td>11</td></tr>
+          <tr><td>Summer camps</td><td>–</td><td>–</td><td>2</td><td>–</td><td>2</td></tr>
+          <tr><td>Paying athletes</td><td>240</td><td>450</td><td>400</td><td>700</td><td>1,790</td></tr>
+          <tr class="b"><td>Revenue</td><td>149</td><td>294</td><td>309</td><td>800</td><td>1,552</td></tr>
+          <tr><td>Direct costs</td><td>(72)</td><td>(95)</td><td>(113)</td><td>(234)</td><td>(514)</td></tr>
+          <tr class="b"><td>Contribution</td><td>77</td><td>199</td><td>196</td><td>566</td><td>1,038</td></tr>
+          <tr><td>Operating costs</td><td>(200)</td><td>(200)</td><td>(200)</td><td>(200)</td><td>(800)</td></tr>
+          <tr class="net"><td>Net</td><td>(123)</td><td>(1)</td><td>(4)</td><td>366</td><td>238</td></tr>
+        </table>
+        <p class="small" style="margin-top:12px">AED thousands. Talent Day: ~150 athletes × AED 350, AED 30–60k sponsor, ~AED 30k cost.
+        <b>Summer plan:</b> a Talent Day in early June before families travel, an indoor one in August, and two multi-day assessment camps with partner academies. Summer is also used to presell Q4 sponsors and academy contracts.
+        Without the Q4 institutional contract: revenue ≈ AED 1.30M, net ≈ AED +88k.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Talent Days per quarter: 2, 3, 2, 4, plus 2 summer camps in Q3. Paying athletes: 240, 450, 400, 700 (Q1 ~120 per event, Q2–Q3 ~150, Q4 ~175, camps ~50 each) at AED 350 average, with 10–20% scholarship places on top. Sponsorship AED 30k per event in Q1, AED 40k in Q2–Q3, AED 60k in Q4 as annual title deals form. Academy subscriptions about AED 1,500 per month per academy (2, 5, 8, 12 active at quarter end). One institutional program of AED 250k in Q4 is the most uncertain line. Direct costs: ~AED 30–35k per event (venue, evaluators, staff, insurance, medical, marketing), assessor time for academies, and 40% delivery cost on the institutional program. Summer (Q3): instead of a dip, run a Talent Day in early June before families travel, an indoor Talent Day in August, and two multi-day summer assessment camps with partner academies (about 50 athletes each at AED 750, AED 10k sponsor and AED 20k direct cost per camp). Use the quieter months to presell Q4 sponsorship and annual academy contracts. Operating cost is AED 200k per quarter. Year 1 net is about AED +238k; the cumulative low point is about AED −128k at the end of Q3, before the Q4 institutional contract. <b>Without that contract (AED 250k revenue, AED 100k delivery cost), Year 1 net is about AED +88k.</b></div>
+</section>
+
+<!-- 9. Long-term -->
+<section class="slide">
+  <div class="kicker">9 · Long-term view</div>
+  <h1>Revenue could reach about AED 57M by Year 5</h1>
+  <div class="body">
+    <div class="fin">
+      <div>
+        <div class="chart-title">Revenue by stream (AED millions)</div>
+        <div id="chart-lt"></div>
+        <div class="legend" id="legend-lt"></div>
+      </div>
+      <div>
+        <div class="drivers">
+          <div class="driver"><span class="num">2</span><div><h4>Year 2 · AED 6.0M</h4><p>30 events, second sport, first GCC market; 40 academies; 15 clubs</p></div></div>
+          <div class="driver"><span class="num">3</span><div><h4>Year 3 · AED 15.6M</h4><p>60 events across the GCC; 120 academies; first benchmark licences</p></div></div>
+          <div class="driver"><span class="num">4</span><div><h4>Year 4 · AED 31.7M</h4><p>90 events; 300 academies; 80 clubs; first intelligence products</p></div></div>
+          <div class="driver"><span class="num">5</span><div><h4>Year 5 · AED 57M</h4><p>Benchmarks, scouting intelligence and development models sold to clubs, federations and partners</p></div></div>
+        </div>
+        <div class="callout"><div class="v">6% → 26%</div><div class="l">data &amp; intelligence share of revenue, Year 4 to Year 5 · recurring share 61% · Year 5 ≈ USD 15.5M</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Drivers: Talent Day revenue per event rises from about AED 100k to 140k as sponsorship matures. Academy subscriptions rise from about AED 1,500 to 2,400 per month as the product deepens. Club pathway fees from about AED 30k to 50k per club per year. Institutional programs grow from 1 to about 4–5 per year. Data and intelligence revenue (benchmarks, analytics licences) starts in Year 3 only if validated. Year 5 is a rough estimate: about 110 events (AED 16M), 450 academies at about AED 2,600 per month (AED 14M), 100 clubs at about AED 60k (AED 6M), institutional programs (AED 6M), and data and intelligence at AED 15M — benchmark and analytics licences for federations and clubs, scouting intelligence subscriptions, validated development models, and anonymized data partnerships (for example with wearable or equipment brands). D&I rises from 6% of revenue in Year 4 to 26% in Year 5 because four years of consented, longitudinal assessment data across the GCC makes these products credible. All D&I products use consented, anonymized and aggregated data; nothing identifies a minor. Recurring share counts academy, club and data revenue. USD at 3.67 AED.</div>
+</section>
+
+<!-- 10. Funding -->
+<section class="slide">
+  <div class="kicker">10 · Investment strategy</div>
+  <h1>Raise a small bridge now, then a seed round on proof</h1>
+  <div class="body">
+    <div class="fund">
+      <div class="stage panel">
+        <div class="step" style="color:var(--orange)">NOW · MONTHS 0–3</div>
+        <h3>Bridge round</h3>
+        <div class="amt" style="color:var(--orange)">USD 300–500k</div>
+        <ul class="list">
+          <li>SAFE with a USD 4–5M cap</li>
+          <li>UAE angels, family offices and strategic sponsors</li>
+          <li>Removes runway risk during the first events</li>
+          <li>About 6–12% dilution</li>
+        </ul>
+      </div>
+      <div class="stage panel">
+        <div class="step" style="color:var(--azure)">MONTHS 4–6 · ON PROOF</div>
+        <h3>Seed round</h3>
+        <div class="amt" style="color:var(--azure)">USD 1.5–2.0M</div>
+        <ul class="list">
+          <li>USD 6–9M pre-money</li>
+          <li>Proof: 5+ events, ~AED 450k revenue, 700+ assessed athletes, 5 academies, club trials</li>
+          <li>Funds 18–24 months: GCC entry, second sport, academy product</li>
+          <li>About 15–25% dilution</li>
+        </ul>
+      </div>
+      <div class="donut-wrap">
+        <div class="chart-title">Use of seed funds</div>
+        <div id="donut"></div>
+        <div class="donut-legend" id="donut-legend"></div>
+        <p class="small" style="margin-top:12px">Valuation ranges are indicative. Validate with advisors and current MENA seed comparables.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Why two steps: raising a large seed today means selling a broad product with no payer, at a low valuation. A small bridge from strategic UAE investors (who may also be sponsors or patrons) protects runway while the first events run. Raising the seed after five events, with revenue, sponsors, assessed athletes, academy subscriptions and club trial outcomes, should support a higher valuation and a clearer story. With operating costs of AED 200k per quarter, Year 1 is modelled at about AED +238k net, with a cumulative low point of about AED −128k (USD 35k) at the end of Q3. The bridge is therefore insurance against slower events, sponsors or institutional timing rather than a funding gap, and could be sized toward the lower end.</div>
+</section>
+
+<!-- Appendix A. Event demand plan -->
+<section class="slide">
+  <div class="kicker">Appendix A · Event demand plan</div>
+  <h1>Filling each event: four building blocks, one repeatable cycle</h1>
+  <div class="body app">
+    <div class="app-label">Set up once, before the first event · target 150 paying athletes per event</div>
+    <div class="blocks">
+      <div class="block panel"><h4 style="color:var(--orange)">1 · Offer</h4><p>3+ club scouts, patron or federation endorsement, report, profile, photos &amp; video</p><span>Founder</span></div>
+      <div class="block panel"><h4 style="color:var(--azure)">2 · Trust</h4><p>Named assessment lead, safeguarding policy, reputable venue, Arabic &amp; English</p><span>Operations</span></div>
+      <div class="block panel"><h4 style="color:var(--mint)">3 · Reach</h4><p>10–15 partner academies with tracked codes, plus one sponsor channel</p><span>Partnerships lead</span></div>
+      <div class="block panel"><h4 style="color:var(--violet)">4 · Registration</h4><p>WhatsApp-friendly web page with payment, consent and source tracking</p><span>Product</span></div>
+    </div>
+
+    <div class="app-label">Repeat for every event · 8 weeks</div>
+    <div class="cycle">
+      <div class="step"><b>Lock</b><span>Wk −8 to −6</span></div><i>→</i>
+      <div class="step"><b>Launch</b><span>Wk −6 · academies share</span></div><i>→</i>
+      <div class="step gate"><b>Checkpoint 1</b><span>Wk −4 · 250+ interested</span></div><i>→</i>
+      <div class="step"><b>Convert</b><span>Wk −4 to −2</span></div><i>→</i>
+      <div class="step gate"><b>Checkpoint 2</b><span>Wk −2 · 100+ paid</span></div><i>→</i>
+      <div class="step"><b>Event</b><span>Wk 0</span></div><i>→</i>
+      <div class="step"><b>Follow-up</b><span>Wk +1 to +2 · proof</span></div>
+    </div>
+
+    <div class="app-bottom">
+      <div>
+        <div class="app-label">Where the 150 athletes come from</div>
+        <div class="chanbar">
+          <div style="width:60%;background:var(--mint)">Partner academies · 90</div>
+          <div style="width:15%;background:var(--azure)">Schools · 20</div>
+          <div style="width:10%;background:var(--orange)">15</div>
+          <div style="width:10%;background:var(--violet)">15</div>
+          <div style="width:5%;background:var(--ink)"></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--orange)"></i>Sponsor &amp; community · 15</span><span><i style="background:var(--violet)"></i>Paid social · 15</span><span><i style="background:var(--ink)"></i>Referrals · 10</span></div>
+      </div>
+      <div>
+        <div class="app-label">Partner academies: signed once, before week −6</div>
+        <div class="recruit">
+          <div><b>Wk −12 to −10</b>Approach 25–30</div>
+          <div><b>Wk −10 to −8</b>Meet &amp; agree offer</div>
+          <div><b>Wk −8 to −7</b>Sign 10–15</div>
+        </div>
+        <p class="small" style="margin-top:8px">For a mid-January first event: approach now, sign by late November.</p>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Do not announce the first event until all four building blocks are ready. Checkpoint 1: below 250 interested at week −4, fix the offer or reach, or move the date. Checkpoint 2: below 100 paid at week −2, downsize the venue or merge age groups. Partner academies are the main channel; if they deliver less than half their target by week −4, fix that before increasing ad spend (about AED 10–15k per event). Partner offer: a per-athlete fee (for example AED 50), free reports for their athletes, their logo at the event and a results dashboard. Roughly half of the academies approached are expected to sign. The partnerships lead is the role most likely to be missing today.</div>
+</section>
+
+<!-- Appendix B. Feature map -->
+<section class="slide">
+  <div class="kicker">Appendix B · Feature map</div>
+  <h1>Which features matter at each milestone</h1>
+  <div class="body" style="margin-top:6px">
+    <div class="fmap">
+      <div></div>
+      <div class="colh" style="color:var(--orange)">1. Talent Days<small>Months 0–6</small></div>
+      <div class="colh" style="color:var(--azure)">2. Academy subscription<small>Months 3–12</small></div>
+      <div class="colh" style="color:var(--mint)">3. Club pathway<small>Months 6–18</small></div>
+      <div class="colh" style="color:var(--violet)">4. Institutional program<small>When ready</small></div>
+      <div class="colh" style="color:var(--ink)">5. Intelligence platform<small>Month 18+</small></div>
+
+      <div class="rowh">Critical</div>
+      <div class="cell"><span class="chip new">Web registration &amp; payment</span><span class="chip new">Assessment results entry</span><span class="chip new">Athlete reports</span><span class="chip imp">Guardian consent &amp; safety</span></div>
+      <div class="cell"><span class="chip new">Repeat assessments</span><span class="chip new">Parent progress reports</span></div>
+      <div class="cell"><span class="chip imp">Discovery &amp; shortlists</span><span class="chip new">Trial outcome tracking</span></div>
+      <div class="cell"><span class="chip new">Data-sharing controls</span></div>
+      <div class="cell"><span class="chip new">Benchmarks by age &amp; sport</span></div>
+
+      <div class="rowh">High</div>
+      <div class="cell"><span class="chip imp">Athlete profiles</span><span class="chip imp">"Assessed" badge</span><span class="chip new">Partner codes &amp; tracking</span><span class="chip imp">Result share cards</span></div>
+      <div class="cell"><span class="chip new">Coach observations</span><span class="chip new">Development goals</span><span class="chip new">Cohort dashboard</span></div>
+      <div class="cell"><span class="chip imp">Opportunities &amp; trials</span><span class="chip new">Recruitment briefs</span></div>
+      <div class="cell"><span class="chip new">Multi-site event ops</span><span class="chip new">Program dashboards</span></div>
+      <div class="cell"><span class="chip new">Validated progress models</span><span class="chip imp">Matching recommendations</span></div>
+
+      <div class="rowh">Medium</div>
+      <div class="cell"><span class="chip imp">Event leaderboards</span><span class="chip imp">Sponsor branding</span><span class="chip new">Referral codes</span><span class="chip lock">Club pages &amp; events</span><span class="chip lock">Broadcasts</span><span class="chip lock">Admin console</span></div>
+      <div class="cell"><span class="chip lock">Squads &amp; staff roles</span></div>
+      <div class="cell"><span class="chip lock">Messaging</span></div>
+      <div class="cell"><span class="chip new">Co-branded programs</span><span class="chip lock">7 languages</span></div>
+      <div class="cell"><span class="chip new">Wearable integrations</span><span class="chip imp">Talent Score on assessed data</span></div>
+
+      <div class="rowh">Low</div>
+      <div class="cell"><span class="chip lock">Feed, stories, reels, follows</span><span class="chip lock">Live scoring</span></div>
+      <div class="cell"><span class="chip lock">Coach booking</span><span class="chip lock">Endorsements</span></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"><span class="chip lock">Game Intelligence</span></div>
+
+      <div class="rowh">Not needed</div>
+      <div class="drop-band"><span class="chip drop">Meetups &amp; Play</span><span class="chip drop">Invite tokens</span><span class="chip drop">Sport Fit</span><span class="chip drop">Open sponsorship requests</span><span class="small" style="margin-left:6px">Hide and stop maintaining; keep the data.</span></div>
+    </div>
+    <div class="fkey">
+      <span><span class="chip new">New</span> build</span>
+      <span><span class="chip imp">Existing</span> improve</span>
+      <span><span class="chip lock">Existing</span> lock: keep as is, no new investment</span>
+      <span><span class="chip drop">Existing</span> drop</span>
+      <span style="margin-left:auto">Column = milestone where the feature is first needed</span>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Each feature sits in the column of the milestone where it is first needed and the row for how much that milestone depends on it; features carry forward to later milestones. New: Talent Days need web registration and payment (registration exists only in the app; payment is not built), assessment results entry, athlete reports, partner codes and source tracking, and referral codes. Improve: guardian consent gets event-specific choices (leaderboards, media, sharing with clubs); profiles show assessed results separately from self-reported data; the verified badge gains an "Assessed" variant; share cards get event-result templates; the discovery leaderboard becomes an event leaderboard; sponsor branding appears on event pages; discovery and shortlists get an event filter; opportunities support trial requests; matching moves to assessed data; the Talent Score is rebuilt on assessed data. Lock: social feed, stories, reels and follows stay for sharing and identity but get no new investment, alongside live scoring, coach booking, endorsements, messaging, broadcasts, club pages, squads, the admin console, seven languages and Game Intelligence. Drop: Meetups and Play (adult, off-strategy), invite tokens (no defined use; replaced by referral codes), Sport Fit (unvalidated, a claims risk) and open sponsorship requests (keep sponsor brand pages). Drop means hide and stop maintaining, not delete data. This is a proposal for the executive team to confirm.</div>
+</section>
+
+<!-- Appendix C. Marketing map -->
+<section class="slide">
+  <div class="kicker">Appendix C · Marketing map</div>
+  <h1>Which marketing activities matter at each milestone</h1>
+  <div class="body" style="margin-top:6px">
+    <div class="fmap mkt">
+      <div></div>
+      <div class="colh" style="color:var(--orange)">1. Talent Days<small>Months 0–6</small></div>
+      <div class="colh" style="color:var(--azure)">2. Academy subscription<small>Months 3–12</small></div>
+      <div class="colh" style="color:var(--mint)">3. Club pathway<small>Months 6–18</small></div>
+      <div class="colh" style="color:var(--violet)">4. Institutional program<small>When ready</small></div>
+      <div class="colh" style="color:var(--ink)">5. Intelligence platform<small>Month 18+</small></div>
+
+      <div class="rowh">Critical</div>
+      <div class="cell"><span class="chip new">Partner academy network</span><span class="chip imp">Club scouts &amp; federation backing</span><span class="chip imp">Senior patrons for events</span></div>
+      <div class="cell"><span class="chip new">Results reports for partner academies</span></div>
+      <div class="cell"><span class="chip new">Verified trial outcomes as PR</span></div>
+      <div class="cell"><span class="chip imp">Government, Ministry, NOC</span></div>
+      <div class="cell"></div>
+
+      <div class="rowh">High</div>
+      <div class="cell"><span class="chip new">Title sponsor sales</span><span class="chip new">Event content &amp; result shares</span><span class="chip imp">Schools (Dubai Schools Games)</span><span class="chip imp">Own social &amp; DMs: events, parents</span><span class="chip imp">One message: all sports, measured</span></div>
+      <div class="cell"><span class="chip imp">Academy field sales</span><span class="chip imp">Parent testimonials</span></div>
+      <div class="cell"><span class="chip imp">Club intros via Faghani &amp; AFC</span><span class="chip imp">National Sports UAE</span></div>
+      <div class="cell"><span class="chip imp">Official PR, with approval</span></div>
+      <div class="cell"><span class="chip new">Data partners (WHOOP, wearables)</span></div>
+
+      <div class="rowh">Medium</div>
+      <div class="cell"><span class="chip imp">Micro-creators paid per sign-up</span><span class="chip imp">Video shoots → event footage</span><span class="chip new">Paid social for registrations</span><span class="chip lock">Community groups</span><span class="chip lock">Merch &amp; stand</span><span class="chip lock">DFC 30x30 classes</span></div>
+      <div class="cell"><span class="chip new">Founding-academy offer</span></div>
+      <div class="cell"><span class="chip new">AceAiX selected teams</span><span class="chip new">Monthly athlete sponsorship</span></div>
+      <div class="cell"><span class="chip lock">Co-hosted events (VIN.Meet)</span></div>
+      <div class="cell"><span class="chip new">Brand product testing</span></div>
+
+      <div class="rowh">Low</div>
+      <div class="cell"><span class="chip lock">Cold DMs to athletes</span></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"></div>
+      <div class="cell"><span class="chip new">Star athletes as equity partners</span></div>
+
+      <div class="rowh">Stop / pause</div>
+      <div class="drop-band"><span class="chip drop">Seeded persona accounts &amp; unclaimed club pages</span><span class="chip drop">Adult fitness booths (Tough Mudder, Spartan, DEKA)</span><span class="chip drop">Sponsoring other teams (ADAFA)</span><span class="chip drop">Big-name paid reels &amp; top-100 outreach</span><span class="chip drop">Install giveaways</span></div>
+    </div>
+    <div class="fkey">
+      <span><span class="chip new">New</span> start</span>
+      <span><span class="chip imp">Underway</span> refocus</span>
+      <span><span class="chip lock">Underway</span> keep, no new spend</span>
+      <span><span class="chip drop">Underway</span> stop</span>
+      <span style="margin-left:auto">Column = milestone where the activity first matters</span>
+    </div>
+  </div>
+  <div class="footer"><span>AceAiX · Executive strategy · November 2026</span><span class="pg"></span></div>
+  <div class="notes">Sources: Meisam's management report, #influencer-talent-aceaix and #aceaix. Refocus means keep the activity but change its goal: club and federation outreach (Sharjah FC, Elite Volleyball, National Sports UAE) moves from "join the app" to scouts and endorsements for Talent Days; senior government contacts and Faghani become patrons and introducers; the Dubai Schools Games contact becomes the schools channel; own Instagram, LinkedIn and DMs focus on events, parents and verified outcomes; slogan work converges on all sports and measured talent; video shoots shift to event footage; creator deals move to youth and parent audiences and are paid per registration rather than per month. Keep with no new spend: Facebook and community groups (free), merchandise and the stand (reuse at events), the Dubai Fitness Challenge classes already committed (adult fitness audience), co-hosted events and cold DMs. Stop or pause: seeded persona accounts and club pages built without the club's agreement (National Sports' first concern was whether AceAiX content is genuine; a discovered fake profile would damage club and investor trust); adult fitness exhibitor booths (wrong audience); sponsoring other teams such as ADAFA (the event is in December 2027); big-name paid reels (USD 4,500–13,000 quotes) and top-100 celebrity outreach; and install giveaways. Meisam's report reaches the same conclusion: limit expensive ambassadors and install campaigns, prioritise field marketing with clubs and academies, and measure cost per active athlete. New items come from the strategy and Meisam's report: partner academy network, title sponsor sales, event content, paid social tied to registrations, academy results reports, verified trial outcomes as PR, selected teams, athlete sponsorship, data partners, brand product testing and equity partnerships with star athletes. This is a proposal for the executive team to confirm.</div>
+</section>
+
+</div></div>
+
+<div id="notes"></div>
+<div id="controls">
+  <button id="prev" aria-label="Previous slide">←</button>
+  <span id="counter"></span>
+  <button id="next" aria-label="Next slide">→</button>
+  <button id="toggle-notes" title="Speaker notes (N)">Notes</button>
+  <button id="fs" title="Fullscreen (F)">Full screen</button>
+</div>
+
+<script>
+(() => {
+  const COLORS = {
+    orange: "#FF5A1F", orangeSoft: "#FFA27F", azure: "#2E7DF6", mint: "#0FA37F",
+    violet: "#8B5CF6", ink: "#14161A", slate: "#4A5160", line: "#E1E5EA", amber: "#E89A00",
+  };
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs = {}, text) => {
+    const n = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+
+  function stacked(target, legendTarget, { cats, series, w, h, fmt, totalFmt, step, max }) {
+    const pad = { l: 44, r: 8, t: 26, b: 34 };
+    const svg = el("svg", { width: w, height: h, viewBox: `0 0 ${w} ${h}` });
+    const totals = cats.map((_, i) => series.reduce((s, x) => s + x.values[i], 0));
+    const top = max || Math.ceil(Math.max(...totals) / step) * step;
+    const ih = h - pad.t - pad.b, iw = w - pad.l - pad.r;
+    const y = (v) => pad.t + ih - (v / top) * ih;
+    for (let v = 0; v <= top + 1e-9; v += step) {
+      svg.appendChild(el("line", { x1: pad.l, x2: w - pad.r, y1: y(v), y2: y(v), stroke: v === 0 ? "#C9CED6" : "#ECEFF3", "stroke-width": 1 }));
+      svg.appendChild(el("text", { x: pad.l - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 12, fill: COLORS.slate }, fmt(v)));
+    }
+    const slot = iw / cats.length, bw = slot * 0.56;
+    cats.forEach((c, i) => {
+      const x = pad.l + slot * i + (slot - bw) / 2;
+      let acc = 0;
+      series.forEach((s) => {
+        const v = s.values[i];
+        if (!v) return;
+        const y0 = y(acc), y1 = y(acc + v);
+        svg.appendChild(el("rect", { x, y: y1, width: bw, height: Math.max(0, y0 - y1), fill: s.color }));
+        if (y0 - y1 >= 18) svg.appendChild(el("text", { x: x + bw / 2, y: (y0 + y1) / 2 + 4, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: "#fff" }, fmt(v)));
+        acc += v;
+      });
+      svg.appendChild(el("text", { x: x + bw / 2, y: y(acc) - 8, "text-anchor": "middle", "font-size": 14, "font-weight": 800, fill: COLORS.ink }, totalFmt(acc)));
+      svg.appendChild(el("text", { x: x + bw / 2, y: h - pad.b + 20, "text-anchor": "middle", "font-size": 13, "font-weight": 600, fill: COLORS.slate }, c));
+    });
+    target.appendChild(svg);
+    legendTarget.innerHTML = series.map((s) => `<span><i style="background:${s.color}"></i>${s.name}</span>`).join("");
+  }
+
+  stacked(document.getElementById("chart-y1"), document.getElementById("legend-y1"), {
+    cats: ["Q1 Dec–Feb", "Q2 Mar–May", "Q3 Jun–Aug", "Q4 Sep–Nov"],
+    series: [
+      { name: "Athlete entry fees", color: COLORS.orange, values: [84, 158, 105, 245] },
+      { name: "Sponsorship", color: COLORS.orangeSoft, values: [60, 120, 100, 240] },
+      { name: "Summer camps", color: COLORS.amber, values: [0, 0, 75, 0] },
+      { name: "Academy subscriptions", color: COLORS.azure, values: [5, 16, 29, 45] },
+      { name: "Club pathway", color: COLORS.mint, values: [0, 0, 0, 20] },
+      { name: "Institutional program", color: COLORS.violet, values: [0, 0, 0, 250] },
+    ],
+    w: 560, h: 410, step: 200, max: 800, fmt: (v) => String(v), totalFmt: (v) => v.toLocaleString("en-US"),
+  });
+
+  stacked(document.getElementById("chart-lt"), document.getElementById("legend-lt"), {
+    cats: ["Year 1", "Year 2", "Year 3", "Year 4", "Year 5"],
+    series: [
+      { name: "Talent Days & camps (fees + sponsors)", color: COLORS.orange, values: [1.187, 3.6, 7.8, 12.6, 16.0] },
+      { name: "Academy subscriptions", color: COLORS.azure, values: [0.095, 0.96, 3.17, 8.64, 14.0] },
+      { name: "Club pathway", color: COLORS.mint, values: [0.02, 0.45, 1.6, 4.0, 6.0] },
+      { name: "Institutional programs", color: COLORS.violet, values: [0.25, 1.0, 2.5, 4.5, 6.0] },
+      { name: "Data & intelligence", color: COLORS.ink, values: [0, 0, 0.5, 2.0, 15.0] },
+    ],
+    w: 560, h: 410, step: 10, max: 60,
+    fmt: (v) => (Number.isInteger(v) ? String(v) : v.toFixed(1)),
+    totalFmt: (v) => "AED " + v.toFixed(v < 2 ? 2 : 1) + "M",
+  });
+
+  // Donut
+  (() => {
+    const data = [
+      ["Product & data", 35, COLORS.azure],
+      ["Events & GCC expansion", 30, COLORS.orange],
+      ["Sales & partnerships", 20, COLORS.mint],
+      ["Safeguarding, compliance, G&A", 15, COLORS.slate],
+    ];
+    const size = 220, r = 80, sw = 38, c = 2 * Math.PI * r;
+    const svg = el("svg", { width: size, height: size, viewBox: `0 0 ${size} ${size}` });
+    let off = 0;
+    data.forEach(([, v, col]) => {
+      const len = (v / 100) * c;
+      svg.appendChild(el("circle", { cx: size / 2, cy: size / 2, r, fill: "none", stroke: col, "stroke-width": sw,
+        "stroke-dasharray": `${len} ${c - len}`, "stroke-dashoffset": -off, transform: `rotate(-90 ${size / 2} ${size / 2})` }));
+      const mid = (off + len / 2) / c * 2 * Math.PI - Math.PI / 2;
+      svg.appendChild(el("text", { x: size / 2 + r * Math.cos(mid), y: size / 2 + r * Math.sin(mid) + 5, "text-anchor": "middle", "font-size": 13, "font-weight": 800, fill: "#fff" }, v + "%"));
+      off += len;
+    });
+    svg.appendChild(el("text", { x: size / 2, y: size / 2 - 2, "text-anchor": "middle", "font-size": 22, "font-weight": 800, fill: COLORS.ink }, "USD"));
+    svg.appendChild(el("text", { x: size / 2, y: size / 2 + 20, "text-anchor": "middle", "font-size": 14, fill: COLORS.slate }, "1.5–2.0M"));
+    document.getElementById("donut").appendChild(svg);
+    document.getElementById("donut-legend").innerHTML = data.map(([n, v, col]) => `<span><i style="background:${col}"></i>${n} · ${v}%</span>`).join("");
+  })();
+
+  // Gantt
+  (() => {
+    const months = ["Dec", "Jan", "Feb", "Mar", "Apr", "May"];
+    const rows = [
+      ["Events", COLORS.orange, [[0, 1, "Protocol &amp; lead"], [1, 0.75, "Event 1"], [1.75, 0.5, "Event 2"], [3.3, 2.7, "3 monthly events"]]],
+      ["Partners", COLORS.orange, [[0, 2, "Sponsor, patron, 3–5 club scouts"], [3, 3, "2–3 club pathway partners"]]],
+      ["Product", COLORS.azure, [[0, 2, "Event MVP: pay, results, reports"], [2, 2, "Academy progress"], [4, 2, "Club follow-up"]]],
+      ["Academies", COLORS.mint, [[0, 1, "Partners signed (from Nov)"], [1, 1, "Partners promote"], [2, 1, "2–3 subs"], [3, 3, "5 academies, annual terms"]]],
+      ["Institutions", COLORS.violet, [[2, 2, "Proposal using events"], [4, 2, "Program negotiation"]]],
+      ["Funding", COLORS.ink, [[0, 3, "Bridge (SAFE)"], [3, 3, "Seed round"]]],
+    ];
+    const pct = (m) => (m / 6) * 100;
+    let html = `<div class="g-head"><div></div>${months.map((m, i) => `<div>M${i + 1} · ${m}</div>`).join("")}</div>`;
+    html += `<div class="g-overlay"><div class="ramadan" style="left:${pct(2.25)}%;width:${pct(1)}%"></div><div class="msline" style="left:${pct(3)}%"></div><div class="msline" style="left:calc(${pct(6)}% - 2px)"></div></div>`;
+    html += `<div class="g-bars">`;
+    rows.forEach(([name, col, bars]) => {
+      html += `<div class="g-row"><div class="lbl">${name}</div><div class="g-track">`;
+      bars.forEach(([s, l, t]) => {
+        html += `<div class="bar" style="left:calc(${pct(s)}% + 3px);width:calc(${pct(l)}% - 6px);background:${col}">${t}</div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+    document.getElementById("gantt").innerHTML = html;
+  })();
+
+  // Navigation
+  const slides = [...document.querySelectorAll(".slide")];
+  const deck = document.getElementById("deck");
+  const counter = document.getElementById("counter");
+  const notes = document.getElementById("notes");
+  slides.forEach((s, i) => { const pg = s.querySelector(".pg"); if (pg) pg.textContent = i + 1; });
+  let cur = Math.min(Math.max(parseInt(location.hash.slice(1), 10) - 1 || 0, 0), slides.length - 1);
+
+  function fit() {
+    const sc = Math.min(window.innerWidth / 1280, (window.innerHeight - 8) / 720);
+    deck.style.transform = `scale(${sc})`;
+  }
+  function show(i) {
+    cur = Math.min(Math.max(i, 0), slides.length - 1);
+    slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+    counter.textContent = `${cur + 1} / ${slides.length}`;
+    const n = slides[cur].querySelector(".notes");
+    notes.innerHTML = n ? n.innerHTML : "";
+    history.replaceState(null, "", "#" + (cur + 1));
+  }
+  document.getElementById("prev").onclick = () => show(cur - 1);
+  document.getElementById("next").onclick = () => show(cur + 1);
+  document.getElementById("toggle-notes").onclick = () => notes.classList.toggle("show");
+  document.getElementById("fs").onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  document.addEventListener("keydown", (e) => {
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+    else if (["ArrowLeft", "PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+    else if (e.key === "Home") show(0);
+    else if (e.key === "End") show(slides.length - 1);
+    else if (e.key.toLowerCase() === "n") notes.classList.toggle("show");
+    else if (e.key.toLowerCase() === "f") document.getElementById("fs").click();
+  });
+  window.addEventListener("resize", fit);
+  window.addEventListener("hashchange", () => {
+    const n = parseInt(location.hash.slice(1), 10);
+    if (n && n - 1 !== cur) show(n - 1);
+  });
+  let idleTimer;
+  const wake = () => {
+    document.body.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => document.body.classList.add("idle"), 2500);
+  };
+  document.addEventListener("mousemove", wake);
+  wake();
+  fit();
+  show(cur);
+})();
+</script>
+</body>
+</html>
