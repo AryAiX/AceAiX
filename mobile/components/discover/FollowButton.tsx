@@ -9,15 +9,17 @@ interface Props {
   onPress: () => void;
   /** Who or what is being followed — used for the screen-reader label. */
   name: string;
+  /** A filled blue Follow, for the Discover lists. Elsewhere it stays soft. */
+  solid?: boolean;
 }
 
-export function FollowButton({ following, pending, onPress, name }: Props) {
+export function FollowButton({ following, pending, onPress, name, solid = false }: Props) {
   const t = useT();
 
   return (
     <Button
       label={following ? t('common.following') : t('common.follow')}
-      variant={following ? 'secondary' : 'soft'}
+      variant={following ? 'secondary' : solid ? 'primary' : 'soft'}
       size="sm"
       loading={pending}
       onPress={onPress}

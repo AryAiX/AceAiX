@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BadgeCheck } from 'lucide-react-native';
 
@@ -28,41 +28,38 @@ interface Props {
   onToggleFollow?: (organization: Organization, nextFollowing: boolean) => void;
   /** Called just before the club page opens. */
   onOpen?: () => void;
+  /** Draw as one row of a white list (see groupedRowStyle) instead of a card. */
+  grouped?: ViewStyle;
 }
 
-export function ClubCard({ organization, following, pending, onToggleFollow, onOpen }: Props) {
+export function ClubCard({ organization, following, pending, onToggleFollow, onOpen, grouped }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
   const router = useRouter();
 
-  const place = [organization.city, organization.country].filter(Boolean).join(', ');
+  /* Type, then the league or the city: the one line has to fit on a phone. */
   const meta = metaLine(
     t(TYPE_KEY[organization.type] ?? 'common.club'),
-    organization.league,
-    place,
+    organization.league || organization.city || organization.country,
   );
   const followers = t('discover.followers', {
     count: organization.followers_count,
     value: compactNumber(organization.followers_count),
   });
 
-  return (
-    <Card
-      onPress={() => {
-        onOpen?.();
-        router.push(Routes.organization(organization.id));
-      }}
-      padded="sm"
-      accessibilityLabel={metaLine(
-        organization.name,
-        organization.is_verified ? t('common.verified') : null,
-        meta,
-        followers,
-      )}
-      accessibilityHint={t('discover.club.openClub')}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
-    >
+  const openClub = () => {
+    onOpen?.();
+    router.push(Routes.organization(organization.id));
+  };
+  const a11yLabel = metaLine(
+    organization.name,
+    organization.is_verified ? t('common.verified') : null,
+    meta,
+    followers,
+  );
+  const content = (
+    <>
       <ClubLogo uri={organization.logo_url} name={organization.name} size="md" />
 
       <View style={{ flex: 1, gap: 1 }}>
@@ -88,10 +85,47 @@ export function ClubCard({ organization, following, pending, onToggleFollow, onO
         <FollowButton
           following={!!following}
           pending={pending}
+          solid={!!grouped}
           name={organization.name}
           onPress={() => onToggleFollow(organization, !following)}
         />
       ) : null}
+    </>
+  );
+
+  if (grouped) {
+    return (
+      <Pressable
+        onPress={openClub}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityHint={t('discover.club.openClub')}
+        style={({ pressed }) => [
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.md,
+            opacity: pressed ? 0.7 : 1,
+          },
+          grouped,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <Card
+      onPress={openClub}
+      padded="sm"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint={t('discover.club.openClub')}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
+    >
+      {content}
     </Card>
   );
 }

@@ -28,6 +28,8 @@ export const discover = {
   // Noms d’onglets et de portées partagés — les onglets Explorer et les portées de recherche.
   tabAthletes: 'Athlètes',
   hubPlayers: 'Joueurs',
+  filterAll: 'Tous',
+  filterAcademies: 'Académies',
   tabCoaches: 'Coachs',
   tabClubs: 'Clubs',
   tabLeaderboard: 'Classement',

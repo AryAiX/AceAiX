@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HeartHandshake } from 'lucide-react-native';
 
@@ -27,9 +27,11 @@ interface Props {
   isYou: boolean;
   /** Highlights a guardian's approved child. Yields to isYou. */
   isChild?: boolean;
+  /** Draw as one row of a white list (see groupedRowStyle) instead of a box. */
+  grouped?: ViewStyle;
 }
 
-export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
+export function LeaderboardRow({ entry, isYou, isChild = false, grouped }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, radii, spacing } = theme;
@@ -61,19 +63,25 @@ export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
         t('discover.board.scoreA11y', { score: entry.overall, tier: tierName }),
       )}
       accessibilityHint={t('discover.card.openProfile')}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        minHeight: 64,
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: radii.md,
-        borderWidth: isYou || isChild ? 1.5 : 1,
-        borderColor: isYou ? colors.primaryBorder : isChild ? colors.info : colors.border,
-        backgroundColor: isYou ? colors.primarySoft : isChild ? colors.infoSoft : colors.surface,
-        opacity: pressed ? 0.75 : 1,
-      })}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.md,
+          minHeight: 64,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          opacity: pressed ? 0.75 : 1,
+        },
+        grouped
+          ? [grouped, isYou || isChild ? { backgroundColor: isYou ? colors.primarySoft : colors.infoSoft } : null]
+          : {
+              borderRadius: radii.md,
+              borderWidth: isYou || isChild ? 1.5 : 1,
+              borderColor: isYou ? colors.primaryBorder : isChild ? colors.info : colors.border,
+              backgroundColor: isYou ? colors.primarySoft : isChild ? colors.infoSoft : colors.surface,
+            },
+      ]}
     >
       <View style={{ minWidth: 32, alignItems: 'center' }}>
         <Text variant="stat" color={accent} style={{ fontSize: 18 }}>

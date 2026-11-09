@@ -27,6 +27,8 @@ export const discover = {
   // Gemeinsame Namen für Tabs und Suchbereiche.
   tabAthletes: 'Sportler',
   hubPlayers: 'Spieler',
+  filterAll: 'Alle',
+  filterAcademies: 'Akademien',
   tabCoaches: 'Trainer',
   tabClubs: 'Vereine',
   tabLeaderboard: 'Rangliste',

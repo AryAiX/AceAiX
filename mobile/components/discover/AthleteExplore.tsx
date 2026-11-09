@@ -43,7 +43,9 @@ import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
 import { BookableCoaches } from '@/components/coaching/BookableCoaches';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
+import { LeaderboardPodium } from './LeaderboardPodium';
 import { LeaderboardRow } from './LeaderboardRow';
+import { groupedRowStyle } from './groupedRow';
 import { tierLabel } from './MatchBadge';
 
 export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'sponsors' | 'leaderboard';
@@ -209,6 +211,8 @@ export function AthleteExplore({
   );
   /* Coaches: everyone, or only those who can be booked. */
   const [bookable, setBookable] = useState(false);
+  /* Clubs: all of them, the ones I follow, or academies only. On the phone. */
+  const [clubFilter, setClubFilter] = useState<'all' | 'following' | 'academies'>('all');
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), SEARCH_DEBOUNCE_MS);
@@ -344,8 +348,10 @@ export function AthleteExplore({
   const listStyle = {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.giant,
-    gap: spacing.sm,
   };
+  /* Each list is drawn as one white card, a row at a time. */
+  const rowStyle = (index: number, count: number, background?: string) =>
+    groupedRowStyle(index, count, colors, theme.radii.xl, background);
 
   const busy = (count: number) => (
     <View style={{ paddingHorizontal: spacing.lg }}>
@@ -416,12 +422,19 @@ export function AthleteExplore({
   function renderClubs() {
     if (clubs.error) return <ErrorState message={clubs.error} onRetry={clubs.reload} />;
     if (clubs.loading || clubs.data?.term !== debounced) return busy(4);
+    const clubRows = (clubs.data?.rows ?? []).filter((club) =>
+      clubFilter === 'following'
+        ? isOrgFollowed(club.id)
+        : clubFilter === 'academies'
+          ? club.type === 'academy'
+          : true,
+    );
 
     return (
       <FlatList<Organization>
         ref={attachList}
         style={{ flex: 1 }}
-        data={clubs.data?.rows ?? []}
+        data={clubRows}
         keyExtractor={(item) => item.id}
         contentContainerStyle={listStyle}
         keyboardShouldPersistTaps="handled"
@@ -433,8 +446,9 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ClubCard
+            grouped={rowStyle(index, clubRows.length)}
             organization={{
               ...item,
               followers_count: shiftedCount(
@@ -488,8 +502,9 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <CoachRow
+            grouped={rowStyle(index, coaches.data?.rows.length ?? 0)}
             person={item}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
@@ -535,6 +550,7 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
+        ItemSeparatorComponent={RowGap}
         renderItem={({ item }) => (
           <AthleteSearchRow person={item} isYou={item.id === viewerId} />
         )}
@@ -555,8 +571,11 @@ export function AthleteExplore({
     if (board.error) return <ErrorState message={board.error} onRetry={board.reload} />;
     if (board.loading || board.data?.term !== boardScope) return busy(5);
 
-    const rows = board.data.rows;
-    const youAreOnIt = !!viewerId && rows.some((row) => row.user_id === viewerId);
+    const allRows = board.data.rows;
+    /* The first three stand on the podium; the list carries on from fourth. */
+    const podium = allRows.length >= 3 ? allRows.slice(0, 3) : [];
+    const rows = podium.length ? allRows.slice(3) : allRows;
+    const youAreOnIt = !!viewerId && allRows.some((row) => row.user_id === viewerId);
     /* The scope reads back to the reader, so it is built from translated parts
        rather than glued together from the filter values. */
     const scopeSport = sport ? sportLabel(t, sport) : t('discover.board.everySport');
@@ -580,21 +599,25 @@ export function AthleteExplore({
           />
         }
         ListHeaderComponent={
-          rows.length > 0 ? (
-            <Text variant="caption" tone="muted" style={{ marginBottom: spacing.xs }}>
-              {t('discover.board.caption', { scope })}
-            </Text>
+          allRows.length > 0 ? (
+            <View>
+              <Text variant="caption" tone="muted" style={{ marginBottom: spacing.sm }}>
+                {t('discover.board.caption', { scope })}
+              </Text>
+              <LeaderboardPodium top={podium} viewerId={viewerId} />
+            </View>
           ) : undefined
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <LeaderboardRow
+            grouped={rowStyle(index, rows.length)}
             entry={item}
             isYou={item.user_id === viewerId}
             isChild={childIds.has(item.user_id)}
           />
         )}
         ListFooterComponent={
-          rows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
+          allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
             <Text
               variant="caption"
               tone="muted"
@@ -606,11 +629,13 @@ export function AthleteExplore({
           ) : undefined
         }
         ListEmptyComponent={
-          <EmptyState
-            icon={<Trophy size={26} color={colors.textMuted} />}
-            title={t('discover.board.emptyTitle')}
-            body={t('discover.board.emptyBody')}
-          />
+          allRows.length > 0 ? undefined : (
+            <EmptyState
+              icon={<Trophy size={26} color={colors.textMuted} />}
+              title={t('discover.board.emptyTitle')}
+              body={t('discover.board.emptyBody')}
+            />
+          )
         }
       />
     );
@@ -667,12 +692,37 @@ export function AthleteExplore({
               <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
                 {searchField}
                 {tab === 'coaches' ? (
-                  <View style={{ flexDirection: 'row' }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <Chip
+                      label={t('discover.filterAll')}
+                      selected={!bookable}
+                      onPress={() => setBookable(false)}
+                    />
                     <Chip
                       label={t('coaching.takingStudentsFilter')}
                       selected={bookable}
                       onPress={() => setBookable((b) => !b)}
                       testID="coaches-bookable-filter"
+                    />
+                  </View>
+                ) : tab === 'clubs' ? (
+                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                    <Chip
+                      label={t('discover.filterAll')}
+                      selected={clubFilter === 'all'}
+                      onPress={() => setClubFilter('all')}
+                    />
+                    <Chip
+                      label={t('common.following')}
+                      selected={clubFilter === 'following'}
+                      onPress={() => setClubFilter((f) => (f === 'following' ? 'all' : 'following'))}
+                      testID="clubs-following-filter"
+                    />
+                    <Chip
+                      label={t('discover.filterAcademies')}
+                      selected={clubFilter === 'academies'}
+                      onPress={() => setClubFilter((f) => (f === 'academies' ? 'all' : 'academies'))}
+                      testID="clubs-academies-filter"
                     />
                   </View>
                 ) : null}
@@ -741,4 +791,8 @@ export function AthleteExplore({
       </Sheet>
     </View>
   );
+}
+
+function RowGap() {
+  return <View style={{ height: 8 }} />;
 }

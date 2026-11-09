@@ -27,6 +27,8 @@ export const discover = {
   // Общие названия вкладок и областей поиска.
   tabAthletes: 'Спортсмены',
   hubPlayers: 'Игроки',
+  filterAll: 'Все',
+  filterAcademies: 'Академии',
   tabCoaches: 'Тренеры',
   tabClubs: 'Клубы',
   tabLeaderboard: 'Рейтинг',

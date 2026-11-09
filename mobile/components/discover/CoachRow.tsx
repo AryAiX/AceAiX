@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -19,16 +19,19 @@ interface Props {
   onToggleFollow?: (person: PersonResult, nextFollowing: boolean) => void;
   /** Called just before the profile opens. */
   onOpen?: () => void;
+  /** Draw as one row of a white list (see groupedRowStyle) instead of a card. */
+  grouped?: ViewStyle;
 }
 
-export function CoachRow({ person, following, pending, onToggleFollow, onOpen }: Props) {
+export function CoachRow({ person, following, pending, onToggleFollow, onOpen, grouped }: Props) {
   const theme = useTheme();
   const t = useT();
   const { spacing } = theme;
   const router = useRouter();
 
   const name = displayName(person.full_name);
-  const place = [person.city, person.country].filter(Boolean).join(', ');
+  /* The city is enough to place someone; the country made the line run out. */
+  const place = person.city || person.country;
   const meta = metaLine(roleLabel(person.role), place);
   const followerCount = useFollowCount(person.id, 'followers', person.followers_count);
   useRefreshFollowCountsOnFocus(person.id);
@@ -37,22 +40,19 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen }:
     value: compactNumber(followerCount),
   });
 
-  return (
-    <Card
-      onPress={() => {
-        onOpen?.();
-        router.push(Routes.profile(person.id));
-      }}
-      padded="sm"
-      accessibilityLabel={metaLine(
-        name,
-        person.is_verified ? t('common.verified') : null,
-        meta,
-        followers,
-      )}
-      accessibilityHint={t('discover.card.openProfile')}
-      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
-    >
+  const openProfile = () => {
+    onOpen?.();
+    router.push(Routes.profile(person.id));
+  };
+  const a11yLabel = metaLine(
+    name,
+    person.is_verified ? t('common.verified') : null,
+    meta,
+    followers,
+  );
+
+  const content = (
+    <>
       <Avatar uri={person.avatar_url} name={name} size="md" verified={person.is_verified} />
 
       <View style={{ flex: 1, gap: 1 }}>
@@ -60,7 +60,7 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen }:
           {name}
         </Text>
         <Text variant="caption" tone="muted" numberOfLines={1}>
-          {metaLine(meta, followers)}
+          {person.bio ? meta : metaLine(meta, followers)}
         </Text>
         {person.bio ? (
           <Text variant="caption" tone="secondary" numberOfLines={1}>
@@ -73,10 +73,47 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen }:
         <FollowButton
           following={!!following}
           pending={pending}
+          solid={!!grouped}
           name={name}
           onPress={() => onToggleFollow(person, !following)}
         />
       ) : null}
+    </>
+  );
+
+  if (grouped) {
+    return (
+      <Pressable
+        onPress={openProfile}
+        accessibilityRole="button"
+        accessibilityLabel={a11yLabel}
+        accessibilityHint={t('discover.card.openProfile')}
+        style={({ pressed }) => [
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.md,
+            opacity: pressed ? 0.7 : 1,
+          },
+          grouped,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <Card
+      onPress={openProfile}
+      padded="sm"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint={t('discover.card.openProfile')}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}
+    >
+      {content}
     </Card>
   );
 }

@@ -28,6 +28,8 @@ export const discover = {
   // Nombres de pestaña y ámbito compartidos entre Explorar y la búsqueda.
   tabAthletes: 'Deportistas',
   hubPlayers: 'Jugadores',
+  filterAll: 'Todos',
+  filterAcademies: 'Academias',
   tabCoaches: 'Entrenadores',
   tabClubs: 'Clubes',
   tabLeaderboard: 'Clasificación',

@@ -26,6 +26,8 @@ export const discover = {
   // أسماء التبويبات والنطاقات المشتركة — تبويبات الاستكشاف ونطاقات البحث.
   tabAthletes: 'اللاعبون',
   hubPlayers: 'اللاعبون',
+  filterAll: 'الكل',
+  filterAcademies: 'الأكاديميات',
   tabCoaches: 'المدرّبون',
   tabClubs: 'الأندية',
   tabLeaderboard: 'لوحة الصدارة',
