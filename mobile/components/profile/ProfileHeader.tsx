@@ -388,7 +388,7 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
             <Text
               variant="title"
               numberOfLines={2}
-              style={{ flexShrink: 1, fontFamily: theme.font.nameBold }}
+              style={{ flexShrink: 1 }}
             >
               {name}
             </Text>

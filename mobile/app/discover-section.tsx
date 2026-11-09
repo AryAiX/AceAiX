@@ -63,7 +63,7 @@ export default function DiscoverSectionScreen() {
           {t('common.tabDiscover')}
         </Text>
       </Pressable>
-      <Text variant="title" numberOfLines={1}>
+      <Text variant="screenTitle" numberOfLines={1}>
         {t(TITLES[section])}
       </Text>
     </View>

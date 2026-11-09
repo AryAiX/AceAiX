@@ -89,7 +89,7 @@ export function Header({
 
       <View style={{ flex: 1 }}>
         {title ? (
-          <Text variant={large ? 'title' : 'heading'} numberOfLines={1}>
+          <Text variant={large ? 'screenTitle' : 'heading'} numberOfLines={1}>
             {title}
           </Text>
         ) : null}

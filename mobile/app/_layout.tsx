@@ -244,6 +244,7 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
     BarlowSemiCondensed_600SemiBold,
     BarlowSemiCondensed_700Bold,
+    BebasNeue_400Regular: require('../assets/fonts/BebasNeue-Regular.ttf'),
   });
 
   useEffect(() => {

@@ -15,6 +15,7 @@ export type TextVariant =
   | 'hero'          // splash / onboarding headline
   | 'display'       // big score numbers
   | 'title'         // screen title
+  | 'screenTitle'   // the big title at the top of a tab — Bebas Neue
   | 'heading'       // section heading
   | 'subheading'
   | 'body'
@@ -78,11 +79,20 @@ export function Text({
       lineHeight: size.xxl * lineHeight.tight,
       letterSpacing: 0.2,
     },
+    /* Section headings and the titles of inner screens: the title face, a
+       step smaller than a screen's large title. Saira runs narrow, so it
+       sits two points above the Inter it replaced. */
+    screenTitle: {
+      fontFamily: font.screenTitle,
+      fontSize: 40,
+      lineHeight: 44,
+      letterSpacing: 0.6,
+    },
     heading: {
-      fontFamily: font.bold,
-      fontSize: size.lg,
-      lineHeight: size.lg * lineHeight.snug,
-      letterSpacing: -0.1,
+      fontFamily: font.display,
+      fontSize: 20,
+      lineHeight: 20 * lineHeight.snug,
+      letterSpacing: 0.2,
     },
     subheading: {
       fontFamily: font.semibold,
@@ -139,11 +149,13 @@ export function Text({
       fontFamily: font.mono,
       fontSize: size.md,
       lineHeight: size.md * lineHeight.normal,
+      fontVariant: ['tabular-nums'],
     },
     numberStrong: {
       fontFamily: font.monoBold,
       fontSize: size.md,
       lineHeight: size.md * lineHeight.normal,
+      fontVariant: ['tabular-nums'],
     },
   };
 

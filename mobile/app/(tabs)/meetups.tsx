@@ -173,7 +173,7 @@ export default function MeetupsScreen() {
         style={StyleSheet.absoluteFill}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text variant="title" color="#FFFFFF" accessibilityRole="header" numberOfLines={1}>
+        <Text variant="screenTitle" color="#FFFFFF" accessibilityRole="header" numberOfLines={1}>
           {t('meetups.title')}
         </Text>
         {toggle}

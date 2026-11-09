@@ -500,17 +500,20 @@ export const FontFamily = {
    *  Both weights are already in the `useFonts` call, so this costs nothing. */
   display: 'SairaCondensed_600SemiBold',
   displayBlack: 'SairaCondensed_700Bold',
-  /** Tabular numerals — every score, count, time and countdown.
-   *  Monospace digits share one advance width, so a number that updates in
-   *  place stops jittering sideways, and a column of scores lines up without
-   *  manual padding. REQUIRES registration in app/_layout.tsx — see the
-   *  implementation plan. Unused until then; nothing breaks. */
-  mono: 'JetBrainsMono_500Medium',
-  monoBold: 'JetBrainsMono_700Bold',
-  /** Names — every person, coach and club name. Barlow Semi Condensed.
-   *  REQUIRES registration in app/_layout.tsx (Step 2). */
-  name: 'BarlowSemiCondensed_600SemiBold',
-  nameBold: 'BarlowSemiCondensed_700Bold',
+  /** The big title at the top of a tab: Discover, Trials, Play. Bebas Neue,
+   *  capitals only. Bundled in assets/fonts (OFL), loaded in app/_layout.tsx.
+   *  Everything else that is a title stays Saira. */
+  screenTitle: 'BebasNeue_400Regular',
+  /** Small numbers — counts, points, times. Inter, like the rest of the text;
+   *  the `number` variants add tabular digits so a count that updates in place
+   *  does not jitter sideways. Big scores stay in `display`. (Was JetBrains
+   *  Mono: the app keeps to two faces, Saira for titles and Inter for text.) */
+  mono: 'Inter_600SemiBold',
+  monoBold: 'Inter_700Bold',
+  /** Names — every person, coach and club name. Inter, so a name reads like
+   *  the text around it. (Was Barlow Semi Condensed.) */
+  name: 'Inter_600SemiBold',
+  nameBold: 'Inter_700Bold',
 } as const;
 
 export const FontSize = {
