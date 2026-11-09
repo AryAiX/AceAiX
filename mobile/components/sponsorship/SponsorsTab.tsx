@@ -35,6 +35,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { CallCard } from './CallCard';
 import { ApplySheet } from './Sheets';
 import { groupedRowStyle } from '@/components/discover/groupedRow';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 /**
  * Discover → Sponsors, for everyone who is not a sponsor.
@@ -44,6 +45,7 @@ import { groupedRowStyle } from '@/components/discover/groupedRow';
  * themselves. `query` comes from the search bar above the tabs.
  */
 export function SponsorsTab({ query }: { query: string }) {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -102,7 +104,7 @@ export function SponsorsTab({ query }: { query: string }) {
   return (
     <ScrollView
       ref={scrollRef}
-      contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.xl }}
+      contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPad, gap: spacing.xl }}
       showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.primary} colors={[colors.primary]} />

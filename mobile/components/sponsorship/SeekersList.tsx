@@ -16,6 +16,7 @@ import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import { SeekerCard } from './SeekerCard';
 import { OfferSheet } from './Sheets';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 const DEBOUNCE_MS = 300;
 
@@ -26,6 +27,7 @@ const DEBOUNCE_MS = 300;
  * worth verifying for — but sees no amounts and cannot make an offer.
  */
 export function SeekersList() {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -104,7 +106,7 @@ export function SeekersList() {
         ref={listRef}
         data={seekers.loading && !seekers.data ? [] : rows}
         keyExtractor={(row) => row.request_id}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.md }}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPad, gap: spacing.md }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={header}

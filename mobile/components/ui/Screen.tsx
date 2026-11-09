@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { useTheme } from '@/theme/ThemeProvider';
+import { DOCK_END_SPACE, useDockInset } from '@/components/navigation/dockInset';
 
 interface Props {
   children: React.ReactNode;
@@ -55,6 +56,7 @@ export function Screen({
   const theme = useTheme();
   const { colors, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const dockInset = useDockInset();
   const keyboardOpen = useKeyboardVisible(!!dropFooterInsetWithKeyboard && Platform.OS === 'ios');
 
   const bg = background === 'surface' ? colors.surface : colors.bg;
@@ -64,7 +66,8 @@ export function Screen({
       style={{ flex: 1 }}
       contentContainerStyle={[
         padded ? { paddingHorizontal: spacing.lg } : null,
-        { paddingBottom: spacing.giant },
+        /* On a tab screen the last thing must scroll clear of the dock. */
+        { paddingBottom: dockInset ? dockInset + DOCK_END_SPACE : spacing.giant },
         contentStyle,
       ]}
       keyboardShouldPersistTaps="handled"

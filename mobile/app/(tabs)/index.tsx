@@ -37,6 +37,7 @@ import { Wordmark } from '@/components/common/Wordmark';
 import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { FeedPost } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 /**
  * Home.
@@ -55,6 +56,7 @@ const RUNDOWN_READ = 30;
 type Scope = 'for_you' | 'following';
 
 export default function HomeScreen() {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
@@ -382,7 +384,7 @@ export default function HomeScreen() {
         extraData={listExtra}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.giant,
+          paddingBottom: endPad,
           gap: spacing.md,
           flexGrow: 1,
         }}

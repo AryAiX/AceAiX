@@ -6,11 +6,9 @@ import {
   Pressable,
   StyleSheet,
   View,
-  useWindowDimensions,
   type LayoutChangeEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +18,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { useDockMetrics } from './dockInset';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -59,23 +58,6 @@ interface Props extends TabBarProps {
   hidden: ReadonlySet<string>;
 }
 
-/**
- * Sizes that hold on every phone: the dock and the + scale a little with the
- * screen width, within limits, and the dock stops growing on a tablet.
- */
-function useDockMetrics() {
-  const { width } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const side = Math.round(Math.min(20, Math.max(12, width * 0.035)));
-  const height = width < 360 ? 60 : 66;
-  const plus = height - 4;
-  const gap = 8;
-  /* On a phone with a home bar the dock sits a little into the safe area,
-     so it does not float too high; on one without, it keeps a margin. */
-  const bottom = insets.bottom > 0 ? Math.max(insets.bottom - 10, 12) : 12;
-  const maxRow = 560;
-  return { side, height, plus, gap, bottom, maxRow };
-}
 
 /**
  * The floating dock: the tabs spread evenly on frosted glass, and a glass lens
@@ -188,7 +170,7 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
       style={{
         /* The bar takes no room: the page runs clear to the bottom of the
            screen, under the dock and below it. */
-        marginTop: -(6 + m.height + m.bottom),
+        marginTop: -m.overlap,
         paddingTop: 6,
         paddingBottom: m.bottom,
         paddingHorizontal: m.side,

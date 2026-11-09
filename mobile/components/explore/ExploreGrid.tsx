@@ -30,6 +30,7 @@ import { compactNumber, displayName } from '@/lib/format';
 import { knownViewCount, publishViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { Routes } from '@/lib/routes';
 import type { FeedPost } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 /**
  * Explore — every public clip in one mosaic.
@@ -80,6 +81,7 @@ interface Props {
 }
 
 export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 'edge', between }: Props) {
+  const endPad = useEndPadding();
   const hub = layout === 'hub' && source === 'explore';
   const gap = hub ? HUB_GAP : GAP;
   const theme = useTheme();
@@ -450,7 +452,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 
         ListHeaderComponent={top}
         ListEmptyComponent={width === 0 ? undefined : empty}
         ItemSeparatorComponent={hub ? HubRowGap : RowGap}
-        contentContainerStyle={{ paddingBottom: spacing.giant }}
+        contentContainerStyle={{ paddingBottom: endPad }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

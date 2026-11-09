@@ -26,6 +26,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { findMeetups, myMeetups, type MeetupCard } from '@/lib/api.meetups';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 /**
  * Play — find people to play with, here or somewhere you are going.
@@ -53,6 +54,7 @@ function windowRange(w: Window): { from: string | null; to: string | null } {
 }
 
 export default function MeetupsScreen() {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const insets = useSafeAreaInsets();
@@ -358,7 +360,7 @@ export default function MeetupsScreen() {
           data={mine.data ?? []}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={filters}
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant }}
+          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPad }}
           refreshControl={
             <RefreshControl refreshing={mine.loading} onRefresh={mine.reload} tintColor={colors.primary} />
           }
@@ -389,7 +391,7 @@ export default function MeetupsScreen() {
         data={found.data ?? []}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={filters}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant }}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPad }}
         refreshControl={
           <RefreshControl refreshing={found.loading} onRefresh={found.reload} tintColor={colors.primary} />
         }

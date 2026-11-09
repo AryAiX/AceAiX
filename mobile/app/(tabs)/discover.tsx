@@ -48,6 +48,7 @@ import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { DiscoveredAthlete, DiscoveryFilters } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 const PAGE_SIZE = 20;
 const QUERY_DEBOUNCE_MS = 300;
@@ -107,6 +108,7 @@ function FilterButton({ active, onPress }: { active: boolean; onPress: () => voi
 
 // ── Recruiter face ────────────────────────────────────────────────────────────
 function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -422,7 +424,7 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.giant,
+          paddingBottom: endPad,
           gap: spacing.md,
         }}
         keyboardShouldPersistTaps="handled"

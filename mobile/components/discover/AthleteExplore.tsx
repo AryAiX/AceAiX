@@ -47,6 +47,7 @@ import { LeaderboardPodium } from './LeaderboardPodium';
 import { LeaderboardRow } from './LeaderboardRow';
 import { groupedRowStyle } from './groupedRow';
 import { tierLabel } from './MatchBadge';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'sponsors' | 'leaderboard';
 type Tab = AthleteDiscoverTab;
@@ -171,6 +172,7 @@ export function AthleteExplore({
   tabRequestKey,
   only,
 }: Props) {
+  const endPad = useEndPadding();
   const router = useRouter();
   const theme = useTheme();
   const t = useT();
@@ -347,7 +349,7 @@ export function AthleteExplore({
 
   const listStyle = {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.giant,
+    paddingBottom: endPad,
   };
   /* Each list is drawn as one white card, a row at a time. */
   const rowStyle = (index: number, count: number, background?: string) =>

@@ -63,6 +63,7 @@ import { Routes } from '@/lib/routes';
 import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 type AthleteTab = 'open' | 'saved' | 'applied';
 type RecruiterTab = 'postings' | 'applicants';
@@ -128,6 +129,7 @@ function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: Ath
 }
 
 function AthleteOpportunities() {
+  const endPad = useEndPadding();
   const t = useT();
   const { profile: me } = useAuth();
   const theme = useTheme();
@@ -393,7 +395,7 @@ function AthleteOpportunities() {
   const listStyle = {
     paddingHorizontal: spacing.lg,
     gap: spacing.md,
-    paddingBottom: spacing.giant,
+    paddingBottom: endPad,
   };
 
   // ── Open ──
@@ -652,6 +654,7 @@ function PostingRow({ posting }: { posting: PostedOpportunity }) {
 }
 
 function RecruiterOpportunities() {
+  const endPad = useEndPadding();
   const t = useT();
   const theme = useTheme();
   const { colors, spacing } = theme;
@@ -701,7 +704,7 @@ function RecruiterOpportunities() {
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
           gap: spacing.md,
-          paddingBottom: spacing.giant,
+          paddingBottom: endPad,
         }}
         ListHeaderComponent={
           <View style={{ gap: spacing.lg, paddingBottom: spacing.md }}>
@@ -743,7 +746,7 @@ function RecruiterOpportunities() {
       contentContainerStyle={{
         paddingHorizontal: spacing.lg,
         gap: spacing.sm,
-        paddingBottom: spacing.giant,
+        paddingBottom: endPad,
       }}
       ListHeaderComponent={
         <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>

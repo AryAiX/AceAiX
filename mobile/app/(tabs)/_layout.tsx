@@ -7,6 +7,7 @@ import { Compass, Handshake, HeartHandshake, Home, Swords, Target, User, Users }
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { DockTabBar, type TabBarProps } from '@/components/navigation/DockTabBar';
+import { DockInsetContext, useDockMetrics } from '@/components/navigation/dockInset';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
@@ -111,172 +112,176 @@ export default function TabsLayout() {
     }
   }, []);
 
+  const dock = useDockMetrics();
   const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
 
   return (
-    <Tabs
-      /* Each prop is passed by name: some router versions define them as
-         getters, which a {...props} spread silently drops. */
-      tabBar={(props) => {
-        const p = props as unknown as TabBarProps;
-        return (
-          <DockTabBar
-            state={p.state}
-            descriptors={p.descriptors}
-            navigation={p.navigation}
-            hidden={hidden}
-          />
-        );
-      }}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('common.tabHome'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Home} focused={focused} label={t('common.tabHome')} bump={bumpFor('index')} />
-          ),
-          tabBarAccessibilityLabel: t('common.tabHome'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('index', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="discover"
-        options={{
-          title: t('common.tabDiscover'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={Compass} focused={focused} label={t('common.tabDiscover')} bump={bumpFor('discover')} />
-          ),
-          tabBarAccessibilityLabel: t('common.tabDiscover'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('discover', navigation.isFocused()),
-        })}
-      />
-      {/* Still a route, so `/compose` and deep links resolve, but no longer a
-          button in the bar — `href: null` takes it out without removing it. */}
-      <Tabs.Screen
-        name="create"
-        options={{ title: t('common.tabCreate'), href: null }}
-      />
-      <Tabs.Screen
-        name="meetups"
-        options={{
-          title: t('common.tabMeetups'),
-          href: canMeet && profile?.role !== 'club' ? undefined : null,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              Icon={Users}
-              focused={focused}
-              label={t('common.tabMeetups')}
-              bump={bumpFor('meetups')}
+    /* The dock floats over the page, so tab screens pad their end by this. */
+    <DockInsetContext.Provider value={dock.overlap}>
+      <Tabs
+        /* Each prop is passed by name: some router versions define them as
+           getters, which a {...props} spread silently drops. */
+        tabBar={(props) => {
+          const p = props as unknown as TabBarProps;
+          return (
+            <DockTabBar
+              state={p.state}
+              descriptors={p.descriptors}
+              navigation={p.navigation}
+              hidden={hidden}
             />
-          ),
-          tabBarAccessibilityLabel: t('common.tabMeetups'),
+          );
         }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('meetups', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="club-matches"
-        options={{
-          title: t('common.matches'),
-          /* Club accounts only. Everyone else keeps Play in this slot. */
-          href: profile?.role === 'club' ? undefined : null,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              Icon={Swords}
-              focused={focused}
-              label={t('common.matches')}
-              bump={bumpFor('club-matches')}
-            />
-          ),
-          tabBarAccessibilityLabel: t('common.matches'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('club-matches', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="opportunities"
-        options={{
-          title: t('common.tabTrials'),
-          /*
-           * Sponsors cannot apply or enter, and a guardian's bar shows
-           * Children in this slot instead. The route stays for deep links.
-           */
-          href: isSponsor || isGuardian ? null : undefined,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              Icon={Target}
-              focused={focused}
-              label={t('common.tabTrials')}
-              bump={bumpFor('opportunities')}
-            />
-          ),
-          tabBarAccessibilityLabel: t('common.tabTrials'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('opportunities', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="children"
-        options={{
-          title: t('common.tabChildren'),
-          /* Hidden for every other role. The route stays for deep links. */
-          href: isGuardian ? undefined : null,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              Icon={HeartHandshake}
-              focused={focused}
-              label={t('common.tabChildren')}
-              bump={bumpFor('children')}
-            />
-          ),
-          tabBarAccessibilityLabel: t('common.tabChildrenA11y'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('children', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="sponsorship"
-        options={{
-          title: t('common.tabSponsorship'),
-          href: isSponsor ? undefined : null,
-          tabBarIcon: ({ focused }) => (
-            <TabIcon
-              Icon={Handshake}
-              focused={focused}
-              label={t('common.tabSponsorship')}
-              bump={bumpFor('sponsorship')}
-            />
-          ),
-          tabBarAccessibilityLabel: t('sponsorship.portal'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('sponsorship', navigation.isFocused()),
-        })}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: t('common.tabYou'),
-          tabBarIcon: ({ focused }) => (
-            <TabIcon Icon={User} focused={focused} label={t('common.tabYou')} bump={bumpFor('profile')} />
-          ),
-          tabBarAccessibilityLabel: t('common.tabYou'),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: () => onTabPress('profile', navigation.isFocused()),
-        })}
-      />
-    </Tabs>
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: t('common.tabHome'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={Home} focused={focused} label={t('common.tabHome')} bump={bumpFor('index')} />
+            ),
+            tabBarAccessibilityLabel: t('common.tabHome'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('index', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="discover"
+          options={{
+            title: t('common.tabDiscover'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={Compass} focused={focused} label={t('common.tabDiscover')} bump={bumpFor('discover')} />
+            ),
+            tabBarAccessibilityLabel: t('common.tabDiscover'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('discover', navigation.isFocused()),
+          })}
+        />
+        {/* Still a route, so `/compose` and deep links resolve, but no longer a
+            button in the bar — `href: null` takes it out without removing it. */}
+        <Tabs.Screen
+          name="create"
+          options={{ title: t('common.tabCreate'), href: null }}
+        />
+        <Tabs.Screen
+          name="meetups"
+          options={{
+            title: t('common.tabMeetups'),
+            href: canMeet && profile?.role !== 'club' ? undefined : null,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                Icon={Users}
+                focused={focused}
+                label={t('common.tabMeetups')}
+                bump={bumpFor('meetups')}
+              />
+            ),
+            tabBarAccessibilityLabel: t('common.tabMeetups'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('meetups', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="club-matches"
+          options={{
+            title: t('common.matches'),
+            /* Club accounts only. Everyone else keeps Play in this slot. */
+            href: profile?.role === 'club' ? undefined : null,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                Icon={Swords}
+                focused={focused}
+                label={t('common.matches')}
+                bump={bumpFor('club-matches')}
+              />
+            ),
+            tabBarAccessibilityLabel: t('common.matches'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('club-matches', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="opportunities"
+          options={{
+            title: t('common.tabTrials'),
+            /*
+             * Sponsors cannot apply or enter, and a guardian's bar shows
+             * Children in this slot instead. The route stays for deep links.
+             */
+            href: isSponsor || isGuardian ? null : undefined,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                Icon={Target}
+                focused={focused}
+                label={t('common.tabTrials')}
+                bump={bumpFor('opportunities')}
+              />
+            ),
+            tabBarAccessibilityLabel: t('common.tabTrials'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('opportunities', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="children"
+          options={{
+            title: t('common.tabChildren'),
+            /* Hidden for every other role. The route stays for deep links. */
+            href: isGuardian ? undefined : null,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                Icon={HeartHandshake}
+                focused={focused}
+                label={t('common.tabChildren')}
+                bump={bumpFor('children')}
+              />
+            ),
+            tabBarAccessibilityLabel: t('common.tabChildrenA11y'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('children', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="sponsorship"
+          options={{
+            title: t('common.tabSponsorship'),
+            href: isSponsor ? undefined : null,
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                Icon={Handshake}
+                focused={focused}
+                label={t('common.tabSponsorship')}
+                bump={bumpFor('sponsorship')}
+              />
+            ),
+            tabBarAccessibilityLabel: t('sponsorship.portal'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('sponsorship', navigation.isFocused()),
+          })}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: t('common.tabYou'),
+            tabBarIcon: ({ focused }) => (
+              <TabIcon Icon={User} focused={focused} label={t('common.tabYou')} bump={bumpFor('profile')} />
+            ),
+            tabBarAccessibilityLabel: t('common.tabYou'),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: () => onTabPress('profile', navigation.isFocused()),
+          })}
+        />
+      </Tabs>
+    </DockInsetContext.Provider>
   );
 }
 
