@@ -27,6 +27,13 @@ export const discover = {
   hubPlayers: '球员',
   filterAll: '全部',
   filterAcademies: '学院',
+  rows: {
+    players: '值得关注的球员',
+    coaches: '正在招收学员的教练',
+    board: '排行榜前列',
+    clubs: '值得关注的俱乐部',
+    sponsors: '寻找运动员的赞助商',
+  },
   tabCoaches: '教练',
   tabClubs: '俱乐部',
   tabLeaderboard: '排行榜',

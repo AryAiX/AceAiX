@@ -28,6 +28,13 @@ export const discover = {
   hubPlayers: 'Players',
   filterAll: 'All',
   filterAcademies: 'Academies',
+  rows: {
+    players: 'Players to know',
+    coaches: 'Coaches taking students',
+    board: 'Top of the board',
+    clubs: 'Clubs to follow',
+    sponsors: 'Sponsors looking for athletes',
+  },
   tabCoaches: 'Coaches',
   tabClubs: 'Clubs',
   tabLeaderboard: 'Leaderboard',

@@ -30,6 +30,13 @@ export const discover = {
   hubPlayers: 'Jugadores',
   filterAll: 'Todos',
   filterAcademies: 'Academias',
+  rows: {
+    players: 'Jugadores a conocer',
+    coaches: 'Entrenadores con plazas',
+    board: 'Lo más alto del ranking',
+    clubs: 'Clubes para seguir',
+    sponsors: 'Patrocinadores buscan deportistas',
+  },
   tabCoaches: 'Entrenadores',
   tabClubs: 'Clubes',
   tabLeaderboard: 'Clasificación',

@@ -28,6 +28,13 @@ export const discover = {
   hubPlayers: 'اللاعبون',
   filterAll: 'الكل',
   filterAcademies: 'الأكاديميات',
+  rows: {
+    players: 'لاعبون يستحقون المتابعة',
+    coaches: 'مدربون يقبلون طلابًا',
+    board: 'صدارة الترتيب',
+    clubs: 'أندية للمتابعة',
+    sponsors: 'رعاة يبحثون عن رياضيين',
+  },
   tabCoaches: 'المدرّبون',
   tabClubs: 'الأندية',
   tabLeaderboard: 'لوحة الصدارة',

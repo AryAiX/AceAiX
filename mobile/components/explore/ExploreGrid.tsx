@@ -75,9 +75,11 @@ interface Props {
    * sport as a chip, and rounded tiles inside the page margins.
    */
   layout?: 'edge' | 'hub';
+  /** Hub only: something to show after a given grid row (people, clubs…). */
+  between?: (rowIndex: number) => React.ReactElement | null;
 }
 
-export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 'edge' }: Props) {
+export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 'edge', between }: Props) {
   const hub = layout === 'hub' && source === 'explore';
   const gap = hub ? HUB_GAP : GAP;
   const theme = useTheme();
@@ -243,8 +245,26 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 
     setVisible(new Set(viewableItems.filter((v) => v.isViewable).map((v) => String(v.key))));
   }).current;
 
+  /* The rows between the clips only show on the full grid, not a sport filter. */
+  const after = hub && !sport ? between : undefined;
   const renderRow = useCallback(
     ({ item, index }: { item: MosaicRow<FeedPost>; index: number }) => {
+      const tile = renderTiles(item, index);
+      const extra = after?.(index);
+      return extra ? (
+        <View>
+          {tile}
+          {extra}
+        </View>
+      ) : (
+        tile
+      );
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [metrics, open, focused, reduced, visible, hub, gap, after],
+  );
+
+  function renderTiles(item: MosaicRow<FeedPost>, index: number): React.ReactElement {
       if (item.kind === 'row') {
         return (
           <View style={{ flexDirection: 'row', gap, paddingHorizontal: hub ? HUB_INSET : 0 }}>
@@ -295,9 +315,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 
           {item.side === 'left' ? [big, small] : [small, big]}
         </View>
       );
-    },
-    [metrics, open, focused, reduced, visible, hub, gap],
-  );
+  }
 
   /* The chips only earn their row when there is more than one sport to pick. */
   /* The same sport can come back twice, spelt two ways ("Football" and
@@ -639,7 +657,6 @@ function HeroClip({
   const video = reelVideo(post);
   const name = displayName(post.author_name);
   const height = Math.round(width * 0.95);
-  const sport = post.athlete_sport ? sportLabel(t, post.athlete_sport) : null;
   if (width === 0) return null;
 
   return (
@@ -694,7 +711,7 @@ function HeroClip({
         <View style={heroPill}>
           <Flame size={13} color={ON_TILE} />
           <Text variant="captionStrong" color={ON_TILE} numberOfLines={1}>
-            {sport ? t('explore.trendingIn', { sport }) : t('explore.trendingNow')}
+            {t('explore.trendingNow')}
           </Text>
         </View>
         <View style={heroPill}>

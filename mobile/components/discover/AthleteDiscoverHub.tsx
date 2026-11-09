@@ -8,6 +8,7 @@ import { Text } from '@/components/ui';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { useT } from '@/i18n';
 import { Routes } from '@/lib/routes';
+import { discoverRowAfter } from './DiscoverRows';
 import { DiscoverShortcuts, type DiscoverShortcut } from './DiscoverShortcuts';
 
 /**
@@ -60,5 +61,12 @@ export function AthleteDiscoverHub() {
     </View>
   );
 
-  return <ExploreGrid layout="hub" header={top} onPostFirst={() => router.push(Routes.compose)} />;
+  return (
+    <ExploreGrid
+      layout="hub"
+      header={top}
+      between={discoverRowAfter}
+      onPostFirst={() => router.push(Routes.compose)}
+    />
+  );
 }
