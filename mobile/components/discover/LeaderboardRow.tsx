@@ -1,6 +1,7 @@
 import React from 'react';
-import { Pressable, View, type ViewStyle } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Svg, { Circle } from 'react-native-svg';
 import { HeartHandshake } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -13,12 +14,37 @@ import { Routes } from '@/lib/routes';
 import type { LeaderboardEntry } from '@/lib/api.discover';
 import { tierLabel } from './MatchBadge';
 
-/** Podium places borrow the tier ramp; everyone else gets a calm neutral. */
-function rankColor(rank: number, fallback: string): string {
-  if (rank === 1) return TierColors.gold;
-  if (rank === 2) return TierColors.silver;
-  if (rank === 3) return TierColors.bronze;
-  return fallback;
+const RING = 50;
+const STROKE = 4.5;
+
+/** The score inside a ring that fills to it, in the tier's colour. */
+export function ScoreDial({ score, color, label, track }: { score: number; color: string; label: string; track: string }) {
+  const r = (RING - STROKE) / 2;
+  const c = 2 * Math.PI * r;
+  const filled = Math.max(0, Math.min(100, score)) / 100;
+  return (
+    <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={RING} height={RING} style={{ position: 'absolute', transform: [{ rotate: '-90deg' }] }}>
+        <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={track} strokeWidth={STROKE} fill="none" />
+        <Circle
+          cx={RING / 2}
+          cy={RING / 2}
+          r={r}
+          stroke={color}
+          strokeWidth={STROKE}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${c * filled} ${c}`}
+        />
+      </Svg>
+      <Text variant="stat" color={color} style={{ fontSize: 17, lineHeight: 18 }}>
+        {Math.round(score)}
+      </Text>
+      <Text variant="overline" color={color} style={{ fontSize: 6.5, lineHeight: 8, letterSpacing: 0.5 }}>
+        {label}
+      </Text>
+    </View>
+  );
 }
 
 interface Props {
@@ -27,14 +53,18 @@ interface Props {
   isYou: boolean;
   /** Highlights a guardian's approved child. Yields to isYou. */
   isChild?: boolean;
-  /** Draw as one row of a white list (see groupedRowStyle) instead of a box. */
-  grouped?: ViewStyle;
 }
 
-export function LeaderboardRow({ entry, isYou, isChild = false, grouped }: Props) {
+/**
+ * One place on the board, as its own card: the place on the left in the
+ * title face, the person, and their score in a ring on the right. The place
+ * and the score sit at opposite ends, so they are never read as one number.
+ */
+export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, radii, spacing } = theme;
+  const dark = theme.scheme === 'dark';
   const router = useRouter();
 
   const name = displayName(entry.full_name);
@@ -46,7 +76,6 @@ export function LeaderboardRow({ entry, isYou, isChild = false, grouped }: Props
     positionLabel(t, entry.position),
     entry.country,
   );
-  const accent = rankColor(entry.rank, colors.textMuted);
 
   return (
     <Pressable
@@ -68,35 +97,34 @@ export function LeaderboardRow({ entry, isYou, isChild = false, grouped }: Props
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.md,
-          minHeight: 64,
+          minHeight: 72,
           paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          opacity: pressed ? 0.75 : 1,
+          paddingVertical: spacing.sm + 2,
+          borderRadius: radii.xl,
+          borderWidth: 1,
+          borderColor: isYou ? colors.primary : isChild ? colors.info : colors.border,
+          backgroundColor: isYou ? colors.primarySoft : isChild ? colors.infoSoft : colors.surface,
+          shadowColor: dark ? '#000000' : '#28206E',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: dark ? 0.3 : 0.05,
+          shadowRadius: 10,
+          elevation: 2,
+          opacity: pressed ? 0.8 : 1,
         },
-        grouped
-          ? [grouped, isYou || isChild ? { backgroundColor: isYou ? colors.primarySoft : colors.infoSoft } : null]
-          : {
-              borderRadius: radii.md,
-              borderWidth: isYou || isChild ? 1.5 : 1,
-              borderColor: isYou ? colors.primaryBorder : isChild ? colors.info : colors.border,
-              backgroundColor: isYou ? colors.primarySoft : isChild ? colors.infoSoft : colors.surface,
-            },
+        isYou || isChild ? null : theme.raised('card'),
       ]}
     >
-      <View style={{ minWidth: 32, alignItems: 'center' }}>
-        <Text variant="stat" color={accent} style={{ fontSize: 18 }}>
-          {entry.rank}
-        </Text>
-      </View>
+      <Text variant="stat" tone="secondary" style={{ fontSize: 20, minWidth: 34 }}>
+        {`#${entry.rank}`}
+      </Text>
 
-      <Avatar uri={entry.avatar_url} name={name} size="sm" score={entry.overall} />
+      <Avatar uri={entry.avatar_url} name={name} size="md" />
 
       <View style={{ flex: 1, gap: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
           <Text variant="name" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {name}
+            {isYou ? t('discover.board.you') : name}
           </Text>
-          {isYou ? <Badge label={t('discover.board.you')} tone="primary" /> : null}
           {isChild && !isYou ? (
             <Badge
               label={t('discover.board.yourChild')}
@@ -112,14 +140,7 @@ export function LeaderboardRow({ entry, isYou, isChild = false, grouped }: Props
         ) : null}
       </View>
 
-      <View style={{ alignItems: 'flex-end' }}>
-        <Text variant="stat" color={tierColor} style={{ fontSize: 20 }}>
-          {Math.round(entry.overall)}
-        </Text>
-        <Text variant="overline" color={tierColor} style={{ fontSize: 9 }}>
-          {tierName}
-        </Text>
-      </View>
+      <ScoreDial score={entry.overall} color={tierColor} label={tierName} track={colors.surfaceAlt} />
     </Pressable>
   );
 }

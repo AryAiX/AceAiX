@@ -189,6 +189,10 @@ export const discover = {
     youA11y: '{{name}}, das bist du',
     childA11y: '{{name}}, dein Kind',
     scoreA11y: 'Talent Score {{score}}, Stufe {{tier}}',
+    place1: '1. Platz',
+    place2: '2. Platz',
+    place3: '3. Platz',
+    pts: 'Pkt.',
   },
 
   // ── Vereins- und Trainerzeilen ─────────────────────────────────────────────

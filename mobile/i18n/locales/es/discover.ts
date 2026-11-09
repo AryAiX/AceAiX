@@ -198,6 +198,10 @@ export const discover = {
     youA11y: '{{name}}, eres tú',
     childA11y: '{{name}}, tu hijo/a',
     scoreA11y: 'puntuación de talento {{score}}, nivel {{tier}}',
+    place1: '1.º',
+    place2: '2.º',
+    place3: '3.º',
+    pts: 'pts',
   },
 
   // ── Filas de club y de entrenador ──────────────────────────────────────────

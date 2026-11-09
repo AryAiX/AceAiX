@@ -293,7 +293,7 @@ function CoachesTakingStudents() {
 
 // ── Top of the board ─────────────────────────────────────────────────────────
 function TopOfTheBoard() {
-  const { colors, radii, spacing } = useTheme();
+  const { spacing } = useTheme();
   const t = useT();
   const router = useRouter();
   const { profile } = useAuth();
@@ -313,17 +313,7 @@ function TopOfTheBoard() {
       />
       <View style={{ paddingHorizontal: spacing.lg }}>
         <LeaderboardPodium top={rows.slice(0, 3)} viewerId={viewerId} />
-        {mine ? (
-          <LeaderboardRow
-            entry={mine}
-            isYou
-            grouped={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              borderRadius: radii.xl,
-            }}
-          />
-        ) : null}
+        {mine ? <LeaderboardRow entry={mine} isYou /> : null}
       </View>
     </Section>
   );

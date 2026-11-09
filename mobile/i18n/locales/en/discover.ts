@@ -188,6 +188,10 @@ export const discover = {
     youA11y: '{{name}}, this is you',
     childA11y: '{{name}}, your child',
     scoreA11y: 'talent score {{score}}, {{tier}} tier',
+    place1: '1st',
+    place2: '2nd',
+    place3: '3rd',
+    pts: 'pts',
   },
 
   // ── Club and coach rows ────────────────────────────────────────────────────

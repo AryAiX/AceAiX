@@ -184,6 +184,10 @@ export const discover = {
     youA11y: '{{name}}，这是你',
     childA11y: '{{name}}，您的孩子',
     scoreA11y: '天赋分{{score}}，{{tier}}段位',
+    place1: '第1名',
+    place2: '第2名',
+    place3: '第3名',
+    pts: '分',
   },
 
   // ── 俱乐部和教练列表行 ─────────────────────────────────────────────────────

@@ -193,6 +193,10 @@ export const discover = {
     youA11y: '{{name}}, c’est toi',
     childA11y: '{{name}}, votre enfant',
     scoreA11y: 'score talent {{score}}, palier {{tier}}',
+    place1: '1er',
+    place2: '2e',
+    place3: '3e',
+    pts: 'pts',
   },
 
   // ── Lignes de clubs et de coachs ───────────────────────────────────────────

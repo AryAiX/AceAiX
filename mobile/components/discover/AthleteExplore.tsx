@@ -624,9 +624,9 @@ export function AthleteExplore({
             </View>
           ) : undefined
         }
-        renderItem={({ item, index }) => (
+        ItemSeparatorComponent={RowGap}
+        renderItem={({ item }) => (
           <LeaderboardRow
-            grouped={rowStyle(index, rows.length)}
             entry={item}
             isYou={item.user_id === viewerId}
             isChild={childIds.has(item.user_id)}
