@@ -29,6 +29,7 @@ export const discover = {
   filterAcademies: '学院',
   rows: {
     players: '值得关注的球员',
+    searchPlayer: '搜索球员',
     coaches: '正在招收学员的教练',
     board: '排行榜前列',
     clubs: '值得关注的俱乐部',

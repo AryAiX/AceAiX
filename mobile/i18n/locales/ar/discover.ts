@@ -30,6 +30,7 @@ export const discover = {
   filterAcademies: 'الأكاديميات',
   rows: {
     players: 'لاعبون يستحقون المتابعة',
+    searchPlayer: 'ابحث عن لاعب',
     coaches: 'مدربون يقبلون طلابًا',
     board: 'صدارة الترتيب',
     clubs: 'أندية للمتابعة',

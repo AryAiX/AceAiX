@@ -149,7 +149,7 @@ function PlayersToKnow() {
     <Section testID="discover-row-players">
       <RowHeader
         title={t('discover.rows.players')}
-        link={t('common.seeAll')}
+        link={t('discover.rows.searchPlayer')}
         onLink={() => router.push(Routes.search)}
       />
       <Shelf>

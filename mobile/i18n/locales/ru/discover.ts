@@ -31,6 +31,7 @@ export const discover = {
   filterAcademies: 'Академии',
   rows: {
     players: 'Игроки, которых стоит знать',
+    searchPlayer: 'Найти игрока',
     coaches: 'Тренеры набирают учеников',
     board: 'Вершина рейтинга',
     clubs: 'Клубы, на которые стоит подписаться',

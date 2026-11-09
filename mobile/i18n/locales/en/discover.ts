@@ -30,6 +30,7 @@ export const discover = {
   filterAcademies: 'Academies',
   rows: {
     players: 'Players to know',
+    searchPlayer: 'Search for a player',
     coaches: 'Coaches taking students',
     board: 'Top of the board',
     clubs: 'Clubs to follow',

@@ -32,6 +32,7 @@ export const discover = {
   filterAcademies: 'Academias',
   rows: {
     players: 'Jugadores a conocer',
+    searchPlayer: 'Buscar un jugador',
     coaches: 'Entrenadores con plazas',
     board: 'Lo más alto del ranking',
     clubs: 'Clubes para seguir',
