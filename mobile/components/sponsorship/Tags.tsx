@@ -8,10 +8,22 @@ import { useT } from '@/i18n';
 type Group = 'need' | 'give' | 'offer';
 
 /** Read-only tags: what an athlete needs, gives back, or what a sponsor offers. */
-export function TagRow({ group, tags, label }: { group: Group; tags: readonly string[]; label?: string }) {
+export function TagRow({
+  group,
+  tags,
+  label,
+  otherText,
+}: {
+  group: Group;
+  tags: readonly string[];
+  label?: string;
+  /** Free text stored with the "other" need, shown as "Other: …". */
+  otherText?: string | null;
+}) {
   const { colors, spacing, radii } = useTheme();
   const t = useT();
   if (tags.length === 0) return null;
+  const detail = otherText?.trim();
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
       {label ? (
@@ -30,7 +42,9 @@ export function TagRow({ group, tags, label }: { group: Group; tags: readonly st
           }}
         >
           <Text variant="caption" tone="secondary">
-            {t(`sponsorship.${group}.${tag}`)}
+            {group === 'need' && tag === 'other' && detail
+              ? t('sponsorship.need.otherDetail', { detail })
+              : t(`sponsorship.${group}.${tag}`)}
           </Text>
         </View>
       ))}
@@ -45,12 +59,16 @@ export function TagPicker<T extends string>({
   value,
   onToggle,
   label,
+  required,
+  error,
 }: {
   group: Group;
   options: readonly T[];
   value: readonly T[];
   onToggle: (tag: T) => void;
   label: string;
+  required?: boolean;
+  error?: string | null;
 }) {
   const { spacing } = useTheme();
   const t = useT();
@@ -58,6 +76,11 @@ export function TagPicker<T extends string>({
     <View style={{ gap: spacing.sm }}>
       <Text variant="captionStrong" tone="secondary">
         {label}
+        {required ? (
+          <Text variant="captionStrong" tone="danger">
+            {' *'}
+          </Text>
+        ) : null}
       </Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
         {options.map((option) => (
@@ -70,6 +93,11 @@ export function TagPicker<T extends string>({
           />
         ))}
       </View>
+      {error ? (
+        <Text variant="caption" tone="danger" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

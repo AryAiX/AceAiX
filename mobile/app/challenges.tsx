@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Flame, Trophy } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -24,6 +24,12 @@ import type { Challenge } from '@/types/models';
 
 type Tab = 'open' | 'entered' | 'mine';
 
+function tabFromParam(raw: string | string[] | undefined): Tab | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === 'open' || value === 'entered' || value === 'mine') return value;
+  return null;
+}
+
 /**
  * Challenges a coach has set, and the ones this person is already in.
  *
@@ -42,7 +48,19 @@ export default function ChallengesScreen() {
   const isSetter =
     profile?.role === 'coach' || profile?.role === 'club' || profile?.role === 'scout';
 
-  const [tab, setTab] = useState<Tab>('open');
+  const params = useLocalSearchParams<{ tab?: string | string[] }>();
+  const requested = tabFromParam(params.tab);
+  const [tab, setTab] = useState<Tab>(requested ?? 'open');
+
+  // `/challenges?tab=mine` opens the challenges this person set.
+  useEffect(() => {
+    if (!requested) return;
+    if (requested === 'mine' && !isSetter) {
+      setTab('open');
+      return;
+    }
+    setTab(requested);
+  }, [requested, isSetter]);
 
   const { data, loading, error, refreshing, refresh, reload } = useAsync<Challenge[]>(
     () => openChallenges(null, 50, 0),

@@ -21,7 +21,7 @@ import {
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Card, SectionHeader, Text } from '@/components/ui';
+import { Badge, Card, ExpandableText, SectionHeader, Text } from '@/components/ui';
 import { countryLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { ClubLocation, ClubPage } from '@/lib/api.club';
@@ -29,6 +29,7 @@ import { SOCIAL_KEYS, type SocialKey } from '@/lib/club';
 import { clubMapOpenUrl } from '@/lib/clubSetup';
 import { clubLabel } from '@/lib/clubLabels';
 import { metaLine } from '@/lib/format';
+import { PreviewEmpty, useReportItems } from './shared';
 
 const SOCIAL_ICON: Record<SocialKey, LucideIcon> = {
   instagram: Instagram,
@@ -176,13 +177,9 @@ function LocationRow({ loc, mapUrl }: { loc: ClubLocation; mapUrl: string | null
   );
 }
 
-/** The club in its own words, then the facts, places and ways to reach it. */
-export function ClubAboutTab({ page, mapUrl = null }: { page: ClubPage; mapUrl?: string | null }) {
-  const t = useT();
-  const { spacing } = useTheme();
+/** The primary base first. Falls back to the address stored on the page itself. */
+function clubLocations(page: ClubPage): ClubLocation[] {
   const org = page.organization;
-
-  /* The primary base: the stored locations if it is there, else the page's own address. */
   const locations = [...page.locations].sort((a, b) => Number(b.is_primary) - Number(a.is_primary));
   if (!locations.some((l) => l.is_primary) && (org.address || org.city || org.latitude != null)) {
     locations.unshift({
@@ -195,6 +192,69 @@ export function ClubAboutTab({ page, mapUrl = null }: { page: ClubPage; mapUrl?:
       longitude: org.longitude,
       is_primary: true,
     });
+  }
+  return locations;
+}
+
+function SportsList({ sports }: { sports: ClubPage['sports'] }) {
+  const t = useT();
+  const { spacing } = useTheme();
+  return (
+    <View style={{ gap: spacing.md }}>
+      {sports.map((s) => (
+        <View key={s.sport} style={{ gap: spacing.xs }}>
+          <Text variant="bodyStrong">{sportLabel(t, s.sport)}</Text>
+          {s.categories.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
+              {s.categories.map((c) => (
+                <Badge key={c} label={clubLabel(t, 'category', c)} size="md" />
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** The club in its own words, then the facts, places and ways to reach it. */
+export function ClubAboutTab({
+  page,
+  mapUrl = null,
+  limit,
+  onHasItems,
+}: {
+  page: ClubPage;
+  mapUrl?: string | null;
+  /** Set on the public page: description, sports, and the main location only. */
+  limit?: number;
+  onHasItems?: (has: boolean) => void;
+}) {
+  const t = useT();
+  const { spacing } = useTheme();
+  const org = page.organization;
+  const locations = clubLocations(page);
+  const preview = limit != null;
+  const description = org.description?.trim() ?? '';
+  const hasPreview = !!description || page.sports.length > 0 || locations.length > 0;
+  useReportItems(onHasItems, preview ? hasPreview : null);
+
+  if (preview) {
+    if (!hasPreview) return <PreviewEmpty title={t('opportunities.org.noIntro')} />;
+    const primary = locations[0];
+    return (
+      <View style={{ gap: spacing.lg }}>
+        {description ? (
+          <ExpandableText text={description} lines={4} variant="body" tone="secondary" />
+        ) : null}
+        {page.sports.length > 0 ? <SportsList sports={page.sports} /> : null}
+        {primary ? (
+          <Card tone="alt">
+            <LocationRow loc={primary} mapUrl={primary.is_primary ? mapUrl : null} />
+          </Card>
+        ) : null}
+      </View>
+    );
   }
 
   const socials = SOCIAL_KEYS.map((key) => ({ key, url: socialUrl(key, org.socials?.[key] ?? '') })).filter(
@@ -238,20 +298,7 @@ export function ClubAboutTab({ page, mapUrl = null }: { page: ClubPage; mapUrl?:
       {page.sports.length > 0 ? (
         <View>
           <SectionHeader title={t('club.about.sports')} />
-          <View style={{ gap: spacing.md }}>
-            {page.sports.map((s) => (
-              <View key={s.sport} style={{ gap: spacing.xs }}>
-                <Text variant="bodyStrong">{sportLabel(t, s.sport)}</Text>
-                {s.categories.length > 0 ? (
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-                    {s.categories.map((c) => (
-                      <Badge key={c} label={clubLabel(t, 'category', c)} size="md" />
-                    ))}
-                  </View>
-                ) : null}
-              </View>
-            ))}
-          </View>
+          <SportsList sports={page.sports} />
         </View>
       ) : null}
 

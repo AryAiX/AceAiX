@@ -4,11 +4,11 @@ import { CalendarDays, MapPin } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Badge, Button, Card, ExpandableText, Text } from '@/components/ui';
-import { positionLabel, sportLabel } from '@/constants/sports';
+import { countryLabel, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { Seeker } from '@/lib/api.sponsorship';
 import { displayName, fullDate, metaLine } from '@/lib/format';
-import { amountLabel, statusTone } from '@/lib/sponsorship';
+import { amountLabel, formatLocation, statusTone } from '@/lib/sponsorship';
 import { TagRow } from './Tags';
 
 interface Props {
@@ -25,6 +25,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
   const t = useT();
   const name = displayName(seeker.full_name);
   const amount = amountLabel(seeker.amount, seeker.currency);
+  const place = formatLocation(seeker.location, t);
 
   return (
     <Card padded level={1} style={{ gap: spacing.md }} testID={`seeker-${seeker.request_id}`}>
@@ -40,7 +41,11 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
             {name}
           </Text>
           <Text variant="caption" tone="muted" numberOfLines={1}>
-            {metaLine(sportLabel(t, seeker.sport), positionLabel(t, seeker.athlete_position), seeker.country)}
+            {metaLine(
+              sportLabel(t, seeker.sport),
+              positionLabel(t, seeker.athlete_position),
+              countryLabel(t, seeker.country),
+            )}
           </Text>
         </View>
         {seeker.is_minor ? <Badge label={t('common.under18')} tone="info" /> : null}
@@ -48,7 +53,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
 
       <View style={{ gap: 4 }}>
         <Text variant="subheading">{seeker.title}</Text>
-        {seeker.event_name || seeker.event_date || seeker.location ? (
+        {seeker.event_name || seeker.event_date || place ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
             {seeker.event_name || seeker.event_date ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -58,11 +63,11 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
                 </Text>
               </View>
             ) : null}
-            {seeker.location ? (
+            {place ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <MapPin size={13} color={colors.textMuted} />
                 <Text variant="caption" tone="muted">
-                  {seeker.location}
+                  {place}
                 </Text>
               </View>
             ) : null}
@@ -73,7 +78,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
         ) : null}
       </View>
 
-      <TagRow group="need" tags={seeker.needs} label={t('sponsorship.needsLabel')} />
+      <TagRow group="need" tags={seeker.needs} otherText={seeker.needs_other} label={t('sponsorship.needsLabel')} />
       <TagRow group="give" tags={seeker.gives} label={t('sponsorship.givesLabel')} />
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>

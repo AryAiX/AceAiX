@@ -31,6 +31,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
+import { costLabel } from '@/lib/meetupCost';
 import { sportLabel } from '@/constants/sports';
 import {
   cancelMeetup,
@@ -198,6 +199,7 @@ export default function MeetupScreen() {
   const full = left <= 0;
   const cancelled = meetup.status === 'cancelled';
   const spotsColour = cancelled || full ? colors.textMuted : left <= 2 ? colors.play.flame : colors.play.mint;
+  const cost = costLabel(meetup.cost_note, t);
 
   return (
     <Screen header={header} contentStyle={{ gap: spacing.xl }} testID="meetup-screen">
@@ -260,10 +262,10 @@ export default function MeetupScreen() {
               }`}
               color={spotsColour}
             />
-            {meetup.cost_note ? (
+            {cost ? (
               <Fact
                 icon={<Wallet size={16} color={colors.textMuted} />}
-                text={t('meetups.costEach', { cost: meetup.cost_note })}
+                text={cost}
               />
             ) : null}
           </View>

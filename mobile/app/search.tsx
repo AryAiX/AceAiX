@@ -21,7 +21,7 @@ import { AthleteCard } from '@/components/discover/AthleteCard';
 import { ClubCard } from '@/components/discover/ClubCard';
 import { CoachRow } from '@/components/discover/CoachRow';
 import { NO_CRITERIA } from '@/components/discover/MatchBadge';
-import { SPORTS, sportLabel } from '@/constants/sports';
+import { SPORTS, englishSportTerm, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { discoverAthletes, searchOrganizations } from '@/lib/api';
@@ -116,23 +116,26 @@ export default function SearchScreen() {
   }, []);
 
   const active = debounced.length > 0;
+  /* The box and the recent list keep `debounced`. Sports are stored in
+     English, so a translated sport name is turned back only for the query. */
+  const queryForSearch = englishSportTerm(t, debounced);
 
   const athletes = useAsync<Page<DiscoveredAthlete>>(
     async () => ({
       term: debounced,
-      rows: await discoverAthletes({ query: debounced, sort: 'match' }, 0, 20),
+      rows: await discoverAthletes({ query: queryForSearch, sort: 'match' }, 0, 20),
     }),
-    [debounced],
+    [debounced, queryForSearch],
     { enabled: active && scope === 'athletes' },
   );
   const coaches = useAsync<Page<PersonResult>>(
-    async () => ({ term: debounced, rows: await listCoaches(debounced, 20) }),
-    [debounced],
+    async () => ({ term: debounced, rows: await listCoaches(queryForSearch, 20) }),
+    [debounced, queryForSearch],
     { enabled: active && scope === 'coaches', refetchOnFocus: true },
   );
   const clubs = useAsync<Page<Organization>>(
-    async () => ({ term: debounced, rows: await searchOrganizations(debounced, 20) }),
-    [debounced],
+    async () => ({ term: debounced, rows: await searchOrganizations(queryForSearch, 20) }),
+    [debounced, queryForSearch],
     { enabled: active && scope === 'clubs' },
   );
 
@@ -178,7 +181,11 @@ export default function SearchScreen() {
           renderItem={({ item }) => (
             // A free-text search sets no criteria, so there is no honest match
             // percentage to show — only the talent score.
-            <AthleteCard athlete={item} criteria={NO_CRITERIA} />
+            <AthleteCard
+              athlete={item}
+              criteria={NO_CRITERIA}
+              onOpen={() => remember(query)}
+            />
           )}
           ListEmptyComponent={emptyResults}
         />
@@ -194,7 +201,7 @@ export default function SearchScreen() {
           contentContainerStyle={{ ...listStyle, gap: spacing.sm }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          renderItem={({ item }) => <CoachRow person={item} />}
+          renderItem={({ item }) => <CoachRow person={item} onOpen={() => remember(query)} />}
           ListEmptyComponent={emptyResults}
         />
       );
@@ -208,7 +215,9 @@ export default function SearchScreen() {
         contentContainerStyle={{ ...listStyle, gap: spacing.sm }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        renderItem={({ item }) => <ClubCard organization={item} />}
+        renderItem={({ item }) => (
+          <ClubCard organization={item} onOpen={() => remember(query)} />
+        )}
         ListEmptyComponent={emptyResults}
       />
     );
@@ -276,10 +285,9 @@ export default function SearchScreen() {
               icon={<Text variant="caption">{sport.emoji}</Text>}
               onPress={() => {
                 setScope('athletes');
-                /* The search term goes to the database, which stores sports in
-                   English — only the chip's label is translated. */
-                setQuery(sport.label);
-                remember(sport.label);
+                const label = sportLabel(t, sport.key);
+                setQuery(label);
+                remember(label);
               }}
             />
           ))}

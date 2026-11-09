@@ -3,6 +3,8 @@ export const coaching = {
   title: '教练课程',
   calendarTitle: '教练日历',
   myBookings: '我的课程',
+  childrenSessions: '孩子的课程',
+  sessions: '课程',
   kind: {
     session: '一对一训练',
     consultation: '咨询',
