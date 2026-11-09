@@ -13,11 +13,11 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Clapperboard, Play, Sparkles } from 'lucide-react-native';
+import { Clapperboard, Flame, Play, Sparkles, Star } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Chip, EmptyState, ErrorState, Reveal, Skeleton, Tappable, Text } from '@/components/ui';
-import { sportConfig, sportLabel } from '@/constants/sports';
+import { SPORTS, sportConfig, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTabReselect } from '@/hooks/useTabReselect';
@@ -44,6 +44,9 @@ import type { FeedPost } from '@/types/models';
  */
 
 const GAP = 3;
+/** The athlete's Discover: tiles inside the page margins, a little apart. */
+const HUB_GAP = 6;
+const HUB_INSET = 16;
 /** explore_videos caps a page at 60; get_reels caps one at 30. */
 const QUIET_CAP = { explore: 60, reels: 30 } as const;
 
@@ -67,9 +70,16 @@ interface Props {
   header?: React.ReactElement | null;
   /** Offered in the empty state to someone who can post. */
   onPostFirst?: () => void;
+  /**
+   * `hub` is the athlete's Discover: the newest top clip as a big card, every
+   * sport as a chip, and rounded tiles inside the page margins.
+   */
+  layout?: 'edge' | 'hub';
 }
 
-export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) {
+export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 'edge' }: Props) {
+  const hub = layout === 'hub' && source === 'explore';
+  const gap = hub ? HUB_GAP : GAP;
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -202,8 +212,15 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
     void load('background', 0);
   });
 
-  const rows = useMemo(() => mosaicRows(items), [items]);
-  const metrics = useMemo(() => mosaicMetrics(width, GAP), [width]);
+  /* On the hub the first clip is the big card at the top, while no sport is
+     picked and there are enough clips for a grid under it. */
+  const hero = hub && !sport && items.length > 3 ? items[0] : null;
+  const gridItems = useMemo(() => (hero ? items.slice(1) : items), [items, hero]);
+  const rows = useMemo(() => mosaicRows(gridItems), [gridItems]);
+  const metrics = useMemo(
+    () => mosaicMetrics(hub ? Math.max(0, width - HUB_INSET * 2) : width, gap),
+    [width, hub, gap],
+  );
 
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     const next = Math.round(e.nativeEvent.layout.width);
@@ -230,9 +247,10 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
     ({ item, index }: { item: MosaicRow<FeedPost>; index: number }) => {
       if (item.kind === 'row') {
         return (
-          <View style={{ flexDirection: 'row', gap: GAP }}>
+          <View style={{ flexDirection: 'row', gap, paddingHorizontal: hub ? HUB_INSET : 0 }}>
             {item.items.map((post, i) => (
               <ClipTile
+                hub={hub}
                 key={post.id}
                 post={post}
                 width={metrics.cell}
@@ -246,6 +264,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
       }
       const big = (
         <ClipTile
+          hub={hub}
           key={item.big.id}
           post={item.big}
           width={metrics.bigWidth}
@@ -257,9 +276,10 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         />
       );
       const small = (
-        <View key="small" style={{ gap: GAP }}>
+        <View key="small" style={{ gap }}>
           {item.small.map((post, i) => (
             <ClipTile
+              hub={hub}
               key={post.id}
               post={post}
               width={metrics.cell}
@@ -271,10 +291,12 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         </View>
       );
       return (
-        <View style={{ flexDirection: 'row', gap: GAP }}>{item.side === 'left' ? [big, small] : [small, big]}</View>
+        <View style={{ flexDirection: 'row', gap, paddingHorizontal: hub ? HUB_INSET : 0 }}>
+          {item.side === 'left' ? [big, small] : [small, big]}
+        </View>
       );
     },
-    [metrics, open, focused, reduced, visible],
+    [metrics, open, focused, reduced, visible, hub, gap],
   );
 
   /* The chips only earn their row when there is more than one sport to pick. */
@@ -290,8 +312,42 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
       return true;
     });
   }, [sports.data, t]);
-  const chips =
-    sportRows.length > 1 || sport ? (
+  /* The hub lists every sport, the ones with nothing to watch yet faded, so
+     the row does not look like the app only knows two sports. */
+  const hubSports = useMemo(() => {
+    const counts = new Map(sportRows.map((row) => [sportLabel(t, row.sport).trim().toLowerCase(), row]));
+    return SPORTS.map((config) => {
+      const row = counts.get(sportLabel(t, config.key).trim().toLowerCase());
+      return { key: row?.sport ?? config.key, emoji: config.emoji, has: !!row };
+    });
+  }, [sportRows, t]);
+  const chips = hub ? (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}
+      testID="explore-sports"
+    >
+      <Chip
+        tone="accent"
+        label={t('sports.allSports')}
+        selected={!sport}
+        onPress={() => setSport(null)}
+      />
+      {hubSports.map((entry) => (
+        <Chip
+          tone="accent"
+          key={entry.key}
+          label={sportLabel(t, entry.key)}
+          icon={<Text variant="caption">{entry.emoji}</Text>}
+          selected={sport === entry.key}
+          onPress={() => setSport((s) => (s === entry.key ? null : entry.key))}
+          style={entry.has || sport === entry.key ? undefined : { opacity: 0.45 }}
+          testID={`explore-sport-${entry.key}`}
+        />
+      ))}
+    </ScrollView>
+  ) : sportRows.length > 1 || sport ? (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -319,7 +375,23 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
       </ScrollView>
     ) : null;
 
-  const top = (
+  const top = hub ? (
+    <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
+      {header}
+      {hero ? (
+        <HeroClip
+          post={hero}
+          width={Math.max(0, width - HUB_INSET * 2)}
+          preview={focused && !reduced}
+          onPress={open}
+        />
+      ) : null}
+      <Text variant="heading" style={{ paddingHorizontal: spacing.lg, marginTop: spacing.xs }}>
+        {t('explore.forYou')}
+      </Text>
+      {chips}
+    </View>
+  ) : (
     <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
       {header}
       {chips}
@@ -359,7 +431,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
         extraData={visible}
         ListHeaderComponent={top}
         ListEmptyComponent={width === 0 ? undefined : empty}
-        ItemSeparatorComponent={RowGap}
+        ItemSeparatorComponent={hub ? HubRowGap : RowGap}
         contentContainerStyle={{ paddingBottom: spacing.giant }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -397,6 +469,10 @@ function RowGap() {
   return <View style={{ height: GAP }} />;
 }
 
+function HubRowGap() {
+  return <View style={{ height: HUB_GAP }} />;
+}
+
 // ── One tile ─────────────────────────────────────────────────────────────────
 interface TileProps {
   post: FeedPost;
@@ -407,10 +483,12 @@ interface TileProps {
   big?: boolean;
   /** Play a muted preview over the poster. Large tiles only. */
   preview?: boolean;
+  /** The Discover hub: rounder corners, and a small star instead of the labels. */
+  hub?: boolean;
   onPress: (post: FeedPost) => void;
 }
 
-function ClipTileBase({ post, width, height, order, big, preview, onPress }: TileProps) {
+function ClipTileBase({ post, width, height, order, big, preview, hub, onPress }: TileProps) {
   const theme = useTheme();
   const t = useT();
   const video = reelVideo(post);
@@ -429,7 +507,7 @@ function ClipTileBase({ post, width, height, order, big, preview, onPress }: Til
         style={{
           width,
           height,
-          borderRadius: big ? theme.radii.lg : theme.radii.md,
+          borderRadius: hub ? theme.radii.lg : big ? theme.radii.lg : theme.radii.md,
           overflow: 'hidden',
           backgroundColor: theme.colors.surfaceSunken,
         }}
@@ -461,37 +539,59 @@ function ClipTileBase({ post, width, height, order, big, preview, onPress }: Til
           style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: big ? height * 0.4 : height * 0.5 }}
         />
 
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            top: 6,
-            right: 6,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          {highlight ? (
-            <View style={{ paddingHorizontal: 7, height: 20, borderRadius: 10, backgroundColor: SCRIM, justifyContent: 'center' }}>
-              <Text variant="captionStrong" color={ON_TILE} numberOfLines={1} style={SMALL}>
-                {t('explore.highlight')}
-              </Text>
+        {hub ? (
+          highlight ? (
+            <View
+              pointerEvents="none"
+              accessibilityLabel={t('explore.highlight')}
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                backgroundColor: SCRIM,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Star size={11} color="#FFD43B" fill="#FFD43B" />
             </View>
-          ) : null}
+          ) : null
+        ) : (
           <View
+            pointerEvents="none"
             style={{
-              width: big ? 28 : 22,
-              height: big ? 28 : 22,
-              borderRadius: 14,
-              backgroundColor: SCRIM,
+              position: 'absolute',
+              top: 6,
+              right: 6,
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
+              gap: 4,
             }}
           >
-            <Play size={big ? 13 : 10} color={ON_TILE} fill={ON_TILE} />
+            {highlight ? (
+              <View style={{ paddingHorizontal: 7, height: 20, borderRadius: 10, backgroundColor: SCRIM, justifyContent: 'center' }}>
+                <Text variant="captionStrong" color={ON_TILE} numberOfLines={1} style={SMALL}>
+                  {t('explore.highlight')}
+                </Text>
+              </View>
+            ) : null}
+            <View
+              style={{
+                width: big ? 28 : 22,
+                height: big ? 28 : 22,
+                borderRadius: 14,
+                backgroundColor: SCRIM,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Play size={big ? 13 : 10} color={ON_TILE} fill={ON_TILE} />
+            </View>
           </View>
-        </View>
+        )}
 
         <View pointerEvents="none" style={{ position: 'absolute', left: 8, right: 8, bottom: 7, gap: 4 }}>
           {big ? (
@@ -520,6 +620,117 @@ function ClipTileBase({ post, width, height, order, big, preview, onPress }: Til
 }
 
 const ClipTile = memo(ClipTileBase);
+
+// ── The big card at the top of the hub ─────────────────────────────────────────
+function HeroClip({
+  post,
+  width,
+  preview,
+  onPress,
+}: {
+  post: FeedPost;
+  width: number;
+  preview: boolean;
+  onPress: (post: FeedPost) => void;
+}) {
+  const theme = useTheme();
+  const { radii, spacing } = theme;
+  const t = useT();
+  const video = reelVideo(post);
+  const name = displayName(post.author_name);
+  const height = Math.round(width * 0.95);
+  const sport = post.athlete_sport ? sportLabel(t, post.athlete_sport) : null;
+  if (width === 0) return null;
+
+  return (
+    <Tappable
+      onPress={() => onPress(post)}
+      scaleTo={0.98}
+      haptic="light"
+      accessibilityRole="button"
+      accessibilityLabel={`${t('explore.playClipBy', { name })}. ${t('explore.viewsA11y', { n: post.view_count })}`}
+      testID="explore-hero"
+      style={{
+        width,
+        height,
+        alignSelf: 'center',
+        borderRadius: radii.xxl,
+        overflow: 'hidden',
+        backgroundColor: theme.colors.surfaceSunken,
+      }}
+    >
+      <LinearGradient
+        colors={theme.huePair(post.author_id)}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {video?.thumbnail ? (
+        <Image
+          source={{ uri: video.thumbnail }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+          accessibilityIgnoresInvertColors
+        />
+      ) : null}
+      {preview && video ? <TilePreview url={video.url} /> : null}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(10,10,40,0)', 'rgba(10,10,40,0.78)']}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: height * 0.55 }}
+      />
+
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: spacing.md,
+          left: spacing.md,
+          right: spacing.md,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={heroPill}>
+          <Flame size={13} color={ON_TILE} />
+          <Text variant="captionStrong" color={ON_TILE} numberOfLines={1}>
+            {sport ? t('explore.trendingIn', { sport }) : t('explore.trendingNow')}
+          </Text>
+        </View>
+        <View style={heroPill}>
+          <Play size={11} color={ON_TILE} strokeWidth={2.6} />
+          <Text variant="captionStrong" color={ON_TILE}>
+            {compactNumber(post.view_count)}
+          </Text>
+        </View>
+      </View>
+
+      <View pointerEvents="none" style={{ position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg, gap: spacing.sm }}>
+        {post.caption ? (
+          <Text variant="title" color={ON_TILE} numberOfLines={2}>
+            {post.caption}
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <Avatar uri={post.author_avatar} name={name} size="sm" />
+          <Text variant="bodyStrong" color={ON_TILE} numberOfLines={1} style={{ flexShrink: 1 }}>
+            {name}
+          </Text>
+        </View>
+      </View>
+    </Tappable>
+  );
+}
+
+const heroPill = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  gap: 5,
+  paddingHorizontal: 10,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: 'rgba(255,255,255,0.22)',
+};
 
 /** The muted, looping preview on a large tile. Fades in over the poster on the first frame. */
 function TilePreview({ url }: { url: string }) {

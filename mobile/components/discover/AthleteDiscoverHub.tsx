@@ -60,5 +60,5 @@ export function AthleteDiscoverHub() {
     </View>
   );
 
-  return <ExploreGrid header={top} onPostFirst={() => router.push(Routes.compose)} />;
+  return <ExploreGrid layout="hub" header={top} onPostFirst={() => router.push(Routes.compose)} />;
 }
