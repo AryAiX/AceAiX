@@ -17,6 +17,7 @@ import {
 } from '@/lib/api.intelligence';
 import { GI_TESTS, topPercent } from '@/lib/gi/catalogue';
 import { GiRing, SubScoreBar } from './shared';
+import { LogoColors } from '@/theme/tokens';
 
 /**
  * My own Game Intelligence, on my profile tab, under the Talent Score.
@@ -44,7 +45,7 @@ export function MyGiCard({ refreshKey }: { refreshKey?: number }) {
     const open = data.open_session;
     return (
       <Card onPress={go} padded={false} level={1} testID="gi-card">
-        <AnimatedGradient colors={theme.gradients.hero} radius={theme.radii.lg} style={{ padding: spacing.lg }}>
+        <AnimatedGradient colors={[LogoColors.sky, LogoColors.cobalt, LogoColors.deep]} radius={theme.radii.lg} style={{ padding: spacing.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <View
               style={{

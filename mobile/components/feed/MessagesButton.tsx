@@ -1,6 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, View } from 'react-native';
 import { MessageSquare } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -54,15 +53,10 @@ export function MessagesButton({
           overflow: 'hidden',
           alignItems: 'center',
           justifyContent: 'center',
+          /* Messages are people, so they are on the blue side of the logo. */
+          backgroundColor: colors.primary,
         }}
       >
-        {/* Light end top-right, deep end bottom-left. */}
-        <LinearGradient
-          colors={theme.gradients.warm}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.12, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         <MessageSquare size={20} color={INK} strokeWidth={2.2} />
       </View>
 

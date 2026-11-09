@@ -100,6 +100,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
           <Button
             label={t('sponsorship.makeOffer')}
             size="sm"
+            variant="warm"
             onPress={() => onOffer(seeker)}
             testID={`offer-${seeker.request_id}`}
           />

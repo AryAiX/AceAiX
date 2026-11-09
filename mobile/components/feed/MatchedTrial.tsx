@@ -9,6 +9,7 @@ import { useT } from '@/i18n';
 import { recommendedOpportunities } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
+import { LogoColors } from '@/theme/tokens';
 
 /**
  * One trial matched to you, under Your week.
@@ -37,6 +38,7 @@ export function MatchedTrial() {
     <View testID="home-matched-trial">
       <SectionHeader
         title={t('discover.matchedForYou')}
+        color={LogoColors.flame}
         action={t('common.seeAll')}
         onAction={() => router.push(Routes.opportunities)}
       />

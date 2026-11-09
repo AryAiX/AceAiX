@@ -1,12 +1,13 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, View, ViewStyle } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { TierColors, TierLabels, tierForScore, tierGradient } from '@/theme/tokens';
+import { TierColors, TierLabels, sweepAt, tierForScore } from '@/theme/tokens';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { Text } from './Text';
+import { SweepArc } from './SweepArc';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -48,22 +49,9 @@ export function ScoreRing({
   const target = Math.max(0, Math.min(100, score ?? 0));
   const tier = tierForScore(target);
   const tierColor = TierColors[tier];
-  const [ringStart, ringEnd] = tierGradient(tier);
-
-  /*
-   * The gradient's id used to be the literal "scoreGradient".
-   *
-   * One ring per screen made that look safe, and it was not: the router keeps
-   * the screen you came from mounted, so opening the score screen from the
-   * profile put two <svg> elements carrying the same id in one document. The
-   * browser resolved `url(#scoreGradient)` to the first — a gradient defined
-   * inside the *other* svg, in another coordinate space — and painted nothing.
-   * The arc simply vanished, on the one screen the app is built around.
-   *
-   * `useId` is per instance. The colons it contains are not legal in a URL
-   * fragment, so they come out.
-   */
-  const gradientId = `score-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
+  /* The arc is the logo's sweep over the whole scale, so a score's colour says
+     where it sits: blue while it is low, warming to fire as it climbs. */
+  const scoreColor = sweepAt(target / 100);
 
   const reduced = useReducedMotion();
   const progress = useRef(new Animated.Value(animate ? 0 : target)).current;
@@ -167,11 +155,6 @@ export function ScoreRing({
     return () => loop.stop();
   }, [orbit, reduced, score]);
 
-  const dashOffset = progress.interpolate({
-    inputRange: [0, 100],
-    outputRange: [circumference, 0],
-  });
-
   /* A short bright dash that runs along the filled arc once, from its start to
      its end. Negative dash offsets move the dash forward along the path. */
   const arcLength = circumference * (target / 100);
@@ -204,7 +187,7 @@ export function ScoreRing({
           height: size,
           borderRadius: size / 2,
           borderWidth: stroke,
-          borderColor: theme.alpha(tierColor, 0.45),
+          borderColor: theme.alpha(scoreColor, 0.45),
           opacity: glow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.6] }),
           transform: [
             { scale: glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.09] }) },
@@ -213,16 +196,6 @@ export function ScoreRing({
       />
 
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
-        <Defs>
-          {/* Two real stops. It used to be the tier colour to itself for every
-              tier but Elite, which is a gradient in name only — and for the two
-              grey tiers it made the app's hero object a grey circle. */}
-          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={ringStart} />
-            <Stop offset="0.55" stopColor={ringEnd} />
-            <Stop offset="1" stopColor={tier === 'elite' ? colors.accent : ringStart} />
-          </LinearGradient>
-        </Defs>
 
         <Circle
           cx={size / 2}
@@ -232,18 +205,7 @@ export function ScoreRing({
           strokeWidth={stroke}
           fill="none"
         />
-        <AnimatedCircle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={`url(#${gradientId})`}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          fill="none"
-          strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
+        <SweepArc size={size} strokeWidth={stroke} percent={score == null ? 0 : displayed} />
       </Svg>
 
       {/* The permanent orbit. */}

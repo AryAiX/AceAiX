@@ -11,7 +11,10 @@ export function useDockMetrics() {
   const insets = useSafeAreaInsets();
   const side = Math.round(Math.min(20, Math.max(12, width * 0.035)));
   const height = width < 360 ? 60 : 66;
-  const plus = height - 4;
+  /* The + is a capsule as tall as the dock and about two-thirds as wide, so
+     the dock itself gets the room it gives up. */
+  const plus = height;
+  const plusW = Math.round(height * 0.68);
   const gap = 8;
   /* On a phone with a home bar the dock sits a little into the safe area,
      so it does not float too high; on one without, it keeps a margin. */
@@ -19,7 +22,7 @@ export function useDockMetrics() {
   const maxRow = 560;
   /* How far the dock reaches up over the page, which runs clear under it. */
   const overlap = 6 + height + bottom;
-  return { side, height, plus, gap, bottom, maxRow, overlap };
+  return { side, height, plus, plusW, gap, bottom, maxRow, overlap };
 }
 
 /**

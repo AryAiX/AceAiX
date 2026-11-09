@@ -224,8 +224,13 @@ export function SponsorshipPortal({
           <View>
             <SectionHeader
               title={t('sponsorship.myRequests')}
-              action={data.gate === 'ok' ? t('sponsorship.newRequest') : undefined}
-              onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipRequest) : undefined}
+              /* With nothing asked yet, the empty state's one button does this. */
+              action={data.gate === 'ok' && data.requests.length > 0 ? t('sponsorship.newRequest') : undefined}
+              onAction={
+                data.gate === 'ok' && data.requests.length > 0
+                  ? () => router.push(Routes.sponsorshipRequest)
+                  : undefined
+              }
             />
             {data.requests.length === 0 ? (
               <EmptyState
@@ -410,7 +415,7 @@ export function SponsorshipPortal({
           {t('sponsorship.noMoneyNote')}
         </Text>
 
-        {showRequests && data.gate === 'ok' ? (
+        {showRequests && data.gate === 'ok' && data.requests.length > 0 ? (
           <Button
             label={t('sponsorship.newRequest')}
             fullWidth

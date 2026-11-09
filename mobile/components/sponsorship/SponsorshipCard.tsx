@@ -130,6 +130,7 @@ function SeekingCard({
               <Button
                 label={t('sponsorship.makeOffer')}
                 size="sm"
+                variant="warm"
                 onPress={() => setOfferOn(request)}
                 style={{ alignSelf: 'flex-start', marginTop: spacing.xs }}
                 testID={`profile-offer-${request.id}`}
@@ -232,6 +233,7 @@ function SponsorCard({
                 <Button
                   label={t('sponsorship.apply')}
                   size="sm"
+                  variant="warm"
                   onPress={() => setApplyTo({ callId: call.call_id, name })}
                   testID={`profile-apply-${call.call_id}`}
                 />

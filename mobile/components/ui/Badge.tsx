@@ -3,6 +3,7 @@ import { Pressable, View, ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from './Text';
+import { LogoColors } from '@/theme/tokens';
 
 export type BadgeTone =
   | 'neutral'
@@ -11,7 +12,9 @@ export type BadgeTone =
   | 'info'
   | 'success'
   | 'warning'
-  | 'danger';
+  | 'danger'
+  /** The logo's fire: something to act on, like being open to offers. */
+  | 'flame';
 
 interface BadgeProps {
   label: string;
@@ -60,6 +63,12 @@ export function Badge({ label, tone = 'neutral', icon, size = 'sm', style, solid
       solidFg: '#14161A',
     },
     danger: { bg: colors.dangerSoft, fg: colors.danger, solidBg: colors.danger, solidFg: '#FFFFFF' },
+    flame: {
+      bg: theme.alpha(LogoColors.flame, theme.scheme === 'dark' ? 0.2 : 0.12),
+      fg: theme.scheme === 'dark' ? LogoColors.flameInkDark : LogoColors.flameInk,
+      solidBg: LogoColors.flame,
+      solidFg: '#FFFFFF',
+    },
   };
 
   const skin = map[tone];

@@ -120,7 +120,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-        {typeLabel ? <Tag label={typeLabel} tone="blue" /> : null}
+        {typeLabel ? <Tag label={typeLabel} tone="warm" /> : null}
         {sport ? <Tag label={emoji ? `${emoji} ${sport}` : sport} /> : null}
         {position ? <Tag label={position} /> : null}
         {place ? (

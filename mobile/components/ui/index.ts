@@ -36,3 +36,4 @@ export type { ToastTone } from './Toast';
 export { Header } from './Header';
 export { TextTabs } from './TextTabs';
 export { isRTL, ChevronBack, ChevronForward } from './rtl';
+export { SweepArc } from './SweepArc';

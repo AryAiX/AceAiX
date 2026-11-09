@@ -63,6 +63,7 @@ import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
 import { useEndPadding } from '@/components/navigation/dockInset';
+import { LogoColors } from '@/theme/tokens';
 
 type AthleteTab = 'open' | 'saved' | 'applied';
 type RecruiterTab = 'postings' | 'applicants';
@@ -117,7 +118,8 @@ function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: Ath
                 bottom: -1,
                 height: 2,
                 borderRadius: 1,
-                backgroundColor: active ? colors.primary : 'transparent',
+                /* Trials are on the fire side of the logo. */
+                backgroundColor: active ? LogoColors.flame : 'transparent',
               }}
             />
           </Pressable>

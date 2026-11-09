@@ -19,6 +19,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useDockMetrics } from './dockInset';
+import { LogoColors, LogoSplit } from '@/theme/tokens';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -274,14 +275,17 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                   shadowRadius: 6,
                 }}
               >
-                {/* A glass bead: lighter at the top, with a lit top edge. */}
+                {/* A glass bead tinted with the logo's split: blue into fire. */}
                 <LinearGradient
                   colors={[
-                    theme.alpha(colors.primary, dark ? 0.32 : 0.2),
-                    theme.alpha(colors.primary, dark ? 0.2 : 0.11),
+                    theme.alpha(LogoColors.sky, dark ? 0.32 : 0.2),
+                    theme.alpha(LogoColors.cobalt, dark ? 0.32 : 0.2),
+                    theme.alpha(LogoColors.flame, dark ? 0.3 : 0.2),
+                    theme.alpha(LogoColors.ember, dark ? 0.3 : 0.18),
                   ]}
+                  locations={LogoSplit.locations}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 1 }}
                   style={{
                     ...StyleSheet.absoluteFill,
                     borderRadius: LENS_H / 2,
@@ -318,14 +322,14 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
           </View>
         </View>
 
-        <CreateButton size={m.plus} />
+        <CreateButton width={m.plusW} height={m.plus} />
       </View>
     </View>
   );
 }
 
 /** The round + : the action gradient, a step smaller than the dock is tall. */
-function CreateButton({ size }: { size: number }) {
+function CreateButton({ width, height }: { width: number; height: number }) {
   const theme = useTheme();
   const router = useRouter();
   const reduced = useReducedMotion();
@@ -343,7 +347,7 @@ function CreateButton({ size }: { size: number }) {
   return (
     <Animated.View
       style={{
-        borderRadius: size / 2,
+        borderRadius: width / 2,
         shadowColor: theme.colors.primary,
         shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.4,
@@ -365,16 +369,18 @@ function CreateButton({ size }: { size: number }) {
           router.push('/compose');
         }}
         style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
+          width,
+          height,
+          borderRadius: width / 2,
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
         }}
       >
+        {/* The A: blue on the climb, fire on the way down. */}
         <LinearGradient
-          colors={theme.gradients.action}
+          colors={LogoSplit.colors}
+          locations={LogoSplit.locations}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}

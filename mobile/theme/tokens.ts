@@ -622,3 +622,58 @@ export function alpha(hex: string, a: number): string {
   const b = n & 255;
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
+
+// ── The logo's two halves ─────────────────────────────────────────────────────
+/*
+ * The A is cool on the climb and on fire on the way down, and the app's colour
+ * rule follows it: blue is people and posts, fire is something you can act on
+ * (a trial, a challenge, a deadline, an offer). Where both halves meet in one
+ * object (a new story, the + button, the open tab) it is split like the A.
+ */
+export const LogoColors = {
+  sky: '#26A9F5',
+  cobalt: '#2F6BFF',
+  deep: '#2348D8',
+  amber: '#FFB347',
+  flame: '#FF7A2C',
+  ember: '#E8372B',
+  /** Words on a soft flame tint. */
+  flameInk: '#B5410A',
+  flameInkDark: '#FFB27A',
+} as const;
+
+/** The split: blue to the middle, then fire. Use with `locations`. */
+export const LogoSplit = {
+  colors: [LogoColors.sky, LogoColors.cobalt, LogoColors.flame, LogoColors.ember] as const,
+  locations: [0, 0.49, 0.51, 1] as const,
+};
+
+/* One sweep across the whole 0–100 scale: blue for a low reading, warming to
+   ember as it climbs. A score or a match is coloured by where it sits on it. */
+const SWEEP: readonly [number, string][] = [
+  [0, LogoColors.sky],
+  [0.45, LogoColors.cobalt],
+  [0.62, LogoColors.amber],
+  [0.82, LogoColors.flame],
+  [1, LogoColors.ember],
+];
+
+function mixHex(a: string, b: string, t: number): string {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const ch = (shift: number) =>
+    Math.round(((pa >> shift) & 255) + (((pb >> shift) & 255) - ((pa >> shift) & 255)) * t);
+  const n = (ch(16) << 16) | (ch(8) << 8) | ch(0);
+  return `#${n.toString(16).padStart(6, '0').toUpperCase()}`;
+}
+
+/** The sweep's colour at `t` (0–1). */
+export function sweepAt(t: number): string {
+  const x = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < SWEEP.length; i++) {
+    const [p1, c1] = SWEEP[i];
+    const [p0, c0] = SWEEP[i - 1];
+    if (x <= p1) return mixHex(c0, c1, (x - p0) / (p1 - p0));
+  }
+  return SWEEP[SWEEP.length - 1][1];
+}

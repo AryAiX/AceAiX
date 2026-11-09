@@ -469,7 +469,7 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
               <Badge label={levelLabelI18n(t, athlete.level)} tone="neutral" />
             ) : null}
             {athlete?.is_open_to_offers ? (
-              <Badge label={t('profile.openToOffers')} tone="success" />
+              <Badge label={t('profile.openToOffers')} tone="flame" />
             ) : null}
           </View>
         </Reveal>

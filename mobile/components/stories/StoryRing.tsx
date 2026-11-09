@@ -1,13 +1,16 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { LinearGradient } from 'expo-linear-gradient';
+
 import { useTheme } from '@/theme/ThemeProvider';
+import { LogoSplit } from '@/theme/tokens';
 
 /**
  * The ring around a story avatar.
  *
- * Unseen: a solid cobalt ring. Seen: a thin muted line. None: no ring at all,
- * the same footprint. One flat colour, like every other ring in the app.
+ * Unseen: the logo's split, blue into fire like the A. Seen: a thin muted
+ * line. None: no ring at all, the same footprint.
  */
 
 export type RingState = 'unseen' | 'seen' | 'none';
@@ -38,12 +41,15 @@ export function StoryRing({ size, state, children, thickness = 3 }: Props) {
       }}
     >
       {state === 'unseen' ? (
-        <View
+        <LinearGradient
           pointerEvents="none"
+          colors={LogoSplit.colors}
+          locations={LogoSplit.locations}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={{
             ...StyleSheet.absoluteFill,
             borderRadius: size / 2,
-            backgroundColor: theme.colors.primary,
           }}
         />
       ) : state === 'seen' ? (

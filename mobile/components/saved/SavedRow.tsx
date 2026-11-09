@@ -102,7 +102,7 @@ export function SavedRow({
         ) : null}
         {tags ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-            {tags.type ? <Tag label={tags.type} tone="blue" /> : null}
+            {tags.type ? <Tag label={tags.type} tone="warm" /> : null}
             {tags.sport ? <Tag label={tags.sport} /> : null}
             {tags.deadline ? <DaysLeftTag deadline={tags.deadline} /> : null}
           </View>

@@ -9,17 +9,17 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { LogoColors } from '@/theme/tokens';
 import { Text } from './Text';
 
 export type ButtonVariant =
   | 'primary'   // flat cobalt — the default
-  | 'gradient'  // the blue ombre: at most one per screen
-  | 'warm'      // the warm ombre: stakes only (Ask for sponsorship, challenges, streaks)
+  | 'gradient'  // the screen's one main button, on the blue side: solid cobalt
+  | 'warm'      // the main button for something to act on (Apply, Enter, Ask): solid flame
   | 'soft'      // soft blue fill, cobalt text: Follow, View, Apply in lists, Post a game
   | 'secondary'
   | 'ghost'
@@ -81,21 +81,21 @@ export function Button({
       fg: colors.textOnBrand,
       pressedBg: colors.primaryPressed,
     },
-    /* The blue ombre — the + on tab screens, or the one main button on any
-       other screen (Apply, Post, Create account…). `bg`/`pressedBg` show
-       through the gradient when it dims on press. */
+    /* The one main button on a screen, on the logo's blue side (Post, Share,
+       Sign in…). Solid: small controls read sharper in one colour. */
     gradient: {
       bg: colors.primary,
       border: 'transparent',
       fg: colors.textOnBrand,
       pressedBg: colors.primaryPressed,
     },
-    /* The warm ombre — stakes only. */
+    /* The main button on the logo's fire side: something to act on (Apply,
+       Enter a challenge, Ask for sponsorship, Create account). Solid flame. */
     warm: {
-      bg: colors.warning,
+      bg: LogoColors.flame,
       border: 'transparent',
-      fg: colors.textOnBrand,
-      pressedBg: colors.warning,
+      fg: '#FFFFFF',
+      pressedBg: '#E8661A',
     },
     /* Soft blue fill with cobalt text, no shadow — small list actions. */
     soft: {
@@ -132,16 +132,6 @@ export function Button({
 
   const skin = skins[variant];
 
-  /* Only the two ombre variants paint a gradient. Gradient underneath,
-     transparent fill on top; the pressed state dims it so the press still
-     reads. Everything else is one flat colour. */
-  const gradient =
-    variant === 'gradient'
-      ? theme.gradients.action
-      : variant === 'warm'
-        ? theme.gradients.warm
-        : null;
-
   const animate = (to: number) =>
     Animated.spring(scale, {
       toValue: to,
@@ -177,7 +167,7 @@ export function Button({
             height: heights[size],
             paddingHorizontal: paddings[size],
             borderRadius: radii.button,
-            backgroundColor: gradient ? skin.pressedBg : pressed ? skin.pressedBg : skin.bg,
+            backgroundColor: pressed ? skin.pressedBg : skin.bg,
             borderColor: skin.border,
             borderWidth: skin.border === 'transparent' ? 0 : 1.5,
             opacity: isDisabled ? 0.45 : 1,
@@ -186,19 +176,8 @@ export function Button({
         ]}
         {...rest}
       >
-        {({ pressed }: { pressed: boolean }) => (
+        {() => (
           <>
-            {gradient ? (
-              /* Dimmed rather than swapped on press: a gradient that vanished
-                 for a flat colour would read as a different button. */
-              <LinearGradient
-                colors={gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFill, { opacity: pressed ? 0.82 : 1 }]}
-                pointerEvents="none"
-              />
-            ) : null}
             {loading ? (
               <ActivityIndicator color={skin.fg} size="small" />
             ) : (

@@ -133,6 +133,7 @@ export function CallCard({ call, onApply, onOpenSponsor, saved, onToggleSave }: 
           <Button
             label={t('sponsorship.apply')}
             size="sm"
+            variant="warm"
             onPress={() => onApply?.(call)}
             testID={`apply-call-${call.call_id}`}
           />

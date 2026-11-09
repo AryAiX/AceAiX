@@ -9,7 +9,6 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -371,7 +370,7 @@ export function SectionHeader({
   action?: string;
   onAction?: () => void;
   style?: ViewStyle;
-  /** One flat colour for the bar instead of the ombre (e.g. a Career section's colour). */
+  /** The bar's colour, e.g. a Career section's colour. Cobalt when unset. */
   color?: string;
   /** A small number after the title, e.g. "Matches 2". Hidden when undefined. */
   count?: number;
@@ -403,23 +402,14 @@ export function SectionHeader({
       >
         {/* A short coloured bar. Twelve of these down a screen is what stops a
             list of sections reading as a list of grey headings. */}
-        {color ? (
-          <View
-            style={{
-              width: compact ? 3 : 4,
-              height: compact ? 16 : 20,
-              borderRadius: 2,
-              backgroundColor: color,
-            }}
-          />
-        ) : (
-          <LinearGradient
-            colors={theme.gradients.action}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={{ width: compact ? 3 : 4, height: compact ? 16 : 20, borderRadius: 2 }}
-          />
-        )}
+        <View
+          style={{
+            width: compact ? 3 : 4,
+            height: compact ? 16 : 20,
+            borderRadius: 2,
+            backgroundColor: color ?? theme.colors.primary,
+          }}
+        />
         <Text variant={compact ? 'subheading' : 'heading'} style={{ flexShrink: 1 }}>
           {title}
         </Text>

@@ -399,7 +399,7 @@ export default function OpportunityDetailScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <Button
           label={t('common.apply')}
-          variant="gradient"
+          variant="warm"
           fullWidth
           style={{ flex: 1 }}
           onPress={() => setApplyOpen(true)}
@@ -480,7 +480,7 @@ export default function OpportunityDetailScreen() {
           <View style={{ gap: spacing.md }}>
             <Text variant="title">{opportunity.title}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-              {typeLabel ? <Tag label={typeLabel} tone="blue" size="md" /> : null}
+              {typeLabel ? <Tag label={typeLabel} tone="warm" size="md" /> : null}
               {sport ? <Tag label={sportEmoji ? `${sportEmoji} ${sport}` : sport} size="md" /> : null}
               <DaysLeftTag deadline={opportunity.deadline} size="md" />
               {!opportunity.is_active ? (
@@ -636,7 +636,7 @@ export default function OpportunityDetailScreen() {
         footer={
           <Button
             label={t('opportunities.apply.send')}
-            variant="gradient"
+            variant="warm"
             fullWidth
             loading={busy}
             onPress={onApply}
