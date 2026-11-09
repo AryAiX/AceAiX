@@ -22,7 +22,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { AthleteCard, COMPACT_CARD_WIDTH } from '@/components/discover/AthleteCard';
-import { AthleteExplore } from '@/components/discover/AthleteExplore';
+import { AthleteDiscoverHub } from '@/components/discover/AthleteDiscoverHub';
 import { DiscoverSwitch, type DiscoverView } from '@/components/explore/DiscoverSwitch';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { SeekersList } from '@/components/sponsorship/SeekersList';
@@ -536,8 +536,9 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
 /**
  * Everyone gets Explore — every public clip, in a mosaic.
  *
- * For an athlete or a guardian it is the first of four tabs, beside Clubs,
- * Coaches and Leaderboard, with the search bar under them. A recruiter keeps
+ * For an athlete or a guardian it is the whole screen: a search, five buttons
+ * (Players, Clubs, Coaches, Leaderboard, Sponsors) that each open their own
+ * page, then the clips. A recruiter keeps
  * their athlete search and opens on it, because finding athletes is the job;
  * Explore and Sponsors are the tabs next to it. A sponsor opens on the athletes
  * who are asking for backing. `/discover?view=explore|people|sponsors` picks.
@@ -560,6 +561,27 @@ export default function DiscoverScreen() {
     if (asked) setChosen(asked);
   }, [asked]);
 
+  /* An athlete's Discover has no tabs: a link into Clubs, Coaches, Sponsors or
+     the Leaderboard opens that page on top of it. The params are cleared so
+     coming back to Discover does not open the page again. */
+  const athleteSide: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors' | null =
+    isRecruiter || isSponsor
+      ? null
+      : params.view === 'coaches'
+        ? 'coaches'
+        : params.view === 'sponsors'
+          ? 'sponsors'
+          : params.view === 'people'
+            ? 'clubs'
+            : requestedTab === 'clubs' || requestedTab === 'coaches' || requestedTab === 'leaderboard'
+              ? requestedTab
+              : null;
+  useEffect(() => {
+    if (loading || !athleteSide) return;
+    router.setParams({ view: undefined, tab: undefined, at: undefined });
+    router.push(Routes.discoverSection(athleteSide));
+  }, [athleteSide, tabRequestKey, loading, router]);
+
   if (loading && !profile) {
     return (
       <Screen scroll={false} padded={false} testID="discover-screen">
@@ -574,21 +596,8 @@ export default function DiscoverScreen() {
   if (!isRecruiter && !isSponsor) {
     return (
       <Screen scroll={false} padded={false} testID="discover-screen">
-        <Header title={t('common.tabDiscover')} subtitle={t('discover.athleteSubtitle')} large />
-        <AthleteExplore
-          viewerId={profile?.id ?? null}
-          initialTab={
-            params.view === 'coaches'
-              ? 'coaches'
-              : asked === 'people'
-                ? 'clubs'
-                : asked === 'sponsors'
-                  ? 'sponsors'
-                  : 'explore'
-          }
-          requestedTab={requestedTab}
-          tabRequestKey={tabRequestKey}
-        />
+        <Header title={t('common.tabDiscover')} large />
+        <AthleteDiscoverHub />
       </Screen>
     );
   }

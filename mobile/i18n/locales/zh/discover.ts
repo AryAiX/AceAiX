@@ -24,6 +24,7 @@ export const discover = {
 
   // 共用的标签页和范围名称 —— “探索”的标签页和搜索范围。
   tabAthletes: '运动员',
+  hubPlayers: '球员',
   tabCoaches: '教练',
   tabClubs: '俱乐部',
   tabLeaderboard: '排行榜',

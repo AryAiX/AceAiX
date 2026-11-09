@@ -73,6 +73,8 @@ interface Props {
   /** Main's link into a tab; tabRequestKey changes on every new request. */
   requestedTab?: string;
   tabRequestKey?: string;
+  /** Show just this one side, with no tab row: a page opened from Discover. */
+  only?: AthleteDiscoverTab;
 }
 
 /** Same case-insensitive equality the talent_leaderboard RPC uses via `ilike`. */
@@ -165,6 +167,7 @@ export function AthleteExplore({
   initialTab = 'explore',
   requestedTab,
   tabRequestKey,
+  only,
 }: Props) {
   const router = useRouter();
   const theme = useTheme();
@@ -174,15 +177,15 @@ export function AthleteExplore({
   const { profile, isGuardian } = useAuth();
   const canSearchBoard = profile?.is_minor === false;
 
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTab] = useState<Tab>(only ?? initialTab);
 
   /* A link that names a side wins over whatever was open before it. */
   useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
+    setTab(only ?? initialTab);
+  }, [initialTab, only]);
 
   useEffect(() => {
-    if (!tabRequestKey) return;
+    if (!tabRequestKey || only) return;
     if (
       requestedTab === 'clubs' ||
       requestedTab === 'coaches' ||
@@ -192,7 +195,7 @@ export function AthleteExplore({
       setQuery('');
       setDebounced('');
     }
-  }, [tabRequestKey, requestedTab]);
+  }, [tabRequestKey, requestedTab, only]);
 
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -615,18 +618,20 @@ export function AthleteExplore({
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingBottom: spacing.md }}>
-        <ScrollTabs<Tab>
-          options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
-          value={tab}
-          onChange={(next) => {
-            setTab(next);
-            setQuery('');
-            setDebounced('');
-          }}
-          testID="explore-tabs"
-        />
-      </View>
+      {only ? null : (
+        <View style={{ paddingBottom: spacing.md }}>
+          <ScrollTabs<Tab>
+            options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
+            value={tab}
+            onChange={(next) => {
+              setTab(next);
+              setQuery('');
+              setDebounced('');
+            }}
+            testID="explore-tabs"
+          />
+        </View>
+      )}
 
       <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md, gap: spacing.md }}>
         {tab === 'explore' ? (

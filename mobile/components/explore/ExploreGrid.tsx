@@ -278,7 +278,18 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst }: Props) 
   );
 
   /* The chips only earn their row when there is more than one sport to pick. */
-  const sportRows = sports.data ?? [];
+  /* The same sport can come back twice, spelt two ways ("Football" and
+     "football"). One chip each: the first, which has the most clips. The
+     clip filter ignores case, so that chip still finds both spellings. */
+  const sportRows = useMemo(() => {
+    const seen = new Set<string>();
+    return (sports.data ?? []).filter((row) => {
+      const key = sportLabel(t, row.sport).trim().toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [sports.data, t]);
   const chips =
     sportRows.length > 1 || sport ? (
       <ScrollView

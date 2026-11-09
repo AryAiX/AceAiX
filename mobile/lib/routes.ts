@@ -25,6 +25,11 @@ export const Routes = {
   notifications: '/notifications' as const,
   inbox: '/inbox' as const,
   search: '/search' as const,
+  /** One side of the athlete's Discover on its own page. */
+  /* Cast: the typed-route list only learns a new screen when Expo restarts,
+     and a link should not fail the typecheck before then. */
+  discoverSection: (section: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors') =>
+    ({ pathname: '/discover-section', params: { section } }) as unknown as Href,
   score: '/score' as const,
   intelligence: '/intelligence' as const,
   intelligenceSession: '/intelligence/session' as const,

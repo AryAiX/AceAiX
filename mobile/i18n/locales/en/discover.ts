@@ -25,6 +25,7 @@ export const discover = {
 
   // Shared tab and scope names — the Explore tabs and the search scopes.
   tabAthletes: 'Athletes',
+  hubPlayers: 'Players',
   tabCoaches: 'Coaches',
   tabClubs: 'Clubs',
   tabLeaderboard: 'Leaderboard',
