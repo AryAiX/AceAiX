@@ -282,6 +282,14 @@ export interface Palette {
   borderStrong: string;
   divider: string;
 
+  /* Controls that sit on top of a card or the page: search boxes, inputs,
+     filter chips. In dark mode they are a step lighter than the cards, with a
+     faint lit top edge, so they read as raised. In light mode they are white. */
+  field: string;
+  fieldBorder: string;
+  /** The lit top edge on raised things in dark mode; transparent in light. */
+  edgeLight: string;
+
   // Text
   text: string;
   textSecondary: string;
@@ -343,6 +351,10 @@ const light: Palette = {
   borderStrong: '#C9CBDE',
   divider: '#EEEBF8',
 
+  field: '#FFFFFF',
+  fieldBorder: '#E3E2F0',
+  edgeLight: 'transparent',
+
   text: '#161327',
   textSecondary: '#514C6B',
   textMuted: '#847EA0',
@@ -391,21 +403,27 @@ const dark: Palette = {
      between card and background now comes from the surface being lighter than
      the background rather than from a border, which is why there are no light
      outlines in dark mode any more. */
-  bg: '#181B24',
-  surface: '#212530',
-  surfaceAlt: '#2A2F3C',
-  surfaceSunken: '#13161E',
+  /* Lifted a step (9 Nov): the old #181B24 page read as near-black and made
+     grey text hard to read. Each layer is still lighter than the one below. */
+  bg: '#1F232E',
+  surface: '#2A2F3C',
+  surfaceAlt: '#353B4A',
+  surfaceSunken: '#181B24',
   surfaceInverse: '#FFFFFF',
   overlay: 'rgba(8,9,14,0.72)',
   scrim: 'rgba(255,255,255,0.07)',
 
-  border: '#333845',
-  borderStrong: '#444B5C',
-  divider: '#2A2F3C',
+  border: '#3E4558',
+  borderStrong: '#4E5669',
+  divider: '#353B4A',
 
-  text: '#EEF0F6',
-  textSecondary: '#AEB2C2',
-  textMuted: '#8A8E9E',
+  field: '#3B4254',
+  fieldBorder: '#4E5669',
+  edgeLight: '#4A5266',
+
+  text: '#F4F5FA',
+  textSecondary: '#C3C7D4',
+  textMuted: '#A3A8B8',
   textInverse: '#161327',
   textOnBrand: '#FFFFFF',
 
@@ -431,11 +449,11 @@ const dark: Palette = {
   danger: '#FF8A7A',
   dangerSoft: 'rgba(255,138,122,0.18)',
 
-  skeleton: '#2A2F3C',
+  skeleton: '#353B4A',
   shadow: '#000000',
   /* Was darker than the surface, which made the bar look detached. Matching the
      surface lets the fade rail do the separating instead. */
-  tabBar: '#212530',
+  tabBar: '#2A2F3C',
   statusBar: 'light',
 
   gradients: gradientsDark,
@@ -555,13 +573,33 @@ export const Duration = {
  * Signature unchanged, and this is the only place in `mobile/` that defines
  * shadow values — 14 call sites read it — so app-wide depth is this one map.
  */
+/**
+ * Dark mode only: what makes a card or control sit above the page — a soft
+ * shadow under it and a lit top edge. Light mode returns nothing; it already
+ * separates with white on lavender.
+ */
+export function raised(palette: Palette, strength: 'card' | 'control') {
+  if (palette.scheme !== 'dark') return {};
+  const card = strength === 'card';
+  return {
+    /* A top border a shade lighter than the sides reads as light falling on
+       the top edge. Controls are lighter already, so their edge is too. */
+    borderTopColor: card ? palette.edgeLight : '#5B6479',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: card ? 8 : 3 },
+    shadowOpacity: card ? 0.4 : 0.3,
+    shadowRadius: card ? 18 : 8,
+    elevation: card ? 4 : 2,
+  };
+}
+
 export function elevation(palette: Palette, level: 0 | 1 | 2 | 3) {
   if (level === 0) return {};
   const isDark = palette.scheme === 'dark';
   const map = {
-    1: { h: 1, r: 3, o: isDark ? 0.22 : 0.035, e: 1 },
-    2: { h: 3, r: 8, o: isDark ? 0.3 : 0.055, e: 3 },
-    3: { h: 6, r: 16, o: isDark ? 0.38 : 0.08, e: 6 },
+    1: { h: 1, r: 3, o: isDark ? 0.3 : 0.035, e: 1 },
+    2: { h: 3, r: 8, o: isDark ? 0.38 : 0.055, e: 3 },
+    3: { h: 6, r: 16, o: isDark ? 0.45 : 0.08, e: 6 },
   } as const;
   const m = map[level];
   return {

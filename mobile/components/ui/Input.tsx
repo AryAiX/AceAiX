@@ -65,9 +65,10 @@ export const Input = forwardRef<TextInputInstance, Props>(function Input(
         style={{
           flexDirection: 'row',
           alignItems: multiline ? 'flex-start' : 'center',
-          backgroundColor: colors.surface,
+          backgroundColor: colors.field,
           borderWidth: 1.5,
-          borderColor,
+          borderColor: borderColor === colors.border ? colors.fieldBorder : borderColor,
+          ...(focused || error ? null : theme.raised('control')),
           borderRadius: radii.md,
           paddingHorizontal: spacing.lg,
           minHeight: multiline ? 112 : 52,

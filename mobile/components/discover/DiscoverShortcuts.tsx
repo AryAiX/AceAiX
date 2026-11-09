@@ -101,7 +101,8 @@ interface Props {
  */
 export function DiscoverShortcuts({ onOpen }: Props) {
   const t = useT();
-  const { colors, radii, spacing } = useTheme();
+  const theme = useTheme();
+  const { colors, radii, spacing } = theme;
 
   return (
     <View
@@ -114,6 +115,7 @@ export function DiscoverShortcuts({ onOpen }: Props) {
         borderWidth: 1,
         borderColor: colors.border,
         backgroundColor: colors.surface,
+        ...theme.raised('card'),
       }}
       testID="discover-shortcuts"
     >

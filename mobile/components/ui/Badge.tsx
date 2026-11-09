@@ -144,8 +144,11 @@ export function Chip({
           paddingHorizontal: spacing.lg,
           borderRadius: radii.button,
           borderWidth: 1.5,
-          backgroundColor: colors.surface,
-          borderColor: selected ? toneColor : colors.border,
+          /* Dark mode: unselected chips are raised controls; a picked one
+             takes a soft fill of its colour so it reads as pressed in. */
+          backgroundColor: selected && theme.scheme === 'dark' ? theme.alpha(toneColor, 0.18) : colors.field,
+          borderColor: selected ? toneColor : colors.fieldBorder,
+          ...(selected ? null : theme.raised('control')),
           opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
         },
         style,

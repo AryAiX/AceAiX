@@ -253,9 +253,10 @@ function AthleteOpportunities() {
             paddingHorizontal: spacing.md,
             borderRadius: radii.md,
             borderWidth: 1.5,
-            borderColor: filterCount > 0 ? colors.primary : colors.border,
-            backgroundColor: colors.surface,
+            borderColor: filterCount > 0 ? colors.primary : colors.fieldBorder,
+            backgroundColor: colors.field,
             opacity: pressed ? 0.7 : 1,
+            ...(filterCount > 0 ? null : theme.raised('control')),
           })}
         >
           <SlidersHorizontal size={17} color={filterCount > 0 ? colors.primary : colors.text} />

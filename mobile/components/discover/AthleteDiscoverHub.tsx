@@ -19,7 +19,8 @@ import { DiscoverShortcuts, type DiscoverShortcut } from './DiscoverShortcuts';
 export function AthleteDiscoverHub() {
   const router = useRouter();
   const t = useT();
-  const { colors, radii, spacing } = useTheme();
+  const theme = useTheme();
+  const { colors, radii, spacing } = theme;
 
   const open = useCallback(
     (shortcut: DiscoverShortcut) => {
@@ -47,9 +48,10 @@ export function AthleteDiscoverHub() {
           paddingHorizontal: spacing.lg,
           borderRadius: radii.md,
           borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
+          borderColor: colors.fieldBorder,
+          backgroundColor: colors.field,
           opacity: pressed ? 0.7 : 1,
+          ...theme.raised('control'),
         })}
       >
         <Search size={18} color={colors.textMuted} />
