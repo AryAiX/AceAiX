@@ -97,6 +97,8 @@ interface ChipProps {
   selected?: boolean;
   onPress?: () => void;
   icon?: React.ReactNode;
+  /** Drawn after the label, e.g. a ▾ on a chip that opens a picker. */
+  trailing?: React.ReactNode;
   disabled?: boolean;
   style?: ViewStyle;
   testID?: string;
@@ -115,6 +117,7 @@ export function Chip({
   selected,
   onPress,
   icon,
+  trailing,
   disabled,
   style,
   testID,
@@ -152,6 +155,7 @@ export function Chip({
       <Text variant="captionStrong" color={selected ? toneColor : colors.textSecondary}>
         {label}
       </Text>
+      {trailing}
     </Pressable>
   );
 }

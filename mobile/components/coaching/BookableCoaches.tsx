@@ -19,7 +19,7 @@ import { amountLabel } from '@/lib/sponsorship';
  * Coaches who are taking students, soonest free time first. A minor is only
  * ever handed coaches they could book (the database filters to verified ones).
  */
-export function BookableCoaches({ query }: { query: string }) {
+export function BookableCoaches({ query, country }: { query: string; country?: string }) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -44,7 +44,11 @@ export function BookableCoaches({ query }: { query: string }) {
     <FlatList<BookableCoach>
       ref={listRef}
       style={{ flex: 1 }}
-      data={coaches.data ?? []}
+      data={
+        country
+          ? (coaches.data ?? []).filter((c) => (c.country ?? '').toLowerCase() === country.toLowerCase())
+          : (coaches.data ?? [])
+      }
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.sm }}
       keyboardShouldPersistTaps="handled"

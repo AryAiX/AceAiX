@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Building2, Check, Search, Trophy, Users } from 'lucide-react-native';
+import { Building2, Check, ChevronDown, MapPin, Search, Trophy, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -389,17 +389,30 @@ export function AthleteExplore({
     />
   );
 
+  /* Where: its own chip with a pin and a ▾, because it opens a list rather
+     than switching something on. A thin line keeps it apart from the sports. */
+  const locationChip = (
+    <Chip
+      label={country ? countryLabel(t, country) : t('discover.explore.anywhere')}
+      selected={!!country}
+      onPress={() => setCountrySheet(true)}
+      icon={<MapPin size={14} color={country ? colors.primary : colors.textSecondary} />}
+      trailing={<ChevronDown size={14} color={country ? colors.primary : colors.textSecondary} />}
+      testID="discover-location-chip"
+    />
+  );
+  const chipDivider = (
+    <View style={{ width: 1, height: 22, alignSelf: 'center', backgroundColor: colors.border }} />
+  );
+
   const boardFilters = (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
     >
-      <Chip
-        label={country ?? t('discover.explore.anywhere')}
-        selected={!!country}
-        onPress={() => setCountrySheet(true)}
-      />
+      {locationChip}
+      {chipDivider}
       <Chip
         tone="accent"
         label={t('sports.allSports')}
@@ -422,12 +435,14 @@ export function AthleteExplore({
   function renderClubs() {
     if (clubs.error) return <ErrorState message={clubs.error} onRetry={clubs.reload} />;
     if (clubs.loading || clubs.data?.term !== debounced) return busy(4);
-    const clubRows = (clubs.data?.rows ?? []).filter((club) =>
-      clubFilter === 'following'
-        ? isOrgFollowed(club.id)
-        : clubFilter === 'academies'
-          ? club.type === 'academy'
-          : true,
+    const clubRows = (clubs.data?.rows ?? []).filter(
+      (club) =>
+        matchesChip(club.country, country) &&
+        (clubFilter === 'following'
+          ? isOrgFollowed(club.id)
+          : clubFilter === 'academies'
+            ? club.type === 'academy'
+            : true),
     );
 
     return (
@@ -482,15 +497,16 @@ export function AthleteExplore({
   }
 
   function renderCoaches() {
-    if (bookable) return <BookableCoaches query={debounced} />;
+    if (bookable) return <BookableCoaches query={debounced} country={country} />;
     if (coaches.error) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
     if (coaches.loading || coaches.data?.term !== debounced) return busy(4);
+    const coachRows = (coaches.data?.rows ?? []).filter((coach) => matchesChip(coach.country, country));
 
     return (
       <FlatList<PersonResult>
         ref={attachList}
         style={{ flex: 1 }}
-        data={coaches.data?.rows ?? []}
+        data={coachRows}
         keyExtractor={(item) => item.id}
         contentContainerStyle={listStyle}
         keyboardShouldPersistTaps="handled"
@@ -504,7 +520,7 @@ export function AthleteExplore({
         }
         renderItem={({ item, index }) => (
           <CoachRow
-            grouped={rowStyle(index, coaches.data?.rows.length ?? 0)}
+            grouped={rowStyle(index, coachRows.length)}
             person={item}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
@@ -692,7 +708,13 @@ export function AthleteExplore({
               <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
                 {searchField}
                 {tab === 'coaches' ? (
-                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: spacing.sm }}
+                  >
+                    {locationChip}
+                    {chipDivider}
                     <Chip
                       label={t('discover.filterAll')}
                       selected={!bookable}
@@ -704,9 +726,15 @@ export function AthleteExplore({
                       onPress={() => setBookable((b) => !b)}
                       testID="coaches-bookable-filter"
                     />
-                  </View>
+                  </ScrollView>
                 ) : tab === 'clubs' ? (
-                  <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: spacing.sm }}
+                  >
+                    {locationChip}
+                    {chipDivider}
                     <Chip
                       label={t('discover.filterAll')}
                       selected={clubFilter === 'all'}
@@ -724,7 +752,7 @@ export function AthleteExplore({
                       onPress={() => setClubFilter((f) => (f === 'academies' ? 'all' : 'academies'))}
                       testID="clubs-academies-filter"
                     />
-                  </View>
+                  </ScrollView>
                 ) : null}
               </View>
             ) : null}
@@ -749,7 +777,7 @@ export function AthleteExplore({
         visible={countrySheet}
         onClose={() => setCountrySheet(false)}
         title={t('discover.explore.countryTitle')}
-        subtitle={t('discover.explore.countrySubtitle')}
+        subtitle={tab === 'leaderboard' ? t('discover.explore.countrySubtitle') : undefined}
       >
         <Input
           placeholder={t('profile.searchCountries')}
