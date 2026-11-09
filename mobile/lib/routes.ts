@@ -25,6 +25,8 @@ export const Routes = {
   notifications: '/notifications' as const,
   inbox: '/inbox' as const,
   search: '/search' as const,
+  /** One of the athlete's playbooks (saved folders, kept on the phone). */
+  playbook: (id: string) => ({ pathname: '/playbook/[id]', params: { id } }) as unknown as Href,
   /** One side of the athlete's Discover on its own page. */
   /* Cast: the typed-route list only learns a new screen when Expo restarts,
      and a link should not fail the typecheck before then. */

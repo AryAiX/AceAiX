@@ -15,6 +15,13 @@ import type { LeaderboardEntry } from '@/lib/api.discover';
 import { tierLabel } from './MatchBadge';
 
 const RING = 50;
+
+/* Two tier colours are too pale to read as small digits on white (sky and
+   amber); on a light background they take a deeper shade of themselves. */
+const LIGHT_INK: Partial<Record<keyof typeof TierColors, string>> = {
+  rising: '#1C8BD9',
+  gold: '#D98A00',
+};
 const STROKE = 4.5;
 
 /** The score inside a ring that fills to it, in the tier's colour. */
@@ -69,13 +76,12 @@ export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
 
   const name = displayName(entry.full_name);
   const tier = tierForScore(entry.overall);
-  const tierColor = TierColors[tier];
+  const tierColor = (!dark && LIGHT_INK[tier]) || TierColors[tier];
   const tierName = tierLabel(t, tier);
-  const meta = metaLine(
-    sportLabel(t, entry.sport),
-    positionLabel(t, entry.position),
-    entry.country,
-  );
+  /* Sport and position; the country only when there is no position, so the
+     line fits beside the ring. */
+  const position = positionLabel(t, entry.position);
+  const meta = metaLine(sportLabel(t, entry.sport), position, position ? null : entry.country);
 
   return (
     <Pressable
@@ -140,7 +146,12 @@ export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
         ) : null}
       </View>
 
-      <ScoreDial score={entry.overall} color={tierColor} label={tierName} track={colors.surfaceAlt} />
+      <ScoreDial
+        score={entry.overall}
+        color={tierColor}
+        label={tierName}
+        track={isYou || isChild ? colors.surface : colors.surfaceAlt}
+      />
     </Pressable>
   );
 }

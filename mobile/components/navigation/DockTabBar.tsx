@@ -226,10 +226,6 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               ...StyleSheet.absoluteFill,
               borderRadius: m.height / 2,
               overflow: 'hidden',
-              borderWidth: 1,
-              /* A lit rim: brighter along the top edge than the sides. */
-              borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(214,211,235,0.9)',
-              borderTopColor: dark ? 'rgba(255,255,255,0.22)' : '#FFFFFF',
             }}
           >
             <BlurView intensity={90} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
@@ -245,7 +241,29 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               end={{ x: 0, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
+            {/* A lit line along the top, kept off the rounded ends. */}
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: m.height / 2,
+                right: m.height / 2,
+                height: 1,
+                backgroundColor: dark ? 'rgba(255,255,255,0.16)' : '#FFFFFF',
+              }}
+            />
           </View>
+          {/* The rim, one colour all round: two colours on a pill this round
+              meet in a visible seam at each end. */}
+          <View
+            pointerEvents="none"
+            style={{
+              ...StyleSheet.absoluteFill,
+              borderRadius: m.height / 2,
+              borderWidth: 1,
+              borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(214,211,235,0.9)',
+            }}
+          />
 
           {/* The glass lens behind the open tab. */}
           {slot > 0 ? (
@@ -286,8 +304,7 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                     ...StyleSheet.absoluteFill,
                     borderRadius: LENS_H / 2,
                     borderWidth: 1,
-                    borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.7)',
-                    borderTopColor: dark ? 'rgba(255,255,255,0.25)' : '#FFFFFF',
+                    borderColor: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.8)',
                   }}
                 />
               </View>

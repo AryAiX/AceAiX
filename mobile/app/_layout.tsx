@@ -25,6 +25,7 @@ import {
 
 import { ThemeProvider, useTheme } from '@/theme/ThemeProvider';
 import { ToastProvider } from '@/components/ui';
+import { PlaybookOfferHost } from '@/components/saved/PlaybookOfferHost';
 import { AuthProvider, useAuth } from '@/providers/AuthProvider';
 import { UnreadProvider } from '@/providers/UnreadProvider';
 import { ProgressProvider } from '@/providers/ProgressProvider';
@@ -224,6 +225,7 @@ function Shell() {
           <Stack.Screen name="+not-found" />
         </Stack>
       </RouteGuard>
+      <PlaybookOfferHost />
       {versionPrompts}
     </View>
   );

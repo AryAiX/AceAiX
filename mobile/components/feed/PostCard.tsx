@@ -13,6 +13,7 @@ import { FollowButton } from '@/components/discover/FollowButton';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { useAuth } from '@/providers/AuthProvider';
 import { toggleLike, toggleSave } from '@/lib/api';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { applyToggleFollow } from '@/lib/followCounts';
 import { getPostAudience, postLink } from '@/lib/api.feed';
 import { brandedShareCaption, buildBrandedImage, type BrandedKind } from '@/lib/brandedShare';
@@ -131,12 +132,24 @@ function PostCardBase({
     try {
       const result = await toggleSave(post.id);
       onPatch(post.id, { viewer_saved: result.saved });
-      if (result.saved) toast.success(t('common.saved'));
+      /* Saved: offer to put it in a playbook too. Unsaved: it leaves them. */
+      if (result.saved) {
+        const picture = post.media[0];
+        offerPlaybooks({
+          kind: 'post',
+          id: post.id,
+          title: displayName(post.author_name),
+          subtitle: post.caption,
+          thumb: picture ? (picture.type === 'video' ? (picture.thumbnail ?? null) : picture.url) : null,
+        });
+      } else if (user) {
+        void removeFromAllPlaybooks(user.id, 'post', post.id);
+      }
     } catch (err) {
       onPatch(post.id, { viewer_saved: post.viewer_saved });
       toast.error(errorMessage(err));
     }
-  }, [post.id, post.viewer_saved, onPatch, toast, t]);
+  }, [post, onPatch, toast, user]);
 
   /*
    * Quick follow (Home only — the list passes `onFollowChange`).

@@ -29,6 +29,8 @@ import {
 } from '@/lib/api.sponsorship';
 import { displayName, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
+import { toggleSavedCall, useSavedCalls } from '@/lib/savedCalls';
 import { useAuth } from '@/providers/AuthProvider';
 import { CallCard } from './CallCard';
 import { ApplySheet } from './Sheets';
@@ -46,7 +48,9 @@ export function SponsorsTab({ query }: { query: string }) {
   const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
-  const { isAthlete } = useAuth();
+  const { isAthlete, user } = useAuth();
+  const savedCalls = useSavedCalls(user?.id);
+  const savedIds = useMemo(() => new Set(savedCalls.map((c) => c.id)), [savedCalls]);
 
   const mine = useAsync(() => (isAthlete ? getMySponsorship() : Promise.resolve(null)), [isAthlete], {
     refetchOnFocus: true,
@@ -68,6 +72,25 @@ export function SponsorsTab({ query }: { query: string }) {
     calls.reload();
     sponsors.reload();
   });
+
+  const toggleSave = useCallback(
+    async (call: CallFeedItem) => {
+      if (!user) return;
+      const nowSaved = await toggleSavedCall(user.id, call);
+      if (nowSaved) {
+        offerPlaybooks({
+          kind: 'call',
+          id: call.call_id,
+          title: call.company_name || displayName(call.sponsor_name),
+          subtitle: call.title,
+          thumb: call.sponsor_avatar,
+        });
+      } else {
+        void removeFromAllPlaybooks(user.id, 'call', call.call_id);
+      }
+    },
+    [user],
+  );
 
   const openProfile = useCallback((id: string) => router.push(Routes.profile(id)), [router]);
   const openRequests = useMemo(
@@ -174,6 +197,8 @@ export function SponsorsTab({ query }: { query: string }) {
                   call={call}
                   onApply={isAthlete && gate === 'ok' ? setApplyTo : undefined}
                   onOpenSponsor={openProfile}
+                  saved={savedIds.has(call.call_id)}
+                  onToggleSave={user ? toggleSave : undefined}
                 />
               </Reveal>
             ))}

@@ -53,6 +53,7 @@ export const SCREEN_PARITY: ScreenParity[] = [
   screen('inbox.tsx', '/inbox', ['completed account'], ['loading', 'error', 'empty', 'realtime update'], ['open conversation', 'mute', 'open profile', 'block', 'refresh']),
   screen('chat/[id].tsx', '/chat/:conversationId', ['conversation participant'], ['invalid ID', 'loading', 'error', 'empty', 'failed send', 'permission blocked', 'minor safety', 'blocked', 'closed'], ['send', 'retry', 'open profile', 'moderate']),
   screen('discover-section.tsx', '/discover-section', ['athlete', 'guardian'], ['clubs', 'coaches', 'leaderboard', 'sponsors', 'loading', 'error', 'empty'], ['go back to discover', 'search', 'follow', 'filter leaderboard', 'apply to call']),
+  screen('playbook/[id].tsx', '/playbook/:id', ['completed account'], ['items', 'empty', 'not found'], ['open item', 'remove item', 'rename', 'delete']),
   screen('search.tsx', '/search', ['completed account'], ['recent', 'suggestions', 'loading', 'error', 'no results'], ['change scope', 'type query', 'open result', 'clear recent']),
   screen('post/[id].tsx', '/post/:postId', ['visible-post viewer'], ['invalid ID', 'loading', 'unavailable', 'comments loading', 'comments error', 'comments empty', 'sending'], ['comment', 'reply', 'share', 'report', 'delete', 'block', 'play media']),
   screen('saved.tsx', '/saved', ['completed account'], ['loading', 'error', 'empty', 'loading more'], ['refresh', 'open post', 'comment', 'share', 'unsave', 'report', 'delete', 'block']),

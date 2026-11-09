@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, Bookmark, BookmarkCheck, MapPin } from 'lucide-react-native';
+import { BadgeCheck, Bookmark, MapPin } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Card, IconButton, Text } from '@/components/ui';
@@ -110,7 +110,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
             }
             icon={
               isSaved ? (
-                <BookmarkCheck size={20} color={colors.primary} strokeWidth={2.2} />
+                <Bookmark size={20} color={colors.primary} fill={colors.primary} strokeWidth={2.2} />
               ) : (
                 <Bookmark size={20} color={colors.textMuted} strokeWidth={2} />
               )

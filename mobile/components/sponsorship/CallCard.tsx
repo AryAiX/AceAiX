@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { BadgeCheck } from 'lucide-react-native';
+import { BadgeCheck, Bookmark } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Badge, Button, Card, ExpandableText, Text } from '@/components/ui';
@@ -16,6 +16,9 @@ interface Props {
   /** Shown only to someone who can apply. */
   onApply?: (call: CallFeedItem) => void;
   onOpenSponsor: (userId: string) => void;
+  /** The bookmark in the corner. Calls are saved on this phone. */
+  saved?: boolean;
+  onToggleSave?: (call: CallFeedItem) => void;
 }
 
 /**
@@ -23,7 +26,7 @@ interface Props {
  * sponsors. Who, then what, then a footer with the money, the deadline and
  * the one action.
  */
-export function CallCard({ call, onApply, onOpenSponsor }: Props) {
+export function CallCard({ call, onApply, onOpenSponsor, saved, onToggleSave }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -34,34 +37,54 @@ export function CallCard({ call, onApply, onOpenSponsor }: Props) {
 
   return (
     <Card padded style={{ gap: spacing.md }} testID={`sponsor-call-${call.call_id}`}>
-      <Pressable
-        onPress={() => onOpenSponsor(call.sponsor_user_id)}
-        accessibilityRole="button"
-        accessibilityLabel={brand}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <Avatar uri={call.sponsor_avatar} name={brand} size="sm" />
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
-              {brand}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        <Pressable
+          onPress={() => onOpenSponsor(call.sponsor_user_id)}
+          accessibilityRole="button"
+          accessibilityLabel={brand}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            flex: 1,
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Avatar uri={call.sponsor_avatar} name={brand} size="sm" />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {brand}
+              </Text>
+              <BadgeCheck size={14} color={colors.info} />
+            </View>
+            <Text variant="caption" tone="muted" numberOfLines={1}>
+              {metaLine(
+                call.industry,
+                call.sport ? sportLabel(t, call.sport) : t('sponsorship.anySport'),
+                t('sponsorship.spots', { n: call.slots }),
+              )}
             </Text>
-            <BadgeCheck size={14} color={colors.info} />
           </View>
-          <Text variant="caption" tone="muted" numberOfLines={1}>
-            {metaLine(
-              call.industry,
-              call.sport ? sportLabel(t, call.sport) : t('sponsorship.anySport'),
-              t('sponsorship.spots', { n: call.slots }),
-            )}
-          </Text>
-        </View>
-      </Pressable>
+        </Pressable>
+        {onToggleSave ? (
+          <Pressable
+            onPress={() => onToggleSave(call)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityState={{ selected: !!saved }}
+            accessibilityLabel={saved ? t('feed.removeFromSaved') : t('common.save')}
+            testID={`save-call-${call.call_id}`}
+            style={({ pressed }) => ({ padding: 4, opacity: pressed ? 0.5 : 1 })}
+          >
+            <Bookmark
+              size={21}
+              color={saved ? colors.primary : colors.textMuted}
+              fill={saved ? colors.primary : 'transparent'}
+            />
+          </Pressable>
+        ) : null}
+      </View>
 
       <View style={{ gap: 4 }}>
         <Text variant="subheading">{call.title}</Text>

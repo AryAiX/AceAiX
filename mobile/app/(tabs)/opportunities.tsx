@@ -60,6 +60,7 @@ import { errorMessage } from '@/lib/errors';
 import { fullDate, metaLine } from '@/lib/format';
 import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
 import type { Opportunity } from '@/types/models';
 
@@ -128,6 +129,7 @@ function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: Ath
 
 function AthleteOpportunities() {
   const t = useT();
+  const { profile: me } = useAuth();
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const router = useRouter();
@@ -155,14 +157,25 @@ function AthleteOpportunities() {
       try {
         // The API takes the CURRENT state and flips it.
         await toggleSaveOpportunity(opportunity.id, !next);
-        if (next) toast.success(t('opportunities.savedToast'));
+        /* Saved: offer a playbook too. Unsaved: it leaves them. */
+        if (next) {
+          offerPlaybooks({
+            kind: 'trial',
+            id: opportunity.id,
+            title: opportunity.title,
+            subtitle: opportunity.org_name,
+            thumb: opportunity.org_logo,
+          });
+        } else if (me) {
+          void removeFromAllPlaybooks(me.id, 'trial', opportunity.id);
+        }
         refreshSaved();
       } catch (err) {
         setSavedOverrides((current) => ({ ...current, [opportunity.id]: !next }));
         toast.error(errorMessage(err));
       }
     },
-    [t, toast, refreshSaved],
+    [toast, refreshSaved, me],
   );
 
   /* The search runs on the phone over what is already loaded — the title, the

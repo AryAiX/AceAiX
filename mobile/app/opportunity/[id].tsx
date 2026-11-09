@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   BadgeCheck,
   Bookmark,
-  BookmarkCheck,
   Check,
   CheckCircle2,
   Flag,
@@ -67,6 +66,7 @@ import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -174,12 +174,22 @@ export default function OpportunityDetailScreen() {
     setSavedOverride(next);
     try {
       await toggleSaveOpportunity(opportunity.id, saved);
-      if (next) toast.success(t('opportunities.savedToast'));
+      if (next) {
+        offerPlaybooks({
+          kind: 'trial',
+          id: opportunity.id,
+          title: opportunity.title,
+          subtitle: opportunity.org_name,
+          thumb: opportunity.org_logo,
+        });
+      } else if (profile) {
+        void removeFromAllPlaybooks(profile.id, 'trial', opportunity.id);
+      }
     } catch (err) {
       setSavedOverride(!next);
       toast.error(errorMessage(err));
     }
-  }, [t, opportunity, saved, toast]);
+  }, [opportunity, saved, toast, profile]);
 
   const onApply = useCallback(async () => {
     if (!opportunity || busy) return;
@@ -308,7 +318,7 @@ export default function OpportunityDetailScreen() {
     <IconButton
       icon={
         saved ? (
-          <BookmarkCheck size={20} color={colors.primary} strokeWidth={2.2} />
+          <Bookmark size={20} color={colors.primary} fill={colors.primary} strokeWidth={2.2} />
         ) : (
           <Bookmark size={20} color={colors.textMuted} strokeWidth={2} />
         )
