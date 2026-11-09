@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft, ArrowRight, Eye, Flame, X } from 'lucide-react-native';
 
@@ -17,7 +16,8 @@ import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 
 /** The challenge ombre, coral to pink — the same sweep as Play's + button —
     with white words on it. */
-const OMBRE: [string, string] = ['#F06A4E', '#E3428A'];
+/* The challenge card is one solid flame orange, no ombre. */
+const CHALLENGE_FILL = '#FF7A2C';
 const ON_OMBRE = '#FFFFFF';
 
 /** The flame red-orange of the AceAiX logo: the views title label and its arrow.
@@ -272,21 +272,15 @@ export function HomeSpotlight({
           testID="your-week-challenge"
           style={({ pressed }) => ({
             ...card,
-            overflow: 'hidden',
+            backgroundColor: CHALLENGE_FILL,
             opacity: pressed ? 0.9 : 1,
-            shadowColor: OMBRE[1],
+            shadowColor: CHALLENGE_FILL,
             shadowOpacity: 0.3,
             shadowRadius: 14,
             shadowOffset: { width: 0, height: 8 },
             elevation: 6,
           })}
         >
-          <LinearGradient
-            colors={OMBRE}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[StyleSheet.absoluteFill, { borderRadius: radii.lg }]}
-          />
           <View style={[tile, { backgroundColor: theme.alpha(ON_OMBRE, 0.25) }]}>
             <Flame size={19} color={ON_OMBRE} strokeWidth={2.4} />
           </View>

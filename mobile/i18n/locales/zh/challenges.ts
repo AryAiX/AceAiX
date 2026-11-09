@@ -29,6 +29,8 @@ export const challenges = {
   entries_other: '{{count}}人参加',
   allTitle: '全部挑战',
   allSubtitle_other: '{{count}} 个开放中 · 传一段短片，让人看过',
+  allHint: '传一段短片，让人看过',
+  openCount_other: '{{count}} 个开放中',
   closingSoon: '即将截止',
   moreChallenges: '更多挑战',
   higherWins: '越高越好',

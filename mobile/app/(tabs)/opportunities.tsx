@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bookmark,
@@ -791,14 +790,16 @@ function RecruiterOpportunities() {
 /**
  * The doorway into every open challenge.
  *
- * The one thing on this screen that is a game rather than an application
- * form, so it is the one thing wearing a colour — a still warm sweep with the
- * outline flame, nothing moving, so it sits calmly above the list.
+ * A quiet card like the trials under it, so the page stays calm: one solid
+ * flame square and a small "2 open" count carry the colour, and a soft warm
+ * shadow lifts it just off the page.
  */
 function ChallengesLink() {
   const t = useT();
   const theme = useTheme();
-  const { radii, spacing } = theme;
+  const { colors, radii, spacing } = theme;
+  const dark = theme.scheme === 'dark';
+  const flame = theme.gradients.warm[1];
   const router = useRouter();
   const { data } = useAsync(() => openChallenges(null, 5, 0), [], { refetchOnFocus: true });
   const open = (data ?? []).filter((c) => !c.my_entry_id && isChallengeLive(c)).length;
@@ -810,45 +811,65 @@ function ChallengesLink() {
       testID="opportunities-challenges"
     >
       <View
-        style={{
-          borderRadius: radii.lg,
-          overflow: 'hidden',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.md,
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-        }}
+        style={[
+          theme.raised('card'),
+          {
+            borderRadius: radii.lg,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            paddingVertical: spacing.md,
+            paddingHorizontal: spacing.md,
+            shadowColor: flame,
+            shadowOpacity: dark ? 0.28 : 0.16,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 8 },
+            elevation: 4,
+          },
+        ]}
       >
-        <LinearGradient
-          colors={theme.gradients.warm}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: 'rgba(255,255,255,0.22)',
+            width: 40,
+            height: 40,
+            borderRadius: 12,
+            backgroundColor: flame,
             alignItems: 'center',
             justifyContent: 'center',
+            overflow: 'hidden',
           }}
         >
-          <Flame size={18} color="#FFFFFF" strokeWidth={2.2} />
+          {/* A lighter top half gives the square a little depth. */}
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 20, backgroundColor: 'rgba(255,255,255,0.16)' }}
+          />
+          <Flame size={20} color="#FFFFFF" strokeWidth={2.3} />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyStrong" color="#FFFFFF">
-            {t('challenges.allTitle')}
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text variant="bodyStrong">{t('challenges.allTitle')}</Text>
+          <Text variant="caption" tone="muted" numberOfLines={1}>
+            {t('challenges.allHint')}
           </Text>
-          <Text variant="caption" color="rgba(255,255,255,0.86)" numberOfLines={1}>
-            {open > 0 ? t('challenges.allSubtitle', { count: open }) : t('challenges.subtitle')}
-          </Text>
         </View>
-        <View>
-          <ChevronForward size={18} color="#FFFFFF" />
-        </View>
+        {open > 0 ? (
+          <View
+            style={{
+              paddingHorizontal: 9,
+              paddingVertical: 4,
+              borderRadius: 10,
+              backgroundColor: theme.alpha(flame, dark ? 0.2 : 0.12),
+            }}
+          >
+            <Text variant="captionStrong" color={dark ? '#FFB27A' : '#B5410A'}>
+              {t('challenges.openCount', { count: open })}
+            </Text>
+          </View>
+        ) : null}
+        <ChevronForward size={18} color={colors.textMuted} />
       </View>
     </Tappable>
   );
