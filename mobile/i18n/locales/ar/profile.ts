@@ -121,6 +121,8 @@ export const profile = {
   videoClipA11y: 'مقطع فيديو',
   photoA11y: 'صورة',
   photoUnavailable: 'الصورة غير متاحة',
+  scoreWhenPostedA11y: 'النتيجة عند النشر: {{score}}',
+  scoreWhenPostedHint: 'الرقم على كل منشور هو نتيجتك عند نشره.',
 
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',

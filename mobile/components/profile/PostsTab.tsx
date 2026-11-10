@@ -3,9 +3,11 @@ import { useRouter } from 'expo-router';
 import { Grid3x3 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { EmptyState, ErrorState, SkeletonList } from '@/components/ui';
+import { EmptyState, ErrorState, SkeletonList, Text } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { getPostTiles } from '@/lib/api.profile';
+import { getMyPostScores } from '@/lib/api';
+import { scoreWhenPosted } from '@/lib/scoreTimeline';
 import { Routes } from '@/lib/routes';
 import { truncate } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -24,6 +26,9 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
   const t = useT();
 
   const posts = useAsync(() => getPostTiles(userId), [userId, refreshKey]);
+  /* Your own grid: your score on the day each post went up, from your own
+     score history (only you can read it). Others' grids stay as they are. */
+  const myScores = useAsync(() => getMyPostScores(), [refreshKey], { enabled: isSelf });
 
   const openPost = useCallback((id: string) => router.push(Routes.post(id)), [router]);
 
@@ -50,7 +55,21 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
     uri: post.thumbnail,
     isVideo: post.media?.[0]?.type === 'video',
     caption: post.caption ? truncate(post.caption, 60) : null,
+    score:
+      isSelf && post.media?.length && myScores.data
+        ? scoreWhenPosted(myScores.data.saved[post.id])
+        : null,
   }));
+  const showsScores = tiles.some((tile) => tile.score != null && tile.score > 0);
 
-  return <MediaGrid tiles={tiles} onPressTile={openPost} />;
+  return (
+    <>
+      <MediaGrid tiles={tiles} onPressTile={openPost} />
+      {showsScores ? (
+        <Text variant="caption" tone="muted" style={{ marginTop: theme.spacing.sm }}>
+          {t('profile.scoreWhenPostedHint')}
+        </Text>
+      ) : null}
+    </>
+  );
 }

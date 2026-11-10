@@ -108,6 +108,8 @@ export const profile = {
   videoClipA11y: '视频短片',
   photoA11y: '照片',
   photoUnavailable: '照片不可用',
+  scoreWhenPostedA11y: '发布时评分：{{score}}',
+  scoreWhenPostedHint: '每条帖子上的数字是你发布时的评分。',
 
   // ── 高光标签页（components/profile/HighlightsTab.tsx） ─────────────────────
   photoPermission: 'AceAiX 需要访问相册的权限。',

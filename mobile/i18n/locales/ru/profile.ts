@@ -119,6 +119,8 @@ export const profile = {
   videoClipA11y: 'Видеоклип',
   photoA11y: 'Фото',
   photoUnavailable: 'Фото недоступно',
+  scoreWhenPostedA11y: 'Рейтинг при публикации: {{score}}',
+  scoreWhenPostedHint: 'Число на каждой публикации — твой рейтинг в момент публикации.',
 
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',

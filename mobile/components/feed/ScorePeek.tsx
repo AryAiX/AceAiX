@@ -6,10 +6,12 @@ import { TrendingDown, TrendingUp, X } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
 import { Avatar, Badge, ScoreBar, ScoreRing, SkeletonList, Text } from '@/components/ui';
-import { visibleTopPercent } from '@/components/profile/ScoreCard';
+import { tierLabel, visibleTopPercent } from '@/components/profile/ScoreCard';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { getProfile } from '@/lib/api';
+import { getMyPostScores, getProfile } from '@/lib/api';
+import { scoreWhenPosted } from '@/lib/scoreTimeline';
+import { fullDate } from '@/lib/format';
 import { useAuth } from '@/providers/AuthProvider';
 import type { ScorePillars } from '@/types/models';
 
@@ -30,6 +32,10 @@ interface Props {
   avatar: string | null;
   /** The score the post already carried, shown at once while details load. */
   score: number;
+  /** When the post went up: on your own posts the card compares your score then and now. */
+  postedAt?: string | null;
+  /** The post's id, to find the score this phone saved when you posted it. */
+  postId?: string;
 }
 
 /**
@@ -41,7 +47,7 @@ interface Props {
  * already see. The week's change is shown only on your own posts, as on
  * Profile.
  */
-export function ScorePeek({ visible, onClose, userId, name, avatar, score }: Props) {
+export function ScorePeek({ visible, onClose, userId, name, avatar, score, postedAt, postId }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
@@ -53,6 +59,14 @@ export function ScorePeek({ visible, onClose, userId, name, avatar, score }: Pro
   const shown = full?.overall ?? score;
   const tier = tierForScore(shown);
   const glow = TierColors[tier];
+
+  /* Your own posts only: your score at the moment you posted (saved on this
+     phone, or worked out from your own score history, which only you can read). */
+  const mine = useAsync(() => getMyPostScores(), [userId], { enabled: visible && own && !!postedAt });
+  const thenScore =
+    own && full && mine.data && postedAt
+      ? scoreWhenPosted(postId ? mine.data.saved[postId] : null)
+      : null;
 
   const topPercent = visibleTopPercent(full?.percentile);
   const delta = full?.previous_overall != null ? full.overall - full.previous_overall : null;
@@ -189,6 +203,10 @@ export function ScorePeek({ visible, onClose, userId, name, avatar, score }: Pro
               <SkeletonList count={2} variant="row" />
             ) : null}
 
+            {thenScore != null && full && postedAt ? (
+              <ThenAndNow then={thenScore} now={full.overall} postedAt={postedAt} />
+            ) : null}
+
             <Text variant="caption" tone="muted" style={{ textAlign: 'center', marginTop: spacing.lg }}>
               {t('feed.scorePeekHint')}
             </Text>
@@ -196,5 +214,83 @@ export function ScorePeek({ visible, onClose, userId, name, avatar, score }: Pro
         </Animated.View>
       </Pressable>
     </Modal>
+  );
+}
+
+/** "When you posted this": your score that day beside your score now. */
+function ThenAndNow({ then, now, postedAt }: { then: number; now: number; postedAt: string }) {
+  const theme = useTheme();
+  const { colors, spacing, radii } = theme;
+  const t = useT();
+  const diff = now - then;
+  const thenTier = tierForScore(then);
+  const nowTier = tierForScore(now);
+  const tierMoved = thenTier !== nowTier;
+
+  const chip = (value: number, highlight: boolean) => {
+    const tier = tierForScore(value);
+    return (
+      <View
+        style={{
+          width: 62,
+          paddingVertical: 6,
+          borderRadius: radii.md,
+          alignItems: 'center',
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: highlight ? theme.alpha(TierColors[tier], 0.6) : colors.border,
+        }}
+      >
+        <Text variant="stat" style={{ fontSize: 22, lineHeight: 26 }}>
+          {value}
+        </Text>
+        <Text variant="overline" tone="muted" numberOfLines={1} style={{ fontSize: 9 }}>
+          {tierLabel(t, tier)}
+        </Text>
+      </View>
+    );
+  };
+
+  const line =
+    diff === 0
+      ? t('feed.scoreThenSame')
+      : tierMoved && diff > 0
+        ? t('feed.scoreThenUpTier', { count: diff, tier: tierLabel(t, nowTier) })
+        : t(diff > 0 ? 'feed.scoreThenUp' : 'feed.scoreThenDown', { count: Math.abs(diff) });
+
+  return (
+    <View
+      testID="score-peek-then"
+      style={{
+        marginTop: spacing.lg,
+        padding: spacing.md,
+        borderRadius: radii.lg,
+        backgroundColor: colors.surfaceAlt,
+        gap: spacing.sm,
+      }}
+    >
+      <Text variant="overline" tone="muted">
+        {t('feed.scoreThenTitle', { date: fullDate(postedAt) })}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+        {chip(then, false)}
+        {/* The same trend icons as the week's change above, picked at render
+            time (an icon chosen when the file loads came out empty). */}
+        {diff < 0 ? (
+          <TrendingDown size={18} color={colors.danger} strokeWidth={2.6} />
+        ) : (
+          <TrendingUp size={18} color={diff > 0 ? colors.success : colors.textMuted} strokeWidth={2.6} />
+        )}
+        {chip(now, true)}
+        <Text
+          variant="caption"
+          tone={diff > 0 ? 'success' : diff < 0 ? 'danger' : 'secondary'}
+          style={{ flex: 1 }}
+          numberOfLines={3}
+        >
+          {line}
+        </Text>
+      </View>
+    </View>
   );
 }

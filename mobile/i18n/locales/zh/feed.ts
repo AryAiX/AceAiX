@@ -16,6 +16,13 @@ export const feed = {
   scorePeekHint: '点按外部或 ✕ 关闭',
   scoreNew: '新人',
   photoCouldNotLoad: '这张照片无法加载',
+  scoreThenTitle: '发布时 · {{date}}',
+  scoreThenSame: '和发布时一样',
+  scoreThenUp: '此后 +{{count}}',
+  scoreThenDown: '此后 −{{count}}',
+  scoreThenUpTier: '此后 +{{count}}，并升到了{{tier}}',
+  postedAtNow: '发布时 {{then}} · 现在 {{now}}',
+  postedAtSame: '发布时 {{then}} · 今天不变',
 
   messages: '私信',
   messagesUnread_other: '私信，{{count}}条未读',

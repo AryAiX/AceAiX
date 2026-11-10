@@ -19,6 +19,13 @@ export const feed = {
   scorePeekHint: 'Toca fuera o ✕ para cerrar',
   scoreNew: 'NUEVO',
   photoCouldNotLoad: 'No se pudo cargar esta foto',
+  scoreThenTitle: 'Cuando lo publicaste · {{date}}',
+  scoreThenSame: 'Igual que cuando lo publicaste',
+  scoreThenUp: '+{{count}} desde entonces',
+  scoreThenDown: '−{{count}} desde entonces',
+  scoreThenUpTier: '+{{count}} desde entonces, y subiste a {{tier}}',
+  postedAtNow: 'Al publicar {{then}} · ahora {{now}}',
+  postedAtSame: 'Al publicar {{then}} · igual hoy',
 
   messages: 'Mensajes',
   messagesUnread_one: 'Mensajes, {{count}} sin leer',

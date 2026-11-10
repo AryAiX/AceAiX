@@ -3,6 +3,7 @@ import { ActivityIndicator, LayoutChangeEvent, Pressable, View } from 'react-nat
 import { ImageOff, Play, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { TierColors, tierForScore } from '@/theme/tokens';
 import { RemoteImage, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 
@@ -12,6 +13,8 @@ export interface MediaTile {
   isVideo?: boolean;
   /** Read out to screen readers and shown when there is no image. */
   caption?: string | null;
+  /** Your own grid only: your Talent Score on the day this post went up. */
+  score?: number | null;
 }
 
 interface Props {
@@ -199,6 +202,34 @@ export function MediaGrid({
               ) : null}
             </View>
           )}
+
+          {/* Your score when you posted it: on your own photo and video posts. */}
+          {tile.score != null && tile.score > 0 && (picture || videoTile) ? (
+            <View
+              accessible
+              accessibilityLabel={t('profile.scoreWhenPostedA11y', { score: tile.score })}
+              style={{
+                position: 'absolute',
+                left: 6,
+                ...(videoTile && !picture ? { top: 6 } : { bottom: 6 }),
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                borderRadius: 8,
+                backgroundColor: 'rgba(255,255,255,0.94)',
+              }}
+              testID="tile-score"
+            >
+              <View
+                style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: TierColors[tierForScore(tile.score)] }}
+              />
+              <Text variant="captionStrong" color="#161327" style={{ fontSize: 11 }}>
+                {tile.score}
+              </Text>
+            </View>
+          ) : null}
 
           {/* The small play badge, on a video that does have a preview picture. */}
           {tile.isVideo && picture ? (

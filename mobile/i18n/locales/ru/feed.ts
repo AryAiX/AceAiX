@@ -17,6 +17,13 @@ export const feed = {
   scorePeekHint: 'Нажми вне карточки или ✕, чтобы закрыть',
   scoreNew: 'НОВ.',
   photoCouldNotLoad: 'Не удалось загрузить фото',
+  scoreThenTitle: 'В день публикации · {{date}}',
+  scoreThenSame: 'Как в день публикации',
+  scoreThenUp: '+{{count}} с тех пор',
+  scoreThenDown: '−{{count}} с тех пор',
+  scoreThenUpTier: '+{{count}} с тех пор — теперь ты на уровне {{tier}}',
+  postedAtNow: 'При публикации {{then}} · сейчас {{now}}',
+  postedAtSame: 'При публикации {{then}} · сегодня так же',
 
   messages: 'Сообщения',
   messagesUnread_one: 'Сообщения, {{count}} непрочитанное',

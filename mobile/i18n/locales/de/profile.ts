@@ -113,6 +113,8 @@ export const profile = {
   videoClipA11y: 'Videoclip',
   photoA11y: 'Foto',
   photoUnavailable: 'Foto nicht verfügbar',
+  scoreWhenPostedA11y: 'Score beim Posten: {{score}}',
+  scoreWhenPostedHint: 'Die Zahl auf jedem Post ist dein Score beim Posten.',
 
   // ── Highlights (components/profile/HighlightsTab.tsx) ──────────────────────
   photoPermission: 'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen.',

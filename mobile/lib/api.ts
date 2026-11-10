@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { loadScoreSnapshots } from '@/lib/scoreSnapshots';
 import { AppError } from './errors';
 import { parseMentions, type MentionSpan } from './mentions';
 import { attachPostMentions } from './postMentions';
@@ -202,6 +203,11 @@ export async function getScoreHistory(athleteId: string) {
     .limit(90);
   if (error) throw new AppError(error);
   return data ?? [];
+}
+
+/** The scores this phone saved at the moment you posted, by post id. */
+export async function getMyPostScores(): Promise<{ saved: Record<string, number> }> {
+  return { saved: await loadScoreSnapshots() };
 }
 
 // ── Feed ─────────────────────────────────────────────────────────────────────

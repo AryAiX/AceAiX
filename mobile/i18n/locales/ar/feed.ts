@@ -17,6 +17,13 @@ export const feed = {
   scorePeekHint: 'اضغط خارج البطاقة أو ✕ للإغلاق',
   scoreNew: 'جديد',
   photoCouldNotLoad: 'تعذّر تحميل هذه الصورة',
+  scoreThenTitle: 'عند نشر هذا · {{date}}',
+  scoreThenSame: 'كما كانت عند النشر',
+  scoreThenUp: '+{{count}} منذ ذلك الحين',
+  scoreThenDown: '−{{count}} منذ ذلك الحين',
+  scoreThenUpTier: '+{{count}} منذ ذلك الحين، وصعدت إلى {{tier}}',
+  postedAtNow: 'عند النشر {{then}} · الآن {{now}}',
+  postedAtSame: 'عند النشر {{then}} · كما هو اليوم',
 
   messages: 'الرسائل',
   messagesUnread_zero: 'الرسائل، لا رسائل غير مقروءة',

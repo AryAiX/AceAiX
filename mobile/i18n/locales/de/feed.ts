@@ -17,6 +17,13 @@ export const feed = {
   scorePeekHint: 'Außerhalb tippen oder ✕ zum Schließen',
   scoreNew: 'NEU',
   photoCouldNotLoad: 'Dieses Foto konnte nicht geladen werden',
+  scoreThenTitle: 'Als du das gepostet hast · {{date}}',
+  scoreThenSame: 'Gleich wie beim Posten',
+  scoreThenUp: '+{{count}} seitdem',
+  scoreThenDown: '−{{count}} seitdem',
+  scoreThenUpTier: '+{{count}} seitdem, und du bist zu {{tier}} aufgestiegen',
+  postedAtNow: 'Beim Posten {{then}} · jetzt {{now}}',
+  postedAtSame: 'Beim Posten {{then}} · heute gleich',
 
   messages: 'Nachrichten',
   messagesUnread_one: 'Nachrichten, {{count}} ungelesen',

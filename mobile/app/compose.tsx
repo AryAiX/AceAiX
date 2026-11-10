@@ -34,7 +34,9 @@ import {
 } from '@/components/ui';
 import { useT } from '@/i18n';
 import { MentionInput } from '@/components/feed/MentionInput';
-import { createPost } from '@/lib/api';
+import { createPost, getMyTalentScore } from '@/lib/api';
+import { saveScoreSnapshot } from '@/lib/scoreSnapshots';
+import { useAsync } from '@/hooks/useAsync';
 import {
   MAX_POST_VIDEO_SECONDS,
   uploadPostMedia,
@@ -182,6 +184,9 @@ export default function ComposeScreen() {
     setMedia((current) => current.filter((_, i) => i !== index));
   }, []);
 
+  /* Your score right now, before this post can change it. */
+  const scoreAtOpen = useAsync(() => getMyTalentScore().catch(() => null), []);
+
   const submit = useCallback(async () => {
     if (!canPost) return;
     setPosting(true);
@@ -196,12 +201,15 @@ export default function ComposeScreen() {
       }
 
       const saved = mentionsForSubmit(text, mentions);
-      await createPost({
+      const newId = await createPost({
         caption: saved.text,
         mentions: saved.mentions,
         media: uploaded,
         audience,
       });
+      /* Keep the score you posted at (read when this screen opened, before
+         the post could raise it), for "your score when you posted it". */
+      void saveScoreSnapshot(newId, scoreAtOpen.data?.overall ?? null);
       toast.success(t('feed.posted'));
       close();
       checkAchievements();
@@ -211,7 +219,7 @@ export default function ComposeScreen() {
       setPosting(false);
       setProgress(null);
     }
-  }, [canPost, media, text, mentions, audience, toast, close, t, checkAchievements]);
+  }, [canPost, media, text, mentions, audience, toast, close, t, checkAchievements, scoreAtOpen.data]);
 
   const percent = progress && progress.total > 0 ? progress.done / progress.total : 0;
 

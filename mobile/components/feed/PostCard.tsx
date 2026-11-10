@@ -68,6 +68,8 @@ export interface PostCardProps {
   /** Playfeed: an athlete's photo or video post shows their Talent Score in
       a cut corner of the media; tapping it opens a quick look at the score. */
   scoreCorner?: boolean;
+  /** Single-post screen, your own post: your score the day it went up. */
+  scoreThen?: number | null;
 }
 
 function PostCardBase({
@@ -81,6 +83,7 @@ function PostCardBase({
   onOpenPost,
   onFollowChange,
   scoreCorner = false,
+  scoreThen = null,
 }: PostCardProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -439,6 +442,36 @@ function PostCardBase({
                 {meta}
               </Text>
             ) : null}
+            {scoreThen != null && scoreThen > 0 && post.author_score > 0 ? (
+              <View
+                testID="post-score-then"
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: radii.sm,
+                  backgroundColor: colors.surfaceAlt,
+                }}
+              >
+                <Text variant="captionStrong" tone="secondary">
+                  {t(scoreThen === post.author_score ? 'feed.postedAtSame' : 'feed.postedAtNow', {
+                    then: scoreThen,
+                    now: post.author_score,
+                  })}
+                </Text>
+                {scoreThen !== post.author_score ? (
+                  <Text variant="captionStrong" tone={post.author_score > scoreThen ? 'success' : 'danger'}>
+                    {post.author_score > scoreThen
+                      ? `↑ +${post.author_score - scoreThen}`
+                      : `↓ −${scoreThen - post.author_score}`}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </Tappable>
 
@@ -523,6 +556,8 @@ function PostCardBase({
           name={post.author_name ?? ''}
           avatar={post.author_avatar}
           score={post.author_score}
+          postedAt={post.created_at}
+          postId={post.id}
         />
       ) : null}
 

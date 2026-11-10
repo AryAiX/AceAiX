@@ -119,6 +119,8 @@ export const profile = {
   videoClipA11y: 'Clip de video',
   photoA11y: 'Foto',
   photoUnavailable: 'Foto no disponible',
+  scoreWhenPostedA11y: 'Puntuación al publicar: {{score}}',
+  scoreWhenPostedHint: 'El número de cada publicación es tu puntuación cuando la publicaste.',
 
   // ── Pestaña de destacados (components/profile/HighlightsTab.tsx) ───────────
   photoPermission: 'AceAiX necesita permiso para abrir tus fotos.',

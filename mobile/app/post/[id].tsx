@@ -27,7 +27,8 @@ import {
 } from '@/components/feed/ContentActionsSheet';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
-import { addComment, getComments } from '@/lib/api';
+import { addComment, getComments, getMyPostScores } from '@/lib/api';
+import { scoreWhenPosted } from '@/lib/scoreTimeline';
 import { getPostById, postLink } from '@/lib/api.feed';
 import { useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
@@ -53,6 +54,10 @@ export default function PostScreen() {
     [postId],
     { enabled: !!postId, refetchOnFocus: true },
   );
+
+  /* Your own post: your score on the day it went up, for the line under your name. */
+  const ownPost = !!user && post.data?.author_id === user.id;
+  const myScores = useAsync(() => getMyPostScores(), [ownPost], { enabled: ownPost });
 
   const comments = useAsync<PostComment[]>(
     () => getComments(postId as string),
@@ -270,6 +275,12 @@ export default function PostScreen() {
               post={item}
               expanded
               isActive
+              scoreCorner
+              scoreThen={
+                item.author_id === user?.id && myScores.data
+                  ? scoreWhenPosted(myScores.data.saved[item.id])
+                  : null
+              }
               onPatch={patchPost}
               onOpenComments={() => setFocusSignal((n) => n + 1)}
               onOpenActions={openPostActions}
