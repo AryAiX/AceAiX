@@ -660,22 +660,76 @@ const SWEEP: readonly [number, string][] = [
   [1, LogoColors.ember],
 ];
 
-function mixHex(a: string, b: string, t: number): string {
-  const pa = parseInt(a.slice(1), 16);
-  const pb = parseInt(b.slice(1), 16);
-  const ch = (shift: number) =>
-    Math.round(((pa >> shift) & 255) + (((pb >> shift) & 255) - ((pa >> shift) & 255)) * t);
-  const n = (ch(16) << 16) | (ch(8) << 8) | ch(0);
+/* Blending happens in OKLCH, the way the eye sees colour, not in plain RGB.
+   In RGB, blue to amber passes through a flat grey-mauve and then olive (the
+   muddy patch on the ring); in OKLCH the hue turns the short way round, so the
+   same two colours meet in a clean, bright pink. The stops are unchanged. */
+type Oklch = [number, number, number];
+
+const toLinear = (c: number) => {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+};
+const fromLinear = (c: number) =>
+  255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+
+function hexToOklch(hex: string): Oklch {
+  const n = parseInt(hex.slice(1), 16);
+  const r = toLinear((n >> 16) & 255);
+  const g = toLinear((n >> 8) & 255);
+  const b = toLinear(n & 255);
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [L, Math.hypot(A, B), Math.atan2(B, A)];
+}
+
+function oklchToHex([L, C, H]: Oklch): string {
+  const A = C * Math.cos(H);
+  const B = C * Math.sin(H);
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  const rgb = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ].map((c) => Math.max(0, Math.min(255, Math.round(fromLinear(c)))));
+  const n = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2];
   return `#${n.toString(16).padStart(6, '0').toUpperCase()}`;
+}
+
+function mixOklch(a: string, b: string, t: number): string {
+  const [l0, c0, h0] = hexToOklch(a);
+  const [l1, c1, h1] = hexToOklch(b);
+  let dh = h1 - h0;
+  if (dh > Math.PI) dh -= 2 * Math.PI;
+  if (dh < -Math.PI) dh += 2 * Math.PI;
+  return oklchToHex([l0 + (l1 - l0) * t, c0 + (c1 - c0) * t, h0 + dh * t]);
+}
+
+/* Rings draw a hundred slices each, so the sweep is worked out once, in
+   half-percent steps, and looked up after that. */
+const SWEEP_STEPS = 200;
+let sweepTable: string[] | null = null;
+
+function sweepExact(x: number): string {
+  for (let i = 1; i < SWEEP.length; i++) {
+    const [p1, c1] = SWEEP[i];
+    const [p0, c0] = SWEEP[i - 1];
+    if (x <= p1) return mixOklch(c0, c1, (x - p0) / (p1 - p0));
+  }
+  return SWEEP[SWEEP.length - 1][1];
 }
 
 /** The sweep's colour at `t` (0–1). */
 export function sweepAt(t: number): string {
-  const x = Math.max(0, Math.min(1, t));
-  for (let i = 1; i < SWEEP.length; i++) {
-    const [p1, c1] = SWEEP[i];
-    const [p0, c0] = SWEEP[i - 1];
-    if (x <= p1) return mixHex(c0, c1, (x - p0) / (p1 - p0));
+  const x = Number.isFinite(t) ? Math.max(0, Math.min(1, t)) : 0;
+  if (!sweepTable) {
+    sweepTable = Array.from({ length: SWEEP_STEPS + 1 }, (_, i) => sweepExact(i / SWEEP_STEPS));
   }
-  return SWEEP[SWEEP.length - 1][1];
+  return sweepTable[Math.round(x * SWEEP_STEPS)];
 }
