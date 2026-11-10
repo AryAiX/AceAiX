@@ -29,10 +29,20 @@ const SAME_SPORT = 'Plays your sport';
 /* The bar fills in the logo's colours, sky to ember, one third per follow,
    the way the story ring travels round. */
 const STEPS = [
-  { colors: [LogoColors.sky, LogoColors.cobalt] as const, locations: [0, 1] as const },
-  { colors: [LogoColors.cobalt, LogoColors.amber, '#FF9A3A'] as const, locations: [0, 0.8, 1] as const },
-  { colors: ['#FF9A3A', LogoColors.flame, LogoColors.ember] as const, locations: [0, 0.4, 1] as const },
+  { colors: ['#6A3DF0', '#4C5BFF'] as const, locations: [0, 1] as const },
+  { colors: ['#4C5BFF', LogoColors.sky] as const, locations: [0, 1] as const },
+  { colors: [LogoColors.amber, LogoColors.flame] as const, locations: [0, 1] as const },
 ];
+
+/* Short one-line tags for the reasons the server sends. */
+const SHORT_REASON: Record<string, string> = {
+  'Matches the position you need': 'feed.tagPosition',
+  'Inside your age range': 'feed.tagAge',
+  'Based in your region': 'feed.tagNear',
+  'Competing at the level you scout': 'feed.tagLevel',
+  'Top-tier talent score': 'feed.tagTopScore',
+  'Strong talent score': 'feed.tagStrongScore',
+};
 
 /**
  * The top of the Following tab until you follow 3 people: a welcome with a
@@ -124,56 +134,53 @@ export function FollowingStarter({
           style={{ ...card, paddingVertical: spacing.sm + 4, paddingHorizontal: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2 }}
           testID="following-starter-welcome"
         >
-          {done ? (
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.successSoft,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Check size={20} color={colors.success} strokeWidth={2.8} />
-            </View>
-          ) : (
-            <WaveHand size={40} />
-          )}
+          <WaveHand size={40} />
           <View style={{ flex: 1, gap: 6 }}>
-            <Text variant="bodyStrong" numberOfLines={1}>
-              {done
-                ? t('feed.starterDone')
-                : shown === 0
-                  ? t('feed.starterTitle')
-                  : t('feed.starterMore', { count: remaining })}
-            </Text>
-            {done ? (
-              <Text variant="caption" tone="muted" numberOfLines={2}>
-                {t('feed.starterDoneBody')}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {done
+                  ? t('feed.starterDone')
+                  : shown === 0
+                    ? t('feed.starterTitle')
+                    : shown === 1
+                      ? t('feed.starterWarm')
+                      : t('feed.starterAlmost')}
               </Text>
-            ) : (
-              <View
-                style={{ flexDirection: 'row', gap: 5 }}
-                accessible
-                accessibilityLabel={t('feed.starterProgress', { count: shown })}
-              >
-                {STEPS.map((step, i) =>
-                  i < shown ? (
-                    <LinearGradient
-                      key={i}
-                      colors={step.colors}
-                      locations={step.locations}
-                      start={{ x: 0, y: 0.5 }}
-                      end={{ x: 1, y: 0.5 }}
-                      style={{ flex: 1, height: 6, borderRadius: 3 }}
-                    />
-                  ) : (
-                    <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt }} />
-                  ),
-                )}
-              </View>
-            )}
+              {done ? (
+                <View
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: colors.success,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Check size={12} color="#FFFFFF" strokeWidth={3.2} />
+                </View>
+              ) : null}
+            </View>
+            <View
+              style={{ flexDirection: 'row', gap: 5 }}
+              accessible
+              accessibilityLabel={t('feed.starterProgress', { count: shown })}
+            >
+              {STEPS.map((step, i) =>
+                i < shown ? (
+                  <LinearGradient
+                    key={i}
+                    colors={step.colors}
+                    locations={step.locations}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={{ flex: 1, height: 6, borderRadius: 3 }}
+                  />
+                ) : (
+                  <View key={i} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt }} />
+                ),
+              )}
+            </View>
           </View>
           {done ? (
             <Pressable
@@ -215,7 +222,7 @@ export function FollowingStarter({
           {list.map((athlete) => {
             const name = displayName(athlete.full_name);
             const other = (athlete.reasons ?? []).find((r) => r !== SAME_SPORT);
-            const reason = other ? reasonLabel(t, other) : null;
+            const reason = other ? (SHORT_REASON[other] ? t(SHORT_REASON[other]) : reasonLabel(t, other)) : null;
             const isFollowing = !!followed[athlete.user_id];
             return (
               <Pressable
