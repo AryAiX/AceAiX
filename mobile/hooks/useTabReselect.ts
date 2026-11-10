@@ -23,18 +23,33 @@ export type TabScrollable = ListLike | ScrollLike;
  */
 interface TabScreenNavigation {
   isFocused: () => boolean;
-  addListener: (event: 'tabPress', listener: () => void) => () => void;
+}
+
+/* The dock calls `announceTabReselect` when you tap the tab you are already
+   on. It is a plain signal of our own rather than the navigator's `tabPress`
+   event, which this router version does not always pass on to the screen. */
+type ReselectListener = (route: string) => void;
+const reselectListeners = new Set<ReselectListener>();
+
+/** Tell the open tab's screen (and the tab icon) that its tab was tapped again. */
+export function announceTabReselect(route: string): void {
+  reselectListeners.forEach((listener) => listener(route));
+}
+
+/** Hear every re-tap of the open tab. Returns the unsubscribe. */
+export function onTabReselect(listener: ReselectListener): () => void {
+  reselectListeners.add(listener);
+  return () => {
+    reselectListeners.delete(listener);
+  };
 }
 
 /**
  * Tap the tab you are already on: back to the top, then reload.
  *
- * The tab bar already answers a re-tap by bumping the icon (`onTabPress` in
- * `app/(tabs)/_layout.tsx`); this makes the screen answer too, the way every
- * feed app does. `tabPress` arrives before the navigator acts, so
- * `isFocused()` still describes the tab you were on — true only for a re-tap.
- * Every visited tab stays mounted and keeps its listener, which is why the
- * check matters.
+ * The tab bar already answers a re-tap by bumping the icon (`app/(tabs)/_layout.tsx`);
+ * this makes the screen answer too, the way every feed app does. Every visited
+ * tab stays mounted and keeps its listener, so only the focused one acts.
  *
  * Returns a callback ref: put it on the list with `ref={…}`. Several lists
  * that are never on screen together can share it. With no list mounted (an
@@ -48,7 +63,7 @@ export function useTabReselect(onReselect?: () => void): (node: TabScrollable | 
   latest.current = onReselect;
 
   useEffect(() => {
-    return navigation.addListener('tabPress', () => {
+    return onTabReselect(() => {
       if (!navigation.isFocused()) return;
       const current = node.current;
       if (current) {

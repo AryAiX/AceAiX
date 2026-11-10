@@ -23,6 +23,7 @@ import { useDockMetrics } from './dockInset';
 import { CreateMenu, type CreateChoice, type PlusFrame } from './CreateMenu';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
+import { announceTabReselect } from '@/hooks/useTabReselect';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -110,6 +111,12 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
      hands the bar no navigator, fall back to the screen's own navigation
      rather than crash. */
   const open = (route: Route) => {
+    /* Tapping the tab you are already on: the page goes back to the top and
+       reloads, and the icon bumps. */
+    if (route.key === activeKey) {
+      announceTabReselect(route.name);
+      return;
+    }
     if (navigation?.emit) {
       const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
       if (route.key !== activeKey && !event.defaultPrevented) navigation.navigate(route.name, route.params);

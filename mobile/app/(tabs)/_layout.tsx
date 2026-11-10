@@ -13,6 +13,7 @@ import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useClaimPendingInvite } from '@/hooks/useClaimPendingInvite';
+import { onTabReselect } from '@/hooks/useTabReselect';
 
 /**
  * Five destinations, and only five. Everything else in the app is reachable
@@ -111,6 +112,9 @@ export default function TabsLayout() {
       setRebump((prev) => ({ route, count: prev.count + 1 }));
     }
   }, []);
+
+  /* A re-tap of the open tab comes from the dock directly. */
+  useEffect(() => onTabReselect((route) => onTabPress(route, true)), [onTabPress]);
 
   const dock = useDockMetrics();
   const bumpFor = (route: string) => (rebump.route === route ? rebump.count : 0);
