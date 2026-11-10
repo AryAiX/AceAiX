@@ -230,7 +230,7 @@ export function HomeSpotlight({
               <Text variant="bodyStrong" numberOfLines={2}>
                 {t('views.homeTitle', { count: views.total })}
               </Text>
-              <Text variant="caption" tone="muted" numberOfLines={1}>
+              <Text variant="caption" tone="muted" numberOfLines={2}>
                 {views.professional > 0
                   ? t('views.homeProfessional', { count: views.professional })
                   : t('views.homeEmptyBody')}

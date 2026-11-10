@@ -9,7 +9,7 @@
  */
 export const views = {
   title: 'Wer dein Profil angesehen hat',
-  subtitle: 'Trainer, Scouts und Vereine aus den letzten {{days}} Tagen.',
+  subtitle: 'Aufrufe in den letzten {{days}} Tagen.',
 
   homeTitleNone: 'Diese Woche hat noch niemand reingeschaut',
   homeTitle_one: '{{count}} Person hat dein Profil angesehen',
@@ -47,4 +47,6 @@ export const views = {
   whyTitle: 'Warum manche Namen fehlen',
   whyBody:
     'Wir nennen geprüfte Trainer, Scouts und Vereine — Menschen, die beruflich auf ein Profil schauen, das du veröffentlicht hast, um gefunden zu werden. Ungeprüfte Konten und andere Sportler werden gezählt, aber nie genannt. Diese Regel gilt für alle gleich.',
+  unnamedOnlyTitle_one: '{{count}} Aufruf ohne Namen',
+  unnamedOnlyTitle_other: '{{count}} Aufrufe ohne Namen',
 };
