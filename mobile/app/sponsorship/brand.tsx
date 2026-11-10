@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Button, Chip, ErrorState, Header, Input, Screen, SkeletonList, Text, useToast } from '@/components/ui';
+import { Button, Dropdown, ErrorState, Header, Input, Screen, SkeletonList, Text, useToast } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
 import { TagPicker } from '@/components/sponsorship/Tags';
 import { SPORTS, sportLabel } from '@/constants/sports';
@@ -155,18 +155,14 @@ export default function SponsorBrandScreen() {
           <Text variant="captionStrong" tone="secondary">
             {t('sponsorship.bSports')}
           </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {SPORTS.map((s) => (
-              <Chip
-                tone="accent"
-                key={s.key}
-                label={sportLabel(t, s.key)}
-                icon={<Text variant="caption">{s.emoji}</Text>}
-                selected={sports.includes(s.key)}
-                onPress={() => setSports((list) => toggleTag(list, s.key))}
-              />
-            ))}
-          </View>
+          <Dropdown
+            multiple
+            placeholder={t('common.choose')}
+            options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+            value={sports}
+            onChange={setSports}
+            testID="sponsorship-brand-sports"
+          />
         </View>
 
         <TagPicker

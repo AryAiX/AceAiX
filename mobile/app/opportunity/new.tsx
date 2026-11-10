@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Platform, Pressable, ScrollView, View } from 'react-native';
+import { BackHandler, Platform, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarDays, Check, ShieldAlert } from 'lucide-react-native';
@@ -8,8 +8,8 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
-  Chip,
   ConfirmSheet,
+  Dropdown,
   EmptyState,
   Header,
   Input,
@@ -400,27 +400,19 @@ export default function NewOpportunityScreen() {
             {t('opportunities.post.sportLabel')}
             <Text variant="captionStrong" tone="danger">{' *'}</Text>
           </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginHorizontal: -spacing.lg }}
-            contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}
-          >
-            {SPORTS.map((s) => (
-              <Chip
-                tone="accent"
-                key={s.key}
-                label={sportLabel(t, s.key)}
-                icon={<Text variant="caption">{s.emoji}</Text>}
-                selected={sport === s.key}
-                onPress={() => {
-                  setSport(s.key);
-                  setPosition(null);
-                  setErrors((e) => ({ ...e, sport: undefined }));
-                }}
-              />
-            ))}
-          </ScrollView>
+          <Dropdown
+            required
+            placeholder={t('common.choose')}
+            options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+            value={sport ? [sport] : []}
+            onChange={(next) => {
+              if (!next[0] || next[0] === sport) return;
+              setSport(next[0]);
+              setPosition(null);
+              setErrors((e) => ({ ...e, sport: undefined }));
+            }}
+            testID="opportunity-new-sport"
+          />
           {errors.sport ? (
             <Text variant="caption" tone="danger">
               {errors.sport}
@@ -437,21 +429,13 @@ export default function NewOpportunityScreen() {
             <Text variant="caption" tone="muted">
               {t('opportunities.post.positionHint')}
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              <Chip
-                label={t('opportunities.post.positionAny')}
-                selected={!position}
-                onPress={() => setPosition(null)}
-              />
-              {positions.map((p) => (
-                <Chip
-                  key={p}
-                  label={positionLabel(t, p)}
-                  selected={position === p}
-                  onPress={() => setPosition((current) => (current === p ? null : p))}
-                />
-              ))}
-            </View>
+            <Dropdown
+              placeholder={t('opportunities.post.positionAny')}
+              options={positions.map((p) => ({ key: p, label: positionLabel(t, p) }))}
+              value={position ? [position] : []}
+              onChange={(next) => setPosition(next[0] ?? null)}
+              testID="opportunity-new-position"
+            />
           </View>
         ) : null}
 

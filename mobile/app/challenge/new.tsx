@@ -6,7 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
-  Chip,
+  Dropdown,
   EmptyState,
   Header,
   Input,
@@ -186,21 +186,19 @@ export default function NewChallengeScreen() {
           {t('challenges.newBody')}
         </Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {SPORTS.map((item) => (
-            <Chip
-              tone="accent"
-              key={item.key}
-              label={sportLabel(t, item.key)}
-              icon={<Text variant="caption">{item.emoji}</Text>}
-              selected={sport === item.key}
-              onPress={() => {
-                setSportChosen(true);
-                setSport(item.key);
-              }}
-            />
-          ))}
-        </View>
+        <Dropdown
+          required
+          label={t('opportunities.detail.factSport')}
+          placeholder={t('common.choose')}
+          options={SPORTS.map((item) => ({ key: item.key, label: sportLabel(t, item.key), emoji: item.emoji }))}
+          value={sport ? [sport] : []}
+          onChange={(next) => {
+            if (!next[0]) return;
+            setSportChosen(true);
+            setSport(next[0]);
+          }}
+          testID="challenge-new-sport"
+        />
 
         <Input
           label={t('challenges.fieldTitle')}

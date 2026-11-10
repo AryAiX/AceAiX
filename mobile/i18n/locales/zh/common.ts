@@ -38,6 +38,8 @@ export const common = {
   message: '私信',
   apply: '申请',
   search: '搜索',
+  any: '全部',
+  choose: '请选择',
   filter: '筛选',
   clear: '清除',
   dateNone: '选择日期',

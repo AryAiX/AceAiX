@@ -39,6 +39,8 @@ export const common = {
   message: 'Message',
   apply: 'Postuler',
   search: 'Rechercher',
+  any: 'Tous',
+  choose: 'Choisir',
   filter: 'Filtrer',
   clear: 'Effacer',
   dateNone: 'Choisir une date',

@@ -15,6 +15,7 @@ import {
   ConfirmSheet,
   CoverCropper,
   Divider,
+  Dropdown,
   ErrorState,
   Header,
   IconButton,
@@ -151,7 +152,6 @@ export default function EditProfileScreen() {
     null,
   );
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [sportSheet, setSportSheet] = useState(false);
   const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
@@ -507,7 +507,6 @@ export default function EditProfileScreen() {
   const hasAthlete = !!bundle.data?.athlete;
   const hasCoach = !!bundle.data?.coach;
   const positions = positionsFor(form.sport);
-  const selectedSport = SPORTS.find((sport) => sport.key === form.sport);
 
   return (
     <Screen header={header} keyboardAvoiding contentStyle={{ gap: spacing.xxl }}>
@@ -748,47 +747,48 @@ export default function EditProfileScreen() {
           <View>
             <SectionHeader title={t('profile.sectionSport')} />
             <View style={{ gap: spacing.md }}>
-              <Pressable
-                onPress={() => setSportSheet(true)}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.sportA11y', {
-                  value: form.sport ? sportLabel(t, form.sport) : t('profile.notSet'),
-                })}
-              >
-                <Input
-                  label={t('profile.sport')}
-                  placeholder={t('profile.sportPlaceholder')}
-                  value={
-                    selectedSport
-                      ? t('profile.sportWithEmoji', {
-                          emoji: selectedSport.emoji,
-                          name: sportLabel(t, selectedSport.key),
-                        })
-                      : form.sport
-                  }
-                  editable={false}
-                  pointerEvents="none"
-                />
-              </Pressable>
+              <Dropdown
+                required
+                label={t('profile.sport')}
+                placeholder={t('profile.sportPlaceholder')}
+                options={SPORTS.map((sport) => ({
+                  key: sport.key,
+                  label: sportLabel(t, sport.key),
+                  emoji: sport.emoji,
+                }))}
+                value={form.sport ? [form.sport] : []}
+                onChange={(next) => {
+                  const key = next[0];
+                  // Positions are sport-specific, so a sport change clears the old one.
+                  // The new main sport also leaves the "also plays" list.
+                  if (!key || key === form.sport) return;
+                  setForm((current) =>
+                    current
+                      ? {
+                          ...current,
+                          sport: key,
+                          position: '',
+                          otherSports: current.otherSports.filter((entry) => entry.sport !== key),
+                        }
+                      : current,
+                  );
+                }}
+                testID="edit-profile-sport"
+              />
 
               {positions.length > 0 ? (
                 <View style={{ gap: spacing.sm }}>
                   <Text variant="captionStrong" tone="secondary">
                     {t('profile.position')}
                   </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                    {positions.map((position) => (
-                      <Chip
-                        key={position}
-                        /* The English value is what is stored; only the chip is translated. */
-                        label={positionLabel(t, position)}
-                        selected={form.position === position}
-                        onPress={() =>
-                          set('position', form.position === position ? '' : position)
-                        }
-                      />
-                    ))}
-                  </View>
+                  <Dropdown
+                    placeholder={t('common.choose')}
+                    /* The English value is what is stored; only the label is translated. */
+                    options={positions.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                    value={form.position ? [form.position] : []}
+                    onChange={(next) => set('position', next[0] ?? '')}
+                    testID="edit-profile-position"
+                  />
                 </View>
               ) : null}
 
@@ -796,16 +796,16 @@ export default function EditProfileScreen() {
                 <Text variant="captionStrong" tone="secondary">
                   {t('profile.level')}
                 </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                  {LEVELS.map((level) => (
-                    <Chip
-                      key={level.key}
-                      label={levelLabelI18n(t, level.key)}
-                      selected={form.level === level.key}
-                      onPress={() => set('level', level.key)}
-                    />
-                  ))}
-                </View>
+                <Dropdown
+                  required
+                  placeholder={t('common.choose')}
+                  options={LEVELS.map((level) => ({ key: level.key, label: levelLabelI18n(t, level.key) }))}
+                  value={form.level ? [form.level] : []}
+                  onChange={(next) => {
+                    if (next[0]) set('level', next[0]);
+                  }}
+                  testID="edit-profile-level"
+                />
                 <Text variant="caption" tone="muted">
                   {levelHint(t, form.level) || t('profile.levelHintDefault')}
                 </Text>
@@ -1052,46 +1052,6 @@ export default function EditProfileScreen() {
         </View>
       ) : null}
 
-      {/* ── Sport picker ── */}
-      <Sheet
-        visible={sportSheet}
-        onClose={() => setSportSheet(false)}
-        title={t('profile.chooseSportTitle')}
-      >
-        {SPORTS.map((sport, index) => (
-          <View key={sport.key}>
-            {index > 0 ? <Divider /> : null}
-            <ListItem
-              title={t('profile.sportWithEmoji', {
-                emoji: sport.emoji,
-                name: sportLabel(t, sport.key),
-              })}
-              right={
-                form.sport === sport.key ? <Check size={20} color={colors.primary} /> : undefined
-              }
-              onPress={() => {
-                // Positions are sport-specific, so a sport change clears the old one.
-                // The new main sport also leaves the "also plays" list.
-                if (sport.key !== form.sport) {
-                  setForm((current) =>
-                    current
-                      ? {
-                          ...current,
-                          sport: sport.key,
-                          position: '',
-                          otherSports: current.otherSports.filter(
-                            (entry) => entry.sport !== sport.key,
-                          ),
-                        }
-                      : current,
-                  );
-                }
-                setSportSheet(false);
-              }}
-            />
-          </View>
-        ))}
-      </Sheet>
 
       {/* ── Also-plays picker ── */}
       <Sheet

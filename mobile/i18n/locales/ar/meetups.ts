@@ -37,6 +37,7 @@ export const meetups = {
   searchPlace: 'أين؟ المدينة أو المنطقة أو الملعب',
   searchPlaceHint: 'حيث أنت الآن، أو حيث أنت ذاهب',
   anySport: 'أي رياضة',
+  oneSportHint: 'رياضة واحدة في كل مرة هنا: البحث عن اللقاءات يبحث عن رياضة واحدة.',
   anyLevel: 'أي مستوى',
   anyDate: 'أي تاريخ',
   fieldDay: 'اليوم',

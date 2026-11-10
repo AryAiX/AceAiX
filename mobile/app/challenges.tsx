@@ -6,7 +6,7 @@ import { ChevronDown, Flame, SlidersHorizontal, Trophy, X } from 'lucide-react-n
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
-  Chip,
+  Dropdown,
   EmptyState,
   ErrorState,
   Header,
@@ -365,21 +365,22 @@ export default function ChallengesScreen() {
           />
         }
       >
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingBottom: spacing.lg }}>
-          {SPORTS.map((entry) => {
-            const selected = sports.includes(entry.key);
-            const none = !sportsHere.has(entry.key.toLowerCase());
-            return (
-              <Chip
-                key={entry.key}
-                label={sportLabel(t, entry.key)}
-                icon={<Text variant="caption">{entry.emoji}</Text>}
-                selected={selected}
-                onPress={() => toggleSport(entry.key)}
-                style={none && !selected ? { opacity: 0.45 } : undefined}
-              />
-            );
-          })}
+        <View style={{ paddingBottom: spacing.lg }}>
+          {/* A searchable list with ticks instead of a wall of chips; sports
+              with no open challenge right now are faded. */}
+          <Dropdown
+            inline
+            multiple
+            options={SPORTS.map((entry) => ({
+              key: entry.key,
+              label: sportLabel(t, entry.key),
+              emoji: entry.emoji,
+              faded: !sportsHere.has(entry.key.toLowerCase()),
+            }))}
+            value={sports}
+            onChange={setSports}
+            testID="challenges-sport-list"
+          />
         </View>
       </Sheet>
     </Screen>

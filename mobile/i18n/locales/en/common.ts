@@ -38,6 +38,8 @@ export const common = {
   message: 'Message',
   apply: 'Apply',
   search: 'Search',
+  any: 'Any',
+  choose: 'Choose',
   filter: 'Filter',
   clear: 'Clear',
   dateNone: 'Choose a date',

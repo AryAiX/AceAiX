@@ -94,6 +94,7 @@ export const discover = {
     sport: 'Sport',
     position: 'Poste',
     positionHint: 'Choisis d’abord un sport.',
+    oneSportHint: 'Ici, un sport à la fois, pour afficher ses postes juste en dessous.',
     level: 'Niveau',
     country: 'Pays',
     findCountry: 'Trouver un pays',

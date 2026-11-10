@@ -92,6 +92,7 @@ export const discover = {
     sport: 'الرياضة',
     position: 'المركز',
     positionHint: 'اختر رياضة أولًا.',
+    oneSportHint: 'رياضة واحدة في كل مرة هنا، لتظهر مراكزها في الأسفل.',
     level: 'المستوى',
     country: 'الدولة',
     findCountry: 'ابحث عن دولة',

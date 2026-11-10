@@ -38,6 +38,8 @@ export const common = {
   message: 'مراسلة',
   apply: 'تقديم',
   search: 'بحث',
+  any: 'الكل',
+  choose: 'اختر',
   filter: 'تصفية',
   clear: 'مسح',
   dateNone: 'اختر تاريخًا',

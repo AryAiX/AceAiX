@@ -7,9 +7,9 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
-  Chip,
   ConfirmSheet,
   Divider,
+  Dropdown,
   EmptyState,
   ErrorState,
   Header,
@@ -39,6 +39,7 @@ import {
   positionsBySport,
   positionsFor,
   prunePositions,
+  sportEmoji,
   sportLabel,
 } from '@/constants/sports';
 import type { MatchPreferences } from '@/types/models';
@@ -251,6 +252,7 @@ export default function ScoutingPreferencesScreen() {
           selected={draft.sports}
           onToggle={(v) => toggle('sports', v)}
           labelOf={(key) => sportLabel(t, key)}
+          emojiOf={(key) => sportEmoji(key)}
         />
 
         <View style={{ gap: spacing.sm }}>
@@ -275,16 +277,16 @@ export default function ScoutingPreferencesScreen() {
                 <View key={sport} style={{ gap: spacing.sm }}>
                   <Text variant="captionStrong">{sportLabel(t, sport)}</Text>
                   {options.length > 0 ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                      {options.map((position) => (
-                        <Chip
-                          key={`${sport}:${position}`}
-                          label={positionLabel(t, position)}
-                          selected={selected.includes(position)}
-                          onPress={() => toggle('positions', position)}
-                        />
-                      ))}
-                    </View>
+                    <Dropdown
+                      multiple
+                      options={options.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                      value={selected}
+                      onChange={(next) => {
+                        const changed =
+                          next.find((key) => !selected.includes(key)) ?? selected.find((key) => !next.includes(key));
+                        if (changed) toggle('positions', changed);
+                      }}
+                    />
                   ) : null}
                 </View>
               );

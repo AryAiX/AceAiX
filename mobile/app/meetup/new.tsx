@@ -9,6 +9,7 @@ import {
   Chip,
   ConfirmSheet,
   Divider,
+  Dropdown,
   EmptyState,
   Header,
   Input,
@@ -105,7 +106,6 @@ export default function NewMeetupScreen() {
   const [currencyTouched, setCurrencyTouched] = useState(false);
   const [currencySheet, setCurrencySheet] = useState(false);
 
-  const [sportSheet, setSportSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [whenSheet, setWhenSheet] = useState(false);
@@ -323,15 +323,13 @@ export default function NewMeetupScreen() {
       <View>
         <SectionHeader title={t('meetups.fieldSport')} />
         <View style={{ gap: spacing.md }}>
-          <Pressable onPress={() => setSportSheet(true)} accessibilityRole="button">
-            <Input
-              label={t('meetups.fieldSport')}
-              value={sport ? sportLabel(t, sport) : ''}
-              placeholder={t('meetups.anySport')}
-              editable={false}
-              pointerEvents="none"
-            />
-          </Pressable>
+          <Dropdown
+            placeholder={t('meetups.anySport')}
+            options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+            value={sport ? [sport] : []}
+            onChange={(next) => setSport(next[0] ?? '')}
+            testID="meetup-new-sport"
+          />
 
           <Input
             label={t('meetups.fieldTitle')}
@@ -440,16 +438,18 @@ export default function NewMeetupScreen() {
       {/* ── Level, note, cost ── */}
       <View>
         <SectionHeader title={t('meetups.fieldLevel')} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {LEVELS.map((l) => (
-            <Chip
-              key={l}
-              label={t(`meetups.level${l.charAt(0).toUpperCase()}${l.slice(1)}`)}
-              selected={level === l}
-              onPress={() => setLevel(l)}
-            />
-          ))}
-        </View>
+        <Dropdown
+          required
+          options={LEVELS.map((l) => ({
+            key: l,
+            label: t(`meetups.level${l.charAt(0).toUpperCase()}${l.slice(1)}`),
+          }))}
+          value={[level]}
+          onChange={(next) => {
+            if (next[0]) setLevel(next[0] as MeetupLevel);
+          }}
+          testID="meetup-new-level"
+        />
 
         <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
           <Input
@@ -513,22 +513,6 @@ export default function NewMeetupScreen() {
       </View>
 
       {/* ── Pickers ── */}
-      <Sheet visible={sportSheet} onClose={() => setSportSheet(false)} title={t('meetups.fieldSport')}>
-        {SPORTS.map((s, index) => (
-          <View key={s.key}>
-            {index > 0 ? <Divider /> : null}
-            <ListItem
-              title={`${s.emoji}  ${sportLabel(t, s.key)}`}
-              right={sport === s.key ? <Check size={20} color={colors.primary} /> : undefined}
-              onPress={() => {
-                setSport(s.key);
-                setSportSheet(false);
-              }}
-            />
-          </View>
-        ))}
-      </Sheet>
-
       <Sheet
         visible={countrySheet}
         onClose={() => setCountrySheet(false)}

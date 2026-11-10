@@ -19,7 +19,7 @@ import {
   Badge,
   Button,
   Card,
-  Chip,
+  Dropdown,
   EmptyState,
   ErrorState,
   Header,
@@ -139,8 +139,8 @@ function AthleteOpportunities() {
   const toast = useToast();
 
   const [tab, setTab] = useState<AthleteTab>('open');
-  const [sport, setSport] = useState<string | null>(null);
-  const [type, setType] = useState<string | null>(null);
+  const [sports, setSports] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -186,13 +186,13 @@ function AthleteOpportunities() {
   const needle = query.trim().toLowerCase();
   const matches = useCallback(
     (o: Opportunity) =>
-      (!sport || o.sport?.toLowerCase() === sport.toLowerCase()) &&
-      (!type || o.type?.toLowerCase() === type.toLowerCase()) &&
+      (sports.length === 0 || sports.some((s) => o.sport?.toLowerCase() === s.toLowerCase())) &&
+      (types.length === 0 || types.some((ty) => o.type?.toLowerCase() === ty.toLowerCase())) &&
       (!needle ||
         [o.title, o.org_name, o.poster?.full_name].some((field) =>
           (field ?? '').toLowerCase().includes(needle),
         )),
-    [sport, type, needle],
+    [sports, types, needle],
   );
 
   const openList = useMemo(() => {
@@ -203,11 +203,11 @@ function AthleteOpportunities() {
   const savedList = useMemo(() => (saved.data ?? []).filter(matches), [saved.data, matches]);
   const appliedList = applied.data ?? [];
 
-  const filterCount = (sport ? 1 : 0) + (type ? 1 : 0);
+  const filterCount = sports.length + types.length;
   const filtersActive = filterCount > 0 || needle.length > 0;
   const clearAll = () => {
-    setSport(null);
-    setType(null);
+    setSports([]);
+    setTypes([]);
     setQuery('');
   };
 
@@ -301,16 +301,20 @@ function AthleteOpportunities() {
 
       {filterCount > 0 ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs }}>
-          {sport
-            ? activePill(sportLabel(t, sport), () => setSport(null), 'opportunities-filter-sport')
-            : null}
-          {type
-            ? activePill(opportunityTypeLabel(t, type), () => setType(null), 'opportunities-filter-type')
-            : null}
+          {sports.map((s) =>
+            activePill(sportLabel(t, s), () => setSports((cur) => cur.filter((k) => k !== s)), `opportunities-filter-sport-${s}`),
+          )}
+          {types.map((ty) =>
+            activePill(
+              opportunityTypeLabel(t, ty),
+              () => setTypes((cur) => cur.filter((k) => k !== ty)),
+              `opportunities-filter-type-${ty}`,
+            ),
+          )}
           <Pressable
             onPress={() => {
-              setSport(null);
-              setType(null);
+              setSports([]);
+              setTypes([]);
             }}
             accessibilityRole="button"
             hitSlop={8}
@@ -356,39 +360,27 @@ function AthleteOpportunities() {
         />
       }
     >
-      <View style={{ gap: spacing.xl, paddingBottom: spacing.md }}>
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="overline" tone="muted">
-            {t('opportunities.detail.factSport')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {SPORTS.map((s) => (
-              <Chip
-                key={s.key}
-                label={sportLabel(t, s.key)}
-                icon={<Text variant="caption">{s.emoji}</Text>}
-                selected={sport === s.key}
-                onPress={() => setSport((current) => (current === s.key ? null : s.key))}
-              />
-            ))}
-          </View>
-        </View>
-
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="overline" tone="muted">
-            {t('opportunities.detail.factType')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {OPPORTUNITY_TYPES.map((option) => (
-              <Chip
-                key={option.key}
-                label={opportunityTypeLabel(t, option.key)}
-                selected={type === option.key}
-                onPress={() => setType((current) => (current === option.key ? null : option.key))}
-              />
-            ))}
-          </View>
-        </View>
+      {/* One row per filter: it says what is chosen and opens a list to pick from. */}
+      <View style={{ gap: spacing.lg, paddingBottom: spacing.md }}>
+        <Dropdown
+          label={t('opportunities.detail.factSport')}
+          options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+          multiple
+          value={sports}
+          onChange={setSports}
+          testID="opportunities-filter-sport-list"
+        />
+        <Dropdown
+          label={t('opportunities.detail.factType')}
+          options={OPPORTUNITY_TYPES.map((option) => ({
+            key: option.key,
+            label: opportunityTypeLabel(t, option.key),
+          }))}
+          multiple
+          value={types}
+          onChange={setTypes}
+          testID="opportunities-filter-type-list"
+        />
       </View>
     </Sheet>
   );

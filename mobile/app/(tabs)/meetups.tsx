@@ -9,6 +9,7 @@ import { CalendarDays, ChevronDown, MapPin, Plus, Users } from 'lucide-react-nat
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
+  Dropdown,
   EmptyState,
   ErrorState,
   Header,
@@ -274,19 +275,24 @@ export default function MeetupsScreen() {
           title={picking === 'sport' ? t('meetups.fieldSport') : t('meetups.fieldWhen')}
         >
           {picking === 'sport' ? (
-            <OptionList
-              limit={SPORTS.length + 1}
-              selected={[sport ?? 'any']}
-              rows={[
-                { key: 'any', label: t('meetups.anySport') },
-                ...SPORTS.map((s) => ({ key: s.key, label: `${s.emoji} ${sportLabel(t, s.key)}` })),
-              ]}
-              onPick={(key) => {
-                setSport(key === 'any' ? null : key);
-                setPicking(null);
-              }}
-              testID="meetups-sport-options"
-            />
+            <View style={{ paddingBottom: spacing.sm }}>
+              {/* The same dropdown as every other sport filter. Meetup search
+                  takes one sport, so picking one closes the sheet. */}
+              <Dropdown
+                inline
+                placeholder={t('meetups.anySport')}
+                options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+                value={sport ? [sport] : []}
+                onChange={(next) => {
+                  setSport(next[0] ?? null);
+                  setPicking(null);
+                }}
+                testID="meetups-sport-options"
+              />
+              <Text variant="captionStrong" color={colors.primary} style={{ marginTop: spacing.sm }}>
+                {t('meetups.oneSportHint')}
+              </Text>
+            </View>
           ) : picking === 'when' ? (
             <OptionList
               selected={[when]}

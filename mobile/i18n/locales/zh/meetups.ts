@@ -34,6 +34,7 @@ export const meetups = {
   searchPlace: '在哪儿？城市、区域或场地',
   searchPlaceHint: '你现在在的地方，或者你要去的地方',
   anySport: '不限项目',
+  oneSportHint: '这里一次选一个项目：约练搜索只按一个项目查找。',
   anyLevel: '不限水平',
   anyDate: '不限日期',
   fieldDay: '日期',

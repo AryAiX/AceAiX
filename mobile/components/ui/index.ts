@@ -37,3 +37,4 @@ export { Header } from './Header';
 export { TextTabs } from './TextTabs';
 export { isRTL, ChevronBack, ChevronForward } from './rtl';
 export { SweepArc } from './SweepArc';
+export { Dropdown, type DropdownOption } from './Dropdown';

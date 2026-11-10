@@ -94,6 +94,7 @@ export const discover = {
     sport: 'Вид спорта',
     position: 'Позиция',
     positionHint: 'Сначала выбери вид спорта.',
+    oneSportHint: 'Здесь по одному виду спорта, чтобы ниже показать его позиции.',
     level: 'Уровень',
     country: 'Страна',
     findCountry: 'Найти страну',

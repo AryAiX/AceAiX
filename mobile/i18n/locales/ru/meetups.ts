@@ -33,6 +33,7 @@ export const meetups = {
   searchPlace: 'Где? Город, район или площадка',
   searchPlaceHint: 'Там, где ты сейчас, или там, куда собираешься',
   anySport: 'Любой вид спорта',
+  oneSportHint: 'Здесь по одному виду спорта: поиск встреч ищет по одному виду.',
   anyLevel: 'Любой уровень',
   anyDate: 'Любая дата',
   fieldDay: 'День',

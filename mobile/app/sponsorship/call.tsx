@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
-  Chip,
   DateField,
+  Dropdown,
   ErrorState,
   Header,
   Input,
@@ -193,19 +193,13 @@ export default function SponsorCallScreen() {
           <Text variant="captionStrong" tone="secondary">
             {t('sponsorship.cSport')}
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-            <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} tone="accent" />
-            {SPORTS.map((s) => (
-              <Chip
-                tone="accent"
-                key={s.key}
-                label={sportLabel(t, s.key)}
-                icon={<Text variant="caption">{s.emoji}</Text>}
-                selected={sport === s.key}
-                onPress={() => setSport(s.key)}
-              />
-            ))}
-          </ScrollView>
+          <Dropdown
+            placeholder={t('sponsorship.anySport')}
+            options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+            value={sport ? [sport] : []}
+            onChange={(next) => setSport(next[0] ?? null)}
+            testID="sponsorship-call-sport"
+          />
         </View>
 
         <TagPicker

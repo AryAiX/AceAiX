@@ -39,6 +39,8 @@ export const common = {
   message: 'Написать',
   apply: 'Откликнуться',
   search: 'Поиск',
+  any: 'Все',
+  choose: 'Выбрать',
   filter: 'Фильтр',
   clear: 'Очистить',
   dateNone: 'Выбери дату',

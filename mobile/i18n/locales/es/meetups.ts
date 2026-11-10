@@ -32,6 +32,7 @@ export const meetups = {
   searchPlace: '¿Dónde? Ciudad, zona o sitio',
   searchPlaceHint: 'Donde estás, o adonde vas',
   anySport: 'Cualquier deporte',
+  oneSportHint: 'Aquí, un deporte a la vez: la búsqueda de quedadas busca un solo deporte.',
   anyLevel: 'Cualquier nivel',
   anyDate: 'Cualquier fecha',
   fieldDay: 'Día',

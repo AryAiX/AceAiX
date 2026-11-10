@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, Text, type ChipTone } from '@/components/ui';
+import { Dropdown, Text, type ChipTone } from '@/components/ui';
 import { useT } from '@/i18n';
 
 interface Props {
@@ -15,15 +15,16 @@ interface Props {
   labelOf?: (value: string) => string;
   /** Shown instead of the chips when `options` is empty. */
   emptyHint?: string;
-  /** `accent` for a sport picker; everything else stays on the default. */
+  /** Kept for callers; the dropdown looks the same for every list. */
   tone?: ChipTone;
+  /** An emoji before each option (a sport's ball, say). */
+  emojiOf?: (value: string) => string | undefined;
 }
 
 /**
- * A wrapping multi-select of chips.
- *
- * Preferred over a picker or a slider throughout the scouting screen: the whole
- * set of choices stays visible, and every target is a full chip.
+ * A labelled multi-select. It used to be a wrapping wall of chips; it is now
+ * the app's one dropdown (the row is the search box, ticks in the list), so
+ * the scouting screen matches every filter in the app.
  */
 export function ChipPicker({
   label,
@@ -33,7 +34,7 @@ export function ChipPicker({
   onToggle,
   labelOf,
   emptyHint,
-  tone,
+  emojiOf,
 }: Props) {
   const theme = useTheme();
   const { spacing } = theme;
@@ -57,17 +58,21 @@ export function ChipPicker({
           {emptyHint ?? t('settings.nothingToChoose')}
         </Text>
       ) : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {options.map((option) => (
-            <Chip
-              key={option}
-              label={labelOf ? labelOf(option) : option}
-              selected={selected.includes(option)}
-              onPress={() => onToggle(option)}
-              tone={tone}
-            />
-          ))}
-        </View>
+        <Dropdown
+          multiple
+          options={options.map((option) => ({
+            key: option,
+            label: labelOf ? labelOf(option) : option,
+            emoji: emojiOf?.(option),
+          }))}
+          value={selected}
+          onChange={(next) => {
+            /* Callers toggle one value at a time; pass on whichever changed. */
+            const changed =
+              next.find((key) => !selected.includes(key)) ?? selected.find((key) => !next.includes(key));
+            if (changed) onToggle(changed);
+          }}
+        />
       )}
     </View>
   );

@@ -35,6 +35,7 @@ export const meetups = {
   searchPlace: 'Wo? Stadt, Gegend oder Anlage',
   searchPlaceHint: 'Wo du gerade bist, oder wo du hinfährst',
   anySport: 'Jede Sportart',
+  oneSportHint: 'Hier eine Sportart nach der anderen: Die Treffen-Suche sucht nach einer Sportart.',
   anyLevel: 'Jedes Niveau',
   anyDate: 'Jedes Datum',
   fieldDay: 'Tag',

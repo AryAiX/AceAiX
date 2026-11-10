@@ -91,6 +91,7 @@ export const discover = {
     sport: '项目',
     position: '位置',
     positionHint: '请先选一个项目。',
+    oneSportHint: '这里一次选一个项目，下方才能显示它的位置。',
     level: '水平',
     country: '国家',
     findCountry: '查找国家',

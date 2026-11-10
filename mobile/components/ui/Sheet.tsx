@@ -287,6 +287,22 @@ export function Sheet({
               ...theme.elevation(3),
             }}
           >
+            {/* The keyboard has rounded top corners. Without this, the dark
+                backdrop shows in the gaps beside them; this paints the sheet's
+                own colour down behind the keyboard so the two meet cleanly. */}
+            {keyboardH > 0 ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: '100%',
+                  height: keyboardH + 40,
+                  backgroundColor: colors.surface,
+                }}
+              />
+            ) : null}
             {dismissable ? (
               <View style={{ alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.sm }}>
                 <View
