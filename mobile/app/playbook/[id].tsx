@@ -168,7 +168,8 @@ export default function PlaybookScreen() {
         onConfirm={() => {
           setConfirmDelete(false);
           void deletePlaybook(user.id, playbook.id);
-          router.back();
+          if (router.canGoBack()) router.back();
+          else router.replace(Routes.savedPosts);
         }}
         onCancel={() => setConfirmDelete(false)}
       />

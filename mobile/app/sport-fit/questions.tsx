@@ -119,7 +119,8 @@ export default function SportFitQuestions() {
   const back = useCallback(() => {
     if (submitting) return;
     if (index > 0) setIndex(index - 1);
-    else router.back();
+    else if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
   }, [index, submitting, router]);
 
   const restart = useCallback(() => {
@@ -140,7 +141,8 @@ export default function SportFitQuestions() {
     if (leave) leave();
     else {
       disablePrevention();
-      router.back();
+      if (router.canGoBack()) router.back();
+      else router.replace('/(tabs)');
     }
   };
 

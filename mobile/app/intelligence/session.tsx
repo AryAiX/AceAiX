@@ -404,7 +404,7 @@ export default function GiSessionScreen() {
             label={t('intelligence.hubPause')}
             variant="ghost"
             fullWidth
-            onPress={() => router.back()}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
           />
           <Text variant="caption" tone="muted" style={{ textAlign: 'center' }}>
             {t('intelligence.hubPauseBody')}

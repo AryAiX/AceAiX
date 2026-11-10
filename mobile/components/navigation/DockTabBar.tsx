@@ -19,7 +19,6 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useDockMetrics } from './dockInset';
-import { LogoColors } from '@/theme/tokens';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -51,8 +50,9 @@ export interface TabBarProps {
 /** Inner padding of the dock, around the tabs and the lens. */
 const pad = 5;
 /** The glass lens: a small pill around the open tab's icon. */
-const LENS_W = 52;
-const LENS_H = 32;
+/* The open tab's bead: a round pebble that holds the icon and its word. */
+const LENS_W = 56;
+const LENS_H = 54;
 
 interface Props extends TabBarProps {
   /** Routes that are not tabs for this account (they stay routes for links). */
@@ -218,7 +218,7 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               colors={
                 dark
                   ? (['rgba(58,65,82,0.95)', 'rgba(42,47,60,0.95)'] as const)
-                  : (['rgba(255,255,255,0.97)', 'rgba(244,243,251,0.95)'] as const)
+                  : (['rgba(250,249,254,0.98)', 'rgba(241,240,249,0.97)'] as const)
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -244,7 +244,7 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               ...StyleSheet.absoluteFill,
               borderRadius: m.height / 2,
               borderWidth: 1,
-              borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(214,211,235,0.9)',
+              borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(22,19,39,0.07)',
             }}
           />
 
@@ -254,12 +254,11 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               pointerEvents="none"
               style={{
                 position: 'absolute',
-                /* Centred on the icon: the icon (23), a 2pt gap and the
-                   label (13) sit in the middle of the dock. */
-                top: (m.height - 38) / 2 + 11.5 - LENS_H / 2,
+                /* Centred on the icon and its word together. */
+                top: (m.height - Math.min(LENS_H, m.height - 8)) / 2,
                 left: 0,
                 width: slot,
-                height: LENS_H,
+                height: Math.min(LENS_H, m.height - 8),
                 alignItems: 'center',
                 transform: [{ translateX: lensX }, { scale: lensScale }],
               }}
@@ -267,22 +266,26 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
               <View
                 style={{
                   width: Math.min(LENS_W, slot - 4),
-                  height: LENS_H,
-                  borderRadius: LENS_H / 2,
-                  shadowColor: colors.primary,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.18,
-                  shadowRadius: 6,
+                  height: Math.min(LENS_H, m.height - 8),
+                  borderRadius: 27,
+                  /* Raised out of the dock: a soft shadow under it. */
+                  shadowColor: '#161327',
+                  shadowOffset: { width: 0, height: 5 },
+                  shadowOpacity: dark ? 0.45 : 0.16,
+                  shadowRadius: 8,
+                  elevation: 4,
                 }}
               >
-                {/* A light blue bead with a thin flame edge: blue and fire in one. */}
-                <View
+                {/* A pebble: white, lit from the top, with a bright top edge. */}
+                <LinearGradient
+                  colors={dark ? (['#454C5E', '#363C4C'] as const) : (['#FFFFFF', '#F5F4FB'] as const)}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
                   style={{
                     ...StyleSheet.absoluteFill,
-                    borderRadius: LENS_H / 2,
-                    backgroundColor: theme.alpha(colors.primary, dark ? 0.24 : 0.12),
-                    borderWidth: 1.5,
-                    borderColor: LogoColors.flame,
+                    borderRadius: 27,
+                    borderWidth: 1,
+                    borderColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(22,19,39,0.05)',
                   }}
                 />
               </View>

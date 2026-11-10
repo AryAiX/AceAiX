@@ -44,10 +44,20 @@ export function ScoreDial({ score, color, label, track }: { score: number; color
           strokeDasharray={`${c * filled} ${c}`}
         />
       </Svg>
-      <Text variant="stat" color={color} style={{ fontSize: 17, lineHeight: 18 }}>
+      {/* Bebas sits high in its line box; a taller line and a small nudge
+          put the number in the middle of the ring. */}
+      <Text
+        variant="stat"
+        color={color}
+        style={{ fontSize: 17, lineHeight: 20, marginTop: 3, textAlign: 'center', includeFontPadding: false }}
+      >
         {Math.round(score)}
       </Text>
-      <Text variant="overline" color={color} style={{ fontSize: 6.5, lineHeight: 8, letterSpacing: 0.5 }}>
+      <Text
+        variant="overline"
+        color={color}
+        style={{ fontSize: 6.5, lineHeight: 8, letterSpacing: 0.5, textAlign: 'center', marginTop: -1 }}
+      >
         {label}
       </Text>
     </View>
