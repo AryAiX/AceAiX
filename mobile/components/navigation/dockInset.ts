@@ -33,7 +33,7 @@ export function useDockMetrics() {
 export const DockInsetContext = createContext(0);
 
 /** The empty space left between the end of a tab screen and the dock. */
-export const DOCK_END_SPACE = 300;
+export const DOCK_END_SPACE = 180;
 
 export function useDockInset(): number {
   return useContext(DockInsetContext);
