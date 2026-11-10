@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Modal, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { Image, type ImageLoadEventData } from 'expo-image';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -72,13 +72,32 @@ export function CoverCropper({ visible, uri, width, height, onCancel, onConfirm 
   const trackWidthSV = useSharedValue(0);
 
   const frame = coverFrameSize(stage.width, stage.height);
-  imageWidthSV.value = pixels.width;
-  imageHeightSV.value = pixels.height;
-  frameWidthSV.value = frame.width;
-  frameHeightSV.value = frame.height;
-  stageWidthSV.value = stage.width;
-  stageHeightSV.value = stage.height;
-  trackWidthSV.value = trackWidth;
+  /* Copied to the UI thread after render, not during it: Reanimated warns
+     (and can drop the write) when a shared value is set while React renders. */
+  useLayoutEffect(() => {
+    imageWidthSV.value = pixels.width;
+    imageHeightSV.value = pixels.height;
+    frameWidthSV.value = frame.width;
+    frameHeightSV.value = frame.height;
+    stageWidthSV.value = stage.width;
+    stageHeightSV.value = stage.height;
+    trackWidthSV.value = trackWidth;
+  }, [
+    pixels.width,
+    pixels.height,
+    frame.width,
+    frame.height,
+    stage.width,
+    stage.height,
+    trackWidth,
+    imageWidthSV,
+    imageHeightSV,
+    frameWidthSV,
+    frameHeightSV,
+    stageWidthSV,
+    stageHeightSV,
+    trackWidthSV,
+  ]);
 
   useEffect(() => {
     if (!visible) return;
