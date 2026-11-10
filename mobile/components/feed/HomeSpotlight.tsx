@@ -26,34 +26,23 @@ const FLAME_LABEL = '#F04A23';
 /** Points the way "forward" reads: right, or left in Arabic. */
 const ArrowForward = isRTL ? ArrowLeft : ArrowRight;
 
-/* Profile views: put away until someone new looks. What was on screen when
-   the × was tapped is kept on the phone, and the pop-up comes back as soon as
-   the total or the "new" count goes past it. */
-const VIEWS_BASELINE = 'home.yourWeek.viewsBaseline';
-/* Keys from the first version, cleared once so nothing old lingers. */
-const OLD_KEYS = ['home.yourWeek.dismissedViews', 'home.yourWeek.dismissedChallenge'];
-
+/* Profile views: shown every time the app is opened from closed. The × puts
+   it away for this run only (kept in memory), and it comes back sooner if
+   someone new looks while the app is open. */
 type ViewsBaseline = { total: number; fresh: number };
+let viewsPutAwayThisRun: ViewsBaseline | null = null;
 
-async function readViewsBaseline(): Promise<ViewsBaseline | null> {
-  try {
-    const raw = await AsyncStorage.getItem(VIEWS_BASELINE);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<ViewsBaseline>;
-    return typeof parsed.total === 'number' && typeof parsed.fresh === 'number'
-      ? { total: parsed.total, fresh: parsed.fresh }
-      : null;
-  } catch {
-    return null;
-  }
+/** Kept outside the component, the same way the feed's mute setting is. */
+function putViewsAwayForThisRun(baseline: ViewsBaseline) {
+  viewsPutAwayThisRun = baseline;
 }
 
-function saveViewsBaseline(baseline: ViewsBaseline | null) {
-  const write = baseline
-    ? AsyncStorage.setItem(VIEWS_BASELINE, JSON.stringify(baseline))
-    : AsyncStorage.removeItem(VIEWS_BASELINE);
-  write.catch(() => undefined);
-}
+/* Keys from earlier versions, cleared once so nothing old lingers. */
+const OLD_KEYS = [
+  'home.yourWeek.dismissedViews',
+  'home.yourWeek.dismissedChallenge',
+  'home.yourWeek.viewsBaseline',
+];
 
 /* The challenge: put away for as long as the app is open. Kept in memory only,
    so closing the app fully (swiping it away) and opening it again brings the
@@ -70,9 +59,9 @@ function putChallengeAwayForThisRun(id: string) {
  *
  * Who has been reading your profile, on a white pop-up with a blue round
  * icon; this week's challenge, on the coral → pink ombre. Each floats on its
- * own like a notification and can be put away with its ×: the views pop-up
- * comes back with the next new view, the challenge the next time the app is
- * opened from closed. Notifications shows both, always. The Talent
+ * own like a notification and can be put away with its ×: both come back
+ * the next time the app is opened from closed (the views one sooner, with a
+ * new view). Notifications shows both, always. The Talent
  * Score lives on Profile only, so Home is not one more place to watch a
  * number. With nothing to say, nothing is shown.
  */
@@ -101,30 +90,13 @@ export function HomeSpotlight({
     refetchOnFocus: true,
   });
 
-  /* undefined until the phone has been read, so a put-away pop-up does not
-     flash up for a moment on every open. */
-  const [baseline, setBaseline] = useState<ViewsBaseline | null | undefined>(undefined);
+  const [baseline, setBaseline] = useState<ViewsBaseline | null>(viewsPutAwayThisRun);
   const [challengePutAway, setChallengePutAway] = useState<string | null>(challengePutAwayThisRun);
   useEffect(() => {
-    void readViewsBaseline().then(setBaseline);
     AsyncStorage.multiRemove(OLD_KEYS).catch(() => undefined);
   }, []);
 
   const rawViews = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
-
-  /* The week is a rolling seven days, so the total can drop as old views age
-     out, and opening the list resets the "new" count. Follow both down, so the
-     next new view is always a step up from where things stand. */
-  useEffect(() => {
-    if (!baseline || !digest.data) return;
-    const total = Math.min(baseline.total, digest.data.total);
-    const fresh = Math.min(baseline.fresh, digest.data.new_since_seen);
-    if (total !== baseline.total || fresh !== baseline.fresh) {
-      const next = { total, fresh };
-      setBaseline(next);
-      saveViewsBaseline(next);
-    }
-  }, [baseline, digest.data]);
 
   // Parents cannot enter challenges, so the card has nothing for them (QA-151).
   // Home's Following tab is people, so the challenge card stays on Playfeed;
@@ -136,8 +108,7 @@ export function HomeSpotlight({
 
   const somethingNew =
     baseline === null ||
-    (baseline !== undefined &&
-      rawViews != null &&
+    (rawViews != null &&
       (rawViews.total > baseline.total || rawViews.new_since_seen > baseline.fresh));
   const views = rawViews && (pinned || somethingNew) ? rawViews : null;
   const challenge =
@@ -148,8 +119,8 @@ export function HomeSpotlight({
   const putAwayViews = () => {
     if (!rawViews) return;
     const next = { total: rawViews.total, fresh: rawViews.new_since_seen };
+    putViewsAwayForThisRun(next);
     setBaseline(next);
-    saveViewsBaseline(next);
   };
   const putAwayChallenge = (id: string) => {
     putChallengeAwayForThisRun(id);
