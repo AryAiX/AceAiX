@@ -137,10 +137,9 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
     when: relativeTime(post.created_at),
     likes: post.like_count,
     comments: post.comment_count,
-    score:
-      isSelf && post.media?.length && myScores.data
-        ? scoreWhenPosted(myScores.data.saved[post.id])
-        : null,
+    /* Every post of yours, text ones too, so the grid matches the
+       "Posted at …" line on the post itself. */
+    score: isSelf && myScores.data ? scoreWhenPosted(myScores.data.saved[post.id]) : null,
   }));
   const showsScores = tiles.some((tile) => tile.score != null && tile.score > 0);
 

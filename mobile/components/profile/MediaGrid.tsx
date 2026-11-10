@@ -248,14 +248,15 @@ export function MediaGrid({
           )}
 
           {/* Your score when you posted it: on your own photo and video posts. */}
-          {tile.score != null && tile.score > 0 && (picture || videoTile) ? (
+          {tile.score != null && tile.score > 0 && (picture || videoTile || quote) ? (
             <View
               accessible
               accessibilityLabel={t('profile.scoreWhenPostedA11y', { score: tile.score })}
               style={{
                 position: 'absolute',
                 left: 6,
-                ...(videoTile && !picture ? { top: 6 } : { bottom: 6 }),
+                /* On a text post the words sit at the bottom, so the pill goes top right. */
+                ...(quote ? { top: 6, right: 6, left: undefined } : videoTile && !picture ? { top: 6 } : { bottom: 6 }),
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
