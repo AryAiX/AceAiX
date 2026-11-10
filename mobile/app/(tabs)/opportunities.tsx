@@ -144,6 +144,16 @@ function AthleteOpportunities() {
   const [query, setQuery] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  /* Search's "See all" lands here with its word already typed, on Open. */
+  const linkParams = useLocalSearchParams<{ q?: string | string[]; at?: string | string[] }>();
+  const linkedQuery = Array.isArray(linkParams.q) ? linkParams.q[0] : linkParams.q;
+  const linkedAt = Array.isArray(linkParams.at) ? linkParams.at[0] : linkParams.at;
+  useEffect(() => {
+    if (linkedQuery === undefined) return;
+    setTab('open');
+    setQuery(linkedQuery);
+  }, [linkedQuery, linkedAt]);
+
   const open = useAsync(() => openOpportunities(30), []);
   const saved = useAsync(() => savedOpportunities(), [], { refetchOnFocus: true });
   const applied = useAsync(() => myApplicationsDetailed(), [], { refetchOnFocus: true });

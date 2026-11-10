@@ -33,8 +33,9 @@ export default function DiscoverSectionScreen() {
   const t = useT();
   const router = useRouter();
   const { profile } = useAuth();
-  const params = useLocalSearchParams<{ section?: string }>();
+  const params = useLocalSearchParams<{ section?: string; q?: string }>();
   const section = asSection(params.section);
+  const initialQuery = typeof params.q === 'string' ? params.q : undefined;
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -71,7 +72,7 @@ export default function DiscoverSectionScreen() {
 
   return (
     <Screen scroll={false} padded={false} header={header} testID={`discover-section-${section}`}>
-      <AthleteExplore viewerId={profile?.id ?? null} only={section} />
+      <AthleteExplore viewerId={profile?.id ?? null} only={section} initialQuery={initialQuery} />
     </Screen>
   );
 }

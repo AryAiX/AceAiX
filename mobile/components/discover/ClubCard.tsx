@@ -30,9 +30,11 @@ interface Props {
   onOpen?: () => void;
   /** Draw as one row of a white list (see groupedRowStyle) instead of a card. */
   grouped?: ViewStyle;
+  /** Type, place and followers on one line under the name (search results). */
+  oneLine?: boolean;
 }
 
-export function ClubCard({ organization, following, pending, onToggleFollow, onOpen, grouped }: Props) {
+export function ClubCard({ organization, following, pending, onToggleFollow, onOpen, grouped, oneLine }: Props) {
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -71,14 +73,22 @@ export function ClubCard({ organization, following, pending, onToggleFollow, onO
             <BadgeCheck size={15} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
           ) : null}
         </View>
-        {meta ? (
+        {oneLine ? (
           <Text variant="caption" tone="muted" numberOfLines={1}>
-            {meta}
+            {metaLine(meta, followers)}
           </Text>
-        ) : null}
-        <Text variant="caption" tone="muted" numberOfLines={1}>
-          {followers}
-        </Text>
+        ) : (
+          <>
+            {meta ? (
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {meta}
+              </Text>
+            ) : null}
+            <Text variant="caption" tone="muted" numberOfLines={1}>
+              {followers}
+            </Text>
+          </>
+        )}
       </View>
 
       {onToggleFollow ? (

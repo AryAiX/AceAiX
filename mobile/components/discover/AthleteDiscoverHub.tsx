@@ -24,8 +24,9 @@ export function AthleteDiscoverHub() {
 
   const open = useCallback(
     (shortcut: DiscoverShortcut) => {
-      /* Players are found by name, sport or position: that is the search. */
-      if (shortcut === 'players') router.push(Routes.search);
+      /* Players are found through the search bar above, so they have no
+         button of their own; challenges have their own page. */
+      if (shortcut === 'challenges') router.push(Routes.challenges);
       else router.push(Routes.discoverSection(shortcut));
     },
     [router],
@@ -33,8 +34,8 @@ export function AthleteDiscoverHub() {
 
   const top = (
     <View style={{ paddingHorizontal: spacing.lg, gap: spacing.md }}>
-      {/* Clips are not searched by text. The bar opens the people-and-clubs
-          search, where a name typed here would have been looked for anyway. */}
+      {/* One search for the whole app: people, posts and #tags, clubs,
+          trials, challenges, meetups and sponsors. */}
       <Pressable
         onPress={() => router.push(Routes.search)}
         accessibilityRole="search"

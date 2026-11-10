@@ -6,23 +6,13 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useT } from '@/i18n';
 
-export type DiscoverShortcut = 'players' | 'clubs' | 'coaches' | 'leaderboard' | 'sponsors';
+export type DiscoverShortcut = 'clubs' | 'coaches' | 'challenges' | 'leaderboard' | 'sponsors';
 
 const SIZE = 36;
 
 /* Two-tone drawings, one colour family each, so the five read apart at a
    glance. They are drawn here rather than taken from the icon set because the
    set only has single-colour outlines. */
-function PlayerIcon() {
-  return (
-    <Svg width={SIZE} height={SIZE} viewBox="0 0 48 48">
-      <Circle cx={24} cy={12} r={7} fill="#8ACDFF" />
-      <Path d="M11 22l7-4h12l7 4-3 7-4-1v14H18V28l-4 1z" fill="#2F6BFF" />
-      <Rect x={21} y={29} width={6} height={9} rx={1.5} fill="#FFFFFF" opacity={0.9} />
-    </Svg>
-  );
-}
-
 function ClubIcon() {
   return (
     <Svg width={SIZE} height={SIZE} viewBox="0 0 48 48">
@@ -43,6 +33,20 @@ function CoachIcon() {
       <Circle cx={19} cy={25} r={4.5} fill="#FFFFFF" />
       <Path d="M30 17v-5h6v5" fill="none" stroke="#7FD99A" strokeWidth={3} strokeLinecap="round" />
       <Path d="M10 15C6 11 6 7 9 5" fill="none" stroke="#7FD99A" strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/* A flame in the logo's fire, the colour of everything you act on. */
+function ChallengeIcon() {
+  return (
+    <Svg width={SIZE} height={SIZE} viewBox="0 0 48 48">
+      <Path d="M24 4c2 7 13 12 13 24a13 13 0 0 1-26 0c0-6 3-10 6-13 0 4 2 7 5 8-1-7 0-13 2-19z" fill="#FF7A2C" />
+      <Path d="M24 4c2 7 13 12 13 24a13 13 0 0 1-13 13z" fill="#E8372B" opacity={0.55} />
+      <Path
+        d="M24 26c4 3 7 6 7 10a7 7 0 0 1-14 0c0-3 2-5 4-6 0 2 1 3 2 3 0-3 0-5 1-7z"
+        fill="#FFD27A"
+      />
     </Svg>
   );
 }
@@ -84,9 +88,9 @@ function SponsorIcon() {
 }
 
 const ITEMS: { key: DiscoverShortcut; labelKey: string; Icon: () => React.ReactElement }[] = [
-  { key: 'players', labelKey: 'discover.hubPlayers', Icon: PlayerIcon },
   { key: 'clubs', labelKey: 'discover.tabClubs', Icon: ClubIcon },
   { key: 'coaches', labelKey: 'discover.tabCoaches', Icon: CoachIcon },
+  { key: 'challenges', labelKey: 'challenges.title', Icon: ChallengeIcon },
   { key: 'leaderboard', labelKey: 'discover.tabLeaderboard', Icon: TrophyIcon },
   { key: 'sponsors', labelKey: 'sponsorship.tabSponsors', Icon: SponsorIcon },
 ];

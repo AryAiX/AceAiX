@@ -78,6 +78,8 @@ interface Props {
   tabRequestKey?: string;
   /** Show just this one side, with no tab row: a page opened from Discover. */
   only?: AthleteDiscoverTab;
+  /** A word to start with, typed in the box (search's "See all"). */
+  initialQuery?: string;
 }
 
 /** Same case-insensitive equality the talent_leaderboard RPC uses via `ilike`. */
@@ -171,6 +173,7 @@ export function AthleteExplore({
   requestedTab,
   tabRequestKey,
   only,
+  initialQuery,
 }: Props) {
   const endPad = useEndPadding();
   const router = useRouter();
@@ -201,8 +204,8 @@ export function AthleteExplore({
     }
   }, [tabRequestKey, requestedTab, only]);
 
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const [debounced, setDebounced] = useState(initialQuery ?? '');
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);

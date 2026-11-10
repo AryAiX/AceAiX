@@ -1,53 +1,30 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Clock, Search, SearchX } from 'lucide-react-native';
+import { Clock, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import {
-  Chip,
-  EmptyState,
-  ErrorState,
-  Input,
-  ListItem,
-  Screen,
-  SegmentedControl,
-  SkeletonList,
-  Text,
-  ChevronBack,
-} from '@/components/ui';
-import { AthleteCard } from '@/components/discover/AthleteCard';
-import { ClubCard } from '@/components/discover/ClubCard';
-import { CoachRow } from '@/components/discover/CoachRow';
-import { NO_CRITERIA } from '@/components/discover/MatchBadge';
+import { LogoColors } from '@/theme/tokens';
+import { Chip, Input, ListItem, Screen, Text, TextTabs, ChevronBack } from '@/components/ui';
+import { AllResults } from '@/components/search/AllResults';
+import { PeopleResults, type PeopleKind } from '@/components/search/PeopleResults';
+import { PostResults } from '@/components/search/PostResults';
 import { SPORTS, englishSportTerm, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
-import { useAsync } from '@/hooks/useAsync';
-import { discoverAthletes, searchOrganizations } from '@/lib/api';
-import { listCoaches } from '@/lib/api.discover';
+import { fold } from '@/lib/searchRank';
 import { Routes } from '@/lib/routes';
-import type { DiscoveredAthlete, Organization, PersonResult } from '@/types/models';
+import type { DiscoveryFilters } from '@/types/models';
 
-type Scope = 'athletes' | 'coaches' | 'clubs';
-
-const SCOPES: { value: Scope; labelKey: string }[] = [
-  { value: 'athletes', labelKey: 'discover.tabAthletes' },
-  { value: 'coaches', labelKey: 'discover.tabCoaches' },
-  { value: 'clubs', labelKey: 'discover.tabClubs' },
-];
+/* All, then the two kinds worth a full list of their own. Everything else
+   (clubs, trials, challenges, meetups, sponsors) shows on All with a
+   "See all" into its own page. */
+type Tab = 'all' | 'people' | 'posts';
 
 const RECENTS_KEY = 'aceaix.recent-searches';
 const MAX_RECENTS = 8;
 const DEBOUNCE_MS = 300;
 const SUGGESTED_SPORTS = SPORTS.slice(0, 6);
-
-/* Results carry the term that produced them. Without it the previous term's
-   rows sit on screen, unlabelled, for the length of the next request. */
-interface Page<T> {
-  term: string;
-  rows: T[];
-}
 
 /* AsyncStorage throws in a few real contexts (private browsing on web, a
    corrupted store). Recent searches are a convenience — never a failure. */
@@ -77,10 +54,12 @@ export default function SearchScreen() {
   const { colors, spacing } = theme;
   const router = useRouter();
 
-  const [scope, setScope] = useState<Scope>('athletes');
+  const [tab, setTab] = useState<Tab>('all');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [recents, setRecents] = useState<string[]>([]);
+  const [peopleKind, setPeopleKind] = useState<PeopleKind>('athletes');
+  const [peopleFilters, setPeopleFilters] = useState<DiscoveryFilters>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +75,11 @@ export default function SearchScreen() {
     const timer = setTimeout(() => setDebounced(query.trim()), DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [query]);
+
+  /* A new word starts from All with no leftover filters. */
+  useEffect(() => {
+    setPeopleFilters({});
+  }, [debounced]);
 
   const remember = useCallback((term: string) => {
     const clean = term.trim();
@@ -116,112 +100,20 @@ export default function SearchScreen() {
   }, []);
 
   const active = debounced.length > 0;
-  /* The box and the recent list keep `debounced`. Sports are stored in
-     English, so a translated sport name is turned back only for the query. */
+  /* Sports are stored in English, so a translated sport name is turned back
+     only for the lookups; the box keeps what was typed. */
   const queryForSearch = englishSportTerm(t, debounced);
-
-  const athletes = useAsync<Page<DiscoveredAthlete>>(
-    async () => ({
-      term: debounced,
-      rows: await discoverAthletes({ query: queryForSearch, sort: 'match' }, 0, 20),
-    }),
-    [debounced, queryForSearch],
-    { enabled: active && scope === 'athletes' },
-  );
-  const coaches = useAsync<Page<PersonResult>>(
-    async () => ({ term: debounced, rows: await listCoaches(queryForSearch, 20) }),
-    [debounced, queryForSearch],
-    { enabled: active && scope === 'coaches', refetchOnFocus: true },
-  );
-  const clubs = useAsync<Page<Organization>>(
-    async () => ({ term: debounced, rows: await searchOrganizations(queryForSearch, 20) }),
-    [debounced, queryForSearch],
-    { enabled: active && scope === 'clubs' },
-  );
-
-  const source = scope === 'athletes' ? athletes : scope === 'coaches' ? coaches : clubs;
-  const settled = source.data?.term === debounced;
-  const busy = !source.error && (source.loading || !settled);
-
-  const listStyle = {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.giant,
-    gap: spacing.md,
-  };
-
-  const emptyResults = (
-    <EmptyState
-      icon={<SearchX size={26} color={colors.textMuted} />}
-      title={t('discover.search.emptyTitle', { term: debounced })}
-      body={t('discover.search.emptyBody')}
-      actionLabel={t('discover.search.clearSearch')}
-      onAction={() => setQuery('')}
-    />
-  );
-
-  function renderResults() {
-    if (busy) {
-      return (
-        <View style={{ paddingHorizontal: spacing.lg }}>
-          <SkeletonList count={4} variant="row" />
-        </View>
-      );
-    }
-    if (source.error) return <ErrorState message={source.error} onRetry={source.reload} />;
-
-    if (scope === 'athletes') {
-      return (
-        <FlatList<DiscoveredAthlete>
-          style={{ flex: 1 }}
-          data={athletes.data?.rows ?? []}
-          keyExtractor={(item) => item.athlete_id}
-          contentContainerStyle={listStyle}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          renderItem={({ item }) => (
-            // A free-text search sets no criteria, so there is no honest match
-            // percentage to show — only the talent score.
-            <AthleteCard
-              athlete={item}
-              criteria={NO_CRITERIA}
-              onOpen={() => remember(query)}
-            />
-          )}
-          ListEmptyComponent={emptyResults}
-        />
-      );
-    }
-
-    if (scope === 'coaches') {
-      return (
-        <FlatList<PersonResult>
-          style={{ flex: 1 }}
-          data={coaches.data?.rows ?? []}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ ...listStyle, gap: spacing.sm }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          renderItem={({ item }) => <CoachRow person={item} onOpen={() => remember(query)} />}
-          ListEmptyComponent={emptyResults}
-        />
-      );
-    }
-
-    return (
-      <FlatList<Organization>
-        style={{ flex: 1 }}
-        data={clubs.data?.rows ?? []}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ ...listStyle, gap: spacing.sm }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        renderItem={({ item }) => (
-          <ClubCard organization={item} onOpen={() => remember(query)} />
-        )}
-        ListEmptyComponent={emptyResults}
-      />
+  const sportKey = useMemo(() => {
+    const word = fold(debounced);
+    if (!word) return null;
+    const hit = SPORTS.find(
+      (s) => fold(s.key) === word || fold(s.label) === word || fold(sportLabel(t, s.key)) === word,
     );
-  }
+    return hit ? hit.key : null;
+  }, [debounced, t]);
+
+  const endPadding = spacing.giant;
+  const opened = () => remember(query);
 
   const startState = (
     <ScrollView
@@ -266,6 +158,7 @@ export default function SearchScreen() {
               left={<Clock size={18} color={colors.textMuted} />}
               onPress={() => {
                 setQuery(term);
+                setTab('all');
                 remember(term);
               }}
             />
@@ -285,8 +178,8 @@ export default function SearchScreen() {
               label={sportLabel(t, sport.key)}
               icon={<Text variant="caption">{sport.emoji}</Text>}
               onPress={() => {
-                setScope('athletes');
                 const label = sportLabel(t, sport.key);
+                setTab('all');
                 setQuery(label);
                 remember(label);
               }}
@@ -340,16 +233,61 @@ export default function SearchScreen() {
         />
       </View>
 
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-        <SegmentedControl<Scope>
-          options={SCOPES.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
-          value={scope}
-          onChange={setScope}
-          testID="search-scope"
-        />
-      </View>
-
-      {active ? renderResults() : startState}
+      {active ? (
+        <>
+          <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+            <TextTabs<Tab>
+              options={[
+                { value: 'all', label: t('discover.search.tabAll') },
+                { value: 'people', label: t('discover.search.tabPeople') },
+                { value: 'posts', label: t('discover.search.tabPosts') },
+              ]}
+              value={tab}
+              onChange={setTab}
+              color={LogoColors.flame}
+              testID="search-tabs"
+            />
+          </View>
+          {tab === 'all' ? (
+            <AllResults
+              term={debounced}
+              queryForSearch={queryForSearch}
+              sportKey={sportKey}
+              onSeePeople={() => {
+                remember(query);
+                setPeopleKind('athletes');
+                setTab('people');
+              }}
+              onSeePosts={() => {
+                remember(query);
+                setTab('posts');
+              }}
+              onOpen={opened}
+              endPadding={endPadding}
+            />
+          ) : tab === 'people' ? (
+            <View style={{ flex: 1, paddingTop: spacing.md }}>
+              <PeopleResults
+                term={debounced}
+                queryForSearch={queryForSearch}
+                sportKey={sportKey}
+                kind={peopleKind}
+                onKind={setPeopleKind}
+                filters={peopleFilters}
+                onFilters={setPeopleFilters}
+                onOpen={opened}
+                endPadding={endPadding}
+              />
+            </View>
+          ) : (
+            <View style={{ flex: 1, paddingTop: spacing.md }}>
+              <PostResults term={debounced} onOpen={opened} endPadding={endPadding} />
+            </View>
+          )}
+        </>
+      ) : (
+        startState
+      )}
     </Screen>
   );
 }

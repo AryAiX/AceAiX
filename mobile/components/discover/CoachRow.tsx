@@ -21,9 +21,11 @@ interface Props {
   onOpen?: () => void;
   /** Draw as one row of a white list (see groupedRowStyle) instead of a card. */
   grouped?: ViewStyle;
+  /** One line under the name instead of the usual two (search results). */
+  subtitle?: string;
 }
 
-export function CoachRow({ person, following, pending, onToggleFollow, onOpen, grouped }: Props) {
+export function CoachRow({ person, following, pending, onToggleFollow, onOpen, grouped, subtitle }: Props) {
   const theme = useTheme();
   const t = useT();
   const { spacing } = theme;
@@ -47,7 +49,7 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen, g
   const a11yLabel = metaLine(
     name,
     person.is_verified ? t('common.verified') : null,
-    meta,
+    subtitle ?? meta,
     followers,
   );
 
@@ -60,9 +62,9 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen, g
           {name}
         </Text>
         <Text variant="caption" tone="muted" numberOfLines={1}>
-          {person.bio ? meta : metaLine(meta, followers)}
+          {subtitle ?? (person.bio ? meta : metaLine(meta, followers))}
         </Text>
-        {person.bio ? (
+        {person.bio && !subtitle ? (
           <Text variant="caption" tone="secondary" numberOfLines={1}>
             {truncate(person.bio, 60)}
           </Text>

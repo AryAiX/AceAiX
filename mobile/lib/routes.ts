@@ -30,8 +30,12 @@ export const Routes = {
   /** One side of the athlete's Discover on its own page. */
   /* Cast: the typed-route list only learns a new screen when Expo restarts,
      and a link should not fail the typecheck before then. */
-  discoverSection: (section: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors') =>
-    ({ pathname: '/discover-section', params: { section } }) as unknown as Href,
+  discoverSection: (section: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors', q?: string) =>
+    ({ pathname: '/discover-section', params: q ? { section, q } : { section } }) as unknown as Href,
+  /** Trials, on Open, with a search word already typed (search's "See all").
+      `at` makes a repeat of the same word still count as a new link. */
+  opportunitiesSearch: (q: string) =>
+    ({ pathname: '/(tabs)/opportunities', params: { q, at: String(Date.now()) } }) as unknown as Href,
   score: '/score' as const,
   intelligence: '/intelligence' as const,
   intelligenceSession: '/intelligence/session' as const,
