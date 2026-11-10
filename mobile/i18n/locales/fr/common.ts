@@ -34,6 +34,7 @@ export const common = {
   block: 'Bloquer',
   unblock: 'Débloquer',
   follow: 'Suivre',
+  followBack: 'Suivre en retour',
   following: 'Abonné',
   unfollow: 'Ne plus suivre',
   message: 'Message',

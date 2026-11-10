@@ -134,6 +134,10 @@ export const messaging = {
   // ── Notifications ──────────────────────────────────────────────────────────
   notificationsTitle: 'Notifications',
   sectionNew: 'Nouveau',
+  sectionThisWeek: 'Cette semaine',
+  likedYourPosts_one: '{{name}} a aimé {{count}} de tes publications',
+  likedYourPosts_many: '{{name}} a aimé {{count}} de tes publications',
+  likedYourPosts_other: '{{name}} a aimé {{count}} de tes publications',
   sectionEarlier: 'Plus tôt',
   markAllRead: 'Tout marquer comme lu',
   markAllReadA11y_one: 'Marquer {{count}} notification comme lue',

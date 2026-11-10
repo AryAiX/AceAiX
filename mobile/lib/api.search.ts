@@ -42,3 +42,28 @@ export async function searchPosts(term: string, page = 0): Promise<PostHit[]> {
   }));
   return signPostMedia(rows);
 }
+
+/**
+ * A small picture for each post id (the first photo, or a video's still),
+ * for rows that point at a post: notifications, for now. Read under the same
+ * row rules as everything else, so a post the viewer may not see simply has
+ * no picture.
+ */
+export async function postThumbnails(ids: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length === 0) return {};
+  const { data, error } = await supabase.from('posts').select('id, media').in('id', unique.slice(0, 60));
+  if (error) throw new AppError(error);
+  const rows = ((data ?? []) as { id: string; media: PostMedia[] | null }[]).map((row) => ({
+    id: row.id,
+    media: Array.isArray(row.media) ? row.media : [],
+  }));
+  const signed = await signPostMedia(rows);
+  const out: Record<string, string> = {};
+  for (const row of signed) {
+    const first = row.media[0];
+    const uri = first?.thumbnail ?? (first?.type === 'video' ? null : first?.url);
+    if (uri) out[row.id] = uri;
+  }
+  return out;
+}

@@ -33,6 +33,7 @@ export const common = {
   block: '拉黑',
   unblock: '解除拉黑',
   follow: '关注',
+  followBack: '回关',
   following: '已关注',
   unfollow: '取消关注',
   message: '私信',

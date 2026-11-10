@@ -128,6 +128,8 @@ export const messaging = {
   // ── 通知 ───────────────────────────────────────────────────────────────────
   notificationsTitle: '通知',
   sectionNew: '新消息',
+  sectionThisWeek: '本周',
+  likedYourPosts_other: '{{name}} 赞了你的 {{count}} 条动态',
   sectionEarlier: '更早',
   markAllRead: '全部标为已读',
   markAllReadA11y_other: '把{{count}}条通知全部标为已读',

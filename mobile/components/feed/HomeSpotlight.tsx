@@ -5,7 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft, ArrowRight, Eye, Flame, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Text, isRTL } from '@/components/ui';
+import { Badge, ChevronForward, Text, isRTL } from '@/components/ui';
+import { groupedRowStyle } from '@/components/discover/groupedRow';
+import { LogoColors } from '@/theme/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import { openChallenges, profileViewDigest } from '@/lib/api';
@@ -149,6 +151,93 @@ export function HomeSpotlight({
     </Pressable>
   );
 
+
+  /* Notifications: the same two things as quiet rows in one white card,
+     under "Your week", so the page reads as one calm list. */
+  if (pinned) {
+    const rows = [views ? 'views' : null, challenge ? 'challenge' : null].filter(
+      (r): r is 'views' | 'challenge' => r != null,
+    );
+    const row = (index: number) => ({
+      ...groupedRowStyle(index, rows.length, colors, radii.xl),
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      gap: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    });
+    const roundIcon = (bg: string) => ({
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: bg,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+    });
+    return (
+      <View testID="your-week">
+        <Text variant="overline" tone="muted" accessibilityRole="header" style={{ marginBottom: spacing.sm }}>
+          {t('feed.yourWeek')}
+        </Text>
+        {views ? (
+          <Pressable
+            onPress={() => router.push(Routes.profileViews)}
+            accessibilityRole="button"
+            accessibilityLabel={t('views.homeTitle', { count: views.total })}
+            testID="your-week-views"
+            style={({ pressed }) => [row(0), { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={roundIcon(colors.primarySoft)}>
+              <Eye size={19} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text variant="bodyStrong" numberOfLines={2}>
+                {t('views.homeTitle', { count: views.total })}
+              </Text>
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {views.professional > 0
+                  ? t('views.homeProfessional', { count: views.professional })
+                  : t('views.homeEmptyBody')}
+              </Text>
+            </View>
+            {views.new_since_seen > 0 ? (
+              <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
+            ) : (
+              <ChevronForward size={18} color={colors.textMuted} />
+            )}
+          </Pressable>
+        ) : null}
+        {challenge ? (
+          <Pressable
+            onPress={() => router.push(Routes.challenge(challenge.id))}
+            accessibilityRole="button"
+            accessibilityLabel={challenge.title}
+            testID="your-week-challenge"
+            style={({ pressed }) => [row(views ? 1 : 0), { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <View style={roundIcon(theme.alpha(LogoColors.flame, theme.scheme === 'dark' ? 0.2 : 0.12))}>
+              <Flame size={19} color={LogoColors.flame} strokeWidth={2.4} />
+            </View>
+            <View style={{ flex: 1, gap: 1 }}>
+              <Text variant="bodyStrong" numberOfLines={1}>
+                {challenge.title}
+              </Text>
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {metaLine(
+                  deadlineLabel(challenge.closes_at),
+                  t('challenges.entries', { count: challenge.entry_count }),
+                )}
+              </Text>
+            </View>
+            <Badge
+              label={t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
+              tone="flame"
+            />
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
 
   const card = {
     flexDirection: 'row' as const,

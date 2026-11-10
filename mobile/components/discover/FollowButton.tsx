@@ -13,17 +13,19 @@ interface Props {
   name: string;
   /** No longer changes the look (Follow is the same everywhere). */
   solid?: boolean;
+  /** "Follow back" for someone who already follows you. Same look. */
+  back?: boolean;
 }
 
 /* One Follow everywhere: a blue outline; Following is grey with a tick.
    `solid` is kept so older callers still compile; it no longer changes the look. */
-export function FollowButton({ following, pending, onPress, name }: Props) {
+export function FollowButton({ following, pending, onPress, name, back }: Props) {
   const t = useT();
   const { colors } = useTheme();
 
   return (
     <Button
-      label={following ? t('common.following') : t('common.follow')}
+      label={following ? t('common.following') : back ? t('common.followBack') : t('common.follow')}
       variant={following ? 'secondary' : 'outline'}
       icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
       size="sm"

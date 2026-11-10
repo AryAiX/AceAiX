@@ -5,7 +5,6 @@ import { Bell } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
-  Divider,
   EmptyState,
   ErrorState,
   Header,
@@ -16,9 +15,12 @@ import {
 } from '@/components/ui';
 import { NotificationRow } from '@/components/messaging/NotificationRow';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { groupedRowStyle } from '@/components/discover/groupedRow';
+import { useFollowState } from '@/components/search/useFollowState';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotifications, markNotificationsRead } from '@/lib/api';
+import { postThumbnails } from '@/lib/api.search';
 import { errorMessage } from '@/lib/errors';
 import { isUnreadNotification } from '@/lib/notificationBanner';
 import { Routes, notificationTarget } from '@/lib/routes';
@@ -27,9 +29,43 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { AppNotification } from '@/types/models';
 
+/** One row: a notification, or one person's likes on several posts folded together. */
+interface Item {
+  n: AppNotification;
+  /** Every notification this row stands for (more than one when folded). */
+  ids: string[];
+  /** How many of your posts that person liked. */
+  postCount: number;
+}
+
 interface Section {
   title: string;
-  data: AppNotification[];
+  data: Item[];
+}
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * The same person liking several of your posts reads as one row ("liked 3 of
+ * your posts"), kept where the newest of those likes sits.
+ */
+function foldLikes(list: AppNotification[]): Item[] {
+  const out: Item[] = [];
+  const byActor = new Map<string, Item>();
+  for (const n of list) {
+    const foldable = n.type === 'like' && n.entity_type === 'post' && !!n.actor_id && n.actor_count <= 1;
+    const key = foldable ? (n.actor_id as string) : null;
+    const existing = key ? byActor.get(key) : undefined;
+    if (existing) {
+      existing.ids.push(n.id);
+      existing.postCount += 1;
+      continue;
+    }
+    const item: Item = { n, ids: [n.id], postCount: 1 };
+    if (key) byActor.set(key, item);
+    out.push(item);
+  }
+  return out;
 }
 
 export default function NotificationsScreen() {
@@ -127,27 +163,39 @@ export default function NotificationsScreen() {
     };
   }, [user]);
 
+  /* New, then This week, then Earlier. */
   const sections = useMemo<Section[]>(() => {
+    const now = Date.now();
+    const recent = (n: AppNotification) => now - new Date(n.created_at).getTime() < WEEK_MS;
     const fresh = items.filter((n) => !n.is_read);
-    const earlier = items.filter((n) => n.is_read);
+    const week = items.filter((n) => n.is_read && recent(n));
+    const earlier = items.filter((n) => n.is_read && !recent(n));
     const out: Section[] = [];
-    if (fresh.length) out.push({ title: t('messaging.sectionNew'), data: fresh });
-    if (earlier.length) out.push({ title: t('messaging.sectionEarlier'), data: earlier });
+    if (fresh.length) out.push({ title: t('messaging.sectionNew'), data: foldLikes(fresh) });
+    if (week.length) out.push({ title: t('messaging.sectionThisWeek'), data: foldLikes(week) });
+    if (earlier.length) out.push({ title: t('messaging.sectionEarlier'), data: foldLikes(earlier) });
     return out;
   }, [items, t]);
 
+  /* The post's picture beside a like or a comment. */
+  const postIds = useMemo(
+    () => items.filter((n) => n.entity_type === 'post' && n.entity_id).map((n) => n.entity_id as string),
+    [items],
+  );
+  const thumbs = useAsync(() => postThumbnails(postIds).catch(() => ({}) as Record<string, string>), [postIds.join(',')]);
+  const follow = useFollowState();
+
   const open = useCallback(
-    (notification: AppNotification) => {
+    (item: Item) => {
+      const notification = item.n;
       const target = notificationTarget(notification);
       if (!target) return;
 
       if (!notification.is_read) {
         mutate((current) =>
-          current
-            ? current.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
-            : current,
+          current ? current.map((n) => (item.ids.includes(n.id) ? { ...n, is_read: true } : n)) : current,
         );
-        markNotificationsRead([notification.id]).catch(() => {
+        markNotificationsRead(item.ids).catch(() => {
           /* The bulk mark on leaving the screen catches this anyway. */
         });
       }
@@ -227,7 +275,7 @@ export default function NotificationsScreen() {
 
       <SectionList
         sections={sections}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.n.id}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
           <View
@@ -243,16 +291,32 @@ export default function NotificationsScreen() {
             </Text>
           </View>
         )}
-        renderItem={({ item }) => {
-          const target = notificationTarget(item);
+        renderItem={({ item, index, section }) => {
+          const n = item.n;
+          const target = notificationTarget(n);
+          const actorId = n.actor_id;
+          const following = actorId ? follow.isPersonFollowed(actorId) : false;
           return (
-            <NotificationRow
-              notification={item}
-              onPress={target ? () => open(item) : undefined}
-            />
+            <View style={{ paddingHorizontal: spacing.lg }}>
+              <NotificationRow
+                notification={n}
+                grouped={groupedRowStyle(index, section.data.length, colors, theme.radii.xl)}
+                onPress={target ? () => open(item) : undefined}
+                postCount={item.postCount}
+                thumbUri={n.entity_type === 'post' && n.entity_id ? thumbs.data?.[n.entity_id] : null}
+                follow={
+                  n.type === 'follow' && actorId
+                    ? {
+                        following,
+                        pending: follow.pendingId === actorId,
+                        onPress: () => void follow.togglePerson(actorId, !following, 0),
+                      }
+                    : undefined
+                }
+              />
+            </View>
           );
         }}
-        ItemSeparatorComponent={() => <Divider inset={spacing.lg + 44 + spacing.md} />}
         contentContainerStyle={{ paddingBottom: spacing.giant, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={

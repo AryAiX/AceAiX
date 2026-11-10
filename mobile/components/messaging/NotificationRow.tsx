@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 import {
   AtSign,
   Award,
@@ -25,7 +25,9 @@ import {
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Text } from '@/components/ui';
+import { Avatar, RemoteImage, Text } from '@/components/ui';
+import { FollowButton } from '@/components/discover/FollowButton';
+import { LogoColors } from '@/theme/tokens';
 import { sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { relativeTime } from '@/lib/format';
@@ -251,9 +253,17 @@ interface Props {
   notification: AppNotification;
   /** Omitted when the notification has no destination. */
   onPress?: () => void;
+  /** Draw as one row of a white card (see groupedRowStyle). */
+  grouped?: ViewStyle;
+  /** The post's picture, on the right of a like or a comment. */
+  thumbUri?: string | null;
+  /** The same person liked this many of your posts: one row says so. */
+  postCount?: number;
+  /** A new follower: offer Follow back right on the row. */
+  follow?: { following: boolean; pending: boolean; onPress: () => void };
 }
 
-export function NotificationRow({ notification, onPress }: Props) {
+export function NotificationRow({ notification, onPress, grouped, thumbUri, postCount = 1, follow }: Props) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const t = useT();
@@ -265,28 +275,35 @@ export function NotificationRow({ notification, onPress }: Props) {
      database triggers — see `notificationTitle` above for what a real fix
      needs. Everything around them on this row is translated. */
   const copy = notificationCopy(notification, t);
-  const title = copy.title;
+  const name = notification.actor?.full_name?.trim() ?? '';
+  const title =
+    postCount > 1 && notification.type === 'like' && name
+      ? t('messaging.likedYourPosts', { name, count: postCount })
+      : copy.title;
   const body = copy.body;
   const when = relativeTime(notification.created_at);
+
+  /* The person's name in bold, so who it is reads first; the time sits at
+     the end of the sentence. */
+  const lead = name && title.startsWith(name) ? name : null;
+  const rest = lead ? title.slice(lead.length) : title;
+
+  const badgeTint = skin.tint === 'textSecondary' ? colors.textMuted : tint;
 
   const content = (
     <View
       style={{
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         gap: spacing.md,
-        minHeight: 72,
-        paddingHorizontal: spacing.lg,
+        minHeight: 64,
+        paddingHorizontal: grouped ? spacing.md : spacing.lg,
         paddingVertical: spacing.md,
       }}
     >
       <View>
         {notification.actor_id ? (
-          <Avatar
-            uri={notification.actor?.avatar_url}
-            name={notification.actor?.full_name}
-            size="md"
-          />
+          <Avatar uri={notification.actor?.avatar_url} name={notification.actor?.full_name} size="md" />
         ) : (
           <View
             style={{
@@ -303,53 +320,75 @@ export function NotificationRow({ notification, onPress }: Props) {
         )}
 
         {notification.actor_id ? (
+          /* Solid colour with a white icon: readable at a glance. */
           <View
             style={{
               position: 'absolute',
               right: -3,
               bottom: -3,
-              width: 22,
-              height: 22,
+              width: 20,
+              height: 20,
               borderRadius: radii.pill,
-              backgroundColor: theme.alpha(tint, 0.18),
+              backgroundColor: badgeTint,
               borderWidth: 2,
-              borderColor: colors.bg,
+              borderColor: colors.surface,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <skin.Icon size={11} color={tint} strokeWidth={2.6} />
+            <skin.Icon size={10} color="#FFFFFF" strokeWidth={2.8} />
           </View>
         ) : null}
       </View>
 
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant={unread ? 'bodyStrong' : 'body'} numberOfLines={2}>
-          {title}
+        <Text variant="body" numberOfLines={3}>
+          {lead ? <Text variant="bodyStrong">{lead}</Text> : null}
+          {rest}
+          {when ? (
+            <Text variant="caption" tone="muted">
+              {'  '}
+              {when}
+            </Text>
+          ) : null}
         </Text>
         {body ? (
           <Text variant="caption" tone="muted" numberOfLines={2}>
             {body}
           </Text>
         ) : null}
-        <Text variant="overline" tone="muted" style={{ marginTop: 2 }}>
-          {when}
-        </Text>
       </View>
+
+      {follow ? (
+        <FollowButton
+          following={follow.following}
+          pending={follow.pending}
+          onPress={follow.onPress}
+          name={name}
+          back
+        />
+      ) : thumbUri ? (
+        <RemoteImage
+          uri={thumbUri}
+          style={{ width: 44, height: 44, borderRadius: radii.sm, backgroundColor: colors.surfaceAlt }}
+        />
+      ) : null}
 
       {unread ? (
         <View
           style={{
-            width: 9,
-            height: 9,
+            width: 8,
+            height: 8,
             borderRadius: radii.pill,
-            backgroundColor: colors.warning,
-            marginTop: spacing.sm,
+            backgroundColor: LogoColors.flame,
           }}
         />
       ) : null}
     </View>
   );
+
+  /* Unread rows carry a light blue tint inside the card. */
+  const fill = unread ? theme.alpha(colors.primary, theme.scheme === 'dark' ? 0.14 : 0.06) : grouped ? colors.surface : colors.bg;
 
   if (!onPress) {
     // Still announced, just not offered as a button.
@@ -357,7 +396,7 @@ export function NotificationRow({ notification, onPress }: Props) {
       <View
         accessible
         accessibilityLabel={[title, body, when].filter(Boolean).join('. ')}
-        style={{ backgroundColor: unread ? colors.surfaceAlt : colors.bg }}
+        style={[grouped, { backgroundColor: fill }]}
       >
         {content}
       </View>
@@ -368,21 +407,8 @@ export function NotificationRow({ notification, onPress }: Props) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[
-        title,
-        body,
-        when,
-        unread ? t('messaging.unread') : null,
-      ]
-        .filter(Boolean)
-        .join('. ')}
-      style={({ pressed }) => ({
-        backgroundColor: pressed
-          ? colors.surfaceSunken
-          : unread
-            ? colors.surfaceAlt
-            : colors.bg,
-      })}
+      accessibilityLabel={[title, body, when, unread ? t('messaging.unread') : null].filter(Boolean).join('. ')}
+      style={({ pressed }) => [grouped, { backgroundColor: pressed ? colors.surfaceSunken : fill }]}
     >
       {content}
     </Pressable>

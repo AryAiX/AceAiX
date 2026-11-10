@@ -33,6 +33,7 @@ export const common = {
   block: 'Block',
   unblock: 'Unblock',
   follow: 'Follow',
+  followBack: 'Follow back',
   following: 'Following',
   unfollow: 'Unfollow',
   message: 'Message',

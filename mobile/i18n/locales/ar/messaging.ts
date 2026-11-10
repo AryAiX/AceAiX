@@ -135,6 +135,13 @@ export const messaging = {
   // ── الإشعارات ─────────────────────────────────────────────────────────────
   notificationsTitle: 'الإشعارات',
   sectionNew: 'الجديد',
+  sectionThisWeek: 'هذا الأسبوع',
+  likedYourPosts_zero: 'أُعجب {{name}} بـ {{count}} من منشوراتك',
+  likedYourPosts_one: 'أُعجب {{name}} بمنشور واحد من منشوراتك',
+  likedYourPosts_two: 'أُعجب {{name}} بمنشورين من منشوراتك',
+  likedYourPosts_few: 'أُعجب {{name}} بـ {{count}} من منشوراتك',
+  likedYourPosts_many: 'أُعجب {{name}} بـ {{count}} من منشوراتك',
+  likedYourPosts_other: 'أُعجب {{name}} بـ {{count}} من منشوراتك',
   sectionEarlier: 'الأقدم',
   markAllRead: 'تعليم الكل كمقروء',
   markAllReadA11y_zero: 'لا إشعارات لتعليمها كمقروءة',

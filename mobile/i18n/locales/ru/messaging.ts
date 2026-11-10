@@ -135,6 +135,11 @@ export const messaging = {
   // ── Уведомления ────────────────────────────────────────────────────────────
   notificationsTitle: 'Уведомления',
   sectionNew: 'Новые',
+  sectionThisWeek: 'На этой неделе',
+  likedYourPosts_one: '{{name}} нравится {{count}} твоя публикация',
+  likedYourPosts_few: '{{name}} нравятся {{count}} твои публикации',
+  likedYourPosts_many: '{{name}} нравятся {{count}} твоих публикаций',
+  likedYourPosts_other: '{{name}} нравятся {{count}} твоих публикаций',
   sectionEarlier: 'Ранее',
   markAllRead: 'Отметить все',
   markAllReadA11y_one: 'Отметить {{count}} уведомление прочитанным',
