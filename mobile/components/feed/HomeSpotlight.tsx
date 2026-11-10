@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Eye, Flame, X } from 'lucide-react-native';
+import { BadgeCheck, Eye, Flame, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Badge, ChevronForward, Text } from '@/components/ui';
@@ -13,15 +13,13 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getMyChallengeViewer, openChallenges, profileViewDigest } from '@/lib/api';
 import { ageFrom, pickChallenge } from '@/lib/challengeFit';
 import { Routes } from '@/lib/routes';
-import { deadlineLabel, displayName, metaLine } from '@/lib/format';
+import { daysUntil, deadlineLabel, displayName, metaLine } from '@/lib/format';
+import type { Challenge } from '@/types/models';
 import { useT } from '@/i18n';
 import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 
-/** The challenge ombre, coral to pink — the same sweep as Play's + button —
-    with white words on it. */
-/* The challenge card is one solid flame orange, no ombre. */
-const CHALLENGE_FILL = '#FF7A2C';
-const ON_OMBRE = '#FFFFFF';
+/* The challenge ticket's orange: the edge, the flame tile, the countdown. */
+const FLAME = LogoColors.flame;
 
 
 /* The faces on Home's views card: 28 across with a 2.5 white ring, overlapping. */
@@ -293,7 +291,9 @@ export function HomeSpotlight({
   };
 
   return (
-    <View style={{ gap: spacing.sm }} testID="your-week">
+    /* A little extra room under the cards, so "Matched for you" isn't
+       crowded by the ticket above it. */
+    <View style={{ gap: spacing.sm, marginBottom: spacing.sm }} testID="your-week">
       {views ? (
         <Pressable
           onPress={() => router.push(Routes.profileViews)}
@@ -409,42 +409,187 @@ export function HomeSpotlight({
       ) : null}
 
       {challenge ? (
-        <Pressable
-          onPress={() => router.push(Routes.challenge(challenge.id))}
-          accessibilityRole="button"
-          accessibilityLabel={challenge.title}
-          testID="your-week-challenge"
-          style={({ pressed }) => ({
-            ...card,
-            backgroundColor: CHALLENGE_FILL,
-            opacity: pressed ? 0.9 : 1,
-            shadowColor: CHALLENGE_FILL,
-            shadowOpacity: 0.3,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 8 },
-            elevation: 6,
-          })}
-        >
-          <View style={[tile, { backgroundColor: theme.alpha(ON_OMBRE, 0.25) }]}>
-            <Flame size={19} color={ON_OMBRE} strokeWidth={2.4} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" color={ON_OMBRE} numberOfLines={1}>
-              {challenge.title}
-            </Text>
-            <Text variant="caption" color={theme.alpha(ON_OMBRE, 0.88)} numberOfLines={1}>
-              {metaLine(
-                deadlineLabel(challenge.closes_at),
-                t('challenges.entries', { count: challenge.entry_count }),
-              )}
-            </Text>
-          </View>
-          <Text variant="captionStrong" color={ON_OMBRE}>
-            {t(challenge.my_entry_id ? 'challenges.homeEnteredCta' : 'challenges.homeCta')}
-          </Text>
-          {pinned ? null : close(() => putAwayChallenge(challenge.id), ON_OMBRE, 'your-week-challenge-close')}
-        </Pressable>
+        <ChallengeTicket
+          challenge={challenge}
+          onOpen={() => router.push(Routes.challenge(challenge.id))}
+          closeButton={pinned ? null : close(() => putAwayChallenge(challenge.id), colors.textMuted, 'your-week-challenge-close')}
+        />
       ) : null}
     </View>
+  );
+}
+
+/**
+ * This week's challenge as a ticket: a white card like the views card above
+ * it, with an orange edge and flame tile on the left and a tear-off stub on
+ * the right holding the countdown and "See it". Follows light and dark mode.
+ */
+function ChallengeTicket({
+  challenge,
+  onOpen,
+  closeButton,
+}: {
+  challenge: Challenge;
+  onOpen: () => void;
+  closeButton: React.ReactNode;
+}) {
+  const theme = useTheme();
+  const { colors, spacing, radii } = theme;
+  const t = useT();
+  const dark = theme.scheme === 'dark';
+
+  const days = daysUntil(challenge.closes_at);
+  const setBy = challenge.org_name ?? challenge.setter_name;
+  const entered = !!challenge.my_entry_id;
+  const entriesLine =
+    challenge.entry_count > 0
+      ? t('challenges.entries', { count: challenge.entry_count })
+      : t('challenges.homeBeFirst');
+  const flameInk = dark ? LogoColors.flameInkDark : LogoColors.flameInk;
+  const NOTCH = 16;
+
+  return (
+    <Pressable
+      onPress={onOpen}
+      accessibilityRole="button"
+      accessibilityLabel={metaLine(
+        challenge.title,
+        deadlineLabel(challenge.closes_at),
+        entriesLine,
+        t(entered ? 'challenges.homeEnteredCta' : 'challenges.homeCta'),
+      )}
+      testID="your-week-challenge"
+      style={({ pressed }) => ({
+        borderRadius: radii.lg,
+        backgroundColor: colors.surface,
+        opacity: pressed ? 0.85 : 1,
+        shadowColor: '#140C46',
+        shadowOpacity: dark ? 0.4 : 0.12,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 5,
+      })}
+    >
+      <View style={{ flexDirection: 'row', borderRadius: radii.lg, overflow: 'hidden' }}>
+        {/* The orange edge. */}
+        <View style={{ width: 4, backgroundColor: FLAME }} />
+
+        <View
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.md,
+            paddingVertical: spacing.md,
+            paddingStart: spacing.md - 4,
+            paddingEnd: spacing.lg,
+          }}
+        >
+          <View
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 14,
+              backgroundColor: FLAME,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: FLAME,
+              shadowOpacity: 0.45,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 3,
+            }}
+          >
+            <Flame size={20} color="#FFFFFF" strokeWidth={2.4} />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="overline" color={flameInk} style={{ fontSize: 10 }} numberOfLines={1}>
+              {t('challenges.homeTitle')}
+            </Text>
+            <Text variant="bodyStrong" numberOfLines={1}>
+              {challenge.title}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {setBy ? (
+                <>
+                  <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+                    {t('challenges.homeSetBy', { name: setBy })}
+                  </Text>
+                  {challenge.setter_verified ? <BadgeCheck size={12} color={colors.primary} /> : null}
+                  <Text variant="caption" tone="muted">
+                    ·
+                  </Text>
+                </>
+              ) : null}
+              <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {entriesLine}
+              </Text>
+            </View>
+          </View>
+          {closeButton}
+        </View>
+
+        {/* The tear-off stub: a dashed line with a notch top and bottom. */}
+        <View
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={{
+            width: 86,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            paddingVertical: spacing.sm,
+          }}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              start: 0,
+              top: NOTCH / 2 + 2,
+              bottom: NOTCH / 2 + 2,
+              justifyContent: 'space-between',
+            }}
+          >
+            {Array.from({ length: 7 }, (_, i) => (
+              <View key={i} style={{ width: 1.5, height: 5, borderRadius: 1, backgroundColor: colors.border }} />
+            ))}
+          </View>
+          {[{ top: -NOTCH / 2 }, { bottom: -NOTCH / 2 }].map((pos, i) => (
+            <View
+              key={i}
+              style={{
+                position: 'absolute',
+                start: -NOTCH / 2 + 0.75,
+                width: NOTCH,
+                height: NOTCH,
+                borderRadius: NOTCH / 2,
+                backgroundColor: colors.bg,
+                ...pos,
+              }}
+            />
+          ))}
+
+          {days != null && days >= 1 ? (
+            <View style={{ alignItems: 'center' }}>
+              <Text variant="display" color={FLAME} style={{ fontSize: 28, lineHeight: 30 }}>
+                {days}
+              </Text>
+              <Text variant="overline" tone="muted" style={{ fontSize: 9 }} numberOfLines={1}>
+                {t('challenges.homeStubDays', { count: days })}
+              </Text>
+            </View>
+          ) : (
+            <Text variant="captionStrong" color={FLAME} align="center">
+              {t('challenges.homeStubToday')}
+            </Text>
+          )}
+          <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9, backgroundColor: FLAME }}>
+            <Text variant="captionStrong" color="#FFFFFF" numberOfLines={1}>
+              {t(entered ? 'challenges.homeStubEntered' : 'challenges.homeCta')}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
   );
 }

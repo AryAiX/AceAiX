@@ -645,6 +645,26 @@ export const LogoColors = {
 } as const;
 
 /** The split: blue to the middle, then fire. Use with `locations`. */
+/**
+ * The unseen-story ring: colour travels around the circle, clockwise from the
+ * top right. Orange runs to a reddish middle and ends in a touch of yellow;
+ * right where the yellow ends, blue starts as a deep purple and brightens to
+ * sky blue by the top. Angles are degrees clockwise from 12 o'clock.
+ */
+export const StorySweep: readonly (readonly [number, string])[] = [
+  [45, '#FF8A2C'],
+  [85, '#FF6A2C'],
+  [135, '#EE3F2A'],
+  [185, '#FF6A2C'],
+  [210, '#FF9A3A'],
+  [225, '#FFC24A'],
+  [225, '#5B2FC9'],
+  [245, '#5E3FE0'],
+  [295, '#3D57F0'],
+  [335, '#2F6BFF'],
+  [405, '#26A9F5'],
+];
+
 export const LogoSplit = {
   colors: [LogoColors.sky, LogoColors.cobalt, LogoColors.flame, LogoColors.ember] as const,
   locations: [0, 0.49, 0.51, 1] as const,

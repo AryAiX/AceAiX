@@ -127,4 +127,9 @@ export const challenges = {
   homeTitle: '本周的挑战',
   homeCta: '去看看',
   homeEnteredCta: '看排行榜',
+  homeStubDays_other: '天后结束',
+  homeStubToday: '今天结束',
+  homeStubEntered: '已参加',
+  homeBeFirst: '成为第一个参加的人',
+  homeSetBy: '发起：{{name}}',
 };

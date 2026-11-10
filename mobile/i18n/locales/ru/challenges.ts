@@ -148,4 +148,12 @@ export const challenges = {
   homeTitle: 'Испытание недели',
   homeCta: 'Посмотреть',
   homeEnteredCta: 'Открыть таблицу',
+  homeStubDays_one: 'день остался',
+  homeStubDays_few: 'дня осталось',
+  homeStubDays_many: 'дней осталось',
+  homeStubDays_other: 'дня осталось',
+  homeStubToday: 'Заканчивается сегодня',
+  homeStubEntered: 'Вы участвуете',
+  homeBeFirst: 'Станьте первым участником',
+  homeSetBy: 'От {{name}}',
 };

@@ -142,4 +142,11 @@ export const challenges = {
   homeTitle: 'Le défi de la semaine',
   homeCta: 'Le voir',
   homeEnteredCta: 'Voir le classement',
+  homeStubDays_one: 'jour restant',
+  homeStubDays_many: 'jours restants',
+  homeStubDays_other: 'jours restants',
+  homeStubToday: 'Finit aujourd’hui',
+  homeStubEntered: 'Inscrit',
+  homeBeFirst: 'Sois le premier à participer',
+  homeSetBy: 'Par {{name}}',
 };

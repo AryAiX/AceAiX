@@ -135,4 +135,10 @@ export const challenges = {
   homeTitle: 'This week’s challenge',
   homeCta: 'See it',
   homeEnteredCta: 'See the leaderboard',
+  homeStubDays_one: 'day left',
+  homeStubDays_other: 'days left',
+  homeStubToday: 'Ends today',
+  homeStubEntered: 'Entered',
+  homeBeFirst: 'Be the first to enter',
+  homeSetBy: 'Set by {{name}}',
 };

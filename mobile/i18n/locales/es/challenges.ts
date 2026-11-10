@@ -149,4 +149,11 @@ export const challenges = {
   homeTitle: 'El reto de esta semana',
   homeCta: 'Verlo',
   homeEnteredCta: 'Ver la clasificación',
+  homeStubDays_one: 'día restante',
+  homeStubDays_many: 'días restantes',
+  homeStubDays_other: 'días restantes',
+  homeStubToday: 'Termina hoy',
+  homeStubEntered: 'Participas',
+  homeBeFirst: 'Sé el primero en participar',
+  homeSetBy: 'De {{name}}',
 };
