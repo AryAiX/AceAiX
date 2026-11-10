@@ -71,7 +71,7 @@ export function MessagesButton({
             height: 18,
             paddingHorizontal: 4,
             borderRadius: 9,
-            backgroundColor: colors.success,
+            backgroundColor: colors.danger,
             borderWidth: 2,
             borderColor: colors.bg,
             alignItems: 'center',

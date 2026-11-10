@@ -327,7 +327,9 @@ export function IconButton({
             height: 18,
             paddingHorizontal: 4,
             borderRadius: 9,
-            backgroundColor: colors.warning,
+            /* Green on the bell (the only icon button with a count); the
+               Messages button's count is red. */
+            backgroundColor: colors.success,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,

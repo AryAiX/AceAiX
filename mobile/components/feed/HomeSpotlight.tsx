@@ -10,7 +10,8 @@ import { groupedRowStyle } from '@/components/discover/groupedRow';
 import { LogoColors } from '@/theme/tokens';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
-import { openChallenges, profileViewDigest } from '@/lib/api';
+import { getMyChallengeViewer, openChallenges, profileViewDigest } from '@/lib/api';
+import { ageFrom, pickChallenge } from '@/lib/challengeFit';
 import { Routes } from '@/lib/routes';
 import { deadlineLabel, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
@@ -87,9 +88,14 @@ export function HomeSpotlight({
     enabled: isAthlete,
     refetchOnFocus: true,
   });
-  const challenges = useAsync(() => openChallenges(null, 5, 0), [], {
+  /* Twenty open ones to choose from, and who you are, so the card can show
+     one in your sport that you are old enough to enter. */
+  const challenges = useAsync(() => openChallenges(null, 20, 0), [], {
     enabled: !isGuardian,
     refetchOnFocus: true,
+  });
+  const viewer = useAsync(() => getMyChallengeViewer().catch(() => ({ sports: [], birthDate: null })), [], {
+    enabled: isAthlete,
   });
 
   const [baseline, setBaseline] = useState<ViewsBaseline | null>(viewsPutAwayThisRun);
@@ -106,7 +112,11 @@ export function HomeSpotlight({
   const rawChallenge =
     isGuardian || (!showChallenge && !pinned)
       ? null
-      : ((challenges.data ?? []).find(isChallengeLive) ?? null);
+      : pickChallenge((challenges.data ?? []).filter(isChallengeLive), {
+          sports: viewer.data?.sports ?? [],
+          age: ageFrom(viewer.data?.birthDate),
+          band: profile?.age_band ?? null,
+        });
 
   const somethingNew =
     baseline === null ||

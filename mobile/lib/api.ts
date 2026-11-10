@@ -1251,3 +1251,23 @@ export async function talentInsight(athleteId?: string): Promise<string | null> 
   const summary = (data as { summary?: string } | null)?.summary;
   return typeof summary === 'string' && summary.trim().length > 0 ? summary.trim() : null;
 }
+
+/**
+ * Your own sport(s) and age, to pick a challenge that fits you on Home.
+ * Both reads are your own rows; a failure just means "unknown".
+ */
+export async function getMyChallengeViewer(): Promise<{ sports: string[]; birthDate: string | null }> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { sports: [], birthDate: null };
+  const [athlete, priv] = await Promise.all([
+    supabase.from('athlete_profiles').select('sport, other_sports').eq('user_id', auth.user.id).maybeSingle(),
+    supabase.from('user_private').select('date_of_birth').eq('user_id', auth.user.id).maybeSingle(),
+  ]);
+  const row = (athlete.data ?? null) as { sport: string | null; other_sports: OtherSport[] | null } | null;
+  const list = row && Array.isArray(row.other_sports) ? row.other_sports : [];
+  const others = list.map((o) => o.sport);
+  return {
+    sports: [row?.sport ?? '', ...others].filter((s): s is string => !!s),
+    birthDate: ((priv.data ?? null) as { date_of_birth: string | null } | null)?.date_of_birth ?? null,
+  };
+}
