@@ -28,7 +28,7 @@ export const feed = {
   createPostHint: 'Fotos, ein Clip oder ein Update',
   createStory: 'Neue Story',
   createStoryHint: 'Nach 24 Stunden weg',
-  createHighlight: 'Highlight hinzufügen',
+  createHighlight: 'Best-of',
   createHighlightHint: 'Deine besten Clips im Profil',
   addMediaHint: 'Bis zu {{max}} · Clips bis {{minutes}} Minuten',
   photoLibrary: 'Fotomediathek',

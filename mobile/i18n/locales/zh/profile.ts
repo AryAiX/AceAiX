@@ -92,7 +92,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── 标签页（components/profile/ProfileTabs.tsx） ───────────────────────────
-  tabHighlights: '高光',
+  tabHighlights: '精选',
   tabCareer: '生涯',
 
   // ── 动态标签页（components/profile/PostsTab.tsx） ──────────────────────────
@@ -104,13 +104,13 @@ export const profile = {
   postsEmptyAction: '写一条动态',
 
   // ── 媒体网格（components/profile/MediaGrid.tsx） ───────────────────────────
-  addHighlight: '添加高光',
+  addHighlight: '添加到精选',
   videoClipA11y: '视频短片',
   photoA11y: '照片',
   photoUnavailable: '照片不可用',
   scoreWhenPostedA11y: '发布时评分：{{score}}',
   scoreWhenPostedHint: '每条帖子上的数字是你发布时的评分。',
-  highlightTag: '高光',
+  highlightTag: '精选',
   clipQuickTechnique: '技术',
   clipQuickMatch: '比赛',
   clipQuickTraining: '训练',
@@ -120,8 +120,8 @@ export const profile = {
   // ── 高光标签页（components/profile/HighlightsTab.tsx） ─────────────────────
   photoPermission: 'AceAiX 需要访问相册的权限。',
 
-  noHighlightsTitle: '这里没有高光',
-  noHighlightsBody: '高光是运动员资料的一部分。',
+  noHighlightsTitle: '精选里还没有内容',
+  noHighlightsBody: '精选是运动员资料的一部分。',
   clipsEmptyTitleSelf: '教练先看片，再看字。',
   clipsEmptyTitleOther: '还没有短片',
   clipsEmptyBodySelf: '传上你的第一段短片。三段短的正好。',
@@ -362,8 +362,8 @@ export const profile = {
   layoutGrid: '网格显示',
   layoutScroll: '列表显示',
   morePosts: '显示更多帖子',
-  addToBestOfNamed: '添加到 {{name}} 的高光',
-  bestOfNamed: '{{name}} 的高光',
+  addToBestOfNamed: '添加到 {{name}} 的精选',
+  bestOfNamed: '{{name}} 的精选',
   clipCount_other: '{{count}} 段',
   addClip: '添加片段',
 };

@@ -105,7 +105,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── التبويبات (components/profile/ProfileTabs.tsx) ────────────────────────
-  tabHighlights: 'أبرز اللقطات',
+  tabHighlights: 'الأفضل',
   tabCareer: 'المسيرة',
 
   // ── تبويب المنشورات (components/profile/PostsTab.tsx) ─────────────────────
@@ -117,13 +117,13 @@ export const profile = {
   postsEmptyAction: 'اكتب منشورًا',
 
   // ── شبكة الوسائط (components/profile/MediaGrid.tsx) ───────────────────────
-  addHighlight: 'إضافة لقطة',
+  addHighlight: 'إضافة إلى الأفضل',
   videoClipA11y: 'مقطع فيديو',
   photoA11y: 'صورة',
   photoUnavailable: 'الصورة غير متاحة',
   scoreWhenPostedA11y: 'النتيجة عند النشر: {{score}}',
   scoreWhenPostedHint: 'الرقم على كل منشور هو نتيجتك عند نشره.',
-  highlightTag: 'لقطة',
+  highlightTag: 'الأفضل',
   clipQuickTechnique: 'تقنية',
   clipQuickMatch: 'مباراة',
   clipQuickTraining: 'تدريب',
@@ -133,8 +133,8 @@ export const profile = {
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',
 
-  noHighlightsTitle: 'لا لقطات هنا',
-  noHighlightsBody: 'أبرز اللقطات جزء من ملف اللاعب.',
+  noHighlightsTitle: 'لا مقاطع في الأفضل',
+  noHighlightsBody: 'قسم الأفضل جزء من ملف اللاعب.',
   clipsEmptyTitleSelf: 'المدرّبون يشاهدون قبل أن يقرأوا.',
   clipsEmptyTitleOther: 'لا لقطات بعد',
   clipsEmptyBodySelf: 'أضف أول لقطة لك. ثلاث لقطات قصيرة هي العدد المثالي.',
@@ -395,8 +395,8 @@ export const profile = {
   layoutGrid: 'عرض كشبكة',
   layoutScroll: 'عرض كقائمة متتالية',
   morePosts: 'عرض منشورات أكثر',
-  addToBestOfNamed: 'إضافة إلى أبرز لقطات {{name}}',
-  bestOfNamed: 'أبرز لقطات {{name}}',
+  addToBestOfNamed: 'إضافة إلى أفضل ما لدى {{name}}',
+  bestOfNamed: 'أفضل ما لدى {{name}}',
   clipCount_zero: 'مقاطع: {{count}}',
   clipCount_one: 'مقاطع: {{count}}',
   clipCount_two: 'مقاطع: {{count}}',

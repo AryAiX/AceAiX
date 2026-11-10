@@ -137,7 +137,7 @@ export const score = {
   simHonest:
     'Eine Hochrechnung, kein Versprechen — sie setzt voraus, dass die Arbeit echt ist und die Ergebnisse halten.',
 
-  simVideos: 'Highlight-Clips',
+  simVideos: 'Best-of-Clips',
   simMatches: 'Dieses Jahr eingetragene Spiele',
   simVerified: 'Davon bestätigt',
   simEndorsements: 'Empfehlungen',

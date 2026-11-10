@@ -8,7 +8,7 @@ export const explore = {
   allSports: 'كل المقاطع',
   forYou: 'مقاطع لك',
   trendingNow: 'مقطع رائج',
-  highlight: 'أبرز اللقطات',
+  highlight: 'الأفضل',
   playClipBy: 'تشغيل مقطع {{name}}',
   viewsA11y: '{{n}} مشاهدة',
   emptyTitle: 'لا يوجد ما تشاهده بعد',

@@ -204,7 +204,7 @@ export const opportunities = {
     whatTheySee: '他们会看到什么',
     seeProfile: '你的姓名和资料',
     seeScore: '你的天赋分',
-    seeHighlights: '你的高光和数据',
+    seeHighlights: '你的精选和数据',
     seeMessage: '你在上面写的留言',
     guardianNotice: '你的家长或监护人可以看到你发出的申请。',
   },

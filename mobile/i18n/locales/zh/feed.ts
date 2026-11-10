@@ -27,7 +27,7 @@ export const feed = {
   createPostHint: '照片、视频或近况',
   createStory: '快拍',
   createStoryHint: '24 小时后消失',
-  createHighlight: '高光',
+  createHighlight: '精选',
   createHighlightHint: '最佳片段，展示在主页',
   addMediaHint: '最多 {{max}} 个 · 视频不超过 {{minutes}} 分钟',
   photoLibrary: '照片图库',

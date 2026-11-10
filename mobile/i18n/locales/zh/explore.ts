@@ -8,7 +8,7 @@ export const explore = {
   allSports: '全部短片',
   forYou: '为你推荐的短片',
   trendingNow: '热门短片',
-  highlight: '精彩集锦',
+  highlight: '精选',
   playClipBy: '播放 {{name}} 的短片',
   viewsA11y: '{{n}} 次观看',
   emptyTitle: '暂时没有可看的内容',

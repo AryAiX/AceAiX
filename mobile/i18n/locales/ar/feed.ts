@@ -28,7 +28,7 @@ export const feed = {
   createPostHint: 'صور أو مقطع أو تحديث',
   createStory: 'قصة',
   createStoryHint: 'تختفي بعد 24 ساعة',
-  createHighlight: 'لقطة مميزة',
+  createHighlight: 'الأفضل',
   createHighlightHint: 'أفضل مقاطعك في ملفك',
   addMediaHint: 'حتى {{max}} · مقاطع حتى {{minutes}} دقائق',
   photoLibrary: 'مكتبة الصور',

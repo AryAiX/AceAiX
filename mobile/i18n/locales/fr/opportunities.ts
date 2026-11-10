@@ -212,7 +212,7 @@ export const opportunities = {
     whatTheySee: 'Ce qu’ils verront',
     seeProfile: 'Ton nom et ton profil',
     seeScore: 'Ton Score Talent',
-    seeHighlights: 'Tes highlights et tes stats',
+    seeHighlights: 'Ton Best of et tes stats',
     seeMessage: 'Le message que tu écris au-dessus',
     guardianNotice: 'Ton parent ou tuteur pourra voir les candidatures que tu envoies.',
   },

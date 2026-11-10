@@ -211,7 +211,7 @@ export const opportunities = {
     whatTheySee: 'Was sie sehen',
     seeProfile: 'Deinen Namen und dein Profil',
     seeScore: 'Deinen Talent Score',
-    seeHighlights: 'Deine Highlights und Zahlen',
+    seeHighlights: 'Dein Best-of und deine Zahlen',
     seeMessage: 'Die Nachricht, die du oben schreibst',
     guardianNotice: 'Dein Elternteil oder Vormund kann sehen, wo du dich bewirbst.',
   },

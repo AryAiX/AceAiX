@@ -99,7 +99,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Onglets (components/profile/ProfileTabs.tsx) ───────────────────────────
-  tabHighlights: 'Highlights',
+  tabHighlights: 'Best of',
   tabCareer: 'Carrière',
 
   // ── Onglet Posts (components/profile/PostsTab.tsx) ─────────────────────────
@@ -111,13 +111,13 @@ export const profile = {
   postsEmptyAction: 'Écrire un post',
 
   // ── Grille média (components/profile/MediaGrid.tsx) ────────────────────────
-  addHighlight: 'Ajouter un highlight',
+  addHighlight: 'Ajouter au Best of',
   videoClipA11y: 'Clip vidéo',
   photoA11y: 'Photo',
   photoUnavailable: 'Photo indisponible',
   scoreWhenPostedA11y: 'Score à la publication : {{score}}',
   scoreWhenPostedHint: 'Le chiffre sur chaque publication est ton score au moment où tu l’as publiée.',
-  highlightTag: 'Temps fort',
+  highlightTag: 'Best of',
   clipQuickTechnique: 'Geste technique',
   clipQuickMatch: 'Match',
   clipQuickTraining: 'Entraînement',
@@ -127,8 +127,8 @@ export const profile = {
   // ── Onglet Highlights (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX a besoin de ta permission pour ouvrir tes photos.',
 
-  noHighlightsTitle: 'Aucun highlight ici',
-  noHighlightsBody: 'Les highlights font partie d’un profil d’athlète.',
+  noHighlightsTitle: 'Rien dans le Best of',
+  noHighlightsBody: 'Le Best of fait partie d’un profil d’athlète.',
   clipsEmptyTitleSelf: 'Les coachs regardent avant de lire.',
   clipsEmptyTitleOther: 'Aucun clip',
   clipsEmptyBodySelf: 'Ajoute ton premier clip. Trois clips courts, c’est le bon dosage.',
@@ -380,8 +380,8 @@ export const profile = {
   layoutGrid: 'Afficher en grille',
   layoutScroll: 'Afficher en liste',
   morePosts: 'Voir plus de publications',
-  addToBestOfNamed: 'Ajouter aux temps forts de {{name}}',
-  bestOfNamed: 'Temps forts de {{name}}',
+  addToBestOfNamed: 'Ajouter au Best of de {{name}}',
+  bestOfNamed: 'Best of de {{name}}',
   clipCount_one: '{{count}} vidéo',
   clipCount_many: '{{count}} vidéos',
   clipCount_other: '{{count}} vidéos',

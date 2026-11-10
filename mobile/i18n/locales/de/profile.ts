@@ -97,7 +97,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Tabs (components/profile/ProfileTabs.tsx) ──────────────────────────────
-  tabHighlights: 'Highlights',
+  tabHighlights: 'Best-of',
   tabCareer: 'Laufbahn',
 
   // ── Beiträge (components/profile/PostsTab.tsx) ─────────────────────────────
@@ -109,13 +109,13 @@ export const profile = {
   postsEmptyAction: 'Beitrag schreiben',
 
   // ── Medienraster (components/profile/MediaGrid.tsx) ────────────────────────
-  addHighlight: 'Highlight hinzufügen',
+  addHighlight: 'Zum Best-of hinzufügen',
   videoClipA11y: 'Videoclip',
   photoA11y: 'Foto',
   photoUnavailable: 'Foto nicht verfügbar',
   scoreWhenPostedA11y: 'Score beim Posten: {{score}}',
   scoreWhenPostedHint: 'Die Zahl auf jedem Post ist dein Score beim Posten.',
-  highlightTag: 'Top-Szene',
+  highlightTag: 'Best-of',
   clipQuickTechnique: 'Technik',
   clipQuickMatch: 'Spiel',
   clipQuickTraining: 'Im Training',
@@ -125,8 +125,8 @@ export const profile = {
   // ── Highlights (components/profile/HighlightsTab.tsx) ──────────────────────
   photoPermission: 'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen.',
 
-  noHighlightsTitle: 'Hier gibt es keine Highlights',
-  noHighlightsBody: 'Highlights gehören zu einem Sportlerprofil.',
+  noHighlightsTitle: 'Noch nichts im Best-of',
+  noHighlightsBody: 'Das Best-of gehört zu einem Sportlerprofil.',
   clipsEmptyTitleSelf: 'Trainer schauen, bevor sie lesen.',
   clipsEmptyTitleOther: 'Noch keine Clips',
   clipsEmptyBodySelf: 'Lade deinen ersten Clip hoch. Drei kurze sind genau richtig.',
@@ -373,8 +373,8 @@ export const profile = {
   layoutGrid: 'Als Raster zeigen',
   layoutScroll: 'Untereinander zeigen',
   morePosts: 'Mehr Beiträge zeigen',
-  addToBestOfNamed: 'Zu den Highlights von {{name}} hinzufügen',
-  bestOfNamed: 'Highlights von {{name}}',
+  addToBestOfNamed: 'Zum Best-of von {{name}} hinzufügen',
+  bestOfNamed: 'Best-of von {{name}}',
   clipCount_one: '{{count}} Clip',
   clipCount_other: '{{count}} Clips',
   addClip: 'Clip hinzufügen',
