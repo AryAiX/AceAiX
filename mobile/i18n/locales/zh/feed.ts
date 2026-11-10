@@ -12,6 +12,10 @@ export const feed = {
   scopeForYou: 'Playfeed',
   scopeFollowing: '关注',
   yourWeek: '你的一周',
+  scorePeekA11y: '天赋评分 {{score}}。点按查看详情',
+  scorePeekHint: '点按外部或 ✕ 关闭',
+  scoreNew: '新人',
+  photoCouldNotLoad: '这张照片无法加载',
 
   messages: '私信',
   messagesUnread_other: '私信，{{count}}条未读',

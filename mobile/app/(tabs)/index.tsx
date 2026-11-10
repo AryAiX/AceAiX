@@ -262,19 +262,20 @@ export default function HomeScreen() {
             onOpenProfile={openProfile}
             onOpenPost={openPost}
             onFollowChange={setAuthorFollowed}
+            scoreCorner={scope === 'for_you'}
           />
         </Reveal>
       );
       return card;
     },
-    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed],
+    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, scope],
   );
 
   /* Everything renderItem reads besides `data`, so the list redraws when any of
      it changes — FlatList is a PureComponent and only compares `extraData`. */
   const listExtra = useMemo(
-    () => ({ activeId }),
-    [activeId],
+    () => ({ activeId, scope }),
+    [activeId, scope],
   );
 
   /* Returns an element, not a component: a fresh component type on every

@@ -21,6 +21,7 @@ import { searchPosts } from '@/lib/api.search';
 import { daysUntil, metaLine, roleLabel, truncate } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import { matchScore, orderSections, rankBy, relevantPeople, type SectionKey } from '@/lib/searchRank';
+import { posterOf } from '@/lib/mediaUrl';
 import type { Challenge, PersonResult } from '@/types/models';
 import { ResultRow, SectionHead } from './SearchParts';
 import { useFollowState } from './useFollowState';
@@ -249,7 +250,7 @@ export function AllResults({
             <MediaGrid
               tiles={rows.map((post) => ({
                 id: post.id,
-                uri: post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null,
+                uri: posterOf(post.media?.[0]),
                 isVideo: post.media?.[0]?.type === 'video',
                 caption: post.caption ? truncate(post.caption, 60) : null,
               }))}

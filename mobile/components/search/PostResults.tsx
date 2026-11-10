@@ -11,6 +11,7 @@ import { POST_PAGE, searchPosts, type PostHit } from '@/lib/api.search';
 import { errorMessage } from '@/lib/errors';
 import { truncate } from '@/lib/format';
 import { Routes } from '@/lib/routes';
+import { posterOf } from '@/lib/mediaUrl';
 
 interface Props {
   term: string;
@@ -91,7 +92,7 @@ export function PostResults({ term, onOpen, endPadding }: Props) {
       <MediaGrid
         tiles={rows.map((post) => ({
           id: post.id,
-          uri: post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null,
+          uri: posterOf(post.media?.[0]),
           isVideo: post.media?.[0]?.type === 'video',
           caption: post.caption ? truncate(post.caption, 60) : null,
         }))}

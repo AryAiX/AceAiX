@@ -20,6 +20,9 @@ export const views = {
   homeClubs_other: 'aus {{count}} Vereinen',
   homeEmptyBody:
     'Lad einen Clip hoch oder trag ein Spiel ein — Profile mit Videos werden zuerst geöffnet.',
+  including: 'Darunter {{name}}',
+  includingMore_one: 'Darunter {{name}} und {{count}} weitere Person',
+  includingMore_other: 'Darunter {{name}} und {{count}} weitere',
   homeCta: 'Wer war das',
 
   namedTitle: 'Mit Namen',

@@ -107,6 +107,7 @@ export const profile = {
   addHighlight: '添加高光',
   videoClipA11y: '视频短片',
   photoA11y: '照片',
+  photoUnavailable: '照片不可用',
 
   // ── 高光标签页（components/profile/HighlightsTab.tsx） ─────────────────────
   photoPermission: 'AceAiX 需要访问相册的权限。',

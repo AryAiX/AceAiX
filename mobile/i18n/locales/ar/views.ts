@@ -29,6 +29,13 @@ export const views = {
   homeClubs_many: 'من {{count}} ناديًا',
   homeClubs_other: 'من {{count}} نادٍ',
   homeEmptyBody: 'أضف لقطة أو سجّل مباراة — الملفات التي فيها فيديو تُفتح أولًا.',
+  including: 'منهم {{name}}',
+  includingMore_zero: 'منهم {{name}}',
+  includingMore_one: 'منهم {{name}} وشخص آخر',
+  includingMore_two: 'منهم {{name}} وشخصان آخران',
+  includingMore_few: 'منهم {{name}} و{{count}} آخرين',
+  includingMore_many: 'منهم {{name}} و{{count}} آخرين',
+  includingMore_other: 'منهم {{name}} و{{count}} آخرين',
   homeCta: 'اعرف من',
 
   namedTitle: 'بالاسم',

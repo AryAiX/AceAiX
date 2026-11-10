@@ -25,6 +25,12 @@ interface Props {
   columns?: number;
 }
 
+/* A video file is not a picture: shown as an image it draws nothing. */
+const VIDEO_FILE = /\.(mp4|mov|m4v|webm|3gp)(\?|#|$)/i;
+
+/* Dark in both themes: a video tile reads as "press play" anywhere. */
+const VIDEO_TILE = '#1E1A36';
+
 /** A square grid of clips or posts. Sized from its own width so it fits any device. */
 export function MediaGrid({
   tiles,
@@ -39,6 +45,8 @@ export function MediaGrid({
   const { colors, radii, spacing } = theme;
   const t = useT();
   const [width, setWidth] = useState(0);
+  /* Pictures that failed to load (missing file, dropped connection). */
+  const [failed, setFailed] = useState<Record<string, true>>({});
 
   const addText = addLabel ?? t('profile.addHighlight');
 
@@ -99,7 +107,16 @@ export function MediaGrid({
       ) : null}
 
       {tiles.map((tile) => {
-        const quote = !tile.uri && !!tile.caption ? quoteColours[textCount++ % quoteColours.length] : null;
+        /* A picture we can actually draw: not a bare video file, not one that failed. */
+        const picture =
+          tile.uri && !failed[tile.id] && !(tile.isVideo && VIDEO_FILE.test(tile.uri)) ? tile.uri : null;
+        const broken = !picture && !!tile.uri;
+        /* No picture and no video: a text post, drawn as a quote. */
+        const quote =
+          !picture && !broken && !tile.isVideo && !!tile.caption
+            ? quoteColours[textCount++ % quoteColours.length]
+            : null;
+        const videoTile = !picture && !!tile.isVideo;
         return (
         <Pressable
           key={tile.id}
@@ -115,14 +132,45 @@ export function MediaGrid({
             height: size || undefined,
             borderRadius: radii.md,
             overflow: 'hidden',
-            backgroundColor: quote ? theme.alpha(quote.tint, 0.12) : colors.surfaceAlt,
+            backgroundColor: videoTile ? VIDEO_TILE : quote ? theme.alpha(quote.tint, 0.12) : colors.surfaceAlt,
             borderWidth: 1,
-            borderColor: quote ? theme.alpha(quote.tint, 0.3) : colors.border,
+            borderColor: videoTile ? VIDEO_TILE : quote ? theme.alpha(quote.tint, 0.3) : colors.border,
             opacity: pressed ? 0.8 : 1,
           })}
         >
-          {tile.uri ? (
-            <RemoteImage uri={tile.uri} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          {picture ? (
+            <RemoteImage
+              uri={picture}
+              style={{ width: '100%', height: '100%' }}
+              contentFit="cover"
+              onError={() => setFailed((f) => ({ ...f, [tile.id]: true }))}
+            />
+          ) : videoTile ? (
+            /* A video with no preview picture: a dark tile with play and the caption. */
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
+              </View>
+              {tile.caption ? (
+                <Text
+                  variant="captionStrong"
+                  color="#FFFFFF"
+                  numberOfLines={1}
+                  style={{ position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, fontSize: 11 }}
+                >
+                  {tile.caption}
+                </Text>
+              ) : null}
+            </View>
           ) : quote ? (
             <View style={{ flex: 1, padding: spacing.md, justifyContent: 'space-between' }}>
               {/* A typed quote mark, not an icon: it can never go missing. */}
@@ -144,10 +192,16 @@ export function MediaGrid({
               }}
             >
               <ImageOff size={18} color={colors.textMuted} />
+              {broken ? (
+                <Text variant="caption" tone="muted" align="center" numberOfLines={2} style={{ fontSize: 11 }}>
+                  {t('profile.photoUnavailable')}
+                </Text>
+              ) : null}
             </View>
           )}
 
-          {tile.isVideo ? (
+          {/* The small play badge, on a video that does have a preview picture. */}
+          {tile.isVideo && picture ? (
             <View
               pointerEvents="none"
               style={{

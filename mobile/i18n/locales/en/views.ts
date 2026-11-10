@@ -18,6 +18,9 @@ export const views = {
   homeClubs_one: 'from {{count}} club',
   homeClubs_other: 'from {{count}} clubs',
   homeEmptyBody: 'Add a clip or log a match — profiles with footage get opened first.',
+  including: 'Including {{name}}',
+  includingMore_one: 'Including {{name}} and {{count}} more',
+  includingMore_other: 'Including {{name}} and {{count}} more',
   homeCta: 'See who',
 
   namedTitle: 'Named',

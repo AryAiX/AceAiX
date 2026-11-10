@@ -23,6 +23,10 @@ export const views = {
   homeClubs_other: 'de {{count}} clubes',
   homeEmptyBody:
     'Añade un clip o registra un partido: los perfiles con imágenes se abren antes.',
+  including: 'Entre ellos, {{name}}',
+  includingMore_one: 'Entre ellos, {{name}} y {{count}} más',
+  includingMore_many: 'Entre ellos, {{name}} y {{count}} más',
+  includingMore_other: 'Entre ellos, {{name}} y {{count}} más',
   homeCta: 'Ver quién',
 
   namedTitle: 'Con nombre',

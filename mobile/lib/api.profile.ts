@@ -5,7 +5,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
 import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
-import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
+import { isAbsoluteMediaUrl, posterOf } from '@/lib/mediaUrl';
 import { getUserPosts, myLinkedMinors } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
@@ -424,13 +424,13 @@ export async function deleteAthleteMedia(mediaId: string): Promise<void> {
 export async function getPostTiles(userId: string): Promise<PostTile[]> {
   const posts = await getUserPosts(userId);
   const firstMedia = posts
-    .map((post) => post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null)
+    .map((post) => posterOf(post.media?.[0]))
     .filter((value): value is string => !!value);
 
   const urls = await resolveMediaUrls(firstMedia);
 
   return posts.map((post) => {
-    const key = post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null;
+    const key = posterOf(post.media?.[0]);
     return { ...post, thumbnail: (key && urls[key]) ?? null };
   });
 }

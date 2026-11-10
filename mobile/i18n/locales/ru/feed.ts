@@ -13,6 +13,10 @@ export const feed = {
   scopeForYou: 'Playfeed',
   scopeFollowing: 'Подписки',
   yourWeek: 'Твоя неделя',
+  scorePeekA11y: 'Рейтинг таланта {{score}}. Нажми, чтобы узнать больше',
+  scorePeekHint: 'Нажми вне карточки или ✕, чтобы закрыть',
+  scoreNew: 'НОВ.',
+  photoCouldNotLoad: 'Не удалось загрузить фото',
 
   messages: 'Сообщения',
   messagesUnread_one: 'Сообщения, {{count}} непрочитанное',

@@ -13,6 +13,7 @@ import { resolveMediaUrls } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { truncate } from '@/lib/format';
 import { Routes } from '@/lib/routes';
+import { posterOf } from '@/lib/mediaUrl';
 import type { PostMedia } from '@/types/models';
 import { PreviewEmpty, useReportItems, type ClubTabProps } from './shared';
 
@@ -33,13 +34,13 @@ function firstMedia(post: ClubPost): PostMedia | null {
 async function loadPosts(orgId: string, before: string | null): Promise<Loaded> {
   const posts = await getClubPosts(orgId, before);
   const keys = posts
-    .map((p) => firstMedia(p)?.thumbnail ?? firstMedia(p)?.url ?? null)
+    .map((p) => posterOf(firstMedia(p)))
     .filter((k): k is string => !!k);
   const urls = await resolveMediaUrls(keys);
   return {
     tiles: posts.map((p) => {
       const media = firstMedia(p);
-      const key = media?.thumbnail ?? media?.url ?? null;
+      const key = posterOf(media);
       return {
         id: p.id,
         uri: (key && urls[key]) ?? null,

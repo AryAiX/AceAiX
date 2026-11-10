@@ -13,6 +13,10 @@ export const feed = {
   scopeForYou: 'Playfeed',
   scopeFollowing: 'من تتابعهم',
   yourWeek: 'أسبوعك',
+  scorePeekA11y: 'تقييم الموهبة {{score}}. اضغط للتفاصيل',
+  scorePeekHint: 'اضغط خارج البطاقة أو ✕ للإغلاق',
+  scoreNew: 'جديد',
+  photoCouldNotLoad: 'تعذّر تحميل هذه الصورة',
 
   messages: 'الرسائل',
   messagesUnread_zero: 'الرسائل، لا رسائل غير مقروءة',

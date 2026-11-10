@@ -15,6 +15,10 @@ export const feed = {
   scopeForYou: 'Playfeed',
   scopeFollowing: 'Siguiendo',
   yourWeek: 'Tu semana',
+  scorePeekA11y: 'Puntuación de talento {{score}}. Toca para ver detalles',
+  scorePeekHint: 'Toca fuera o ✕ para cerrar',
+  scoreNew: 'NUEVO',
+  photoCouldNotLoad: 'No se pudo cargar esta foto',
 
   messages: 'Mensajes',
   messagesUnread_one: 'Mensajes, {{count}} sin leer',

@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ArrowLeft, ArrowRight, Eye, Flame, X } from 'lucide-react-native';
+import { Eye, Flame, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, ChevronForward, Text, isRTL } from '@/components/ui';
+import { Avatar, Badge, ChevronForward, Text } from '@/components/ui';
 import { groupedRowStyle } from '@/components/discover/groupedRow';
 import { LogoColors } from '@/theme/tokens';
 import { useAsync } from '@/hooks/useAsync';
@@ -13,7 +13,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { getMyChallengeViewer, openChallenges, profileViewDigest } from '@/lib/api';
 import { ageFrom, pickChallenge } from '@/lib/challengeFit';
 import { Routes } from '@/lib/routes';
-import { deadlineLabel, metaLine } from '@/lib/format';
+import { deadlineLabel, displayName, metaLine } from '@/lib/format';
 import { useT } from '@/i18n';
 import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 
@@ -23,11 +23,10 @@ import { isChallengeLive } from '@/components/challenges/ChallengeCard';
 const CHALLENGE_FILL = '#FF7A2C';
 const ON_OMBRE = '#FFFFFF';
 
-/** The flame red-orange of the AceAiX logo: the views title label and its arrow.
-    The same in light and dark mode. */
-const FLAME_LABEL = '#F04A23';
-/** Points the way "forward" reads: right, or left in Arabic. */
-const ArrowForward = isRTL ? ArrowLeft : ArrowRight;
+
+/* The faces on Home's views card: 28 across with a 2.5 white ring, overlapping. */
+const FACE = 33;
+const FACE_OVERLAP = 10;
 
 /* Profile views: shown every time the app is opened from closed. The × puts
    it away for this run only (kept in memory), and it comes back sooner if
@@ -71,10 +70,13 @@ function putChallengeAwayForThisRun(id: string) {
 export function HomeSpotlight({
   showChallenge = true,
   pinned = false,
+  onReady,
 }: {
   showChallenge?: boolean;
   /** Notifications: always shown, no ×, whatever was put away on Home. */
   pinned?: boolean;
+  /** Called once everything the card needs has arrived (or failed). */
+  onReady?: () => void;
 } = {}) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
@@ -126,6 +128,15 @@ export function HomeSpotlight({
   const challenge =
     rawChallenge && (pinned || challengePutAway !== rawChallenge.id) ? rawChallenge : null;
 
+  /* Wait for all three answers before showing anything, so the rows arrive
+     together and in their final order: no challenge first and views half a
+     second later, and no challenge swapped once we know your sport and age. */
+  const settled = !digest.loading && !challenges.loading && !viewer.loading;
+  useEffect(() => {
+    if (settled) onReady?.();
+  }, [settled, onReady]);
+
+  if (!settled) return null;
   if (!views && !challenge) return null;
 
   const putAwayViews = () => {
@@ -161,6 +172,23 @@ export function HomeSpotlight({
     </Pressable>
   );
 
+
+  /* Home's views card: the faces of the verified coaches and clubs who
+     looked (two at most), and how many others. */
+  const faces = (views?.named ?? []).slice(0, 2);
+  const others = views ? Math.max(0, views.total - faces.length) : 0;
+  const first = faces[0];
+  const firstName = first
+    ? first.role === 'club'
+      ? (first.organization ?? displayName(first.full_name))
+      : displayName(first.full_name)
+    : '';
+  const moreNamed = (views?.named.length ?? 0) - 1;
+  /* The name is drawn in bold, so the sentence keeps its {{name}} slot and is
+     split around it; every language puts the name where it reads naturally. */
+  const includingParts = (
+    moreNamed > 0 ? t('views.includingMore', { count: moreNamed }) : t('views.including')
+  ).split(/(\{\{name\}\})/);
 
   /* Notifications: the same two things as quiet rows in one white card,
      under "Your week", so the page reads as one calm list. */
@@ -283,53 +311,98 @@ export function HomeSpotlight({
             elevation: 5,
           })}
         >
-          <View style={[tile, { backgroundColor: colors.primary }]}>
-            <Eye size={19} color={ON_OMBRE} />
-          </View>
-          <View style={{ flex: 1, gap: 5 }}>
+          {faces.length > 0 ? (
+            /* Who looked: the verified coaches and clubs, overlapping, then
+               a +N for everybody else. */
             <View
-              style={{
-                alignSelf: 'flex-start',
-                maxWidth: '100%',
-                /* The same green as the count on the bell. */
-                backgroundColor: colors.success,
-                borderRadius: 7,
-                paddingVertical: 5,
-                paddingHorizontal: 9,
-              }}
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={{ flexDirection: 'row' }}
             >
-              {/* Two lines at most: with the arrow and the × beside it, one
-                  line cut the title short on an ordinary phone. */}
-              <Text variant="captionStrong" color="#FFFFFF" numberOfLines={2}>
-                {t('views.homeTitle', { count: views.total })}
-              </Text>
-            </View>
-            {/* The "new" badge rides on the subtitle line, so the title gets the width. */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-              {views.new_since_seen > 0 ? (
-                <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="primary" />
+              {faces.map((viewer, i) => (
+                <View
+                  key={viewer.user_id}
+                  style={{
+                    marginStart: i === 0 ? 0 : -FACE_OVERLAP,
+                    borderRadius: FACE / 2,
+                    borderWidth: 2.5,
+                    borderColor: colors.surface,
+                  }}
+                >
+                  <Avatar uri={viewer.avatar_url} name={viewer.full_name} size="xs" />
+                </View>
+              ))}
+              {others > 0 ? (
+                <View
+                  style={{
+                    marginStart: -FACE_OVERLAP,
+                    minWidth: FACE,
+                    height: FACE,
+                    paddingHorizontal: 4,
+                    borderRadius: FACE / 2,
+                    borderWidth: 2.5,
+                    borderColor: colors.surface,
+                    backgroundColor: colors.success,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text variant="captionStrong" color="#FFFFFF" style={{ fontSize: 10 }}>
+                    {`+${others > 99 ? 99 : others}`}
+                  </Text>
+                </View>
               ) : null}
-              <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+            </View>
+          ) : (
+            /* Nobody verified looked: a calm green eye. */
+            <View style={[tile, { backgroundColor: theme.alpha(colors.success, 0.14) }]}>
+              <Eye size={19} color={colors.success} />
+            </View>
+          )}
+
+          <View style={{ flex: 1, gap: 3, paddingEnd: spacing.sm }}>
+            <Text variant="bodyStrong" numberOfLines={2}>
+              {t('views.homeTitle', { count: views.total })}
+            </Text>
+            {faces.length > 0 ? (
+              <Text variant="caption" tone="muted" numberOfLines={2}>
+                {includingParts.map((part, i) =>
+                  part === '{{name}}' ? (
+                    <Text key={i} variant="captionStrong">
+                      {firstName}
+                    </Text>
+                  ) : (
+                    part
+                  ),
+                )}
+                {views.new_since_seen > 0 ? (
+                  <>
+                    {' · '}
+                    <Text variant="captionStrong" tone="success">
+                      {t('views.newBadge', { count: views.new_since_seen })}
+                    </Text>
+                  </>
+                ) : null}
+              </Text>
+            ) : (
+              <Text variant="caption" tone="muted" numberOfLines={2}>
                 {views.professional > 0
                   ? t('views.homeProfessional', { count: views.professional })
                   : t('views.homeEmptyBody')}
               </Text>
-            </View>
+            )}
           </View>
+
           {/* Decorative: the whole card is already the way in. */}
           <View
             accessible={false}
             importantForAccessibility="no-hide-descendants"
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 15,
-              backgroundColor: theme.alpha(FLAME_LABEL, 0.12),
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            style={{ alignItems: 'flex-end', gap: 6 }}
           >
-            <ArrowForward size={17} color={FLAME_LABEL} strokeWidth={2.4} />
+            {faces.length === 0 && views.new_since_seen > 0 ? (
+              <Badge label={t('views.newBadge', { count: views.new_since_seen })} tone="success" />
+            ) : null}
+            <ChevronForward size={18} color={colors.textMuted} />
           </View>
           {pinned ? null : close(putAwayViews, colors.textMuted, 'your-week-views-close')}
         </Pressable>

@@ -112,6 +112,7 @@ export const profile = {
   addHighlight: 'Highlight hinzufügen',
   videoClipA11y: 'Videoclip',
   photoA11y: 'Foto',
+  photoUnavailable: 'Foto nicht verfügbar',
 
   // ── Highlights (components/profile/HighlightsTab.tsx) ──────────────────────
   photoPermission: 'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen.',

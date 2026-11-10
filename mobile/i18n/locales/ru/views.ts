@@ -24,6 +24,11 @@ export const views = {
   homeClubs_many: 'из {{count}} клубов',
   homeClubs_other: 'из {{count}} клубов',
   homeEmptyBody: 'Добавь клип или запиши матч — профили с видео открывают первыми.',
+  including: 'Среди них {{name}}',
+  includingMore_one: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_few: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_many: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_other: 'Среди них {{name}} и ещё {{count}}',
   homeCta: 'Посмотреть, кто',
 
   namedTitle: 'С именами',

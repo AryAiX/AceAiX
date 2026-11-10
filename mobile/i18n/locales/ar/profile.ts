@@ -120,6 +120,7 @@ export const profile = {
   addHighlight: 'إضافة لقطة',
   videoClipA11y: 'مقطع فيديو',
   photoA11y: 'صورة',
+  photoUnavailable: 'الصورة غير متاحة',
 
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',

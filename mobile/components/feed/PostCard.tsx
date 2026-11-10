@@ -1,10 +1,11 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Clipboard, Platform, Share, View } from 'react-native';
+import { Clipboard, Platform, Pressable, Share, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
 import { MoreHorizontal } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { TierColors, tierForScore } from '@/theme/tokens';
 import { Avatar, Divider, ListItem, Sheet, Tappable, Text, useToast } from '@/components/ui';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
@@ -24,6 +25,7 @@ import type { FeedPost } from '@/types/models';
 import { OffscreenBrandedCard } from './BrandedShareCard';
 import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
+import { ScorePeek } from './ScorePeek';
 import { PostActions } from './PostActions';
 import { LikedBy } from './PostLikers';
 
@@ -63,6 +65,9 @@ export interface PostCardProps {
    * that author. Saved and the single-post screen leave it out.
    */
   onFollowChange?: (authorId: string, following: boolean) => void;
+  /** Playfeed: an athlete's photo or video post shows their Talent Score in
+      a cut corner of the media; tapping it opens a quick look at the score. */
+  scoreCorner?: boolean;
 }
 
 function PostCardBase({
@@ -75,6 +80,7 @@ function PostCardBase({
   onOpenProfile,
   onOpenPost,
   onFollowChange,
+  scoreCorner = false,
 }: PostCardProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -83,6 +89,11 @@ function PostCardBase({
   const { user, profile } = useAuth();
 
   const [showAll, setShowAll] = useState(expanded);
+  const [peek, setPeek] = useState(false);
+  const showCorner =
+    scoreCorner && post.author_role === 'athlete' && post.media.length > 0;
+  /* No score worked out yet: the corner says New instead of 0, and has no pop-up. */
+  const scored = post.author_score > 0;
 
   const lastMediaTap = useRef(0);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -499,7 +510,20 @@ function PostCardBase({
           {/* Announced nowhere and touchable nowhere: the like it stands for is
               already announced by the heart button below. */}
           <HeartBurst trigger={bursts} size={theme.hit.comfortable * 2} />
+          {showCorner ? (
+            <ScoreCorner score={post.author_score} onPress={scored ? () => setPeek(true) : undefined} />
+          ) : null}
         </View>
+      ) : null}
+      {showCorner && scored ? (
+        <ScorePeek
+          visible={peek}
+          onClose={() => setPeek(false)}
+          userId={post.author_id}
+          name={post.author_name ?? ''}
+          avatar={post.author_avatar}
+          score={post.author_score}
+        />
       ) : null}
 
       <PostActions
@@ -557,6 +581,103 @@ async function presentPng(uri: string): Promise<void> {
     return;
   }
   await Share.share({ url: uri });
+}
+
+/* A deeper shade of each tier's colour, so the small number reads on white.
+   Dark mode uses the tier colour itself, which reads on the dark card. */
+const TIER_INK = {
+  rising: '#1E8FD6',
+  bronze: '#2F6BFF',
+  silver: '#7A6CFF',
+  gold: '#C77D00',
+  elite: '#E8372B',
+} as const;
+
+const CORNER = 52;
+/* The cut's diagonal: corner × √2. */
+const EDGE = Math.round(CORNER * Math.SQRT2 * 10) / 10;
+
+/** The cut corner on the media, with the score in the tier's colour. */
+function ScoreCorner({ score, onPress }: { score: number; onPress?: () => void }) {
+  const theme = useTheme();
+  const { colors } = theme;
+  const t = useT();
+  const tier = tierForScore(score);
+  const ink = theme.scheme === 'dark' ? TierColors[tier] : TIER_INK[tier];
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={8}
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={onPress ? t('feed.scorePeekA11y', { score }) : t('feed.scoreNew')}
+      testID="post-score-corner"
+      style={{ position: 'absolute', top: 0, right: 0, width: CORNER, height: CORNER }}
+    >
+      {/* A triangle in the card's own colour: the photo looks cut on the diagonal. */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 0,
+          height: 0,
+          borderTopWidth: CORNER,
+          borderLeftWidth: CORNER,
+          borderTopColor: colors.surface,
+          borderLeftColor: 'transparent',
+        }}
+      />
+      {/* A thin line in the tier's colour along the cut, like a folded sticker. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: CORNER / 2 - EDGE / 2,
+          top: CORNER / 2 - 1.5,
+          width: EDGE,
+          height: 3,
+          borderRadius: 1.5,
+          backgroundColor: ink,
+          transform: [{ rotate: '45deg' }],
+        }}
+      />
+      {/* The score ring's own number font, so it reads as a score. */}
+      {onPress ? null : (
+        <Text
+          variant="stat"
+          /* Kept inside the white triangle: longer words get a smaller size. */
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 5,
+            fontSize: t('feed.scoreNew').length <= 3 ? 12 : 10,
+            lineHeight: 14,
+            letterSpacing: 0.6,
+            color: ink,
+          }}
+          allowFontScaling={false}
+          numberOfLines={1}
+        >
+          {t('feed.scoreNew')}
+        </Text>
+      )}
+      {onPress ? <Text
+        variant="stat"
+        style={{
+          position: 'absolute',
+          top: 2,
+          right: 7,
+          /* "100" is a digit wider; a size down keeps it inside the white. */
+          fontSize: score >= 100 ? 17 : 21,
+          lineHeight: score >= 100 ? 21 : 25,
+          color: ink,
+        }}
+        allowFontScaling={false}
+      >
+        {score}
+      </Text> : null}
+    </Pressable>
+  );
 }
 
 export const PostCard = memo(PostCardBase);

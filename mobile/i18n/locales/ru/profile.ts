@@ -118,6 +118,7 @@ export const profile = {
   addHighlight: 'Добавить хайлайт',
   videoClipA11y: 'Видеоклип',
   photoA11y: 'Фото',
+  photoUnavailable: 'Фото недоступно',
 
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',

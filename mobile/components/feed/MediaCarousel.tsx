@@ -10,7 +10,7 @@ import {
 import { useIsFocused } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { RemoteImage } from '@/components/ui/RemoteImage';
-import { Play, Volume2, VolumeX } from 'lucide-react-native';
+import { ImageOff, Play, Volume2, VolumeX } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -204,7 +204,7 @@ function MediaItem({
     );
   }
 
-  const image = <RemoteImage uri={item.url} style={{ width, height }} contentFit="cover" />;
+  const image = <PhotoItem uri={item.url} width={width} height={height} />;
 
   if (!onPress) return <View style={{ width, height }}>{image}</View>;
 
@@ -217,6 +217,80 @@ function MediaItem({
     >
       {image}
     </Pressable>
+  );
+}
+
+/* Dark in both themes, so a clip waiting for its first frame reads as a
+   video rather than an empty grey box. */
+const VIDEO_BACKDROP = '#1E1A36';
+
+/** A photo, or a calm note with "Try again" when it can't load. */
+function PhotoItem({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const { colors, spacing, radii } = useTheme();
+  const t = useT();
+  const [failed, setFailed] = useState(false);
+  /* Bumped by "Try again" so the picture is asked for afresh. */
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    setFailed(false);
+    setAttempt(0);
+  }, [uri]);
+
+  if (failed) {
+    return (
+      <View
+        style={{
+          width,
+          height,
+          backgroundColor: colors.surfaceAlt,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: spacing.sm,
+          padding: spacing.lg,
+        }}
+        testID="photo-unavailable"
+      >
+        <ImageOff size={26} color={colors.textMuted} />
+        <Text variant="bodyStrong" tone="secondary" align="center">
+          {t('feed.photoCouldNotLoad')}
+        </Text>
+        <Pressable
+          onPress={() => {
+            setFailed(false);
+            setAttempt((n) => n + 1);
+          }}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.retry')}
+          testID="photo-try-again"
+          style={({ pressed }) => ({
+            marginTop: spacing.xs,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.sm,
+            borderRadius: radii.pill,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text variant="captionStrong" tone="primary">
+            {t('common.retry')}
+          </Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <RemoteImage
+      key={attempt}
+      uri={uri}
+      style={{ width, height }}
+      contentFit="cover"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -293,7 +367,7 @@ function VideoItem({ item, postId, width, height, isActive, muted, onToggleMute,
   const showPoster = !!item.thumbnail && (!ready || failed);
 
   return (
-    <View style={{ width, height }}>
+    <View style={{ width, height, backgroundColor: VIDEO_BACKDROP }}>
       <VideoView
         player={player}
         style={{ width, height }}
@@ -315,7 +389,9 @@ function VideoItem({ item, postId, width, height, isActive, muted, onToggleMute,
         </View>
       ) : null}
 
-      {!isActive ? (
+      {/* Play in the middle while it isn't playing, and on a clip that
+          couldn't play and has no preview picture. */}
+      {!isActive || (failed && !item.thumbnail) ? (
         <View
           pointerEvents="none"
           style={{

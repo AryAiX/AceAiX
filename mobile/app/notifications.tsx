@@ -220,8 +220,19 @@ export default function NotificationsScreen() {
     }
   }, [markingAll, unreadCount, mutate, clearBadge, toast, reload]);
 
+  /* "Your week" at the top loads on its own. Hold the page on the skeleton
+     until it and the list are both in, so everything appears at once instead
+     of in pieces. Never wait more than a moment for it. */
+  const [spotlightReady, setSpotlightReady] = useState(false);
+  const markSpotlightReady = useCallback(() => setSpotlightReady(true), []);
+  useEffect(() => {
+    const id = setTimeout(markSpotlightReady, 2500);
+    return () => clearTimeout(id);
+  }, [markSpotlightReady]);
+  const waiting = (notifications.loading && items.length === 0) || !spotlightReady;
+
   const renderEmpty = () => {
-    if (notifications.loading && items.length === 0) {
+    if (waiting) {
       return (
         <View style={{ paddingHorizontal: spacing.lg }}>
           <SkeletonList count={5} variant="row" />
@@ -274,7 +285,7 @@ export default function NotificationsScreen() {
       />
 
       <SectionList
-        sections={sections}
+        sections={waiting ? [] : sections}
         keyExtractor={(item) => item.n.id}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
@@ -331,8 +342,10 @@ export default function NotificationsScreen() {
         ListHeaderComponent={
           /* Who viewed your profile and the open challenge stay here even
              after they are put away on Home, so nothing is lost. */
-          <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
-            <HomeSpotlight pinned />
+          <View
+            style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, display: waiting ? 'none' : 'flex' }}
+          >
+            <HomeSpotlight pinned onReady={markSpotlightReady} />
           </View>
         }
         ListEmptyComponent={renderEmpty()}

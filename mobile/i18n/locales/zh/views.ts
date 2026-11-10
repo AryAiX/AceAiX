@@ -14,6 +14,8 @@ export const views = {
   homeProfessional_other: '其中{{count}}位是教练、球探或俱乐部',
   homeClubs_other: '来自{{count}}家俱乐部',
   homeEmptyBody: '加一段短片，或者记录一场比赛 —— 有影像的主页会先被点开。',
+  including: '包括{{name}}',
+  includingMore_other: '包括{{name}}和另外 {{count}} 位',
   homeCta: '看看是谁',
 
   namedTitle: '列出名字的',

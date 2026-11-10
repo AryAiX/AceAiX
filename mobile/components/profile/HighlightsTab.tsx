@@ -356,7 +356,11 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, ti
 
   const tiles: MediaTile[] = items.map((item) => ({
     id: item.id,
-    uri: item.display_url,
+    /* A clip with no preview picture shows as a dark video tile, not its video file. */
+    uri:
+      (item.media_type === 'video' || item.media_type === 'highlight_reel') && !item.thumbnail_url
+        ? null
+        : item.display_url,
     isVideo: item.media_type === 'video' || item.media_type === 'highlight_reel',
     caption: item.title,
   }));

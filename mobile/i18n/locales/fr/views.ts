@@ -22,6 +22,10 @@ export const views = {
   homeClubs_many: 'de {{count}} clubs',
   homeClubs_other: 'de {{count}} clubs',
   homeEmptyBody: 'Ajoute un clip ou note un match — les profils avec des vidéos sont ouverts en premier.',
+  including: 'Dont {{name}}',
+  includingMore_one: 'Dont {{name}} et {{count}} autre',
+  includingMore_many: 'Dont {{name}} et {{count}} autres',
+  includingMore_other: 'Dont {{name}} et {{count}} autres',
   homeCta: 'Voir qui',
 
   namedTitle: 'Nommés',
