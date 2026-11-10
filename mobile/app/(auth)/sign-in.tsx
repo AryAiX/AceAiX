@@ -188,7 +188,9 @@ export default function SignInScreen() {
           })}
           testID="sign-in-create-account"
         >
-          <Text variant="captionStrong" tone="primary">
+          {/* Orange, like the logo's fire, so signing up stands out. A deeper
+              orange in light mode keeps it easy to read on white. */}
+          <Text variant="captionStrong" color={theme.scheme === 'dark' ? '#FFB27A' : '#D9560F'}>
             {t('auth.signIn.createAccount')}
           </Text>
         </Pressable>
