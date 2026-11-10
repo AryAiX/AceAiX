@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Camera, Clapperboard, SquarePen, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -90,10 +91,21 @@ export function CreateMenu({ visible, frame, showHighlight, onPick, onClose, onD
       onDismiss={onDismiss}
       statusBarTranslucent
     >
+      {/* A darker, blurred backdrop: the page fades out so only the three
+          choices stand out. */}
+      <BlurView
+        intensity={theme.scheme === 'dark' ? 12 : 24}
+        tint={theme.scheme === 'dark' ? 'dark' : 'light'}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <Pressable
         onPress={onClose}
         accessible={false}
-        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(22,19,39,0.45)' }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: theme.scheme === 'dark' ? 'rgba(22,19,39,0.45)' : 'rgba(22,19,39,0.55)' },
+        ]}
         testID="create-menu-backdrop"
       />
 
@@ -133,11 +145,15 @@ export function CreateMenu({ visible, frame, showHighlight, onPick, onClose, onD
                   borderRadius: 12,
                   paddingHorizontal: 12,
                   paddingVertical: 7,
+                  /* Lifted off the backdrop: a fine light rim in dark mode and
+                     a deeper shadow. */
+                  borderWidth: theme.scheme === 'dark' ? 1 : 0,
+                  borderColor: 'rgba(255,255,255,0.08)',
                   shadowColor: '#0A061E',
-                  shadowOpacity: 0.25,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 6 },
-                  elevation: 6,
+                  shadowOpacity: theme.scheme === 'dark' ? 0.6 : 0.25,
+                  shadowRadius: theme.scheme === 'dark' ? 16 : 12,
+                  shadowOffset: { width: 0, height: theme.scheme === 'dark' ? 10 : 6 },
+                  elevation: theme.scheme === 'dark' ? 10 : 6,
                   maxWidth: 230,
                 }}
               >

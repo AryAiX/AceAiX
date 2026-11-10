@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronDown, MapPin, Plus, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import {
   Button,
   Dropdown,
@@ -92,6 +93,8 @@ export default function MeetupsScreen() {
   });
   /* Mine has loaded and holds nothing: the empty card is shown in the header. */
   const mineEmpty = tab === 'mine' && !mine.loading && !mine.error && (mine.data?.length ?? 0) === 0;
+  /* Tap Play again: back to the top, then reload whichever list is open. */
+  const listRef = useTabReselect(() => (tab === 'mine' ? mine.reload() : found.reload()));
 
   const tabs = useMemo(
     () => [
@@ -175,6 +178,52 @@ export default function MeetupsScreen() {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      {theme.scheme === 'dark' ? (
+        /* Same colours in dark mode, with depth: light from the top-left,
+           shading along the bottom, and two faint court circles. */
+        <>
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)'] as const}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.6, y: 0.7 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            pointerEvents="none"
+            colors={['rgba(10,8,40,0)', 'rgba(10,8,40,0.32)'] as const}
+            start={{ x: 0.5, y: 0.45 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              right: -60,
+              top: -40,
+              width: 240,
+              height: 240,
+              borderRadius: 120,
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.12)',
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              right: 20,
+              top: 40,
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              borderWidth: 1.5,
+              borderColor: 'rgba(255,255,255,0.08)',
+            }}
+          />
+        </>
+      ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text variant="screenTitle" color="#FFFFFF" accessibilityRole="header" numberOfLines={1}>
           {t('meetups.title')}
@@ -363,6 +412,7 @@ export default function MeetupsScreen() {
     return (
       <Screen scroll={false} padded={false} edges={[]} testID="meetups-screen">
         <FlatList
+          ref={listRef}
           data={mine.data ?? []}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={filters}
@@ -394,6 +444,7 @@ export default function MeetupsScreen() {
   return (
     <Screen scroll={false} padded={false} edges={[]} testID="meetups-screen">
       <FlatList
+        ref={listRef}
         data={found.data ?? []}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={filters}

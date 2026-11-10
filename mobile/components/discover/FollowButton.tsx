@@ -15,11 +15,13 @@ interface Props {
   solid?: boolean;
   /** "Follow back" for someone who already follows you. Same look. */
   back?: boolean;
+  /** The small pill, for rows where the name needs the room (Clubs). */
+  compact?: boolean;
 }
 
 /* One Follow everywhere: a blue outline; Following is grey with a tick.
    `solid` is kept so older callers still compile; it no longer changes the look. */
-export function FollowButton({ following, pending, onPress, name, back }: Props) {
+export function FollowButton({ following, pending, onPress, name, back, compact }: Props) {
   const t = useT();
   const { colors } = useTheme();
 
@@ -27,8 +29,8 @@ export function FollowButton({ following, pending, onPress, name, back }: Props)
     <Button
       label={following ? t('common.following') : back ? t('common.followBack') : t('common.follow')}
       variant={following ? 'secondary' : 'outline'}
-      icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
-      size="sm"
+      icon={following ? <Check size={compact ? 14 : 16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
+      size={compact ? 'xs' : 'sm'}
       loading={pending}
       onPress={onPress}
       accessibilityLabel={

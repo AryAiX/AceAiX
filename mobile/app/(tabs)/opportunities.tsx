@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
+import { useTabReselect } from '@/hooks/useTabReselect';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -157,6 +158,12 @@ function AthleteOpportunities() {
   const open = useAsync(() => openOpportunities(30), []);
   const saved = useAsync(() => savedOpportunities(), [], { refetchOnFocus: true });
   const applied = useAsync(() => myApplicationsDetailed(), [], { refetchOnFocus: true });
+  /* Tap Trials again: back to the top, then reload the open list. */
+  const listRef = useTabReselect(() => {
+    if (tab === 'saved') saved.reload();
+    else if (tab === 'applied') applied.reload();
+    else open.reload();
+  });
 
   /* Optimistic bookmark state, keyed by opportunity id. The lists are fetched
      separately, so one source of truth here keeps them from disagreeing. */
@@ -406,6 +413,7 @@ function AthleteOpportunities() {
     return (
       <>
         <FlatList<Opportunity>
+          ref={listRef}
           data={openList}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
@@ -471,6 +479,7 @@ function AthleteOpportunities() {
     return (
       <>
         <FlatList<Opportunity>
+          ref={listRef}
           data={savedList}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
@@ -529,6 +538,7 @@ function AthleteOpportunities() {
   // ── Applied ──
   return (
     <FlatList
+      ref={listRef}
       data={appliedList}
       keyExtractor={(item) => item.application_id}
       style={{ flex: 1 }}
@@ -676,6 +686,7 @@ function RecruiterOpportunities() {
 
   const postings = useAsync(() => myPostings(), [], { refetchOnFocus: true });
   const applicants = useAsync(() => allApplicants(), [], { refetchOnFocus: true });
+  const recruiterListRef = useTabReselect(() => (tab === 'postings' ? postings.reload() : applicants.reload()));
 
   const segmented = (
     <SegmentedControl<RecruiterTab>
@@ -701,6 +712,7 @@ function RecruiterOpportunities() {
   if (tab === 'postings') {
     return (
       <FlatList<PostedOpportunity>
+        ref={recruiterListRef}
         data={postings.data ?? []}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
@@ -743,6 +755,7 @@ function RecruiterOpportunities() {
 
   return (
     <FlatList<RankedApplicant>
+      ref={recruiterListRef}
       data={applicants.data ?? []}
       keyExtractor={(item) => item.application_id}
       style={{ flex: 1 }}

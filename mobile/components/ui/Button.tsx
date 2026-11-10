@@ -26,7 +26,8 @@ export type ButtonVariant =
   | 'ghost'
   | 'danger'
   | 'accent';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+/** `xs` is the compact pill for tight list rows (Follow on a club row). */
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
   label: string;
@@ -64,8 +65,9 @@ export function Button({
     haptic ??
     (variant === 'primary' || variant === 'gradient' || variant === 'warm' || variant === 'accent');
 
-  const heights: Record<ButtonSize, number> = { sm: 40, md: 52, lg: 58 };
+  const heights: Record<ButtonSize, number> = { xs: 32, sm: 40, md: 52, lg: 58 };
   const paddings: Record<ButtonSize, number> = {
+    xs: spacing.md,
     sm: spacing.lg,
     md: spacing.xl,
     lg: spacing.xxl,
@@ -193,7 +195,7 @@ export function Button({
               <View style={styles.content}>
                 {icon ? <View style={{ marginRight: spacing.sm }}>{icon}</View> : null}
                 <Text
-                  variant={size === 'sm' ? 'captionStrong' : 'subheading'}
+                  variant={size === 'sm' || size === 'xs' ? 'captionStrong' : 'subheading'}
                   color={skin.fg}
                   numberOfLines={1}
                 >

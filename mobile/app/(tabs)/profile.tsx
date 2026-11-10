@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -26,6 +27,7 @@ import { PostsTab } from '@/components/profile/PostsTab';
 import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { getMyProfile, getMyTalentScore } from '@/lib/api';
 import { getClubPage, getMyClubPages, managedClubPage } from '@/lib/api.club';
 import type { ClubType } from '@/lib/club';
@@ -91,6 +93,27 @@ export default function MyProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [score.refresh, bundle.refresh]);
 
+  /* Tap Profile again: back to the top, then reload. */
+  const scrollRef = useTabReselect(reloadAll);
+
+  /* Once the cover has scrolled away, a strip in the page colour sits behind
+     the clock and the Dynamic Island so cards don't slide under them, and the
+     status-bar icons turn dark in light mode. */
+  const insets = useSafeAreaInsets();
+  const [pastCover, setPastCover] = useState(false);
+  const stripOpacity = useRef(new Animated.Value(0)).current;
+  const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const past = event.nativeEvent.contentOffset.y > 150;
+    setPastCover((current) => (current === past ? current : past));
+  }, []);
+  useEffect(() => {
+    Animated.timing(stripOpacity, {
+      toValue: pastCover ? 1 : 0,
+      duration: 160,
+      useNativeDriver: true,
+    }).start();
+  }, [pastCover, stripOpacity]);
+
   if (bundle.loading && !bundle.data) {
     return (
       <Screen>
@@ -114,16 +137,19 @@ export default function MyProfileScreen() {
     managed?.type === 'club' || managed?.type === 'academy' ? managed.type : null;
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen
       scroll
       padded={false}
       edges={[]}
+      scrollRef={scrollRef}
+      onScroll={onScroll}
       onRefresh={reloadAll}
       refreshing={bundle.refreshing || score.refreshing}
       testID="my-profile"
     >
       {/* White status-bar icons over the cover, only while this tab is open. */}
-      {focused ? <StatusBar style="light" /> : null}
+      {focused ? <StatusBar style={pastCover && theme.scheme !== 'dark' ? 'dark' : 'light'} /> : null}
       <ProfileHeader bundle={data} onChanged={reloadAll} pageType={pageType} coverUnderStatusBar />
 
       {data.athlete && (data.athlete.other_sports ?? []).length === 0 ? (
@@ -318,5 +344,20 @@ export default function MyProfileScreen() {
         ) : null}
       </View>
     </Screen>
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top,
+        backgroundColor: theme.colors.bg,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+        opacity: stripOpacity,
+      }}
+    />
+    </View>
   );
 }
