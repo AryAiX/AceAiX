@@ -15,6 +15,7 @@ import { ClubLogo } from './ClubLogo';
 import { DaysLeftTag, isClosed } from './DeadlineChip';
 import { MatchRing, explainMatch } from './MatchExplain';
 import { Tag } from './Tag';
+import { LogoColors } from '@/theme/tokens';
 
 interface Props {
   opportunity: Opportunity;
@@ -110,7 +111,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
             }
             icon={
               isSaved ? (
-                <Bookmark size={20} color={colors.primary} fill={colors.primary} strokeWidth={2.2} />
+                <Bookmark size={20} color={LogoColors.gold} fill={LogoColors.gold} strokeWidth={2.2} />
               ) : (
                 <Bookmark size={20} color={colors.textMuted} strokeWidth={2} />
               )

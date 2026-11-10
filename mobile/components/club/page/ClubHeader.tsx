@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, ChevronRight, ShieldCheck } from 'lucide-react-native';
+import { BadgeCheck, Check, ChevronRight, ShieldCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Text } from '@/components/ui';
@@ -217,7 +217,8 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
           {team ? null : (
             <Button
               label={following ? t('common.following') : t('common.follow')}
-              variant={following ? 'secondary' : 'soft'}
+              variant={following ? 'secondary' : 'outline'}
+              icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
               size="sm"
               loading={followBusy}
               onPress={onToggleFollow}

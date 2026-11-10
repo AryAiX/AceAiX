@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Search, Users } from 'lucide-react-native';
+import { Check, Search, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -179,7 +179,8 @@ export function PeopleList({
               {isMe ? null : (
                 <Button
                   label={t(isFollowing ? 'common.following' : 'common.follow')}
-                  variant={isFollowing ? 'secondary' : 'soft'}
+                  variant={isFollowing ? 'secondary' : 'outline'}
+                  icon={isFollowing ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
                   size="sm"
                   /* The pill is 40pt tall to fit the row; the slop takes the
                      real target past 44. */

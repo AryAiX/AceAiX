@@ -10,6 +10,7 @@ import { Tag } from '@/components/opportunities/Tag';
 import { DaysLeftTag } from '@/components/opportunities/DeadlineChip';
 import { useT } from '@/i18n';
 import type { PlaybookItem } from '@/lib/playbooks';
+import { LogoColors } from '@/theme/tokens';
 
 interface Props {
   kind: PlaybookItem['kind'];
@@ -120,7 +121,7 @@ export function SavedRow({
         style={({ pressed }) => ({ padding: 4, opacity: pressed ? 0.5 : 1 })}
       >
         {action === 'unsave' ? (
-          <Bookmark size={21} color={colors.primary} fill={colors.primary} />
+          <Bookmark size={21} color={LogoColors.gold} fill={LogoColors.gold} />
         ) : (
           <X size={20} color={colors.textMuted} />
         )}

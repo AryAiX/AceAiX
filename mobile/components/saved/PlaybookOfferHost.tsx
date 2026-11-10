@@ -10,6 +10,7 @@ import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useOfferedPlaybookItem, type PlaybookItem } from '@/lib/playbooks';
 import { PlaybookSheet } from './PlaybookSheet';
+import { LogoColors } from '@/theme/tokens';
 
 const SHOW_MS = 4000;
 
@@ -87,7 +88,7 @@ export function PlaybookOfferHost() {
               elevation: 8,
             }}
           >
-            <Bookmark size={18} color={colors.primary} fill={colors.primary} />
+            <Bookmark size={18} color={LogoColors.gold} fill={LogoColors.gold} />
             <Text variant="bodyStrong" color={colors.textInverse} style={{ flex: 1 }}>
               {t('common.saved')}
             </Text>

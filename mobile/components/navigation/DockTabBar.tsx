@@ -19,7 +19,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useDockMetrics } from './dockInset';
-import { LogoColors, LogoSplit } from '@/theme/tokens';
+import { LogoColors } from '@/theme/tokens';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -275,22 +275,14 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                   shadowRadius: 6,
                 }}
               >
-                {/* A glass bead tinted with the logo's split: blue into fire. */}
-                <LinearGradient
-                  colors={[
-                    theme.alpha(LogoColors.sky, dark ? 0.32 : 0.2),
-                    theme.alpha(LogoColors.cobalt, dark ? 0.32 : 0.2),
-                    theme.alpha(LogoColors.flame, dark ? 0.3 : 0.2),
-                    theme.alpha(LogoColors.ember, dark ? 0.3 : 0.18),
-                  ]}
-                  locations={LogoSplit.locations}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
+                {/* A light blue bead with a thin flame edge: blue and fire in one. */}
+                <View
                   style={{
                     ...StyleSheet.absoluteFill,
                     borderRadius: LENS_H / 2,
-                    borderWidth: 1,
-                    borderColor: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.8)',
+                    backgroundColor: theme.alpha(colors.primary, dark ? 0.24 : 0.12),
+                    borderWidth: 1.5,
+                    borderColor: LogoColors.flame,
                   }}
                 />
               </View>
@@ -377,14 +369,8 @@ function CreateButton({ width, height }: { width: number; height: number }) {
           overflow: 'hidden',
         }}
       >
-        {/* The A: blue on the climb, fire on the way down. */}
-        <LinearGradient
-          colors={LogoSplit.colors}
-          locations={LogoSplit.locations}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        {/* Solid blue, the same as the Messages button. */}
+        <View style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.colors.primary }} />
         {/* A highlight across the top half, so the + reads as a raised button. */}
         <LinearGradient
           pointerEvents="none"

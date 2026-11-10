@@ -20,6 +20,7 @@ export type ButtonVariant =
   | 'primary'   // flat cobalt — the default
   | 'gradient'  // the screen's one main button, on the blue side: solid cobalt
   | 'warm'      // the main button for something to act on (Apply, Enter, Ask): solid flame
+  | 'outline'   // white with a strong blue edge: Follow on someone's profile
   | 'soft'      // soft blue fill, cobalt text: Follow, View, Apply in lists, Post a game
   | 'secondary'
   | 'ghost'
@@ -97,6 +98,14 @@ export function Button({
       fg: '#FFFFFF',
       pressedBg: '#E8661A',
     },
+    /* White with a strong cobalt edge and cobalt text — Follow on a profile:
+       clearer than a soft fill, calmer than a solid button. */
+    outline: {
+      bg: colors.surface,
+      border: colors.primary,
+      fg: colors.primary,
+      pressedBg: colors.primarySoft,
+    },
     /* Soft blue fill with cobalt text, no shadow — small list actions. */
     soft: {
       bg: colors.primarySoft,
@@ -169,7 +178,7 @@ export function Button({
             borderRadius: radii.button,
             backgroundColor: pressed ? skin.pressedBg : skin.bg,
             borderColor: skin.border,
-            borderWidth: skin.border === 'transparent' ? 0 : 1.5,
+            borderWidth: skin.border === 'transparent' ? 0 : variant === 'outline' ? 2 : 1.5,
             opacity: isDisabled ? 0.45 : 1,
             overflow: 'hidden',
           },

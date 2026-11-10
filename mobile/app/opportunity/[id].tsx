@@ -68,6 +68,7 @@ import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
 import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
+import { LogoColors } from '@/theme/tokens';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -318,7 +319,7 @@ export default function OpportunityDetailScreen() {
     <IconButton
       icon={
         saved ? (
-          <Bookmark size={20} color={colors.primary} fill={colors.primary} strokeWidth={2.2} />
+          <Bookmark size={20} color={LogoColors.gold} fill={LogoColors.gold} strokeWidth={2.2} />
         ) : (
           <Bookmark size={20} color={colors.textMuted} strokeWidth={2} />
         )

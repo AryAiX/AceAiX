@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   BadgeCheck,
   Bookmark,
+  Check,
   Flag,
   Lock,
   MapPin,
@@ -533,9 +534,10 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
             <>
               <Button
                 label={t(following ? 'common.following' : 'common.follow')}
-                variant={following ? 'secondary' : 'soft'}
+                variant={following ? 'secondary' : 'outline'}
                 style={{ flex: 1 }}
                 fullWidth
+                icon={following ? <Check size={17} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
                 loading={followBusy}
                 onPress={onToggleFollow}
               />

@@ -635,6 +635,8 @@ export const LogoColors = {
   cobalt: '#2F6BFF',
   deep: '#2348D8',
   amber: '#FFB347',
+  /** A saved bookmark: deep enough to read on white. */
+  gold: '#F5A300',
   flame: '#FF7A2C',
   ember: '#E8372B',
   /** Words on a soft flame tint. */

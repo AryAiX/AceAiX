@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck } from 'lucide-react-native';
+import { BadgeCheck, Check } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -206,7 +206,8 @@ function PlayersToKnow() {
                 </Text>
                 <Button
                   label={following ? t('common.following') : t('common.follow')}
-                  variant={following ? 'secondary' : 'primary'}
+                  variant={following ? 'secondary' : 'outline'}
+                  icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
                   size="sm"
                   onPress={() => void toggle(row.user_id)}
                   style={{ marginTop: spacing.sm }}
@@ -386,7 +387,8 @@ function ClubsToFollow() {
               </Text>
               <Button
                 label={following ? t('common.following') : t('common.follow')}
-                variant={following ? 'secondary' : 'primary'}
+                variant={following ? 'secondary' : 'outline'}
+                icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
                 size="sm"
                 onPress={() => void toggle(club.id)}
                 style={{ marginTop: spacing.xs }}

@@ -10,6 +10,7 @@ import type { CallFeedItem } from '@/lib/api.sponsorship';
 import { displayName, fullDate, metaLine } from '@/lib/format';
 import { rangeLabel, statusTone } from '@/lib/sponsorship';
 import { TagRow } from './Tags';
+import { LogoColors } from '@/theme/tokens';
 
 interface Props {
   call: CallFeedItem;
@@ -79,8 +80,8 @@ export function CallCard({ call, onApply, onOpenSponsor, saved, onToggleSave }: 
           >
             <Bookmark
               size={21}
-              color={saved ? colors.primary : colors.textMuted}
-              fill={saved ? colors.primary : 'transparent'}
+              color={saved ? LogoColors.gold : colors.textMuted}
+              fill={saved ? LogoColors.gold : 'transparent'}
             />
           </Pressable>
         ) : null}

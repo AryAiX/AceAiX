@@ -9,6 +9,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { LogoColors } from '@/theme/tokens';
 
 const formatCount = (n: number) => compactNumber(Math.round(n));
 
@@ -213,8 +214,8 @@ export function PostActions({
             >
               <Bookmark
                 size={ICON}
-                color={colors.primary}
-                fill={colors.primary}
+                color={LogoColors.gold}
+                fill={LogoColors.gold}
                 strokeWidth={2.4}
               />
             </Animated.View>
