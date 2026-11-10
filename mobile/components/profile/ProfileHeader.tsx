@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Clipboard, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RemoteImage } from '@/components/ui/RemoteImage';
@@ -9,6 +9,7 @@ import {
   Bookmark,
   Check,
   Flag,
+  Link2,
   Lock,
   MapPin,
   MessageCircle,
@@ -58,6 +59,7 @@ import type { ClubType } from '@/lib/club';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
+import { ShareSheet } from '@/components/share/ShareSheet';
 import { useT } from '@/i18n';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
 
@@ -260,20 +262,27 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
     }
   }, [messageBusy, viewer?.can_message, user.id, router, toast]);
 
-  const onShare = useCallback(async () => {
+  /* Share profile: the menu closes, then the share sheet opens (one sheet
+     at a time). Your chats on top, then copy or the phone's own share. */
+  const [shareOpen, setShareOpen] = useState(false);
+  const profileLink = webAppLink(`/u/${user.id}`);
+  const onShare = useCallback(() => {
     setMenuOpen(false);
-    const url = webAppLink(`/u/${user.id}`);
-    try {
-      const message = t('profile.shareMessage', {
-        name,
-        url,
-      });
-      const outcome = await shareContent({ message, url, title: name });
-      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
-    } catch {
-      toast.error(t('common.somethingWentWrong'));
-    }
-  }, [name, t, toast, user.id]);
+    setTimeout(() => setShareOpen(true), 300);
+  }, []);
+
+  const shareElsewhere = useCallback(() => {
+    setShareOpen(false);
+    setTimeout(async () => {
+      try {
+        const message = t('profile.shareMessage', { name, url: profileLink });
+        const outcome = await shareContent({ message, url: profileLink, title: name });
+        if (outcome === 'copied') toast.success(t('feed.linkCopied'));
+      } catch {
+        toast.error(t('common.somethingWentWrong'));
+      }
+    }, 280);
+  }, [name, profileLink, t, toast]);
 
   const onReport = useCallback(
     async (reason: string) => {
@@ -578,6 +587,30 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
         uri={user?.avatar_url ?? null}
         caption={name}
         onClose={() => setPhotoOpen(false)}
+      />
+
+      <ShareSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={profileLink}
+        options={[
+          {
+            key: 'copy',
+            label: t('messaging.copyLink'),
+            icon: <Link2 size={18} color={colors.textSecondary} />,
+            onPress: () => {
+              Clipboard.setString(profileLink);
+              setShareOpen(false);
+              toast.success(t('feed.linkCopied'));
+            },
+          },
+          {
+            key: 'link',
+            label: t('messaging.moreOptions'),
+            icon: <Share2 size={18} color={colors.textSecondary} />,
+            onPress: shareElsewhere,
+          },
+        ]}
       />
 
       {/* ── Overflow menu ── */}

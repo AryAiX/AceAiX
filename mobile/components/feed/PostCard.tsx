@@ -2,11 +2,12 @@ import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { Clipboard, Platform, Pressable, Share, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
-import { MoreHorizontal } from 'lucide-react-native';
+import { ImagePlus, Link2, MoreHorizontal, Share2, Smartphone } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
-import { Avatar, Divider, ListItem, Sheet, Tappable, Text, useToast } from '@/components/ui';
+import { Avatar, Tappable, Text, useToast } from '@/components/ui';
+import { ShareSheet, type ShareOption } from '@/components/share/ShareSheet';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
@@ -227,6 +228,8 @@ function PostCardBase({
     (firstMedia.type === 'photo' || (firstMedia.type === 'video' && !!firstMedia.thumbnail));
 
   const [shareOpen, setShareOpen] = useState(false);
+  /* The story / post images are only offered for a public post. */
+  const [brandOk, setBrandOk] = useState(false);
   const [rendering, setRendering] = useState(false);
   const shareJob = useRef<{
     kind: BrandedKind;
@@ -254,24 +257,26 @@ function PostCardBase({
   }, [post.id, t, toast]);
 
   const onShare = useCallback(() => {
-    if (!canBrandShare) {
-      void handleShare();
-      return;
-    }
-    if (shareLookup.current) return;
+    setBrandOk(false);
+    setShareOpen(true);
+    if (!canBrandShare || shareLookup.current) return;
     shareLookup.current = true;
     void (async () => {
       try {
-        const audience = await getPostAudience(post.id);
-        if (audience === 'public') setShareOpen(true);
-        else void handleShare();
+        setBrandOk((await getPostAudience(post.id)) === 'public');
       } catch {
-        void handleShare();
+        setBrandOk(false);
       } finally {
         shareLookup.current = false;
       }
     })();
-  }, [canBrandShare, handleShare, post.id]);
+  }, [canBrandShare, post.id]);
+
+  const copyLink = useCallback(() => {
+    Clipboard.setString(postLink(post.id));
+    setShareOpen(false);
+    toast.success(t('feed.linkCopied'));
+  }, [post.id, t, toast]);
 
   /* The sheet is a Modal. iOS will not present the system share sheet until
      that modal has left, so the link row closes first and then calls the
@@ -578,32 +583,41 @@ function PostCardBase({
       {rendering ? <OffscreenBrandedCard /> : null}
 
       {shareOpen ? (
-      <Sheet
-        visible
-        onClose={() => setShareOpen(false)}
-        title={t('common.share')}
-      >
-        <ListItem
-          title={t('feed.shareAsStory')}
-          showChevron={false}
-          testID="share-story"
-          onPress={() => startBrandedShare('story')}
+        <ShareSheet
+          visible
+          onClose={() => setShareOpen(false)}
+          link={postLink(post.id)}
+          options={[
+            ...(brandOk
+              ? ([
+                  {
+                    key: 'story',
+                    label: t('feed.shareAsStory'),
+                    icon: <Smartphone size={18} color={colors.textSecondary} />,
+                    onPress: () => startBrandedShare('story'),
+                  },
+                  {
+                    key: 'post',
+                    label: t('feed.shareAsPost'),
+                    icon: <ImagePlus size={18} color={colors.textSecondary} />,
+                    onPress: () => startBrandedShare('post'),
+                  },
+                ] as ShareOption[])
+              : []),
+            {
+              key: 'copy',
+              label: t('messaging.copyLink'),
+              icon: <Link2 size={18} color={colors.textSecondary} />,
+              onPress: copyLink,
+            },
+            {
+              key: 'link',
+              label: t('messaging.moreOptions'),
+              icon: <Share2 size={18} color={colors.textSecondary} />,
+              onPress: shareLinkFromSheet,
+            },
+          ]}
         />
-        <Divider />
-        <ListItem
-          title={t('feed.shareAsPost')}
-          showChevron={false}
-          testID="share-post"
-          onPress={() => startBrandedShare('post')}
-        />
-        <Divider />
-        <ListItem
-          title={t('feed.shareLink')}
-          showChevron={false}
-          testID="share-link"
-          onPress={shareLinkFromSheet}
-        />
-      </Sheet>
       ) : null}
     </View>
   );

@@ -73,3 +73,69 @@ export async function recordHighlightView(mediaId: string): Promise<void> {
     /* A missed view is not worth an error on screen. */
   }
 }
+
+/**
+ * One Best of clip by its id, in the same shape Explore gives the player.
+ * Read straight from the clip and its athlete, which the reader may only see
+ * when the clip is public and the athlete can be seen (the database decides).
+ * Null when it cannot be seen. Nothing on the server changes.
+ */
+export async function getHighlightClip(mediaId: string): Promise<FeedPost | null> {
+  const { data: clip } = await supabase
+    .from('athlete_media')
+    .select('id, athlete_id, title, storage_url, thumbnail_url, views_count, created_at, media_type')
+    .eq('id', mediaId)
+    .maybeSingle();
+  if (!clip) return null;
+  const c = clip as {
+    id: string;
+    athlete_id: string;
+    title: string | null;
+    storage_url: string;
+    thumbnail_url: string | null;
+    views_count: number | null;
+    created_at: string;
+  };
+
+  const { data: athlete } = await supabase
+    .from('athlete_profiles')
+    .select('user_id, sport, position, position_primary')
+    .eq('id', c.athlete_id)
+    .maybeSingle();
+  if (!athlete) return null;
+  const a = athlete as { user_id: string; sport: string | null; position: string | null; position_primary: string | null };
+
+  const { data: person } = await supabase
+    .from('user_profiles')
+    .select('full_name, avatar_url, role, is_verified')
+    .eq('id', a.user_id)
+    .maybeSingle();
+  if (!person) return null;
+  const p = person as { full_name: string | null; avatar_url: string | null; role: FeedPost['author_role']; is_verified: boolean };
+
+  const post: FeedPost = {
+    id: c.id,
+    author_id: a.user_id,
+    author_name: p.full_name,
+    author_avatar: p.avatar_url,
+    author_role: p.role,
+    author_verified: p.is_verified,
+    author_score: 0,
+    author_tier: 'rising' as FeedPost['author_tier'],
+    athlete_sport: a.sport,
+    athlete_position: a.position_primary ?? a.position,
+    type: 'highlight',
+    caption: c.title,
+    media: [{ url: c.storage_url, type: 'video', thumbnail: c.thumbnail_url ?? undefined }],
+    tags: [],
+    like_count: 0,
+    comment_count: 0,
+    view_count: c.views_count ?? 0,
+    viewer_liked: false,
+    viewer_saved: false,
+    viewer_follows: false,
+    created_at: c.created_at,
+  };
+  const [signed] = await signPostMedia([post]);
+  return signed ?? null;
+}

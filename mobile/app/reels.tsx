@@ -1,27 +1,29 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, View, type LayoutChangeEvent, type ListViewToken as ViewToken } from 'react-native';
+import { Clipboard, FlatList, Pressable, View, type LayoutChangeEvent, type ListViewToken as ViewToken } from 'react-native';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
-import { ChevronLeft, Clapperboard } from 'lucide-react-native';
+import { ChevronLeft, Clapperboard, Link2, Share2 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from '@/theme/tokens';
 import { Button, Loader, Text, useToast } from '@/components/ui';
 import { CommentSheet } from '@/components/feed/CommentSheet';
+import { ShareSheet } from '@/components/share/ShareSheet';
 import { ReelItem } from '@/components/reels/ReelItem';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { toggleLike } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import { postLink } from '@/lib/api.feed';
-import { getExploreVideos, isHighlight } from '@/lib/api.explore';
+import { getExploreVideos, getHighlightClip, isHighlight } from '@/lib/api.explore';
 import { followedOnly, getReels } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
 import { useAuth } from '@/providers/AuthProvider';
+import { clipLink, webAppLink } from '@/lib/webLinks';
 import type { FeedPost } from '@/types/models';
 
 /**
@@ -34,6 +36,15 @@ import type { FeedPost } from '@/types/models';
 
 const INK = Brand.ink;
 const ON_DARK = '#FFFFFF';
+
+/* A Best of clip goes to a chat as its own card; outside the app (copy,
+   the phone's share) it is the athlete's profile, which has a web page. */
+function shareOutLink(post: FeedPost): string {
+  return isHighlight(post) ? webAppLink(`/u/${post.author_id}`) : postLink(post.id);
+}
+function chatLink(post: FeedPost): string {
+  return isHighlight(post) ? clipLink(post.id) : postLink(post.id);
+}
 
 export default function ReelsScreen() {
   const theme = useTheme();
@@ -50,15 +61,28 @@ export default function ReelsScreen() {
      same clips, the same filter — so swiping carries on where the eye was.
      Otherwise it was opened from Your Rundown, which is people you follow. */
   const fromExplore = params.source === 'explore';
+  /* Opened from a Best of clip someone sent in a chat: that clip first, then
+     the rest of Explore to keep swiping. */
+  const fromClip = params.source === 'clip';
   const sport = typeof params.sport === 'string' && params.sport ? params.sport : null;
   const reels = useAsync(
     () =>
-      fromExplore
-        ? getExploreVideos({ limit: 60, sport }).then((rows) =>
-            rows.filter((post) => post.media.some((m) => m.type === 'video')),
-          )
-        : getReels({ limit: 30 }).then(followedOnly),
-    [fromExplore, sport],
+      fromClip
+        ? Promise.all([
+            getHighlightClip(params.start ?? ''),
+            getExploreVideos({ limit: 60 }).catch(() => [] as FeedPost[]),
+          ]).then(([clip, rest]) => [
+            ...(clip ? [clip] : []),
+            ...rest.filter(
+              (post) => post.id !== clip?.id && post.media.some((m) => m.type === 'video'),
+            ),
+          ])
+        : fromExplore
+          ? getExploreVideos({ limit: 60, sport }).then((rows) =>
+              rows.filter((post) => post.media.some((m) => m.type === 'video')),
+            )
+          : getReels({ limit: 30 }).then(followedOnly),
+    [fromExplore, fromClip, sport, params.start],
   );
   const { mutate } = reels;
   const items = useMemo(() => reels.data ?? [], [reels.data]);
@@ -134,15 +158,24 @@ export default function ReelsScreen() {
     [patch, profile?.following_count, toast, user?.id],
   );
 
-  const onShare = useCallback(
-    async (post: FeedPost) => {
-      const link = postLink(post.id);
-      try {
-        const outcome = await shareContent({ message: link, url: link });
-        if (outcome === 'copied') toast.success(t('feed.linkCopied'));
-      } catch {
-        toast.error(t('common.somethingWentWrong'));
-      }
+  /* Share opens the sheet: your chats on top, then copy or the phone's own share. */
+  const [shareFor, setShareFor] = useState<FeedPost | null>(null);
+  const onShare = useCallback((post: FeedPost) => setShareFor(post), []);
+  const shareTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shareElsewhere = useCallback(
+    (post: FeedPost) => {
+      setShareFor(null);
+      if (shareTimer.current) clearTimeout(shareTimer.current);
+      /* iOS waits for the sheet to leave before showing its own share. */
+      shareTimer.current = setTimeout(async () => {
+        const link = shareOutLink(post);
+        try {
+          const outcome = await shareContent({ message: link, url: link });
+          if (outcome === 'copied') toast.success(t('feed.linkCopied'));
+        } catch {
+          toast.error(t('common.somethingWentWrong'));
+        }
+      }, 280);
     },
     [t, toast],
   );
@@ -154,8 +187,8 @@ export default function ReelsScreen() {
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
-    else router.replace(fromExplore ? Routes.discover : Routes.home);
-  }, [router, fromExplore]);
+    else router.replace(fromExplore || fromClip ? Routes.discover : Routes.home);
+  }, [router, fromExplore, fromClip]);
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
@@ -286,9 +319,35 @@ export default function ReelsScreen() {
           <ChevronLeft size={28} color={ON_DARK} strokeWidth={2.4} />
         </Pressable>
         <Text variant="heading" color={ON_DARK}>
-          {fromExplore ? t('explore.title') : t('reels.title')}
+          {fromExplore || fromClip ? t('explore.title') : t('reels.title')}
         </Text>
       </View>
+
+      {shareFor ? (
+        <ShareSheet
+          visible
+          onClose={() => setShareFor(null)}
+          link={chatLink(shareFor)}
+          options={[
+            {
+              key: 'copy',
+              label: t('messaging.copyLink'),
+              icon: <Link2 size={18} color={theme.colors.textSecondary} />,
+              onPress: () => {
+                Clipboard.setString(shareOutLink(shareFor));
+                setShareFor(null);
+                toast.success(t('feed.linkCopied'));
+              },
+            },
+            {
+              key: 'link',
+              label: t('messaging.moreOptions'),
+              icon: <Share2 size={18} color={theme.colors.textSecondary} />,
+              onPress: () => shareElsewhere(shareFor),
+            },
+          ]}
+        />
+      ) : null}
 
       {commentsFor ? (
         <CommentSheet

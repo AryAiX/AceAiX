@@ -9,6 +9,7 @@ import { displayName, relativeTime, truncate } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import type { Receipt } from '@/lib/api.messaging';
 import { DoubleCheck } from './DoubleCheck';
+import { parseSharedLink } from '@/lib/webLinks';
 import type { Conversation } from '@/types/models';
 
 interface Props {
@@ -99,13 +100,22 @@ export function ConversationRow({
 
   const close = () => settle(0);
 
+  /* A shared post or profile reads as words, not as a long link. */
+  const sharedPreview = (text: string): string | null => {
+    const link = parseSharedLink(text);
+    if (!link) return null;
+    if (link.kind === 'post') return t('messaging.previewSharedPost');
+    if (link.kind === 'clip') return t('messaging.previewSharedClip');
+    return t('messaging.previewSharedProfile');
+  };
+
   const unread = conversation.unread_count > 0;
   const loud = unread && !muted;
   const name = displayName(conversation.other_name);
   const text = conversation.is_blocked
     ? t('messaging.previewBlocked')
     : conversation.last_message
-      ? truncate(conversation.last_message, 90)
+      ? sharedPreview(conversation.last_message) ?? truncate(conversation.last_message, 90)
       : t('messaging.previewNone');
   const preview = receipt && !conversation.is_blocked ? t('messaging.previewYou', { text }) : text;
 

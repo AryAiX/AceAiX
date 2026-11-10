@@ -9,6 +9,8 @@ import { TranslatableText } from '@/components/common/TranslatableText';
 import { timeOfDay } from '@/lib/format';
 import type { ChatMessage } from '@/lib/api.messaging';
 import { DoubleCheck } from './DoubleCheck';
+import { SharedCard } from './SharedCard';
+import { parseSharedLink } from '@/lib/webLinks';
 
 interface Props {
   message: ChatMessage;
@@ -36,7 +38,15 @@ export function MessageBubble({ message, isOwn, showTime, continues, onRetry, re
 
   const stamp = showTime ? timeOfDay(message.created_at) : '';
 
-  const bubble = (
+  /* A post or profile sent from Share arrives as its link alone and shows
+     as a card. */
+  const shared = parseSharedLink(message.content);
+
+  const bubble = shared ? (
+    <View style={{ opacity: sending ? 0.62 : 1 }}>
+      <SharedCard link={shared} isOwn={isOwn} />
+    </View>
+  ) : (
     <View
       style={{
         maxWidth: '82%',

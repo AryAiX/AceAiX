@@ -349,12 +349,13 @@ function ReelItemBase({
           >
             <MessageCircle size={28} color={ON_VIDEO} strokeWidth={2} />
           </RailButton>
-
-          <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
-            <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
-          </RailButton>
           </>
         ) : null}
+
+        {/* Share works on every clip, a Best of highlight included. */}
+        <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
+          <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
+        </RailButton>
       </View>
 
       {/* ── Thin progress ── */}
