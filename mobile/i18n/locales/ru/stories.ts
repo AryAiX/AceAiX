@@ -63,4 +63,9 @@ export const stories = {
   expiresNote: 'Истории исчезают через 24 часа.',
   needText: 'Сначала напишите текст для карточки.',
   needPhoto: 'Сначала выберите фото или видео.',
+  tabText: 'Текст',
+  tabColour: 'Цвет',
+  tabSticker: 'Стикер',
+  tabWho: 'Кто видит',
+  tabPhoto: 'Фото',
 };

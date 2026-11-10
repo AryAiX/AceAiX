@@ -63,4 +63,9 @@ export const stories = {
   expiresNote: 'تختفي القصص بعد 24 ساعة.',
   needText: 'اكتب شيئًا لبطاقتك أولًا.',
   needPhoto: 'اختر صورة أو فيديو أولًا.',
+  tabText: 'النص',
+  tabColour: 'اللون',
+  tabSticker: 'ملصق',
+  tabWho: 'من يراها',
+  tabPhoto: 'صورة',
 };

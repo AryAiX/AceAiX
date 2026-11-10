@@ -63,4 +63,9 @@ export const stories = {
   expiresNote: 'Storys verschwinden nach 24 Stunden.',
   needText: 'Schreib zuerst etwas für deine Karte.',
   needPhoto: 'Wähle zuerst ein Foto oder Video aus.',
+  tabText: 'Text',
+  tabColour: 'Farbe',
+  tabSticker: 'Sticker',
+  tabWho: 'Wer sieht es',
+  tabPhoto: 'Foto',
 };

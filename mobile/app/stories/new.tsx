@@ -1,25 +1,26 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Camera, Check, Globe, ImagePlus, UserCheck, Users } from 'lucide-react-native';
+import { Camera, Check, Clock, Globe, ImagePlus, UserCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from '@/theme/tokens';
-import {
-  Button,
-  Chip,
-  Header,
-  Input,
-  Reveal,
-  Screen,
-  SegmentedControl,
-  Tappable,
-  Text,
-  useToast,
-} from '@/components/ui';
+import { ChevronForward, Reveal, Tappable, Text, isRTL, useToast } from '@/components/ui';
 import { StickerIcon, StoryCardView } from '@/components/stories/StoryCardView';
 import { useT } from '@/i18n';
 import {
@@ -78,10 +79,13 @@ const AUDIENCES: { value: PostAudience; labelKey: string }[] = [
 
 export default function NewStoryScreen() {
   const theme = useTheme();
-  const { colors, radii, spacing } = theme;
+  const { spacing, colors } = theme;
   const router = useRouter();
   const toast = useToast();
   const t = useT();
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+  const [tool, setTool] = useState<Tool>('text');
 
   const [mode, setMode] = useState<Mode>('card');
   const [text, setText] = useState('');
@@ -206,32 +210,117 @@ export default function NewStoryScreen() {
     { value: 'media', label: t('stories.modePhoto') },
   ];
 
-  return (
-    <Screen
-      scroll={false}
-      padded={false}
-      edges={['top', 'bottom']}
-      keyboardAvoiding
-      header={<Header title={t('stories.composerTitle')} back onBack={close} bordered />}
-      testID="story-composer"
-    >
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg, paddingBottom: spacing.giant }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <SegmentedControl options={modes} value={mode} onChange={setMode} testID="story-mode" />
+  /* The preview takes about a third of the screen, so every control fits
+     below it without scrolling. */
+  const previewHeight = Math.min(Math.round(screenHeight * 0.36), 320);
+  const previewWidth = Math.round((previewHeight * 9) / 16);
 
-        {/* ── Live preview ── */}
+  const tabs: { value: Tool; label: string }[] =
+    mode === 'card'
+      ? [
+          { value: 'text', label: t('stories.tabText') },
+          { value: 'colour', label: t('stories.tabColour') },
+          { value: 'sticker', label: t('stories.tabSticker') },
+          { value: 'who', label: t('stories.tabWho') },
+        ]
+      : [
+          { value: 'photo', label: t('stories.tabPhoto') },
+          { value: 'who', label: t('stories.tabWho') },
+        ];
+  const activeTool: Tool = tabs.some((x) => x.value === tool) ? tool : tabs[0].value;
+
+  const card = { backgroundColor: colors.surface, ...theme.elevation(2) };
+  const chipOn = { bg: colors.surfaceInverse, fg: colors.textInverse };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg }} testID="story-composer">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Top: close, Card / Photo, and the 24-hour note. On iOS this screen
+            is a sheet that already sits below the status bar. */}
+        <View
+          style={{
+            paddingTop: Platform.OS === 'ios' ? spacing.md : insets.top + spacing.sm,
+            paddingHorizontal: spacing.lg,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+          }}
+        >
+          <Pressable
+            onPress={close}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.close')}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 38,
+              height: 38,
+              borderRadius: 13,
+              ...card,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <X size={17} color={colors.text} />
+          </Pressable>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <View
+              accessibilityRole="tablist"
+              style={{ flexDirection: 'row', padding: 3, borderRadius: 12, ...card }}
+              testID="story-mode"
+            >
+              {modes.map((m) => {
+                const on = mode === m.value;
+                return (
+                  <Pressable
+                    key={m.value}
+                    onPress={() => setMode(m.value)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: on }}
+                    style={{
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: 7,
+                      borderRadius: 9,
+                      backgroundColor: on ? chipOn.bg : 'transparent',
+                    }}
+                  >
+                    <Text variant="captionStrong" color={on ? chipOn.fg : colors.textMuted} numberOfLines={1}>
+                      {m.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          <View
+            accessible
+            accessibilityLabel={t('stories.expiresNote')}
+            style={{
+              height: 38,
+              paddingHorizontal: 10,
+              borderRadius: 13,
+              ...card,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <Clock size={14} color={colors.text} />
+            <Text variant="captionStrong">24h</Text>
+          </View>
+        </View>
+
+        {/* ── The story itself ── */}
         <Reveal from="scale" key={mode}>
           <View
             style={{
               alignSelf: 'center',
-              width: 220,
-              aspectRatio: 9 / 16,
-              borderRadius: radii.xl,
+              marginTop: spacing.md,
+              width: previewWidth,
+              height: previewHeight,
+              borderRadius: 22,
               overflow: 'hidden',
-              backgroundColor: colors.surfaceSunken,
+              backgroundColor: '#1E1A36',
               ...theme.elevation(3),
             }}
             accessibilityLabel={t('stories.preview')}
@@ -240,7 +329,7 @@ export default function NewStoryScreen() {
             {mode === 'card' ? (
               <StoryCardView
                 compact
-                radius={radii.xl}
+                radius={22}
                 playKey={`${background}-${sticker ?? ''}`}
                 card={{
                   text: trimmed || t('stories.textPlaceholder'),
@@ -275,198 +364,417 @@ export default function NewStoryScreen() {
                   </>
                 )}
                 {caption.trim() ? (
-                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }} pointerEvents="none">
-                    <LinearGradient
-                      colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={{ padding: spacing.md, paddingTop: spacing.xl }}>
-                      <Text variant="caption" color="#FFFFFF" align="center" numberOfLines={3}>
-                        {caption.trim()}
-                      </Text>
-                    </View>
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      left: spacing.sm,
+                      right: spacing.sm,
+                      bottom: spacing.md,
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: 6,
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(10,6,30,0.55)',
+                    }}
+                  >
+                    <Text variant="caption" color="#FFFFFF" numberOfLines={3}>
+                      {caption.trim()}
+                    </Text>
                   </View>
                 ) : null}
               </Pressable>
             ) : (
-              <View
+              <Pressable
+                onPress={pickLibrary}
+                accessibilityRole="button"
+                accessibilityLabel={t('stories.chooseLibrary')}
                 style={{
                   flex: 1,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: spacing.md,
-                  paddingHorizontal: spacing.md,
+                  gap: spacing.sm,
+                  padding: spacing.md,
+                  backgroundColor: colors.surfaceAlt,
                 }}
               >
                 <View
                   style={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: 32,
-                    overflow: 'hidden',
+                    width: 56,
+                    height: 56,
+                    borderRadius: 18,
+                    backgroundColor: '#7A6CFF',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    overflow: 'hidden',
                   }}
                 >
                   <LinearGradient
-                    colors={theme.gradients.cool}
+                    pointerEvents="none"
+                    colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
                     start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
+                    end={{ x: 0, y: 0.6 }}
                     style={StyleSheet.absoluteFill}
                   />
-                  <View>
-                    <ImagePlus size={28} color={colors.textOnBrand} />
-                  </View>
+                  <ImagePlus size={26} color="#FFFFFF" />
                 </View>
-                <Text variant="captionStrong" tone="secondary" align="center">
+                <Text variant="caption" tone="secondary" align="center">
                   {t('stories.pickPhoto')}
                 </Text>
-              </View>
+              </Pressable>
             )}
           </View>
         </Reveal>
 
-        {mode === 'card' ? (
-          <>
-            <View style={{ gap: spacing.sm }}>
-              <Text variant="overline" tone="muted">
-                {t('stories.background')}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
-                {CARD_BACKGROUNDS.map((key) => (
-                  <Swatch
-                    key={key}
-                    colors={theme.gradients[key]}
-                    selected={background === key}
-                    label={t(BACKGROUND_LABELS[key])}
-                    onPress={() => setBackground(key)}
-                    ringColor={colors.text}
-                    gapColor={colors.bg}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <Input
-              label={t('stories.textLabel')}
-              value={text}
-              onChangeText={setText}
-              placeholder={t('stories.textPlaceholder')}
-              multiline
-              maxLength={STORY_CARD_MAX}
-              hint={t('stories.charCount', { used: text.length, max: STORY_CARD_MAX })}
-              testID="story-text"
-            />
-
-            <View style={{ gap: spacing.sm }}>
-              <Text variant="overline" tone="muted">
-                {t('stories.sticker')}
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                <Chip
-                  label={t('stories.stickerNone')}
-                  selected={sticker === null}
-                  onPress={() => setSticker(null)}
-                />
-                {STICKERS.map((key) => (
-                  <Chip
-                    key={key}
-                    label={t(STICKER_LABELS[key])}
-                    selected={sticker === key}
-                    onPress={() => setSticker(key)}
-                    icon={
-                      <StickerIcon
-                        sticker={key}
-                        size={15}
-                        color={sticker === key ? colors.primary : colors.textSecondary}
-                      />
-                    }
-                  />
-                ))}
-              </View>
-            </View>
-
-            <Input
-              label={t('stories.statLabel')}
-              value={stat}
-              onChangeText={setStat}
-              placeholder={t('stories.statPlaceholder')}
-              maxLength={STORY_STAT_MAX}
-              testID="story-stat"
-            />
-          </>
-        ) : (
-          <>
-            <View style={{ gap: spacing.sm }}>
-              <Button
-                label={t('stories.chooseLibrary')}
-                variant="secondary"
-                icon={<ImagePlus size={18} color={colors.text} />}
-                onPress={pickLibrary}
-                disabled={posting}
-                fullWidth
-                testID="story-pick-library"
-              />
-              <Button
-                label={t('stories.useCamera')}
-                variant="secondary"
-                icon={<Camera size={18} color={colors.text} />}
-                onPress={pickCamera}
-                disabled={posting}
-                fullWidth
-                testID="story-pick-camera"
-              />
-            </View>
-            <Input
-              label={t('stories.captionLabel')}
-              value={caption}
-              onChangeText={setCaption}
-              placeholder={t('stories.captionPlaceholder')}
-              maxLength={STORY_CAPTION_MAX}
-              multiline
-              testID="story-caption"
-            />
-          </>
-        )}
-
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="overline" tone="muted">
-            {t('stories.audience')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {AUDIENCES.map((option) => (
-              <Chip
-                key={option.value}
-                label={t(option.labelKey)}
-                selected={audience === option.value}
-                onPress={() => setAudience(option.value)}
-                icon={
-                  <AudienceIcon
-                    value={option.value}
-                    color={audience === option.value ? colors.primary : colors.textSecondary}
-                  />
-                }
-                testID={`story-audience-${option.value}`}
-              />
-            ))}
+        {/* ── The tools: one card, four tabs, one set showing at a time ── */}
+        <View
+          style={{
+            flex: 1,
+            marginHorizontal: spacing.lg,
+            marginTop: spacing.md,
+            borderRadius: 20,
+            padding: 6,
+            ...card,
+          }}
+        >
+          <View
+            accessibilityRole="tablist"
+            style={{ flexDirection: 'row', padding: 3, borderRadius: 13, backgroundColor: colors.surfaceAlt }}
+          >
+            {tabs.map((tab) => {
+              const on = activeTool === tab.value;
+              return (
+                <Pressable
+                  key={tab.value}
+                  onPress={() => setTool(tab.value)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: on }}
+                  testID={`story-tool-${tab.value}`}
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    backgroundColor: on ? colors.surface : 'transparent',
+                    ...(on ? theme.elevation(1) : null),
+                  }}
+                >
+                  <Text variant="captionStrong" color={on ? colors.text : colors.textMuted} numberOfLines={1}>
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-          <Text variant="caption" tone="muted">
-            {t('stories.expiresNote')}
-          </Text>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: spacing.sm, paddingTop: spacing.md, gap: spacing.md }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {activeTool === 'text' ? (
+              <>
+                <Field
+                  label={t('stories.textLabel')}
+                  value={text}
+                  onChangeText={setText}
+                  placeholder={t('stories.textPlaceholder')}
+                  maxLength={STORY_CARD_MAX}
+                  multiline
+                  counter={t('stories.charCount', { used: text.length, max: STORY_CARD_MAX })}
+                  testID="story-text"
+                />
+                <Field
+                  label={t('stories.statLabel')}
+                  value={stat}
+                  onChangeText={setStat}
+                  placeholder={t('stories.statPlaceholder')}
+                  maxLength={STORY_STAT_MAX}
+                  testID="story-stat"
+                />
+              </>
+            ) : null}
+
+            {activeTool === 'colour' ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="overline" tone="muted">
+                  {t('stories.background')}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  {CARD_BACKGROUNDS.map((key) => (
+                    <Swatch
+                      key={key}
+                      colors={theme.gradients[key]}
+                      selected={background === key}
+                      label={t(BACKGROUND_LABELS[key])}
+                      onPress={() => setBackground(key)}
+                      ringColor={colors.text}
+                      gapColor={colors.surface}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {activeTool === 'sticker' ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="overline" tone="muted">
+                  {t('stories.sticker')}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  <Pill label={t('stories.stickerNone')} on={sticker === null} onPress={() => setSticker(null)} />
+                  {STICKERS.map((key) => (
+                    <Pill
+                      key={key}
+                      label={t(STICKER_LABELS[key])}
+                      on={sticker === key}
+                      onPress={() => setSticker(key)}
+                      icon={(color) => <StickerIcon sticker={key} size={14} color={color} />}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {activeTool === 'photo' ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <PickButton
+                    label={t('stories.chooseLibrary')}
+                    icon={(color) => <ImagePlus size={18} color={color} />}
+                    onPress={pickLibrary}
+                    disabled={posting}
+                    testID="story-pick-library"
+                  />
+                  <PickButton
+                    label={t('stories.useCamera')}
+                    icon={(color) => <Camera size={18} color={color} />}
+                    onPress={pickCamera}
+                    disabled={posting}
+                    testID="story-pick-camera"
+                  />
+                </View>
+                <Field
+                  label={t('stories.captionLabel')}
+                  value={caption}
+                  onChangeText={setCaption}
+                  placeholder={t('stories.captionPlaceholder')}
+                  maxLength={STORY_CAPTION_MAX}
+                  multiline
+                  testID="story-caption"
+                />
+              </>
+            ) : null}
+
+            {activeTool === 'who' ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="overline" tone="muted">
+                  {t('stories.audience')}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+                  {AUDIENCES.map((option) => (
+                    <Pill
+                      key={option.value}
+                      label={t(option.labelKey)}
+                      on={audience === option.value}
+                      onPress={() => setAudience(option.value)}
+                      icon={(color) => <AudienceIcon value={option.value} color={color} />}
+                      testID={`story-audience-${option.value}`}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
         </View>
 
-        <Button
-          label={t('stories.share')}
-          variant="gradient"
-          onPress={post}
-          loading={posting}
-          disabled={!canPost}
-          fullWidth
-          size="lg"
-          testID="story-share"
+        {/* One blue Share button. */}
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: insets.bottom + spacing.md }}>
+          <Pressable
+            onPress={post}
+            disabled={!canPost}
+            accessibilityRole="button"
+            accessibilityLabel={t('stories.share')}
+            accessibilityState={{ disabled: !canPost }}
+            testID="story-share"
+            style={({ pressed }) => ({
+              height: 52,
+              borderRadius: 16,
+              backgroundColor: colors.primary,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              opacity: !canPost ? 0.45 : pressed ? 0.85 : 1,
+              ...(canPost
+                ? {
+                    shadowColor: colors.primary,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 6 },
+                    elevation: 4,
+                  }
+                : null),
+            })}
+          >
+            {posting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <>
+                <Text variant="bodyStrong" color="#FFFFFF">
+                  {t('stories.share')}
+                </Text>
+                <ChevronForward size={18} color="#FFFFFF" />
+              </>
+            )}
+          </Pressable>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+type Tool = 'text' | 'colour' | 'sticker' | 'photo' | 'who';
+
+/** A chip: solid when picked, a raised card when not. Follows light and dark. */
+function Pill({
+  label,
+  on,
+  onPress,
+  icon,
+  testID,
+}: {
+  label: string;
+  on: boolean;
+  onPress: () => void;
+  icon?: (color: string) => React.ReactNode;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const { colors } = theme;
+  const fg = on ? colors.textInverse : colors.textSecondary;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={label}
+      testID={testID}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        backgroundColor: on ? colors.surfaceInverse : colors.surfaceAlt,
+        opacity: pressed ? 0.75 : 1,
+      })}
+    >
+      {icon ? icon(fg) : null}
+      <Text variant="captionStrong" color={fg}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function PickButton({
+  label,
+  icon,
+  onPress,
+  disabled,
+  testID,
+}: {
+  label: string;
+  icon: (color: string) => React.ReactNode;
+  onPress: () => void;
+  disabled?: boolean;
+  testID?: string;
+}) {
+  const { colors } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      testID={testID}
+      style={({ pressed }) => ({
+        flex: 1,
+        minHeight: 50,
+        borderRadius: 14,
+        backgroundColor: colors.surfaceAlt,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingHorizontal: 10,
+        opacity: disabled ? 0.5 : pressed ? 0.75 : 1,
+      })}
+    >
+      {icon(colors.primary)}
+      <Text variant="captionStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  maxLength,
+  multiline,
+  counter,
+  testID,
+}: {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  maxLength?: number;
+  multiline?: boolean;
+  counter?: string;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const { colors } = theme;
+  return (
+    <View style={{ gap: 6 }}>
+      <Text variant="overline" tone="muted">
+        {label}
+      </Text>
+      <View style={{ paddingHorizontal: 12, paddingVertical: 10, borderRadius: 13, backgroundColor: colors.surfaceAlt }}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textMuted}
+          maxLength={maxLength}
+          multiline={multiline}
+          accessibilityLabel={label}
+          testID={testID}
+          style={{
+            padding: 0,
+            color: colors.text,
+            fontFamily: theme.font.semibold,
+            fontSize: 15,
+            minHeight: multiline ? 40 : undefined,
+            maxHeight: 88,
+            textAlignVertical: multiline ? 'top' : 'center',
+            textAlign: isRTL ? 'right' : undefined,
+          }}
         />
-      </ScrollView>
-    </Screen>
+      </View>
+      {counter ? (
+        <Text variant="caption" tone="muted" align="right">
+          {counter}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 

@@ -4,34 +4,28 @@ import {
   Image,
   Pressable,
   ScrollView,
+  StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  Check,
-  ChevronDown,
-  Globe,
-  ImagePlus,
-  Play,
-  UserCheck,
-  Users,
-  X,
-} from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Globe, ImagePlus, Plus, Play, ShieldCheck, UserCheck, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
+  Avatar,
   Button,
   ConfirmSheet,
   Divider,
   Header,
-  ListItem,
   Screen,
-  Sheet,
   Text,
   useToast,
   isRTL,
 } from '@/components/ui';
+import { useAuth } from '@/providers/AuthProvider';
 import { useT } from '@/i18n';
 import { MentionInput } from '@/components/feed/MentionInput';
 import { createPost, getMyTalentScore } from '@/lib/api';
@@ -57,7 +51,11 @@ import type { PostAudience, PostMedia } from '@/types/models';
  */
 
 const MAX_CHARS = 1000;
-const COUNTER_FROM = 400;
+/** 0:24, 2:05: a picked clip's length on its preview. */
+function clipLength(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 const MAX_MEDIA = 4;
 
 const AUDIENCES: {
@@ -98,7 +96,10 @@ export default function ComposeScreen() {
   const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [media, setMedia] = useState<PendingMedia[]>([]);
   const [audience, setAudience] = useState<PostAudience>('public');
-  const [audienceOpen, setAudienceOpen] = useState(false);
+  /* Which picked photo or clip the big preview shows. */
+  const [shown, setShown] = useState(0);
+  const { profile } = useAuth();
+  const { width: screenWidth } = useWindowDimensions();
   const [discardOpen, setDiscardOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -111,6 +112,11 @@ export default function ComposeScreen() {
     () => AUDIENCES.find((a) => a.value === audience) ?? AUDIENCES[0],
     [audience],
   );
+
+  const current = Math.min(shown, Math.max(0, media.length - 1));
+  const heroHeight = Math.round(Math.min(screenWidth - 32, 420) * 0.72);
+  const postLabel =
+    audience === 'public' ? t('feed.postButton') : t('feed.postTo', { audience: t(selected.labelKey) });
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -182,6 +188,7 @@ export default function ComposeScreen() {
 
   const removeMedia = useCallback((index: number) => {
     setMedia((current) => current.filter((_, i) => i !== index));
+    setShown((current) => (current >= index && current > 0 ? current - 1 : current));
   }, []);
 
   /* Your score right now, before this post can change it. */
@@ -252,17 +259,6 @@ export default function ComposeScreen() {
                 </Text>
               </Pressable>
             }
-            right={
-              <Button
-                label={t('feed.postButton')}
-                variant="gradient"
-                size="sm"
-                loading={posting}
-                disabled={!canPost}
-                onPress={submit}
-                testID="compose-submit"
-              />
-            }
           />
 
           {posting && progress ? (
@@ -301,206 +297,357 @@ export default function ComposeScreen() {
           <Divider />
         </>
       }
-      contentStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}
+      contentStyle={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.xl }}
+      footer={
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm }}>
+          <Button
+            label={postLabel}
+            variant="gradient"
+            fullWidth
+            loading={posting}
+            disabled={!canPost}
+            onPress={submit}
+            testID="compose-submit"
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <ShieldCheck size={13} color={colors.textMuted} />
+            <Text variant="caption" tone="muted" numberOfLines={2} style={{ flexShrink: 1 }}>
+              {t('feed.safetyNote')}
+            </Text>
+          </View>
+        </View>
+      }
     >
       <Stack.Screen options={{ gestureEnabled: !hasContent }} />
-      <Pressable
-        onPress={() => setAudienceOpen(true)}
-        disabled={posting}
-        accessibilityRole="button"
-        accessibilityLabel={t('feed.audienceA11y', { audience: t(selected.labelKey) })}
-        style={({ pressed }) => ({
-          alignSelf: 'flex-start',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          minHeight: 36,
-          paddingHorizontal: spacing.md,
-          borderRadius: radii.button,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
-        })}
-      >
-        <selected.Icon size={15} color={colors.textSecondary} />
-        <Text variant="captionStrong" tone="secondary">
-          {t(selected.labelKey)}
-        </Text>
-        <ChevronDown size={15} color={colors.textMuted} />
-      </Pressable>
 
-      <MentionInput
-        value={text}
-        onChangeText={setText}
-        onMentionsChange={setMentions}
-        placeholder={t('feed.composePlaceholder')}
-        placeholderTextColor={colors.textMuted}
-        multiline
-        autoFocus
-        maxLength={MAX_CHARS}
-        editable={!posting}
-        accessibilityLabel={t('feed.composeA11y')}
-        testID="compose-text"
-        style={{
-          marginTop: spacing.lg,
-          minHeight: 140,
-          color: colors.text,
-          fontFamily: theme.font.regular,
-          fontSize: theme.size.lg,
-          lineHeight: theme.size.lg * theme.lineHeight.normal,
-          textAlignVertical: 'top',
-          textAlign: isRTL ? 'right' : undefined,
-          padding: 0,
-        }}
-      />
-
-      {text.length > COUNTER_FROM ? (
-        <Text
-          variant="caption"
-          tone={text.length >= MAX_CHARS ? 'danger' : 'muted'}
-          align="right"
-          style={{ marginTop: spacing.xs }}
+      {/* The photo or clip comes first: a big glowing drop zone, or the
+          picked media shown large with the rest as thumbnails below. */}
+      {media.length === 0 ? (
+        <Pressable
+          onPress={pickMedia}
+          disabled={posting}
+          accessibilityRole="button"
+          accessibilityLabel={t('feed.addMediaA11y')}
+          testID="compose-add-media"
+          style={({ pressed }) => ({
+            height: heroHeight,
+            borderRadius: radii.xl,
+            borderWidth: 2,
+            borderStyle: 'dashed',
+            borderColor: theme.alpha(colors.primary, 0.35),
+            overflow: 'hidden',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: spacing.sm,
+            opacity: pressed ? 0.85 : 1,
+          })}
         >
-          {t('feed.charCount', { used: text.length, max: MAX_CHARS })}
-        </Text>
-      ) : null}
-
-      {media.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: spacing.md, paddingVertical: spacing.lg }}
-        >
-          {media.map((item, index) => (
-            <View key={`${item.uri}-${index}`}>
-              {/* A picked video URI is not something <Image> can decode, so a
-                  clip gets a labelled placeholder rather than a broken box. */}
-              {item.type === 'video' ? (
+          <LinearGradient
+            pointerEvents="none"
+            colors={[theme.alpha(colors.primary, 0.1), theme.alpha('#7A6CFF', 0.08)]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 22,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              ...theme.elevation(2),
+            }}
+          >
+            <LinearGradient
+              pointerEvents="none"
+              colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 0.6 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <ImagePlus size={30} color={colors.textOnBrand} strokeWidth={2.2} />
+          </View>
+          <Text variant="subheading" style={{ marginTop: spacing.xs }}>
+            {t('feed.addMedia')}
+          </Text>
+          <Text variant="caption" tone="muted">
+            {t('feed.addMediaHint', { max: MAX_MEDIA, minutes: Math.round(MAX_POST_VIDEO_SECONDS / 60) })}
+          </Text>
+          <View
+            style={{
+              marginTop: spacing.xs,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
+              borderRadius: radii.button,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: theme.alpha(colors.primary, 0.2),
+            }}
+          >
+            <Text variant="captionStrong" tone="primary">
+              {t('feed.photoLibrary')}
+            </Text>
+          </View>
+        </Pressable>
+      ) : (
+        <View>
+          <View
+            style={{
+              height: heroHeight,
+              borderRadius: radii.xl,
+              overflow: 'hidden',
+              backgroundColor: '#1E1A36',
+              ...theme.elevation(2),
+            }}
+          >
+            {media[current].type === 'video' ? (
+              /* A picked clip can't be drawn as a picture, so it gets a dark
+                 tile with play and its length. */
+              <View
+                accessible
+                accessibilityLabel={t('feed.selectedVideo', { index: current + 1 })}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm }}
+              >
                 <View
-                  accessible
-                  accessibilityLabel={t('feed.selectedVideo', { index: index + 1 })}
                   style={{
-                    width: 104,
-                    height: 104,
-                    borderRadius: radii.md,
-                    backgroundColor: colors.surfaceSunken,
-                    borderWidth: 1,
-                    borderColor: colors.border,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
+                    backgroundColor: 'rgba(255,255,255,0.18)',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: spacing.xs,
                   }}
                 >
-                  <Play size={20} color={colors.textSecondary} fill={colors.textSecondary} />
-                  <Text variant="overline" tone="muted">
-                    {t('feed.clip')}
-                  </Text>
+                  <Play size={24} color="#FFFFFF" fill="#FFFFFF" />
                 </View>
-              ) : (
-                <Image
-                  source={{ uri: item.uri }}
-                  style={{
-                    width: 104,
-                    height: 104,
-                    borderRadius: radii.md,
-                    backgroundColor: colors.surfaceSunken,
-                  }}
-                  resizeMode="cover"
-                  accessibilityIgnoresInvertColors
-                  accessibilityLabel={t('feed.selectedPhoto', { index: index + 1 })}
-                />
-              )}
+                <Text variant="captionStrong" color="#FFFFFF">
+                  {media[current].durationSeconds
+                    ? clipLength(media[current].durationSeconds as number)
+                    : t('feed.clip')}
+                </Text>
+              </View>
+            ) : (
+              <Image
+                source={{ uri: media[current].uri }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+                accessibilityLabel={t('feed.selectedPhoto', { index: current + 1 })}
+              />
+            )}
+            {media.length > 1 ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: spacing.md,
+                  left: spacing.md,
+                  paddingHorizontal: spacing.sm,
+                  paddingVertical: 3,
+                  borderRadius: radii.sm,
+                  backgroundColor: 'rgba(15,12,30,0.6)',
+                }}
+              >
+                <Text variant="captionStrong" color="#FFFFFF">
+                  {t('feed.mediaOf', { current: current + 1, total: media.length })}
+                </Text>
+              </View>
+            ) : null}
+            <Pressable
+              onPress={() => removeMedia(current)}
+              disabled={posting}
+              accessibilityRole="button"
+              accessibilityLabel={
+                media[current].type === 'video'
+                  ? t('feed.removeVideo', { index: current + 1 })
+                  : t('feed.removePhoto', { index: current + 1 })
+              }
+              hitSlop={10}
+              style={({ pressed }) => ({
+                position: 'absolute',
+                top: spacing.md,
+                right: spacing.md,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: 'rgba(15,12,30,0.6)',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <X size={16} color="#FFFFFF" strokeWidth={2.6} />
+            </Pressable>
+          </View>
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing.sm, paddingTop: spacing.md, paddingHorizontal: 3, paddingBottom: 3 }}
+          >
+            {media.map((item, index) => {
+              const on = index === current;
+              return (
+                <Pressable
+                  key={`${item.uri}-${index}`}
+                  onPress={() => setShown(index)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={
+                    item.type === 'video'
+                      ? t('feed.selectedVideo', { index: index + 1 })
+                      : t('feed.selectedPhoto', { index: index + 1 })
+                  }
+                  style={{
+                    width: 60,
+                    height: 60,
+                    borderRadius: 14,
+                    borderWidth: on ? 2.5 : 0,
+                    borderColor: colors.primary,
+                    padding: on ? 2 : 0,
+                  }}
+                >
+                  {item.type === 'video' ? (
+                    <View
+                      style={{
+                        flex: 1,
+                        borderRadius: 11,
+                        backgroundColor: '#1E1A36',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: item.uri }}
+                      style={{ flex: 1, borderRadius: on ? 10 : 14 }}
+                      resizeMode="cover"
+                      accessibilityIgnoresInvertColors
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
+            {media.length < MAX_MEDIA ? (
               <Pressable
-                onPress={() => removeMedia(index)}
+                onPress={pickMedia}
                 disabled={posting}
                 accessibilityRole="button"
-                accessibilityLabel={
-                  item.type === 'video'
-                    ? t('feed.removeVideo', { index: index + 1 })
-                    : t('feed.removePhoto', { index: index + 1 })
-                }
-                hitSlop={12}
+                accessibilityLabel={t('feed.addMediaA11y')}
+                testID="compose-add-media"
                 style={({ pressed }) => ({
-                  position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  width: 28,
-                  height: 28,
-                  borderRadius: radii.button,
+                  width: 60,
+                  height: 60,
+                  borderRadius: 14,
+                  borderWidth: 2,
+                  borderStyle: 'dashed',
+                  borderColor: theme.alpha(colors.primary, 0.35),
+                  backgroundColor: theme.alpha(colors.primary, 0.06),
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: colors.surfaceInverse,
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <X size={15} color={colors.textInverse} strokeWidth={2.4} />
+                <Plus size={22} color={colors.primary} />
               </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-      ) : null}
+            ) : null}
+          </ScrollView>
+        </View>
+      )}
 
-      <Pressable
-        onPress={pickMedia}
-        disabled={posting || media.length >= MAX_MEDIA}
-        accessibilityRole="button"
-        accessibilityLabel={t('feed.addMediaA11y')}
-        accessibilityState={{ disabled: posting || media.length >= MAX_MEDIA }}
-        testID="compose-add-media"
-        style={({ pressed }) => ({
-          marginTop: media.length > 0 ? 0 : spacing.xl,
+      {/* The caption, in its own card with your picture. */}
+      <View
+        style={{
+          marginTop: spacing.lg,
           flexDirection: 'row',
-          alignItems: 'center',
           gap: spacing.md,
-          minHeight: theme.hit.comfortable,
-          paddingHorizontal: spacing.lg,
-          borderRadius: radii.md,
+          padding: spacing.md,
+          borderRadius: radii.lg,
+          backgroundColor: colors.surface,
           borderWidth: 1,
           borderColor: colors.border,
-          backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
-          opacity: media.length >= MAX_MEDIA ? 0.5 : 1,
-        })}
+          ...theme.elevation(1),
+        }}
       >
-        <ImagePlus size={20} color={colors.primary} />
-        <Text variant="bodyStrong" style={{ flex: 1 }}>
-          {t('feed.addMedia')}
-        </Text>
-        <Text variant="caption" tone="muted">
-          {t('feed.mediaCount', { used: media.length, max: MAX_MEDIA })}
-        </Text>
-      </Pressable>
+        <Avatar uri={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size="sm" />
+        <View style={{ flex: 1 }}>
+          <MentionInput
+            value={text}
+            onChangeText={setText}
+            onMentionsChange={setMentions}
+            placeholder={t('feed.captionPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={MAX_CHARS}
+            editable={!posting}
+            accessibilityLabel={t('feed.composeA11y')}
+            testID="compose-text"
+            style={{
+              minHeight: 72,
+              color: colors.text,
+              fontFamily: theme.font.regular,
+              fontSize: theme.size.md,
+              lineHeight: theme.size.md * theme.lineHeight.normal,
+              textAlignVertical: 'top',
+              textAlign: isRTL ? 'right' : undefined,
+              padding: 0,
+            }}
+          />
+          <Text
+            variant="caption"
+            tone={text.length >= MAX_CHARS ? 'danger' : 'muted'}
+            align="right"
+            style={{ marginTop: spacing.xs }}
+          >
+            {t('feed.charCount', { used: text.length, max: MAX_CHARS })}
+          </Text>
+        </View>
+      </View>
 
-      <Text variant="caption" tone="muted" style={{ marginTop: spacing.lg }}>
-        {t('feed.safetyNote')}
+      {/* Who can see it: three choices on screen instead of a hidden menu. */}
+      <Text variant="overline" tone="muted" style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+        {t('feed.audienceSheetTitle')}
       </Text>
-
-      <Sheet
-        visible={audienceOpen}
-        onClose={() => setAudienceOpen(false)}
-        title={t('feed.audienceSheetTitle')}
-        scrollable={false}
+      <View
+        accessibilityRole="radiogroup"
+        style={{ flexDirection: 'row', padding: 4, borderRadius: radii.lg, backgroundColor: colors.surfaceAlt }}
       >
-        {AUDIENCES.map((option, index) => (
-          <View key={option.value}>
-            {index > 0 ? <Divider /> : null}
-            <ListItem
-              title={t(option.labelKey)}
-              subtitle={t(option.detailKey)}
-              left={<option.Icon size={20} color={colors.textSecondary} />}
-              right={
-                option.value === audience ? (
-                  <Check size={20} color={colors.primary} />
-                ) : undefined
-              }
-              onPress={() => {
-                setAudience(option.value);
-                setAudienceOpen(false);
+        {AUDIENCES.map((option) => {
+          const on = option.value === audience;
+          return (
+            <Pressable
+              key={option.value}
+              onPress={() => setAudience(option.value)}
+              disabled={posting}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: on }}
+              accessibilityLabel={`${t(option.labelKey)}. ${t(option.detailKey)}`}
+              testID={`compose-audience-${option.value}`}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                gap: 3,
+                paddingVertical: spacing.sm + 2,
+                borderRadius: radii.md,
+                backgroundColor: on ? colors.surface : 'transparent',
+                ...(on ? theme.elevation(1) : null),
               }}
-            />
-          </View>
-        ))}
-      </Sheet>
+            >
+              <option.Icon size={17} color={on ? colors.primary : colors.textSecondary} />
+              <Text variant="captionStrong" color={on ? colors.primary : colors.textSecondary} numberOfLines={1}>
+                {t(option.labelKey)}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text variant="caption" tone="muted" style={{ marginTop: spacing.sm }}>
+        {t(selected.detailKey)}
+      </Text>
 
       <ConfirmSheet
         visible={discardOpen}

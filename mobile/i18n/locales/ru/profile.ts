@@ -121,6 +121,12 @@ export const profile = {
   photoUnavailable: 'Фото недоступно',
   scoreWhenPostedA11y: 'Рейтинг при публикации: {{score}}',
   scoreWhenPostedHint: 'Число на каждой публикации — твой рейтинг в момент публикации.',
+  highlightTag: 'Хайлайт',
+  clipQuickTechnique: 'Техника',
+  clipQuickMatch: 'Матч',
+  clipQuickTraining: 'Тренировка',
+  clipQuickBest: 'Личный рекорд',
+  clipPointsHint: 'Клип может поднять вашу оценку таланта',
 
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',

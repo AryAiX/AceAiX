@@ -47,7 +47,7 @@ export default function MyProfileScreen() {
   const router = useRouter();
   const t = useT();
   const { user } = useAuth();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; add?: string }>();
 
   const [tab, setTab] = useState<ProfileTab>(() => toProfileTab(params.tab));
   // A tip on /score deep-links straight to a tab; honour it while mounted too.
@@ -291,6 +291,10 @@ export default function MyProfileScreen() {
             athleteId={athlete.id}
             isSelf
             refreshKey={childKey}
+            /* From the + menu's Highlight bubble: open the photo library
+               straight away, once. */
+            autoAdd={params.add === 'highlight'}
+            onAutoAdded={() => router.setParams({ add: undefined })}
             onChanged={onTabDataChanged}
             tips={score.data?.tips ?? []}
           />

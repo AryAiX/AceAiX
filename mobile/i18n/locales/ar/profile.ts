@@ -123,6 +123,12 @@ export const profile = {
   photoUnavailable: 'الصورة غير متاحة',
   scoreWhenPostedA11y: 'النتيجة عند النشر: {{score}}',
   scoreWhenPostedHint: 'الرقم على كل منشور هو نتيجتك عند نشره.',
+  highlightTag: 'لقطة',
+  clipQuickTechnique: 'تقنية',
+  clipQuickMatch: 'مباراة',
+  clipQuickTraining: 'تدريب',
+  clipQuickBest: 'رقم شخصي',
+  clipPointsHint: 'إضافة مقطع قد ترفع درجة الموهبة',
 
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',

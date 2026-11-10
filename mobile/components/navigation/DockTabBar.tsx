@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type ViewInstance,
   type LayoutChangeEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -19,6 +20,9 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { NATIVE_DRIVER } from '@/lib/motion';
 import { useDockMetrics } from './dockInset';
+import { CreateMenu, type CreateChoice, type PlusFrame } from './CreateMenu';
+import { Routes } from '@/lib/routes';
+import { useAuth } from '@/providers/AuthProvider';
 
 /* The props React Navigation hands a custom tab bar. Typed loosely on
    purpose: the package is a dependency of expo-router, not of this app. */
@@ -330,6 +334,50 @@ function CreateButton({ width, height }: { width: number; height: number }) {
   const reduced = useReducedMotion();
   const t = useT();
   const scale = useRef(new Animated.Value(1)).current;
+  const { profile } = useAuth();
+
+  /* The + opens a small menu: Post, Story, and (for athletes) Highlight. */
+  const plusRef = useRef<ViewInstance>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [frame, setFrame] = useState<PlusFrame | null>(null);
+  const pending = useRef<CreateChoice | null>(null);
+
+  const go = (choice: CreateChoice) => {
+    if (choice === 'post') router.push('/compose');
+    else if (choice === 'story') router.push(Routes.newStory);
+    else router.navigate({ pathname: Routes.myProfile, params: { tab: 'highlights', add: 'highlight' } });
+  };
+
+  const openMenu = () => {
+    const node = plusRef.current;
+    if (!node) {
+      router.push('/compose');
+      return;
+    }
+    node.measureInWindow((x, y, w, h) => {
+      setFrame({ x, y, width: w, height: h });
+      setMenuOpen(true);
+    });
+  };
+
+  const afterDismiss = () => {
+    const choice = pending.current;
+    pending.current = null;
+    if (choice) go(choice);
+  };
+
+  const pick = (choice: CreateChoice) => {
+    setMenuOpen(false);
+    /* iOS can't open the next screen while the menu is still closing, so it
+       waits for onDismiss there; Android goes straight away. */
+    if (Platform.OS !== 'ios') {
+      go(choice);
+      return;
+    }
+    pending.current = choice;
+    /* In case onDismiss never comes, go anyway once the fade has finished. */
+    setTimeout(afterDismiss, 450);
+  };
 
   const press = (to: number) => {
     if (reduced) {
@@ -352,6 +400,7 @@ function CreateButton({ width, height }: { width: number; height: number }) {
       }}
     >
       <Pressable
+        ref={plusRef}
         accessibilityRole="button"
         accessibilityLabel={t('common.tabCreate')}
         testID="tab-create"
@@ -361,7 +410,7 @@ function CreateButton({ width, height }: { width: number; height: number }) {
           if (Platform.OS !== 'web') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
           }
-          router.push('/compose');
+          openMenu();
         }}
         style={{
           width,
@@ -387,6 +436,14 @@ function CreateButton({ width, height }: { width: number; height: number }) {
           <Plus size={24} color={theme.colors.textOnBrand} strokeWidth={2.6} />
         </View>
       </Pressable>
+      <CreateMenu
+        visible={menuOpen}
+        frame={frame}
+        showHighlight={profile?.role === 'athlete'}
+        onPick={pick}
+        onClose={() => setMenuOpen(false)}
+        onDismiss={afterDismiss}
+      />
     </Animated.View>
   );
 }

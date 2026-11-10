@@ -110,6 +110,12 @@ export const profile = {
   photoUnavailable: '照片不可用',
   scoreWhenPostedA11y: '发布时评分：{{score}}',
   scoreWhenPostedHint: '每条帖子上的数字是你发布时的评分。',
+  highlightTag: '高光',
+  clipQuickTechnique: '技术',
+  clipQuickMatch: '比赛',
+  clipQuickTraining: '训练',
+  clipQuickBest: '个人最佳',
+  clipPointsHint: '添加视频可以提升你的天赋分',
 
   // ── 高光标签页（components/profile/HighlightsTab.tsx） ─────────────────────
   photoPermission: 'AceAiX 需要访问相册的权限。',

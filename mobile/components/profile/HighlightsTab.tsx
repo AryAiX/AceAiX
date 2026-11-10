@@ -12,7 +12,6 @@ import {
   ConfirmSheet,
   EmptyState,
   ErrorState,
-  Input,
   PointsChip,
   RemoteImage,
   Sheet,
@@ -35,6 +34,7 @@ import { fullDate } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { ScoreTip } from '@/types/models';
 import { MediaGrid, MediaTile } from './MediaGrid';
+import { HighlightSpotlight } from './HighlightSpotlight';
 
 /**
  * The fallback title stored when someone uploads without naming the clip.
@@ -52,6 +52,10 @@ interface Props {
   onChanged?: () => void;
   /** The score's tips, so the empty state can say what clips are worth. */
   tips?: ScoreTip[];
+  /** Open the photo library to add a highlight as soon as this shows (the + menu). */
+  autoAdd?: boolean;
+  /** Called once that has happened, so it doesn't happen again. */
+  onAutoAdded?: () => void;
 }
 
 interface Picked {
@@ -62,7 +66,15 @@ interface Picked {
   durationSeconds: number | null;
 }
 
-export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, tips = [] }: Props) {
+export function HighlightsTab({
+  athleteId,
+  isSelf,
+  refreshKey = 0,
+  onChanged,
+  tips = [],
+  autoAdd = false,
+  onAutoAdded,
+}: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const toast = useToast();
@@ -136,6 +148,15 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, ti
     }
   }, [t, toast]);
 
+  /* The + menu's Highlight bubble lands here: go straight to picking a clip. */
+  useEffect(() => {
+    if (!autoAdd || !isSelf) return;
+    onAutoAdded?.();
+    void pick();
+    // Only when the request arrives, not on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAdd, isSelf]);
+
   const confirmUpload = useCallback(async () => {
     if (!picked || !athleteId) return;
     setUploading(true);
@@ -176,61 +197,18 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged, ti
     }
   }, [media, onChanged, pendingDelete, t, toast]);
 
+  /* What a clip adds to the score, from the score's tips. */
+  const clipPoints = tips.find((tip) => tip.key === 'add_highlights')?.points ?? null;
+
   const uploadSheet = (
-    <Sheet
-      visible={picked !== null}
-      onClose={() => {
-        if (!uploading) setPicked(null);
-      }}
-      title={t('profile.nameClipTitle')}
-      subtitle={t('profile.nameClipSubtitle')}
-      scrollable={false}
-    >
-      {picked && !picked.isVideo ? (
-        <RemoteImage
-          uri={picked.uri}
-          style={{
-            width: '100%',
-            height: 180,
-            borderRadius: radii.md,
-            marginBottom: spacing.lg,
-          }}
-          placeholderColor={colors.surfaceAlt}
-          contentFit="cover"
-        />
-      ) : null}
-
-      <Input
-        label={t('profile.clipTitleLabel')}
-        placeholder={t(
-          picked?.isVideo
-            ? 'profile.clipTitlePlaceholderVideo'
-            : 'profile.clipTitlePlaceholderPhoto',
-        )}
-        value={picked?.title ?? ''}
-        onChangeText={(text) =>
-          setPicked((current) => (current ? { ...current, title: text } : current))
-        }
-        maxLength={80}
-        returnKeyType="done"
-      />
-
-      <Button
-        label={t('profile.addToProfile')}
-        fullWidth
-        loading={uploading}
-        style={{ marginTop: spacing.xl }}
-        onPress={confirmUpload}
-      />
-      <Button
-        label={t('common.cancel')}
-        variant="ghost"
-        fullWidth
-        disabled={uploading}
-        style={{ marginTop: spacing.sm }}
-        onPress={() => setPicked(null)}
-      />
-    </Sheet>
+    <HighlightSpotlight
+      clip={picked}
+      uploading={uploading}
+      points={clipPoints}
+      onChangeTitle={(text) => setPicked((current) => (current ? { ...current, title: text } : current))}
+      onAdd={confirmUpload}
+      onCancel={() => setPicked(null)}
+    />
   );
 
   if (!athleteId) {

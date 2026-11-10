@@ -121,6 +121,12 @@ export const profile = {
   photoUnavailable: 'Foto no disponible',
   scoreWhenPostedA11y: 'Puntuación al publicar: {{score}}',
   scoreWhenPostedHint: 'El número de cada publicación es tu puntuación cuando la publicaste.',
+  highlightTag: 'Destacado',
+  clipQuickTechnique: 'Técnica',
+  clipQuickMatch: 'Partido',
+  clipQuickTraining: 'Entreno',
+  clipQuickBest: 'Marca personal',
+  clipPointsHint: 'Añadir un clip puede subir tu puntuación de talento',
 
   // ── Pestaña de destacados (components/profile/HighlightsTab.tsx) ───────────
   photoPermission: 'AceAiX necesita permiso para abrir tus fotos.',
