@@ -258,4 +258,9 @@ export const feed = {
     emptySponsorsTitle: 'Aún no has guardado patrocinios',
     emptySponsorsBody: 'Guarda la convocatoria de un patrocinador para tenerla aquí.',
   },
+  starterTitle: 'Aquí aparece tu gente',
+  starterBody: 'Sigue a 3 para llenar tu feed.',
+  starterProgress: '{{count}} de 3 seguidos',
+  starterAthletes: 'Deportistas como tú',
+  starterClips: 'Mientras tanto, vídeos en tendencia',
 };

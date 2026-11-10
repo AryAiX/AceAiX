@@ -246,4 +246,9 @@ export const feed = {
     emptySponsorsTitle: 'Noch keine Sponsorings gespeichert',
     emptySponsorsBody: 'Speichere den Aufruf eines Sponsors, um ihn hier zu behalten.',
   },
+  starterTitle: 'Hier erscheinen deine Leute',
+  starterBody: 'Folge 3, um deinen Feed zu füllen.',
+  starterProgress: '{{count}} von 3 gefolgt',
+  starterAthletes: 'Sportler wie du',
+  starterClips: 'Inzwischen: angesagte Clips',
 };

@@ -247,4 +247,9 @@ export const feed = {
     emptySponsorsTitle: 'No sponsorships saved yet',
     emptySponsorsBody: 'Bookmark a sponsor’s call to keep it here.',
   },
+  starterTitle: 'Your people show up here',
+  starterBody: 'Follow 3 to fill your feed.',
+  starterProgress: '{{count}} of 3 followed',
+  starterAthletes: 'Athletes like you',
+  starterClips: 'Meanwhile, trending clips',
 };

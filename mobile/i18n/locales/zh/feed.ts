@@ -238,4 +238,9 @@ export const feed = {
     emptySponsorsTitle: '还没有收藏赞助机会',
     emptySponsorsBody: '收藏赞助商发布的招募，即可保存在这里。',
   },
+  starterTitle: '你关注的人会出现在这里',
+  starterBody: '关注 3 个人，填满你的动态。',
+  starterProgress: '已关注 {{count}}/3',
+  starterAthletes: '和你相似的运动员',
+  starterClips: '先看看热门短片',
 };

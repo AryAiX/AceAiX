@@ -263,4 +263,9 @@ export const feed = {
     emptySponsorsTitle: 'Сохранённых предложений пока нет',
     emptySponsorsBody: 'Сохрани предложение спонсора, чтобы оно было здесь.',
   },
+  starterTitle: 'Здесь появятся твои люди',
+  starterBody: 'Подпишись на троих, чтобы заполнить ленту.',
+  starterProgress: '{{count}} из 3 подписок',
+  starterAthletes: 'Спортсмены как ты',
+  starterClips: 'А пока — популярные ролики',
 };

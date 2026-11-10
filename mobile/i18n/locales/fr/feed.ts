@@ -256,4 +256,9 @@ export const feed = {
     emptySponsorsTitle: 'Aucun partenariat enregistré',
     emptySponsorsBody: 'Enregistre l’appel d’un sponsor pour le garder ici.',
   },
+  starterTitle: 'Tes contacts apparaissent ici',
+  starterBody: 'Suis 3 personnes pour remplir ton fil.',
+  starterProgress: '{{count}} sur 3 suivis',
+  starterAthletes: 'Des athlètes comme toi',
+  starterClips: 'En attendant, les vidéos du moment',
 };

@@ -14,6 +14,7 @@ import {
   SegmentedControl,
   SkeletonList,
 } from '@/components/ui';
+import { FollowingStarter } from '@/components/feed/FollowingStarter';
 import { PostCard } from '@/components/feed/PostCard';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import {
@@ -286,15 +287,8 @@ export default function HomeScreen() {
       return <ErrorState message={feed.error} onRetry={feed.reload} />;
     }
     if (scope === 'following') {
-      return (
-        <EmptyState
-          icon={<Users size={26} color={colors.textMuted} />}
-          title={t('feed.emptyFollowingTitle')}
-          body={t('feed.emptyFollowingBody')}
-          actionLabel={t('feed.emptyFollowingAction')}
-          onAction={() => router.push(Routes.discover)}
-        />
-      );
+      /* Following nobody yet: people to follow and clips to watch, not a dead end. */
+      return <FollowingStarter onFollowed={feed.reload} />;
     }
     return (
       <EmptyState

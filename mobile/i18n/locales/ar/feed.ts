@@ -279,4 +279,9 @@ export const feed = {
     emptySponsorsTitle: 'لا رعايات محفوظة بعد',
     emptySponsorsBody: 'احفظ طلب رعاية من أحد الرعاة للاحتفاظ به هنا.',
   },
+  starterTitle: 'هنا يظهر من تتابعهم',
+  starterBody: 'تابِع 3 لتمتلئ صفحتك.',
+  starterProgress: 'تمت متابعة {{count}} من 3',
+  starterAthletes: 'رياضيون مثلك',
+  starterClips: 'في الأثناء، مقاطع رائجة',
 };
