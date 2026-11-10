@@ -250,6 +250,12 @@ export const feed = {
   starterTitle: 'Your people show up here',
   starterBody: 'Follow 3 to fill your feed.',
   starterProgress: '{{count}} of 3 followed',
+  starterMore_one: 'Nice, {{count}} more to go',
+  starterMore_other: 'Nice, {{count}} more to go',
+  starterCount: '{{count}} of 3',
+  starterDone: 'You’re all set',
+  starterDoneBody: 'Posts from the people you follow show up below.',
+  starterHide: 'Hide',
   starterAthletes: 'Athletes like you',
   starterClips: 'Meanwhile, trending clips',
 };

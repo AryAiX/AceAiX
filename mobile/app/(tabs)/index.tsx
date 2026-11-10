@@ -286,10 +286,8 @@ export default function HomeScreen() {
     if (feed.error && items.length === 0) {
       return <ErrorState message={feed.error} onRetry={feed.reload} />;
     }
-    if (scope === 'following') {
-      /* Following nobody yet: people to follow and clips to watch, not a dead end. */
-      return <FollowingStarter onFollowed={feed.reload} />;
-    }
+    /* Following: the starter sits in the header, above the (empty) list. */
+    if (scope === 'following') return undefined;
     return (
       <EmptyState
         icon={<Users size={26} color={colors.textMuted} />}
@@ -400,6 +398,10 @@ export default function HomeScreen() {
             <Reveal index={1}>
               <HomeSpotlight showChallenge={scope === 'for_you'} />
             </Reveal>
+            {scope === 'following' && !(feed.loading && items.length === 0) && !feed.error ? (
+              /* Follow 3 to get going. Stays while their posts arrive below. */
+              <FollowingStarter feedEmpty={items.length === 0} onFollowed={feed.reload} />
+            ) : null}
             {scope === 'for_you' ? (
               <Reveal index={2}>
                 <MatchedTrial />

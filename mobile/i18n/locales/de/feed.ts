@@ -249,6 +249,12 @@ export const feed = {
   starterTitle: 'Hier erscheinen deine Leute',
   starterBody: 'Folge 3, um deinen Feed zu füllen.',
   starterProgress: '{{count}} von 3 gefolgt',
+  starterMore_one: 'Super, noch 1',
+  starterMore_other: 'Super, noch {{count}}',
+  starterCount: '{{count}} von 3',
+  starterDone: 'Alles bereit',
+  starterDoneBody: 'Beiträge der Leute, denen du folgst, erscheinen unten.',
+  starterHide: 'Ausblenden',
   starterAthletes: 'Sportler wie du',
   starterClips: 'Inzwischen: angesagte Clips',
 };

@@ -259,6 +259,13 @@ export const feed = {
   starterTitle: 'Tes contacts apparaissent ici',
   starterBody: 'Suis 3 personnes pour remplir ton fil.',
   starterProgress: '{{count}} sur 3 suivis',
+  starterMore_one: 'Bien, plus que {{count}}',
+  starterMore_many: 'Bien, plus que {{count}}',
+  starterMore_other: 'Bien, plus que {{count}}',
+  starterCount: '{{count}} sur 3',
+  starterDone: 'C’est parti !',
+  starterDoneBody: 'Les publications des personnes que tu suis s’affichent ci-dessous.',
+  starterHide: 'Masquer',
   starterAthletes: 'Des athlètes comme toi',
   starterClips: 'En attendant, les vidéos du moment',
 };

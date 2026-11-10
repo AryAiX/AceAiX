@@ -261,6 +261,13 @@ export const feed = {
   starterTitle: 'Aquí aparece tu gente',
   starterBody: 'Sigue a 3 para llenar tu feed.',
   starterProgress: '{{count}} de 3 seguidos',
+  starterMore_one: '¡Bien! Te falta 1',
+  starterMore_many: '¡Bien! Te faltan {{count}}',
+  starterMore_other: '¡Bien! Te faltan {{count}}',
+  starterCount: '{{count}} de 3',
+  starterDone: '¡Todo listo!',
+  starterDoneBody: 'Las publicaciones de quienes sigues aparecen abajo.',
+  starterHide: 'Ocultar',
   starterAthletes: 'Deportistas como tú',
   starterClips: 'Mientras tanto, vídeos en tendencia',
 };

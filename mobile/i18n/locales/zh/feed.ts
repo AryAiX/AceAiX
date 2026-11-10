@@ -241,6 +241,11 @@ export const feed = {
   starterTitle: '你关注的人会出现在这里',
   starterBody: '关注 3 个人，填满你的动态。',
   starterProgress: '已关注 {{count}}/3',
+  starterMore_other: '不错，还差 {{count}} 位',
+  starterCount: '{{count}}/3',
+  starterDone: '全部就绪',
+  starterDoneBody: '你关注的人发布的内容会显示在下方。',
+  starterHide: '隐藏',
   starterAthletes: '和你相似的运动员',
   starterClips: '先看看热门短片',
 };
