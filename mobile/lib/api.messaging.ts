@@ -131,3 +131,43 @@ export async function setConversationMuted(
   }
   return next;
 }
+
+// ── Sent / Seen on the inbox ─────────────────────────────────────────────────
+
+export type Receipt = 'sent' | 'seen';
+
+/**
+ * For each conversation whose newest message is yours: whether the other
+ * person has opened it. Reads the messages you sent (which you can already
+ * read) — nothing on the server changes.
+ */
+export async function getInboxReceipts(
+  conversations: { id: string; last_message_at: string | null }[],
+  myId: string,
+): Promise<Record<string, Receipt>> {
+  const withMessages = conversations.filter((c) => c.last_message_at);
+  if (withMessages.length === 0) return {};
+  const lastAt = new Map(withMessages.map((c) => [c.id, new Date(c.last_message_at as string).getTime()]));
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('conversation_id, is_read, created_at')
+    .eq('sender_id', myId)
+    .in('conversation_id', withMessages.map((c) => c.id))
+    .order('created_at', { ascending: false })
+    .limit(Math.min(500, withMessages.length * 10));
+  if (error || !data) return {};
+
+  const out: Record<string, Receipt> = {};
+  const done = new Set<string>();
+  for (const row of data as { conversation_id: string; is_read: boolean; created_at: string }[]) {
+    if (done.has(row.conversation_id)) continue;
+    done.add(row.conversation_id);
+    const last = lastAt.get(row.conversation_id);
+    /* Yours is the newest message only if it is the one the inbox shows. */
+    if (last != null && Math.abs(new Date(row.created_at).getTime() - last) < 1000) {
+      out[row.conversation_id] = row.is_read ? 'seen' : 'sent';
+    }
+  }
+  return out;
+}

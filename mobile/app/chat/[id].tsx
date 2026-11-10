@@ -38,6 +38,8 @@ interface Row {
   continues: boolean;
   /** A day header is drawn above the first message of each calendar day. */
   dayHeader: string | null;
+  /** Only on your newest message: whether the other person has opened it. */
+  receipt: 'sent' | 'seen' | null;
 }
 
 export default function ChatScreen() {
@@ -81,6 +83,8 @@ export default function ChatScreen() {
 
   /** Server rows that arrived after the initial page (own sends and realtime). */
   const [appended, setAppended] = useState<Message[]>([]);
+  /** Messages the other person opened while this thread was on screen. */
+  const [seenIds, setSeenIds] = useState<Record<string, true>>({});
   /** Optimistic rows that do not exist on the server yet. */
   const [outbox, setOutbox] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -172,6 +176,22 @@ export default function ChatScreen() {
           if (row.sender_id !== myIdRef.current) markReadRef.current();
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          /* The other person opened the thread: your message now reads Seen. */
+          const row = payload.new as Message;
+          if (row?.id && row.is_read && row.sender_id === myIdRef.current) {
+            setSeenIds((current) => (current[row.id] ? current : { ...current, [row.id]: true }));
+          }
+        },
+      )
       .subscribe();
 
     return () => {
@@ -244,6 +264,11 @@ export default function ChatScreen() {
     // index i + 1 is the message visually above it.
     const newestFirst = [...chronological].reverse();
 
+    /* Your newest message that has reached the server carries the receipt. */
+    const receiptId = newestFirst.find(
+      (m) => !!myId && m.sender_id === myId && !m.status,
+    )?.id;
+
     return newestFirst.map((message, i) => {
       const newer = newestFirst[i - 1];
       const older = newestFirst[i + 1];
@@ -263,9 +288,15 @@ export default function ChatScreen() {
           !older || !sameDay(older.created_at, message.created_at)
             ? message.created_at
             : null,
+        receipt:
+          message.id === receiptId
+            ? message.is_read || seenIds[message.id]
+              ? 'seen'
+              : 'sent'
+            : null,
       };
     });
-  }, [history.data, appended, outbox, myId]);
+  }, [history.data, appended, outbox, myId, seenIds]);
 
   // ── Composer state ─────────────────────────────────────────────────────────
   const permissionReason: MessageBlockReason | null =
@@ -366,6 +397,7 @@ export default function ChatScreen() {
                   isOwn={item.isOwn}
                   showTime={item.showTime}
                   continues={item.continues}
+                  receipt={item.receipt}
                   onRetry={retry}
                 />
               </View>

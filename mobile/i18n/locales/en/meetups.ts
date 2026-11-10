@@ -29,6 +29,7 @@ export const meetups = {
   oneSportHint: 'One sport at a time here: meetup search looks up one sport.',
   anyLevel: 'Any level',
   anyDate: 'Any date',
+  anyDateHint: 'Every game coming up',
   fieldDay: 'Day',
   fieldTime: 'Time',
   timeHour: 'Hour',

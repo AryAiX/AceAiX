@@ -37,6 +37,7 @@ export const meetups = {
   oneSportHint: '这里一次选一个项目：约练搜索只按一个项目查找。',
   anyLevel: '不限水平',
   anyDate: '不限日期',
+  anyDateHint: '所有即将进行的比赛',
   fieldDay: '日期',
   fieldTime: '时间',
   timeHour: '小时',

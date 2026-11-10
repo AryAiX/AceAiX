@@ -4,7 +4,17 @@ import { useIsFocused, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CalendarDays, ChevronDown, MapPin, Plus, Users } from 'lucide-react-native';
+import {
+  CalendarCheck,
+  CalendarDays,
+  CalendarRange,
+  ChevronDown,
+  MapPin,
+  Plus,
+  Sparkles,
+  Users,
+} from 'lucide-react-native';
+import { dayRange, shortDay } from '@/lib/format';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useTabReselect } from '@/hooks/useTabReselect';
@@ -54,6 +64,13 @@ function windowRange(w: Window): { from: string | null; to: string | null } {
   if (w === 'month') end.setMonth(end.getMonth() + 1);
   return { from: now.toISOString(), to: end.toISOString() };
 }
+
+const WINDOW_ICONS: Record<Window, typeof CalendarDays> = {
+  any: Sparkles,
+  today: CalendarCheck,
+  week: CalendarRange,
+  month: CalendarDays,
+};
 
 export default function MeetupsScreen() {
   const endPad = useEndPadding();
@@ -113,6 +130,15 @@ export default function MeetupsScreen() {
     ],
     [t],
   );
+
+  /* The dates each choice covers, worked out on the phone. */
+  const windowHint = (w: Window): string => {
+    const now = new Date();
+    if (w === 'any') return t('meetups.anyDateHint');
+    if (w === 'today') return shortDay(now);
+    const range = windowRange(w);
+    return range.to ? dayRange(now, new Date(range.to)) : '';
+  };
 
   const openOne = useCallback(
     (id: string) => router.push(Routes.meetup(id)),
@@ -345,7 +371,15 @@ export default function MeetupsScreen() {
           ) : picking === 'when' ? (
             <OptionList
               selected={[when]}
-              rows={windows.map((w) => ({ key: w.value, label: w.label }))}
+              rows={windows.map((w) => ({
+                key: w.value,
+                label: w.label,
+                sublabel: windowHint(w.value),
+                icon: (color: string) => {
+                  const Icon = WINDOW_ICONS[w.value];
+                  return <Icon size={19} color={color} strokeWidth={2.2} />;
+                },
+              }))}
               onPick={(key) => {
                 setWhen(key as Window);
                 setPicking(null);

@@ -36,6 +36,7 @@ export const meetups = {
   oneSportHint: 'Здесь по одному виду спорта: поиск встреч ищет по одному виду.',
   anyLevel: 'Любой уровень',
   anyDate: 'Любая дата',
+  anyDateHint: 'Все предстоящие игры',
   fieldDay: 'День',
   fieldTime: 'Время',
   timeHour: 'Час',

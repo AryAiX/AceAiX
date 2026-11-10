@@ -35,6 +35,7 @@ export const meetups = {
   oneSportHint: 'Aquí, un deporte a la vez: la búsqueda de quedadas busca un solo deporte.',
   anyLevel: 'Cualquier nivel',
   anyDate: 'Cualquier fecha',
+  anyDateHint: 'Todos los partidos próximos',
   fieldDay: 'Día',
   fieldTime: 'Hora',
   timeHour: 'Hora',

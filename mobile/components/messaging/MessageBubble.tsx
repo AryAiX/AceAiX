@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { Clock, RotateCw } from 'lucide-react-native';
+import { Check, Clock, RotateCw } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
@@ -8,6 +8,7 @@ import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
 import { timeOfDay } from '@/lib/format';
 import type { ChatMessage } from '@/lib/api.messaging';
+import { DoubleCheck } from './DoubleCheck';
 
 interface Props {
   message: ChatMessage;
@@ -17,9 +18,11 @@ interface Props {
   /** Tighter corner joins this bubble to the one below it in the same run. */
   continues: boolean;
   onRetry?: (message: ChatMessage) => void;
+  /** Your newest message: one grey tick until it is opened, then two blue ticks. */
+  receipt?: 'sent' | 'seen' | null;
 }
 
-export function MessageBubble({ message, isOwn, showTime, continues, onRetry }: Props) {
+export function MessageBubble({ message, isOwn, showTime, continues, onRetry, receipt }: Props) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
   const t = useT();
@@ -84,7 +87,7 @@ export function MessageBubble({ message, isOwn, showTime, continues, onRetry }: 
         bubble
       )}
 
-      {showTime || sending || failed ? (
+      {showTime || sending || failed || receipt ? (
         <View
           style={{
             flexDirection: 'row',
@@ -104,6 +107,21 @@ export function MessageBubble({ message, isOwn, showTime, continues, onRetry }: 
                 ? t('messaging.sending')
                 : stamp}
           </Text>
+          {receipt && !sending && !failed ? (
+            <View
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}
+              accessibilityLabel={receipt === 'seen' ? t('messaging.receiptSeen') : t('messaging.receiptSent')}
+            >
+              {receipt === 'seen' ? (
+                <DoubleCheck size={13} color={colors.primary} />
+              ) : (
+                <Check size={13} color={colors.textMuted} strokeWidth={2.4} />
+              )}
+              <Text variant="overline" color={receipt === 'seen' ? colors.primary : colors.textMuted}>
+                {receipt === 'seen' ? t('messaging.receiptSeen') : t('messaging.receiptSent')}
+              </Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
     </View>

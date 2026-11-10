@@ -60,3 +60,25 @@ export function formatLocation(text: string | null | undefined, t: Translate): s
   if (!parsed.city) return country;
   return t('sponsorship.locationFormat', { city: parsed.city, country });
 }
+
+/** Countries with a short name everyone reads at a glance on a small card. */
+const SHORT_COUNTRY_KEYS: Record<string, string> = {
+  'United Arab Emirates': 'countries.unitedArabEmiratesShort',
+  'United States': 'countries.unitedStatesShort',
+  'United Kingdom': 'countries.unitedKingdomShort',
+  'Saudi Arabia': 'countries.saudiArabiaShort',
+};
+
+/**
+ * Like formatLocation, but with a short country where there is one
+ * ("Abu Dhabi, UAE"), so a place fits on one line of a card.
+ */
+export function formatLocationShort(text: string | null | undefined, t: Translate): string {
+  if (text == null) return '';
+  const parsed = parseLocation(text);
+  if (!parsed) return text;
+  const shortKey = SHORT_COUNTRY_KEYS[parsed.country];
+  const country = shortKey ? t(shortKey) : countryLabel(t, parsed.country);
+  if (!parsed.city) return country;
+  return t('sponsorship.locationFormat', { city: parsed.city, country });
+}

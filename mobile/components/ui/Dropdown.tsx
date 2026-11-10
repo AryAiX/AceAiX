@@ -1,11 +1,12 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, TextInput, View, type TextInputInstance } from 'react-native';
-import { Check, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
 import { isRTL } from './rtl';
 import { Text } from './Text';
+import { ChoiceRow } from './ChoiceRow';
 
 export interface DropdownOption {
   key: string;
@@ -207,16 +208,22 @@ export function Dropdown({
 
   const list = (
     <View
-      style={{
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: radii.lg,
-        backgroundColor: colors.surface,
-        overflow: 'hidden',
-        marginTop: spacing.xs,
-      }}
+      style={
+        inline
+          ? { marginTop: spacing.sm }
+          : {
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: radii.lg,
+              backgroundColor: colors.surface,
+              overflow: 'hidden',
+              marginTop: spacing.xs,
+              padding: 4,
+            }
+      }
     >
       <ScrollView
+        contentContainerStyle={{ gap: 4 }}
         style={{ maxHeight: inline ? undefined : LIST_MAX }}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
@@ -226,49 +233,18 @@ export function Dropdown({
             {t('common.noResults')}
           </Text>
         ) : null}
-        {visible.map((option, i) => {
-          const on = value.includes(option.key);
-          return (
-            <Pressable
-              key={option.key}
-              onPress={() => pick(option.key)}
-              accessibilityRole={multiple ? 'checkbox' : 'radio'}
-              accessibilityState={{ checked: on }}
-              accessibilityLabel={option.label}
-              testID={testID ? `${testID}-${option.key}` : undefined}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: spacing.md,
-                minHeight: 48,
-                paddingHorizontal: spacing.md,
-                backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
-                opacity: option.faded && !on ? 0.45 : 1,
-                borderTopWidth: i === 0 ? 0 : 1,
-                borderTopColor: colors.border,
-              })}
-            >
-              <View
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: multiple ? 7 : 11,
-                  borderWidth: 1.5,
-                  borderColor: on ? colors.primary : colors.borderStrong,
-                  backgroundColor: on ? colors.primary : 'transparent',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {on ? <Check size={14} color={colors.textOnBrand} strokeWidth={3} /> : null}
-              </View>
-              {option.emoji ? <Text style={{ fontSize: 17, lineHeight: 22 }}>{option.emoji}</Text> : null}
-              <Text variant={on ? 'bodyStrong' : 'body'} style={{ flex: 1 }} numberOfLines={1}>
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {visible.map((option) => (
+          <ChoiceRow
+            key={option.key}
+            label={option.label}
+            emoji={option.emoji}
+            faded={option.faded}
+            on={value.includes(option.key)}
+            multiple={multiple}
+            onPress={() => pick(option.key)}
+            testID={testID ? `${testID}-${option.key}` : undefined}
+          />
+        ))}
       </ScrollView>
     </View>
   );

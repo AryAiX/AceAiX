@@ -40,6 +40,7 @@ export const meetups = {
   oneSportHint: 'رياضة واحدة في كل مرة هنا: البحث عن اللقاءات يبحث عن رياضة واحدة.',
   anyLevel: 'أي مستوى',
   anyDate: 'أي تاريخ',
+  anyDateHint: 'كل المباريات القادمة',
   fieldDay: 'اليوم',
   fieldTime: 'الوقت',
   timeHour: 'الساعة',

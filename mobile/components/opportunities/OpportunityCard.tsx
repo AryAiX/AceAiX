@@ -1,18 +1,18 @@
 import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, Bookmark, MapPin } from 'lucide-react-native';
+import { BadgeCheck, Bookmark } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Card, IconButton, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { metaLine } from '@/lib/format';
-import { formatLocation } from '@/lib/location';
+import { formatLocationShort } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { SPORTS, opportunityTypeLabel, positionLabel, sportLabel } from '@/constants/sports';
 import type { Opportunity } from '@/types/models';
 import { ClubLogo } from './ClubLogo';
-import { DaysLeftTag, isClosed } from './DeadlineChip';
+import { DaysLeftTag, DaysLeftText, isClosed } from './DeadlineChip';
 import { MatchRing, explainMatch } from './MatchExplain';
 import { Tag } from './Tag';
 import { LogoColors } from '@/theme/tokens';
@@ -56,7 +56,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
     opportunity.org_name?.trim() ||
     t('opportunities.card.independent');
   const verified = poster ? poster.is_verified : opportunity.org_verified;
-  const place = formatLocation(opportunity.location, t);
+  const place = formatLocationShort(opportunity.location, t);
 
   const summary = metaLine(
     opportunity.title,
@@ -75,8 +75,11 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
       onPress={preview ? undefined : () => router.push(Routes.opportunity(opportunity.id))}
       accessibilityLabel={preview ? undefined : summary}
       accessibilityHint={preview ? undefined : t('opportunities.card.open')}
-      style={{ gap: spacing.md, opacity: closed ? 0.72 : 1 }}
+      style={{ gap: spacing.md, paddingVertical: spacing.md, opacity: closed ? 0.72 : 1 }}
     >
+      {/* Compact: the title and club, then one line of details (type tag,
+          sport, place), then the time left — every detail kept, at about
+          half the height of a chip per detail. */}
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
         {poster ? (
           <Avatar uri={poster.avatar_url} name={poster.full_name} size="md" />
@@ -96,6 +99,26 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
               <BadgeCheck size={14} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
             ) : null}
           </View>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.xs,
+              marginTop: spacing.sm,
+            }}
+          >
+            {typeLabel ? <Tag label={typeLabel} tone="warm" /> : null}
+            <Text variant="caption" tone="secondary" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {[emoji && sport ? `${emoji} ${sport}` : sport, position, place]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          </View>
+          {match ? null : (
+            <View style={{ marginTop: spacing.sm }}>
+              <DaysLeftText deadline={opportunity.deadline} />
+            </View>
+          )}
         </View>
 
         {onToggleSave ? (
@@ -120,18 +143,6 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
         ) : null}
       </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-        {typeLabel ? <Tag label={typeLabel} tone="warm" /> : null}
-        {sport ? <Tag label={emoji ? `${emoji} ${sport}` : sport} /> : null}
-        {position ? <Tag label={position} /> : null}
-        {place ? (
-          <Tag
-            label={place}
-            icon={<MapPin size={12} color={colors.textSecondary} strokeWidth={2.4} />}
-          />
-        ) : null}
-      </View>
-
       {/* The fit and the time left share one quiet line at the bottom: the
           match ring on the start side, the days-left tag on the end side. */}
       {match ? (
@@ -151,9 +162,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
           </Text>
           <DaysLeftTag deadline={opportunity.deadline} />
         </View>
-      ) : (
-        <DaysLeftTag deadline={opportunity.deadline} />
-      )}
+      ) : null}
 
       {footer}
     </Card>

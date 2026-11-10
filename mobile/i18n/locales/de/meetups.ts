@@ -38,6 +38,7 @@ export const meetups = {
   oneSportHint: 'Hier eine Sportart nach der anderen: Die Treffen-Suche sucht nach einer Sportart.',
   anyLevel: 'Jedes Niveau',
   anyDate: 'Jedes Datum',
+  anyDateHint: 'Alle anstehenden Spiele',
   fieldDay: 'Tag',
   fieldTime: 'Uhrzeit',
   timeHour: 'Stunde',

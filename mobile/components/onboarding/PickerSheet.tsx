@@ -1,9 +1,9 @@
 import React from 'react';
 import { FlatList, Pressable, View } from 'react-native';
-import { Check, ChevronDown, Search, X } from 'lucide-react-native';
+import { ChevronDown, Search, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Input, Sheet, Text } from '@/components/ui';
+import { ChoiceRow, Input, Sheet, Text } from '@/components/ui';
 
 /**
  * A field that shows the current choice and opens a searchable list.
@@ -81,6 +81,8 @@ export interface PickerRow {
   key: string;
   /** What the row says. */
   label: string;
+  /** A small icon in a tile at the start of the row, drawn in the given colour. */
+  icon?: (color: string) => React.ReactNode;
 }
 
 /**
@@ -120,38 +122,15 @@ export function PickerSheet({
   const theme = useTheme();
   const { colors, spacing } = theme;
 
-  const row = (item: PickerRow) => {
-    const on = item.key === selected;
-    return (
-      <Pressable
-        key={item.key}
-        onPress={() => onPick(item.key)}
-        accessibilityRole="button"
-        accessibilityState={{ selected: on }}
-        accessibilityLabel={item.label}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.sm,
-          minHeight: 48,
-          paddingHorizontal: spacing.sm,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.divider,
-          backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
-        })}
-      >
-        <Text
-          variant={on ? 'bodyStrong' : 'body'}
-          color={on ? colors.primary : colors.text}
-          numberOfLines={1}
-          style={{ flex: 1 }}
-        >
-          {item.label}
-        </Text>
-        {on ? <Check size={18} color={colors.primary} strokeWidth={2.6} /> : null}
-      </Pressable>
-    );
-  };
+  const row = (item: PickerRow) => (
+    <ChoiceRow
+      key={item.key}
+      label={item.label}
+      icon={item.icon}
+      on={item.key === selected}
+      onPress={() => onPick(item.key)}
+    />
+  );
 
   return (
     <Sheet
@@ -190,6 +169,7 @@ export function PickerSheet({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         initialNumToRender={20}
+        contentContainerStyle={{ gap: 4 }}
         style={{ flexShrink: 1 }}
       />
     </Sheet>
@@ -220,8 +200,6 @@ export function OptionList({
   emptyText?: string;
   testID?: string;
 }) {
-  const theme = useTheme();
-  const { colors, radii, spacing } = theme;
   const shown = rows.slice(0, limit);
   const all = extraRow ? [extraRow, ...shown] : shown;
 
@@ -234,56 +212,17 @@ export function OptionList({
   }
 
   return (
-    <View
-      testID={testID}
-      style={{
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: radii.md,
-        backgroundColor: colors.surface,
-        overflow: 'hidden',
-      }}
-    >
-      {all.map((item, index) => {
-        const on = selected.includes(item.key);
-        const sub = 'sublabel' in item ? (item as { sublabel?: string | null }).sublabel : null;
-        return (
-          <Pressable
-            key={item.key}
-            onPress={() => onPick(item.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-            accessibilityLabel={item.label}
-            style={({ pressed }) => ({
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-              minHeight: 46,
-              paddingHorizontal: spacing.md,
-              paddingVertical: 6,
-              borderTopWidth: index === 0 ? 0 : 1,
-              borderTopColor: colors.divider,
-              backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
-            })}
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                variant={on ? 'bodyStrong' : 'body'}
-                color={on ? colors.primary : colors.text}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              {sub ? (
-                <Text variant="caption" tone="muted" numberOfLines={1}>
-                  {sub}
-                </Text>
-              ) : null}
-            </View>
-            {on ? <Check size={18} color={colors.primary} strokeWidth={2.6} /> : null}
-          </Pressable>
-        );
-      })}
+    <View testID={testID} style={{ gap: 4 }}>
+      {all.map((item) => (
+        <ChoiceRow
+          key={item.key}
+          label={item.label}
+          sublabel={'sublabel' in item ? (item as { sublabel?: string | null }).sublabel : null}
+          icon={item.icon}
+          on={selected.includes(item.key)}
+          onPress={() => onPick(item.key)}
+        />
+      ))}
     </View>
   );
 }
