@@ -506,25 +506,20 @@ function ChallengeTicket({
             <Text variant="overline" color={flameInk} style={{ fontSize: 10 }} numberOfLines={1}>
               {t('challenges.homeTitle')}
             </Text>
-            <Text variant="bodyStrong" numberOfLines={1}>
+            <Text variant="bodyStrong" numberOfLines={2}>
               {challenge.title}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              {setBy ? (
-                <>
-                  <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
-                    {t('challenges.homeSetBy', { name: setBy })}
-                  </Text>
-                  {challenge.setter_verified ? <BadgeCheck size={12} color={colors.primary} /> : null}
-                  <Text variant="caption" tone="muted">
-                    ·
-                  </Text>
-                </>
-              ) : null}
-              <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
-                {entriesLine}
-              </Text>
-            </View>
+            {setBy ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+                  {setBy}
+                </Text>
+                {challenge.setter_verified ? <BadgeCheck size={12} color={colors.primary} /> : null}
+              </View>
+            ) : null}
+            <Text variant="caption" color={challenge.entry_count > 0 ? colors.textMuted : flameInk} numberOfLines={1}>
+              {entriesLine}
+            </Text>
           </View>
           {closeButton}
         </View>
@@ -534,7 +529,8 @@ function ChallengeTicket({
           accessible={false}
           importantForAccessibility="no-hide-descendants"
           style={{
-            width: 86,
+            width: 96,
+            paddingHorizontal: 8,
             alignItems: 'center',
             justifyContent: 'center',
             gap: 6,
@@ -571,10 +567,22 @@ function ChallengeTicket({
 
           {days != null && days >= 1 ? (
             <View style={{ alignItems: 'center' }}>
-              <Text variant="display" color={FLAME} style={{ fontSize: 28, lineHeight: 30 }}>
+              {/* Inter, not the condensed display face, so the number
+                  isn't squeezed. */}
+              <Text
+                color={FLAME}
+                style={{ fontFamily: theme.font.bold, fontSize: 30, lineHeight: 36, letterSpacing: -0.5 }}
+              >
                 {days}
               </Text>
-              <Text variant="overline" tone="muted" style={{ fontSize: 9 }} numberOfLines={1}>
+              <Text
+                variant="overline"
+                tone="muted"
+                style={{ fontSize: 9, letterSpacing: 0.4 }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
                 {t('challenges.homeStubDays', { count: days })}
               </Text>
             </View>
