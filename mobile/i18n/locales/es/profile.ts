@@ -314,6 +314,10 @@ export const profile = {
   notSet: 'sin definir',
 
   sectionSport: 'Tu deporte',
+
+  birthDate: 'Fecha de nacimiento',
+
+  birthDateHint: 'Solo una vez, para saber si un padre o madre debe aprobar algunas funciones. Solo tú la ves.',
   sectionAlsoPlays: 'Otros deportes',
   alsoPlaysHint: 'Hasta 3 deportes más que practicas a menudo.',
   alsoPlaysAdd: 'Añadir un deporte',

@@ -299,6 +299,10 @@ export const profile = {
   notSet: 'not set',
 
   sectionSport: 'Your sport',
+
+  birthDate: 'Date of birth',
+
+  birthDateHint: 'Needed once, so we know whether a parent has to approve some features. Only you can see it.',
   sectionAlsoPlays: 'Also plays',
   alsoPlaysHint: 'Up to 3 other sports you play often.',
   alsoPlaysAdd: 'Add a sport',

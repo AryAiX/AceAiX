@@ -291,7 +291,8 @@ export function HomeSpotlight({
               style={{
                 alignSelf: 'flex-start',
                 maxWidth: '100%',
-                backgroundColor: FLAME_LABEL,
+                /* The same green as the count on the bell. */
+                backgroundColor: colors.success,
                 borderRadius: 7,
                 paddingVertical: 5,
                 paddingHorizontal: 9,

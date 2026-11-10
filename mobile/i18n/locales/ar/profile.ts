@@ -321,6 +321,10 @@ export const profile = {
   notSet: 'غير محدّدة',
 
   sectionSport: 'رياضتك',
+
+  birthDate: 'تاريخ الميلاد',
+
+  birthDateHint: 'نحتاجه مرة واحدة لنعرف إن كانت بعض الميزات تحتاج موافقة وليّ الأمر. لا يراه أحد غيرك.',
   sectionAlsoPlays: 'رياضات أخرى',
   alsoPlaysHint: 'حتى 3 رياضات أخرى تمارسها كثيراً.',
   alsoPlaysAdd: 'أضف رياضة',

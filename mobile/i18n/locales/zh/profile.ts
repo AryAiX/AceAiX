@@ -288,6 +288,10 @@ export const profile = {
   notSet: '未填写',
 
   sectionSport: '你的项目',
+
+  birthDate: '出生日期',
+
+  birthDateHint: '只需填写一次，用来判断某些功能是否需要家长同意。只有你能看到。',
   sectionAlsoPlays: '其他运动',
   alsoPlaysHint: '最多添加 3 项你经常参与的其他运动。',
   alsoPlaysAdd: '添加运动',

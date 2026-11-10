@@ -203,8 +203,8 @@ function CoachSide({ data, onChanged }: { data: MyCoaching; onChanged: () => voi
       <View>
         <SectionHeader
           title={t('coaching.services')}
-          action={t('coaching.newService')}
-          onAction={() => router.push(Routes.coachingService)}
+          action={data.services.length > 0 ? t('coaching.newService') : undefined}
+          onAction={data.services.length > 0 ? () => router.push(Routes.coachingService) : undefined}
         />
         {data.services.length === 0 ? (
           <EmptyState
@@ -266,8 +266,8 @@ function CoachSide({ data, onChanged }: { data: MyCoaching; onChanged: () => voi
       <View>
         <SectionHeader
           title={t('coaching.calendar')}
-          action={activeServices.length > 0 ? t('coaching.addTimes') : undefined}
-          onAction={activeServices.length > 0 ? () => router.push(Routes.coachingSlots) : undefined}
+          action={activeServices.length > 0 && days.length > 0 ? t('coaching.addTimes') : undefined}
+          onAction={activeServices.length > 0 && days.length > 0 ? () => router.push(Routes.coachingSlots) : undefined}
         />
         {days.length === 0 ? (
           <EmptyState
@@ -489,8 +489,9 @@ function BookingsSide({
       <View>
         <SectionHeader
           title={showTitle ? t('coaching.myBookings') : t('coaching.upcoming')}
-          action={t('coaching.findCoach')}
-          onAction={onFind}
+          /* With nothing booked, the empty card's button is the one way in. */
+          action={upcoming.length > 0 ? t('coaching.findCoach') : undefined}
+          onAction={upcoming.length > 0 ? onFind : undefined}
         />
         {upcoming.length === 0 ? (
           <EmptyState

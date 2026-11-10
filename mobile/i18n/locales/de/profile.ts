@@ -299,6 +299,10 @@ export const profile = {
   notSet: 'nicht gesetzt',
 
   sectionSport: 'Deine Sportart',
+
+  birthDate: 'Geburtsdatum',
+
+  birthDateHint: 'Einmal nötig, damit wir wissen, ob ein Elternteil manche Funktionen freigeben muss. Nur du siehst es.',
   sectionAlsoPlays: 'Weitere Sportarten',
   alsoPlaysHint: 'Bis zu 3 weitere Sportarten, die du oft betreibst.',
   alsoPlaysAdd: 'Sportart hinzufügen',

@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
   Brain,
-  CalendarClock,
   Clock,
   Compass,
   EyeOff,
@@ -40,6 +39,7 @@ import { Confetti } from '@/components/celebrate/Confetti';
 import { InfoNote } from '@/components/settings/Notes';
 import { SubScoreBar } from '@/components/intelligence/shared';
 import { useAsync } from '@/hooks/useAsync';
+import { BirthDateForm } from '@/components/profile/BirthDateForm';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { Routes } from '@/lib/routes';
@@ -123,15 +123,9 @@ export default function SportFitScreen() {
         />
       );
     } else if (data.consent === 'age_unknown') {
-      body = (
-        <EmptyState
-          icon={<CalendarClock size={26} color={colors.textMuted} />}
-          title={t('sportFit.consentAgeUnknownTitle')}
-          body={t('sportFit.consentAgeUnknownBody')}
-          actionLabel={t('sportFit.consentAgeUnknownAction')}
-          onAction={() => router.push(Routes.editProfile)}
-        />
-      );
+      /* No birth date saved (an older account): ask for it right here,
+         with the same picker as sign-up, then open the games. */
+      body = <BirthDateForm onSaved={() => void state.reload()} />;
     } else {
       body = (
         <EmptyState

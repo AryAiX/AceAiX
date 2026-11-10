@@ -325,8 +325,8 @@ export function SponsorshipPortal({
           <View>
             <SectionHeader
               title={t('sponsorship.myCalls')}
-              action={data.gate === 'ok' ? t('sponsorship.newCall') : undefined}
-              onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipCall) : undefined}
+              action={data.gate === 'ok' && data.calls.length > 0 ? t('sponsorship.newCall') : undefined}
+              onAction={data.gate === 'ok' && data.calls.length > 0 ? () => router.push(Routes.sponsorshipCall) : undefined}
             />
             {data.calls.length === 0 ? (
               <EmptyState

@@ -305,6 +305,10 @@ export const profile = {
   notSet: 'non renseigné',
 
   sectionSport: 'Ton sport',
+
+  birthDate: 'Date de naissance',
+
+  birthDateHint: 'Une seule fois, pour savoir si un parent doit approuver certaines fonctions. Toi seul la vois.',
   sectionAlsoPlays: 'Autres sports',
   alsoPlaysHint: "Jusqu'à 3 autres sports que tu pratiques souvent.",
   alsoPlaysAdd: 'Ajouter un sport',

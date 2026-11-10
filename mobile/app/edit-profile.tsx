@@ -32,8 +32,10 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { BirthDateForm } from '@/components/profile/BirthDateForm';
 import {
   addCustomCity,
+  getMyChallengeViewer,
   getMyProfile,
   refreshMyTalentScore,
   updateAthleteProfile,
@@ -127,6 +129,9 @@ export default function EditProfileScreen() {
   const { profile, refreshProfile } = useAuth();
 
   const bundle = useAsync(() => getMyProfile(), []);
+  /* Older accounts may have no birth date saved; offer to add it here. */
+  const birth = useAsync(() => getMyChallengeViewer(), []);
+  const [birthSheet, setBirthSheet] = useState(false);
   // Prefer the profile bundle's role once it has loaded. Until then, the
   // signed-in account from auth is enough to start the credentials read.
   const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
@@ -740,6 +745,34 @@ export default function EditProfileScreen() {
           </Pressable>
         </View>
       </View>
+
+      {hasAthlete && birth.data && !birth.data.birthDate ? (
+        /* Only while none is saved: it is never a way to change a birth date. */
+        <View>
+          <SectionHeader title={t('profile.birthDate')} />
+          <Pressable
+            onPress={() => setBirthSheet(true)}
+            accessibilityRole="button"
+            testID="edit-profile-birth-date"
+          >
+            <Input
+              placeholder={t('auth.signUp.dobChoose')}
+              value=""
+              hint={t('profile.birthDateHint')}
+              editable={false}
+              pointerEvents="none"
+            />
+          </Pressable>
+          <Sheet visible={birthSheet} onClose={() => setBirthSheet(false)} title={t('profile.birthDate')}>
+            <BirthDateForm
+              onSaved={() => {
+                setBirthSheet(false);
+                void birth.reload();
+              }}
+            />
+          </Sheet>
+        </View>
+      ) : null}
 
       {hasAthlete ? (
         <>
