@@ -201,9 +201,9 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
             borderRadius: m.height / 2,
             /* The shadow lives on this view; the glass inside it clips. */
             shadowColor: dark ? '#000000' : '#14143C',
-            shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: dark ? 0.5 : 0.16,
-            shadowRadius: 22,
+            shadowOffset: { width: 0, height: 14 },
+            shadowOpacity: dark ? 0.6 : 0.24,
+            shadowRadius: 26,
             elevation: 10,
           }}
           testID="tab-dock"
@@ -216,14 +216,16 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
             }}
           >
             <BlurView intensity={90} tint={dark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-            {/* Mostly solid, with a soft shine from top to bottom: the page
-                shows through only as a tint, never as readable text. */}
+            {/* Soft grey, a step darker than the page so the dock stands apart,
+                with a gentle shine from top to bottom. The page shows through
+                only as a tint, never as readable text. */}
             <LinearGradient
               colors={
                 dark
-                  ? (['rgba(58,65,82,0.95)', 'rgba(42,47,60,0.95)'] as const)
-                  : (['rgba(250,249,254,0.98)', 'rgba(241,240,249,0.97)'] as const)
+                  ? (['rgba(74,82,103,0.96)', 'rgba(58,65,85,0.96)', 'rgba(44,50,67,0.96)'] as const)
+                  : (['rgba(237,235,245,0.97)', 'rgba(224,222,235,0.97)', 'rgba(207,204,223,0.97)'] as const)
               }
+              locations={[0, 0.45, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -236,19 +238,43 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                 left: m.height / 2,
                 right: m.height / 2,
                 height: 1,
-                backgroundColor: dark ? 'rgba(255,255,255,0.16)' : '#FFFFFF',
+                backgroundColor: dark ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.95)',
               }}
             />
+            {/* A shaded bottom edge, so the dock reads as raised and lit from above. */}
+            <LinearGradient
+              pointerEvents="none"
+              colors={
+                dark
+                  ? (['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)'] as const)
+                  : (['rgba(22,19,39,0)', 'rgba(22,19,39,0.10)'] as const)
+              }
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 12 }}
+            />
           </View>
-          {/* The rim, one colour all round: two colours on a pill this round
-              meet in a visible seam at each end. */}
+          {/* A polished rim: a bright ring on the edge and a fine dark ring just
+              outside it. Each ring is one colour all round, because two colours
+              on a pill this round meet in a visible seam at each end. */}
           <View
             pointerEvents="none"
             style={{
               ...StyleSheet.absoluteFill,
               borderRadius: m.height / 2,
               borderWidth: 1,
-              borderColor: dark ? 'rgba(255,255,255,0.10)' : 'rgba(22,19,39,0.07)',
+              borderColor: dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.75)',
+            }}
+          />
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: -1,
+              left: -1,
+              right: -1,
+              bottom: -1,
+              borderRadius: m.height / 2 + 1,
+              borderWidth: 1,
+              borderColor: dark ? 'rgba(0,0,0,0.35)' : 'rgba(22,19,39,0.09)',
             }}
           />
 
@@ -274,15 +300,15 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                   borderRadius: 27,
                   /* Raised out of the dock: a soft shadow under it. */
                   shadowColor: '#161327',
-                  shadowOffset: { width: 0, height: 5 },
-                  shadowOpacity: dark ? 0.45 : 0.16,
-                  shadowRadius: 8,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: dark ? 0.6 : 0.24,
+                  shadowRadius: 10,
                   elevation: 4,
                 }}
               >
                 {/* A pebble: white, lit from the top, with a bright top edge. */}
                 <LinearGradient
-                  colors={dark ? (['#454C5E', '#363C4C'] as const) : (['#FFFFFF', '#F5F4FB'] as const)}
+                  colors={dark ? (['#66708C', '#4C5570'] as const) : (['#FFFFFF', '#F1F0F8'] as const)}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={{
@@ -312,7 +338,7 @@ export function DockTabBar({ state, descriptors, navigation, hidden }: Props) {
                 >
                   {options.tabBarIcon?.({
                     focused,
-                    color: focused ? colors.primary : colors.textMuted,
+                    color: focused ? colors.primary : dark ? '#B5BACB' : '#5E5878',
                     size: 23,
                   })}
                 </Pressable>

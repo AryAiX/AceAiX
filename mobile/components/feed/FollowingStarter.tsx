@@ -121,7 +121,6 @@ export function FollowingStarter({
   const showPeople = feedEmpty || !done;
   if (!showWelcome && !showPeople && !feedEmpty) return null;
   const shown = Math.min(count, GOAL);
-  const remaining = GOAL - shown;
   const list = (people.data ?? []).filter((athlete) => !followed[athlete.user_id]);
 
   const card = { backgroundColor: colors.surface, borderRadius: radii.lg, ...theme.elevation(1) };
