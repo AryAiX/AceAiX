@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { Text } from '@/components/ui';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
+import { LayoutToggle, useProfileLayout } from './LayoutToggle';
 
 export type ProfileTab = 'posts' | 'highlights' | 'career';
 
@@ -17,9 +18,8 @@ export function toProfileTab(value: unknown, fallback: ProfileTab = 'posts'): Pr
 }
 
 /**
- * Posts · Highlights · Career as text tabs with an underline under the open
- * one, over a hairline — lighter than a switch, so the profile's sections read
- * as pages of one profile rather than as a setting.
+ * Posts · Best of · Career as a segmented bar: equal parts, the open one
+ * raised with a blue dot, and the Grid ⇄ Scroll switch at the end.
  */
 export function ProfileTabs({
   value,
@@ -31,6 +31,7 @@ export function ProfileTabs({
   const t = useT();
   const theme = useTheme();
   const { colors, spacing } = theme;
+  const [layout, setLayout] = useProfileLayout();
   const options: { value: ProfileTab; label: string }[] = [
     { value: 'posts', label: t('common.posts') },
     { value: 'highlights', label: t('profile.tabHighlights') },
@@ -38,47 +39,61 @@ export function ProfileTabs({
   ];
 
   return (
-    <View
-      accessibilityRole="tablist"
-      testID="profile-tabs"
-      style={{
-        flexDirection: 'row',
-        gap: spacing.xl,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.divider,
-      }}
-    >
-      {options.map((opt) => {
-        const active = opt.value === value;
-        return (
-          <Pressable
-            key={opt.value}
-            onPress={() => onChange(opt.value)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
-            accessibilityLabel={opt.label}
-            testID={`profile-tabs-${opt.value}`}
-            hitSlop={{ top: 8, bottom: 0, left: 8, right: 8 }}
-            style={{ paddingVertical: spacing.sm, minHeight: 40, justifyContent: 'center' }}
-          >
-            <Text variant="captionStrong" color={active ? colors.primary : colors.textMuted}>
-              {opt.label}
-            </Text>
-            {/* The underline sits on the hairline, so it reads as part of it. */}
-            <View
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                bottom: -1,
-                height: 2,
-                borderRadius: 1,
-                backgroundColor: active ? colors.primary : 'transparent',
-              }}
-            />
-          </Pressable>
-        );
-      })}
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+      {/* One soft bar split into equal parts; the open part rises as a card
+          with a small blue dot. Follows light and dark mode. */}
+      <View
+        accessibilityRole="tablist"
+        testID="profile-tabs"
+        style={{
+          flex: 1,
+          flexDirection: 'row',
+          padding: 4,
+          borderRadius: 14,
+          backgroundColor: colors.surfaceAlt,
+        }}
+      >
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <Pressable
+              key={opt.value}
+              onPress={() => onChange(opt.value)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={opt.label}
+              testID={`profile-tabs-${opt.value}`}
+              style={({ pressed }) => ({
+                flex: 1,
+                minHeight: 38,
+                borderRadius: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                paddingHorizontal: 4,
+                backgroundColor: active ? colors.surface : 'transparent',
+                opacity: pressed && !active ? 0.7 : 1,
+                ...(active ? theme.elevation(1) : null),
+              })}
+            >
+              {active ? (
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary }} />
+              ) : null}
+              <Text
+                variant="bodyStrong"
+                color={active ? colors.text : colors.textMuted}
+                numberOfLines={1}
+                style={{ flexShrink: 1 }}
+              >
+                {opt.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {/* Grid ⇄ Scroll, for the tabs that have a grid. */}
+      {value !== 'career' ? <LayoutToggle value={layout} onChange={setLayout} /> : null}
     </View>
   );
 }

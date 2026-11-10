@@ -209,7 +209,7 @@ export const opportunities = {
     whatTheySee: 'What they will see',
     seeProfile: 'Your name and profile',
     seeScore: 'Your Talent Score',
-    seeHighlights: 'Your highlights and stats',
+    seeHighlights: 'Your Best of clips and stats',
     seeMessage: 'The message you write above',
     guardianNotice: 'Your parent or guardian will be able to see applications you send.',
   },

@@ -377,4 +377,13 @@ export const profile = {
   playerCardFailed: 'Impossible de créer la carte. Réessaie dans un instant.',
   playerCardShare: 'Partager',
   playerCardSave: 'Enregistrer l’image',
+  layoutGrid: 'Afficher en grille',
+  layoutScroll: 'Afficher en liste',
+  morePosts: 'Voir plus de publications',
+  addToBestOfNamed: 'Ajouter aux temps forts de {{name}}',
+  bestOfNamed: 'Temps forts de {{name}}',
+  clipCount_one: '{{count}} vidéo',
+  clipCount_many: '{{count}} vidéos',
+  clipCount_other: '{{count}} vidéos',
+  addClip: 'Ajouter une vidéo',
 };

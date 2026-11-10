@@ -180,7 +180,7 @@ export const discover = {
     caption: 'Top talent scores in {{scope}}. Scores move as profiles grow.',
     everySport: 'every sport',
     scopeInCountry: '{{sport}}, {{country}}',
-    keepBuilding: 'Every highlight, stat and verification you add moves your score. Keep building.',
+    keepBuilding: 'Every Best of clip, stat and verification you add moves your score. Keep building.',
     emptyTitle: 'Nothing on this board yet',
     emptyBody: 'Try another sport or country — or be the first one here.',
     you: 'You',

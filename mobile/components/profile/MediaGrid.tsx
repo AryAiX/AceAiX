@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, LayoutChangeEvent, Pressable, View } from 'react-native';
-import { ImageOff, Play, Plus } from 'lucide-react-native';
+import { BadgeCheck, Eye, Heart, ImageOff, MessageCircle, Play, Plus } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
-import { RemoteImage, Text } from '@/components/ui';
+import { Avatar, RemoteImage, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 
 export interface MediaTile {
@@ -15,6 +15,32 @@ export interface MediaTile {
   caption?: string | null;
   /** Your own grid only: your Talent Score on the day this post went up. */
   score?: number | null;
+  /** Scroll view only: when it went up ("3d", "12 Nov 2026"). */
+  when?: string | null;
+  /** Scroll view only: likes and comments, for posts. */
+  likes?: number | null;
+  comments?: number | null;
+  /** Scroll view only: a clip's length in seconds. */
+  durationSeconds?: number | null;
+  /** Scroll view only: how many times a clip has been watched. */
+  views?: number | null;
+}
+
+/** Whose clips these are: shown at the top of each scroll card, like Home. */
+export interface MediaAuthor {
+  name: string;
+  avatar: string | null;
+  verified?: boolean;
+  score?: number | null;
+  /** "Judo · Martial arts" */
+  meta?: string | null;
+}
+
+export type MediaLayout = 'grid' | 'scroll';
+
+function clipLength(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 interface Props {
@@ -26,6 +52,11 @@ interface Props {
   addLabel?: string;
   adding?: boolean;
   columns?: number;
+  /** "scroll": one big card per item, top to bottom, instead of the square grid. */
+  layout?: MediaLayout;
+  author?: MediaAuthor | null;
+  /** A small label on each scroll card, e.g. "Best of". */
+  badge?: string | null;
 }
 
 /* A video file is not a picture: shown as an image it draws nothing. */
@@ -43,6 +74,9 @@ export function MediaGrid({
   addLabel,
   adding = false,
   columns = 3,
+  layout = 'grid',
+  author = null,
+  badge = null,
 }: Props) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -53,8 +87,15 @@ export function MediaGrid({
 
   const addText = addLabel ?? t('profile.addHighlight');
 
-  const gap = spacing.sm;
+  const scroll = layout === 'scroll';
+  const gap = scroll ? spacing.md : spacing.sm;
   const size = width > 0 ? (width - gap * (columns - 1)) / columns : 0;
+  /* In the scroll view each item is the full width, a little taller than wide. */
+  /* Scroll cards are laid out like Home's post cards: a padded card with the
+     title on top and the picture inset inside it. */
+  const inset = spacing.md;
+  const tileW = scroll ? Math.max(0, width - inset * 2) : size;
+  const tileH = scroll ? Math.round(tileW * 1.15) : size;
 
   const onLayout = (event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width);
 
@@ -73,7 +114,7 @@ export function MediaGrid({
   let textCount = 0;
 
   return (
-    <View onLayout={onLayout} style={{ flexDirection: 'row', flexWrap: 'wrap', gap }}>
+    <View onLayout={onLayout} style={{ flexDirection: scroll ? 'column' : 'row', flexWrap: scroll ? 'nowrap' : 'wrap', gap }}>
       {onAdd ? (
         <Pressable
           onPress={onAdd}
@@ -82,8 +123,9 @@ export function MediaGrid({
           accessibilityLabel={addText}
           accessibilityState={{ busy: adding }}
           style={({ pressed }) => ({
-            width: size || undefined,
-            height: size || undefined,
+            width: (scroll ? width : size) || undefined,
+            height: (scroll ? 64 : size) || undefined,
+            flexDirection: scroll ? 'row' : 'column',
             borderRadius: radii.md,
             borderWidth: 1.5,
             borderStyle: 'dashed',
@@ -120,9 +162,9 @@ export function MediaGrid({
             ? quoteColours[textCount++ % quoteColours.length]
             : null;
         const videoTile = !picture && !!tile.isVideo;
-        return (
+        const media = (
         <Pressable
-          key={tile.id}
+          key={scroll ? undefined : tile.id}
           onPress={onPressTile ? () => onPressTile(tile.id) : undefined}
           onLongPress={onLongPressTile ? () => onLongPressTile(tile.id) : undefined}
           disabled={!onPressTile && !onLongPressTile}
@@ -131,8 +173,10 @@ export function MediaGrid({
             tile.caption || t(tile.isVideo ? 'profile.videoClipA11y' : 'profile.photoA11y')
           }
           style={({ pressed }) => ({
-            width: size || undefined,
-            height: size || undefined,
+            width: tileW || undefined,
+            /* A text post in the scroll view is only as tall as its words. */
+            height: scroll && quote ? undefined : tileH || undefined,
+            minHeight: scroll && quote ? 140 : undefined,
             borderRadius: radii.md,
             overflow: 'hidden',
             backgroundColor: videoTile ? VIDEO_TILE : quote ? theme.alpha(quote.tint, 0.12) : colors.surfaceAlt,
@@ -180,7 +224,7 @@ export function MediaGrid({
               <Text variant="title" color={quote.ink} style={{ fontSize: 34, lineHeight: 34 }} allowFontScaling={false}>
                 “
               </Text>
-              <Text variant="bodyStrong" color={colors.text} numberOfLines={4}>
+              <Text variant="bodyStrong" color={colors.text} numberOfLines={scroll ? 8 : 4}>
                 {tile.caption}
               </Text>
             </View>
@@ -252,6 +296,106 @@ export function MediaGrid({
             </View>
           ) : null}
         </Pressable>
+        );
+        if (!scroll) return media;
+
+        /* The scroll view: a card like Home's: title and date on top, the
+           picture inset, then likes / comments or the clip length. */
+        const hasDetails =
+          tile.likes != null || tile.comments != null || tile.durationSeconds != null || tile.views != null;
+        return (
+          <View
+            key={tile.id}
+            style={{
+              width: width || undefined,
+              borderRadius: radii.lg,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: inset,
+              gap: spacing.sm,
+              ...theme.elevation(1),
+            }}
+          >
+            {author ? (
+              /* The same top row as a post on Home: photo, name, sport and when. */
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <Avatar uri={author.avatar} name={author.name} size="sm" score={author.score ?? undefined} />
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {author.name}
+                    </Text>
+                    {author.verified ? <BadgeCheck size={14} color={colors.primary} /> : null}
+                  </View>
+                  <Text variant="caption" tone="muted" numberOfLines={1}>
+                    {[author.meta, tile.when].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                {badge ? (
+                  <View
+                    style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                      borderRadius: 8,
+                      backgroundColor: theme.alpha(theme.play.flame, 0.14),
+                    }}
+                  >
+                    <Text variant="captionStrong" color={theme.play.flame} style={{ fontSize: 11 }}>
+                      {badge}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            {tile.caption && !quote ? (
+              <Text variant="body" numberOfLines={3}>
+                {tile.caption}
+              </Text>
+            ) : null}
+            {!author && tile.when ? (
+              <Text variant="caption" tone="muted">
+                {tile.when}
+              </Text>
+            ) : null}
+            {media}
+            {hasDetails ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.lg, paddingTop: 2 }}>
+                {tile.likes != null ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Heart size={18} color={colors.textSecondary} />
+                    <Text variant="captionStrong" tone="secondary">
+                      {tile.likes}
+                    </Text>
+                  </View>
+                ) : null}
+                {tile.comments != null ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <MessageCircle size={18} color={colors.textSecondary} />
+                    <Text variant="captionStrong" tone="secondary">
+                      {tile.comments}
+                    </Text>
+                  </View>
+                ) : null}
+                {tile.views != null ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Eye size={18} color={colors.textSecondary} />
+                    <Text variant="captionStrong" tone="secondary">
+                      {tile.views}
+                    </Text>
+                  </View>
+                ) : null}
+                {tile.durationSeconds != null && tile.durationSeconds > 0 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Play size={15} color={colors.textSecondary} />
+                    <Text variant="captionStrong" tone="secondary">
+                      {clipLength(tile.durationSeconds)}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
         );
       })}
     </View>

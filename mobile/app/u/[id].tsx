@@ -23,7 +23,8 @@ import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
 import { getProfile, unblockUser } from '@/lib/api';
 import { didIBlock } from '@/lib/api.profile';
-import { compactNumber, displayName } from '@/lib/format';
+import { compactNumber, displayName, metaLine } from '@/lib/format';
+import { positionLabel, sportLabel } from '@/constants/sports';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -247,7 +248,18 @@ export default function PublicProfileScreen() {
         {!athlete || tab === 'posts' ? (
           <PostsTab userId={data.user.id} isSelf={isSelf} refreshKey={childKey} />
         ) : tab === 'highlights' ? (
-          <HighlightsTab athleteId={athlete.id} isSelf={isSelf} refreshKey={childKey} />
+          <HighlightsTab
+            athleteId={athlete.id}
+            isSelf={isSelf}
+            refreshKey={childKey}
+            author={{
+              name: displayName(data.user.full_name),
+              avatar: data.user.avatar_url ?? null,
+              verified: !!data.user.is_verified,
+              score: data.score?.overall ?? null,
+              meta: metaLine(positionLabel(t, athlete.position), sportLabel(t, athlete.sport)),
+            }}
+          />
         ) : (
           <CareerTab
             athleteId={athlete.id}

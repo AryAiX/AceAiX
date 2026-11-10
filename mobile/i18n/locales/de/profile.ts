@@ -370,4 +370,12 @@ export const profile = {
   playerCardFailed: 'Die Karte ließ sich nicht erstellen. Versuch es gleich noch einmal.',
   playerCardShare: 'Teilen',
   playerCardSave: 'Bild speichern',
+  layoutGrid: 'Als Raster zeigen',
+  layoutScroll: 'Untereinander zeigen',
+  morePosts: 'Mehr Beiträge zeigen',
+  addToBestOfNamed: 'Zu den Highlights von {{name}} hinzufügen',
+  bestOfNamed: 'Highlights von {{name}}',
+  clipCount_one: '{{count}} Clip',
+  clipCount_other: '{{count}} Clips',
+  addClip: 'Clip hinzufügen',
 };

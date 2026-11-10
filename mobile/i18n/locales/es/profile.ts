@@ -385,4 +385,13 @@ export const profile = {
   playerCardFailed: 'No pudimos crear la tarjeta. Inténtalo de nuevo en un momento.',
   playerCardShare: 'Compartir',
   playerCardSave: 'Guardar imagen',
+  layoutGrid: 'Ver en cuadrícula',
+  layoutScroll: 'Ver en lista',
+  morePosts: 'Ver más publicaciones',
+  addToBestOfNamed: 'Añadir a destacados de {{name}}',
+  bestOfNamed: 'Destacados de {{name}}',
+  clipCount_one: '{{count}} vídeo',
+  clipCount_many: '{{count}} vídeos',
+  clipCount_other: '{{count}} vídeos',
+  addClip: 'Añadir un vídeo',
 };

@@ -30,7 +30,8 @@ import { getMyProfile, getMyTalentScore } from '@/lib/api';
 import { getClubPage, getMyClubPages, managedClubPage } from '@/lib/api.club';
 import type { ClubType } from '@/lib/club';
 import { Routes } from '@/lib/routes';
-import { compactNumber } from '@/lib/format';
+import { compactNumber, displayName, metaLine } from '@/lib/format';
+import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -297,6 +298,13 @@ export default function MyProfileScreen() {
             onAutoAdded={() => router.setParams({ add: undefined })}
             onChanged={onTabDataChanged}
             tips={score.data?.tips ?? []}
+            author={{
+              name: displayName(data.user.full_name),
+              avatar: data.user.avatar_url ?? null,
+              verified: !!data.user.is_verified,
+              score: score.data?.overall ?? null,
+              meta: metaLine(positionLabel(t, athlete.position), sportLabel(t, athlete.sport)),
+            }}
           />
         ) : athlete ? (
           <CareerTab

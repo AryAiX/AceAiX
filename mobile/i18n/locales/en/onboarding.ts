@@ -177,7 +177,7 @@ export const onboarding = {
   tipsTitle: 'How to move it up',
   tipPoints: '+{{points}}',
   tipsEmpty:
-    'Post a highlight, add your stats, and get your club to back you up. Every piece you add moves the score.',
+    'Add a clip to your Best of, add your stats, and get your club to back you up. Every piece you add moves the score.',
   guardianRequested:
     'We emailed {{name}}. As soon as they approve, coaches can find you. Until then your profile stays private.',
   guardianPendingTitle: 'One thing left',

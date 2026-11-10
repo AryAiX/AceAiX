@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Clapperboard, ImagePlus, Play } from 'lucide-react-native';
+import { Clapperboard, ImagePlus, Play, Star } from 'lucide-react-native';
 
 import { useCachedVideoSource } from '@/lib/videoCache';
 
@@ -30,11 +30,12 @@ import {
 import { recordHighlightView } from '@/lib/api.explore';
 import { knownViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
-import { fullDate } from '@/lib/format';
+import { fullDate, relativeTime } from '@/lib/format';
 import { useT } from '@/i18n';
 import type { ScoreTip } from '@/types/models';
-import { MediaGrid, MediaTile } from './MediaGrid';
+import { MediaAuthor, MediaGrid, MediaTile } from './MediaGrid';
 import { HighlightSpotlight } from './HighlightSpotlight';
+import { useProfileLayout } from './LayoutToggle';
 
 /**
  * The fallback title stored when someone uploads without naming the clip.
@@ -56,6 +57,8 @@ interface Props {
   autoAdd?: boolean;
   /** Called once that has happened, so it doesn't happen again. */
   onAutoAdded?: () => void;
+  /** Whose profile this is, for the top row of each card in the scroll view. */
+  author?: MediaAuthor | null;
 }
 
 interface Picked {
@@ -74,11 +77,13 @@ export function HighlightsTab({
   tips = [],
   autoAdd = false,
   onAutoAdded,
+  author = null,
 }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const toast = useToast();
   const t = useT();
+  const [layout] = useProfileLayout();
 
   const media = useAsync(
     () => (athleteId ? getAthleteMedia(athleteId) : Promise.resolve([])),
@@ -133,7 +138,7 @@ export function HighlightsTab({
         durationSeconds &&
         durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
       ) {
-        toast.error('Highlights need to be 90 seconds or shorter.');
+        toast.error('Best of clips need to be 90 seconds or shorter.');
         return;
       }
       setPicked({
@@ -341,15 +346,43 @@ export function HighlightsTab({
         : item.display_url,
     isVideo: item.media_type === 'video' || item.media_type === 'highlight_reel',
     caption: item.title,
+    when: relativeTime(item.created_at),
+    durationSeconds: item.duration_seconds,
+    views: item.views_count,
   }));
 
   return (
     <View style={{ gap: spacing.md }}>
+      {author?.name ? (
+        /* "Best of <name>": whose best moments these are, with the count. */
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }} testID="best-of-title">
+          <View
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 10,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.alpha(theme.play.flame, theme.scheme === 'dark' ? 0.2 : 0.14),
+            }}
+          >
+            <Star size={15} color={theme.play.flame} fill={theme.play.flame} />
+          </View>
+          <Text variant="subheading" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+            {t('profile.bestOfNamed', { name: author.name })}
+          </Text>
+          <Text variant="caption" tone="muted">
+            {t('profile.clipCount', { count: items.length })}
+          </Text>
+        </View>
+      ) : null}
       <MediaGrid
+        layout={layout}
+        author={author}
         tiles={tiles}
         onAdd={isSelf ? pick : undefined}
         adding={uploading}
-        addLabel={t('profile.addHighlight')}
+        addLabel={author?.name ? t('profile.addClip') : t('profile.addHighlight')}
         onPressTile={(id) => setPreview(items.find((item) => item.id === id) ?? null)}
         onLongPressTile={
           isSelf

@@ -22,7 +22,7 @@ export const parentApproval = {
   messagingTitle: 'Let verified coaches and clubs message them',
   messagingBody: 'Only accounts AceAiX has verified can start a conversation, and other adults cannot.',
   mediaTitle: 'Let them share photos and clips',
-  mediaBody: 'Highlights and posts they choose to publish.',
+  mediaBody: 'Best of clips and posts they choose to publish.',
   assessmentsTitle: 'Let them take the Game Intelligence games',
   assessmentsBody:
     'Short timed games of reaction, focus and decisions, kept private, and not a medical assessment.',

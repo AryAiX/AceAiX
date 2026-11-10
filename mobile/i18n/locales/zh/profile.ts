@@ -359,4 +359,11 @@ export const profile = {
   playerCardFailed: '卡片生成失败，过一会儿再试。',
   playerCardShare: '分享',
   playerCardSave: '保存图片',
+  layoutGrid: '网格显示',
+  layoutScroll: '列表显示',
+  morePosts: '显示更多帖子',
+  addToBestOfNamed: '添加到 {{name}} 的高光',
+  bestOfNamed: '{{name}} 的高光',
+  clipCount_other: '{{count}} 段',
+  addClip: '添加片段',
 };
