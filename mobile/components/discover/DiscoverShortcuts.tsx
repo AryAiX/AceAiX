@@ -26,13 +26,16 @@ function ClubIcon() {
   );
 }
 
+/* A coach: head and shoulders in a cap. No whistle, because not every
+   sport's coach blows one. */
 function CoachIcon() {
   return (
     <Svg width={SIZE} height={SIZE} viewBox="0 0 48 48">
-      <Path d="M8 24a11 11 0 0 0 21 4h9a3 3 0 0 0 3-3v-6a3 3 0 0 0-3-3H19A11 11 0 0 0 8 24z" fill="#1E9E5A" />
-      <Circle cx={19} cy={25} r={4.5} fill="#FFFFFF" />
-      <Path d="M30 17v-5h6v5" fill="none" stroke="#7FD99A" strokeWidth={3} strokeLinecap="round" />
-      <Path d="M10 15C6 11 6 7 9 5" fill="none" stroke="#7FD99A" strokeWidth={2.5} strokeLinecap="round" />
+      <Path d="M9 42c0-8 6.5-13 15-13s15 5 15 13z" fill="#1E9E5A" />
+      <Path d="M24 29c-3 0-5.6.5-7.8 1.5L24 36l7.8-5.5C29.6 29.5 27 29 24 29z" fill="#7FD99A" />
+      <Circle cx={24} cy={19} r={8.5} fill="#FFD3B0" />
+      <Path d="M15 17.5c0-6 4-9.5 9-9.5s9 3.5 9 9.5z" fill="#1E9E5A" />
+      <Path d="M24 17.5h12a2 2 0 0 1 0 3H24z" fill="#16804A" />
     </Svg>
   );
 }
