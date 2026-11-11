@@ -8274,4 +8274,292 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Trials search reaches past the first page (QA-166).
+-- Fresh accounts only (7fa00000): an athlete, a coach named Zara
+-- Coachwell who posts personal listings, and a second coach the
+-- athlete has blocked. A club called Qx Falcons Academy.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── trials search reaches past the first page ──'; end $$;
+
+do $$
+declare
+  v_athlete    uuid := '7fa00000-0000-4000-8000-000000000001';
+  v_zara       uuid := '7fa00000-0000-4000-8000-000000000002';
+  v_blocked    uuid := '7fa00000-0000-4000-8000-000000000003';
+  v_org        uuid;
+  v_gem        uuid;
+  v_scholarship uuid;
+  v_percent    uuid;
+  v_under      uuid;
+  v_offer      uuid;
+  v_basket     uuid;
+  v_closed     uuid;
+  v_expired    uuid;
+  v_blocked_trial uuid;
+  v_i          integer;
+  v_gem_page   integer;
+  v_gem_found  integer;
+  v_limit      integer;
+  v_limit_one  integer;
+  v_limit_cap  integer;
+  v_limit_100  integer;
+  v_hidden     integer;
+  v_closed_hit integer;
+  v_expired_hit integer;
+  v_blocked_hit integer;
+  v_club       integer;
+  v_club_other integer;
+  v_poster_gem integer;
+  v_poster_club integer;
+  v_poster_org integer;
+  v_sport      integer;
+  v_sport_case integer;
+  v_sport_other integer;
+  v_both       integer;
+  v_both_trial integer;
+  v_both_n     integer;
+  v_pct        integer;
+  v_pct_other  integer;
+  v_us         integer;
+  v_us_other   integer;
+  v_as_contract integer;
+  v_contract   integer;
+  v_offer_miss integer;
+  v_eligible   integer;
+  v_all        integer;
+  v_blank      integer;
+  v_mismatch   integer;
+  v_unsorted   integer;
+  v_probe      integer;
+  v_denied     boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_athlete, 'qa166.athlete@test.local', '{"full_name":"QA166 Athlete","role":"athlete"}'),
+    (v_zara, 'qa166.zara@test.local', '{"full_name":"Zara Coachwell","role":"coach"}'),
+    (v_blocked, 'qa166.blocked@test.local', '{"full_name":"Blocked Coach","role":"coach"}');
+
+  insert into public.organizations (name, type)
+  values ('Qx Falcons Academy', 'club')
+  returning id into v_org;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_athlete, v_blocked);
+
+  /* Sixty newer fillers, so the old trial falls off the first page. */
+  for v_i in 1..60 loop
+    insert into public.opportunities (created_by_id, title, type, sport, is_active)
+    values (v_zara, 'Qx Filler Trial ' || v_i, 'trial', 'Football', true);
+  end loop;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active, created_at)
+  values (v_zara, 'Qx Hidden Gem Trial', 'trial', 'QxTennis', true, now() - interval '30 days')
+  returning id into v_gem;
+
+  insert into public.opportunities (
+    created_by_id, organization_id, title, type, sport, is_active
+  ) values (
+    v_zara, v_org, 'Qx Academy Scholarship', 'scholarship', 'QxBasket', true
+  ) returning id into v_scholarship;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx 100% contract', 'contract', 'Football', true)
+  returning id into v_percent;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx under_score trial', 'trial', 'Football', true)
+  returning id into v_under;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Legacy Offer', 'offer', 'Football', true)
+  returning id into v_offer;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Basket Trial', 'trial', 'QxBasket', true)
+  returning id into v_basket;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Closed Door Trial', 'trial', 'Football', false)
+  returning id into v_closed;
+
+  insert into public.opportunities (
+    created_by_id, title, type, sport, is_active, application_deadline
+  ) values (
+    v_zara, 'Qx Expired Window Trial', 'trial', 'Football', true, current_date - 1
+  ) returning id into v_expired;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_blocked, 'Qx Blocked Coach Trial', 'trial', 'Football', true)
+  returning id into v_blocked_trial;
+
+  /* Count as the table owner. A signed-in read would hide rows the
+     search function is still allowed to consider, and then reject. */
+  select count(*) into v_eligible
+    from public.opportunities o
+   where o.is_active
+     and (o.application_deadline is null or o.application_deadline >= current_date)
+     and not exists (
+       select 1 from public.user_blocks b
+       where (b.blocker_id = v_athlete and b.blocked_id = o.created_by_id)
+          or (b.blocker_id = o.created_by_id and b.blocked_id = v_athlete)
+     );
+
+  perform tests.as_user(v_athlete);
+  set local role authenticated;
+
+  select count(*) into v_gem_page
+    from public.recommended_opportunities(50) r
+   where r.id = v_gem;
+  select count(*) into v_gem_found
+    from public.search_opportunities('Qx Hidden Gem', null, null, 50) s
+   where s.id = v_gem;
+
+  select count(*) into v_limit
+    from public.search_opportunities(null, null, null, 5);
+  select count(*) into v_limit_one
+    from public.search_opportunities(null, null, null, 0);
+  select count(*) into v_limit_cap
+    from public.search_opportunities(null, null, null, 1000);
+  select count(*) into v_limit_100
+    from public.search_opportunities(null, null, null, 100);
+
+  select count(*) into v_hidden
+    from public.search_opportunities(null, null, null, 100) s
+   where s.id in (v_closed, v_expired, v_blocked_trial);
+  select count(*) into v_closed_hit
+    from public.search_opportunities('Qx Closed Door', null, null, 50);
+  select count(*) into v_expired_hit
+    from public.search_opportunities('Qx Expired Window', null, null, 50);
+  select count(*) into v_blocked_hit
+    from public.search_opportunities('Qx Blocked Coach', null, null, 50);
+
+  select count(*) into v_club
+    from public.search_opportunities('qx falcons academy', null, null, 50) s
+   where s.id = v_scholarship;
+  select count(*) into v_club_other
+    from public.search_opportunities('qx falcons academy', null, null, 50) s
+   where s.id <> v_scholarship;
+
+  select count(*) into v_poster_gem
+    from public.search_opportunities('Zara Coachwell', null, null, 100) s
+   where s.id = v_gem;
+  select count(*) into v_poster_club
+    from public.search_opportunities('Zara Coachwell', null, null, 100) s
+   where s.id = v_scholarship;
+  select count(*) into v_poster_org
+    from public.search_opportunities('zara coachwell', null, null, 100) s
+   where s.org_id is not null;
+
+  select count(*) into v_sport
+    from public.search_opportunities(null, array['qxbasket'], null, 100) s
+   where s.id in (v_scholarship, v_basket);
+  select count(*) into v_sport_case
+    from public.search_opportunities(null, array['QXBASKET'], null, 100) s
+   where s.id in (v_scholarship, v_basket);
+  select count(*) into v_sport_other
+    from public.search_opportunities(null, array['QxBasket'], null, 100) s
+   where lower(s.sport) is distinct from 'qxbasket';
+
+  select count(*) into v_both
+    from public.search_opportunities(null, array['qxbasket'], array['SCHOLARSHIP'], 100) s
+   where s.id = v_scholarship;
+  select count(*) into v_both_trial
+    from public.search_opportunities(null, array['qxbasket'], array['scholarship'], 100) s
+   where s.id = v_basket;
+  select count(*) into v_both_n
+    from public.search_opportunities(null, array['QxBasket'], array['scholarship'], 100);
+
+  select count(*) into v_pct
+    from public.search_opportunities('%', null, null, 100) s
+   where s.id = v_percent;
+  select count(*) into v_pct_other
+    from public.search_opportunities('%', null, null, 100) s
+   where s.id = v_gem;
+  select count(*) into v_us
+    from public.search_opportunities('_', null, null, 100) s
+   where s.id = v_under;
+  select count(*) into v_us_other
+    from public.search_opportunities('_', null, null, 100) s
+   where s.id = v_gem;
+
+  select count(*) into v_as_contract
+    from public.search_opportunities(null, null, array['contract'], 100) s
+   where s.id = v_offer;
+  select count(*) into v_contract
+    from public.search_opportunities(null, null, array['Contract'], 100) s
+   where s.id = v_percent;
+  select count(*) into v_offer_miss
+    from public.search_opportunities(null, null, array['offer'], 100) s
+   where s.id = v_percent;
+
+  select count(*) into v_all
+    from public.search_opportunities(null, null, null, 100);
+  select count(*) into v_blank
+    from public.search_opportunities('   ', array[]::text[], array[]::text[], 100);
+
+  select count(*) into v_mismatch
+    from public.recommended_opportunities(50) r
+    join public.search_opportunities(null, null, null, 100) s on s.id = r.id
+   where r.match_percent is distinct from s.match_percent
+      or r.reasons is distinct from s.reasons;
+
+  select count(*) into v_unsorted
+    from (
+      select
+        s.match_percent,
+        s.created_at,
+        lag(s.match_percent) over (order by s.ordinality) as prev_match,
+        lag(s.created_at) over (order by s.ordinality) as prev_created
+      from public.search_opportunities(null, null, null, 100) with ordinality as s
+    ) ordered
+   where prev_match is not null
+     and (
+       match_percent > prev_match
+       or (match_percent = prev_match and created_at > prev_created)
+     );
+
+  reset role;
+
+  perform tests.ok(v_gem_page = 0 and v_gem_found = 1,
+    'the old trial is missing from the first page but found by search');
+  perform tests.ok(v_limit = 5 and v_limit_one = 1 and v_limit_cap = v_limit_100,
+    'the limit is kept between 1 and 100');
+  perform tests.ok(
+    v_hidden = 0 and v_closed_hit = 0 and v_expired_hit = 0 and v_blocked_hit = 0,
+    'closed, expired and blocked trials never come back');
+  perform tests.ok(v_club = 1 and v_club_other = 0,
+    'the club name finds that club''s trial');
+  perform tests.ok(v_poster_gem = 1 and v_poster_club = 0 and v_poster_org = 0,
+    'the poster name finds a personal listing and not a club listing');
+  perform tests.ok(v_sport = 2 and v_sport_case = 2 and v_sport_other = 0,
+    'the sport filter matches ignoring case');
+  perform tests.ok(v_both = 1 and v_both_trial = 0 and v_both_n = 1,
+    'sport and type together keep only trials that are both');
+  perform tests.ok(v_pct = 1 and v_pct_other = 0 and v_us = 1 and v_us_other = 0,
+    'percent and underscore are plain text');
+  perform tests.ok(v_as_contract = 1 and v_contract = 1 and v_offer_miss = 0,
+    'the contract filter also finds a trial saved as offer');
+  perform tests.ok(v_all = least(v_eligible, 100) and v_blank = v_all,
+    'empty search and empty filters keep everything');
+  perform tests.ok(v_mismatch = 0 and v_unsorted = 0,
+    'search uses the same match, reasons and order');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select 1 into v_probe from public.search_opportunities(null, null, null, 10) limit 1;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.search_opportunities(text, text[], text[], integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.search_opportunities(text, text[], text[], integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

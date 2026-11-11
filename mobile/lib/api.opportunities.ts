@@ -279,13 +279,10 @@ export async function getOpportunity(id: string): Promise<OpportunityDetail | nu
 }
 
 /**
- * Live openings for the opportunities tab.
- *
- * `recommended_opportunities` does not name the poster. Personal listings
- * load `created_by_id` in one follow-up read, then one `profile_cards` call.
+ * The match list does not name the poster. Personal listings load
+ * `created_by_id` in one follow-up read, then one `profile_cards` call.
  */
-export async function openOpportunities(limit = 30): Promise<Opportunity[]> {
-  const rows = await recommendedOpportunities(limit);
+async function withPosterNames(rows: Opportunity[]): Promise<Opportunity[]> {
   const independentIds = rows.filter((row) => !row.org_id).map((row) => row.id);
   if (independentIds.length === 0) return rows;
 
@@ -300,6 +297,30 @@ export async function openOpportunities(limit = 30): Promise<Opportunity[]> {
     if (row.created_by_id) createdBy.set(row.id, row.created_by_id);
   }
   return withPosters(rows, createdBy);
+}
+
+/** Live openings for the opportunities tab. */
+export async function openOpportunities(limit = 30): Promise<Opportunity[]> {
+  return withPosterNames(await recommendedOpportunities(limit));
+}
+
+/**
+ * Every open trial matching the search box and the filters.
+ * Empty words, sports or types are left unset, so they do not narrow the list.
+ */
+export async function searchOpportunities(
+  query: string,
+  sports: readonly string[],
+  types: readonly string[],
+): Promise<Opportunity[]> {
+  const words = query.trim();
+  const { data, error } = await supabase.rpc('search_opportunities', {
+    p_query: words ? words : null,
+    p_sports: sports.length > 0 ? [...sports] : null,
+    p_types: types.length > 0 ? [...types] : null,
+  });
+  if (error) throw new AppError(error);
+  return withPosterNames((data ?? []) as Opportunity[]);
 }
 
 /** The match for one opportunity, or null when it cannot be explained. */

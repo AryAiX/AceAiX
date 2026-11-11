@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -54,6 +54,7 @@ import {
   myPostings,
   openOpportunities,
   savedOpportunities,
+  searchOpportunities,
 } from '@/lib/api.opportunities';
 import type { PostedOpportunity, RankedApplicant } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
@@ -68,6 +69,29 @@ import { LogoColors } from '@/theme/tokens';
 
 type AthleteTab = 'open' | 'saved' | 'applied';
 type RecruiterTab = 'postings' | 'applicants';
+
+/** Wait after the last letter before asking the server. */
+const SEARCH_PAUSE_MS = 300;
+
+interface TrialSearchAnswer {
+  token: string;
+  rows: Opportunity[];
+  error: string | null;
+}
+
+/** Empty words and empty filters are not a search. */
+function trialSearchToken(query: string, sports: readonly string[], types: readonly string[]): string {
+  const words = query.trim();
+  if (!words && sports.length === 0 && types.length === 0) return '';
+  return JSON.stringify([words, sports, types]);
+}
+
+/** Older rows stored a contract as "offer". */
+function trialTypeMatches(actual: string | null | undefined, wanted: string): boolean {
+  const have = (actual ?? '').toLowerCase();
+  const need = wanted.toLowerCase();
+  return have === need || (need === 'contract' && have === 'offer');
+}
 
 // ── Athlete ───────────────────────────────────────────────────────────────────
 /**
@@ -143,6 +167,10 @@ function AthleteOpportunities() {
   const [sports, setSports] = useState<string[]>([]);
   const [types, setTypes] = useState<string[]>([]);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [trialSearch, setTrialSearch] = useState<TrialSearchAnswer | null>(null);
+  const [searchNonce, setSearchNonce] = useState(0);
+  const searchSeq = useRef(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   /* Search's "See all" lands here with its word already typed, on Open. */
@@ -155,15 +183,54 @@ function AthleteOpportunities() {
     setQuery(linkedQuery);
   }, [linkedQuery, linkedAt]);
 
+  /* The word waits a moment so each letter is not its own request.
+     Filters apply on the next render, with no pause. */
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedQuery(query), SEARCH_PAUSE_MS);
+    return () => clearTimeout(handle);
+  }, [query]);
+
   const open = useAsync(() => openOpportunities(30), []);
   const saved = useAsync(() => savedOpportunities(), [], { refetchOnFocus: true });
   const applied = useAsync(() => myApplicationsDetailed(), [], { refetchOnFocus: true });
-  /* Tap Trials again: back to the top, then reload the open list. */
+
+  /* Pull to refresh and a second tap on Trials run the search again. */
+  const redoServerSearch = useCallback(() => {
+    if (!query.trim() && sports.length === 0 && types.length === 0) return;
+    setTrialSearch(null);
+    setDebouncedQuery(query);
+    setSearchNonce((n) => n + 1);
+  }, [query, sports, types]);
+
+  /* Tap Trials again: back to the top, then reload. An active search runs again too. */
   const listRef = useTabReselect(() => {
     if (tab === 'saved') saved.reload();
     else if (tab === 'applied') applied.reload();
-    else open.reload();
+    else {
+      open.reload();
+      redoServerSearch();
+    }
   });
+
+  /* A late answer for an older word is dropped. */
+  useEffect(() => {
+    const token = trialSearchToken(debouncedQuery, sports, types);
+    if (!token) return;
+    const seq = ++searchSeq.current;
+    let cancelled = false;
+    searchOpportunities(debouncedQuery, sports, types)
+      .then((rows) => {
+        if (cancelled || seq !== searchSeq.current) return;
+        setTrialSearch({ token, rows, error: null });
+      })
+      .catch((err) => {
+        if (cancelled || seq !== searchSeq.current) return;
+        setTrialSearch({ token, rows: [], error: errorMessage(err) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, sports, types, searchNonce]);
 
   /* Optimistic bookmark state, keyed by opportunity id. The lists are fetched
      separately, so one source of truth here keeps them from disagreeing. */
@@ -198,13 +265,14 @@ function AthleteOpportunities() {
     [toast, refreshSaved, me],
   );
 
-  /* The search runs on the phone over what is already loaded — the title, the
-     club and whoever posted it — so it needs nothing new from the server. */
+  /* Open asks the server for every open trial, and also keeps a loaded row
+     that matches. Saved stays on the phone. An old trial stored as "offer"
+     counts as a contract. */
   const needle = query.trim().toLowerCase();
   const matches = useCallback(
     (o: Opportunity) =>
       (sports.length === 0 || sports.some((s) => o.sport?.toLowerCase() === s.toLowerCase())) &&
-      (types.length === 0 || types.some((ty) => o.type?.toLowerCase() === ty.toLowerCase())) &&
+      (types.length === 0 || types.some((ty) => trialTypeMatches(o.type, ty))) &&
       (!needle ||
         [o.title, o.org_name, o.poster?.full_name].some((field) =>
           (field ?? '').toLowerCase().includes(needle),
@@ -212,16 +280,31 @@ function AthleteOpportunities() {
     [sports, types, needle],
   );
 
+  const filterCount = sports.length + types.length;
+  const filtersActive = filterCount > 0 || needle.length > 0;
+  const currentToken = trialSearchToken(query, sports, types);
+  const searchPending = filtersActive && trialSearch?.token !== currentToken;
+  const searchError =
+    filtersActive && trialSearch?.token === currentToken ? trialSearch.error : null;
+
   const openList = useMemo(() => {
-    const rows = (open.data ?? []).filter(matches);
-    return [...rows].sort((a, b) => b.match_percent - a.match_percent);
-  }, [open.data, matches]);
+    if (searchError) return [];
+    const local = (open.data ?? []).filter(matches);
+    const remote =
+      currentToken !== '' && trialSearch?.token === currentToken ? trialSearch.rows : [];
+    const seen = new Set<string>();
+    const merged: Opportunity[] = [];
+    for (const row of [...local, ...remote]) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      merged.push(row);
+    }
+    merged.sort((a, b) => b.match_percent - a.match_percent);
+    return merged;
+  }, [searchError, open.data, matches, currentToken, trialSearch]);
 
   const savedList = useMemo(() => (saved.data ?? []).filter(matches), [saved.data, matches]);
   const appliedList = applied.data ?? [];
-
-  const filterCount = sports.length + types.length;
-  const filtersActive = filterCount > 0 || needle.length > 0;
   const clearAll = () => {
     setSports([]);
     setTypes([]);
@@ -424,7 +507,10 @@ function AthleteOpportunities() {
           refreshControl={
             <RefreshControl
               refreshing={open.refreshing}
-              onRefresh={open.refresh}
+              onRefresh={() => {
+                open.refresh();
+                redoServerSearch();
+              }}
               tintColor={colors.primary}
               colors={[colors.primary]}
             />
@@ -437,10 +523,12 @@ function AthleteOpportunities() {
             />
           )}
           ListEmptyComponent={
-            open.loading ? (
+            open.loading || searchPending ? (
               <SkeletonList count={3} variant="row" />
             ) : open.error ? (
               <ErrorState message={open.error} onRetry={open.reload} compact />
+            ) : searchError ? (
+              <ErrorState message={searchError} onRetry={redoServerSearch} compact />
             ) : filtersActive ? (
               <EmptyState
                 compact
