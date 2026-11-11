@@ -4,9 +4,10 @@ import { useRouter } from 'expo-router';
 import { BadgeCheck, Bookmark, BookmarkCheck, MapPin } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Card, IconButton, Text } from '@/components/ui';
+import { Avatar, Badge, Card, IconButton, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { metaLine } from '@/lib/format';
+import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { opportunityTypeLabel, positionLabel, sportLabel } from '@/constants/sports';
 import type { Opportunity } from '@/types/models';
@@ -44,7 +45,13 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
   const typeLabel = opportunityTypeLabel(t, opportunity.type);
   const sport = sportLabel(t, opportunity.sport);
   const position = positionLabel(t, opportunity.position);
-  const club = opportunity.org_name?.trim() || t('opportunities.card.independent');
+  const poster = opportunity.org_id ? null : opportunity.poster ?? null;
+  const club =
+    poster?.full_name?.trim() ||
+    opportunity.org_name?.trim() ||
+    t('opportunities.card.independent');
+  const verified = poster ? poster.is_verified : opportunity.org_verified;
+  const place = formatLocation(opportunity.location, t);
 
   const summary = metaLine(
     opportunity.title,
@@ -52,7 +59,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
     typeLabel,
     sport,
     position,
-    opportunity.location,
+    place,
     match ? t('opportunities.match.percentA11y', { percent: match.percent }) : null,
     match ? match.reasons.join(', ') : null,
     closed ? t('opportunities.card.closedA11y') : null,
@@ -66,7 +73,11 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
       style={{ gap: spacing.md, opacity: closed ? 0.72 : 1 }}
     >
       <View style={{ flexDirection: 'row', gap: spacing.md }}>
-        <ClubLogo uri={opportunity.org_logo} name={club} />
+        {poster ? (
+          <Avatar uri={poster.avatar_url} name={poster.full_name} size="md" />
+        ) : (
+          <ClubLogo uri={opportunity.org_logo} name={club} />
+        )}
 
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="bodyStrong" numberOfLines={2}>
@@ -76,7 +87,7 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
             <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
               {club}
             </Text>
-            {opportunity.org_verified ? (
+            {verified ? (
               <BadgeCheck size={14} color={colors.info} fill={colors.infoSoft} strokeWidth={2.2} />
             ) : null}
           </View>
@@ -108,9 +119,9 @@ export function OpportunityCard({ opportunity, onToggleSave, saved, footer, prev
         {typeLabel ? <Badge label={typeLabel} tone="primary" /> : null}
         {sport ? <Badge label={sport} tone="neutral" /> : null}
         {position ? <Badge label={position} tone="neutral" /> : null}
-        {opportunity.location ? (
+        {place ? (
           <Badge
-            label={opportunity.location}
+            label={place}
             tone="neutral"
             icon={<MapPin size={11} color={colors.textSecondary} strokeWidth={2.4} />}
           />

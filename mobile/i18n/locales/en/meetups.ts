@@ -80,6 +80,11 @@ export const meetups = {
   fieldNotePlaceholder: 'Bring boots. We usually go for a drink after.',
   fieldCost: 'Cost each',
   fieldCostPlaceholder: 'AED 25, or free',
+  costFree: 'Free',
+  costPaid: 'Paid',
+  costAmount: 'Amount',
+  costCurrency: 'Currency',
+  costAmountInvalid: 'Enter a whole number from 1 to 9,999.',
   post: 'Post it',
   posted: 'Posted. People can find it now.',
 

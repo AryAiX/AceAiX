@@ -30,6 +30,7 @@ export interface SponsorshipRequest {
   location: string | null;
   sport?: string | null;
   needs: string[];
+  needs_other: string | null;
   gives: string[];
   amount: number | null;
   currency: string;
@@ -97,6 +98,7 @@ export interface Seeker {
   event_date: string | null;
   location: string | null;
   needs: string[];
+  needs_other: string | null;
   gives: string[];
   amount: number | null;
   currency: string;
@@ -235,6 +237,7 @@ export interface RequestInput {
   event_date: string | null;
   location: string;
   needs: string[];
+  needs_other: string;
   gives: string[];
   amount: number | null;
   pitch: string;

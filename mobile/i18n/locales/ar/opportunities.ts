@@ -280,7 +280,6 @@ export const opportunities = {
     positionAny: 'الكل',
 
     whereLabel: 'المكان',
-    wherePlaceholder: 'دبي، الإمارات',
     whereError: 'أين تجري هذه الفرصة؟',
 
     deadlineLabel: 'يغلق التقديم',

@@ -5,7 +5,7 @@ export { ExpandableText } from './ExpandableText';
 export { Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 
-export { Card } from './Card';
+export { Card, CardFill } from './Card';
 export { Tappable } from './Pressable';
 export type { TappableProps } from './Pressable';
 export { AnimatedNumber } from './AnimatedNumber';
@@ -15,6 +15,7 @@ export { RemoteImage } from './RemoteImage';
 export { Badge, Chip } from './Badge';
 export type { BadgeTone } from './Badge';
 export { Input } from './Input';
+export { DateField } from './DateField';
 export { ScoreRing, ScoreBar } from './ScoreRing';
 export { EmptyState, Skeleton, SkeletonList, Loader, ErrorState } from './Feedback';
 export { Sheet, ConfirmSheet } from './Sheet';
@@ -27,6 +28,7 @@ export {
   SectionHeader,
 } from './Controls';
 export { Lightbox } from './Lightbox';
+export { CoverCropper } from './CoverCropper';
 export { Reveal, AnimatedGradient, Shine, Pulse } from './Motion';
 export { ToastProvider, useToast } from './Toast';
 export type { ToastTone } from './Toast';

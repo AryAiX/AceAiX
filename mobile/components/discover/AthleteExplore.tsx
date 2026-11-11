@@ -21,7 +21,7 @@ import {
 import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { searchOrganizations, searchPeople } from '@/lib/api';
+import { myLinkedMinors, searchOrganizations, searchPeople } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
   followedOrganizationIds,
@@ -170,7 +170,7 @@ export function AthleteExplore({
   const t = useT();
   const { colors, spacing } = theme;
   const toast = useToast();
-  const { profile } = useAuth();
+  const { profile, isGuardian } = useAuth();
   const canSearchBoard = profile?.is_minor === false;
 
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -243,6 +243,22 @@ export function AthleteExplore({
         (row) => matchesChip(row.sport, sport) && matchesChip(row.country, country),
       ),
     [athletes.data?.rows, sport, country],
+  );
+
+  const linkedMinors = useAsync(() => myLinkedMinors(), [], {
+    enabled: isGuardian && tab === 'leaderboard',
+    refetchOnFocus: true,
+  });
+  const childIds = useMemo(
+    () =>
+      new Set(
+        isGuardian
+          ? (linkedMinors.data ?? [])
+              .filter((minor) => minor.status === 'granted')
+              .map((minor) => minor.minor_user_id)
+          : [],
+      ),
+    [isGuardian, linkedMinors.data],
   );
 
   const orgFollows = useAsync(() => followedOrganizationIds(), [], { refetchOnFocus: true });
@@ -548,10 +564,14 @@ export function AthleteExplore({
           ) : null
         }
         renderItem={({ item }) => (
-          <LeaderboardRow entry={item} isYou={item.user_id === viewerId} />
+          <LeaderboardRow
+            entry={item}
+            isYou={item.user_id === viewerId}
+            isChild={childIds.has(item.user_id)}
+          />
         )}
         ListFooterComponent={
-          rows.length > 0 && viewerId && !youAreOnIt ? (
+          rows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
             <Text
               variant="caption"
               tone="muted"

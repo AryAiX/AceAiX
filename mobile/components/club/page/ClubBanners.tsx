@@ -251,7 +251,7 @@ function NextMatchBanner({ match }: { match: ClubMatch }) {
   );
 }
 
-/** Everything that should be seen before the tabs: asks first, then the score. */
+/** Everything that should be seen before the sections: asks first, then the score. */
 export function ClubBanners({ page, onChanged }: { page: ClubPage; onChanged: () => void }) {
   const { spacing } = useTheme();
   const org = page.organization;

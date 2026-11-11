@@ -212,6 +212,10 @@ describe('Routes', () => {
     expect(Routes.opportunity('o1')).toBe('/opportunity/o1');
     expect(Routes.applicants('o1')).toBe('/opportunity/o1/applicants');
     expect(Routes.organization('g1')).toBe('/org/g1');
+    expect(Routes.clubSection('g1', 'squads')).toEqual({
+      pathname: '/club/[orgId]/section',
+      params: { orgId: 'g1', name: 'squads' },
+    });
     expect(Routes.followers('u1')).toBe('/u/u1/followers');
     expect(Routes.following('u1')).toBe('/u/u1/following');
   });

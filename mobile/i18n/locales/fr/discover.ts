@@ -19,7 +19,7 @@ export const discover = {
   // ── Onglet Découvrir ───────────────────────────────────────────────────────
   title: 'Découvrir des talents',
   athleteSubtitle: 'Clubs, coachs et où tu en es',
-  searchPeople: 'Rechercher des personnes et des clubs',
+  searchPeople: 'Rechercher des athlètes, des coachs et des clubs',
   queryPlaceholder: 'Nom, club, poste',
   queryLabel: 'Rechercher des athlètes',
   filterResults: 'Filtrer les résultats',
@@ -177,8 +177,10 @@ export const discover = {
     emptyTitle: 'Rien dans ce classement',
     emptyBody: 'Essaie un autre sport ou un autre pays — ou sois le premier ici.',
     you: 'Toi',
+    yourChild: 'Votre enfant',
     rankA11y: 'Numéro {{rank}}',
     youA11y: '{{name}}, c’est toi',
+    childA11y: '{{name}}, votre enfant',
     scoreA11y: 'score talent {{score}}, palier {{tier}}',
   },
 

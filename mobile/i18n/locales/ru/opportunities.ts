@@ -281,7 +281,6 @@ export const opportunities = {
     positionAny: 'Любая',
 
     whereLabel: 'Где',
-    wherePlaceholder: 'Дубай, ОАЭ',
     whereError: 'Где это проходит?',
 
     deadlineLabel: 'Приём заканчивается',

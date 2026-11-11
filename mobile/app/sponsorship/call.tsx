@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Chip,
+  DateField,
   ErrorState,
   Header,
   Input,
@@ -183,6 +184,7 @@ export default function SponsorCallScreen() {
           label={t('sponsorship.cDescription')}
           value={description}
           onChangeText={setDescription}
+          placeholder={t('sponsorship.cDescriptionPlaceholder')}
           multiline
           maxLength={800}
         />
@@ -221,6 +223,7 @@ export default function SponsorCallScreen() {
               setMin(v);
               setErrors((e) => ({ ...e, range: undefined }));
             }}
+            placeholder={t('sponsorship.cMinPlaceholder')}
             keyboardType="number-pad"
             containerStyle={{ flex: 1 }}
           />
@@ -231,33 +234,31 @@ export default function SponsorCallScreen() {
               setMax(v);
               setErrors((e) => ({ ...e, range: undefined }));
             }}
+            placeholder={t('sponsorship.cMaxPlaceholder')}
             keyboardType="number-pad"
             error={errors.range}
             containerStyle={{ flex: 1 }}
           />
         </View>
 
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          <Input
-            label={t('sponsorship.cSlots')}
-            value={slots}
-            onChangeText={setSlots}
-            keyboardType="number-pad"
-            containerStyle={{ flex: 1 }}
-          />
-          <Input
-            label={t('sponsorship.cDeadline')}
-            value={deadline}
-            onChangeText={(v) => {
-              setDeadline(v);
-              setErrors((e) => ({ ...e, date: undefined }));
-            }}
-            placeholder="2027-01-31"
-            autoCapitalize="none"
-            error={errors.date}
-            containerStyle={{ flex: 1 }}
-          />
-        </View>
+        <Input
+          label={t('sponsorship.cSlots')}
+          value={slots}
+          onChangeText={setSlots}
+          placeholder={t('sponsorship.cSlotsPlaceholder')}
+          keyboardType="number-pad"
+        />
+        <DateField
+          label={t('sponsorship.cDeadline')}
+          value={deadline || null}
+          onChange={(next) => {
+            setDeadline(next ?? '');
+            setErrors((e) => ({ ...e, date: undefined }));
+          }}
+          optional
+          error={errors.date}
+          testID="call-deadline"
+        />
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <View style={{ flex: 1, gap: 2 }}>

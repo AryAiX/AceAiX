@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Check, Minus, Plus, Search } from 'lucide-react-native';
@@ -19,13 +19,17 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
+import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
+import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
+import { getMyProfile } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { SPORTS, countryLabel, countryOptions, sportLabel } from '@/constants/sports';
 import { createMeetup, setMeetupMapUrl, type MeetupLevel } from '@/lib/api.meetups';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
+import { COST_CURRENCIES, currencyForCountry, toCostNote } from '@/lib/meetupCost';
 
 /**
  * Posting a game.
@@ -40,6 +44,10 @@ import { isAllowedMapUrl } from '@/lib/mapLinks';
  * because `@react-native-community/datetimepicker` is not in this project and
  * adding a native module for one screen would cost Expo Go compatibility — the
  * thing that lets anybody on the team open this app on their own phone.
+ *
+ * City is the same picker as onboarding. The country sheet still stores the
+ * English country name that picker searches with. A name that is not in the
+ * list is saved as typed; this screen does not add it to the city catalogue.
  */
 
 const LEVELS: MeetupLevel[] = ['any', 'beginner', 'intermediate', 'advanced', 'competitive'];
@@ -67,11 +75,15 @@ export default function NewMeetupScreen() {
   const toast = useToast();
   const { profile } = useAuth();
   const canMeet = profile?.is_minor === false;
+  // Same read as Edit profile: city and country live on the profile bundle,
+  // not on the signed-in account. Minors never reach the form.
+  const hostPlace = useAsync(() => getMyProfile(), [canMeet], { enabled: canMeet });
 
   const [sport, setSport] = useState('');
   const [title, setTitle] = useState('');
   const [country, setCountry] = useState('');
   const [city, setCity] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
   const [area, setArea] = useState('');
   const [venue, setVenue] = useState('');
   const [mapLink, setMapLink] = useState('');
@@ -80,19 +92,35 @@ export default function NewMeetupScreen() {
   const [spots, setSpots] = useState(2);
   const [level, setLevel] = useState<MeetupLevel>('any');
   const [note, setNote] = useState('');
-  const [cost, setCost] = useState('');
+  /** Null until the host picks. Tapping the selected chip clears it again. */
+  const [costKind, setCostKind] = useState<'free' | 'paid' | null>(null);
+  const [costAmount, setCostAmount] = useState('');
+  const [costCurrency, setCostCurrency] = useState('USD');
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const [currencySheet, setCurrencySheet] = useState(false);
 
   const [sportSheet, setSportSheet] = useState(false);
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [whenSheet, setWhenSheet] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [discardOpen, setDiscardOpen] = useState(false);
+
+  /** A host who already picked a place must not be overwritten by a late profile. */
+  const placeTouched = useRef(false);
+  const placeSeeded = useRef(false);
+  /** Profile values the form opened with. Those are not unsaved edits. */
+  const [seededPlace, setSeededPlace] = useState<{ country: string; city: string } | null>(null);
+
+  const placeDirty =
+    country !== (seededPlace?.country ?? '') ||
+    city !== (seededPlace?.city ?? '') ||
+    cityQuery.trim() !== '';
 
   const hasContent =
     sport !== '' ||
     title.trim().length > 0 ||
-    country !== '' ||
-    city !== '' ||
+    placeDirty ||
     area.trim().length > 0 ||
     venue.trim().length > 0 ||
     mapLink.trim().length > 0 ||
@@ -101,9 +129,40 @@ export default function NewMeetupScreen() {
     spots !== 2 ||
     level !== 'any' ||
     note.trim().length > 0 ||
-    cost.trim().length > 0;
+    costKind !== null;
 
-  const [discardOpen, setDiscardOpen] = useState(false);
+  useEffect(() => {
+    if (!canMeet || placeSeeded.current) return;
+    if (hostPlace.loading || (!hostPlace.data && !hostPlace.error)) return;
+    placeSeeded.current = true;
+    if (placeTouched.current || !hostPlace.data) {
+      setSeededPlace({ country: '', city: '' });
+      return;
+    }
+    const profileCountry = hostPlace.data.user.country?.trim() ?? '';
+    // A city with no country cannot be searched, so it is not offered.
+    const profileCity = profileCountry ? (hostPlace.data.user.city?.trim() ?? '') : '';
+    setCountry((current) => (current.trim() ? current : profileCountry));
+    setCity((current) => (current.trim() ? current : profileCity));
+    setSeededPlace({ country: profileCountry, city: profileCity });
+  }, [canMeet, hostPlace.data, hostPlace.error, hostPlace.loading]);
+
+  /* A currency the host has not chosen follows the country. USD until then. */
+  useEffect(() => {
+    if (currencyTouched) return;
+    setCostCurrency(currencyForCountry(country));
+  }, [country, currencyTouched]);
+
+  const chooseCountry = useCallback((next: string) => {
+    placeTouched.current = true;
+    if (next !== country) {
+      setCity('');
+      setCityQuery('');
+    }
+    setCountry(next);
+    setCountryQuery('');
+    setCountrySheet(false);
+  }, [country]);
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -139,13 +198,28 @@ export default function NewMeetupScreen() {
   const mapLinkTrimmed = mapLink.trim();
   const mapLinkInvalid = mapLinkTrimmed.length > 0 && !isAllowedMapUrl(mapLinkTrimmed);
 
+  /* A tapped chip, or two or more characters still in the box. The meetup
+     column accepts at most 80, which is also as long as the picker will offer
+     a name that is not in the list. */
+  const resolvedCity = cityFromPicker(city, cityQuery).trim().slice(0, 80);
+
+  const costNote = toCostNote(
+    costKind === 'free'
+      ? { kind: 'free' }
+      : costKind === 'paid'
+        ? { kind: 'paid', amount: costAmount, currency: costCurrency }
+        : null,
+  );
+  const costInvalid = costKind === 'paid' && costNote == null;
+
   const ready =
     sport !== '' &&
     title.trim().length >= 4 &&
     country.trim() !== '' &&
-    city.trim() !== '' &&
+    resolvedCity !== '' &&
     startsAt !== null &&
-    !mapLinkInvalid;
+    !mapLinkInvalid &&
+    !costInvalid;
 
   const countries = useMemo(
     () => countryOptions(countryQuery, (c) => countryLabel(t, c)),
@@ -160,14 +234,14 @@ export default function NewMeetupScreen() {
         sport,
         title: title.trim(),
         country: country.trim(),
-        city: city.trim(),
+        city: resolvedCity,
         startsAt: startsAt.toISOString(),
         spotsTotal: spots,
         area: area.trim() || null,
         venue: venue.trim() || null,
         level,
         note: note.trim() || null,
-        costNote: cost.trim() || null,
+        costNote,
       });
       let linkSaved = true;
       if (mapLinkTrimmed) {
@@ -186,7 +260,7 @@ export default function NewMeetupScreen() {
       setSaving(false);
     }
   }, [
-    area, city, cost, country, level, mapLinkTrimmed, note, ready, router, spots, sport,
+    area, costNote, country, level, mapLinkTrimmed, note, ready, resolvedCity, router, spots, sport,
     startsAt, t, title, toast, venue,
   ]);
 
@@ -276,13 +350,17 @@ export default function NewMeetupScreen() {
               required
             />
           </Pressable>
-          <Input
-            label={t('meetups.fieldCity')}
+          <CityPicker
+            country={country.trim() ? country : null}
             value={city}
-            onChangeText={setCity}
-            maxLength={80}
-            autoCapitalize="words"
-            required
+            query={cityQuery}
+            onQueryChange={setCityQuery}
+            onChange={(next) => {
+              placeTouched.current = true;
+              setCity(next);
+            }}
+            label={t('meetups.fieldCity')}
+            testID="meetup-city"
           />
           <Input
             label={t('meetups.fieldArea')}
@@ -375,13 +453,55 @@ export default function NewMeetupScreen() {
             multiline
             maxLength={1000}
           />
-          <Input
-            label={t('meetups.fieldCost')}
-            placeholder={t('meetups.fieldCostPlaceholder')}
-            value={cost}
-            onChangeText={setCost}
-            maxLength={80}
-          />
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('meetups.fieldCost')}
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              <Chip
+                label={t('meetups.costFree')}
+                selected={costKind === 'free'}
+                onPress={() => setCostKind((current) => (current === 'free' ? null : 'free'))}
+                testID="meetup-cost-free"
+              />
+              <Chip
+                label={t('meetups.costPaid')}
+                selected={costKind === 'paid'}
+                onPress={() => setCostKind((current) => (current === 'paid' ? null : 'paid'))}
+                testID="meetup-cost-paid"
+              />
+            </View>
+            {costKind === 'paid' ? (
+              /* Currency first, then the amount: in Arabic the row mirrors, so
+                 the code still sits in front of the number. */
+              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' }}>
+                <Pressable
+                  onPress={() => setCurrencySheet(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('meetups.costCurrency')}
+                  style={{ width: 132 }}
+                >
+                  <Input
+                    label={t('meetups.costCurrency')}
+                    value={costCurrency}
+                    editable={false}
+                    pointerEvents="none"
+                    testID="meetup-cost-currency"
+                  />
+                </Pressable>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label={t('meetups.costAmount')}
+                  value={costAmount}
+                  onChangeText={(text) => setCostAmount(text.replace(/\D/g, '').slice(0, 4))}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  error={costInvalid ? t('meetups.costAmountInvalid') : null}
+                  testID="meetup-cost-amount"
+                />
+              </View>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -421,10 +541,27 @@ export default function NewMeetupScreen() {
             <ListItem
               title={countryLabel(t, c)}
               right={country === c ? <Check size={20} color={colors.primary} /> : undefined}
+              onPress={() => chooseCountry(c)}
+            />
+          </View>
+        ))}
+      </Sheet>
+
+      <Sheet
+        visible={currencySheet}
+        onClose={() => setCurrencySheet(false)}
+        title={t('meetups.costCurrency')}
+      >
+        {COST_CURRENCIES.map((code, index) => (
+          <View key={code}>
+            {index > 0 ? <Divider /> : null}
+            <ListItem
+              title={`\u2066${code}\u2069`}
+              right={costCurrency === code ? <Check size={20} color={colors.primary} /> : undefined}
               onPress={() => {
-                setCountry(c);
-                setCountryQuery('');
-                setCountrySheet(false);
+                setCurrencyTouched(true);
+                setCostCurrency(code);
+                setCurrencySheet(false);
               }}
             />
           </View>

@@ -99,15 +99,15 @@ describe('lib/push and lib/push.web', () => {
   it('is the only place in the app that touches expo-notifications', () => {
     const offenders = readdirRecursive(ROOT)
       .filter((f) => /\.(ts|tsx)$/.test(f))
+      .map((f) => path.relative(ROOT, f).split(path.sep).join('/'))
       .filter((f) => !f.includes('/node_modules/'))
-      .filter((f) => !f.endsWith('lib/push.ts'))
-      .filter((f) => !f.endsWith('tests/unit/push.test.ts'))
+      .filter((f) => f !== 'lib/push.ts')
+      .filter((f) => f !== 'tests/unit/push.test.ts')
       /* Names the plugin to look its icon up in app.json. Configuring the
          plugin is not importing the module — the config is read by the
          prebuild, not bundled — so it is not what this guard is for. */
-      .filter((f) => !f.endsWith('tests/unit/brandAssets.test.ts'))
-      .filter((f) => /['"]expo-notifications['"]/.test(readFileSync(f, 'utf8')))
-      .map((f) => path.relative(ROOT, f));
+      .filter((f) => f !== 'tests/unit/brandAssets.test.ts')
+      .filter((f) => /['"]expo-notifications['"]/.test(readFileSync(path.join(ROOT, f), 'utf8')));
 
     expect(offenders).toEqual([]);
   });

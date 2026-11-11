@@ -1,9 +1,12 @@
 {
-  "rewrites": [
+  "redirects": [
     {
       "source": "/app/i/:code*",
-      "destination": "https://app.aceaix.com/app/i/:code*"
-    },
+      "destination": "https://app.aceaix.com/app/i/:code*",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"

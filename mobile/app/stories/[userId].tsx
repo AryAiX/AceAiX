@@ -23,7 +23,6 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Brand } from '@/theme/tokens';
 import { Avatar, Button, ConfirmSheet, Loader, Text, useToast } from '@/components/ui';
 import { StoryCardView } from '@/components/stories/StoryCardView';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import {
   deleteStory,
@@ -82,7 +81,6 @@ export default function StoryViewerScreen() {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const window = useWindowDimensions();
-  const reduced = useReducedMotion();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ userId: string; queue?: string }>();
 
@@ -315,7 +313,6 @@ export default function StoryViewerScreen() {
             story={story}
             paused={paused}
             muted={muted}
-            reduced={reduced}
             onReady={onReady}
           />
         ) : loadError ? (
@@ -533,13 +530,11 @@ function StoryBody({
   story,
   paused,
   muted,
-  reduced,
   onReady,
 }: {
   story: Story;
   paused: boolean;
   muted: boolean;
-  reduced: boolean;
   onReady: (seconds: number | null) => void;
 }) {
   const t = useT();
@@ -550,37 +545,29 @@ function StoryBody({
   if (story.kind === 'video' && story.media_url) {
     return <VideoStory uri={story.media_url} paused={paused} muted={muted} onReady={onReady} />;
   }
-  return <PhotoStory uri={story.media_url} reduced={reduced} onReady={onReady} label={t('stories.photoStory')} />;
+  return <PhotoStory uri={story.media_url} onReady={onReady} label={t('stories.photoStory')} />;
 }
+
+/* Whole photo, centred. A blurred copy fills the screen behind it, so a tall
+   phone photo still covers the screen and a wider one is never cropped. */
+const PHOTO_SCRIM = 'rgba(0,0,0,0.35)';
 
 function PhotoStory({
   uri,
-  reduced,
   onReady,
   label,
 }: {
   uri: string | null;
-  reduced: boolean;
   onReady: (seconds: number | null) => void;
   label: string;
 }) {
-  const zoom = useRef(new Animated.Value(reduced ? 1 : 1.06)).current;
   const readyOnce = useRef(false);
 
   const markReady = useCallback(() => {
     if (readyOnce.current) return;
     readyOnce.current = true;
     onReady(null);
-    if (!reduced) {
-      /* A slow settle, so a still photo is not a still screen. */
-      Animated.timing(zoom, {
-        toValue: 1,
-        duration: 5000,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [onReady, reduced, zoom]);
+  }, [onReady]);
 
   /* A photo that never reports loading must not hold the viewer forever. */
   useEffect(() => {
@@ -591,16 +578,24 @@ function PhotoStory({
   if (!uri) return null;
 
   return (
-    <Animated.View style={{ flex: 1, transform: [{ scale: zoom }] }}>
+    <View style={{ flex: 1, backgroundColor: INK }}>
+      <Image
+        source={{ uri }}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        blurRadius={30}
+        accessible={false}
+      />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: PHOTO_SCRIM }]} />
       <Image
         source={{ uri }}
         onLoad={markReady}
         onError={markReady}
-        style={{ flex: 1 }}
-        resizeMode="cover"
+        style={StyleSheet.absoluteFill}
+        resizeMode="contain"
         accessibilityLabel={label}
       />
-    </Animated.View>
+    </View>
   );
 }
 
@@ -663,8 +658,8 @@ function VideoStory({
   return (
     <VideoView
       player={player}
-      style={{ flex: 1 }}
-      contentFit="cover"
+      style={{ flex: 1, backgroundColor: INK }}
+      contentFit="contain"
       nativeControls={false}
       fullscreenOptions={{ enable: false }}
       allowsPictureInPicture={false}

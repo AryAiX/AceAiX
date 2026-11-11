@@ -10,8 +10,9 @@ import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { getClubSquads } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
+import { PreviewRow } from './PreviewRow';
 import { SquadCard } from './SquadCard';
-import { TabAction, type ClubTabProps } from './shared';
+import { PreviewEmpty, previewPending, TabAction, useReportItems, type ClubTabProps } from './shared';
 
 const ALL = '__all';
 
@@ -20,6 +21,8 @@ export function ClubSquadsTab({
   canPost,
   refreshKey,
   onTeam,
+  limit,
+  onHasItems,
 }: ClubTabProps & { onTeam: boolean }) {
   const t = useT();
   const { colors, spacing } = useTheme();
@@ -30,6 +33,29 @@ export function ClubSquadsTab({
   const [sport, setSport] = useState<string>(ALL);
 
   const squads = useAsync(() => getClubSquads(orgId, seasonId), [orgId, seasonId, refreshKey]);
+  const preview = limit != null;
+  const all = squads.data?.squads ?? [];
+  const has = !preview
+    ? null
+    : previewPending(squads.data, squads.error)
+      ? null
+      : squads.error && !squads.data
+        ? true
+        : all.length > 0;
+  useReportItems(onHasItems, has);
+
+  if (preview) {
+    if (squads.error && !squads.data) return <ErrorState message={squads.error} onRetry={squads.reload} compact />;
+    if (has === false) return <PreviewEmpty title={t('club.squads.emptyTitle')} />;
+    if (has !== true) return null;
+    return (
+      <PreviewRow>
+        {all.slice(0, limit).map((squad) => (
+          <SquadCard key={squad.id} squad={squad} showYouthNote={!onTeam} />
+        ))}
+      </PreviewRow>
+    );
+  }
 
   const edit = canPost ? (
     <TabAction
@@ -44,7 +70,6 @@ export function ClubSquadsTab({
 
   const data = squads.data;
   const seasons = data?.seasons ?? [];
-  const all = data?.squads ?? [];
   const sports = [...new Set(all.map((s) => s.sport))];
   const shown = sport === ALL || !sports.includes(sport) ? all : all.filter((s) => s.sport === sport);
   const activeSeason = data?.season_id ?? null;

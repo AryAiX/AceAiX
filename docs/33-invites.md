@@ -45,7 +45,7 @@ Clients cannot write any of them directly.
 
 | RPC | Who | What |
 |---|---|---|
-| `referral_inviter(code)` | anon + signed in | First name, avatar, role of the code's owner (for the landing). |
+| `referral_inviter(code)` | anon + signed in | First name, avatar, role of the code's owner (for the landing). Null for an unknown code. A signed-out caller gets `{}` for a minor's code: valid, but nobody named. |
 | `referral_claim(code)` | signed in | Links me to the inviter. Hints: `referral_unknown_code`, `referral_own_code`, `referral_already_claimed`, `referral_too_late`, `rate_limited` (50/day per inviter). |
 | `referral_my_circle()` | signed in | My code, counts, progress to next token, tokens, members (first names), who invited me, ledger. |
 | `referral_badge(user)` | signed in | Tier or null. |
@@ -59,8 +59,9 @@ invite takes a token back with a negative ledger row. `export_my_data()` include
 ## 4. Deploy notes
 
 - `web/public/.well-known/` holds `apple-app-site-association` and `assetlinks.json` for
-  `aceaix.com` (`/app/*`). `web/vercel.json` forwards `/app/i/*` to `app.aceaix.com/app/i/*`,
-  which is the landing screen. `www.aceaix.com` is still the separate join site, so these files
+  `aceaix.com` (`/app/*`). `web/vercel.json` redirects `/app/i/*` to `app.aceaix.com/app/i/*`,
+  which is the landing screen. A redirect, not a rewrite: a proxied page would load its
+  `/_expo/` scripts from `aceaix.com`, where they don't exist. `www.aceaix.com` is still the separate join site, so these files
   and the forward have to be published there before links open the app.
 - Migration `20261023000001_referrals.sql` runs after the Sport Fit migrations. No data backfill.
 - `supabase/seeds/admin-demo.sql` adds demo invites (Layla: 15, code `LAYLAPLY`; Marco: 6). LOCAL ONLY.

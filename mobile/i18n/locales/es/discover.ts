@@ -19,7 +19,7 @@ export const discover = {
   // ── Pestaña Descubrir ──────────────────────────────────────────────────────
   title: 'Descubre talento',
   athleteSubtitle: 'Clubes, entrenadores y dónde estás tú',
-  searchPeople: 'Buscar personas y clubes',
+  searchPeople: 'Buscar deportistas, entrenadores y clubes',
   queryPlaceholder: 'Nombre, club, posición',
   queryLabel: 'Buscar deportistas',
   filterResults: 'Filtrar resultados',
@@ -182,8 +182,10 @@ export const discover = {
     emptyTitle: 'Todavía no hay nada en esta clasificación',
     emptyBody: 'Prueba con otro deporte u otro país, o sé el primero en aparecer.',
     you: 'Tú',
+    yourChild: 'Tu hijo/a',
     rankA11y: 'Número {{rank}}',
     youA11y: '{{name}}, eres tú',
+    childA11y: '{{name}}, tu hijo/a',
     scoreA11y: 'puntuación de talento {{score}}, nivel {{tier}}',
   },
 

@@ -41,6 +41,7 @@ import {
   useRefreshFollowCountsOnFocus,
 } from '@/lib/followCounts';
 import { useAuth } from '@/providers/AuthProvider';
+import { COVER_ASPECT } from '@/lib/coverCrop';
 import { Routes } from '@/lib/routes';
 import {
   levelLabelI18n,
@@ -311,7 +312,8 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
       */}
       <View
         style={{
-          height: 168,
+          width: '100%',
+          aspectRatio: COVER_ASPECT,
           borderBottomLeftRadius: radii.xl,
           borderBottomRightRadius: radii.xl,
           overflow: 'hidden',
@@ -343,6 +345,9 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
         <Shine every={7} />
       </View>
 
+      {/* 48 = half the 88pt avatar, plus its 3pt ring, plus a point. The circle
+          stays centred on the band's bottom edge now that the height comes
+          from COVER_ASPECT instead of a fixed 168. */}
       <View style={{ paddingHorizontal: spacing.lg, marginTop: -48 }}>
         <View
           style={{

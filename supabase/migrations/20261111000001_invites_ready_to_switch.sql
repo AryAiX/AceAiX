@@ -327,8 +327,10 @@ begin
   select c.user_id into v_user from public.referral_codes c where c.code = upper(btrim(coalesce(p_code, '')));
   if v_user is null or not private.referral_can_invite(v_user) then return null; end if;
   v := private.referral_person(v_user);
+  -- A signed-out visitor learns the code is valid, but not whose it is, so a
+  -- minor's friends still reach sign-up.
   if auth.uid() is null and coalesce((v ->> 'is_minor')::boolean, false) then
-    return null;
+    return '{}'::jsonb;
   end if;
   return v - 'is_minor';
 end;

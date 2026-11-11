@@ -11,7 +11,7 @@ import { useT } from '@/i18n';
 import { getSponsorshipCard, type SponsorshipCard as CardData, type SponsorshipRequest } from '@/lib/api.sponsorship';
 import { fullDate, metaLine } from '@/lib/format';
 import { Routes } from '@/lib/routes';
-import { amountLabel, statusTone } from '@/lib/sponsorship';
+import { amountLabel, formatLocation, statusTone } from '@/lib/sponsorship';
 import { useAuth } from '@/providers/AuthProvider';
 import { ApplySheet, OfferSheet } from './Sheets';
 import { TagRow } from './Tags';
@@ -107,11 +107,14 @@ function SeekingCard({
               {metaLine(
                 request.event_name,
                 request.event_date ? fullDate(request.event_date) : null,
-                request.location,
+                formatLocation(request.location, t),
                 amount,
               )}
             </Text>
-            <TagRow group="need" tags={request.needs} />
+            {request.pitch ? (
+              <ExpandableText text={request.pitch} lines={3} variant="body" tone="secondary" />
+            ) : null}
+            <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
             {request.my_offer_status ? (
               <Badge
                 label={
