@@ -65,14 +65,18 @@ export default function InboxScreen() {
   const [actionsFor, setActionsFor] = useState<Conversation | null>(null);
 
   useEffect(() => {
+    if (!user) {
+      setMuted([]);
+      return;
+    }
     let cancelled = false;
-    getMutedConversations().then((ids) => {
+    getMutedConversations(user.id).then((ids) => {
       if (!cancelled) setMuted(ids);
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
   /* The realtime subscription must outlive individual renders, so it reads the
      latest refresh through a ref instead of re-subscribing every time
@@ -116,10 +120,11 @@ export default function InboxScreen() {
 
   const muteFor = useCallback(
     async (id: string) => {
-      const next = await setConversationMuted(id, !muted.includes(id));
+      if (!user) return;
+      const next = await setConversationMuted(user.id, id, !muted.includes(id));
       setMuted(next);
     },
-    [muted],
+    [muted, user],
   );
 
   const toggleMute = useCallback(async () => {
@@ -160,14 +165,15 @@ export default function InboxScreen() {
 
   /* Mute them all, or unmute them all when every one is muted already. */
   const mutePicked = useCallback(async () => {
+    if (!user) return;
     const allMuted = picked.length > 0 && picked.every((id) => muted.includes(id));
     let next = muted;
     for (const id of picked) {
-      if (allMuted || !next.includes(id)) next = await setConversationMuted(id, !allMuted);
+      if (allMuted || !next.includes(id)) next = await setConversationMuted(user.id, id, !allMuted);
     }
     setMuted(next);
     stopSelecting();
-  }, [muted, picked, stopSelecting]);
+  }, [muted, picked, stopSelecting, user]);
 
   /* Sent / Seen ticks for chats where you wrote last. */
   const data = conversations.data;

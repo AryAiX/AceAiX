@@ -96,19 +96,41 @@ export function isLocalMessage(id: string): boolean {
 
 // ── Muted conversations (this device only) ───────────────────────────────────
 
-const MUTED_KEY = 'aceaix.muted-conversations';
+/** Shared list from before mutes were stored per account. */
+const LEGACY_MUTED_KEY = 'aceaix.muted-conversations';
+
+const keyFor = (userId: string) => `aceaix.muted-conversations.${userId}`;
+
+function parseIds(raw: string | null): string[] {
+  if (!raw) return [];
+  const parsed: unknown = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+}
 
 /**
  * Muting is a local comfort setting, not a safety control: it changes how the
  * inbox looks on this phone and nothing else. Anything that protects a person
  * — blocking, reporting, guardian consent — lives in the database instead.
+ * Each signed-in account keeps its own list (QA-164).
  */
-export async function getMutedConversations(): Promise<string[]> {
+export async function getMutedConversations(userId: string): Promise<string[]> {
   try {
-    const raw = await AsyncStorage.getItem(MUTED_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+    const key = keyFor(userId);
+    const own = await AsyncStorage.getItem(key);
+    if (own != null) return parseIds(own);
+
+    /* One-time carry-over: the first account to read the old shared list takes it. */
+    const legacy = await AsyncStorage.getItem(LEGACY_MUTED_KEY);
+    if (legacy == null) return [];
+
+    const ids = parseIds(legacy);
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(ids));
+      await AsyncStorage.removeItem(LEGACY_MUTED_KEY);
+    } catch {
+      /* Shown for this read; the next open can finish the move. */
+    }
+    return ids;
   } catch {
     return [];
   }
@@ -116,16 +138,17 @@ export async function getMutedConversations(): Promise<string[]> {
 
 /** Returns the full list after the change, so callers can set state from it. */
 export async function setConversationMuted(
+  userId: string,
   conversationId: string,
   muted: boolean,
 ): Promise<string[]> {
-  const current = await getMutedConversations();
+  const current = await getMutedConversations(userId);
   const next = muted
     ? Array.from(new Set([...current, conversationId]))
     : current.filter((id) => id !== conversationId);
 
   try {
-    await AsyncStorage.setItem(MUTED_KEY, JSON.stringify(next));
+    await AsyncStorage.setItem(keyFor(userId), JSON.stringify(next));
   } catch {
     /* A device that cannot write preferences still gets the in-memory result. */
   }
