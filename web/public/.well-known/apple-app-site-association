@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "UU258948F3.com.aryaix.aceaix.athlete",
+        "paths": ["/app/*"]
+      }
+    ]
+  }
+}

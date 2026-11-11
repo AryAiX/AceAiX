@@ -56,6 +56,9 @@ export const errors = {
   inviteTooLate: 'Un code d’invitation ne peut être saisi que pendant les 14 premiers jours après l’inscription.',
   inviteUnknownCode: 'Ce code d’invitation n’est pas valide. Vérifie-le et réessaie.',
   inviteOwnCode: 'Tu ne peux pas utiliser ton propre code d’invitation.',
+  inviteAfterSetup:
+    'Tu peux ajouter un code pendant la configuration du profil, ou dans la journée qui suit.',
+  onboardingNotReady: 'Confirme ton e-mail et termine les informations demandées du profil.',
   sponsorOnly: 'Seul un compte sponsor peut faire cela.',
   sponsorNotVerified: 'Votre compte sponsor n’est pas encore vérifié.',
   athleteOnly: 'Seul un athlète peut faire cela.',

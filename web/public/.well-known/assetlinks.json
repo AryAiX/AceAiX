@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.aryaix.aceaix.athlete",
+      "sha256_cert_fingerprints": [
+        "5B:34:DB:56:C3:64:B3:FD:1F:5A:B5:58:DF:DB:FE:61:9B:EF:A3:B1:23:6D:1E:07:01:6E:D7:80:63:87:F3:D7"
+      ]
+    }
+  }
+]

@@ -55,6 +55,8 @@ export const errors = {
   inviteTooLate: '邀请码只能在注册后的前 14 天内输入。',
   inviteUnknownCode: '这个邀请码无效。请检查后再试一次。',
   inviteOwnCode: '你不能使用自己的邀请码。',
+  inviteAfterSetup: '你可以在设置个人资料时添加邀请码，或在完成后的一天内添加。',
+  onboardingNotReady: '请先确认邮箱，并填完个人资料里必填的内容。',
   sponsorOnly: '只有赞助商账号可以这样做。',
   sponsorNotVerified: '你的赞助商账号尚未通过认证。',
   athleteOnly: '只有运动员可以这样做。',
