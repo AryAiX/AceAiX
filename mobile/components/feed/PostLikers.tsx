@@ -163,6 +163,7 @@ function LikersSheet({
                     following={isFollowing(person.id)}
                     pending={pendingId === person.id}
                     onPress={() => void onFollow(person)}
+                    role={person.role}
                     name={name}
                   />
                 )}

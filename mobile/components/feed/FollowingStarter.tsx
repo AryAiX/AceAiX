@@ -283,6 +283,7 @@ export function FollowingStarter({
                     following={isFollowing}
                     pending={pending === athlete.user_id}
                     onPress={() => follow(athlete.user_id)}
+                    role="athlete"
                     name={name}
                   />
                 </View>

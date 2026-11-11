@@ -76,6 +76,7 @@ export function CoachRow({ person, following, pending, onToggleFollow, onOpen, g
           following={!!following}
           pending={pending}
           solid={!!grouped}
+          role={person.role}
           name={name}
           onPress={() => onToggleFollow(person, !following)}
         />

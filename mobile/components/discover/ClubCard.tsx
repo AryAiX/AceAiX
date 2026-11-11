@@ -97,6 +97,7 @@ export function ClubCard({ organization, following, pending, onToggleFollow, onO
           pending={pending}
           solid={!!grouped}
           compact
+          role="club"
           name={organization.name}
           onPress={() => onToggleFollow(organization, !following)}
         />

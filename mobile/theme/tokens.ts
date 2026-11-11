@@ -753,3 +753,50 @@ export function sweepAt(t: number): string {
   }
   return sweepTable[Math.round(x * SWEEP_STEPS)];
 }
+
+/**
+ * Follow, coloured by who you're following (set 3, 11 Nov). Each role gets
+ * its own sweep before you follow; once you do, the button keeps the role's
+ * colour as a soft tint with a tick, so a followed club still reads as a
+ * club. `other` (scouts, federations, guardians…) is the cobalt → violet
+ * brand sweep.
+ */
+export type FollowKind = 'athlete' | 'coach' | 'club' | 'sponsor' | 'other';
+
+export const FollowColors: Record<
+  'light' | 'dark',
+  Record<FollowKind, { sweep: readonly [string, string, ...string[]]; ink: string; tint: string; tintInk: string; tintEdge: string }>
+> = {
+  light: {
+    athlete: { sweep: ['#FFB347', '#FF7A2C', '#E8372B'], ink: '#FFFFFF', tint: '#FFEBDD', tintInk: '#B5410A', tintEdge: '#FFD2B5' },
+    coach: { sweep: ['#7A6CFF', '#C25BE8'], ink: '#FFFFFF', tint: '#F0EBFF', tintInk: '#6A45D9', tintEdge: '#DCD2FF' },
+    club: { sweep: ['#2F6BFF', '#4FB3FF'], ink: '#FFFFFF', tint: '#E8F0FF', tintInk: '#2355E0', tintEdge: '#C9DAFF' },
+    sponsor: { sweep: ['#F2C14E', '#C68A0B'], ink: '#1B1500', tint: '#FFF4D6', tintInk: '#8A6200', tintEdge: '#F6DF9C' },
+    other: { sweep: ['#2F6BFF', '#7A6CFF'], ink: '#FFFFFF', tint: '#EEEDFF', tintInk: '#4B4FE0', tintEdge: '#D6D6FF' },
+  },
+  dark: {
+    athlete: { sweep: ['#FFC264', '#FF8A42', '#F2493C'], ink: '#FFFFFF', tint: 'rgba(255,138,66,0.18)', tintInk: '#FFB27A', tintEdge: 'transparent' },
+    coach: { sweep: ['#8E82FF', '#D06FF0'], ink: '#FFFFFF', tint: 'rgba(160,120,255,0.20)', tintInk: '#D2C4FF', tintEdge: 'transparent' },
+    club: { sweep: ['#5C90FF', '#6CC2FF'], ink: '#FFFFFF', tint: 'rgba(92,144,255,0.20)', tintInk: '#A9C4FF', tintEdge: 'transparent' },
+    sponsor: { sweep: ['#F6CF6A', '#D9A521'], ink: '#1B1500', tint: 'rgba(242,182,48,0.18)', tintInk: '#F6CF6A', tintEdge: 'transparent' },
+    other: { sweep: ['#5C90FF', '#8E82FF'], ink: '#FFFFFF', tint: 'rgba(120,130,255,0.20)', tintInk: '#BFC2FF', tintEdge: 'transparent' },
+  },
+};
+
+/** Which Follow colour a role gets. Clubs and federations share the club colour. */
+export function followKind(role: string | null | undefined): FollowKind {
+  switch (role) {
+    case 'athlete':
+      return 'athlete';
+    case 'coach':
+      return 'coach';
+    case 'club':
+    case 'federation':
+    case 'org_admin':
+      return 'club';
+    case 'sponsor':
+      return 'sponsor';
+    default:
+      return 'other';
+  }
+}

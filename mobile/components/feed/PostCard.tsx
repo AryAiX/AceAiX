@@ -488,6 +488,7 @@ function PostCardBase({
               following={post.viewer_follows}
               pending={followPending}
               onPress={handleFollow}
+              role={post.author_role}
               name={name}
             />
           </View>

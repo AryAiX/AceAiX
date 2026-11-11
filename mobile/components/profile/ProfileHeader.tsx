@@ -4,20 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RemoteImage } from '@/components/ui/RemoteImage';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  BadgeCheck,
-  Bookmark,
-  Check,
-  Flag,
-  Link2,
-  Lock,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Settings,
-  Share2,
-  ShieldBan,
-} from 'lucide-react-native';
+import { BadgeCheck, Bookmark, Flag, Link2, Lock, MapPin, MessageCircle, MoreHorizontal, Settings, Share2, ShieldBan } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore, tierGradient } from '@/theme/tokens';
@@ -62,6 +49,7 @@ import { webAppLink } from '@/lib/webLinks';
 import { ShareSheet } from '@/components/share/ShareSheet';
 import { useT } from '@/i18n';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
+import { FollowButton } from '@/components/discover/FollowButton';
 
 /**
  * A listed coach role is stored as a key and shown translated, the same way
@@ -541,14 +529,15 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
             </>
           ) : (
             <>
-              <Button
-                label={t(following ? 'common.following' : 'common.follow')}
-                variant={following ? 'secondary' : 'outline'}
-                style={{ flex: 1 }}
-                fullWidth
-                icon={following ? <Check size={17} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
-                loading={followBusy}
+              <FollowButton
+                following={following}
+                pending={followBusy}
                 onPress={onToggleFollow}
+                role={user.role}
+                name={displayName(user.full_name)}
+                large
+                fullWidth
+                style={{ flex: 1 }}
               />
               <Button
                 label={t('common.message')}

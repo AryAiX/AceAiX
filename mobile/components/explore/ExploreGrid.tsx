@@ -13,7 +13,7 @@ import {
 import { useFocusEffect, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Clapperboard, Flame, Play, Sparkles, Star } from 'lucide-react-native';
+import { Clapperboard, Flame, Play, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Chip, EmptyState, ErrorState, Reveal, Skeleton, Tappable, Text } from '@/components/ui';
@@ -26,7 +26,7 @@ import { EXPLORE_PAGE, getExploreSports, getExploreVideos, isHighlight } from '@
 import { followedOnly, getReels, reelVideo } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { mergeClips, mosaicMetrics, mosaicRows, type MosaicRow } from '@/lib/explore';
-import { compactNumber, displayName } from '@/lib/format';
+import { compactNumber, displayName, relativeTime } from '@/lib/format';
 import { knownViewCount, publishViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { Routes } from '@/lib/routes';
 import type { FeedPost } from '@/types/models';
@@ -59,6 +59,8 @@ function withKnownView(post: FeedPost): FeedPost {
 const ON_TILE = '#FFFFFF';
 const SCRIM = 'rgba(0,0,0,0.38)';
 const SMALL = { fontSize: 11, lineHeight: 14 } as const;
+const FRESH_DOT = '#5C90FF';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface Props {
   /**
@@ -503,7 +505,7 @@ interface TileProps {
   big?: boolean;
   /** Play a muted preview over the poster. Large tiles only. */
   preview?: boolean;
-  /** The Discover hub: rounder corners, and a small star instead of the labels. */
+  /** The Discover hub: rounder corners, and how fresh the clip is instead of the labels. */
   hub?: boolean;
   onPress: (post: FeedPost) => void;
 }
@@ -514,6 +516,8 @@ function ClipTileBase({ post, width, height, order, big, preview, hub, onPress }
   const video = reelVideo(post);
   const name = displayName(post.author_name);
   const highlight = isHighlight(post);
+  const age = relativeTime(post.created_at);
+  const fresh = Date.now() - new Date(post.created_at).getTime() < DAY_MS;
 
   return (
     <Reveal index={order % 9} from="scale">
@@ -560,25 +564,29 @@ function ClipTileBase({ post, width, height, order, big, preview, hub, onPress }
         />
 
         {hub ? (
-          highlight ? (
-            <View
-              pointerEvents="none"
-              accessibilityLabel={t('explore.highlight')}
-              style={{
-                position: 'absolute',
-                top: 6,
-                right: 6,
-                width: 22,
-                height: 22,
-                borderRadius: 11,
-                backgroundColor: SCRIM,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Star size={11} color="#FFD43B" fill="#FFD43B" />
-            </View>
-          ) : null
+          /* How fresh the clip is, in place of the old star (every tile here
+             is a Best of clip, so the star said nothing new). Under a day
+             old gets a blue dot. */
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              height: 19,
+              paddingHorizontal: 6,
+              borderRadius: 7,
+              backgroundColor: SCRIM,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            {fresh ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: FRESH_DOT }} /> : null}
+            <Text variant="captionStrong" color={ON_TILE} numberOfLines={1} style={SMALL}>
+              {age}
+            </Text>
+          </View>
         ) : (
           <View
             pointerEvents="none"

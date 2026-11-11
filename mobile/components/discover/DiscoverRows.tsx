@@ -2,11 +2,11 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BadgeCheck, Check } from 'lucide-react-native';
+import { BadgeCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
-import { Avatar, Button, Text, useToast } from '@/components/ui';
+import { Avatar, Text, useToast } from '@/components/ui';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
@@ -29,6 +29,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { LeaderboardPodium } from './LeaderboardPodium';
 import { LeaderboardRow } from './LeaderboardRow';
 import { tierLabel } from './MatchBadge';
+import { FollowButton } from './FollowButton';
 
 /**
  * The short rows that sit between the clips on the athlete's Discover. Each
@@ -204,16 +205,12 @@ function PlayersToKnow() {
                 <Text variant="caption" tone="muted" numberOfLines={1}>
                   {metaLine(positionLabel(t, row.position) || sportLabel(t, row.sport), row.country)}
                 </Text>
-                <Button
-                  label={following ? t('common.following') : t('common.follow')}
-                  variant={following ? 'secondary' : 'outline'}
-                  icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
-                  size="sm"
+                <FollowButton
+                  following={following}
                   onPress={() => void toggle(row.user_id)}
+                  role="athlete"
+                  name={name}
                   style={{ marginTop: spacing.sm }}
-                  accessibilityLabel={
-                    following ? t('discover.unfollowA11y', { name }) : t('discover.followA11y', { name })
-                  }
                 />
               </View>
             </Pressable>
@@ -385,18 +382,12 @@ function ClubsToFollow() {
               <Text variant="caption" tone="muted" numberOfLines={1}>
                 {club.league || club.city || club.country || ' '}
               </Text>
-              <Button
-                label={following ? t('common.following') : t('common.follow')}
-                variant={following ? 'secondary' : 'outline'}
-                icon={following ? <Check size={16} color={colors.textSecondary} strokeWidth={2.6} /> : undefined}
-                size="sm"
+              <FollowButton
+                following={following}
                 onPress={() => void toggle(club.id)}
+                role="club"
+                name={club.name}
                 style={{ marginTop: spacing.xs }}
-                accessibilityLabel={
-                  following
-                    ? t('discover.unfollowA11y', { name: club.name })
-                    : t('discover.followA11y', { name: club.name })
-                }
               />
             </Pressable>
           );
