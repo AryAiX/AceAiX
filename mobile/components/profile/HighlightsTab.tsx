@@ -216,6 +216,31 @@ export function HighlightsTab({
     />
   );
 
+  /* "Best of <name>": whose best moments these are, with the count. Shown
+     above the clips, and above the empty card while there are none. */
+  const bestOfTitle = author?.name ? (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }} testID="best-of-title">
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.alpha(theme.play.flame, theme.scheme === 'dark' ? 0.2 : 0.14),
+        }}
+      >
+        <Star size={15} color={theme.play.flame} fill={theme.play.flame} />
+      </View>
+      <Text variant="subheading" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+        {t('profile.bestOfNamed', { name: author.name })}
+      </Text>
+      <Text variant="caption" tone="muted">
+        {t('profile.clipCount', { count: items.length })}
+      </Text>
+    </View>
+  ) : null;
+
   if (!athleteId) {
     return (
       <EmptyState
@@ -241,6 +266,7 @@ export function HighlightsTab({
     const clipTip = tips.find((tip) => tip.key === 'add_highlights') ?? null;
     return (
       <>
+        {bestOfTitle ? <View style={{ marginBottom: spacing.md }}>{bestOfTitle}</View> : null}
         {isSelf ? (
           /* Your own empty reel: three slots to fill, the first one lit. */
           <View
@@ -353,29 +379,7 @@ export function HighlightsTab({
 
   return (
     <View style={{ gap: spacing.md }}>
-      {author?.name ? (
-        /* "Best of <name>": whose best moments these are, with the count. */
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }} testID="best-of-title">
-          <View
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 10,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.alpha(theme.play.flame, theme.scheme === 'dark' ? 0.2 : 0.14),
-            }}
-          >
-            <Star size={15} color={theme.play.flame} fill={theme.play.flame} />
-          </View>
-          <Text variant="subheading" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
-            {t('profile.bestOfNamed', { name: author.name })}
-          </Text>
-          <Text variant="caption" tone="muted">
-            {t('profile.clipCount', { count: items.length })}
-          </Text>
-        </View>
-      ) : null}
+      {bestOfTitle}
       <MediaGrid
         layout={layout}
         author={author}

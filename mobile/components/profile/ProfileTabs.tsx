@@ -24,9 +24,14 @@ export function toProfileTab(value: unknown, fallback: ProfileTab = 'posts'): Pr
 export function ProfileTabs({
   value,
   onChange,
+  hasPosts = true,
+  hasClips = true,
 }: {
   value: ProfileTab;
   onChange: (tab: ProfileTab) => void;
+  /** With nothing to lay out, the Grid ⇄ Scroll switch is hidden. */
+  hasPosts?: boolean;
+  hasClips?: boolean;
 }) {
   const t = useT();
   const theme = useTheme();
@@ -92,8 +97,10 @@ export function ProfileTabs({
           );
         })}
       </View>
-      {/* Grid ⇄ Scroll, for the tabs that have a grid. */}
-      {value !== 'career' ? <LayoutToggle value={layout} onChange={setLayout} /> : null}
+      {/* Grid ⇄ Scroll, for the tabs that have a grid and something in it. */}
+      {(value === 'posts' && hasPosts) || (value === 'highlights' && hasClips) ? (
+        <LayoutToggle value={layout} onChange={setLayout} />
+      ) : null}
     </View>
   );
 }

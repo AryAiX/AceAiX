@@ -309,7 +309,14 @@ export default function MyProfileScreen() {
           />
         ) : null}
 
-        {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
+        {athlete ? (
+          <ProfileTabs
+            value={tab}
+            onChange={setTab}
+            hasPosts={(data.stats?.posts ?? 0) > 0}
+            hasClips={(data.stats?.media ?? 0) > 0}
+          />
+        ) : null}
 
         {data.user.role !== 'club' && (!athlete || tab === 'posts') ? (
           <PostsTab userId={data.user.id} isSelf refreshKey={childKey} />
