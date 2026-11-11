@@ -8703,4 +8703,306 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Tagging people on a post (QA-169).
+-- A mention is text. A tag is a person attached to the post.
+-- Fresh accounts only (7f020000): an author, a friend, a coach
+-- the caption @mentions, a 15-year-old, someone the author
+-- blocked, a stranger, and a follower of the author. One public
+-- post and one followers-only post. tests.ok runs only after
+-- the role is reset, because authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── tagging people on a post ──'; end $$;
+
+do $$
+declare
+  v_author    uuid := '7f020000-0000-4000-8000-000000000001';
+  v_friend    uuid := '7f020000-0000-4000-8000-000000000002';
+  v_coach     uuid := '7f020000-0000-4000-8000-000000000003';
+  v_minor     uuid := '7f020000-0000-4000-8000-000000000004';
+  v_blocked   uuid := '7f020000-0000-4000-8000-000000000005';
+  v_stranger  uuid := '7f020000-0000-4000-8000-000000000006';
+  v_follower  uuid := '7f020000-0000-4000-8000-000000000007';
+  v_public    uuid := '7f020000-0000-4000-8000-000000000011';
+  v_followers uuid := '7f020000-0000-4000-8000-000000000012';
+  v_caption   text;
+  v_who       text;
+  v_len       integer;
+  v_kept      uuid[];
+  v_many      uuid[];
+  v_msg       text;
+  v_state     text;
+  v_hint      text;
+  v_limit     boolean := false;
+  v_not_author boolean := false;
+  v_notes_before integer;
+  v_notes_after  integer;
+  v_friend_notes integer;
+  v_seen_public integer;
+  v_seen_public_all integer;
+  v_seen_followers integer;
+  v_public_only integer;
+  v_other integer;
+  v_insert_refused boolean := false;
+  v_follower_ids uuid[];
+  v_follower_authors integer;
+  v_friend_tags integer;
+  v_friend_posts integer;
+  v_own integer;
+  v_cleared uuid[];
+  v_tags_before_delete integer;
+  v_anon_denied boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author,   'qa169.author@test.local',   '{"full_name":"Tag Author","role":"athlete"}'),
+    (v_friend,   'qa169.friend@test.local',   '{"full_name":"Tag Friend","role":"athlete"}'),
+    (v_coach,    'qa169.coach@test.local',    '{"full_name":"Tag Coach","role":"coach"}'),
+    (v_minor,    'qa169.minor@test.local',    '{"full_name":"Tag Minor","role":"athlete"}'),
+    (v_blocked,  'qa169.blocked@test.local',  '{"full_name":"Tag Blocked","role":"athlete"}'),
+    (v_stranger, 'qa169.stranger@test.local', '{"full_name":"Tag Stranger","role":"athlete"}'),
+    (v_follower, 'qa169.follower@test.local', '{"full_name":"Tag Follower","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_author, v_friend, v_coach, v_blocked, v_stranger, v_follower);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id = v_minor;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_author, v_blocked);
+  insert into public.follows (follower_id, following_id)
+  values (v_follower, v_author);
+
+  perform tests.ok(
+    (select full_name from public.user_profiles where id = v_author) = 'Tag Author'
+    and (select is_minor from public.user_profiles where id = v_minor)
+    and not (select is_minor from public.user_profiles where id = v_coach)
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_author and blocked_id = v_blocked
+    ),
+    'the author is Tag Author, the 15-year-old is a minor, and one account is blocked');
+
+  select full_name into v_who from public.user_profiles where id = v_coach;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  insert into public.posts (
+    id, author_id, type, caption, text, audience, mentions, created_at
+  ) values (
+    v_public, v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object(
+      'user_id', v_coach, 'start', 0, 'length', v_len
+    )),
+    now()
+  ), (
+    v_followers, v_author, 'standard', 'followers only', 'followers only', 'followers',
+    '[]'::jsonb,
+    now() - interval '1 hour'
+  );
+
+  perform tests.as_user(v_author);
+  v_kept := public.set_post_tags(
+    v_public,
+    array[v_friend, v_coach, v_minor, v_blocked, v_author, v_friend]
+  );
+  perform tests.ok(
+    v_kept @> array[v_friend, v_coach]::uuid[]
+    and array[v_friend, v_coach]::uuid[] @> v_kept
+    and cardinality(v_kept) = 2
+    and (select count(*) from public.post_tags where post_id = v_public) = 2
+    and not exists (
+      select 1 from public.post_tags
+      where post_id = v_public
+        and user_id in (v_minor, v_blocked, v_author)
+    ),
+    'tagging the friend, the coach, the minor, the blocked person, the author and the friend twice keeps only the friend and the coach');
+
+  select count(*) into v_friend_notes
+    from public.notifications
+   where user_id = v_friend
+     and type = 'post_tag'
+     and title = 'Tag Author tagged you in a post'
+     and actor_id = v_author
+     and entity_type = 'post'
+     and entity_id = v_public::text
+     and body = v_caption;
+  perform tests.ok(
+    v_friend_notes = 1
+    and (select count(*) from public.notifications
+          where user_id = v_friend and type = 'post_tag') = 1,
+    'the friend gets exactly one post_tag notification with the title "Tag Author tagged you in a post"');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_coach and type = 'post_tag') = 0
+    and (select count(*) from public.notifications
+      where user_id = v_minor and type = 'post_tag') = 0,
+    'the mentioned coach gets no post_tag notification, and the minor gets none');
+
+  select count(*) into v_notes_before
+    from public.notifications
+   where type = 'post_tag';
+  v_kept := public.set_post_tags(
+    v_public,
+    array[v_friend, v_coach, v_minor, v_blocked, v_author, v_friend]
+  );
+  select count(*) into v_notes_after
+    from public.notifications
+   where type = 'post_tag';
+  perform tests.ok(
+    v_notes_before = 1
+    and v_notes_after = v_notes_before
+    and cardinality(v_kept) = 2,
+    'saving the same list again notifies nobody again');
+
+  select coalesce(array_agg(gen_random_uuid()), '{}'::uuid[])
+    into v_many
+    from generate_series(1, 21);
+  begin
+    perform public.set_post_tags(v_public, v_many);
+  exception when invalid_parameter_value then
+    get stacked diagnostics
+      v_msg = message_text,
+      v_state = returned_sqlstate,
+      v_hint = pg_exception_hint;
+    v_limit := v_msg = 'You can tag up to 20 people'
+      and v_state = '22023'
+      and v_hint = 'post_tags_limit';
+  end;
+  perform tests.ok(v_limit, '21 people raises the limit error');
+
+  perform tests.as_user(v_stranger);
+  begin
+    perform public.set_post_tags(v_public, array[v_friend]);
+  exception when insufficient_privilege then
+    get stacked diagnostics v_state = returned_sqlstate;
+    v_not_author := v_state = '42501';
+  end;
+  perform tests.ok(v_not_author, 'someone who is not the author gets 42501');
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_followers, array[v_friend, v_coach]);
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_seen_public
+    from public.post_tags
+   where post_id = v_public
+     and user_id in (v_friend, v_coach);
+  select count(*) into v_seen_public_all
+    from public.post_tags
+   where post_id = v_public;
+  select count(*) into v_seen_followers
+    from public.post_tags
+   where post_id = v_followers;
+  select count(*) into v_public_only
+    from public.get_tagged_posts(v_friend, 24, null) g
+   where g.id = v_public and g.author_id = v_author;
+  select count(*) into v_other
+    from public.get_tagged_posts(v_friend, 24, null) g
+   where g.id is distinct from v_public;
+  begin
+    insert into public.post_tags (post_id, user_id, tagged_by)
+    values (v_public, v_stranger, v_stranger);
+    v_insert_refused := false;
+  exception when insufficient_privilege then
+    v_insert_refused := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_seen_public = 2 and v_seen_public_all = 2 and v_seen_followers = 0,
+    'a stranger sees both tags on the public post and no tags on the followers-only post');
+  perform tests.ok(
+    v_public_only = 1 and v_other = 0,
+    'get_tagged_posts for the friend returns only the public post');
+  perform tests.ok(v_insert_refused, 'a direct insert into post_tags is refused');
+
+  perform tests.as_user(v_follower);
+  set local role authenticated;
+  select coalesce(array_agg(g.id order by g.created_at desc), '{}'::uuid[]),
+         (count(*) filter (where g.author_id = v_author))::integer
+    into v_follower_ids, v_follower_authors
+    from public.get_tagged_posts(v_friend, 24, null) g;
+  reset role;
+  perform tests.ok(
+    v_follower_ids = array[v_public, v_followers]::uuid[]
+    and v_follower_authors = 2,
+    'a follower sees both tagged posts');
+
+  perform tests.as_user(v_friend);
+  perform public.block_user(v_stranger);
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_friend_tags
+    from public.post_tags
+   where user_id = v_friend;
+  select count(*) into v_friend_posts
+    from public.get_tagged_posts(v_friend, 24, null);
+  reset role;
+  perform tests.ok(
+    v_friend_tags = 0 and v_friend_posts = 0,
+    'after the friend blocks the stranger, the stranger sees none of the friend''s tags and none of the friend''s tagged posts');
+
+  perform tests.as_user(v_friend);
+  set local role authenticated;
+  select count(*) into v_own
+    from public.post_tags
+   where user_id = auth.uid()
+     and post_id in (v_public, v_followers);
+  perform public.remove_post_tag(v_public);
+  reset role;
+  perform tests.ok(v_own = 2, 'the friend always sees their own tags');
+  perform tests.ok(
+    not exists (
+      select 1 from public.post_tags
+      where post_id = v_public and user_id = v_friend
+    )
+    and exists (
+      select 1 from public.post_tags
+      where post_id = v_public and user_id = v_coach
+    )
+    and exists (
+      select 1 from public.post_tags
+      where post_id = v_followers and user_id = v_friend
+    ),
+    'remove_post_tag removes only the friend''s own tag');
+
+  perform tests.as_user(v_author);
+  v_cleared := public.set_post_tags(v_public, '{}'::uuid[]);
+  perform tests.ok(
+    v_cleared = '{}'::uuid[]
+    and not exists (select 1 from public.post_tags where post_id = v_public),
+    'the author can clear the list with an empty array');
+
+  select count(*) into v_tags_before_delete
+    from public.post_tags
+   where post_id = v_followers;
+  delete from public.posts where id = v_followers;
+  perform tests.ok(
+    v_tags_before_delete > 0
+    and not exists (select 1 from public.post_tags where post_id = v_followers),
+    'deleting a post removes its tags');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.post_tags limit 1;
+    v_anon_denied := false;
+  exception when insufficient_privilege then
+    v_anon_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_anon_denied
+    and not has_table_privilege('anon', 'public.post_tags', 'SELECT'),
+    'a signed-out caller cannot read post_tags');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
