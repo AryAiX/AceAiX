@@ -40,6 +40,12 @@ vi.mock('@/components/ui', () => ({
   Text: () => null,
 }));
 
+/* The row's Follow button pulls in native modules (gradient, haptics) that
+   cannot load in a node test; the copy under test does not need it. */
+vi.mock('@/components/discover/FollowButton', () => ({
+  FollowButton: () => null,
+}));
+
 vi.mock('@/theme/ThemeProvider', () => ({
   useTheme: () => ({}),
 }));

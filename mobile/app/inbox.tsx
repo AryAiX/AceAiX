@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { MessageSquare, Search } from 'lucide-react-native';
+import { Bell, BellOff, Check, MessageSquare, Search } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -50,6 +51,11 @@ export default function InboxScreen() {
   const [query, setQuery] = useState('');
   const [onlyUnread, setOnlyUnread] = useState(false);
   const [receipts, setReceipts] = useState<Record<string, Receipt>>({});
+  /* Select mode: pick several chats, then Read or Mute them together.
+     Everything else on the screen stays where it is. */
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const insets = useSafeAreaInsets();
 
   const conversations = useAsync<Conversation[]>(() => getConversations(), [], {
     refetchOnFocus: true,
@@ -136,6 +142,33 @@ export default function InboxScreen() {
     [mutate, refreshBadge],
   );
 
+  const togglePick = useCallback((id: string) => {
+    setPicked((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
+  }, []);
+
+  const stopSelecting = useCallback(() => {
+    setSelecting(false);
+    setPicked([]);
+  }, []);
+
+  /* Read every picked chat that still has something unread. */
+  const readPicked = useCallback(() => {
+    const targets = (conversations.data ?? []).filter((c) => picked.includes(c.id) && c.unread_count > 0);
+    targets.forEach((c) => markRead(c));
+    stopSelecting();
+  }, [conversations.data, markRead, picked, stopSelecting]);
+
+  /* Mute them all, or unmute them all when every one is muted already. */
+  const mutePicked = useCallback(async () => {
+    const allMuted = picked.length > 0 && picked.every((id) => muted.includes(id));
+    let next = muted;
+    for (const id of picked) {
+      if (allMuted || !next.includes(id)) next = await setConversationMuted(id, !allMuted);
+    }
+    setMuted(next);
+    stopSelecting();
+  }, [muted, picked, stopSelecting]);
+
   /* Sent / Seen ticks for chats where you wrote last. */
   const data = conversations.data;
   useEffect(() => {
@@ -171,6 +204,9 @@ export default function InboxScreen() {
     );
   }, [all, query, onlyUnread]);
   const filtering = onlyUnread || query.trim().length > 0;
+  const allPicked = items.length > 0 && items.every((c) => picked.includes(c.id));
+  const pickedUnread = all.some((c) => picked.includes(c.id) && c.unread_count > 0);
+  const pickedAllMuted = picked.length > 0 && picked.every((id) => muted.includes(id));
 
   const renderEmpty = () => {
     if (conversations.loading && items.length === 0) {
@@ -294,7 +330,55 @@ export default function InboxScreen() {
       {/* Swiping back works from the screen's left edge only, so a swipe on
           a chat (to open or close its buttons) never leaves the inbox. */}
       <Stack.Screen options={{ fullScreenGestureEnabled: false }} />
-      <Header back />
+      {selecting ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            minHeight: 56,
+            paddingHorizontal: spacing.lg,
+            paddingVertical: spacing.md,
+          }}
+        >
+          <Pressable
+            onPress={() => setPicked(allPicked ? [] : items.map((c) => c.id))}
+            hitSlop={10}
+            accessibilityRole="button"
+            testID="inbox-select-all"
+          >
+            <Text variant="bodyStrong" color={colors.primary}>
+              {allPicked ? t('common.clear') : t('messaging.selectAll')}
+            </Text>
+          </Pressable>
+          <Text variant="bodyStrong" align="center" numberOfLines={1} style={{ flex: 1 }}>
+            {picked.length > 0 ? t('messaging.selectedCount', { count: picked.length }) : t('messaging.selectHint')}
+          </Text>
+          <Pressable onPress={stopSelecting} hitSlop={10} accessibilityRole="button" testID="inbox-select-done">
+            <Text variant="bodyStrong" color={colors.primary}>
+              {t('common.done')}
+            </Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Header
+          back
+          right={
+            all.length > 0 ? (
+              <Pressable
+                onPress={() => setSelecting(true)}
+                hitSlop={10}
+                accessibilityRole="button"
+                testID="inbox-select"
+                style={{ paddingHorizontal: spacing.xs, paddingVertical: spacing.sm }}
+              >
+                <Text variant="bodyStrong" color={colors.primary}>
+                  {t('messaging.select')}
+                </Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
+      )}
 
       <FlatList
         data={items}
@@ -304,20 +388,22 @@ export default function InboxScreen() {
             conversation={item}
             muted={muted.includes(item.id)}
             receipt={receipts[item.id] ?? null}
-            onPress={() => openChat(item)}
+            onPress={() => (selecting ? togglePick(item.id) : openChat(item))}
+            selecting={selecting}
+            selected={picked.includes(item.id)}
             onOpenActions={() => setActionsFor(item)}
             onMarkRead={() => markRead(item)}
             onAlreadyRead={() => toast.info(t('messaging.alreadyRead'))}
             onToggleMute={() => void muteFor(item.id)}
           />
         )}
-        extraData={{ muted, receipts }}
+        extraData={{ muted, receipts, selecting, picked }}
         ListHeaderComponent={top}
         ListFooterComponent={footer}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         contentContainerStyle={{
-          paddingBottom: spacing.xxl,
+          paddingBottom: selecting ? 120 + insets.bottom : spacing.xxl,
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
@@ -333,6 +419,74 @@ export default function InboxScreen() {
         ListEmptyComponent={renderEmpty()}
         testID="inbox-list"
       />
+
+      {selecting ? (
+        /* Read and Mute for the picked chats. Delete joins once the server
+           can delete a chat. */
+        <View
+          style={{
+            position: 'absolute',
+            left: spacing.lg,
+            right: spacing.lg,
+            bottom: insets.bottom + spacing.md,
+            flexDirection: 'row',
+            gap: spacing.sm,
+            padding: spacing.sm,
+            borderRadius: 20,
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            ...theme.elevation(2),
+          }}
+          testID="inbox-select-bar"
+        >
+          {[
+            {
+              key: 'read',
+              label: t('messaging.markRead'),
+              icon: <Check size={18} color={colors.primary} strokeWidth={2.6} />,
+              on: pickedUnread,
+              onPress: readPicked,
+            },
+            {
+              key: 'mute',
+              label: pickedAllMuted ? t('messaging.unmute') : t('messaging.mute'),
+              icon: pickedAllMuted ? (
+                <Bell size={18} color={colors.primary} strokeWidth={2.2} />
+              ) : (
+                <BellOff size={18} color={colors.primary} strokeWidth={2.2} />
+              ),
+              on: picked.length > 0,
+              onPress: () => void mutePicked(),
+            },
+          ].map((a) => (
+            <Pressable
+              key={a.key}
+              onPress={a.onPress}
+              disabled={!a.on}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !a.on }}
+              accessibilityLabel={a.label}
+              testID={`inbox-select-${a.key}`}
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 52,
+                borderRadius: 14,
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 2,
+                backgroundColor: colors.primarySoft,
+                opacity: !a.on ? 0.4 : pressed ? 0.8 : 1,
+              })}
+            >
+              {a.icon}
+              <Text variant="captionStrong" color={colors.primary}>
+                {a.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
       <PeerActionsSheet
         visible={!!actionsFor}

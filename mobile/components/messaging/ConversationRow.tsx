@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, Pressable, View } from 'react-native';
 import { Bell, BellOff, Check, Mail } from 'lucide-react-native';
 
@@ -25,6 +25,9 @@ interface Props {
   /** Tapping Unread on a chat that has already been read. */
   onAlreadyRead: () => void;
   onToggleMute: () => void;
+  /** Select mode: a round tick on the left, taps pick the chat, no swiping. */
+  selecting?: boolean;
+  selected?: boolean;
 }
 
 /** Each button behind the row, and how far the row slides to show both. */
@@ -47,6 +50,8 @@ export function ConversationRow({
   onMarkRead,
   onAlreadyRead,
   onToggleMute,
+  selecting = false,
+  selected = false,
 }: Props) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -72,6 +77,12 @@ export function ConversationRow({
   };
   const settleRef = useRef(settle);
   settleRef.current = settle;
+  /* While picking chats, a sideways drag does nothing. */
+  const selectingRef = useRef(selecting);
+  selectingRef.current = selecting;
+  useEffect(() => {
+    if (selecting && open.current) settleRef.current(0);
+  }, [selecting]);
 
   /* A horizontal drag has to be claimed away from the FlatList's vertical
      scroll, so the responder only engages once the movement is clearly
@@ -82,9 +93,9 @@ export function ConversationRow({
          cannot keep the first swipe; and once claimed it is not handed to
          the list's scroll mid-swipe. */
       onMoveShouldSetPanResponder: (_evt, gesture) =>
-        Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
+        !selectingRef.current && Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
       onMoveShouldSetPanResponderCapture: (_evt, gesture) =>
-        Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
+        !selectingRef.current && Math.abs(gesture.dx) > 8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.4,
       onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_evt, gesture) => {
         const next = Math.max(OPEN_X - 20, Math.min(0, offset.current + gesture.dx));
@@ -216,13 +227,14 @@ export function ConversationRow({
 
       <Animated.View {...pan.panHandlers} style={{ transform: [{ translateX: translate }] }}>
         <Pressable
-          onPress={() => (open.current ? close() : onPress())}
-          onLongPress={onOpenActions}
+          onPress={() => (selecting ? onPress() : open.current ? close() : onPress())}
+          onLongPress={selecting ? undefined : onOpenActions}
           delayLongPress={320}
-          accessibilityRole="button"
+          accessibilityRole={selecting ? 'checkbox' : 'button'}
+          accessibilityState={selecting ? { checked: selected } : undefined}
           accessibilityLabel={label}
-          accessibilityHint={t('messaging.conversationHint')}
-          accessibilityActions={[
+          accessibilityHint={selecting ? undefined : t('messaging.conversationHint')}
+          accessibilityActions={selecting ? undefined : [
             { name: 'markRead', label: unread ? t('messaging.markRead') : t('messaging.markUnread') },
             { name: 'mute', label: muted ? t('messaging.unmute') : t('messaging.mute') },
           ]}
@@ -240,16 +252,36 @@ export function ConversationRow({
             borderRadius: radii.xl,
             borderTopRightRadius: isOpen ? 0 : radii.xl,
             borderBottomRightRadius: isOpen ? 0 : radii.xl,
-            borderWidth: 1,
-            borderRightWidth: isOpen ? 0 : 1,
-            borderColor: colors.border,
-            backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
+            borderWidth: selected ? 1.5 : 1,
+            borderRightWidth: isOpen ? 0 : selected ? 1.5 : 1,
+            borderColor: selected ? colors.primary : colors.border,
+            backgroundColor: selected
+              ? theme.alpha(colors.primary, theme.scheme === 'dark' ? 0.14 : 0.06)
+              : pressed
+                ? colors.surfaceAlt
+                : colors.surface,
             shadowColor: '#14143C',
             shadowOpacity: theme.scheme === 'dark' ? 0 : 0.06,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 4 },
           })}
         >
+          {selecting ? (
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                borderWidth: selected ? 0 : 2,
+                borderColor: colors.borderStrong,
+                backgroundColor: selected ? colors.primary : 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {selected ? <Check size={14} color={colors.textOnBrand} strokeWidth={3} /> : null}
+            </View>
+          ) : null}
           <Avatar
             uri={conversation.other_avatar}
             name={conversation.other_name}
