@@ -6,7 +6,8 @@ import { supabase } from '@/lib/supabase';
  * inside a caption or comment, and the tag is a person on the post itself.
  *
  * `get_feed` does not return tags, so they are read afterwards, one select
- * for the page. A post id is remembered so the next page does not ask again.
+ * for the page, every time. The remembered list is only a fallback when that
+ * read fails. An edit on this phone writes it so the card updates at once.
  * A failed read must not break the feed.
  */
 
@@ -41,15 +42,15 @@ function personOf(value: unknown): TaggedPerson | null {
 export async function attachPostTags<T extends { id: string }>(
   posts: T[],
 ): Promise<(T & { tagged: TaggedPerson[] })[]> {
-  const missing: string[] = [];
+  const ids: string[] = [];
   const seen = new Set<string>();
   for (const post of posts) {
-    if (seen.has(post.id) || byPostId.has(post.id)) continue;
+    if (seen.has(post.id)) continue;
     seen.add(post.id);
-    missing.push(post.id);
+    ids.push(post.id);
   }
 
-  if (missing.length > 0) {
+  if (ids.length > 0) {
     // user_id and tagged_by both point at user_profiles, so the embed has to
     // name the person who was tagged.
     const { data, error } = await supabase
@@ -57,7 +58,7 @@ export async function attachPostTags<T extends { id: string }>(
       .select(
         'post_id, created_at, user:user_profiles!post_tags_user_id_fkey(id, full_name, avatar_url, is_verified, role)',
       )
-      .in('post_id', missing)
+      .in('post_id', ids)
       .order('created_at', { ascending: false });
 
     if (error || !Array.isArray(data)) {
@@ -73,7 +74,7 @@ export async function attachPostTags<T extends { id: string }>(
         list.push(person);
         grouped.set(row.post_id, list);
       }
-      for (const id of missing) byPostId.set(id, grouped.get(id) ?? []);
+      for (const id of ids) byPostId.set(id, grouped.get(id) ?? []);
     }
   }
 

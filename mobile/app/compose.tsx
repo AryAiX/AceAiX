@@ -30,7 +30,7 @@ import { useT } from '@/i18n';
 import { MentionInput } from '@/components/feed/MentionInput';
 import { TagPeoplePicker } from '@/components/feed/TagPeoplePicker';
 import { createPost, getMyTalentScore } from '@/lib/api';
-import { setPostTags, type TaggedPerson } from '@/lib/api.postTags';
+import { rememberPostTags, setPostTags, type TaggedPerson } from '@/lib/api.postTags';
 import { saveScoreSnapshot } from '@/lib/scoreSnapshots';
 import { useAsync } from '@/hooks/useAsync';
 import {
@@ -224,9 +224,17 @@ export default function ComposeScreen() {
       void saveScoreSnapshot(newId, scoreAtOpen.data?.overall ?? null);
       if (tagged.length > 0) {
         try {
-          await setPostTags(
+          const kept = await setPostTags(
             newId,
             tagged.map((person) => person.id),
+          );
+          const byId = new Map(tagged.map((person) => [person.id, person]));
+          rememberPostTags(
+            newId,
+            kept.flatMap((id) => {
+              const person = byId.get(id);
+              return person ? [person] : [];
+            }),
           );
         } catch {
           toast.show({ message: t('feed.tagsNotSaved'), tone: 'warning' });
