@@ -18,7 +18,7 @@ import { toggleLike } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import { postLink } from '@/lib/api.feed';
 import { getExploreVideos, getHighlightClip, isHighlight } from '@/lib/api.explore';
-import { followedOnly, getReels } from '@/lib/api.reels';
+import { getFollowingReels } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
@@ -81,7 +81,7 @@ export default function ReelsScreen() {
           ? getExploreVideos({ limit: 60, sport }).then((rows) =>
               rows.filter((post) => post.media.some((m) => m.type === 'video')),
             )
-          : getReels({ limit: 30 }).then(followedOnly),
+          : getFollowingReels({ limit: 30 }),
     [fromExplore, fromClip, sport, params.start],
   );
   const { mutate } = reels;

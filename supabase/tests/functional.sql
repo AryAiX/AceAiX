@@ -8562,4 +8562,145 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── Your Rundown ──'; end $$;
+
+/*
+ * QA-167. Reading the newest reels and then keeping follows misses clips
+ * once newer posts from everyone else fill the page. The followed feed
+ * has to be read on its own: an old public clip, an old followers-only
+ * clip, an old profile clip, and an old clip on a club page, buried
+ * under photos and under a stranger's newer videos.
+ */
+do $$
+declare
+  v_viewer   uuid := '7fe00000-0000-4000-8000-000000000001';
+  v_followed uuid := '7fe00000-0000-4000-8000-000000000002';
+  v_stranger uuid := '7fe00000-0000-4000-8000-000000000003';
+  v_club_user uuid := '7fe00000-0000-4000-8000-000000000004';
+  v_public   uuid := '7fe00000-0000-4000-8000-000000000011';
+  v_followers uuid := '7fe00000-0000-4000-8000-000000000012';
+  v_club_post uuid := '7fe00000-0000-4000-8000-000000000013';
+  v_own      uuid := '7fe00000-0000-4000-8000-000000000014';
+  v_highlight uuid := '7fe00000-0000-4000-8000-000000000015';
+  v_stranger_highlight uuid := '7fe00000-0000-4000-8000-000000000016';
+  v_org      uuid;
+  v_followed_athlete uuid;
+  v_stranger_athlete uuid;
+  v_ids      uuid[];
+  v_page     uuid[];
+  v_next     uuid[];
+  v_before   timestamptz;
+  v_missed   integer;
+  v_probe    integer;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_viewer,    'qa167.viewer@test.local',   '{"full_name":"QA167 Viewer","role":"athlete"}'),
+    (v_followed,  'qa167.followed@test.local', '{"full_name":"QA167 Followed","role":"athlete"}'),
+    (v_stranger,  'qa167.stranger@test.local', '{"full_name":"QA167 Stranger","role":"athlete"}'),
+    (v_club_user, 'qa167.club@test.local',     '{"full_name":"QA167 Club","role":"club"}');
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_viewer, v_followed, v_stranger, v_club_user);
+
+  perform tests.as_user(v_club_user);
+  v_org := public.create_club_page(
+    '{"type":"club","name":"QA167 Harbour","founded_year":2008,"ceo_name":"QA Director"}');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into public.follows (follower_id, following_id) values (v_viewer, v_followed);
+  insert into public.organization_follows (follower_id, organization_id) values (v_viewer, v_org);
+
+  insert into public.posts (id, author_id, type, caption, text, audience, media, organization_id, created_at) values
+    (v_public, v_followed, 'video', 'public clip', 'public clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_followed::text || '/clips/public.mp4', 'type', 'video')),
+     null, now() - interval '10 days' - interval '1 hour'),
+    (v_followers, v_followed, 'video', 'followers clip', 'followers clip', 'followers',
+     jsonb_build_array(jsonb_build_object('url', v_followed::text || '/clips/followers.mp4', 'type', 'video')),
+     null, now() - interval '10 days' - interval '2 hours'),
+    (v_club_post, v_stranger, 'video', 'club clip', 'club clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_stranger::text || '/clips/club.mp4', 'type', 'video')),
+     v_org, now() - interval '10 days'),
+    (v_own, v_viewer, 'video', 'my clip', 'my clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_viewer::text || '/clips/own.mp4', 'type', 'video')),
+     null, now());
+
+  insert into public.posts (author_id, type, caption, text, audience, media, created_at)
+  select v_followed, 'standard', 'photo', 'photo', 'public',
+         jsonb_build_array(jsonb_build_object('url', v_followed::text || '/photos/' || g || '.jpg', 'type', 'photo')),
+         now() - interval '36 hours' - (g || ' seconds')::interval
+    from generate_series(1, 360) g;
+
+  insert into public.posts (author_id, type, caption, text, audience, media, created_at)
+  select v_stranger, 'video', 'stranger clip', 'stranger clip', 'public',
+         jsonb_build_array(jsonb_build_object('url', v_stranger::text || '/clips/' || g || '.mp4', 'type', 'video')),
+         now() + interval '30 days' - (g || ' seconds')::interval
+    from generate_series(1, 60) g;
+
+  select id into v_followed_athlete from public.athlete_profiles where user_id = v_followed;
+  select id into v_stranger_athlete from public.athlete_profiles where user_id = v_stranger;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, created_at) values
+    (v_highlight, v_followed_athlete, 'Followed highlight', 'highlight_reel',
+     v_followed::text || '/highlights/profile.mp4', true, now() - interval '10 days' - interval '3 hours'),
+    (v_stranger_highlight, v_stranger_athlete, 'Stranger highlight', 'highlight_reel',
+     v_stranger::text || '/highlights/profile.mp4', true, now() + interval '30 days' + interval '1 minute');
+
+  perform tests.as_user(v_viewer);
+
+  select count(*) into v_missed
+    from public.get_reels(30, null) r
+   where r.viewer_follows
+     and r.id in (v_public, v_followers, v_highlight, v_club_post);
+  perform tests.ok(v_missed = 0,
+    'the old way (get_reels 30, then viewer_follows) misses the followed clip');
+
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}')
+    into v_ids
+    from public.get_following_reels(30, null) r;
+  perform tests.ok(
+    v_ids = array[v_club_post, v_public, v_followers, v_highlight]::uuid[],
+    'get_following_reels returns the two followed clips, the profile clip and the club page clip, newest first');
+  perform tests.ok(
+    v_ids <@ array[v_club_post, v_public, v_followers, v_highlight]::uuid[]
+    and not v_own = any(v_ids),
+    'nothing else from the stranger comes back, the viewer''s own clip never comes back, and photos never come back');
+
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}'), min(r.created_at)
+    into v_page, v_before
+    from public.get_following_reels(2, null) r;
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}')
+    into v_next
+    from public.get_following_reels(2, v_before) r;
+  perform tests.ok(
+    v_page = array[v_club_post, v_public]::uuid[]
+    and v_next = array[v_followers, v_highlight]::uuid[],
+    'a limit of 2 returns the two newest, and the next page using the oldest time returns the next two with no gap and no repeat');
+
+  delete from public.follows where follower_id = v_viewer and following_id = v_followed;
+  delete from public.organization_follows where follower_id = v_viewer and organization_id = v_org;
+  perform tests.ok(
+    (select count(*) from public.get_following_reels(30, null)) = 0,
+    'after unfollowing both, it comes back empty');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select 1 into v_probe from public.get_following_reels(12, null) limit 1;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.get_following_reels(integer, timestamptz)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.get_following_reels(integer, timestamptz)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

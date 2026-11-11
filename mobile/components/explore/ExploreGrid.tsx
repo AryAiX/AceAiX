@@ -23,7 +23,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { EXPLORE_PAGE, getExploreSports, getExploreVideos, isHighlight } from '@/lib/api.explore';
-import { followedOnly, getReels, reelVideo } from '@/lib/api.reels';
+import { getFollowingReels, reelVideo } from '@/lib/api.reels';
 import { errorMessage } from '@/lib/errors';
 import { mergeClips, mosaicMetrics, mosaicRows, type MosaicRow } from '@/lib/explore';
 import { compactNumber, displayName, relativeTime } from '@/lib/format';
@@ -48,7 +48,7 @@ const GAP = 3;
 /** The athlete's Discover: tiles inside the page margins, a little apart. */
 const HUB_GAP = 6;
 const HUB_INSET = 16;
-/** explore_videos caps a page at 60; get_reels caps one at 30. */
+/** explore_videos caps a page at 60; get_following_reels caps one at 30. */
 const QUIET_CAP = { explore: 60, reels: 30 } as const;
 
 function withKnownView(post: FeedPost): FeedPost {
@@ -142,7 +142,7 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 
     const floor = fromReels ? 12 : EXPLORE_PAGE;
     try {
       const rows = fromReels
-        ? await getReels({ limit: Math.min(cap, Math.max(floor, loaded)) })
+        ? await getFollowingReels({ limit: Math.min(cap, Math.max(floor, loaded)) })
         : await getExploreVideos({
             offset: 0,
             limit: Math.min(cap, Math.max(floor, loaded)),
@@ -179,16 +179,13 @@ export function ExploreGrid({ source = 'explore', header, onPostFirst, layout = 
       setMoreError(false);
       try {
         const page = fromReels
-          ? await getReels({ limit: EXPLORE_PAGE, before: mode === 'more' ? lastSeen.current : null })
+          ? await getFollowingReels({ limit: EXPLORE_PAGE, before: mode === 'more' ? lastSeen.current : null })
           : await getExploreVideos({ offset, sport });
-        /* The cursor and the end come from the whole page; only what is shown
-           is filtered, so paging never skips or stalls. */
         if (page.length > 0) lastSeen.current = page[page.length - 1].created_at;
-        const rows = fromReels ? followedOnly(page) : page;
         /* A slower earlier request must never overwrite a newer filter's grid. */
         if (!mounted.current || id !== runId.current) return;
         setItems((current) =>
-          (mode === 'more' ? mergeClips(current, rows) : rows).map(withKnownView),
+          (mode === 'more' ? mergeClips(current, page) : page).map(withKnownView),
         );
         setDone(page.length < EXPLORE_PAGE);
         setError(null);

@@ -26,7 +26,7 @@ import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
-import { followedOnly, getReels } from '@/lib/api.reels';
+import { getFollowingReels } from '@/lib/api.reels';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
@@ -50,9 +50,8 @@ import { useEndPadding } from '@/components/navigation/dockInset';
  */
 
 const PAGE_SIZE = 20;
-/** Posters in Your Rundown. A wider page is read so enough followed clips survive the filter. */
+/** Posters in Your Rundown, read from the people and club pages you follow. */
 const RUNDOWN_SHOWN = 6;
-const RUNDOWN_READ = 30;
 
 type Scope = 'for_you' | 'following';
 
@@ -90,10 +89,10 @@ export default function HomeScreen() {
 
   /* Loaded here, not inside the strip: the strip now sits in a list cell, and
      a cell scrolled far enough away is unmounted. Loading on remount would pop
-     the strip in from nothing and jump the feed under your thumb. Only clips
-     from people you follow: Your Rundown lives on the Following tab. */
+     the strip in from nothing and jump the feed under your thumb. These six
+     are the clips from people and club pages you follow. */
   const reels = useAsync(
-    () => getReels({ limit: RUNDOWN_READ }).then((rows) => followedOnly(rows).slice(0, RUNDOWN_SHOWN)),
+    () => getFollowingReels({ limit: RUNDOWN_SHOWN }),
     [],
     { refetchOnFocus: true },
   );
