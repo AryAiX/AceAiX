@@ -349,6 +349,7 @@ export default function ClubMatchEditScreen() {
 
       {editId ? (
         <Button
+          size="sm"
           label={t('clubMatch.fixture.delete')}
           variant="ghost"
           icon={<Trash2 size={18} color={colors.danger} />}

@@ -328,6 +328,7 @@ export default function ChallengesScreen() {
               {sportChips}
               {isSetter ? (
                 <Button
+                  size="sm"
                   label={t('challenges.newTitle')}
                   variant="secondary"
                   onPress={() => router.push(Routes.newChallenge)}

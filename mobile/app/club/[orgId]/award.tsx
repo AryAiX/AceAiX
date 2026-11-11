@@ -388,6 +388,7 @@ export default function ClubAwardScreen() {
 
         {awardId ? (
           <Button
+            size="sm"
             label={t('clubManage.award.delete')}
             variant="ghost"
             icon={<Trash2 size={18} color={colors.danger} />}

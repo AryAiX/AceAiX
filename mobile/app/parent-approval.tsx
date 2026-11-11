@@ -205,6 +205,7 @@ export default function ParentApprovalScreen() {
           {t('parentApproval.errorBody')}
         </Text>
         <Button
+          size="sm"
           label={t('parentApproval.retry')}
           onPress={() => void load()}
           style={{ marginTop: theme.spacing.lg }}

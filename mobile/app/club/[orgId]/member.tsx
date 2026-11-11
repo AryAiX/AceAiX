@@ -363,6 +363,7 @@ export default function ClubSquadMemberScreen() {
           ) : null}
 
           <Button
+            size="sm"
             label={t(linkedUserId ? 'clubManage.member.linkSomeoneElse' : 'clubManage.member.findProfile')}
             variant="secondary"
             icon={<UserRoundSearch size={18} color={colors.text} />}
@@ -374,6 +375,7 @@ export default function ClubSquadMemberScreen() {
 
         {memberId ? (
           <Button
+            size="sm"
             label={t('clubManage.member.delete')}
             variant="ghost"
             icon={<Trash2 size={18} color={colors.danger} />}

@@ -320,7 +320,7 @@ export default function StoryViewerScreen() {
             <Text variant="body" color={ON_DARK} align="center">
               {loadError}
             </Text>
-            <Button label={t('common.close')} variant="secondary" onPress={close} />
+            <Button size="sm" label={t('common.close')} variant="secondary" onPress={close} />
           </View>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

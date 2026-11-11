@@ -483,7 +483,7 @@ export function FilterSheet({
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <Button label={t('common.clearAll')} variant="ghost" onPress={clearAll} />
+        <Button size="sm" label={t('common.clearAll')} variant="ghost" onPress={clearAll} />
         <Button
           label={mode === 'preferences' ? t('common.save') : showLabel}
           onPress={mode === 'preferences' ? savePreferences : apply}

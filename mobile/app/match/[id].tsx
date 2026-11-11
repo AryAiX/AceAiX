@@ -346,6 +346,7 @@ export default function MatchScreen() {
 
       {data.can_edit ? (
         <Button
+          size="sm"
           label={t('clubMatch.match.editFixture')}
           variant="ghost"
           icon={<Pencil size={18} color={colors.text} />}

@@ -269,7 +269,7 @@ export default function SportFitQuestions() {
       </View>
 
       {index > 0 ? (
-        <Button label={t('sportFit.back')} variant="ghost" onPress={back} testID="sf-back" />
+        <Button size="sm" label={t('sportFit.back')} variant="ghost" onPress={back} testID="sf-back" />
       ) : null}
 
       {leaveSheet}

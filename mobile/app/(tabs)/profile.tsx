@@ -228,6 +228,7 @@ export default function MyProfileScreen() {
         data.user.role !== 'guardian' &&
         data.user.role !== 'club' ? (
           <Button
+            size="sm"
             label={t('coaching.myBookings')}
             variant="secondary"
             onPress={() => router.push(Routes.coaching)}
@@ -248,6 +249,7 @@ export default function MyProfileScreen() {
 
         {athlete ? (
           <Button
+            size="sm"
             label={t('profile.playerCard')}
             variant="secondary"
             onPress={() => router.push(Routes.playerCard)}

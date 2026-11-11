@@ -268,6 +268,7 @@ export default function ClubSquadsScreen() {
               ))
             )}
             <Button
+              size="sm"
               label={t('clubManage.squads.newSquad')}
               variant="secondary"
               icon={<Plus size={18} color={colors.text} />}

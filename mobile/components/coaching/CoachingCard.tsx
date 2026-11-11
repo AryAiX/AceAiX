@@ -59,6 +59,7 @@ export function CoachBookingCard({ coachId, refreshKey }: { coachId: string; ref
         {next ? t('coaching.nextFree', { date: whenLabel(next.starts_at, currentLanguage()) }) : t('coaching.noTimes')}
       </Text>
       <Button
+        size="sm"
         label={t('coaching.cardBook')}
         onPress={() => router.push(Routes.coachBooking(coachId))}
         testID="coach-book-button"

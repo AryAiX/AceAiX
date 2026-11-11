@@ -147,6 +147,7 @@ export function ClubPostsTab({
         <MediaGrid tiles={tiles} onPressTile={(id) => router.push(Routes.post(id))} />
         {last?.more ? (
           <Button
+            size="sm"
             label={t('club.posts.loadMore')}
             variant="ghost"
             loading={loadingMore}

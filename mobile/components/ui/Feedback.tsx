@@ -98,7 +98,7 @@ export function EmptyState({
         </Text>
       ) : null}
       {actionLabel && onAction ? (
-        <Button label={actionLabel} variant={actionVariant} onPress={onAction} style={{ marginTop: spacing.sm, alignSelf: 'center' }} />
+        <Button size="sm" label={actionLabel} variant={actionVariant} onPress={onAction} style={{ marginTop: spacing.sm, alignSelf: 'center' }} />
       ) : null}
       {secondaryLabel && onSecondary ? (
         <Button label={secondaryLabel} variant="ghost" size="sm" onPress={onSecondary} />

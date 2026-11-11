@@ -119,6 +119,7 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
         {loadingCards ? <SkeletonList count={1} /> : null}
         {!loadingCards && fetched < ids.length ? (
           <Button
+            size="sm"
             label={t('profile.morePosts')}
             variant="secondary"
             onPress={() => setWanted((n) => n + PAGE)}

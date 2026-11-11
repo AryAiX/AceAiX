@@ -152,7 +152,7 @@ export default function InviteScreen() {
         error={codeError}
         testID="invite-code-input"
       />
-      <Button label={t('invites.enterCodeAction')} variant="secondary" loading={claiming} onPress={claim} testID="invite-code-submit" />
+      <Button size="sm" label={t('invites.enterCodeAction')} variant="secondary" loading={claiming} onPress={claim} testID="invite-code-submit" />
     </Card>
   ) : null;
 

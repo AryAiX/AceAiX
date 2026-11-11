@@ -238,7 +238,7 @@ export default function ReelsScreen() {
         <Text variant="body" color={ON_DARK} align="center">
           {reels.error}
         </Text>
-        <Button label={t('common.retry')} variant="secondary" onPress={reels.reload} />
+        <Button size="sm" label={t('common.retry')} variant="secondary" onPress={reels.reload} />
       </View>
     );
   } else if (items.length === 0) {

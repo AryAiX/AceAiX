@@ -60,7 +60,9 @@ export function FollowButton({
   const c = FollowColors[theme.scheme === 'dark' ? 'dark' : 'light'][followKind(role)];
   const scale = useRef(new Animated.Value(1)).current;
 
-  const height = compact ? 32 : large ? 52 : 40;
+  /* Between a filter chip and a full button: big enough to tap, small
+     enough not to shout in a list. The profile header keeps the big one. */
+  const height = compact ? 30 : large ? 52 : 34;
   const fg = following ? c.tintInk : c.ink;
   const label = following ? t('common.following') : back ? t('common.followBack') : t('common.follow');
 
@@ -79,7 +81,7 @@ export function FollowButton({
           (following ? t('discover.unfollowA11y', { name }) : t('discover.followA11y', { name }))
         }
         disabled={pending}
-        hitSlop={hitSlop}
+        hitSlop={hitSlop ?? (large ? undefined : 6)}
         testID={testID}
         onPressIn={() => animate(0.97)}
         onPressOut={() => animate(1)}
@@ -91,7 +93,7 @@ export function FollowButton({
         }}
         style={({ pressed }) => ({
           height,
-          paddingHorizontal: compact ? spacing.md : large ? spacing.xl : spacing.lg,
+          paddingHorizontal: compact ? spacing.md - 2 : large ? spacing.xl : spacing.md + 2,
           borderRadius: radii.button,
           overflow: 'hidden',
           alignItems: 'center',
@@ -117,7 +119,7 @@ export function FollowButton({
             <Text variant={large ? 'subheading' : 'captionStrong'} color={fg} numberOfLines={1}>
               {label}
             </Text>
-            {following ? <Check size={compact ? 13 : 15} color={fg} strokeWidth={2.8} /> : null}
+            {following ? <Check size={large ? 15 : 13} color={fg} strokeWidth={2.8} /> : null}
           </View>
         )}
       </Pressable>

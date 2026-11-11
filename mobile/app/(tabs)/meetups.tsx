@@ -422,6 +422,7 @@ export default function MeetupsScreen() {
      under the list instead: one way to post a game on screen, always. */
   const postFooter = (
     <Button
+      size="sm"
       label={t('meetups.createTitle')}
       variant="soft"
       icon={<Plus size={16} color={colors.primary} />}

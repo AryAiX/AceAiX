@@ -300,6 +300,7 @@ export default function SportFitScreen() {
         <Text tone="secondary">{t('sportFit.privacyBody')}</Text>
         <Divider />
         <Button
+          size="sm"
           label={t('sportFit.deleteAction')}
           variant="ghost"
           icon={<Trash2 size={18} color={colors.danger} />}

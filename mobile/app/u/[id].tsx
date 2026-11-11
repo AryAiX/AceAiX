@@ -133,6 +133,7 @@ export default function PublicProfileScreen() {
         {iBlocked.data ? (
           <View style={{ alignItems: 'center' }}>
             <Button
+              size="sm"
               label={t('common.unblock')}
               variant="secondary"
               loading={unblocking}

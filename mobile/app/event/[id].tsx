@@ -386,6 +386,7 @@ export default function ClubEventScreen() {
         <View style={{ gap: spacing.lg }}>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
             <Button
+              size="sm"
               label={t('clubMatch.event.edit')}
               variant="secondary"
               icon={<Pencil size={18} color={colors.text} />}
@@ -395,6 +396,7 @@ export default function ClubEventScreen() {
             />
             {!cancelled ? (
               <Button
+                size="sm"
                 label={t('clubMatch.event.cancelEvent')}
                 variant="danger"
                 loading={busy === 'cancelEvent'}
