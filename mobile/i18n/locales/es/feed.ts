@@ -188,6 +188,21 @@ export const feed = {
   photoPermission:
     'AceAiX necesita permiso para abrir tus fotos. Actívalo en Ajustes.',
   posted: 'Publicado',
+  tagPeople: 'Etiquetar personas',
+  tagPeopleAdd: 'Añadir',
+  tagPeopleSearch: 'Buscar por nombre',
+  tagPeopleHint: 'Escribe un nombre para encontrar a alguien.',
+  tagPeopleNone: 'Nadie coincide con ese nombre.',
+  tagPeopleLimit: 'Puedes etiquetar hasta 20 personas.',
+  removeTag: 'Quitar a {{name}}',
+  tagsNotSaved: 'Tu publicación ya está, pero no se pudieron guardar las etiquetas.',
+  taggedTitle: 'Etiquetados',
+  taggedWith: 'con {{name}}',
+  taggedWithOthers_one: 'con {{name}} y {{count}} persona más',
+  taggedWithOthers_many: 'con {{name}} y {{count}} personas más',
+  taggedWithOthers_other: 'con {{name}} y {{count}} personas más',
+  editTags: 'Editar',
+  removeMe: 'Quitarme',
   /* Escrito para alguien de 13 años: corto, sencillo y con los tres ejemplos. */
   safetyNote: 'Sé amable. No compartas tu dirección, tu teléfono ni tu escuela.',
 

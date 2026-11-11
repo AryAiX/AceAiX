@@ -113,6 +113,11 @@ export const profile = {
     'Выложи тренировку, результат или клип. Активные профили смотрят чаще.',
   postsEmptyBodyOther: 'Когда здесь появится пост, он будет виден тут.',
   postsEmptyAction: 'Написать пост',
+  postsSwitchPosts: 'Посты',
+  postsSwitchTagged: 'Отмеченные',
+  taggedEmptyTitle: 'Отмеченных постов пока нет',
+  taggedEmptyBodySelf: 'Когда тебя отметят в посте, он появится здесь.',
+  taggedEmptyBodyOther: 'Посты, в которых этот человек отмечен, появятся здесь.',
 
   // ── Сетка медиа (components/profile/MediaGrid.tsx) ─────────────────────────
   addHighlight: 'Добавить в витрину',

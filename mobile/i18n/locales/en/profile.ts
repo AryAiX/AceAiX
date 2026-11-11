@@ -107,6 +107,11 @@ export const profile = {
     'Share a training session, a result, or a clip. Active profiles get seen more.',
   postsEmptyBodyOther: 'When they post, it will show up here.',
   postsEmptyAction: 'Write a post',
+  postsSwitchPosts: 'Posts',
+  postsSwitchTagged: 'Tagged',
+  taggedEmptyTitle: 'No tagged posts yet',
+  taggedEmptyBodySelf: 'When someone tags you in a post, it shows up here.',
+  taggedEmptyBodyOther: 'Posts they are tagged in will show up here.',
 
   // ── Media grid (components/profile/MediaGrid.tsx) ──────────────────────────
   addHighlight: 'Add to Showcase',

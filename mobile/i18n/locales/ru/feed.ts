@@ -192,6 +192,22 @@ export const feed = {
   photoPermission:
     'AceAiX нужен доступ к твоим фото. Включи его в настройках телефона.',
   posted: 'Опубликовано',
+  tagPeople: 'Отметить людей',
+  tagPeopleAdd: 'Добавить',
+  tagPeopleSearch: 'Искать по имени',
+  tagPeopleHint: 'Напиши имя, чтобы найти человека.',
+  tagPeopleNone: 'Никого с таким именем нет.',
+  tagPeopleLimit: 'Можно отметить не больше 20 человек.',
+  removeTag: 'Убрать {{name}}',
+  tagsNotSaved: 'Пост уже опубликован, но отметки сохранить не удалось.',
+  taggedTitle: 'Отмеченные',
+  taggedWith: 'с {{name}}',
+  taggedWithOthers_one: 'с {{name}} и ещё {{count}} человеком',
+  taggedWithOthers_few: 'с {{name}} и ещё {{count}} людьми',
+  taggedWithOthers_many: 'с {{name}} и ещё {{count}} людьми',
+  taggedWithOthers_other: 'с {{name}} и ещё {{count}} людьми',
+  editTags: 'Изменить',
+  removeMe: 'Убрать меня',
   /* Написано для тринадцатилетнего: коротко, просто, все три примера на месте. */
   safetyNote: 'Будь добрее. Не пиши свой адрес, номер телефона и школу.',
 

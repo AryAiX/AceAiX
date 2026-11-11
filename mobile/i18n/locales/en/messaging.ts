@@ -194,6 +194,7 @@ export const messaging = {
   meetupNearbyTitle: 'New {{sport}} game in {{city}}',
   mentionedInPost: '{{name}} mentioned you in a post',
   mentionedInComment: '{{name}} mentioned you in a comment',
+  taggedInPost: '{{name}} tagged you in a post',
   referralJoined: '{{name}} joined through your invite',
   referralJoinedNoName: 'A friend joined through your invite',
   referralTokenTitle: 'You earned a token',

@@ -11,7 +11,7 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Globe, ImagePlus, Plus, Play, ShieldCheck, UserCheck, Users, X } from 'lucide-react-native';
+import { Globe, ImagePlus, Plus, Play, ShieldCheck, UserCheck, UserPlus, Users, X } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -28,7 +28,9 @@ import {
 import { useAuth } from '@/providers/AuthProvider';
 import { useT } from '@/i18n';
 import { MentionInput } from '@/components/feed/MentionInput';
+import { TagPeoplePicker } from '@/components/feed/TagPeoplePicker';
 import { createPost, getMyTalentScore } from '@/lib/api';
+import { setPostTags, type TaggedPerson } from '@/lib/api.postTags';
 import { saveScoreSnapshot } from '@/lib/scoreSnapshots';
 import { useAsync } from '@/hooks/useAsync';
 import {
@@ -38,6 +40,7 @@ import {
 } from '@/lib/api.feed';
 import { errorMessage } from '@/lib/errors';
 import { mentionsForSubmit, type MentionSpan } from '@/lib/mentions';
+import { firstName } from '@/lib/format';
 import { Routes } from '@/lib/routes';
 import { useProgress } from '@/providers/ProgressProvider';
 import type { PostAudience, PostMedia } from '@/types/models';
@@ -94,6 +97,8 @@ export default function ComposeScreen() {
 
   const [text, setText] = useState('');
   const [mentions, setMentions] = useState<MentionSpan[]>([]);
+  const [tagged, setTagged] = useState<TaggedPerson[]>([]);
+  const [tagOpen, setTagOpen] = useState(false);
   const [media, setMedia] = useState<PendingMedia[]>([]);
   const [audience, setAudience] = useState<PostAudience>('public');
   /* Which picked photo or clip the big preview shows. */
@@ -217,6 +222,19 @@ export default function ComposeScreen() {
       /* Keep the score you posted at (read when this screen opened, before
          the post could raise it), for "your score when you posted it". */
       void saveScoreSnapshot(newId, scoreAtOpen.data?.overall ?? null);
+      if (tagged.length > 0) {
+        try {
+          await setPostTags(
+            newId,
+            tagged.map((person) => person.id),
+          );
+        } catch {
+          toast.show({ message: t('feed.tagsNotSaved'), tone: 'warning' });
+          close();
+          checkAchievements();
+          return;
+        }
+      }
       toast.success(t('feed.posted'));
       close();
       checkAchievements();
@@ -226,7 +244,7 @@ export default function ComposeScreen() {
       setPosting(false);
       setProgress(null);
     }
-  }, [canPost, media, text, mentions, audience, toast, close, t, checkAchievements, scoreAtOpen.data]);
+  }, [canPost, media, text, mentions, tagged, audience, toast, close, t, checkAchievements, scoreAtOpen.data]);
 
   const percent = progress && progress.total > 0 ? progress.done / progress.total : 0;
 
@@ -607,6 +625,82 @@ export default function ComposeScreen() {
           </Text>
         </View>
       </View>
+
+      {/* People attached to the post. Separate from an @mention in the caption. */}
+      <View
+        style={{
+          marginTop: spacing.lg,
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: spacing.sm,
+        }}
+      >
+        {tagged.map((person) => {
+          const name = firstName(person.full_name);
+          return (
+            <View
+              key={person.id}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingStart: 4,
+                paddingEnd: spacing.xs,
+                paddingVertical: 4,
+                borderRadius: radii.pill,
+                backgroundColor: colors.surfaceAlt,
+                opacity: posting ? 0.5 : 1,
+              }}
+            >
+              <Avatar uri={person.avatar_url} name={person.full_name} size="xs" />
+              <Text variant="captionStrong" numberOfLines={1}>
+                {name}
+              </Text>
+              <Pressable
+                onPress={() => setTagged((current) => current.filter((item) => item.id !== person.id))}
+                disabled={posting}
+                accessibilityRole="button"
+                accessibilityLabel={t('feed.removeTag', { name })}
+                hitSlop={8}
+                testID={`compose-tag-remove-${person.id}`}
+              >
+                <X size={14} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          );
+        })}
+        <Pressable
+          onPress={() => setTagOpen(true)}
+          disabled={posting}
+          accessibilityRole="button"
+          accessibilityLabel={tagged.length > 0 ? t('feed.tagPeopleAdd') : t('feed.tagPeople')}
+          testID="compose-tag-people"
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            minHeight: 36,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.xs,
+            borderRadius: radii.pill,
+            backgroundColor: theme.alpha(colors.primary, 0.08),
+            opacity: pressed || posting ? 0.5 : 1,
+          })}
+        >
+          <UserPlus size={16} color={colors.primary} />
+          <Text variant="captionStrong" tone="primary">
+            {tagged.length > 0 ? t('feed.tagPeopleAdd') : t('feed.tagPeople')}
+          </Text>
+        </Pressable>
+      </View>
+      <TagPeoplePicker
+        visible={tagOpen}
+        people={tagged}
+        onChange={setTagged}
+        onClose={() => setTagOpen(false)}
+        disabled={posting}
+      />
 
       {/* Who can see it: three choices on screen instead of a hidden menu. */}
       <Text variant="overline" tone="muted" style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>

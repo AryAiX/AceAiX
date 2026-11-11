@@ -102,6 +102,11 @@ export const profile = {
     '分享一次训练、一个成绩，或一段短片。活跃的资料更容易被看到。',
   postsEmptyBodyOther: '他们发动态后，会显示在这里。',
   postsEmptyAction: '写一条动态',
+  postsSwitchPosts: '动态',
+  postsSwitchTagged: '已标记',
+  taggedEmptyTitle: '还没有被标记的动态',
+  taggedEmptyBodySelf: '有人在动态里标记你之后，会显示在这里。',
+  taggedEmptyBodyOther: '他们被标记的动态会显示在这里。',
 
   // ── 媒体网格（components/profile/MediaGrid.tsx） ───────────────────────────
   addHighlight: '添加到精选',

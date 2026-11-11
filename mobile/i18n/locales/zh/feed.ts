@@ -170,6 +170,19 @@ export const feed = {
   photoPermission:
     'AceAiX 需要访问相册的权限。请在系统设置里打开。',
   posted: '已发布',
+  tagPeople: '标记人物',
+  tagPeopleAdd: '添加',
+  tagPeopleSearch: '按姓名搜索',
+  tagPeopleHint: '输入姓名来找人。',
+  tagPeopleNone: '没有符合这个姓名的人。',
+  tagPeopleLimit: '最多可以标记 20 个人。',
+  removeTag: '移除{{name}}',
+  tagsNotSaved: '动态已经发出，但标记没能保存。',
+  taggedTitle: '已标记',
+  taggedWith: '和{{name}}一起',
+  taggedWithOthers_other: '和{{name}}以及其他{{count}}人',
+  editTags: '编辑',
+  removeMe: '移除我',
   /* 写给13岁的人看：短、直白，三个例子一个都不少。 */
   safetyNote: '友善一点。不要透露你的住址、电话或学校。',
 

@@ -2,6 +2,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { AppError } from '@/lib/errors';
 import { parseMentions } from '@/lib/mentions';
+import { attachPostTags } from '@/lib/api.postTags';
 import { rememberPostMentions } from '@/lib/postMentions';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
@@ -97,7 +98,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     }];
   });
 
-  return {
+  const post: FeedPost = {
     id: row.id as string,
     author_id: authorId,
     author_name: author?.full_name ?? null,
@@ -121,6 +122,8 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     created_at: row.created_at as string,
     mentions,
   };
+  const [withTags] = await attachPostTags([post]);
+  return withTags;
 }
 
 /** The post's own audience. Only the author can read this (RLS). */

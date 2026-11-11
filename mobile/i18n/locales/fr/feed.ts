@@ -186,6 +186,21 @@ export const feed = {
   photoPermission:
     'AceAiX a besoin de ta permission pour ouvrir tes photos. Active-la dans les réglages.',
   posted: 'Publié',
+  tagPeople: 'Identifier des personnes',
+  tagPeopleAdd: 'Ajouter',
+  tagPeopleSearch: 'Chercher par nom',
+  tagPeopleHint: 'Tape un nom pour trouver quelqu’un.',
+  tagPeopleNone: 'Personne ne correspond à ce nom.',
+  tagPeopleLimit: 'Tu peux identifier jusqu’à 20 personnes.',
+  removeTag: 'Retirer {{name}}',
+  tagsNotSaved: 'Ton post est en ligne, mais les identifications n’ont pas pu être enregistrées.',
+  taggedTitle: 'Identifiés',
+  taggedWith: 'avec {{name}}',
+  taggedWithOthers_one: 'avec {{name}} et {{count}} autre personne',
+  taggedWithOthers_many: 'avec {{name}} et {{count}} autres personnes',
+  taggedWithOthers_other: 'avec {{name}} et {{count}} autres personnes',
+  editTags: 'Modifier',
+  removeMe: 'Me retirer',
   /* Écrit pour un jeune de 13 ans : court, simple, et les trois exemples gardés. */
   safetyNote: 'Reste sympa. Ne donne pas ton adresse, ton numéro ni ton école.',
 

@@ -178,6 +178,20 @@ export const feed = {
   photoPermission:
     'AceAiX needs permission to open your photos. Turn it on in Settings.',
   posted: 'Posted',
+  tagPeople: 'Tag people',
+  tagPeopleAdd: 'Add',
+  tagPeopleSearch: 'Search by name',
+  tagPeopleHint: 'Type a name to find someone.',
+  tagPeopleNone: 'No one matches that name.',
+  tagPeopleLimit: 'You can tag up to 20 people.',
+  removeTag: 'Remove {{name}}',
+  tagsNotSaved: 'Your post is up, but the tags could not be saved.',
+  taggedTitle: 'Tagged',
+  taggedWith: 'with {{name}}',
+  taggedWithOthers_one: 'with {{name}} and {{count}} other',
+  taggedWithOthers_other: 'with {{name}} and {{count}} others',
+  editTags: 'Edit',
+  removeMe: 'Remove me',
   /* Written for a 13-year-old: short, plain, and all three examples kept. */
   safetyNote: "Keep it kind. Don't share your address, phone number or school.",
 

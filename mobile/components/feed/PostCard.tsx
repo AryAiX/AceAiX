@@ -29,6 +29,7 @@ import { MediaCarousel } from './MediaCarousel';
 import { ScorePeek } from './ScorePeek';
 import { PostActions } from './PostActions';
 import { LikedBy } from './PostLikers';
+import { PostTagged } from './PostTagged';
 
 /**
  * The most-seen component in the app.
@@ -538,6 +539,10 @@ function PostCardBase({
         />
       ) : null}
 
+      {caption && (post.tagged?.length ?? 0) > 0 ? (
+        <PostTagged post={post} onPatch={onPatch} />
+      ) : null}
+
       {post.media.length > 0 ? (
         <View>
           <MediaCarousel
@@ -565,6 +570,10 @@ function PostCardBase({
           postedAt={post.created_at}
           postId={post.id}
         />
+      ) : null}
+
+      {!caption && (post.tagged?.length ?? 0) > 0 ? (
+        <PostTagged post={post} onPatch={onPatch} />
       ) : null}
 
       <PostActions

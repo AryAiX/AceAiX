@@ -6,6 +6,7 @@
  * the whole UI is written against.
  */
 
+import type { TaggedPerson } from '@/lib/api.postTags';
 import type { MentionSpan } from '@/lib/mentions';
 
 export type UserRole =
@@ -192,6 +193,8 @@ export interface FeedPost {
   created_at: string;
   /** Code-point spans. The character at `start` is "@". Loaders fill this in. */
   mentions?: MentionSpan[];
+  /** People attached to the post itself. Not the same as @mentions. */
+  tagged?: TaggedPerson[];
 }
 
 export interface SavedPost extends FeedPost {
@@ -370,6 +373,7 @@ export type NotificationType =
   | 'comment'
   | 'reply'
   | 'mention'
+  | 'post_tag'
   | 'like'
   | 'application_received'
   | 'application_status'

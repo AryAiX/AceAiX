@@ -177,6 +177,20 @@ export const feed = {
   photoPermission:
     'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen. Gib sie in den Einstellungen.',
   posted: 'Gepostet',
+  tagPeople: 'Personen markieren',
+  tagPeopleAdd: 'Hinzufügen',
+  tagPeopleSearch: 'Nach Namen suchen',
+  tagPeopleHint: 'Tippe einen Namen, um jemanden zu finden.',
+  tagPeopleNone: 'Niemand passt zu diesem Namen.',
+  tagPeopleLimit: 'Du kannst bis zu 20 Personen markieren.',
+  removeTag: '{{name}} entfernen',
+  tagsNotSaved: 'Dein Beitrag ist online, aber die Markierungen konnten nicht gespeichert werden.',
+  taggedTitle: 'Markiert',
+  taggedWith: 'mit {{name}}',
+  taggedWithOthers_one: 'mit {{name}} und {{count}} weiteren Person',
+  taggedWithOthers_other: 'mit {{name}} und {{count}} weiteren Personen',
+  editTags: 'Bearbeiten',
+  removeMe: 'Mich entfernen',
   /* Für Dreizehnjährige geschrieben: kurz, klar, alle drei Beispiele drin. */
   safetyNote: 'Bleib fair. Teil nicht deine Adresse, Handynummer oder Schule.',
 

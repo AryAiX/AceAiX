@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, View, type ViewStyle } from 'react-native';
 import {
   AtSign,
+  Tag,
   Award,
   Bell,
   Building2,
@@ -67,6 +68,8 @@ function skinFor(type: NotificationType): Skin {
       return { Icon: MessageCircle, tint: 'primary' };
     case 'mention':
       return { Icon: AtSign, tint: 'primary' };
+    case 'post_tag':
+      return { Icon: Tag, tint: 'primary' };
     case 'message':
       return { Icon: Mail, tint: 'info' };
     case 'application_received':
@@ -219,6 +222,20 @@ function referralCopy(
   };
 }
 
+/** "{name} tagged you in a post". The server stores the same sentence in English. */
+function tagCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type !== 'post_tag') return null;
+  const name = n.actor?.full_name?.trim();
+  if (!name) return null;
+  return {
+    title: t('messaging.taggedInPost', { name }),
+    body: n.body,
+  };
+}
+
 /** "{name} mentioned you in a post", or in a comment when `data.comment_id` is set. */
 function mentionCopy(
   n: AppNotification,
@@ -244,6 +261,8 @@ export function notificationCopy(
   if (nearby) return nearby;
   const mention = mentionCopy(n, t);
   if (mention) return mention;
+  const tagged = tagCopy(n, t);
+  if (tagged) return tagged;
   const referral = referralCopy(n, t);
   if (referral) return referral;
   return { title: notificationTitle(n, t), body: n.body };

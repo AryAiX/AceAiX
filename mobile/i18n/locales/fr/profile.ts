@@ -109,6 +109,11 @@ export const profile = {
     'Partage un entraînement, un résultat ou un clip. Les profils actifs sont plus vus.',
   postsEmptyBodyOther: 'Quand cette personne publiera, ça apparaîtra ici.',
   postsEmptyAction: 'Écrire un post',
+  postsSwitchPosts: 'Posts',
+  postsSwitchTagged: 'Identifiés',
+  taggedEmptyTitle: 'Aucun post identifié',
+  taggedEmptyBodySelf: 'Quand quelqu’un t’identifie dans un post, il apparaît ici.',
+  taggedEmptyBodyOther: 'Les posts où cette personne est identifiée apparaîtront ici.',
 
   // ── Grille média (components/profile/MediaGrid.tsx) ────────────────────────
   addHighlight: 'Ajouter à la vitrine',

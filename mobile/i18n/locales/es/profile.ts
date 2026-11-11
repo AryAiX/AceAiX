@@ -113,6 +113,11 @@ export const profile = {
     'Comparte un entrenamiento, un resultado o un clip. Los perfiles activos se ven más.',
   postsEmptyBodyOther: 'Cuando publique algo, aparecerá aquí.',
   postsEmptyAction: 'Escribir una publicación',
+  postsSwitchPosts: 'Publicaciones',
+  postsSwitchTagged: 'Etiquetados',
+  taggedEmptyTitle: 'Aún no hay publicaciones etiquetadas',
+  taggedEmptyBodySelf: 'Cuando alguien te etiquete en una publicación, aparecerá aquí.',
+  taggedEmptyBodyOther: 'Las publicaciones en las que esté etiquetada esta persona aparecerán aquí.',
 
   // ── Cuadrícula de contenido (components/profile/MediaGrid.tsx) ─────────────
   addHighlight: 'Añadir a la vitrina',

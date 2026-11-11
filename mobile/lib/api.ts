@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { loadScoreSnapshots } from '@/lib/scoreSnapshots';
 import { AppError } from './errors';
 import { parseMentions, type MentionSpan } from './mentions';
+import { attachPostTags } from './api.postTags';
 import { attachPostMentions } from './postMentions';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import type {
@@ -250,7 +251,8 @@ export async function getFeed(params: {
   });
   if (error) throw new AppError(error);
   const signed = await signPostMedia((data ?? []) as FeedPost[]);
-  return attachPostMentions(signed);
+  const mentioned = await attachPostMentions(signed);
+  return attachPostTags(mentioned);
 }
 
 export async function getSavedPosts(params: {

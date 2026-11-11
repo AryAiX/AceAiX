@@ -6,7 +6,7 @@ import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
 import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
 import { isAbsoluteMediaUrl, posterOf } from '@/lib/mediaUrl';
-import { getUserPosts, myLinkedMinors } from '@/lib/api';
+import { getUserPosts, myLinkedMinors, signPostMedia } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
 import { randomUploadId } from '@/lib/uploadId';
@@ -423,6 +423,26 @@ export async function deleteAthleteMedia(mediaId: string): Promise<void> {
 // ── Posts grid ───────────────────────────────────────────────────────────────
 export async function getPostTiles(userId: string): Promise<PostTile[]> {
   const posts = await getUserPosts(userId);
+  const firstMedia = posts
+    .map((post) => posterOf(post.media?.[0]))
+    .filter((value): value is string => !!value);
+
+  const urls = await resolveMediaUrls(firstMedia);
+
+  return posts.map((post) => {
+    const key = posterOf(post.media?.[0]);
+    return { ...post, thumbnail: (key && urls[key]) ?? null };
+  });
+}
+
+/** Posts this person is tagged in. The server already hides what you cannot see. */
+export async function getTaggedPostTiles(userId: string): Promise<PostTile[]> {
+  const { data, error } = await supabase.rpc('get_tagged_posts', {
+    p_user: userId,
+    p_limit: 24,
+  });
+  if (error) throw new AppError(error);
+  const posts = await signPostMedia((data ?? []) as UserPost[]);
   const firstMedia = posts
     .map((post) => posterOf(post.media?.[0]))
     .filter((value): value is string => !!value);

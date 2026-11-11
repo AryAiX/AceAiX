@@ -223,8 +223,8 @@ export function rowNeedsHydration(event: BannerEvent): boolean {
   if (!row.id) return false;
   if (!row.title?.trim() || !row.type) return true;
   if (event.eventType !== 'UPDATE') {
-    // Nearby games and mentions compose their sentence from `data`.
-    return row.data == null && (row.type === 'meetup_nearby' || row.type === 'mention');
+    // Nearby games, mentions and post tags compose their sentence from the row.
+    return row.data == null && (row.type === 'meetup_nearby' || row.type === 'mention' || row.type === 'post_tag');
   }
   if (!row.entity_type || row.actor_count == null || row.data == null) return true;
   return false;

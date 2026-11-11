@@ -318,6 +318,7 @@ export default function PostScreen() {
         onClose={() => setActionTarget(null)}
         onDeleted={onActionDeleted}
         onBlocked={onActionBlocked}
+        onTagsChanged={(postId, tagged) => patchPost(postId, { tagged })}
       />
     </Screen>
   );

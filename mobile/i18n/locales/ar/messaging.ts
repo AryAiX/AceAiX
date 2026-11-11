@@ -211,6 +211,7 @@ export const messaging = {
   meetupNearbyTitle: 'مباراة {{sport}} جديدة في {{city}}',
   mentionedInPost: '{{name}} أشار إليك في منشور',
   mentionedInComment: '{{name}} أشار إليك في تعليق',
+  taggedInPost: '{{name}} وسمك في منشور',
   referralJoined: 'انضم {{name}} عبر دعوتك',
   referralJoinedNoName: 'انضم صديق عبر دعوتك',
   referralTokenTitle: 'حصلت على توكن',

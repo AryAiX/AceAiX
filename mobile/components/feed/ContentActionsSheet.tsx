@@ -7,6 +7,7 @@ import {
   Flag,
   Link2,
   Share2,
+  Tag,
   Trash2,
 } from 'lucide-react-native';
 
@@ -23,9 +24,16 @@ import {
 } from '@/components/ui';
 import { useT } from '@/i18n';
 import { blockUser, deleteComment, deletePost, reportContent } from '@/lib/api';
+import {
+  attachPostTags,
+  rememberPostTags,
+  setPostTags,
+  type TaggedPerson,
+} from '@/lib/api.postTags';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { displayName } from '@/lib/format';
+import { TagPeoplePicker } from './TagPeoplePicker';
 
 /**
  * The safety menu behind every "…".
@@ -70,9 +78,11 @@ interface Props {
   onClose: () => void;
   onDeleted?: (target: ContentTarget) => void;
   onBlocked?: (userId: string) => void;
+  /** The author's new tag list, after it has been saved. */
+  onTagsChanged?: (postId: string, tagged: TaggedPerson[]) => void;
 }
 
-export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: Props) {
+export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked, onTagsChanged }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const toast = useToast();
@@ -82,7 +92,12 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
   const [details, setDetails] = useState('');
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tagging, setTagging] = useState(false);
+  const [tagPostId, setTagPostId] = useState<string | null>(null);
+  const [tagDraft, setTagDraft] = useState<TaggedPerson[]>([]);
+  const [tagSaving, setTagSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tagRequest = useRef(0);
 
   useEffect(() => {
     if (target) {
@@ -95,6 +110,7 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
   }, [target]);
 
   useEffect(() => () => {
+    tagRequest.current += 1;
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
@@ -169,6 +185,50 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
     }
   };
 
+  /* The menu has to close before the picker opens. iOS will not present the
+     next sheet while this one is still dismissing. */
+  const openTagPicker = () => {
+    if (!target || target.kind !== 'post' || !target.isOwn) return;
+    const postId = target.id;
+    const request = ++tagRequest.current;
+    close();
+    const ready = attachPostTags([{ id: postId }])
+      .then((rows) => rows[0]?.tagged ?? [])
+      .catch(() => [] as TaggedPerson[]);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      void ready.then((people) => {
+        if (request !== tagRequest.current) return;
+        setTagPostId(postId);
+        setTagDraft(people.slice());
+        setTagging(true);
+      });
+    }, 240);
+  };
+
+  const saveTags = async (chosen: TaggedPerson[]) => {
+    if (!tagPostId || tagSaving) return;
+    setTagSaving(true);
+    try {
+      const kept = await setPostTags(
+        tagPostId,
+        chosen.map((person) => person.id),
+      );
+      const byId = new Map(chosen.map((person) => [person.id, person]));
+      const next = kept.flatMap((id) => {
+        const person = byId.get(id);
+        return person ? [person] : [];
+      });
+      rememberPostTags(tagPostId, next);
+      onTagsChanged?.(tagPostId, next);
+      setTagging(false);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setTagSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!target || busy) return;
     setBusy(true);
@@ -225,15 +285,29 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
           ) : null}
 
           {target?.isOwn ? (
-            <ListItem
-              title={
-                target.kind === 'post' ? t('feed.deletePost') : t('feed.deleteComment')
-              }
-              left={<Trash2 size={20} color={colors.danger} />}
-              destructive
-              onPress={() => goTo('delete')}
-              showChevron={false}
-            />
+            <>
+              {target.kind === 'post' ? (
+                <>
+                  <ListItem
+                    title={t('feed.tagPeople')}
+                    left={<Tag size={20} color={colors.textSecondary} />}
+                    onPress={openTagPicker}
+                    showChevron={false}
+                    testID="post-actions-tag-people"
+                  />
+                  <Divider />
+                </>
+              ) : null}
+              <ListItem
+                title={
+                  target.kind === 'post' ? t('feed.deletePost') : t('feed.deleteComment')
+                }
+                left={<Trash2 size={20} color={colors.danger} />}
+                destructive
+                onPress={() => goTo('delete')}
+                showChevron={false}
+              />
+            </>
           ) : (
             <>
               <ListItem
@@ -343,6 +417,17 @@ export function ContentActionsSheet({ target, onClose, onDeleted, onBlocked }: P
         loading={busy}
         onConfirm={handleDelete}
         onCancel={close}
+      />
+
+      <TagPeoplePicker
+        visible={tagging}
+        people={tagDraft}
+        onChange={setTagDraft}
+        onClose={() => {
+          if (!tagSaving) setTagging(false);
+        }}
+        onDone={saveTags}
+        disabled={tagSaving}
       />
     </>
   );

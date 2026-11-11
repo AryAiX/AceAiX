@@ -107,6 +107,11 @@ export const profile = {
     'Teil ein Training, ein Ergebnis oder einen Clip. Aktive Profile werden öfter gesehen.',
   postsEmptyBodyOther: 'Sobald etwas gepostet wird, steht es hier.',
   postsEmptyAction: 'Beitrag schreiben',
+  postsSwitchPosts: 'Beiträge',
+  postsSwitchTagged: 'Markiert',
+  taggedEmptyTitle: 'Noch keine markierten Beiträge',
+  taggedEmptyBodySelf: 'Wenn dich jemand in einem Beitrag markiert, steht er hier.',
+  taggedEmptyBodyOther: 'Beiträge, in denen diese Person markiert ist, stehen hier.',
 
   // ── Medienraster (components/profile/MediaGrid.tsx) ────────────────────────
   addHighlight: 'Zur Vitrine hinzufügen',

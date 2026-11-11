@@ -56,6 +56,9 @@ describe('notificationTarget', () => {
     expect(
       notificationTarget(notification({ type: 'comment', entity_type: 'post', entity_id: 'p1' })),
     ).toBe(Routes.post('p1'));
+    expect(
+      notificationTarget(notification({ type: 'post_tag', entity_type: 'post', entity_id: 'p1' })),
+    ).toBe(Routes.post('p1'));
   });
 
   it('sends a follow to the follower profile', () => {

@@ -451,6 +451,7 @@ export default function HomeScreen() {
         onClose={() => setActionTarget(null)}
         onDeleted={(target) => removePost(target.id)}
         onBlocked={removeAuthor}
+        onTagsChanged={(postId, tagged) => patchPost(postId, { tagged })}
       />
     </Screen>
   );

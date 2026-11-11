@@ -115,6 +115,11 @@ export const profile = {
     'شارك حصة تدريب أو نتيجة أو لقطة. الملفات النشطة يراها عدد أكبر.',
   postsEmptyBodyOther: 'عندما ينشر، سيظهر هنا.',
   postsEmptyAction: 'اكتب منشورًا',
+  postsSwitchPosts: 'المنشورات',
+  postsSwitchTagged: 'الموسومون',
+  taggedEmptyTitle: 'لا منشورات موسومة بعد',
+  taggedEmptyBodySelf: 'عندما يوسمك أحد في منشور، يظهر هنا.',
+  taggedEmptyBodyOther: 'المنشورات التي وُسموا فيها ستظهر هنا.',
 
   // ── شبكة الوسائط (components/profile/MediaGrid.tsx) ───────────────────────
   addHighlight: 'إضافة إلى المعرض',
