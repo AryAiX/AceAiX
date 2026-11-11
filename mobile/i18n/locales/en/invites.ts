@@ -49,7 +49,8 @@ export const invites = {
 
   // ── Entering a code by hand ────────────────────────────────────────────────
   enterCodeTitle: 'Were you invited?',
-  enterCodeBody: 'Enter your friend’s invite code. You can do this in the first 14 days after signing up.',
+  enterCodeBody:
+    'Enter your friend’s invite code in the first 14 days. Once your profile is set up, you have one day to add it.',
   enterCodePlaceholder: 'Invite code',
   enterCodeAction: 'Add code',
   enterCodeInvalid: 'An invite code has 8 letters and numbers.',

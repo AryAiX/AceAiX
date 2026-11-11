@@ -52,7 +52,8 @@ export const invites = {
 
   // ── Code selbst eingeben ───────────────────────────────────────────────────
   enterCodeTitle: 'Wurdest du eingeladen?',
-  enterCodeBody: 'Gib den Einladungscode deines Freundes ein. Das geht in den ersten 14 Tagen nach deiner Anmeldung.',
+  enterCodeBody:
+    'Gib den Einladungscode deines Freundes in den ersten 14 Tagen ein. Nach der Einrichtung hast du einen Tag Zeit, ihn hinzuzufügen.',
   enterCodePlaceholder: 'Einladungscode',
   enterCodeAction: 'Code hinzufügen',
   enterCodeInvalid: 'Ein Einladungscode hat 8 Buchstaben und Zahlen.',
