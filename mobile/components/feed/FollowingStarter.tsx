@@ -247,10 +247,12 @@ export function FollowingStarter({
                   score={athlete.talent_score}
                   verified={athlete.is_verified}
                 />
-                <Text variant="bodyStrong" numberOfLines={1} style={{ marginTop: 6 }}>
+                {/* Name, details and the reason line up on the left with the
+                    Follow button under them; only the photo is centred. */}
+                <Text variant="bodyStrong" numberOfLines={1} style={{ marginTop: 6, alignSelf: 'stretch' }}>
                   {name}
                 </Text>
-                <Text variant="caption" tone="muted" numberOfLines={1}>
+                <Text variant="caption" tone="muted" numberOfLines={1} style={{ alignSelf: 'stretch' }}>
                   {metaLine(
                     positionLabel(t, athlete.position),
                     athlete.age != null ? String(athlete.age) : null,
@@ -260,6 +262,7 @@ export function FollowingStarter({
                 {reason ? (
                   <View
                     style={{
+                      alignSelf: 'flex-start',
                       marginTop: 4,
                       paddingHorizontal: 7,
                       paddingVertical: 2,
