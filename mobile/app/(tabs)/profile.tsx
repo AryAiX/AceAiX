@@ -315,8 +315,8 @@ export default function MyProfileScreen() {
           <ProfileTabs
             value={tab}
             onChange={setTab}
-            hasPosts={(data.stats?.posts ?? 0) > 0}
-            hasClips={(data.stats?.media ?? 0) > 0}
+            postCount={data.stats?.posts ?? 0}
+            clipCount={data.stats?.media ?? 0}
           />
         ) : null}
 

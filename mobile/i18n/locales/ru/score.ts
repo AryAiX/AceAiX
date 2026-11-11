@@ -147,7 +147,7 @@ export const score = {
   simGain_other: '+{{count}} балла',
   simHonest: 'Это прогноз, а не обещание: он исходит из того, что работа настоящая и результаты подтвердятся.',
 
-  simVideos: 'Ролики из «Лучшего»',
+  simVideos: 'Ролики из витрины',
   simMatches: 'Матчей записано за год',
   simVerified: 'Из них подтверждённых',
   simEndorsements: 'Рекомендации',

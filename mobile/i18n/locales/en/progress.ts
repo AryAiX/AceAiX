@@ -90,11 +90,11 @@ export const progress = {
     },
     first_clip: {
       title: 'First clip',
-      hint: 'You added your first video to your Best of.',
+      hint: 'You added your first video to your Showcase.',
     },
     three_clips: {
       title: 'Three clips',
-      hint: 'Three videos in your Best of. That is a reel a scout can watch.',
+      hint: 'Three videos in your Showcase. That is a reel a scout can watch.',
     },
     first_match: {
       title: 'First match',

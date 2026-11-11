@@ -157,7 +157,7 @@ export const score = {
   simGain_other: '+{{count}} نقطة',
   simHonest: 'توقّع لا وعد — يفترض أن العمل حقيقي وأن النتائج ستصمد.',
 
-  simVideos: 'مقاطع الأفضل',
+  simVideos: 'مقاطع المعرض',
   simMatches: 'المباريات المسجّلة هذا العام',
   simVerified: 'الموثّق منها',
   simEndorsements: 'التزكيات',

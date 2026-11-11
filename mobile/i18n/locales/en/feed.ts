@@ -28,7 +28,7 @@ export const feed = {
   createPostHint: 'Photos, a clip or an update',
   createStory: 'Story',
   createStoryHint: 'Gone in 24 hours',
-  createHighlight: 'Best of',
+  createHighlight: 'Showcase',
   createHighlightHint: 'Your best clips, on your profile',
   addMediaHint: 'Up to {{max}} · clips up to {{minutes}} minutes',
   photoLibrary: 'Photo library',

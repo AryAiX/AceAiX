@@ -105,7 +105,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── التبويبات (components/profile/ProfileTabs.tsx) ────────────────────────
-  tabHighlights: 'الأفضل',
+  tabHighlights: 'المعرض',
   tabCareer: 'المسيرة',
 
   // ── تبويب المنشورات (components/profile/PostsTab.tsx) ─────────────────────
@@ -117,13 +117,13 @@ export const profile = {
   postsEmptyAction: 'اكتب منشورًا',
 
   // ── شبكة الوسائط (components/profile/MediaGrid.tsx) ───────────────────────
-  addHighlight: 'إضافة إلى الأفضل',
+  addHighlight: 'إضافة إلى المعرض',
   videoClipA11y: 'مقطع فيديو',
   photoA11y: 'صورة',
   photoUnavailable: 'الصورة غير متاحة',
   scoreWhenPostedA11y: 'النتيجة عند النشر: {{score}}',
   scoreWhenPostedHint: 'الرقم على كل منشور هو نتيجتك عند نشره.',
-  highlightTag: 'الأفضل',
+  highlightTag: 'المعرض',
   clipQuickTechnique: 'تقنية',
   clipQuickMatch: 'مباراة',
   clipQuickTraining: 'تدريب',
@@ -133,8 +133,8 @@ export const profile = {
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',
 
-  noHighlightsTitle: 'لا مقاطع في الأفضل',
-  noHighlightsBody: 'قسم الأفضل جزء من ملف اللاعب.',
+  noHighlightsTitle: 'لا مقاطع في المعرض',
+  noHighlightsBody: 'المعرض جزء من ملف اللاعب.',
   clipsEmptyTitleSelf: 'المدرّبون يشاهدون قبل أن يقرأوا.',
   clipsEmptyTitleOther: 'لا لقطات بعد',
   clipsEmptyBodySelf: 'أضف أول لقطة لك. ثلاث لقطات قصيرة هي العدد المثالي.',
@@ -395,8 +395,14 @@ export const profile = {
   layoutGrid: 'عرض كشبكة',
   layoutScroll: 'عرض كقائمة متتالية',
   morePosts: 'عرض منشورات أكثر',
-  addToBestOfNamed: 'إضافة إلى أفضل ما لدى {{name}}',
-  bestOfNamed: 'أفضل ما لدى {{name}}',
+  addToBestOfNamed: 'إضافة إلى معرض {{name}}',
+  bestOfNamed: 'معرض {{name}}',
+  postCount_zero: 'المنشورات: {{count}}',
+  postCount_one: 'المنشورات: {{count}}',
+  postCount_two: 'المنشورات: {{count}}',
+  postCount_few: 'المنشورات: {{count}}',
+  postCount_many: 'المنشورات: {{count}}',
+  postCount_other: 'المنشورات: {{count}}',
   clipCount_zero: 'مقاطع: {{count}}',
   clipCount_one: 'مقاطع: {{count}}',
   clipCount_two: 'مقاطع: {{count}}',

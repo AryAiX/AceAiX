@@ -142,7 +142,7 @@ export const score = {
   simGain_other: '+{{count}} points',
   simHonest: 'Une projection, pas une promesse — elle suppose que le travail est réel et que les résultats tiennent.',
 
-  simVideos: 'Clips du Best of',
+  simVideos: 'Clips de la vitrine',
   simMatches: 'Matchs notés cette année',
   simVerified: 'Dont vérifiés',
   simEndorsements: 'Recommandations',

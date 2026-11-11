@@ -214,7 +214,7 @@ export const opportunities = {
     whatTheySee: 'Lo que van a ver',
     seeProfile: 'Tu nombre y tu perfil',
     seeScore: 'Tu Puntuación de talento',
-    seeHighlights: 'Lo mejor de ti y tus estadísticas',
+    seeHighlights: 'Tu vitrina y tus estadísticas',
     seeMessage: 'El mensaje que escribas arriba',
     guardianNotice: 'Tu madre, padre o tutor podrá ver las solicitudes que envíes.',
   },

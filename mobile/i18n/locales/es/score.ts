@@ -144,7 +144,7 @@ export const score = {
   simHonest:
     'Es una proyección, no una promesa: da por hecho que el trabajo es real y que los resultados se sostienen.',
 
-  simVideos: 'Vídeos de Lo mejor',
+  simVideos: 'Vídeos de la vitrina',
   simMatches: 'Partidos registrados este año',
   simVerified: 'De esos, verificados',
   simEndorsements: 'Avales',

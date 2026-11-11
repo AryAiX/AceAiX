@@ -97,7 +97,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Tabs (components/profile/ProfileTabs.tsx) ──────────────────────────────
-  tabHighlights: 'Best of',
+  tabHighlights: 'Showcase',
   tabCareer: 'Career',
 
   // ── Posts tab (components/profile/PostsTab.tsx) ────────────────────────────
@@ -109,13 +109,13 @@ export const profile = {
   postsEmptyAction: 'Write a post',
 
   // ── Media grid (components/profile/MediaGrid.tsx) ──────────────────────────
-  addHighlight: 'Add to Best of',
+  addHighlight: 'Add to Showcase',
   videoClipA11y: 'Video clip',
   photoA11y: 'Photo',
   photoUnavailable: 'Photo unavailable',
   scoreWhenPostedA11y: 'Score when posted: {{score}}',
   scoreWhenPostedHint: 'The number on each post is your score when you posted it.',
-  highlightTag: 'Best of',
+  highlightTag: 'Showcase',
   clipQuickTechnique: 'Technique',
   clipQuickMatch: 'Match',
   clipQuickTraining: 'Training',
@@ -125,8 +125,8 @@ export const profile = {
   // ── Highlights tab (components/profile/HighlightsTab.tsx) ──────────────────
   photoPermission: 'AceAiX needs permission to open your photos.',
 
-  noHighlightsTitle: 'No Best of clips here',
-  noHighlightsBody: 'Best of is part of an athlete profile.',
+  noHighlightsTitle: 'No Showcase clips here',
+  noHighlightsBody: 'The Showcase is part of an athlete profile.',
   clipsEmptyTitleSelf: 'Coaches watch before they read.',
   clipsEmptyTitleOther: 'No clips yet',
   clipsEmptyBodySelf: 'Add your first clip. Three short ones is the sweet spot.',
@@ -373,8 +373,10 @@ export const profile = {
   layoutGrid: 'Show as a grid',
   layoutScroll: 'Show as a scroll',
   morePosts: 'Show more posts',
-  addToBestOfNamed: 'Add to Best of {{name}}',
-  bestOfNamed: 'Best of {{name}}',
+  addToBestOfNamed: "Add to {{name}}'s Showcase",
+  bestOfNamed: "{{name}}'s Showcase",
+  postCount_one: '{{count}} post',
+  postCount_other: '{{count}} posts',
   clipCount_one: '{{count}} clip',
   clipCount_other: '{{count}} clips',
   addClip: 'Add a clip',

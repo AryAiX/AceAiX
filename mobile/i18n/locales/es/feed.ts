@@ -30,7 +30,7 @@ export const feed = {
   createPostHint: 'Fotos, un clip o una novedad',
   createStory: 'Historia',
   createStoryHint: 'Desaparece en 24 horas',
-  createHighlight: 'Lo mejor',
+  createHighlight: 'Vitrina',
   createHighlightHint: 'Tus mejores clips, en tu perfil',
   addMediaHint: 'Hasta {{max}} · clips de hasta {{minutes}} minutos',
   photoLibrary: 'Fototeca',

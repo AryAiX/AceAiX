@@ -103,7 +103,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Вкладки (components/profile/ProfileTabs.tsx) ───────────────────────────
-  tabHighlights: 'Лучшее',
+  tabHighlights: 'Витрина',
   tabCareer: 'Карьера',
 
   // ── Вкладка постов (components/profile/PostsTab.tsx) ───────────────────────
@@ -115,13 +115,13 @@ export const profile = {
   postsEmptyAction: 'Написать пост',
 
   // ── Сетка медиа (components/profile/MediaGrid.tsx) ─────────────────────────
-  addHighlight: 'Добавить в «Лучшее»',
+  addHighlight: 'Добавить в витрину',
   videoClipA11y: 'Видеоклип',
   photoA11y: 'Фото',
   photoUnavailable: 'Фото недоступно',
   scoreWhenPostedA11y: 'Рейтинг при публикации: {{score}}',
   scoreWhenPostedHint: 'Число на каждой публикации — твой рейтинг в момент публикации.',
-  highlightTag: 'Лучшее',
+  highlightTag: 'Витрина',
   clipQuickTechnique: 'Техника',
   clipQuickMatch: 'Матч',
   clipQuickTraining: 'Тренировка',
@@ -131,8 +131,8 @@ export const profile = {
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',
 
-  noHighlightsTitle: 'В «Лучшем» пока пусто',
-  noHighlightsBody: '«Лучшее» есть только в профиле спортсмена.',
+  noHighlightsTitle: 'В витрине пока пусто',
+  noHighlightsBody: 'Витрина есть только в профиле спортсмена.',
   clipsEmptyTitleSelf: 'Тренер сначала смотрит, потом читает.',
   clipsEmptyTitleOther: 'Клипов пока нет',
   clipsEmptyBodySelf: 'Добавь первый клип. Три коротких — самое то.',
@@ -388,8 +388,12 @@ export const profile = {
   layoutGrid: 'Показать сеткой',
   layoutScroll: 'Показать лентой',
   morePosts: 'Показать больше публикаций',
-  addToBestOfNamed: 'Добавить в «Лучшее» {{name}}',
-  bestOfNamed: 'Лучшее: {{name}}',
+  addToBestOfNamed: 'Добавить в витрину: {{name}}',
+  bestOfNamed: 'Витрина: {{name}}',
+  postCount_one: '{{count}} пост',
+  postCount_few: '{{count}} поста',
+  postCount_many: '{{count}} постов',
+  postCount_other: '{{count}} поста',
   clipCount_one: '{{count}} ролик',
   clipCount_few: '{{count}} ролика',
   clipCount_many: '{{count}} роликов',

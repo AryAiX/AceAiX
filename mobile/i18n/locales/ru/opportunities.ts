@@ -214,7 +214,7 @@ export const opportunities = {
     whatTheySee: 'Что они увидят',
     seeProfile: 'Твоё имя и профиль',
     seeScore: 'Твою оценку таланта',
-    seeHighlights: 'Твоё «Лучшее» и статистику',
+    seeHighlights: 'Твою витрину и статистику',
     seeMessage: 'Сообщение, которое ты напишешь выше',
     guardianNotice: 'Твой родитель или опекун сможет видеть отправленные тобой отклики.',
   },

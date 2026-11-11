@@ -215,7 +215,7 @@ export const opportunities = {
     whatTheySee: 'ما سيرونه',
     seeProfile: 'اسمك وملفك',
     seeScore: 'درجة موهبتك',
-    seeHighlights: 'أفضل مقاطعك وإحصاءاتك',
+    seeHighlights: 'معرضك وإحصاءاتك',
     seeMessage: 'الرسالة التي كتبتها أعلاه',
     guardianNotice: 'سيتمكن أحد والديك أو ولي أمرك من رؤية الطلبات التي ترسلها.',
   },

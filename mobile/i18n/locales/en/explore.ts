@@ -10,7 +10,7 @@ export const explore = {
   allSports: 'All clips',
   forYou: 'Clips for you',
   trendingNow: 'Trending clip',
-  highlight: 'Best of',
+  highlight: 'Showcase',
   playClipBy: 'Play clip by {{name}}',
   viewsA11y: '{{n}} views',
   emptyTitle: 'Nothing to watch yet',

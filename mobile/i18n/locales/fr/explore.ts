@@ -8,7 +8,7 @@ export const explore = {
   allSports: 'Tous les clips',
   forYou: 'Des clips pour toi',
   trendingNow: 'Clip tendance',
-  highlight: 'Best of',
+  highlight: 'Vitrine',
   playClipBy: 'Lire le clip de {{name}}',
   viewsA11y: '{{n}} vues',
   emptyTitle: 'Rien à regarder pour l’instant',

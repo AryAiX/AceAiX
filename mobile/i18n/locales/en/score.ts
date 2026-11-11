@@ -101,8 +101,8 @@ export const score = {
     postUpdate: 'Post an update',
   },
   tip: {
-    highlightsLabel_one: 'Add {{count}} more clip to your Best of',
-    highlightsLabel_other: 'Add {{count}} more clips to your Best of',
+    highlightsLabel_one: 'Add {{count}} more clip to your Showcase',
+    highlightsLabel_other: 'Add {{count}} more clips to your Showcase',
     highlightsDetail: 'Scouts open footage before anything else. Three short clips is the sweet spot.',
     profileLabel: 'Finish your profile',
     profileDetail_one: '{{count}} field left — each one adds points.',
@@ -135,7 +135,7 @@ export const score = {
   simGain_other: '+{{count}} points',
   simHonest: 'A projection, not a promise — it assumes the work is real and the results hold up.',
 
-  simVideos: 'Best of clips',
+  simVideos: 'Showcase clips',
   simMatches: 'Matches logged this year',
   simVerified: 'Of those, verified',
   simEndorsements: 'Endorsements',

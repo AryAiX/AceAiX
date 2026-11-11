@@ -18,25 +18,28 @@ export function toProfileTab(value: unknown, fallback: ProfileTab = 'posts'): Pr
 }
 
 /**
- * Posts · Best of · Career as a segmented bar: equal parts, the open one
- * raised with a blue dot, and the Grid ⇄ Scroll switch at the end.
+ * Posts · Showcase · Career as a full-width segmented bar: equal parts, the
+ * open one raised with a blue dot. Under it, the count and the Grid ⇄ Scroll
+ * switch.
  */
 export function ProfileTabs({
   value,
   onChange,
-  hasPosts = true,
-  hasClips = true,
+  postCount = 0,
+  clipCount = 0,
 }: {
   value: ProfileTab;
   onChange: (tab: ProfileTab) => void;
-  /** With nothing to lay out, the Grid ⇄ Scroll switch is hidden. */
-  hasPosts?: boolean;
-  hasClips?: boolean;
+  /** How many posts and Showcase clips there are. Shown beside the Grid ⇄
+      Scroll switch; with nothing to lay out, that row is hidden. */
+  postCount?: number;
+  clipCount?: number;
 }) {
   const t = useT();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const [layout, setLayout] = useProfileLayout();
+  const count = value === 'posts' ? postCount : value === 'highlights' ? clipCount : 0;
   const options: { value: ProfileTab; label: string }[] = [
     { value: 'posts', label: t('common.posts') },
     { value: 'highlights', label: t('profile.tabHighlights') },
@@ -44,14 +47,13 @@ export function ProfileTabs({
   ];
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+    <View style={{ gap: spacing.sm }}>
       {/* One soft bar split into equal parts; the open part rises as a card
           with a small blue dot. Follows light and dark mode. */}
       <View
         accessibilityRole="tablist"
         testID="profile-tabs"
         style={{
-          flex: 1,
           flexDirection: 'row',
           padding: 4,
           borderRadius: 14,
@@ -97,9 +99,15 @@ export function ProfileTabs({
           );
         })}
       </View>
-      {/* Grid ⇄ Scroll, for the tabs that have a grid and something in it. */}
-      {(value === 'posts' && hasPosts) || (value === 'highlights' && hasClips) ? (
-        <LayoutToggle value={layout} onChange={setLayout} />
+      {/* The count and the Grid ⇄ Scroll switch sit on their own row under
+          the bar, so the bar gets the full width and every tab name fits. */}
+      {count > 0 ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text variant="captionStrong" tone="muted">
+            {value === 'posts' ? t('profile.postCount', { count }) : t('profile.clipCount', { count })}
+          </Text>
+          <LayoutToggle value={layout} onChange={setLayout} />
+        </View>
       ) : null}
     </View>
   );

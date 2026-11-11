@@ -97,7 +97,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Tabs (components/profile/ProfileTabs.tsx) ──────────────────────────────
-  tabHighlights: 'Best-of',
+  tabHighlights: 'Vitrine',
   tabCareer: 'Laufbahn',
 
   // ── Beiträge (components/profile/PostsTab.tsx) ─────────────────────────────
@@ -109,13 +109,13 @@ export const profile = {
   postsEmptyAction: 'Beitrag schreiben',
 
   // ── Medienraster (components/profile/MediaGrid.tsx) ────────────────────────
-  addHighlight: 'Zum Best-of hinzufügen',
+  addHighlight: 'Zur Vitrine hinzufügen',
   videoClipA11y: 'Videoclip',
   photoA11y: 'Foto',
   photoUnavailable: 'Foto nicht verfügbar',
   scoreWhenPostedA11y: 'Score beim Posten: {{score}}',
   scoreWhenPostedHint: 'Die Zahl auf jedem Post ist dein Score beim Posten.',
-  highlightTag: 'Best-of',
+  highlightTag: 'Vitrine',
   clipQuickTechnique: 'Technik',
   clipQuickMatch: 'Spiel',
   clipQuickTraining: 'Im Training',
@@ -125,8 +125,8 @@ export const profile = {
   // ── Highlights (components/profile/HighlightsTab.tsx) ──────────────────────
   photoPermission: 'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen.',
 
-  noHighlightsTitle: 'Noch nichts im Best-of',
-  noHighlightsBody: 'Das Best-of gehört zu einem Sportlerprofil.',
+  noHighlightsTitle: 'Noch nichts in der Vitrine',
+  noHighlightsBody: 'Die Vitrine gehört zu einem Sportlerprofil.',
   clipsEmptyTitleSelf: 'Trainer schauen, bevor sie lesen.',
   clipsEmptyTitleOther: 'Noch keine Clips',
   clipsEmptyBodySelf: 'Lade deinen ersten Clip hoch. Drei kurze sind genau richtig.',
@@ -373,8 +373,10 @@ export const profile = {
   layoutGrid: 'Als Raster zeigen',
   layoutScroll: 'Untereinander zeigen',
   morePosts: 'Mehr Beiträge zeigen',
-  addToBestOfNamed: 'Zum Best-of von {{name}} hinzufügen',
-  bestOfNamed: 'Best-of von {{name}}',
+  addToBestOfNamed: 'Zur Vitrine von {{name}} hinzufügen',
+  bestOfNamed: 'Vitrine von {{name}}',
+  postCount_one: '{{count}} Beitrag',
+  postCount_other: '{{count}} Beiträge',
   clipCount_one: '{{count}} Clip',
   clipCount_other: '{{count}} Clips',
   addClip: 'Clip hinzufügen',

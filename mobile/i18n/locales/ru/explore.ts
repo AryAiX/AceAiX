@@ -8,7 +8,7 @@ export const explore = {
   allSports: 'Все клипы',
   forYou: 'Клипы для тебя',
   trendingNow: 'Популярный клип',
-  highlight: 'Лучшее',
+  highlight: 'Витрина',
   playClipBy: 'Воспроизвести клип: {{name}}',
   viewsA11y: 'Просмотров: {{n}}',
   emptyTitle: 'Пока нечего смотреть',

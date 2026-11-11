@@ -103,7 +103,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Pestañas (components/profile/ProfileTabs.tsx) ──────────────────────────
-  tabHighlights: 'Lo mejor',
+  tabHighlights: 'Vitrina',
   tabCareer: 'Trayectoria',
 
   // ── Pestaña de publicaciones (components/profile/PostsTab.tsx) ─────────────
@@ -115,13 +115,13 @@ export const profile = {
   postsEmptyAction: 'Escribir una publicación',
 
   // ── Cuadrícula de contenido (components/profile/MediaGrid.tsx) ─────────────
-  addHighlight: 'Añadir a Lo mejor',
+  addHighlight: 'Añadir a la vitrina',
   videoClipA11y: 'Clip de video',
   photoA11y: 'Foto',
   photoUnavailable: 'Foto no disponible',
   scoreWhenPostedA11y: 'Puntuación al publicar: {{score}}',
   scoreWhenPostedHint: 'El número de cada publicación es tu puntuación cuando la publicaste.',
-  highlightTag: 'Lo mejor',
+  highlightTag: 'Vitrina',
   clipQuickTechnique: 'Técnica',
   clipQuickMatch: 'Partido',
   clipQuickTraining: 'Entreno',
@@ -131,8 +131,8 @@ export const profile = {
   // ── Pestaña de destacados (components/profile/HighlightsTab.tsx) ───────────
   photoPermission: 'AceAiX necesita permiso para abrir tus fotos.',
 
-  noHighlightsTitle: 'Aún no hay nada en Lo mejor',
-  noHighlightsBody: 'Lo mejor forma parte del perfil de un deportista.',
+  noHighlightsTitle: 'Aún no hay nada en la vitrina',
+  noHighlightsBody: 'La vitrina forma parte del perfil de un deportista.',
   clipsEmptyTitleSelf: 'Los entrenadores miran antes de leer.',
   clipsEmptyTitleOther: 'Todavía no hay clips',
   clipsEmptyBodySelf: 'Añade tu primer clip. Tres cortos es el punto justo.',
@@ -388,8 +388,11 @@ export const profile = {
   layoutGrid: 'Ver en cuadrícula',
   layoutScroll: 'Ver en lista',
   morePosts: 'Ver más publicaciones',
-  addToBestOfNamed: 'Añadir a Lo mejor de {{name}}',
-  bestOfNamed: 'Lo mejor de {{name}}',
+  addToBestOfNamed: 'Añadir a la vitrina de {{name}}',
+  bestOfNamed: 'Vitrina de {{name}}',
+  postCount_one: '{{count}} publicación',
+  postCount_many: '{{count}} publicaciones',
+  postCount_other: '{{count}} publicaciones',
   clipCount_one: '{{count}} vídeo',
   clipCount_many: '{{count}} vídeos',
   clipCount_other: '{{count}} vídeos',

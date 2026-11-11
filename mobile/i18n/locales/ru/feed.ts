@@ -28,7 +28,7 @@ export const feed = {
   createPostHint: 'Фото, клип или новость',
   createStory: 'История',
   createStoryHint: 'Исчезнет через 24 часа',
-  createHighlight: 'Лучшее',
+  createHighlight: 'Витрина',
   createHighlightHint: 'Лучшие клипы — в профиле',
   addMediaHint: 'До {{max}} · клипы до {{minutes}} мин.',
   photoLibrary: 'Медиатека',

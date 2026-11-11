@@ -138,7 +138,7 @@ export function HighlightsTab({
         durationSeconds &&
         durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
       ) {
-        toast.error('Best of clips need to be 90 seconds or shorter.');
+        toast.error('Showcase clips need to be 90 seconds or shorter.');
         return;
       }
       setPicked({
@@ -234,9 +234,6 @@ export function HighlightsTab({
       </View>
       <Text variant="subheading" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
         {t('profile.bestOfNamed', { name: author.name })}
-      </Text>
-      <Text variant="caption" tone="muted">
-        {t('profile.clipCount', { count: items.length })}
       </Text>
     </View>
   ) : null;
