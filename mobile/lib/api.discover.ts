@@ -380,3 +380,40 @@ export async function leaderboard(
   const rows = await talentLeaderboard(sport, country, limit);
   return (rows ?? []) as LeaderboardEntry[];
 }
+
+/**
+ * One page of the leaderboard. Rank is the server's place on the whole
+ * board, so page two continues the numbering instead of starting again.
+ */
+export async function leaderboardPage(
+  sport?: string,
+  country?: string,
+  offset = 0,
+  limit = 50,
+): Promise<LeaderboardEntry[]> {
+  const { data, error } = await supabase.rpc('talent_leaderboard_page', {
+    p_sport: sport ?? null,
+    p_country: country ?? null,
+    p_offset: offset,
+    p_limit: limit,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as LeaderboardEntry[];
+}
+
+/**
+ * How many scored minors are still waiting on a parent's approval.
+ * A number only — the function never returns names. Any failure is 0,
+ * so the board still shows when this count cannot be read.
+ */
+export async function leaderboardWaiting(): Promise<number> {
+  try {
+    const { data, error } = await supabase.rpc('talent_leaderboard_waiting');
+    if (error || data == null) return 0;
+    const count = typeof data === 'number' ? data : Number(data);
+    if (!Number.isFinite(count) || count <= 0) return 0;
+    return Math.floor(count);
+  } catch {
+    return 0;
+  }
+}

@@ -193,6 +193,9 @@ export const discover = {
     place2: '2nd',
     place3: '3rd',
     pts: 'pts',
+    /* Count only. The board never names these athletes. */
+    waiting_one: '{{count}} more young athlete is waiting for a parent’s approval',
+    waiting_other: '{{count}} more young athletes are waiting for a parent’s approval',
   },
 
   // ── Club and coach rows ────────────────────────────────────────────────────

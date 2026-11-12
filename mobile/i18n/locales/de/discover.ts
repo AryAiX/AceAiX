@@ -194,6 +194,9 @@ export const discover = {
     place2: '2. Platz',
     place3: '3. Platz',
     pts: 'Pkt.',
+    /* Nur die Zahl. Die Rangliste nennt diese Sportler nie. */
+    waiting_one: '{{count}} weiterer junger Sportler wartet auf die Zustimmung eines Elternteils',
+    waiting_other: '{{count}} weitere junge Sportler warten auf die Zustimmung eines Elternteils',
   },
 
   // ── Vereins- und Trainerzeilen ─────────────────────────────────────────────

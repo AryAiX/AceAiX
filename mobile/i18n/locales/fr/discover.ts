@@ -198,6 +198,10 @@ export const discover = {
     place2: '2e',
     place3: '3e',
     pts: 'pts',
+    /* Seulement le nombre. Le classement ne dit jamais qui ils sont. */
+    waiting_one: '{{count}} jeune athlète de plus attend l’approbation d’un parent',
+    waiting_many: '{{count}} jeunes athlètes de plus attendent l’approbation d’un parent',
+    waiting_other: '{{count}} jeunes athlètes de plus attendent l’approbation d’un parent',
   },
 
   // ── Lignes de clubs et de coachs ───────────────────────────────────────────

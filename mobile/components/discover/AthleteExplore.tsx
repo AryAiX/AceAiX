@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Building2, Check, ChevronDown, MapPin, Search, Trophy, Users } from 'lucide-react-native';
+import { Building2, Check, ChevronDown, Lock, MapPin, Search, Trophy, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -27,7 +27,8 @@ import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
   followedOrganizationIds,
   followedUserIds,
-  leaderboard,
+  leaderboardPage,
+  leaderboardWaiting,
   listCoaches,
   toggleOrganizationFollow,
 } from '@/lib/api.discover';
@@ -54,6 +55,33 @@ type Tab = AthleteDiscoverTab;
 
 const SEARCH_DEBOUNCE_MS = 300;
 const BOARD_SIZE = 50;
+
+interface BoardPage {
+  term: string;
+  rows: LeaderboardEntry[];
+  /** A full page came back, so another may follow. */
+  hasMore: boolean;
+  /** Minors the board does not name. Loaded once, with the first page. */
+  waiting: number;
+}
+
+interface BoardExtra {
+  /** The first page these later rows belong to. */
+  base: BoardPage | null;
+  rows: LeaderboardEntry[];
+  /** Rows the server has already sent, including any duplicate it repeated. */
+  fetched: number;
+  hasMore: boolean;
+  failed: boolean;
+}
+
+const EMPTY_EXTRA: BoardExtra = {
+  base: null,
+  rows: [],
+  fetched: 0,
+  hasMore: false,
+  failed: false,
+};
 
 interface Page<T> {
   term: string;
@@ -86,6 +114,18 @@ interface Props {
 function matchesChip(value: string | null | undefined, selected: string | undefined): boolean {
   if (!selected) return true;
   return (value ?? '').toLowerCase() === selected.toLowerCase();
+}
+
+/** Keep the first row for an athlete and drop a later copy of the same id. */
+function uniqueAthletes(rows: LeaderboardEntry[]): LeaderboardEntry[] {
+  const seen = new Set<string>();
+  const out: LeaderboardEntry[] = [];
+  for (const row of rows) {
+    if (seen.has(row.athlete_id)) continue;
+    seen.add(row.athlete_id);
+    out.push(row);
+  }
+  return out;
 }
 
 /**
@@ -238,11 +278,107 @@ export function AthleteExplore({
   );
   const boardScope = `${sport ?? ''}|${country ?? ''}`;
   const searchingBoard = tab === 'leaderboard' && canSearchBoard && !!debounced;
-  const board = useAsync<Page<LeaderboardEntry>>(
-    async () => ({ term: boardScope, rows: await leaderboard(sport, country, BOARD_SIZE) }),
+  const board = useAsync<BoardPage>(
+    async () => {
+      const [rows, waiting] = await Promise.all([
+        leaderboardPage(sport, country, 0, BOARD_SIZE),
+        leaderboardWaiting(),
+      ]);
+      return {
+        term: boardScope,
+        rows,
+        hasMore: rows.length >= BOARD_SIZE,
+        waiting,
+      };
+    },
     [sport, country],
     { enabled: tab === 'leaderboard' && !searchingBoard },
   );
+  /* Pages after the first. Dropped when the first page is replaced. */
+  const [extra, setExtra] = useState<BoardExtra>(EMPTY_EXTRA);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const requestGen = useRef(0);
+
+  /* A new first page (filter, pull to refresh, tapping the tab again) starts
+     over at offset 0. While that request is out, a scroll must not append a
+     page of the board we just left. */
+  const restartBoard = useCallback(() => {
+    requestGen.current += 1;
+    loadingMoreRef.current = true;
+    setLoadingMore(false);
+    setExtra(EMPTY_EXTRA);
+  }, []);
+
+  const sawBoardScope = useRef(false);
+  useEffect(() => {
+    // The first run is the screen opening, and the first page is already loading.
+    if (!sawBoardScope.current) {
+      sawBoardScope.current = true;
+      return;
+    }
+    restartBoard();
+  }, [boardScope, restartBoard]);
+
+  useEffect(() => {
+    if (board.data) loadingMoreRef.current = false;
+  }, [board.data]);
+
+  const loadMore = useCallback(
+    async (retry = false) => {
+      const first = board.data;
+      if (!first || first.term !== boardScope) return;
+      if (loadingMoreRef.current) return;
+
+      const current: BoardExtra =
+        extra.base === first
+          ? extra
+          : {
+              base: first,
+              rows: [],
+              fetched: first.rows.length,
+              hasMore: first.hasMore,
+              failed: false,
+            };
+      if (!current.hasMore) return;
+      if (current.failed && !retry) return;
+
+      const gen = requestGen.current;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      if (current.failed) setExtra({ ...current, failed: false });
+
+      try {
+        const page = await leaderboardPage(sport, country, current.fetched, BOARD_SIZE);
+        if (requestGen.current !== gen) return;
+        const seen = new Set<string>();
+        for (const row of first.rows) seen.add(row.athlete_id);
+        for (const row of current.rows) seen.add(row.athlete_id);
+        const fresh = page.filter((row) => {
+          if (seen.has(row.athlete_id)) return false;
+          seen.add(row.athlete_id);
+          return true;
+        });
+        setExtra({
+          base: first,
+          rows: [...current.rows, ...fresh],
+          fetched: current.fetched + page.length,
+          hasMore: page.length >= BOARD_SIZE,
+          failed: false,
+        });
+      } catch {
+        if (requestGen.current !== gen) return;
+        setExtra({ ...current, base: first, failed: true });
+      } finally {
+        if (requestGen.current === gen) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        }
+      }
+    },
+    [board.data, boardScope, extra, sport, country],
+  );
+
   const athletes = useAsync<Page<PersonResult>>(
     async () => ({ term: debounced, rows: await searchPeople(debounced, 'athlete', 30) }),
     [debounced],
@@ -346,7 +482,10 @@ export function AthleteExplore({
     else if (tab === 'coaches' && !bookable) coaches.reload();
     else if (tab === 'leaderboard') {
       if (searchingBoard) athletes.reload();
-      else board.reload();
+      else {
+        restartBoard();
+        board.reload();
+      }
     }
   });
 
@@ -590,10 +729,17 @@ export function AthleteExplore({
     if (searchingBoard) return renderBoardSearch();
 
     if (board.error) return <ErrorState message={board.error} onRetry={board.reload} />;
-    if (board.loading || board.data?.term !== boardScope) return busy(5);
+    if (board.loading || board.data?.term !== boardScope || !board.data) return busy(5);
 
-    const allRows = board.data.rows;
-    /* The first three stand on the podium; the list carries on from fourth. */
+    const first = board.data;
+    const paging = extra.base === first ? extra : null;
+    const allRows = uniqueAthletes([...first.rows, ...(paging?.rows ?? [])]);
+    const hasMore = paging ? paging.hasMore : first.hasMore;
+    const moreFailed = paging?.failed ?? false;
+    const reachedEnd = !hasMore && !loadingMore && !moreFailed;
+    const showWaiting = reachedEnd && !sport && !country && first.waiting > 0;
+    /* The first three stand on the podium; the list carries on from fourth.
+       The number on each row is the server's rank, not its place in this array. */
     const podium = allRows.length >= 3 ? allRows.slice(0, 3) : [];
     const rows = podium.length ? allRows.slice(3) : allRows;
     const youAreOnIt = !!viewerId && allRows.some((row) => row.user_id === viewerId);
@@ -614,11 +760,18 @@ export function AthleteExplore({
         refreshControl={
           <RefreshControl
             refreshing={board.refreshing}
-            onRefresh={board.refresh}
+            onRefresh={() => {
+              restartBoard();
+              board.refresh();
+            }}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
         }
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          void loadMore();
+        }}
         ListHeaderComponent={
           allRows.length > 0 ? (
             <View>
@@ -638,15 +791,64 @@ export function AthleteExplore({
           />
         )}
         ListFooterComponent={
-          allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
-            <Text
-              variant="caption"
-              tone="muted"
-              align="center"
-              style={{ marginTop: spacing.lg, paddingHorizontal: spacing.lg }}
-            >
-              {t('discover.board.keepBuilding')}
-            </Text>
+          loadingMore || moreFailed || showWaiting || (allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian) ? (
+            <View>
+              {loadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginTop: spacing.lg }}
+                  accessibilityLabel={t('common.loading')}
+                />
+              ) : null}
+              {moreFailed ? (
+                <Pressable
+                  onPress={() => {
+                    void loadMore(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.retry')}
+                  style={{
+                    marginTop: spacing.md,
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: spacing.lg,
+                  }}
+                >
+                  <Text variant="caption" color={colors.primary}>
+                    {t('common.retry')}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {showWaiting ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    marginTop: spacing.lg,
+                    paddingHorizontal: spacing.lg,
+                  }}
+                >
+                  <Lock size={14} color={colors.textMuted} accessibilityElementsHidden />
+                  <Text variant="caption" tone="muted" align="center" style={{ flexShrink: 1 }}>
+                    {t('discover.board.waiting', { count: first.waiting })}
+                  </Text>
+                </View>
+              ) : null}
+              {allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
+                <Text
+                  variant="caption"
+                  tone="muted"
+                  align="center"
+                  style={{ marginTop: spacing.lg, paddingHorizontal: spacing.lg }}
+                >
+                  {t('discover.board.keepBuilding')}
+                </Text>
+              ) : null}
+            </View>
           ) : undefined
         }
         ListEmptyComponent={

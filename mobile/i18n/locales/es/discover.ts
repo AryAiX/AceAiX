@@ -203,6 +203,10 @@ export const discover = {
     place2: '2.º',
     place3: '3.º',
     pts: 'pts',
+    /* Solo el número. La clasificación nunca dice quiénes son. */
+    waiting_one: '{{count}} deportista joven más espera la aprobación de su padre o madre',
+    waiting_many: '{{count}} deportistas jóvenes más esperan la aprobación de su padre o madre',
+    waiting_other: '{{count}} deportistas jóvenes más esperan la aprobación de su padre o madre',
   },
 
   // ── Filas de club y de entrenador ──────────────────────────────────────────
