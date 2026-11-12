@@ -9220,4 +9220,201 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Leaderboard pages past the first hundred (QA-172).
+-- talent_leaderboard stops at 100. Fresh accounts only
+-- (7f060000): 134 Qxball athletes. 131 and 132 are fifteen.
+-- 131 is approved by a parent with discovery on. 132 has no
+-- approval. 133 is the viewer. 134 blocks the viewer.
+-- Every athlete already has a talent_scores row, so the
+-- scores are written with an upsert after the profile writes
+-- that would recompute them. tests.ok runs only after the
+-- role is reset, because authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── leaderboard paging ──'; end $$;
+
+do $$
+declare
+  v_approved uuid := '7f060000-0000-4000-8000-000000000131';
+  v_waiting  uuid := '7f060000-0000-4000-8000-000000000132';
+  v_viewer   uuid := '7f060000-0000-4000-8000-000000000133';
+  v_blocker  uuid := '7f060000-0000-4000-8000-000000000134';
+  v_token    text;
+  v_granted  jsonb;
+  v_ids      uuid[];
+  v_ranks    bigint[];
+  v_hundred_ids   uuid[];
+  v_hundred_ranks bigint[];
+  v_past     integer;
+  v_waiting_count integer;
+  v_denied   boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('7f060000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+    'qa172.' || n || '@test.local',
+    jsonb_build_object('full_name', 'Qx ' || n, 'role', 'athlete')
+  from generate_series(1, 134) as n;
+
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id in (v_approved, v_waiting);
+
+  update public.athlete_profiles
+     set sport = 'Qxball'
+   where user_id::text like '7f060000-%';
+
+  perform tests.as_user(v_approved);
+  v_token := tests.request_consent('Parent', 'qa172.parent@test.local', 'parent');
+  v_granted := public.confirm_guardian_consent(v_token, true);
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_viewer);
+
+  -- The sport and birth-date writes above recompute the score.
+  -- This upsert is what the board actually ranks.
+  insert into public.talent_scores (athlete_id, overall, tier)
+  select scored.id,
+         scored.overall,
+         case
+           when scored.overall >= 85 then 'elite'
+           when scored.overall >= 70 then 'gold'
+           when scored.overall >= 55 then 'silver'
+           when scored.overall >= 40 then 'bronze'
+           else 'rising'
+         end
+  from (
+    select ap.id,
+           (5 + ((right(ap.user_id::text, 12)::integer - 1) % 90))::integer as overall
+    from public.athlete_profiles ap
+    where ap.user_id::text like '7f060000-%'
+  ) scored
+  on conflict (athlete_id) do update
+    set overall = excluded.overall,
+        tier = excluded.tier;
+
+  perform tests.ok(
+    (v_granted ->> 'ok')::boolean
+    and (select count(*) from public.athlete_profiles where sport = 'Qxball') = 134
+    and (select is_minor and is_discoverable from public.user_profiles where id = v_approved)
+    and (select is_minor and not is_discoverable from public.user_profiles where id = v_waiting)
+    and not (select is_minor from public.user_profiles where id = v_viewer)
+    and (select min(ts.overall) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball') = 5
+    and (select max(ts.overall) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball') = 94
+    and (select count(*) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball'
+           and ts.overall between 5 and 94
+           and ts.tier in ('rising', 'bronze', 'silver', 'gold', 'elite')) = 134
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_blocker and blocked_id = v_viewer
+    ),
+    '134 Qxball athletes are scored from 5 to 94, 131 is approved for discovery, 132 is waiting, and 134 blocks the viewer');
+
+  perform tests.as_user(v_viewer);
+
+  select coalesce(array_agg(user_id order by board_rank), '{}'::uuid[]),
+         coalesce(array_agg(board_rank order by board_rank), '{}'::bigint[])
+    into v_ids, v_ranks
+  from (
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 0, 50)
+    union all
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 50, 50)
+    union all
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 100, 50)
+  ) pages;
+
+  select coalesce(array_agg(user_id order by board_rank), '{}'::uuid[]),
+         coalesce(array_agg(board_rank order by board_rank), '{}'::bigint[])
+    into v_hundred_ids, v_hundred_ranks
+  from (
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 0, 100)
+  ) page;
+
+  select count(*)::integer into v_past
+  from public.talent_leaderboard_page('Qxball', null, 132, 50);
+
+  v_waiting_count := public.talent_leaderboard_waiting();
+
+  perform tests.ok(
+    cardinality(v_ids) = 132
+    and v_viewer = any(v_ids)
+    and v_approved = any(v_ids)
+    and (
+      select count(*)
+      from unnest(v_ids) id
+      join public.user_profiles up on up.id = id
+      where not up.is_minor
+        and id <> v_viewer
+    ) = 130
+    and (select count(*) from public.talent_leaderboard('Qxball', null, 100)) = 100,
+    '132 athletes come back: 130 adults, the approved minor and the viewer, past the old 100 cap');
+
+  perform tests.ok(
+    v_ranks = (select array_agg(g::bigint order by g) from generate_series(1, 132) g),
+    'the ranks are exactly 1 to 132');
+
+  perform tests.ok(
+    (select count(distinct id) from unnest(v_ids) id) = 132,
+    'nobody repeats');
+
+  perform tests.ok(
+    v_ids[1:100] = v_hundred_ids
+    and v_ranks[1:100] = v_hundred_ranks,
+    'the first 100 equal a single read of 100 in the same order');
+
+  perform tests.ok(
+    v_approved = any(v_ids)
+    and not (v_waiting = any(v_ids)),
+    'the approved minor is on the board and the waiting minor is not');
+
+  perform tests.ok(
+    not (v_blocker = any(v_ids)),
+    'the blocker is not');
+
+  perform tests.ok(
+    v_waiting_count >= 1,
+    'talent_leaderboard_waiting is at least 1');
+
+  perform tests.ok(
+    v_past = 0,
+    'an offset past the end returns nothing');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.talent_leaderboard_page('Qxball', null, 0, 50);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.talent_leaderboard_page(text, text, integer, integer)', 'EXECUTE')
+    and not has_function_privilege(
+      'anon', 'public.talent_leaderboard_waiting()', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.talent_leaderboard_page(text, text, integer, integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.talent_leaderboard_waiting()', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
