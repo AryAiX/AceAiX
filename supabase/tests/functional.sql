@@ -9005,4 +9005,219 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Who liked a post (QA-170).
+-- A like row is no longer readable by every signed-in account.
+-- Fresh accounts only (7f040000): an author, an adult coach,
+-- a 15-year-old whose parent approved everything, that parent,
+-- a second 15-year-old with no approval, a stranger, and an
+-- adult who blocked the stranger. The author has a public post
+-- liked by the coach, both minors, the blocker and the stranger,
+-- and a followers-only post liked by the coach.
+-- tests.ok runs only after the role is reset, because
+-- authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who liked a post ──'; end $$;
+
+do $$
+declare
+  v_author    uuid := '7f040000-0000-4000-8000-000000000001';
+  v_adult     uuid := '7f040000-0000-4000-8000-000000000002';
+  v_kid       uuid := '7f040000-0000-4000-8000-000000000003';
+  v_parent    uuid := '7f040000-0000-4000-8000-000000000004';
+  v_other     uuid := '7f040000-0000-4000-8000-000000000005';
+  v_stranger  uuid := '7f040000-0000-4000-8000-000000000006';
+  v_blocker   uuid := '7f040000-0000-4000-8000-000000000007';
+  v_public    uuid := '7f040000-0000-4000-8000-000000000011';
+  v_followers uuid := '7f040000-0000-4000-8000-000000000012';
+  v_token     text;
+  v_granted   jsonb;
+  v_res       jsonb;
+  v_names     text[];
+  v_msg       text;
+  v_state     text;
+  v_missing   boolean := false;
+  v_seen      integer;
+  v_own       integer;
+  v_author_seen integer;
+  v_denied    boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author,   'qa170.author@test.local',   '{"full_name":"Author","role":"athlete"}'),
+    (v_adult,    'qa170.adult@test.local',    '{"full_name":"Adult","role":"coach"}'),
+    (v_kid,      'qa170.kid@test.local',      '{"full_name":"Kid","role":"athlete"}'),
+    (v_parent,   'qa170.parent@test.local',   '{"full_name":"Parent","role":"athlete"}'),
+    (v_other,    'qa170.other@test.local',    '{"full_name":"Other","role":"athlete"}'),
+    (v_stranger, 'qa170.stranger@test.local', '{"full_name":"Stranger","role":"athlete"}'),
+    (v_blocker,  'qa170.blocker@test.local',  '{"full_name":"Blocker","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '30 years'
+   where user_id in (v_author, v_adult, v_parent, v_stranger, v_blocker);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id in (v_kid, v_other);
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_stranger);
+
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent', 'qa170.parent@test.local', 'parent');
+  v_granted := public.confirm_guardian_consent(
+    v_token, true, true, true, true, true, true, true);
+  update public.guardian_consents
+     set guardian_user_id = v_parent
+   where token = v_token;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  perform tests.ok(
+    (v_granted ->> 'ok')::boolean
+    and (select is_minor from public.user_profiles where id = v_kid)
+    and (select is_discoverable from public.user_profiles where id = v_kid)
+    and (select is_minor from public.user_profiles where id = v_other)
+    and not (select is_discoverable from public.user_profiles where id = v_other)
+    and exists (
+      select 1 from public.guardian_consents
+      where minor_user_id = v_kid
+        and guardian_user_id = v_parent
+        and status = 'granted'
+        and allow_discovery and allow_messaging and allow_media
+        and allow_assessments and allow_sponsorship
+        and allow_bookings and allow_mindset
+    )
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_blocker and blocked_id = v_stranger
+    ),
+    'the parent approved everything for Kid, Other has no approval, and Blocker blocked Stranger');
+
+  insert into public.posts (id, author_id, type, caption, text, audience, created_at) values
+    (v_public, v_author, 'standard', 'public', 'public', 'public', now() - interval '1 day'),
+    (v_followers, v_author, 'standard', 'followers', 'followers', 'followers', now() - interval '2 days');
+
+  insert into public.post_likes (post_id, user_id, created_at) values
+    (v_public, v_adult,    now() - interval '5 hours'),
+    (v_public, v_kid,      now() - interval '4 hours'),
+    (v_public, v_other,    now() - interval '2 hours'),
+    (v_public, v_blocker,  now() - interval '3 hours'),
+    (v_public, v_stranger, now() - interval '1 hour'),
+    (v_followers, v_adult, now());
+
+  perform tests.as_user(v_author);
+  v_res := public.post_likers(v_public);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Blocker', 'Kid', 'Adult']
+    and (v_res->>'hidden')::integer = 1
+    and (v_res->>'total')::integer = 5
+    and ((v_res->'likers'->0) ?& array['id', 'full_name', 'avatar_url', 'role', 'is_verified', 'liked_at']),
+    'the author gets Stranger, Blocker, Kid, Adult in that order, with hidden 1 and total 5');
+
+  perform tests.as_user(v_stranger);
+  v_res := public.post_likers(v_public);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Adult']
+    and (v_res->>'hidden')::integer = 3
+    and (v_res->>'total')::integer = 5,
+    'the stranger gets only Stranger and Adult, with hidden 3');
+
+  begin
+    perform public.post_likers(v_followers);
+  exception when no_data_found then
+    get stacked diagnostics
+      v_msg = message_text,
+      v_state = returned_sqlstate;
+    v_missing := v_msg = 'Not found' and v_state = 'P0002';
+  end;
+  perform tests.ok(v_missing, 'the stranger gets P0002 on the followers-only post');
+
+  perform tests.as_user(v_kid);
+  v_res := public.post_likers(v_public);
+  perform tests.ok(
+    exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_kid
+    ),
+    'the approved minor sees themselves');
+
+  perform tests.as_user(v_parent);
+  v_res := public.post_likers(v_public);
+  perform tests.ok(
+    exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_kid
+    )
+    and not exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_other
+    ),
+    'the parent sees their child named but not the other minor');
+
+  perform tests.as_user(v_author);
+  v_res := public.post_likers(v_public, 2);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Blocker']
+    and cardinality(v_names) = 2
+    and (v_res->>'hidden')::integer = 1
+    and (v_res->>'total')::integer = 5,
+    'a limit of 2 for the author returns 2 people and still says hidden 1');
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*)::integer,
+         count(*) filter (where user_id = v_stranger)::integer
+    into v_seen, v_own
+    from public.post_likes
+   where post_id = v_public;
+  reset role;
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  select count(*)::integer
+    into v_author_seen
+    from public.post_likes
+   where post_id = v_public;
+  reset role;
+
+  perform tests.ok(
+    v_seen = 1 and v_own = 1,
+    'reading post_likes directly, the stranger sees only their own one like on that post');
+  perform tests.ok(
+    v_author_seen = 5,
+    'reading post_likes directly, the author sees all 5');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform public.post_likers(v_public);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.post_likers(uuid, integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.post_likers(uuid, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
