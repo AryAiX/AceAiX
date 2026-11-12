@@ -167,7 +167,7 @@ function ReelItemBase({
   };
 
   const name = displayName(post.author_name);
-  const meta = metaLine(positionLabel(t, post.athlete_position), sportLabel(t, post.athlete_sport));
+  const meta = metaLine(positionLabel(t, post.athlete_position, post.athlete_sport), sportLabel(t, post.athlete_sport));
   const caption = post.caption?.trim() ?? '';
 
   return (

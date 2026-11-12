@@ -1,10 +1,12 @@
 /**
  * Sport catalogue.
  *
- * Kept deliberately small and concrete: a 13-year-old picking their sport
- * should find it in the first screenful, not scroll through eighty options.
- * Positions are the ones scouts actually filter on.
+ * Thirty sports. The pickers have search, so a 13-year-old can find theirs
+ * without scrolling the whole list. Positions are the ones scouts actually
+ * filter on.
  */
+
+import { fold } from '@/lib/searchRank';
 
 export interface SportConfig {
   key: string;
@@ -155,11 +157,234 @@ export const SPORTS: SportConfig[] = [
     key: 'Martial Arts',
     label: 'Martial arts',
     emoji: '🥋',
-    positions: ['Judo', 'Karate', 'Taekwondo', 'Boxing', 'Wrestling', 'MMA'],
+    positions: ['Karate', 'MMA', 'Kickboxing', 'Muay Thai', 'Kung fu'],
     metrics: [
       { key: 'bouts', label: 'Bouts' },
       { key: 'wins', label: 'Wins' },
       { key: 'belt', label: 'Belt / grade' },
+    ],
+  },
+  {
+    key: 'Futsal',
+    label: 'Futsal',
+    emoji: '🥅',
+    positions: ['Goalkeeper', 'Defender', 'Winger', 'Pivot'],
+    metrics: [
+      { key: 'appearances', label: 'Appearances' },
+      { key: 'goals', label: 'Goals' },
+      { key: 'assists', label: 'Assists' },
+      { key: 'clean_sheets', label: 'Clean sheets' },
+    ],
+  },
+  {
+    key: 'Rugby',
+    label: 'Rugby',
+    emoji: '🏉',
+    positions: [
+      'Prop',
+      'Hooker',
+      'Lock',
+      'Flanker',
+      'Number 8',
+      'Scrum-half',
+      'Fly-half',
+      'Inside centre',
+      'Outside centre',
+      'Wing',
+      'Full-back',
+    ],
+    metrics: [
+      { key: 'appearances', label: 'Appearances' },
+      { key: 'tries', label: 'Tries' },
+      { key: 'conversions', label: 'Conversions' },
+      { key: 'tackles', label: 'Tackles' },
+    ],
+  },
+  {
+    key: 'Field Hockey',
+    label: 'Field hockey',
+    emoji: '🏑',
+    positions: ['Goalkeeper', 'Defender', 'Midfielder', 'Forward'],
+    metrics: [
+      { key: 'appearances', label: 'Appearances' },
+      { key: 'goals', label: 'Goals' },
+      { key: 'assists', label: 'Assists' },
+      { key: 'clean_sheets', label: 'Clean sheets' },
+    ],
+  },
+  {
+    key: 'Badminton',
+    label: 'Badminton',
+    emoji: '🏸',
+    positions: ['Singles', 'Doubles', 'Mixed doubles'],
+    metrics: [
+      { key: 'ranking', label: 'Ranking' },
+      { key: 'matches', label: 'Matches' },
+      { key: 'wins', label: 'Wins' },
+    ],
+  },
+  {
+    key: 'Table Tennis',
+    label: 'Table tennis',
+    emoji: '🏓',
+    positions: ['Singles', 'Doubles', 'Mixed doubles'],
+    metrics: [
+      { key: 'rating', label: 'Rating' },
+      { key: 'matches', label: 'Matches' },
+      { key: 'wins', label: 'Wins' },
+    ],
+  },
+  {
+    key: 'Squash',
+    label: 'Squash',
+    emoji: '🟡',
+    positions: ['Singles', 'Doubles'],
+    metrics: [
+      { key: 'ranking', label: 'Ranking' },
+      { key: 'matches', label: 'Matches' },
+      { key: 'wins', label: 'Wins' },
+    ],
+  },
+  {
+    key: 'Golf',
+    label: 'Golf',
+    emoji: '⛳️',
+    positions: ['Stroke play', 'Match play'],
+    metrics: [
+      { key: 'handicap', label: 'Handicap' },
+      { key: 'rounds', label: 'Rounds' },
+      { key: 'best_round', label: 'Best round' },
+      { key: 'tournaments', label: 'Tournaments' },
+    ],
+  },
+  {
+    key: 'Cycling',
+    label: 'Cycling',
+    emoji: '🚴',
+    positions: ['Road', 'Track', 'Mountain bike', 'BMX'],
+    metrics: [
+      { key: 'races', label: 'Races' },
+      { key: 'podiums', label: 'Podiums' },
+      { key: 'best_time', label: 'Best time' },
+    ],
+  },
+  {
+    key: 'Gymnastics',
+    label: 'Gymnastics',
+    emoji: '🤸',
+    positions: ['Artistic', 'Rhythmic', 'Trampoline', 'Acrobatic'],
+    metrics: [
+      { key: 'competitions', label: 'Competitions' },
+      { key: 'medals', label: 'Medals' },
+      { key: 'best_all_around', label: 'Best all-around' },
+    ],
+  },
+  {
+    key: 'Boxing',
+    label: 'Boxing',
+    emoji: '🥊',
+    positions: [
+      'Flyweight',
+      'Bantamweight',
+      'Featherweight',
+      'Lightweight',
+      'Welterweight',
+      'Middleweight',
+      'Light heavyweight',
+      'Heavyweight',
+    ],
+    metrics: [
+      { key: 'bouts', label: 'Bouts' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'kos', label: 'KOs' },
+    ],
+  },
+  {
+    key: 'Wrestling',
+    label: 'Wrestling',
+    emoji: '🤼',
+    positions: ['Freestyle', 'Greco-Roman'],
+    metrics: [
+      { key: 'bouts', label: 'Bouts' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'weight_class', label: 'Weight class' },
+    ],
+  },
+  {
+    key: 'Judo',
+    label: 'Judo',
+    emoji: '🥋',
+    positions: ['Lightweight', 'Middleweight', 'Heavyweight'],
+    metrics: [
+      { key: 'bouts', label: 'Bouts' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'belt', label: 'Belt' },
+    ],
+  },
+  {
+    key: 'Taekwondo',
+    label: 'Taekwondo',
+    emoji: '🥋',
+    positions: ['Sparring (Kyorugi)', 'Forms (Poomsae)'],
+    metrics: [
+      { key: 'bouts', label: 'Bouts' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'belt', label: 'Belt' },
+    ],
+  },
+  {
+    key: 'Jiu-Jitsu',
+    label: 'Jiu-Jitsu',
+    emoji: '🥋',
+    positions: ['Gi', 'No-gi'],
+    metrics: [
+      { key: 'matches', label: 'Matches' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'belt', label: 'Belt' },
+    ],
+  },
+  {
+    key: 'Weightlifting',
+    label: 'Weightlifting',
+    emoji: '🏋️',
+    positions: ['Lightweight', 'Middleweight', 'Heavyweight'],
+    metrics: [
+      { key: 'best_snatch', label: 'Best snatch', unit: 'kg' },
+      { key: 'best_clean_and_jerk', label: 'Best clean and jerk', unit: 'kg' },
+      { key: 'total', label: 'Total', unit: 'kg' },
+    ],
+  },
+  {
+    key: 'Equestrian',
+    label: 'Equestrian',
+    emoji: '🏇',
+    positions: ['Show jumping', 'Dressage', 'Eventing', 'Endurance', 'Racing'],
+    metrics: [
+      { key: 'competitions', label: 'Competitions' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'best_placing', label: 'Best placing' },
+    ],
+  },
+  {
+    key: 'Fencing',
+    label: 'Fencing',
+    emoji: '🤺',
+    positions: ['Foil', 'Épée', 'Sabre'],
+    metrics: [
+      { key: 'bouts', label: 'Bouts' },
+      { key: 'wins', label: 'Wins' },
+      { key: 'ranking', label: 'Ranking' },
+    ],
+  },
+  {
+    key: 'Triathlon',
+    label: 'Triathlon',
+    emoji: '🏊',
+    positions: ['Sprint', 'Olympic', 'Half distance', 'Full distance'],
+    metrics: [
+      { key: 'races', label: 'Races' },
+      { key: 'podiums', label: 'Podiums' },
+      { key: 'best_time', label: 'Best time' },
     ],
   },
 ];
@@ -519,6 +744,24 @@ const SPORT_LABEL_KEYS: Record<string, string> = {
   Chess: 'sports.chess',
   Esports: 'sports.esports',
   'Martial Arts': 'sports.martialArts',
+  Futsal: 'sports.futsal',
+  Rugby: 'sports.rugby',
+  'Field Hockey': 'sports.fieldHockey',
+  Badminton: 'sports.badminton',
+  'Table Tennis': 'sports.tableTennis',
+  Squash: 'sports.squash',
+  Golf: 'sports.golf',
+  Cycling: 'sports.cycling',
+  Gymnastics: 'sports.gymnastics',
+  Boxing: 'sports.boxing',
+  Wrestling: 'sports.wrestling',
+  Judo: 'sports.judo',
+  Taekwondo: 'sports.taekwondo',
+  'Jiu-Jitsu': 'sports.jiuJitsu',
+  Weightlifting: 'sports.weightlifting',
+  Equestrian: 'sports.equestrian',
+  Fencing: 'sports.fencing',
+  Triathlon: 'sports.triathlon',
 };
 
 const POSITION_KEYS: Record<string, string> = {
@@ -581,6 +824,68 @@ const POSITION_KEYS: Record<string, string> = {
   Boxing: 'sports.position.boxing',
   Wrestling: 'sports.position.wrestling',
   MMA: 'sports.position.mma',
+  Defender: 'sports.position.defender',
+  Prop: 'sports.position.prop',
+  Hooker: 'sports.position.hooker',
+  Lock: 'sports.position.lock',
+  Flanker: 'sports.position.flanker',
+  'Number 8': 'sports.position.number8',
+  'Scrum-half': 'sports.position.scrumHalf',
+  'Fly-half': 'sports.position.flyHalf',
+  'Inside centre': 'sports.position.insideCentre',
+  'Outside centre': 'sports.position.outsideCentre',
+  Wing: 'sports.position.wing',
+  Midfielder: 'sports.position.midfielder',
+  Forward: 'sports.position.forward',
+  'Mixed doubles': 'sports.position.mixedDoubles',
+  'Stroke play': 'sports.position.strokePlay',
+  'Match play': 'sports.position.matchPlay',
+  Road: 'sports.position.road',
+  Track: 'sports.position.track',
+  'Mountain bike': 'sports.position.mountainBike',
+  BMX: 'sports.position.bmx',
+  Artistic: 'sports.position.artistic',
+  Rhythmic: 'sports.position.rhythmic',
+  Trampoline: 'sports.position.trampoline',
+  Acrobatic: 'sports.position.acrobatic',
+  Flyweight: 'sports.position.flyweight',
+  Bantamweight: 'sports.position.bantamweight',
+  Featherweight: 'sports.position.featherweight',
+  Lightweight: 'sports.position.lightweight',
+  Welterweight: 'sports.position.welterweight',
+  Middleweight: 'sports.position.middleweight',
+  'Light heavyweight': 'sports.position.lightHeavyweight',
+  Heavyweight: 'sports.position.heavyweight',
+  'Greco-Roman': 'sports.position.grecoRoman',
+  'Sparring (Kyorugi)': 'sports.position.sparringKyorugi',
+  'Forms (Poomsae)': 'sports.position.formsPoomsae',
+  Gi: 'sports.position.gi',
+  'No-gi': 'sports.position.noGi',
+  'Show jumping': 'sports.position.showJumping',
+  Dressage: 'sports.position.dressage',
+  Eventing: 'sports.position.eventing',
+  Endurance: 'sports.position.endurance',
+  Racing: 'sports.position.racing',
+  Foil: 'sports.position.foil',
+  Épée: 'sports.position.epee',
+  Sabre: 'sports.position.sabre',
+  Sprint: 'sports.position.sprint',
+  Olympic: 'sports.position.olympic',
+  'Half distance': 'sports.position.halfDistance',
+  'Full distance': 'sports.position.fullDistance',
+  Kickboxing: 'sports.position.kickboxing',
+  'Muay Thai': 'sports.position.muayThai',
+  'Kung fu': 'sports.position.kungFu',
+};
+
+/**
+ * Same English words, different sports, different meanings.
+ * Football's full-back and swimming's freestyle keep the keys above.
+ * Rugby and wrestling only take these when the sport is known.
+ */
+const POSITION_FOR_SPORT: Record<string, Record<string, string>> = {
+  Rugby: { 'Full-back': 'sports.position.rugbyFullBack' },
+  Wrestling: { Freestyle: 'sports.position.wrestlingFreestyle' },
 };
 
 const LEVEL_KEYS: Record<string, { label: string; hint: string }> = {
@@ -615,6 +920,9 @@ function lowercased(keys: Record<string, string>): Record<string, string> {
 }
 const SPORT_LABEL_KEYS_LC = lowercased(SPORT_LABEL_KEYS);
 const POSITION_KEYS_LC = lowercased(POSITION_KEYS);
+const POSITION_FOR_SPORT_LC: Record<string, Record<string, string>> = Object.fromEntries(
+  Object.entries(POSITION_FOR_SPORT).map(([sport, table]) => [sport.toLowerCase(), lowercased(table)]),
+);
 
 /** Translate a stored sport name, falling back to the stored value. */
 export function sportLabel(t: Translate, sport: string | null | undefined): string {
@@ -640,8 +948,28 @@ export function englishSportTerm(t: Translate, term: string): string {
   return sport ? sport.label : clean;
 }
 
-export function positionLabel(t: Translate, position: string | null | undefined): string {
+/**
+ * True when `query` is empty, or it sits inside the translated label or the
+ * English key. Case and accents are ignored, so "rug" finds Rugby in any language.
+ */
+export function sportMatchesQuery(query: string, englishKey: string, translatedLabel: string): boolean {
+  const needle = fold(query);
+  if (!needle) return true;
+  return fold(translatedLabel).includes(needle) || fold(englishKey).includes(needle);
+}
+
+export function positionLabel(
+  t: Translate,
+  position: string | null | undefined,
+  sport?: string | null,
+): string {
   if (!position) return '';
+  if (sport) {
+    const scoped =
+      POSITION_FOR_SPORT[sport]?.[position] ??
+      POSITION_FOR_SPORT_LC[sport.toLowerCase()]?.[position.toLowerCase()];
+    if (scoped) return t(scoped);
+  }
   const key = POSITION_KEYS[position] ?? POSITION_KEYS_LC[position.toLowerCase()];
   return key ? t(key) : position;
 }

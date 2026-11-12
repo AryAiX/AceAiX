@@ -181,7 +181,7 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
        translated. A club name, or an older free-text role, stays as written. */
     if (athlete) {
       return metaLine(
-        positionLabel(t, athlete.position),
+        positionLabel(t, athlete.position, athlete.sport),
         sportLabel(t, athlete.sport),
         athlete.club,
       );
@@ -301,7 +301,7 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
   }, [name, onChanged, router, t, toast, user.id]);
 
   const athleteSportDetail = athlete
-    ? metaLine(positionLabel(t, athlete.position), athlete.club)
+    ? metaLine(positionLabel(t, athlete.position, athlete.sport), athlete.club)
     : '';
 
   return (

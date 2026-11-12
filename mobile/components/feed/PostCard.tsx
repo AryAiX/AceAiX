@@ -117,7 +117,7 @@ function PostCardBase({
   const caption = post.caption?.trim() ?? '';
   /* Sport and position are stored in English; only their labels are translated. */
   const meta = metaLine(
-    positionLabel(t, post.athlete_position),
+    positionLabel(t, post.athlete_position, post.athlete_sport),
     sportLabel(t, post.athlete_sport),
     relativeTime(post.created_at),
   );

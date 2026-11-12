@@ -284,7 +284,7 @@ function PreferenceSports({
               {options.length > 0 ? (
                 <Dropdown
                   multiple
-                  options={options.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                  options={options.map((position) => ({ key: position, label: positionLabel(t, position, sport) }))}
                   value={selected}
                   onChange={(next) => {
                     const changed =
@@ -553,7 +553,10 @@ export function FilterSheet({
               {positions.length > 0 ? (
                 <Dropdown
                   multiple
-                  options={positions.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                  options={positions.map((position) => ({
+                    key: position,
+                    label: positionLabel(t, position, draft.sport),
+                  }))}
                   value={draft.positions}
                   onChange={(next) => patch({ positions: next })}
                   testID="discover-filter-positions"

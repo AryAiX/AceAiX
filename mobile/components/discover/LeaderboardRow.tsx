@@ -90,7 +90,7 @@ export function LeaderboardRow({ entry, isYou, isChild = false }: Props) {
   const tierName = tierLabel(t, tier);
   /* Sport and position; the country only when there is no position, so the
      line fits beside the ring. */
-  const position = positionLabel(t, entry.position);
+  const position = positionLabel(t, entry.position, entry.sport);
   const meta = metaLine(sportLabel(t, entry.sport), position, position ? null : entry.country);
 
   return (

@@ -513,7 +513,7 @@ export default function OpportunityDetailScreen() {
                 label={t('opportunities.detail.factPosition')}
                 value={
                   opportunity.position
-                    ? positionLabel(t, opportunity.position)
+                    ? positionLabel(t, opportunity.position, opportunity.sport)
                     : t('sports.anyPosition')
                 }
               />

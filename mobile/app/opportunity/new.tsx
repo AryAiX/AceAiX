@@ -431,7 +431,7 @@ export default function NewOpportunityScreen() {
             </Text>
             <Dropdown
               placeholder={t('opportunities.post.positionAny')}
-              options={positions.map((p) => ({ key: p, label: positionLabel(t, p) }))}
+              options={positions.map((p) => ({ key: p, label: positionLabel(t, p, sport) }))}
               value={position ? [position] : []}
               onChange={(next) => setPosition(next[0] ?? null)}
               testID="opportunity-new-position"

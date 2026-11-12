@@ -265,7 +265,7 @@ export default function PublicProfileScreen() {
               avatar: data.user.avatar_url ?? null,
               verified: !!data.user.is_verified,
               score: data.score?.overall ?? null,
-              meta: metaLine(positionLabel(t, athlete.position), sportLabel(t, athlete.sport)),
+              meta: metaLine(positionLabel(t, athlete.position, athlete.sport), sportLabel(t, athlete.sport)),
             }}
           />
         ) : (

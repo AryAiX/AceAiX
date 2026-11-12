@@ -300,7 +300,11 @@ export function RecruiterTargetStep({
               {available.map((position) => (
                 <Chip
                   key={position}
-                  label={positionLabel(t, position)}
+                  label={positionLabel(
+                    t,
+                    position,
+                    sports.find((sport) => positionsFor(sport).includes(position)),
+                  )}
                   selected={positions.includes(position)}
                   onPress={() => onTogglePosition(position)}
                   style={{ minHeight: theme.hit.min }}

@@ -279,7 +279,10 @@ export default function ScoutingPreferencesScreen() {
                   {options.length > 0 ? (
                     <Dropdown
                       multiple
-                      options={options.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                      options={options.map((position) => ({
+                        key: position,
+                        label: positionLabel(t, position, sport),
+                      }))}
                       value={selected}
                       onChange={(next) => {
                         const changed =

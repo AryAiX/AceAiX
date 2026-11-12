@@ -130,7 +130,7 @@ export function LeaderboardPodium({ top, viewerId }: Props) {
           const big = place === 1;
           /* Avatar sizes come in steps (60, 88); first place is the 60 scaled up. */
           const size = big ? 72 : 60;
-          const role = positionLabel(t, entry.position) || sportLabel(t, entry.sport);
+          const role = positionLabel(t, entry.position, entry.sport) || sportLabel(t, entry.sport);
           return (
             <Pressable
               key={entry.athlete_id}

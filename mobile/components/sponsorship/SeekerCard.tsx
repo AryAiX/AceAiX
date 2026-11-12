@@ -43,7 +43,7 @@ export function SeekerCard({ seeker, onOffer, onOpenProfile }: Props) {
           <Text variant="caption" tone="muted" numberOfLines={1}>
             {metaLine(
               sportLabel(t, seeker.sport),
-              positionLabel(t, seeker.athlete_position),
+              positionLabel(t, seeker.athlete_position, seeker.sport),
               countryLabel(t, seeker.country),
             )}
           </Text>

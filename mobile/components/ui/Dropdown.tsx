@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
+import { fold } from '@/lib/searchRank';
 import { isRTL } from './rtl';
 import { Text } from './Text';
 import { ChoiceRow } from './ChoiceRow';
@@ -33,6 +34,10 @@ interface Props {
   /** Type in the row to narrow the list. On by default for lists longer
       than 6; a short list just opens, with no keyboard. */
   searchable?: boolean;
+  /** Also match the option key, ignoring case and accents. */
+  searchKeys?: boolean;
+  /** Shown when a search matches nothing. Defaults to "No results". */
+  emptyLabel?: string;
   /** Only the field and the list, always open (inside a sheet that is itself
       the picker). */
   inline?: boolean;
@@ -61,6 +66,8 @@ export function Dropdown({
   multiple = false,
   placeholder,
   searchable,
+  searchKeys = false,
+  emptyLabel,
   inline = false,
   required = false,
   disabled = false,
@@ -91,9 +98,15 @@ export function Dropdown({
             .join(', ')} +${chosen.length - 2}`;
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
-  }, [options, query]);
+    const q = query.trim();
+    if (!q) return options;
+    if (searchKeys) {
+      const needle = fold(q);
+      return options.filter((o) => fold(o.label).includes(needle) || fold(o.key).includes(needle));
+    }
+    const lower = q.toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(lower));
+  }, [options, query, searchKeys]);
 
   const close = () => {
     setOpen(false);
@@ -230,7 +243,7 @@ export function Dropdown({
       >
         {visible.length === 0 ? (
           <Text variant="body" tone="muted" style={{ padding: spacing.md }}>
-            {t('common.noResults')}
+            {emptyLabel ?? t('common.noResults')}
           </Text>
         ) : null}
         {visible.map((option) => (

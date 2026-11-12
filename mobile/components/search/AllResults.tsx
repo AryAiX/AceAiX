@@ -200,7 +200,7 @@ export function AllResults({
     metaLine(
       p.role === 'athlete' ? null : roleLabel(p.role),
       p.sport ? sportLabel(t, p.sport) : null,
-      p.role === 'athlete' && p.position ? positionLabel(t, p.position) : null,
+      p.role === 'athlete' && p.position ? positionLabel(t, p.position, p.sport) : null,
       p.city || p.country,
     );
 

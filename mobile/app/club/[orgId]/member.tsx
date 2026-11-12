@@ -278,7 +278,7 @@ export default function ClubSquadMemberScreen() {
                   {positions.map((p) => (
                     <Chip
                       key={p}
-                      label={positionLabel(t, p)}
+                      label={positionLabel(t, p, squad.sport)}
                       selected={position === p}
                       onPress={() => setPosition(position === p ? '' : p)}
                     />

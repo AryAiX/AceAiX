@@ -69,6 +69,7 @@ import {
   sideLabel,
   sportEmoji,
   sportLabel,
+  sportMatchesQuery,
 } from '@/constants/sports';
 import type { OtherSport } from '@/types/models';
 import { errorMessage } from '@/lib/errors';
@@ -158,6 +159,7 @@ export default function EditProfileScreen() {
   );
   const [photoOpen, setPhotoOpen] = useState(false);
   const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
+  const [alsoPlaysQuery, setAlsoPlaysQuery] = useState('');
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [clubLoadFailed, setClubLoadFailed] = useState(false);
@@ -512,6 +514,12 @@ export default function EditProfileScreen() {
   const hasAthlete = !!bundle.data?.athlete;
   const hasCoach = !!bundle.data?.coach;
   const positions = positionsFor(form.sport);
+  const alsoPlaysChoices = SPORTS.filter(
+    (sport) =>
+      sport.key !== form.sport &&
+      !form.otherSports.some((entry) => entry.sport === sport.key) &&
+      sportMatchesQuery(alsoPlaysQuery, sport.key, sportLabel(t, sport.key)),
+  );
 
   return (
     <Screen header={header} keyboardAvoiding contentStyle={{ gap: spacing.xxl }}>
@@ -782,6 +790,9 @@ export default function EditProfileScreen() {
             <View style={{ gap: spacing.md }}>
               <Dropdown
                 required
+                searchable
+                searchKeys
+                emptyLabel={t('sports.noSportMatches')}
                 label={t('profile.sport')}
                 placeholder={t('profile.sportPlaceholder')}
                 options={SPORTS.map((sport) => ({
@@ -817,7 +828,10 @@ export default function EditProfileScreen() {
                   <Dropdown
                     placeholder={t('common.choose')}
                     /* The English value is what is stored; only the label is translated. */
-                    options={positions.map((position) => ({ key: position, label: positionLabel(t, position) }))}
+                    options={positions.map((position) => ({
+                      key: position,
+                      label: positionLabel(t, position, form.sport),
+                    }))}
                     value={form.position ? [form.position] : []}
                     onChange={(next) => set('position', next[0] ?? '')}
                     testID="edit-profile-position"
@@ -1089,14 +1103,24 @@ export default function EditProfileScreen() {
       {/* ── Also-plays picker ── */}
       <Sheet
         visible={alsoPlaysSheet}
-        onClose={() => setAlsoPlaysSheet(false)}
+        onClose={() => {
+          setAlsoPlaysSheet(false);
+          setAlsoPlaysQuery('');
+        }}
         title={t('profile.alsoPlaysChooseTitle')}
       >
-        {SPORTS.filter(
-          (sport) =>
-            sport.key !== form.sport &&
-            !form.otherSports.some((entry) => entry.sport === sport.key),
-        ).map((sport, index) => (
+        <Input
+          placeholder={t('sports.searchSports')}
+          value={alsoPlaysQuery}
+          onChangeText={setAlsoPlaysQuery}
+          icon={<Search size={18} color={colors.textMuted} />}
+          autoCorrect={false}
+          autoCapitalize="none"
+          accessibilityLabel={t('sports.searchSports')}
+          containerStyle={{ marginBottom: spacing.md }}
+          testID="also-plays-search"
+        />
+        {alsoPlaysChoices.map((sport, index) => (
           <View key={sport.key}>
             {index > 0 ? <Divider /> : null}
             <ListItem
@@ -1107,10 +1131,16 @@ export default function EditProfileScreen() {
               onPress={() => {
                 set('otherSports', [...form.otherSports, { sport: sport.key, level: 'casual' }]);
                 setAlsoPlaysSheet(false);
+                setAlsoPlaysQuery('');
               }}
             />
           </View>
         ))}
+        {alsoPlaysQuery.trim() && alsoPlaysChoices.length === 0 ? (
+          <Text variant="body" tone="muted" align="center" style={{ paddingVertical: spacing.xl }}>
+            {t('sports.noSportMatches')}
+          </Text>
+        ) : null}
       </Sheet>
 
       {/* ── Country picker ── */}

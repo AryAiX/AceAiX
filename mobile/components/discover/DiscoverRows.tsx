@@ -164,7 +164,7 @@ function PlayersToKnow() {
               key={row.athlete_id}
               onPress={() => router.push(Routes.profile(row.user_id))}
               accessibilityRole="button"
-              accessibilityLabel={metaLine(name, positionLabel(t, row.position), tierLabel(t, tier))}
+              accessibilityLabel={metaLine(name, positionLabel(t, row.position, row.sport), tierLabel(t, tier))}
               style={({ pressed }) => ({
                 width: CARD_WIDTH,
                 borderRadius: radii.xl,
@@ -203,7 +203,7 @@ function PlayersToKnow() {
                   {first}
                 </Text>
                 <Text variant="caption" tone="muted" numberOfLines={1}>
-                  {metaLine(positionLabel(t, row.position) || sportLabel(t, row.sport), row.country)}
+                  {metaLine(positionLabel(t, row.position, row.sport) || sportLabel(t, row.sport), row.country)}
                 </Text>
                 <FollowButton
                   following={following}

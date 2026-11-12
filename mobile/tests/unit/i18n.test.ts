@@ -92,11 +92,19 @@ const BRAND_OR_UNIT = new Set([
   'sportFit.questionsTitle',
   'sports.padel',
   'sports.esports',
+  'sports.badminton',
+  'sports.taekwondo',
+  'sports.jiuJitsu',
+  'sports.triathlon',
   'sports.position.mma',
   'sports.position.judo',
   'sports.position.karate',
   'sports.position.libero',
   'sports.position.pivot',
+  /* The discipline's own name in French, same spelling as English. */
+  'sports.position.trampoline',
+  'sports.position.dressage',
+  'sports.position.endurance',
   /* Example map URL. The link is the same in every language. */
   'meetups.fieldMapLinkPlaceholder',
   /* Platform names on a club page's social links. */

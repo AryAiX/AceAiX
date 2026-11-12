@@ -144,7 +144,7 @@ function AthleteSearchRow({ person, isYou }: { person: PersonResult; isYou: bool
   const tierName = tierLabel(t, tier);
   const meta = metaLine(
     sportLabel(t, person.sport),
-    positionLabel(t, person.position),
+    positionLabel(t, person.position, person.sport),
     person.country,
   );
 

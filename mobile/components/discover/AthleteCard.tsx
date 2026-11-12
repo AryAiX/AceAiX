@@ -106,7 +106,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
   /* Sport, position and level are stored in English; only the label reads in
      the viewer's language. */
   const role = metaLine(
-    positionLabel(t, athlete.position),
+    positionLabel(t, athlete.position, athlete.sport),
     sportLabel(t, athlete.sport),
     athlete.level ? levelLabelI18n(t, athlete.level) : null,
   );
