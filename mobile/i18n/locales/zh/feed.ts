@@ -63,6 +63,7 @@ export const feed = {
 
   // ── 点赞、评论、分享、收藏 ─────────────────────────────────────────────────
   likePost: '给这条动态点赞',
+  seeWhoLiked_other: '查看谁点了赞，{{count}}个赞',
   likersTitle: '赞过的人',
   likedBy: '{{name}} 赞了',
   likedByOthers_other: '{{name}} 和另外 {{count}} 人赞了',

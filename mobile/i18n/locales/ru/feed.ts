@@ -70,6 +70,10 @@ export const feed = {
 
   // ── Лайк, комментарий, репост, сохранение ──────────────────────────────────
   likePost: 'Поставить лайк',
+  seeWhoLiked_one: 'Посмотреть, кому понравилось, {{count}} лайк',
+  seeWhoLiked_few: 'Посмотреть, кому понравилось, {{count}} лайка',
+  seeWhoLiked_many: 'Посмотреть, кому понравилось, {{count}} лайков',
+  seeWhoLiked_other: 'Посмотреть, кому понравилось, {{count}} лайка',
   likersTitle: 'Понравилось',
   likedBy: 'Понравилось {{name}}',
   likedByOthers_one: 'Понравилось {{name}} и ещё {{count}} человеку',

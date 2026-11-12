@@ -69,6 +69,9 @@ export const feed = {
 
   // ── Like, commentaire, partage, enregistrement ─────────────────────────────
   likePost: 'Liker ce post',
+  seeWhoLiked_one: 'Voir qui a aimé, {{count}} J’aime',
+  seeWhoLiked_many: 'Voir qui a aimé, {{count}} J’aime',
+  seeWhoLiked_other: 'Voir qui a aimé, {{count}} J’aime',
   likersTitle: 'Aimé par',
   likedBy: 'Aimé par {{name}}',
   likedByOthers_one: 'Aimé par {{name}} et {{count}} autre personne',

@@ -433,36 +433,63 @@ export async function recordPostView(postId: string): Promise<void> {
   }
 }
 
-/** Someone who liked a post, as the "Liked by" list shows them. */
+/** Someone the server decided this viewer may see on a like list. */
 export interface PostLiker {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
   role: UserRole | null;
   is_verified: boolean | null;
+  liked_at: string;
+}
+
+/** Named people, plus how many likes stay unnamed, plus every like. */
+export interface PostLikersResult {
+  likers: PostLiker[];
+  hidden: number;
+  total: number;
+}
+
+function asPostLiker(value: unknown): PostLiker | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== 'string') return null;
+  return {
+    id: row.id,
+    full_name: typeof row.full_name === 'string' ? row.full_name : null,
+    avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+    role: typeof row.role === 'string' ? (row.role as UserRole) : null,
+    is_verified: typeof row.is_verified === 'boolean' ? row.is_verified : null,
+    liked_at: typeof row.liked_at === 'string' ? row.liked_at : '',
+  };
 }
 
 /**
- * Who liked a post, newest first, read straight from `post_likes` (any
- * signed-in account may read it, so this needs no new RPC). Profiles the
- * viewer is not allowed to see — a hidden minor, a suspended account — come
- * back empty from the join and are left out; the caller shows them as a count.
+ * Who liked a post.
+ *
+ * `post_likers` names a person only when this viewer may see them. A minor
+ * is named only to the person who posted, the minor, and their approved
+ * parent. `hidden` counts everyone else, not people left off by the limit.
+ * A post this viewer cannot see is P0002, and that is thrown as an AppError
+ * the same way every other call throws.
  */
-export async function postLikers(postId: string, limit = 100): Promise<PostLiker[]> {
-  const { data, error } = await supabase
-    .from('post_likes')
-    .select('created_at, user:user_profiles(id, full_name, avatar_url, role, is_verified)')
-    .eq('post_id', postId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+export async function postLikers(postId: string, limit = 100): Promise<PostLikersResult> {
+  const { data, error } = await supabase.rpc('post_likers', {
+    p_post: postId,
+    p_limit: limit,
+  });
   if (error) throw new AppError(error);
-  return (data ?? [])
-    .map((row) => {
-      const value = (row as { user?: unknown }).user;
-      const person = Array.isArray(value) ? value[0] : value;
-      return person && typeof person === 'object' && typeof (person as PostLiker).id === 'string'
-        ? (person as PostLiker)
-        : null;
-    })
-    .filter((person): person is PostLiker => person != null);
+
+  const body = (data ?? {}) as { likers?: unknown; hidden?: unknown; total?: unknown };
+  const likers = Array.isArray(body.likers)
+    ? body.likers.flatMap((item) => {
+        const person = asPostLiker(item);
+        return person ? [person] : [];
+      })
+    : [];
+  return {
+    likers,
+    hidden: typeof body.hidden === 'number' ? body.hidden : 0,
+    total: typeof body.total === 'number' ? body.total : 0,
+  };
 }

@@ -65,6 +65,8 @@ export const feed = {
 
   // ── Liken, kommentieren, teilen, sichern ───────────────────────────────────
   likePost: 'Diesen Beitrag liken',
+  seeWhoLiked_one: 'Sieh, wer das gelikt hat, {{count}} Like',
+  seeWhoLiked_other: 'Sieh, wer das gelikt hat, {{count}} Likes',
   likersTitle: 'Gefällt',
   likedBy: 'Gefällt {{name}}',
   likedByOthers_one: 'Gefällt {{name}} und {{count}} weiteren Person',

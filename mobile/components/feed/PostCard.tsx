@@ -28,7 +28,7 @@ import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
 import { ScorePeek } from './ScorePeek';
 import { PostActions } from './PostActions';
-import { LikedBy } from './PostLikers';
+import { LikedBy, LikersSheet } from './PostLikers';
 import { PostTagged } from './PostTagged';
 
 /**
@@ -229,6 +229,7 @@ function PostCardBase({
     (firstMedia.type === 'photo' || (firstMedia.type === 'video' && !!firstMedia.thumbnail));
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
   /* The story / post images are only offered for a public post. */
   const [brandOk, setBrandOk] = useState(false);
   const [rendering, setRendering] = useState(false);
@@ -582,12 +583,17 @@ function PostCardBase({
         commentCount={post.comment_count}
         saved={post.viewer_saved}
         onLike={handleLike}
+        onPressLikeCount={() => setLikersOpen(true)}
         onComment={() => onOpenComments(post)}
         onShare={onShare}
         onSave={handleSave}
       />
 
-      {/* Who liked it — only on your own posts. */}
+      {likersOpen ? (
+        <LikersSheet postId={post.id} onClose={() => setLikersOpen(false)} />
+      ) : null}
+
+      {/* The name line stays on your own posts. The count above opens the list for anyone. */}
       {isOwnPost ? <LikedBy postId={post.id} likeCount={post.like_count} /> : null}
 
       {rendering ? <OffscreenBrandedCard /> : null}

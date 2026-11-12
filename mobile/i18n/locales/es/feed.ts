@@ -71,6 +71,9 @@ export const feed = {
 
   // ── Me gusta, comentar, compartir, guardar ─────────────────────────────────
   likePost: 'Dar me gusta a esta publicación',
+  seeWhoLiked_one: 'Ver a quién le gusta, {{count}} me gusta',
+  seeWhoLiked_many: 'Ver a quién le gusta, {{count}} me gusta',
+  seeWhoLiked_other: 'Ver a quién le gusta, {{count}} me gusta',
   likersTitle: 'Les gusta a',
   likedBy: 'Le gusta a {{name}}',
   likedByOthers_one: 'Le gusta a {{name}} y a {{count}} persona más',

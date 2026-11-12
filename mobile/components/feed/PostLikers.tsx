@@ -19,8 +19,9 @@ import { Routes } from '@/lib/routes';
 /**
  * "Liked by Maya and 12 others", under your own posts only.
  *
- * Most people on AceAiX are under 18, so who liked a post is shown to the
- * person who posted it and nobody else. Tapping the line opens the full list.
+ * The line stays on the viewer's own posts so the feed does not ask who
+ * liked every card. Tapping it opens the same list anyone can open from
+ * the like count.
  */
 export function LikedBy({ postId, likeCount }: { postId: string; likeCount: number }) {
   const t = useT();
@@ -34,7 +35,7 @@ export function LikedBy({ postId, likeCount }: { postId: string; likeCount: numb
 
   if (likeCount <= 0) return null;
 
-  const first = preview.data?.[0];
+  const first = preview.data?.likers[0];
   const name = first ? displayName(first.full_name) : null;
   const label = name
     ? likeCount > 1
@@ -56,19 +57,17 @@ export function LikedBy({ postId, likeCount }: { postId: string; likeCount: numb
           {label}
         </Text>
       </Pressable>
-      {open ? <LikersSheet postId={postId} total={likeCount} onClose={() => setOpen(false)} /> : null}
+      {open ? <LikersSheet postId={postId} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
 
-/** Everyone who liked the post, with a Follow button on each. */
-function LikersSheet({
+/** Everyone this viewer may see on the like list, with a Follow button on each. */
+export function LikersSheet({
   postId,
-  total,
   onClose,
 }: {
   postId: string;
-  total: number;
   onClose: () => void;
 }) {
   const t = useT();
@@ -113,13 +112,17 @@ function LikersSheet({
     setTimeout(() => router.push(Routes.profile(id)), 240);
   };
 
-  const people = list.data ?? [];
-  const hidden = Math.max(0, total - people.length);
+  const people = list.data?.likers ?? [];
+  const hidden = list.data?.hidden ?? 0;
 
   return (
     <Sheet visible onClose={onClose} title={t('feed.likersTitle')} testID="post-likers">
       {list.loading && !list.data ? (
         <SkeletonList count={3} variant="row" />
+      ) : list.error ? (
+        <Text variant="body" tone="secondary" style={{ paddingVertical: spacing.sm }}>
+          {list.error}
+        </Text>
       ) : (
         <View style={{ paddingBottom: spacing.lg }}>
           {people.map((person) => {

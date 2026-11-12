@@ -74,6 +74,12 @@ export const feed = {
 
   // ── إعجاب، تعليق، مشاركة، حفظ ─────────────────────────────────────────────
   likePost: 'الإعجاب بهذا المنشور',
+  seeWhoLiked_zero: 'عرض من أعجب بهذا، لا إعجابات',
+  seeWhoLiked_one: 'عرض من أعجب بهذا، إعجاب واحد',
+  seeWhoLiked_two: 'عرض من أعجب بهذا، إعجابان',
+  seeWhoLiked_few: 'عرض من أعجب بهذا، {{count}} إعجابات',
+  seeWhoLiked_many: 'عرض من أعجب بهذا، {{count}} إعجابًا',
+  seeWhoLiked_other: 'عرض من أعجب بهذا، {{count}} إعجاب',
   likersTitle: 'أُعجب به',
   likedBy: 'أُعجب به {{name}}',
   likedByOthers_zero: 'أُعجب به {{name}}',
