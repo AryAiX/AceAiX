@@ -9535,4 +9535,73 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- More sports on also plays (QA-177). One fresh athlete
+-- (7f090000). The main sport is Football. tests.ok runs in
+-- this block because the session role stays the superuser.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── more sports ──'; end $$;
+
+do $$
+declare
+  v_athlete uuid := '7f090000-0000-4000-8000-000000000001';
+  v_kept    jsonb;
+  v_msg     text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (
+    v_athlete, 'qa177.athlete@test.local',
+    jsonb_build_object('full_name', 'More Sports', 'role', 'athlete')
+  );
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         other_sports = jsonb_build_array(
+           jsonb_build_object('sport', 'Rugby', 'level', 'club'),
+           jsonb_build_object('sport', 'Jiu-Jitsu', 'level', 'competitive'),
+           jsonb_build_object('sport', 'Table Tennis', 'level', 'casual')
+         )
+   where user_id = v_athlete
+  returning other_sports into v_kept;
+
+  perform tests.ok(
+    jsonb_array_length(v_kept) = 3
+    and v_kept -> 0 ->> 'sport' = 'Rugby'
+    and v_kept -> 1 ->> 'sport' = 'Jiu-Jitsu'
+    and v_kept -> 2 ->> 'sport' = 'Table Tennis',
+    'Rugby, Jiu-Jitsu and Table Tennis are accepted beside Football, and all 3 are kept');
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         other_sports = jsonb_build_array(
+           jsonb_build_object('sport', 'Martial Arts', 'level', 'club'),
+           jsonb_build_object('sport', 'Football', 'level', 'casual')
+         )
+   where user_id = v_athlete
+  returning other_sports into v_kept;
+
+  perform tests.ok(
+    jsonb_array_length(v_kept) = 1
+    and v_kept -> 0 ->> 'sport' = 'Martial Arts'
+    and (select sport from public.athlete_profiles where user_id = v_athlete) = 'Football',
+    'Martial Arts plus Football as other sports, with main sport Football, keeps only Martial Arts');
+
+  v_msg := null;
+  begin
+    update public.athlete_profiles
+       set other_sports = jsonb_build_array(
+             jsonb_build_object('sport', 'Underwater hockey', 'level', 'casual')
+           )
+     where user_id = v_athlete;
+  exception when raise_exception then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Unknown sport in other_sports',
+    'Underwater hockey is refused with Unknown sport in other_sports');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
