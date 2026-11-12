@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { Bookmark, Heart, MessageCircle, Share2 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { AnimatedNumber, Tappable, Text } from '@/components/ui';
+import { AnimatedNumber, Tappable } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
@@ -140,8 +140,8 @@ export function PostActions({
     }
   };
 
-  /* The number is its own target only after the first like. A zero stays
-     ordinary text: there is nobody to list, and it is not a button. */
+  /* The number is its own target only after the first like. A zero is
+     absent, the same as the comment count beside it. */
   const likeCountOpensList = !!onPressLikeCount && likeCount > 0;
 
   return (
@@ -152,6 +152,7 @@ export function PostActions({
         onPress={handleLike}
         selected={liked}
         count={likeCountOpensList ? undefined : likeCount}
+        flushEnd={likeCountOpensList}
         icon={
           <Animated.View
             style={{
@@ -189,14 +190,10 @@ export function PostActions({
           onPress={onPressLikeCount}
           accessibilityRole="button"
           accessibilityLabel={t('feed.seeWhoLiked', { count: likeCount })}
-          hitSlop={6}
+          hitSlop={12}
           testID="post-like-count"
           style={({ pressed }) => ({
-            minHeight: theme.hit.comfortable,
-            minWidth: theme.hit.comfortable,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: spacing.xs,
+            paddingStart: spacing.xs + 2,
             borderRadius: radii.button,
             backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
           })}
@@ -211,14 +208,6 @@ export function PostActions({
             />
           </View>
         </Tappable>
-      ) : onPressLikeCount && likeCount === 0 ? (
-        <Text
-          variant="captionStrong"
-          tone={liked ? 'primary' : 'secondary'}
-          style={{ paddingHorizontal: spacing.sm }}
-        >
-          {formatCount(0)}
-        </Text>
       ) : null}
       </View>
 
@@ -281,6 +270,7 @@ function Action({
   onPress,
   selected,
   haptic,
+  flushEnd,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -288,6 +278,8 @@ function Action({
   onPress: () => void;
   selected?: boolean;
   haptic?: boolean;
+  /** Drop the end padding so a separate count can sit in the same gap. */
+  flushEnd?: boolean;
 }) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -306,9 +298,10 @@ function Action({
         alignItems: 'center',
         gap: spacing.xs + 2,
         minHeight: theme.hit.min,
-        minWidth: theme.hit.min,
-        justifyContent: 'center',
-        paddingHorizontal: spacing.sm,
+        minWidth: flushEnd ? undefined : theme.hit.min,
+        justifyContent: flushEnd ? 'flex-start' : 'center',
+        paddingStart: spacing.sm,
+        paddingEnd: flushEnd ? 0 : spacing.sm,
         borderRadius: radii.button,
         backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
       })}

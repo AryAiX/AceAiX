@@ -485,7 +485,7 @@ function LikeButton({
   }, [liked, pop, reduced]);
 
   return (
-    <View style={{ alignItems: 'center' }}>
+    <View style={{ alignItems: 'center', gap: 2 }}>
       <RailButton label={label} onPress={onPress} testID="reel-like">
         <Animated.View style={{ transform: [{ scale: pop }] }}>
           <Heart
@@ -501,13 +501,9 @@ function LikeButton({
           onPress={onPressCount}
           accessibilityRole="button"
           accessibilityLabel={t('feed.seeWhoLiked', { count })}
-          hitSlop={8}
+          hitSlop={12}
           testID="reel-like-count"
           style={({ pressed }) => ({
-            minWidth: theme.hit.comfortable,
-            minHeight: theme.hit.comfortable,
-            alignItems: 'center',
-            justifyContent: 'center',
             borderRadius: theme.radii.button,
             backgroundColor: pressed ? 'rgba(255,255,255,0.18)' : 'transparent',
           })}
@@ -516,11 +512,7 @@ function LikeButton({
             {compactNumber(count)}
           </Text>
         </Pressable>
-      ) : (
-        <Text variant="captionStrong" color={ON_VIDEO}>
-          {compactNumber(0)}
-        </Text>
-      )}
+      ) : null}
     </View>
   );
 }
