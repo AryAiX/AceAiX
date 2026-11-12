@@ -9417,4 +9417,122 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Each like is its own notice (QA-173). Fresh accounts only
+-- (7f080000): Notice Author and Liker One, Liker Two and
+-- Liker Three, plus two public posts by the author. Titles
+-- are varchar, so they are cast to text before the array
+-- comparison. tests.ok runs in this block because the session
+-- role stays the superuser.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── like notices one by one ──'; end $$;
+
+do $$
+declare
+  v_author uuid := '7f080000-0000-4000-8000-000000000001';
+  v_one    uuid := '7f080000-0000-4000-8000-000000000002';
+  v_two    uuid := '7f080000-0000-4000-8000-000000000003';
+  v_three  uuid := '7f080000-0000-4000-8000-000000000004';
+  v_post1  uuid;
+  v_post2  uuid;
+  v_res    jsonb;
+  v_titles text[];
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values
+    (v_author, 'qa173.author@test.local',
+     jsonb_build_object('full_name', 'Notice Author', 'role', 'athlete')),
+    (v_one, 'qa173.one@test.local',
+     jsonb_build_object('full_name', 'Liker One', 'role', 'athlete')),
+    (v_two, 'qa173.two@test.local',
+     jsonb_build_object('full_name', 'Liker Two', 'role', 'athlete')),
+    (v_three, 'qa173.three@test.local',
+     jsonb_build_object('full_name', 'Liker Three', 'role', 'athlete'));
+
+  perform tests.as_user(v_author);
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', 'First public post', 'public')
+  returning id into v_post1;
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', 'Second public post', 'public')
+  returning id into v_post2;
+
+  perform tests.as_user(v_one);
+  perform public.toggle_post_like(v_post1);
+  perform tests.as_user(v_two);
+  perform public.toggle_post_like(v_post1);
+  perform tests.as_user(v_three);
+  perform public.toggle_post_like(v_post1);
+
+  select coalesce(array_agg(n.title::text order by n.title::text), '{}'::text[])
+    into v_titles
+  from public.notifications n
+  where n.user_id = v_author
+    and n.type = 'like'
+    and n.entity_id = v_post1::text;
+
+  perform tests.ok(
+    v_titles = array[
+      'Liker One liked your post',
+      'Liker Three liked your post',
+      'Liker Two liked your post'
+    ]::text[],
+    'three likes on the first post make three like notifications for the author');
+
+  perform tests.ok(
+    not exists (
+      select 1
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and entity_id = v_post1::text
+        and group_key is not null
+    ),
+    'none of them has a group key');
+
+  perform tests.as_user(v_one);
+  perform public.toggle_post_like(v_post1);
+  v_res := public.toggle_post_like(v_post1);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and (
+      select count(*)
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_one
+        and entity_type = 'post'
+        and entity_id = v_post1::text
+    ) = 1,
+    'Liker One unliking and liking the first post again still leaves exactly one notification from Liker One for that post');
+
+  v_res := public.toggle_post_like(v_post2);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and (
+      select count(*)
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_one
+    ) = 2,
+    'Liker One liking the second post adds a new one, two from Liker One in total');
+
+  perform tests.as_user(v_author);
+  v_res := public.toggle_post_like(v_post1);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and not exists (
+      select 1
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_author
+    ),
+    'the author liking their own post makes no notification');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
