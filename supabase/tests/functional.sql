@@ -9604,4 +9604,259 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Typed sports stay private until an admin decides (QA-178).
+-- Fresh accounts only (7f0a0000): three athletes, one admin
+-- and one coach. tests.ok runs as the superuser. The
+-- authenticated and anon checks put the role back first.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sport requests ──'; end $$;
+
+do $$
+declare
+  v_one     uuid := '7f0a0000-0000-4000-8000-000000000001';
+  v_two     uuid := '7f0a0000-0000-4000-8000-000000000002';
+  v_three   uuid := '7f0a0000-0000-4000-8000-000000000003';
+  v_admin   uuid := '7f0a0000-0000-4000-8000-000000000004';
+  v_coach   uuid := '7f0a0000-0000-4000-8000-000000000005';
+  v_req1    uuid;
+  v_req2    uuid;
+  v_req3    uuid;
+  v_again   uuid;
+  v_seen    integer;
+  v_own     integer;
+  v_waiting integer;
+  v_blocked boolean := false;
+  v_denied  boolean := false;
+  v_msg     text;
+  v_msg2    text;
+  v_hint    text;
+  v_hint2   text;
+  v_note    text := 'Kabaddi league is not on the list.';
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values
+    (v_one, 'qa178.one@test.local',
+     jsonb_build_object('full_name', 'Asker One', 'role', 'athlete')),
+    (v_two, 'qa178.two@test.local',
+     jsonb_build_object('full_name', 'Asker Two', 'role', 'athlete')),
+    (v_three, 'qa178.three@test.local',
+     jsonb_build_object('full_name', 'Asker Three', 'role', 'athlete')),
+    (v_admin, 'qa178.admin@test.local',
+     jsonb_build_object('full_name', 'Sport Admin', 'role', 'athlete')),
+    (v_coach, 'qa178.coach@test.local',
+     jsonb_build_object('full_name', 'Sport Coach', 'role', 'coach'));
+
+  update public.user_profiles set role = 'admin' where id = v_admin;
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         "position" = 'Forward',
+         position_primary = 'Striker'
+   where user_id = v_one;
+
+  perform tests.as_user(v_one);
+  v_req1 := public.request_sport('  kabaddi   league ');
+  perform tests.ok(
+    (select requested_name from public.sport_requests where id = v_req1) = 'kabaddi league'
+    and (select sport from public.athlete_profiles where user_id = v_one) = 'Other'
+    and (select "position" from public.athlete_profiles where user_id = v_one) is null
+    and (select position_primary from public.athlete_profiles where user_id = v_one) is null,
+    'asking stores the tidied name, sets the sport to Other and clears the position');
+
+  v_again := public.request_sport('kho kho');
+  perform tests.ok(
+    v_again = v_req1
+    and (select count(*) from public.sport_requests where user_id = v_one) = 1
+    and (select requested_name from public.sport_requests where id = v_req1) = 'kho kho',
+    'asking again replaces the waiting request and still leaves one row');
+
+  v_hint := null;
+  v_msg := null;
+  begin
+    perform public.request_sport('x');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_msg = message_text, v_hint = pg_exception_hint;
+  end;
+  v_hint2 := null;
+  v_msg2 := null;
+  begin
+    perform public.request_sport('<script>');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_msg2 = message_text, v_hint2 = pg_exception_hint;
+  end;
+  perform tests.ok(
+    v_hint = 'sport_name_invalid'
+    and v_msg = 'Use 2 to 40 letters for the sport name'
+    and v_hint2 = 'sport_name_invalid'
+    and v_msg2 = 'Use 2 to 40 letters for the sport name'
+    and (select count(*) from public.sport_requests where user_id = v_one) = 1,
+    '"x" and "<script>" are refused');
+
+  perform tests.as_user(v_coach);
+  v_msg := null;
+  begin
+    perform public.request_sport('Kabaddi');
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Only athletes choose a sport'
+    and not exists (select 1 from public.sport_requests where user_id = v_coach),
+    'a coach is refused');
+
+  perform tests.as_user(v_two);
+  v_req2 := public.request_sport('sepak takraw');
+  perform tests.as_user(v_three);
+  v_req3 := public.request_sport('kho kho');
+
+  perform tests.as_user(v_one);
+  set local role authenticated;
+  select count(*) into v_seen from public.sport_requests;
+  select count(*) into v_own
+  from public.sport_requests
+  where user_id = v_one
+    and requested_name = 'kho kho';
+  v_blocked := false;
+  begin
+    insert into public.sport_requests (user_id, requested_name)
+    values (v_one, 'Secret sport');
+  exception when insufficient_privilege then
+    v_blocked := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_blocked
+    and v_seen = 1
+    and v_own = 1
+    and has_table_privilege('authenticated', 'public.sport_requests', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.sport_requests', 'INSERT'),
+    'as a signed-in athlete, only their own request is visible and a direct insert is refused');
+
+  perform tests.as_user(v_one);
+  v_msg := null;
+  begin
+    perform public.admin_sport_requests();
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  v_msg2 := null;
+  begin
+    perform public.admin_review_sport_request(v_req1, 'approve', 'Kabaddi');
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg2 = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Admin access required'
+    and v_msg2 = 'Admin access required',
+    'a non-admin can neither list nor decide');
+
+  perform tests.as_user(v_admin);
+  select count(*) into v_waiting from public.admin_sport_requests();
+  perform tests.ok(
+    v_waiting = 3
+    and (select count(*) from public.admin_sport_requests() q
+         where q.user_id in (v_one, v_two, v_three)
+           and q.status = 'pending') = 3
+    and exists (
+      select 1 from public.admin_sport_requests() q
+      where q.user_id = v_one
+        and q.full_name = 'Asker One'
+        and q.email = 'qa178.one@test.local'
+        and q.is_minor = false
+        and q.current_sport = 'Other'
+        and q.requested_name = 'kho kho'
+    ),
+    'the admin sees the three waiting requests');
+
+  perform public.admin_review_sport_request(v_req1, 'approve', 'Kabaddi');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_one) = 'Kabaddi'
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_one
+        and type = 'sport_request_approved'
+        and title = 'Your sport was approved: Kabaddi'
+        and body is null
+        and actor_id is null
+        and entity_type = 'sport_request'
+        and entity_id = v_req1::text
+        and data ->> 'request_id' = v_req1::text
+        and data ->> 'status' = 'approved'
+        and data ->> 'sport' = 'Kabaddi'
+    )
+    and exists (
+      select 1 from public.audit_logs
+      where user_id = v_admin
+        and action = 'sport_request.approve'
+        and table_name = 'sport_requests'
+        and record_id = v_one
+        and old_value ->> 'status' = 'pending'
+        and new_value ->> 'status' = 'approved'
+        and new_value ->> 'decided_sport' = 'Kabaddi'
+    ),
+    'approve with Kabaddi sets the sport, sends the sport_request_approved notification with the title "Your sport was approved: Kabaddi", and writes an audit log row');
+
+  perform public.admin_review_sport_request(v_req2, 'match', 'Football');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_two) = 'Football'
+    and (select status from public.sport_requests where id = v_req2) = 'matched',
+    'match with Football sets Football');
+
+  perform public.admin_review_sport_request(v_req3, 'reject', null, v_note);
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_three) = 'Other'
+    and (select body from public.notifications
+         where user_id = v_three and type = 'sport_request_rejected') = v_note,
+    'reject with a note keeps Other and the notification body is the note');
+
+  v_hint := null;
+  begin
+    perform public.admin_review_sport_request(v_req1, 'reject');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(
+    v_hint = 'sport_request_decided'
+    and (select sport from public.athlete_profiles where user_id = v_one) = 'Kabaddi',
+    'a decided request cannot be decided again');
+
+  perform tests.as_user(v_three);
+  v_req3 := public.request_sport('Floorball');
+  update public.athlete_profiles
+     set sport = 'Tennis'
+   where user_id = v_three;
+  perform tests.as_user(v_admin);
+  perform public.admin_review_sport_request(v_req3, 'approve', 'Floorball');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_three) = 'Tennis'
+    and (select status from public.sport_requests where id = v_req3) = 'approved'
+    and (select decided_sport from public.sport_requests where id = v_req3) = 'Floorball',
+    'approval does not overwrite Tennis when the athlete switched before the admin decided');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  v_denied := false;
+  begin
+    set local role anon;
+    perform public.request_sport('Kabaddi');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.request_sport(text)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.request_sport(text)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.admin_sport_requests(text)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated',
+      'public.admin_review_sport_request(uuid, text, text, text)',
+      'EXECUTE'),
+    'a signed-out caller cannot call request_sport');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
