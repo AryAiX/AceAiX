@@ -42,6 +42,15 @@ describe('database hints', () => {
     );
   });
 
+  it('explains a sport name the server refused', () => {
+    expect(errorMessage({ code: '22023', hint: 'sport_name_invalid' })).toBe(
+      'Use 2 to 40 letters for the sport name.',
+    );
+    expect(errorMessage({ code: '22023', hint: 'sport_request_limit' })).toBe(
+      'You can ask for a sport 5 times a day.',
+    );
+  });
+
   it('explains a mention the server refused', () => {
     expect(errorMessage({ code: '22023', hint: 'mention_limit' })).toBe(
       'You can mention up to 10 people.',

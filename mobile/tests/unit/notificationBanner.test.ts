@@ -607,6 +607,24 @@ const NOTIFICATION_TYPES: Array<{
     expectedTitle: 'Sam joined through your invite',
   },
   { type: 'referral_token', title: 'You earned a token', expectedTitle: 'You earned a token' },
+  {
+    type: 'sport_request_approved',
+    title: 'stored title',
+    data: { sport: 'Kabaddi' },
+    expectedTitle: 'Your sport was approved: Kabaddi',
+  },
+  {
+    type: 'sport_request_matched',
+    title: 'stored title',
+    data: { sport: 'Football' },
+    expectedTitle: 'Your sport was set to Football',
+  },
+  {
+    type: 'sport_request_rejected',
+    title: 'stored title',
+    data: { sport: null },
+    expectedTitle: 'Your sport request was not approved',
+  },
 ];
 
 function asNotification(row: (typeof NOTIFICATION_TYPES)[number]): AppNotification {
@@ -673,6 +691,9 @@ describe('every notification type', () => {
       'system',
       'referral_joined',
       'referral_token',
+      'sport_request_approved',
+      'sport_request_matched',
+      'sport_request_rejected',
     ]);
 
     for (const row of NOTIFICATION_TYPES) {

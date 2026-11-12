@@ -42,6 +42,18 @@ export const sports = {
   anyPosition: '不限位置',
   searchSports: '搜索项目',
   noSportMatches: '没有匹配的项目',
+  other: '其他项目',
+  notListed: '我的项目不在列表里',
+  requestName: '项目名称',
+  requestNote:
+    '新项目会先由我们的团队核对，之后才会显示在你的资料里。在此之前，资料上显示「{{other}}」。',
+  sendForReview: '提交审核',
+  alreadyListed: '{{sport}}已经在列表里。',
+  chooseThisSport: '选择{{sport}}',
+  requestWaiting: '{{name}}正在等待审核',
+  pickListed: '改为从列表里选一个项目',
+  requestRejected: '你的项目申请没有通过',
+  chooseSport: '选择项目',
 
   position: {
     goalkeeper: '门将',

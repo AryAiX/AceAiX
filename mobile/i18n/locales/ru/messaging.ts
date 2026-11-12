@@ -216,4 +216,7 @@ export const messaging = {
   referralTokenBody_few: '{{n}} друга присоединились к AceAiX по твоему приглашению.',
   referralTokenBody_many: '{{n}} друзей присоединились к AceAiX по твоему приглашению.',
   referralTokenBody_other: '{{n}} друга присоединились к AceAiX по твоему приглашению.',
+  sportApproved: 'Твой вид спорта одобрен: {{sport}}',
+  sportMatched: 'Твой вид спорта установлен: {{sport}}',
+  sportRejected: 'Твою заявку на вид спорта не одобрили',
 };

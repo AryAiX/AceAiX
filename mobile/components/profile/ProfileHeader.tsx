@@ -24,7 +24,10 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
+import { useAsync } from '@/hooks/useAsync';
 import { blockUser, canMessage, reportContent, startConversation } from '@/lib/api';
+import { mySportRequest } from '@/lib/api.profile';
+import { SportRequestNote } from '@/components/profile/SportRequestNote';
 import {
   applyToggleFollow,
   useFollowCount,
@@ -37,6 +40,7 @@ import {
   levelLabelI18n,
   otherSportLevelLabel,
   positionLabel,
+  isOtherSport,
   sportEmoji,
   sportLabel,
 } from '@/constants/sports';
@@ -140,6 +144,10 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
 
   const { user, athlete, coach, score, viewer } = bundle;
   const isSelf = viewer?.is_self === true;
+  const sportRequest = useAsync(() => mySportRequest(), [isSelf, athlete?.sport], {
+    enabled: isSelf && isOtherSport(athlete?.sport),
+    refetchOnFocus: true,
+  });
   const { user: account, profile: accountProfile } = useAuth();
 
   // The button flips instantly. Both totals live in the shared follow counts,
@@ -406,6 +414,14 @@ export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar
             <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
               {meta}
             </Text>
+          ) : null}
+          {isSelf && isOtherSport(athlete?.sport) ? (
+            <SportRequestNote
+              request={sportRequest.data}
+              onChoose={() =>
+                router.push({ pathname: Routes.editProfile, params: { focus: 'sport' } })
+              }
+            />
           ) : null}
           {athlete?.other_sports && athlete.other_sports.length > 0 ? (
             <View

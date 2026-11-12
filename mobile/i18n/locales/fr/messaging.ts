@@ -209,4 +209,7 @@ export const messaging = {
   referralTokenBody_one: '{{n}} ami a rejoint AceAiX avec ton invitation.',
   referralTokenBody_many: '{{n}} amis ont rejoint AceAiX avec ton invitation.',
   referralTokenBody_other: '{{n}} amis ont rejoint AceAiX avec ton invitation.',
+  sportApproved: 'Ton sport a été accepté : {{sport}}',
+  sportMatched: 'Ton sport a été défini sur {{sport}}',
+  sportRejected: 'Ta demande de sport n’a pas été acceptée',
 };

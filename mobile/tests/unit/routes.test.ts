@@ -122,6 +122,25 @@ describe('notificationTarget', () => {
     const n = notification({ entity_type: null, entity_id: null, actor_id: null });
     expect(notificationTarget(n)).toBeNull();
   });
+
+  it('sends a sport request decision to edit profile, on the sport', () => {
+    for (const type of [
+      'sport_request_approved',
+      'sport_request_matched',
+      'sport_request_rejected',
+    ] as const) {
+      expect(
+        notificationTarget(
+          notification({
+            type,
+            entity_type: 'sport_request',
+            entity_id: 'req-1',
+            actor_id: 'actor-9',
+          }),
+        ),
+      ).toEqual({ pathname: Routes.editProfile, params: { focus: 'sport' } });
+    }
+  });
 });
 
 describe('authentication routes', () => {

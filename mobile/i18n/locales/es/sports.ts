@@ -43,6 +43,18 @@ export const sports = {
   anyPosition: 'Cualquier posición',
   searchSports: 'Buscar un deporte',
   noSportMatches: 'Ningún deporte coincide',
+  other: 'Otro deporte',
+  notListed: 'Mi deporte no está en la lista',
+  requestName: 'Nombre del deporte',
+  requestNote:
+    'Nuestro equipo revisa los deportes nuevos antes de mostrarlos en tu perfil. Hasta entonces, tu perfil muestra «{{other}}».',
+  sendForReview: 'Enviar a revisión',
+  alreadyListed: '{{sport}} ya está en la lista.',
+  chooseThisSport: 'Elegir {{sport}}',
+  requestWaiting: '{{name}} está en revisión',
+  pickListed: 'Elegir un deporte de la lista',
+  requestRejected: 'No se aprobó tu solicitud de deporte',
+  chooseSport: 'Elegir un deporte',
 
   position: {
     goalkeeper: 'Portero',

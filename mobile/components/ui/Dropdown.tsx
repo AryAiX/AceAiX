@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, TextInput, View, type TextInputInstance } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 
@@ -46,6 +46,10 @@ interface Props {
   required?: boolean;
   disabled?: boolean;
   testID?: string;
+  /** A row under the options, for a value the list does not have. */
+  unlisted?: { label: string; onPress: (query: string) => void };
+  /** Bump this to open the list from outside the field. */
+  openToken?: number;
 }
 
 const LIST_MAX = 300;
@@ -72,6 +76,8 @@ export function Dropdown({
   required = false,
   disabled = false,
   testID,
+  unlisted,
+  openToken = 0,
 }: Props) {
   const { colors, radii, spacing, font, size } = useTheme();
   const t = useT();
@@ -80,6 +86,11 @@ export function Dropdown({
   const [typing, setTyping] = useState(false);
   const [query, setQuery] = useState('');
   const expanded = inline || open;
+
+  useEffect(() => {
+    if (!openToken || inline) return;
+    setOpen(true);
+  }, [openToken, inline]);
   const canType = searchable ?? options.length > 6;
 
   const chosen = useMemo(
@@ -258,6 +269,33 @@ export function Dropdown({
             testID={testID ? `${testID}-${option.key}` : undefined}
           />
         ))}
+        {unlisted ? (
+          <Pressable
+            onPress={() => {
+              const typed = query.trim();
+              if (!inline) close();
+              unlisted.onPress(typed);
+            }}
+            accessibilityRole="button"
+            testID={testID ? `${testID}-unlisted` : undefined}
+            style={{
+              minHeight: 48,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm,
+              borderRadius: radii.md,
+              justifyContent: 'center',
+              backgroundColor:
+                query.trim() && visible.length === 0 ? colors.primary : 'transparent',
+            }}
+          >
+            <Text
+              variant="bodyStrong"
+              tone={query.trim() && visible.length === 0 ? 'inverse' : 'primary'}
+            >
+              {unlisted.label}
+            </Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </View>
   );

@@ -3,12 +3,14 @@ import { View } from 'react-native';
 import { Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, EmptyState, Input, Text } from '@/components/ui';
+import { Button, Chip, EmptyState, Input, Text } from '@/components/ui';
+import { RequestSportSheet } from '@/components/profile/RequestSportSheet';
 import { useT } from '@/i18n';
 import {
   DOMINANT_SIDE,
   LEVELS,
   SPORTS,
+  isOtherSport,
   levelHint,
   levelLabelI18n,
   positionLabel,
@@ -33,9 +35,17 @@ export function SportStep({
   const theme = useTheme();
   const t = useT();
   const [query, setQuery] = useState('');
+  const [sheet, setSheet] = useState(false);
+  const [prefill, setPrefill] = useState('');
   const visible = SPORTS.filter((sport) =>
     sportMatchesQuery(query, sport.key, sportLabel(t, sport.key)),
   );
+  const noMatches = query.trim().length > 0 && visible.length === 0;
+
+  const openRequest = () => {
+    setPrefill(query.trim());
+    setSheet(true);
+  };
 
   return (
     <View style={{ gap: theme.spacing.md }}>
@@ -73,6 +83,25 @@ export function SportStep({
           ))}
         </View>
       )}
+      <Button
+        label={t('sports.notListed')}
+        variant={noMatches || isOtherSport(value) ? 'primary' : 'secondary'}
+        onPress={openRequest}
+        testID="onboarding-sport-unlisted"
+      />
+      <RequestSportSheet
+        visible={sheet}
+        initialName={prefill}
+        onClose={() => setSheet(false)}
+        onSent={() => {
+          onChange('Other');
+          setSheet(false);
+        }}
+        onSelectListed={(key) => {
+          onChange(key);
+          setSheet(false);
+        }}
+      />
     </View>
   );
 }

@@ -189,4 +189,7 @@ export const messaging = {
   referralJoinedNoName: '有一位朋友通过你的邀请加入了',
   referralTokenTitle: '你获得了 1 积分',
   referralTokenBody_other: '已有 {{n}} 位朋友通过你的邀请加入 AceAiX。',
+  sportApproved: '你的项目已通过：{{sport}}',
+  sportMatched: '你的项目已设为{{sport}}',
+  sportRejected: '你的项目申请没有通过',
 };

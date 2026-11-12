@@ -202,4 +202,7 @@ export const messaging = {
   referralTokenTitle: 'Du hast einen Token erhalten',
   referralTokenBody_one: '{{n}} Freund ist über deine Einladung bei AceAiX.',
   referralTokenBody_other: '{{n}} Freunde sind über deine Einladung bei AceAiX.',
+  sportApproved: 'Deine Sportart wurde freigegeben: {{sport}}',
+  sportMatched: 'Deine Sportart wurde auf {{sport}} gesetzt',
+  sportRejected: 'Deine Sportanfrage wurde nicht freigegeben',
 };

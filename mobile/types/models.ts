@@ -374,6 +374,9 @@ export type NotificationType =
   | 'reply'
   | 'mention'
   | 'post_tag'
+  | 'sport_request_approved'
+  | 'sport_request_matched'
+  | 'sport_request_rejected'
   | 'like'
   | 'application_received'
   | 'application_status'
@@ -433,6 +436,7 @@ export interface AppNotification {
     | 'club_match'
     | 'club_event'
     | 'guardian_consent'
+    | 'sport_request'
     | null;
   entity_id: string | null;
   actor_count: number;

@@ -137,4 +137,6 @@ export const errors = {
   clubMatchKickoff: "请选择比赛日期和开球时间。",
   clubAwardTitle: "请为奖项命名。",
   clubAwardLink: "你只能关联你阵容中的人员。",
+  sportNameInvalid: "项目名称需要 2 到 40 个字母。",
+  sportRequestLimit: "每天最多可以申请 5 次项目。",
 };

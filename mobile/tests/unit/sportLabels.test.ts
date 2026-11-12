@@ -2,10 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import {
   SPORTS,
+  cleanSportName,
   englishSportTerm,
+  listedSportKey,
   positionLabel,
+  positionsFor,
   sportLabel,
   sportMatchesQuery,
+  validSportName,
 } from '@/constants/sports';
 import { sports as arSports } from '@/i18n/locales/ar/sports';
 import { sports as deSports } from '@/i18n/locales/de/sports';
@@ -28,6 +32,35 @@ describe('sportLabel', () => {
 
   it('falls back to the stored value when unknown', () => {
     expect(sportLabel(t, 'Underwater hockey')).toBe('Underwater hockey');
+  });
+
+  it('translates the waiting value Other, and leaves an approved name as typed', () => {
+    expect(sportLabel(t, 'Other')).toBe('t:sports.other');
+    expect(sportLabel(t, 'other')).toBe('t:sports.other');
+    expect(sportLabel(t, 'Kabaddi')).toBe('Kabaddi');
+  });
+});
+
+describe('a sport that is not listed', () => {
+  it('tidies a typed name the same way the server does', () => {
+    expect(cleanSportName('  kabaddi   league ')).toBe('kabaddi league');
+    expect(validSportName('  kabaddi   league ')).toBe(true);
+    expect(validSportName('كبدي')).toBe(true);
+    expect(validSportName('x')).toBe(false);
+    expect(validSportName('<script>')).toBe(false);
+  });
+
+  it('recognises a listed sport by its English key or translated label', () => {
+    const spanishFootball = (key: string) => (key === 'sports.football' ? 'Fútbol' : `t:${key}`);
+    expect(listedSportKey(spanishFootball, 'football')).toBe('Football');
+    expect(listedSportKey(spanishFootball, 'Fútbol')).toBe('Football');
+    expect(listedSportKey(spanishFootball, 'fútbol')).toBe('Football');
+    expect(listedSportKey(spanishFootball, 'Kabaddi')).toBeNull();
+  });
+
+  it('gives Other and an approved custom sport no positions', () => {
+    expect(positionsFor('Other')).toEqual([]);
+    expect(positionsFor('Kabaddi')).toEqual([]);
   });
 });
 

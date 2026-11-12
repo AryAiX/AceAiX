@@ -819,3 +819,60 @@ export function toHistoryPoints(rows: unknown[]): ScoreHistoryPoint[] {
     .filter((point): point is ScoreHistoryPoint => point !== null)
     .sort((a, b) => a.recorded_on.localeCompare(b.recorded_on));
 }
+
+// ── A sport that is not in the list ─────────────────────────────────────────
+
+export interface SportRequest {
+  id: string;
+  requested_name: string;
+  status: 'pending' | 'approved' | 'matched' | 'rejected';
+  decided_sport: string | null;
+  admin_note: string | null;
+  created_at: string;
+}
+
+const SPORT_REQUEST_STATUSES = new Set<SportRequest['status']>([
+  'pending',
+  'approved',
+  'matched',
+  'rejected',
+]);
+
+/** Ask for a sport that is not in the list. The profile sport becomes Other. */
+export async function requestSport(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('request_sport', { p_name: name });
+  if (error) throw new AppError(error);
+  if (typeof data !== 'string' || !data) throw new AppError('Something went wrong');
+  return data;
+}
+
+/** The caller's newest sport request, or null when they have never asked. */
+export async function mySportRequest(): Promise<SportRequest | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const { data, error } = await supabase
+    .from('sport_requests')
+    .select('id, requested_name, status, decided_sport, admin_note, created_at')
+    .eq('user_id', auth.user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  const status = typeof row.status === 'string' ? row.status : '';
+  if (!SPORT_REQUEST_STATUSES.has(status as SportRequest['status'])) return null;
+  const id = typeof row.id === 'string' ? row.id : '';
+  const requestedName = typeof row.requested_name === 'string' ? row.requested_name : '';
+  const createdAt = typeof row.created_at === 'string' ? row.created_at : '';
+  if (!id || !requestedName || !createdAt) return null;
+  const note = typeof row.admin_note === 'string' ? row.admin_note.trim() : '';
+  return {
+    id,
+    requested_name: requestedName,
+    status: status as SportRequest['status'],
+    decided_sport: typeof row.decided_sport === 'string' ? row.decided_sport : null,
+    admin_note: note || null,
+    created_at: createdAt,
+  };
+}

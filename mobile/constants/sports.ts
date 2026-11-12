@@ -728,8 +728,9 @@ export const OPPORTUNITY_TYPES = [
  * athlete's sport has to mean the same thing to a coach in Madrid and a coach
  * in Dubai. Only the label a person reads is translated, through these maps.
  *
- * An unmapped value falls back to itself, so a sport added to the database
- * before it is added here shows its English name rather than a blank chip.
+ * An unmapped value falls back to itself, so a sport an admin approved
+ * (Kabaddi, say) shows the typed name rather than a blank chip. 'Other' is
+ * the private waiting value and reads as "Other sport".
  */
 const SPORT_LABEL_KEYS: Record<string, string> = {
   Football: 'sports.football',
@@ -762,6 +763,7 @@ const SPORT_LABEL_KEYS: Record<string, string> = {
   Equestrian: 'sports.equestrian',
   Fencing: 'sports.fencing',
   Triathlon: 'sports.triathlon',
+  Other: 'sports.other',
 };
 
 const POSITION_KEYS: Record<string, string> = {
@@ -956,6 +958,40 @@ export function sportMatchesQuery(query: string, englishKey: string, translatedL
   const needle = fold(query);
   if (!needle) return true;
   return fold(translatedLabel).includes(needle) || fold(englishKey).includes(needle);
+}
+
+/** Collapse whitespace, then trim. Same tidy-up the server applies. */
+export function cleanSportName(name: string): string {
+  return name.replace(/\s+/g, ' ').trim();
+}
+
+/** Letters, spaces, apostrophes and hyphens, 2 to 40 characters once tidied. */
+const SPORT_NAME = /^[\p{L}][\p{L} '\u2019-]*$/u;
+
+export function validSportName(name: string): boolean {
+  const clean = cleanSportName(name);
+  return clean.length >= 2 && clean.length <= 40 && SPORT_NAME.test(clean);
+}
+
+/** The stored waiting value while an admin reviews a typed sport. */
+export function isOtherSport(sport: string | null | undefined): boolean {
+  return sport?.trim().toLowerCase() === 'other';
+}
+
+/**
+ * A catalogue sport the typed name already is, ignoring case and accents.
+ * Matches the English key, the English label, and the translated label.
+ */
+export function listedSportKey(t: Translate, name: string): string | null {
+  const folded = fold(cleanSportName(name));
+  if (!folded) return null;
+  const found = SPORTS.find(
+    (entry) =>
+      fold(entry.key) === folded ||
+      fold(entry.label) === folded ||
+      fold(sportLabel(t, entry.key)) === folded,
+  );
+  return found?.key ?? null;
 }
 
 export function positionLabel(

@@ -289,6 +289,9 @@ export function notificationTarget(n: AppNotification): Href | null {
     case 'referral':
       // A friend joined through my invite, or I earned a token.
       return Routes.invite;
+    case 'sport_request':
+      // Approved, matched or rejected: the sport field on Edit profile.
+      return { pathname: Routes.editProfile, params: { focus: 'sport' } };
     default:
       break;
   }

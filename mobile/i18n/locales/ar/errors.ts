@@ -137,4 +137,6 @@ export const errors = {
   clubMatchKickoff: "اختر التاريخ ووقت انطلاق المباراة.",
   clubAwardTitle: "أعطِ الجائزة اسماً.",
   clubAwardLink: "يمكنك فقط ربط أشخاص ضمن فرقك.",
+  sportNameInvalid: "استخدم من حرفين إلى 40 حرفًا لاسم الرياضة.",
+  sportRequestLimit: "يمكنك طلب رياضة 5 مرات في اليوم.",
 };

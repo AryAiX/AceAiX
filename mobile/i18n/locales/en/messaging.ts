@@ -202,4 +202,7 @@ export const messaging = {
   referralTokenTitle: 'You earned a token',
   referralTokenBody_one: '{{n}} friend has joined AceAiX through your invite.',
   referralTokenBody_other: '{{n}} friends have joined AceAiX through your invite.',
+  sportApproved: 'Your sport was approved: {{sport}}',
+  sportMatched: 'Your sport was set to {{sport}}',
+  sportRejected: 'Your sport request was not approved',
 };

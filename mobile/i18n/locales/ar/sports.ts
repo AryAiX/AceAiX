@@ -42,6 +42,18 @@ export const sports = {
   anyPosition: 'أي مركز',
   searchSports: 'ابحث عن رياضة',
   noSportMatches: 'لا توجد رياضة مطابقة',
+  other: 'رياضة أخرى',
+  notListed: 'رياضتي غير موجودة في القائمة',
+  requestName: 'اسم الرياضة',
+  requestNote:
+    'يراجع فريقنا الرياضات الجديدة قبل أن تظهر في ملفك. إلى ذلك الحين، يظهر في ملفك «{{other}}».',
+  sendForReview: 'إرسال للمراجعة',
+  alreadyListed: '{{sport}} موجودة في القائمة.',
+  chooseThisSport: 'اختر {{sport}}',
+  requestWaiting: '{{name}} بانتظار المراجعة',
+  pickListed: 'اختر رياضة من القائمة بدلاً من ذلك',
+  requestRejected: 'لم تُقبل طلب رياضتك',
+  chooseSport: 'اختر رياضة',
 
   position: {
     goalkeeper: 'حارس مرمى',

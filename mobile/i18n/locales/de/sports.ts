@@ -43,6 +43,18 @@ export const sports = {
   anyPosition: 'Egal welche Position',
   searchSports: 'Sportart suchen',
   noSportMatches: 'Keine Sportart passt',
+  other: 'Andere Sportart',
+  notListed: 'Meine Sportart fehlt',
+  requestName: 'Name der Sportart',
+  requestNote:
+    'Neue Sportarten prüft unser Team, bevor sie in deinem Profil stehen. Bis dahin zeigt dein Profil „{{other}}“.',
+  sendForReview: 'Zur Prüfung senden',
+  alreadyListed: '{{sport}} steht schon in der Liste.',
+  chooseThisSport: '{{sport}} wählen',
+  requestWaiting: '{{name}} wartet auf die Prüfung',
+  pickListed: 'Stattdessen eine Sportart aus der Liste wählen',
+  requestRejected: 'Deine Sportanfrage wurde nicht freigegeben',
+  chooseSport: 'Sportart wählen',
 
   position: {
     goalkeeper: 'Torwart',

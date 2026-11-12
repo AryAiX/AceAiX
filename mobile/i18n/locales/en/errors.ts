@@ -139,4 +139,6 @@ export const errors = {
   clubMatchKickoff: "Pick the date and kick-off time.",
   clubAwardTitle: "Give the award a name.",
   clubAwardLink: "You can only link people who are on your squads.",
+  sportNameInvalid: "Use 2 to 40 letters for the sport name.",
+  sportRequestLimit: "You can ask for a sport 5 times a day.",
 };

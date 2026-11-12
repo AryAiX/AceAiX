@@ -227,4 +227,7 @@ export const messaging = {
   referralTokenBody_few: 'انضم {{n}} أصدقاء عبر دعوتك إلى AceAiX.',
   referralTokenBody_many: 'انضم {{n}} صديقًا عبر دعوتك إلى AceAiX.',
   referralTokenBody_other: 'انضم {{n}} صديق عبر دعوتك إلى AceAiX.',
+  sportApproved: 'تمت الموافقة على رياضتك: {{sport}}',
+  sportMatched: 'تم تعيين رياضتك إلى {{sport}}',
+  sportRejected: 'لم تُقبل طلب رياضتك',
 };

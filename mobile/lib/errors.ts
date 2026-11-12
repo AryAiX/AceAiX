@@ -115,6 +115,8 @@ const EN: Record<string, string> = {
   'errors.clubMatchKickoff': "Pick the date and kick-off time.",
   'errors.clubAwardTitle': "Give the award a name.",
   'errors.clubAwardLink': "You can only link people who are on your squads.",
+  'errors.sportNameInvalid': "Use 2 to 40 letters for the sport name.",
+  'errors.sportRequestLimit': "You can ask for a sport 5 times a day.",
 };
 
 function say(key: string): string {
@@ -177,6 +179,8 @@ const HINTS: Record<string, string> = {
   club_map_url_invalid: 'errors.clubMapUrlInvalid',
   meetup_place_invalid: 'errors.meetupPlaceInvalid',
   city_length: 'errors.cityLength',
+  sport_name_invalid: 'errors.sportNameInvalid',
+  sport_request_limit: 'errors.sportRequestLimit',
   meetup_places_limit: 'errors.meetupPlacesLimit',
   mention_limit: 'errors.mentionLimit',
   mention_invalid: 'errors.mentionInvalid',

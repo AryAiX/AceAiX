@@ -139,4 +139,6 @@ export const errors = {
   clubMatchKickoff: "Выберите дату и время начала матча.",
   clubAwardTitle: "Дайте награде название.",
   clubAwardLink: "Привязывать можно только людей из ваших составов.",
+  sportNameInvalid: "В названии вида спорта должно быть от 2 до 40 букв.",
+  sportRequestLimit: "Запрашивать вид спорта можно 5 раз в день.",
 };

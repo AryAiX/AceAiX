@@ -131,6 +131,12 @@ function skinFor(type: NotificationType): Skin {
       return { Icon: UserPlus, tint: 'success' };
     case 'referral_token':
       return { Icon: Award, tint: 'warning' };
+    case 'sport_request_approved':
+      return { Icon: Award, tint: 'success' };
+    case 'sport_request_matched':
+      return { Icon: Trophy, tint: 'primary' };
+    case 'sport_request_rejected':
+      return { Icon: ShieldAlert, tint: 'warning' };
     default:
       return { Icon: Bell, tint: 'textSecondary' };
   }
@@ -252,6 +258,36 @@ function mentionCopy(
   };
 }
 
+/**
+ * "Your sport was approved: Kabaddi". The sport comes from `data.sport`.
+ * A rejection keeps the server body, which is the admin's note.
+ */
+function sportRequestCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (
+    n.type !== 'sport_request_approved' &&
+    n.type !== 'sport_request_matched' &&
+    n.type !== 'sport_request_rejected'
+  ) {
+    return null;
+  }
+  if (n.type === 'sport_request_rejected') {
+    return { title: t('messaging.sportRejected'), body: n.body };
+  }
+  const raw = n.data?.sport;
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  const sport = sportLabel(t, raw);
+  return {
+    title: t(
+      n.type === 'sport_request_approved' ? 'messaging.sportApproved' : 'messaging.sportMatched',
+      { sport },
+    ),
+    body: null,
+  };
+}
+
 /** Title and body, including the sentences composed on the client. */
 export function notificationCopy(
   n: AppNotification,
@@ -265,6 +301,8 @@ export function notificationCopy(
   if (tagged) return tagged;
   const referral = referralCopy(n, t);
   if (referral) return referral;
+  const sportRequest = sportRequestCopy(n, t);
+  if (sportRequest) return sportRequest;
   return { title: notificationTitle(n, t), body: n.body };
 }
 

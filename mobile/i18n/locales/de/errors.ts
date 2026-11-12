@@ -139,4 +139,6 @@ export const errors = {
   clubMatchKickoff: "Wähle Datum und Anstoßzeit.",
   clubAwardTitle: "Gib der Auszeichnung einen Namen.",
   clubAwardLink: "Du kannst nur Personen aus deinen Kadern verknüpfen.",
+  sportNameInvalid: "Der Name der Sportart braucht 2 bis 40 Buchstaben.",
+  sportRequestLimit: "Du kannst 5-mal am Tag eine Sportart anfragen.",
 };

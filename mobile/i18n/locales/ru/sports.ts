@@ -42,6 +42,18 @@ export const sports = {
   anyPosition: 'Любая позиция',
   searchSports: 'Поиск вида спорта',
   noSportMatches: 'Нет подходящего вида спорта',
+  other: 'Другой вид спорта',
+  notListed: 'Моего вида спорта нет в списке',
+  requestName: 'Название вида спорта',
+  requestNote:
+    'Новые виды спорта проверяет наша команда, прежде чем они появятся в профиле. До решения в профиле указано «{{other}}».',
+  sendForReview: 'Отправить на проверку',
+  alreadyListed: '{{sport}} уже есть в списке.',
+  chooseThisSport: 'Выбрать {{sport}}',
+  requestWaiting: '{{name}} ждёт проверки',
+  pickListed: 'Выбрать вид спорта из списка',
+  requestRejected: 'Твою заявку на вид спорта не одобрили',
+  chooseSport: 'Выбрать вид спорта',
 
   position: {
     goalkeeper: 'Вратарь',

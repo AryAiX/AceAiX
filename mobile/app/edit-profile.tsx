@@ -32,7 +32,10 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import type { TabScrollable } from '@/hooks/useTabReselect';
 import { BirthDateForm } from '@/components/profile/BirthDateForm';
+import { RequestSportSheet } from '@/components/profile/RequestSportSheet';
+import { SportRequestNote } from '@/components/profile/SportRequestNote';
 import {
   addCustomCity,
   getMyChallengeViewer,
@@ -42,7 +45,13 @@ import {
   updateUserProfile,
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
-import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import {
+  mySportRequest,
+  removeOwnProfileImage,
+  syncFullName,
+  uploadAvatar,
+  uploadCover,
+} from '@/lib/api.profile';
 import {
   COVER_ASPECT,
   renderCoverCrop,
@@ -67,6 +76,7 @@ import {
   positionLabel,
   positionsFor,
   sideLabel,
+  isOtherSport,
   sportEmoji,
   sportLabel,
   sportMatchesQuery,
@@ -159,6 +169,11 @@ export default function EditProfileScreen() {
   );
   const [photoOpen, setPhotoOpen] = useState(false);
   const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
+  const [sportSheet, setSportSheet] = useState(false);
+  const [sportPrefill, setSportPrefill] = useState('');
+  const [sportOpenToken, setSportOpenToken] = useState(0);
+  const scrollNode = useRef<TabScrollable | null>(null);
+  const sportSectionY = useRef(0);
   const [alsoPlaysQuery, setAlsoPlaysQuery] = useState('');
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
@@ -233,6 +248,49 @@ export default function EditProfileScreen() {
       cancelled = true;
     };
   }, [focus, form, bundle.data, router]);
+
+  // A sport-request notification passes focus=sport. Scroll to the field and
+  // open the list once, then drop the param so a later visit stays closed.
+  const sportFocusHandled = useRef(false);
+  useEffect(() => {
+    if (sportFocusHandled.current) return;
+    if (focus !== 'sport' || !form || !bundle.data?.athlete) return;
+
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      sportFocusHandled.current = true;
+      const node = scrollNode.current;
+      if (node && 'scrollTo' in node) {
+        node.scrollTo({ y: Math.max(0, sportSectionY.current - 12), animated: true });
+      }
+      setSportOpenToken((n) => n + 1);
+      router.setParams({ focus: undefined });
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run);
+    else setTimeout(run, 300);
+    return () => {
+      cancelled = true;
+    };
+  }, [focus, form, bundle.data, router]);
+
+  const ownSportRequest = useAsync(() => mySportRequest(), [form?.sport], {
+    enabled: isOtherSport(form?.sport),
+    refetchOnFocus: true,
+  });
+
+  const selectSport = useCallback((key: string) => {
+    setForm((current) => {
+      if (!current || !key) return current;
+      if (key === current.sport && !isOtherSport(key)) return current;
+      return {
+        ...current,
+        sport: key,
+        position: '',
+        otherSports: current.otherSports.filter((entry) => entry.sport !== key),
+      };
+    });
+  }, []);
 
   const dirty = useMemo(
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),
@@ -514,6 +572,19 @@ export default function EditProfileScreen() {
   const hasAthlete = !!bundle.data?.athlete;
   const hasCoach = !!bundle.data?.coach;
   const positions = positionsFor(form.sport);
+  const catalogueSports = SPORTS.map((sport) => ({
+    key: sport.key,
+    label: sportLabel(t, sport.key),
+    emoji: sport.emoji,
+  }));
+  const sportKnown =
+    !form.sport || SPORTS.some((sport) => sport.key.toLowerCase() === form.sport.toLowerCase());
+  const sportOptions = sportKnown
+    ? catalogueSports
+    : [
+        { key: form.sport, label: sportLabel(t, form.sport), emoji: sportEmoji(form.sport) },
+        ...catalogueSports,
+      ];
   const alsoPlaysChoices = SPORTS.filter(
     (sport) =>
       sport.key !== form.sport &&
@@ -522,7 +593,14 @@ export default function EditProfileScreen() {
   );
 
   return (
-    <Screen header={header} keyboardAvoiding contentStyle={{ gap: spacing.xxl }}>
+    <Screen
+      header={header}
+      keyboardAvoiding
+      contentStyle={{ gap: spacing.xxl }}
+      scrollRef={(node) => {
+        scrollNode.current = node;
+      }}
+    >
       <Stack.Screen options={{ gestureEnabled: !dirty }} />
       {/* ── You ── */}
       <View style={{ marginTop: spacing.md }}>
@@ -785,9 +863,15 @@ export default function EditProfileScreen() {
       {hasAthlete ? (
         <>
           {/* ── Your sport ── */}
-          <View>
+          <View onLayout={(e) => { sportSectionY.current = e.nativeEvent.layout.y; }}>
             <SectionHeader title={t('profile.sectionSport')} />
             <View style={{ gap: spacing.md }}>
+              {isOtherSport(form.sport) ? (
+                <SportRequestNote
+                  request={ownSportRequest.data}
+                  onChoose={() => setSportOpenToken((n) => n + 1)}
+                />
+              ) : null}
               <Dropdown
                 required
                 searchable
@@ -795,29 +879,37 @@ export default function EditProfileScreen() {
                 emptyLabel={t('sports.noSportMatches')}
                 label={t('profile.sport')}
                 placeholder={t('profile.sportPlaceholder')}
-                options={SPORTS.map((sport) => ({
-                  key: sport.key,
-                  label: sportLabel(t, sport.key),
-                  emoji: sport.emoji,
-                }))}
+                openToken={sportOpenToken}
+                unlisted={{
+                  label: t('sports.notListed'),
+                  onPress: (typed) => {
+                    setSportPrefill(typed);
+                    setSportSheet(true);
+                  },
+                }}
+                options={sportOptions}
                 value={form.sport ? [form.sport] : []}
                 onChange={(next) => {
                   const key = next[0];
                   // Positions are sport-specific, so a sport change clears the old one.
                   // The new main sport also leaves the "also plays" list.
-                  if (!key || key === form.sport) return;
-                  setForm((current) =>
-                    current
-                      ? {
-                          ...current,
-                          sport: key,
-                          position: '',
-                          otherSports: current.otherSports.filter((entry) => entry.sport !== key),
-                        }
-                      : current,
-                  );
+                  if (key) selectSport(key);
                 }}
                 testID="edit-profile-sport"
+              />
+              <RequestSportSheet
+                visible={sportSheet}
+                initialName={sportPrefill}
+                onClose={() => setSportSheet(false)}
+                onSent={() => {
+                  selectSport('Other');
+                  setSportSheet(false);
+                  void ownSportRequest.reload();
+                }}
+                onSelectListed={(key) => {
+                  selectSport(key);
+                  setSportSheet(false);
+                }}
               />
 
               {positions.length > 0 ? (
