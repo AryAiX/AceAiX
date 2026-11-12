@@ -29,44 +29,12 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { AppNotification } from '@/types/models';
 
-/** One row: a notification, or one person's likes on several posts folded together. */
-interface Item {
-  n: AppNotification;
-  /** Every notification this row stands for (more than one when folded). */
-  ids: string[];
-  /** How many of your posts that person liked. */
-  postCount: number;
-}
-
 interface Section {
   title: string;
-  data: Item[];
+  data: AppNotification[];
 }
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * The same person liking several of your posts reads as one row ("liked 3 of
- * your posts"), kept where the newest of those likes sits.
- */
-function foldLikes(list: AppNotification[]): Item[] {
-  const out: Item[] = [];
-  const byActor = new Map<string, Item>();
-  for (const n of list) {
-    const foldable = n.type === 'like' && n.entity_type === 'post' && !!n.actor_id && n.actor_count <= 1;
-    const key = foldable ? (n.actor_id as string) : null;
-    const existing = key ? byActor.get(key) : undefined;
-    if (existing) {
-      existing.ids.push(n.id);
-      existing.postCount += 1;
-      continue;
-    }
-    const item: Item = { n, ids: [n.id], postCount: 1 };
-    if (key) byActor.set(key, item);
-    out.push(item);
-  }
-  return out;
-}
 
 export default function NotificationsScreen() {
   const theme = useTheme();
@@ -150,8 +118,8 @@ export default function NotificationsScreen() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          // Grouped likes and messages rewrite the same row. Marking it read
-          // must not reload the list out from under the person.
+          // A message, or an old grouped like, rewrites the same row. Marking
+          // it read must not reload the list out from under the person.
           const row = payload.new as { is_read?: boolean | null; read?: boolean | null };
           if (isUnreadNotification(row)) refreshRef.current();
         },
@@ -171,9 +139,9 @@ export default function NotificationsScreen() {
     const week = items.filter((n) => n.is_read && recent(n));
     const earlier = items.filter((n) => n.is_read && !recent(n));
     const out: Section[] = [];
-    if (fresh.length) out.push({ title: t('messaging.sectionNew'), data: foldLikes(fresh) });
-    if (week.length) out.push({ title: t('messaging.sectionThisWeek'), data: foldLikes(week) });
-    if (earlier.length) out.push({ title: t('messaging.sectionEarlier'), data: foldLikes(earlier) });
+    if (fresh.length) out.push({ title: t('messaging.sectionNew'), data: fresh });
+    if (week.length) out.push({ title: t('messaging.sectionThisWeek'), data: week });
+    if (earlier.length) out.push({ title: t('messaging.sectionEarlier'), data: earlier });
     return out;
   }, [items, t]);
 
@@ -186,16 +154,15 @@ export default function NotificationsScreen() {
   const follow = useFollowState();
 
   const open = useCallback(
-    (item: Item) => {
-      const notification = item.n;
+    (notification: AppNotification) => {
       const target = notificationTarget(notification);
       if (!target) return;
 
       if (!notification.is_read) {
         mutate((current) =>
-          current ? current.map((n) => (item.ids.includes(n.id) ? { ...n, is_read: true } : n)) : current,
+          current ? current.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)) : current,
         );
-        markNotificationsRead(item.ids).catch(() => {
+        markNotificationsRead([notification.id]).catch(() => {
           /* The bulk mark on leaving the screen catches this anyway. */
         });
       }
@@ -286,7 +253,7 @@ export default function NotificationsScreen() {
 
       <SectionList
         sections={waiting ? [] : sections}
-        keyExtractor={(item) => item.n.id}
+        keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
           <View
@@ -303,20 +270,18 @@ export default function NotificationsScreen() {
           </View>
         )}
         renderItem={({ item, index, section }) => {
-          const n = item.n;
-          const target = notificationTarget(n);
-          const actorId = n.actor_id;
+          const target = notificationTarget(item);
+          const actorId = item.actor_id;
           const following = actorId ? follow.isPersonFollowed(actorId) : false;
           return (
             <View style={{ paddingHorizontal: spacing.lg }}>
               <NotificationRow
-                notification={n}
+                notification={item}
                 grouped={groupedRowStyle(index, section.data.length, colors, theme.radii.xl)}
                 onPress={target ? () => open(item) : undefined}
-                postCount={item.postCount}
-                thumbUri={n.entity_type === 'post' && n.entity_id ? thumbs.data?.[n.entity_id] : null}
+                thumbUri={item.entity_type === 'post' && item.entity_id ? thumbs.data?.[item.entity_id] : null}
                 follow={
-                  n.type === 'follow' && actorId
+                  item.type === 'follow' && actorId
                     ? {
                         following,
                         pending: follow.pendingId === actorId,

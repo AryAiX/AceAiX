@@ -7,7 +7,14 @@
  * commit time on the event.
  */
 
-export const BANNER_COALESCE_MS = 150;
+/** How long one pop-up stays up. Same as the toast's own default. */
+export const BANNER_VISIBLE_MS = 3200;
+
+/** Quiet gap after one pop-up, before the next, so they read as separate. */
+export const BANNER_GAP_MS = 400;
+
+/** Pop-ups waiting behind the one on screen. Anything past this is counted. */
+export const BANNER_QUEUE_LIMIT = 5;
 
 const FRESH_MS = 3000;
 
@@ -69,7 +76,7 @@ function pathSegments(path: string): string[] {
 }
 
 /** The notifications list. Settings → Notifications ends in the same word and is not this screen. */
-function onNotificationsList(path: string): boolean {
+export function onNotificationsList(path: string): boolean {
   const parts = pathSegments(path);
   if (parts[parts.length - 1] !== 'notifications') return false;
   return parts[parts.length - 2] !== 'settings';
@@ -102,7 +109,7 @@ function parseServerTime(value: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Later of created_at and updated_at. Grouped likes rewrite both. */
+/** Later of created_at and updated_at. A rewritten row moves both. */
 function activityTimeMs(row: BannerRow): number | null {
   const created = parseServerTime(row.created_at);
   const updated = parseServerTime(row.updated_at);
@@ -132,24 +139,66 @@ export function shouldShowBanner(event: BannerEvent, ctx: BannerContext): Banner
 }
 
 /**
- * The event to keep when several showable rows arrive in one short burst.
- * Server activity time wins; the one that just arrived wins a tie.
+ * Pop-ups waiting to be shown, in arrival order, plus how many more arrived
+ * while the queue was already full. The one on screen is not in `waiting`.
  */
-export function newerBannerEvent(current: BannerEvent, incoming: BannerEvent): BannerEvent {
-  const currentActivity = activityTimeMs(current.row);
-  const incomingActivity = activityTimeMs(incoming.row);
-  if (currentActivity != null && incomingActivity != null && currentActivity !== incomingActivity) {
-    return incomingActivity > currentActivity ? incoming : current;
-  }
-  if (currentActivity == null && incomingActivity != null) return incoming;
-  if (incomingActivity == null && currentActivity != null) return current;
+export interface BannerQueue {
+  waiting: BannerEvent[];
+  overflow: number;
+}
 
-  const currentCommit = parseServerTime(current.commitTimestamp);
-  const incomingCommit = parseServerTime(incoming.commitTimestamp);
-  if (currentCommit != null && incomingCommit != null && currentCommit !== incomingCommit) {
-    return incomingCommit > currentCommit ? incoming : current;
+export type BannerTurn =
+  | { kind: 'event'; event: BannerEvent }
+  | { kind: 'summary'; count: number }
+  | { kind: 'idle' };
+
+export function emptyBannerQueue(): BannerQueue {
+  return { waiting: [], overflow: 0 };
+}
+
+/**
+ * Add a notification that has already passed the show checks.
+ *
+ * The same id already waiting is replaced where it stands, so an update does
+ * not become a second pop-up and does not lose its place. The id on screen
+ * is left out. Past five waiting, the rest are only counted.
+ */
+export function enqueueBanner(
+  queue: BannerQueue,
+  event: BannerEvent,
+  showingId?: string | null,
+): BannerQueue {
+  const id = event.row.id;
+  if (id && showingId && id === showingId) return queue;
+
+  if (id) {
+    const index = queue.waiting.findIndex((item) => item.row.id === id);
+    if (index >= 0) {
+      const waiting = queue.waiting.slice();
+      waiting[index] = event;
+      return { waiting, overflow: queue.overflow };
+    }
   }
-  return incoming;
+
+  if (queue.waiting.length >= BANNER_QUEUE_LIMIT) {
+    return { waiting: queue.waiting, overflow: queue.overflow + 1 };
+  }
+  return { waiting: [...queue.waiting, event], overflow: queue.overflow };
+}
+
+/**
+ * The next pop-up. Events come out in the order they joined. When nothing
+ * is waiting, the overflow count is one summary, and then the queue is idle.
+ */
+export function dequeueBanner(queue: BannerQueue): { queue: BannerQueue; turn: BannerTurn } {
+  if (queue.waiting.length > 0) {
+    const [event, ...waiting] = queue.waiting;
+    return { queue: { waiting, overflow: queue.overflow }, turn: { kind: 'event', event } };
+  }
+  if (queue.overflow > 0) {
+    return { queue: emptyBannerQueue(), turn: { kind: 'summary', count: queue.overflow } };
+  }
+  return { queue, turn: { kind: 'idle' } };
 }
 
 function asString(value: unknown): string | null {

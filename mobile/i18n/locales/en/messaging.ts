@@ -173,6 +173,8 @@ export const messaging = {
   sectionThisWeek: 'This week',
   likedYourPosts_one: '{{name}} liked {{count}} of your posts',
   likedYourPosts_other: '{{name}} liked {{count}} of your posts',
+  moreNotifications_one: '+{{count}} more notification',
+  moreNotifications_other: '+{{count}} more notifications',
   sectionEarlier: 'Earlier',
   markAllRead: 'Mark all read',
   markAllReadA11y_one: 'Mark {{count}} notification as read',
