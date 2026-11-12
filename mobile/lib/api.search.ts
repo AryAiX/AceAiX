@@ -35,8 +35,10 @@ export async function searchPosts(term: string, page = 0): Promise<PostHit[]> {
   let request = supabase.from('posts').select('id, caption, media, created_at');
 
   if (tag) {
-    /* ( ) : in the regex are PostgREST syntax unless the value is quoted. */
-    request = request.filter('caption', 'imatch', `"${hashtagPattern(tag)}"`);
+    /* No quotes. PostgREST would keep them as part of the pattern on a plain
+       column filter. Brackets and parentheses only need quoting inside or/and
+       filters. */
+    request = request.filter('caption', 'imatch', hashtagPattern(tag));
   } else {
     /* % and _ are wildcards to ILIKE, and , ( ) would break the filter string. */
     const clean = term.replace(/[%_,()\\]/g, ' ').replace(/\s+/g, ' ').trim();
