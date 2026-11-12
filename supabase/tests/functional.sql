@@ -9356,10 +9356,10 @@ begin
     and v_approved = any(v_ids)
     and (
       select count(*)
-      from unnest(v_ids) id
-      join public.user_profiles up on up.id = id
+      from unnest(v_ids) as t(member_id)
+      join public.user_profiles up on up.id = t.member_id
       where not up.is_minor
-        and id <> v_viewer
+        and t.member_id <> v_viewer
     ) = 130
     and (select count(*) from public.talent_leaderboard('Qxball', null, 100)) = 100,
     '132 athletes come back: 130 adults, the approved minor and the viewer, past the old 100 cap');
@@ -9369,7 +9369,7 @@ begin
     'the ranks are exactly 1 to 132');
 
   perform tests.ok(
-    (select count(distinct id) from unnest(v_ids) id) = 132,
+    (select count(distinct t.member_id) from unnest(v_ids) as t(member_id)) = 132,
     'nobody repeats');
 
   perform tests.ok(
