@@ -124,6 +124,7 @@ export const profile = {
 
   // ── 高光标签页（components/profile/HighlightsTab.tsx） ─────────────────────
   photoPermission: 'AceAiX 需要访问相册的权限。',
+  clipTooLong: '精选短片不能超过 {{seconds}} 秒。',
 
   noHighlightsTitle: '精选里还没有内容',
   noHighlightsBody: '精选是运动员资料的一部分。',

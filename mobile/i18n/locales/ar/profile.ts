@@ -137,6 +137,7 @@ export const profile = {
 
   // ── تبويب أبرز اللقطات (components/profile/HighlightsTab.tsx) ─────────────
   photoPermission: 'يحتاج AceAiX إلى إذن لفتح صورك.',
+  clipTooLong: 'يجب ألا يزيد طول مقاطع المعرض على {{seconds}} ثانية.',
 
   noHighlightsTitle: 'لا مقاطع في المعرض',
   noHighlightsBody: 'المعرض جزء من ملف اللاعب.',

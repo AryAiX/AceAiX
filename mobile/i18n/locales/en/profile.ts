@@ -129,6 +129,7 @@ export const profile = {
 
   // ── Highlights tab (components/profile/HighlightsTab.tsx) ──────────────────
   photoPermission: 'AceAiX needs permission to open your photos.',
+  clipTooLong: 'Showcase clips need to be {{seconds}} seconds or shorter.',
 
   noHighlightsTitle: 'No Showcase clips here',
   noHighlightsBody: 'The Showcase is part of an athlete profile.',

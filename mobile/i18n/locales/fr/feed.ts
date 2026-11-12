@@ -188,6 +188,7 @@ export const feed = {
   mediaCount: '{{used}}/{{max}}',
   photoPermission:
     'AceAiX a besoin de ta permission pour ouvrir tes photos. Active-la dans les réglages.',
+  videoTooLong: 'Les vidéos doivent durer {{minutes}} minutes au maximum.',
   posted: 'Publié',
   tagPeople: 'Identifier des personnes',
   tagPeopleAdd: 'Ajouter',

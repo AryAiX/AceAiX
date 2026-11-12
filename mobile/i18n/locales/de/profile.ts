@@ -129,6 +129,7 @@ export const profile = {
 
   // ── Highlights (components/profile/HighlightsTab.tsx) ──────────────────────
   photoPermission: 'AceAiX braucht die Erlaubnis, deine Fotos zu öffnen.',
+  clipTooLong: 'Clips in der Vitrine dürfen höchstens {{seconds}} Sekunden lang sein.',
 
   noHighlightsTitle: 'Noch nichts in der Vitrine',
   noHighlightsBody: 'Die Vitrine gehört zu einem Sportlerprofil.',

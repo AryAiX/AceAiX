@@ -170,6 +170,7 @@ export const feed = {
   mediaCount: '{{used}}/{{max}}',
   photoPermission:
     'AceAiX 需要访问相册的权限。请在系统设置里打开。',
+  videoTooLong: '视频不能超过 {{minutes}} 分钟。',
   posted: '已发布',
   tagPeople: '标记人物',
   tagPeopleAdd: '添加',

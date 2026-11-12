@@ -173,7 +173,9 @@ export default function ComposeScreen() {
         asset.duration / 1000 > MAX_POST_VIDEO_SECONDS,
     );
     if (tooLong) {
-      toast.error('Videos need to be 3 minutes or shorter.');
+      toast.error(
+        t('feed.videoTooLong', { minutes: Math.round(MAX_POST_VIDEO_SECONDS / 60) }),
+      );
       return;
     }
 

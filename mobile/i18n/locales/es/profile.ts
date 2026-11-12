@@ -135,6 +135,7 @@ export const profile = {
 
   // ── Pestaña de destacados (components/profile/HighlightsTab.tsx) ───────────
   photoPermission: 'AceAiX necesita permiso para abrir tus fotos.',
+  clipTooLong: 'Los clips de la vitrina tienen que durar {{seconds}} segundos como máximo.',
 
   noHighlightsTitle: 'Aún no hay nada en la vitrina',
   noHighlightsBody: 'La vitrina forma parte del perfil de un deportista.',

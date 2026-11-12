@@ -211,6 +211,7 @@ export const feed = {
   mediaCount: '{{used}}/{{max}}',
   photoPermission:
     'يحتاج AceAiX إلى إذن لفتح صورك. فعّله من الإعدادات.',
+  videoTooLong: 'يجب ألا يزيد طول الفيديو على {{minutes}} دقائق.',
   posted: 'نُشر',
   tagPeople: 'وسم أشخاص',
   tagPeopleAdd: 'إضافة',

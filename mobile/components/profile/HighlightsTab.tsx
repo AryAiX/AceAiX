@@ -138,7 +138,7 @@ export function HighlightsTab({
         durationSeconds &&
         durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
       ) {
-        toast.error('Showcase clips need to be 90 seconds or shorter.');
+        toast.error(t('profile.clipTooLong', { seconds: MAX_HIGHLIGHT_VIDEO_SECONDS }));
         return;
       }
       setPicked({

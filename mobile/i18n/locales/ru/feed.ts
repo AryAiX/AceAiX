@@ -195,6 +195,7 @@ export const feed = {
   mediaCount: '{{used}}/{{max}}',
   photoPermission:
     'AceAiX нужен доступ к твоим фото. Включи его в настройках телефона.',
+  videoTooLong: 'Видео должно быть не длиннее {{minutes}} минут.',
   posted: 'Опубликовано',
   tagPeople: 'Отметить людей',
   tagPeopleAdd: 'Добавить',

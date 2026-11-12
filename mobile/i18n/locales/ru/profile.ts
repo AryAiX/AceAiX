@@ -135,6 +135,7 @@ export const profile = {
 
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',
+  clipTooLong: 'Клипы витрины должны быть не длиннее {{seconds}} секунд.',
 
   noHighlightsTitle: 'В витрине пока пусто',
   noHighlightsBody: 'Витрина есть только в профиле спортсмена.',
