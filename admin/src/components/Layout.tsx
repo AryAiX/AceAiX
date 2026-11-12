@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  BadgeCheck, CalendarClock, Compass, Flag, Handshake, Images, LayoutDashboard, LogOut, MapPin, ScrollText, ShieldCheck, UserPlus, Users,
+  BadgeCheck, CalendarClock, Compass, Flag, Handshake, Images, LayoutDashboard, LogOut, MapPin, Medal, ScrollText, ShieldCheck, UserPlus, Users,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -10,11 +10,17 @@ import { Avatar, cx } from './ui';
 export function Layout() {
   const { me, signOut } = useAuth();
   const { data: d } = useQuery({ queryKey: ['dashboard'], queryFn: api.dashboard, refetchInterval: 60_000 });
+  const { data: waitingSports } = useQuery({
+    queryKey: ['sport-requests', 'pending'],
+    queryFn: () => api.sportRequests('pending'),
+    refetchInterval: 60_000,
+  });
 
   const nav = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/reports', label: 'Reports', icon: Flag, count: d?.open_reports, urgent: (d?.urgent_reports ?? 0) > 0 },
     { to: '/approvals', label: 'Account approval', icon: BadgeCheck, count: (d?.pending_verifications ?? 0) + (d?.unverified_pros ?? 0) },
+    { to: '/sport-requests', label: 'Sport requests', icon: Medal, count: waitingSports?.length },
     { to: '/content', label: 'Content', icon: Images, count: d?.content_under_review },
     { to: '/users', label: 'Users', icon: Users },
     { to: '/youth-safety', label: 'Youth safety', icon: ShieldCheck, count: d?.minors_without_consent },

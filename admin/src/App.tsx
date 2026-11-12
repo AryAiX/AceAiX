@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ReportsPage from './pages/ReportsPage';
 import ApprovalsPage from './pages/ApprovalsPage';
+import SportRequestsPage from './pages/SportRequestsPage';
 import ContentPage from './pages/ContentPage';
 import UsersPage from './pages/UsersPage';
 import UserDetailPage from './pages/UserDetailPage';
@@ -40,6 +41,7 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
+        <Route path="sport-requests" element={<SportRequestsPage />} />
         <Route path="content" element={<ContentPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="users/:id" element={<UserDetailPage />} />
