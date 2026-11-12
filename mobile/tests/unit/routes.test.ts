@@ -221,5 +221,7 @@ describe('Routes', () => {
     });
     expect(Routes.followers('u1')).toBe('/u/u1/followers');
     expect(Routes.following('u1')).toBe('/u/u1/following');
+    expect(Routes.searchHashtag('u16')).toBe('/search?q=%23u16&tab=posts');
+    expect(Routes.searchHashtag('كرة')).toBe(`/search?q=${encodeURIComponent('#كرة')}&tab=posts`);
   });
 });

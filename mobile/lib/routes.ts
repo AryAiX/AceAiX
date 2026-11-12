@@ -25,6 +25,9 @@ export const Routes = {
   notifications: '/notifications' as const,
   inbox: '/inbox' as const,
   search: '/search' as const,
+  /** Posts search for one hashtag. `#` is encoded so it stays in the query. */
+  searchHashtag: (tag: string) =>
+    `/search?q=${encodeURIComponent(`#${tag}`)}&tab=posts` as unknown as Href,
   /** One of the athlete's playbooks (saved folders, kept on the phone). */
   playbook: (id: string) => ({ pathname: '/playbook/[id]', params: { id } }) as unknown as Href,
   /** One side of the athlete's Discover on its own page. */

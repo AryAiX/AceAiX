@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Clock, Search } from 'lucide-react-native';
 
@@ -20,6 +20,17 @@ import type { DiscoveryFilters } from '@/types/models';
    (clubs, trials, challenges, meetups, sponsors) shows on All with a
    "See all" into its own page. */
 type Tab = 'all' | 'people' | 'posts';
+
+/** `useLocalSearchParams` may hand a string or a one-element list. */
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.find((item) => typeof item === 'string');
+  return undefined;
+}
+
+function isSearchTab(value: string | undefined): value is Tab {
+  return value === 'all' || value === 'people' || value === 'posts';
+}
 
 const RECENTS_KEY = 'aceaix.recent-searches';
 const MAX_RECENTS = 8;
@@ -53,10 +64,16 @@ export default function SearchScreen() {
   const t = useT();
   const { colors, spacing } = theme;
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string | string[]; tab?: string | string[] }>();
+  /* A hashtag tap opens this screen with the tag and the Posts tab already
+     set. The debounced word starts as that query, so results do not wait.
+     With neither param, this is the same empty search as before. */
+  const openingQuery = firstParam(params.q) ?? '';
+  const openingTab = firstParam(params.tab);
 
-  const [tab, setTab] = useState<Tab>('all');
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [tab, setTab] = useState<Tab>(isSearchTab(openingTab) ? openingTab : 'all');
+  const [query, setQuery] = useState(openingQuery);
+  const [debounced, setDebounced] = useState(openingQuery.trim());
   const [recents, setRecents] = useState<string[]>([]);
   const [peopleKind, setPeopleKind] = useState<PeopleKind>('athletes');
   const [peopleFilters, setPeopleFilters] = useState<DiscoveryFilters>({});
