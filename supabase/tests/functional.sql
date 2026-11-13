@@ -9927,4 +9927,104 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Hashtag suggestions while typing (QA-185).
+-- Fresh accounts only (7f0d0000): an author and a viewer.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── hashtag suggestions while typing ──'; end $$;
+
+do $$
+declare
+  v_author uuid := '7f0d0000-0000-4000-8000-000000000001';
+  v_viewer uuid := '7f0d0000-0000-4000-8000-000000000002';
+  v_edited uuid;
+  v_tags   text[];
+  v_counts integer[];
+  v_denied boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author, 'qa185.author@test.local', '{"full_name":"QA185 Author","role":"athlete"}'),
+    (v_viewer, 'qa185.viewer@test.local', '{"full_name":"QA185 Viewer","role":"athlete"}');
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+
+  insert into public.posts (author_id, type, caption, audience) values
+    (v_author, 'standard', 'Day one #Qzbaby', 'public'),
+    (v_author, 'standard', 'Again #qzbaby #qzbabygym', 'public'),
+    (v_author, 'standard', 'x#qzbabynot is not a tag', 'public'),
+    (v_author, 'standard', '#qzbabysecret', 'followers');
+
+  insert into public.posts (author_id, type, caption, audience, is_hidden) values
+    (v_author, 'standard', '#qzbabyhidden', 'public', true);
+
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', '#qzbefore', 'public')
+  returning id into v_edited;
+
+  reset role;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.tag order by s.ordinality), '{}'::text[]),
+         coalesce(array_agg(s.post_count order by s.ordinality), '{}'::integer[])
+    into v_tags, v_counts
+  from public.hashtag_suggestions('#QZba') with ordinality as s;
+
+  perform tests.ok(
+    v_tags = array['qzbaby', 'qzbabygym']::text[]
+    and v_counts = array[2, 1]::integer[],
+    'hashtag_suggestions(''#QZba'') returns qzbaby with 2 posts, then qzbabygym with 1');
+
+  perform tests.ok(
+    not exists (select 1 from public.hashtag_suggestions('qzbabysecret') where tag = 'qzbabysecret')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabyhidden') where tag = 'qzbabyhidden')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabynot') where tag = 'qzbabynot'),
+    'qzbabysecret, qzbabyhidden and qzbabynot are never suggested');
+
+  perform tests.ok(
+    (select s.post_count from public.hashtag_suggestions('qzbefore') s where s.tag = 'qzbefore') = 1,
+    'qzbefore is suggested before the edit');
+
+  reset role;
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  update public.posts
+     set caption = '#qzafter'
+   where id = v_edited;
+  reset role;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  perform tests.ok(
+    not exists (select 1 from public.hashtag_suggestions('qzbefore') where tag = 'qzbefore')
+    and (select s.post_count from public.hashtag_suggestions('qzafter') s where s.tag = 'qzafter') = 1,
+    'after the edit, qzbefore is gone and qzafter is there');
+
+  perform tests.ok(
+    not exists (select 1 from public.hashtag_suggestions('#'))
+    and not exists (select 1 from public.hashtag_suggestions('q_%')),
+    '''#'' alone and ''q_%'' return nothing');
+
+  reset role;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.hashtag_suggestions('#QZba');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.hashtag_suggestions(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.hashtag_suggestions(text, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
