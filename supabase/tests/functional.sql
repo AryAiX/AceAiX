@@ -9859,4 +9859,72 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- A tap on a club account opens its page (QA-183).
+-- Fresh accounts only (7f0c0000): a club account owning a
+-- club page, a coach owning an academy page, a club account
+-- with no page, and a viewer.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a tap on a club account opens its page ──'; end $$;
+
+do $$
+declare
+  v_club      uuid := '7f0c0000-0000-4000-8000-000000000001';
+  v_coach     uuid := '7f0c0000-0000-4000-8000-000000000002';
+  v_nopage    uuid := '7f0c0000-0000-4000-8000-000000000003';
+  v_viewer    uuid := '7f0c0000-0000-4000-8000-000000000004';
+  v_club_page uuid;
+  v_academy   uuid;
+  v_page      uuid;
+  v_coach_page uuid;
+  v_none      uuid;
+  v_denied    boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_club, 'qa183.club@test.local', '{"full_name":"QA183 Club","role":"club"}'),
+    (v_coach, 'qa183.coach@test.local', '{"full_name":"QA183 Coach","role":"coach"}'),
+    (v_nopage, 'qa183.nopage@test.local', '{"full_name":"QA183 Club No Page","role":"club"}'),
+    (v_viewer, 'qa183.viewer@test.local', '{"full_name":"QA183 Viewer","role":"athlete"}');
+
+  insert into public.organizations (name, type)
+  values ('QA183 Club Page', 'club')
+  returning id into v_club_page;
+  insert into public.organizations (name, type)
+  values ('QA183 Academy Page', 'academy')
+  returning id into v_academy;
+
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_club_page, v_club, 'owner', 'active'),
+    (v_academy, v_coach, 'owner', 'active');
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  v_page := public.club_page_of(v_club);
+  v_coach_page := public.club_page_of(v_coach);
+  v_none := public.club_page_of(v_nopage);
+
+  reset role;
+
+  perform tests.ok(v_page = v_club_page, 'the club account returns its page id');
+  perform tests.ok(v_coach_page is null, 'the coach returns null');
+  perform tests.ok(v_none is null, 'the club without a page returns null');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform public.club_page_of(v_club);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.club_page_of(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.club_page_of(uuid)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
