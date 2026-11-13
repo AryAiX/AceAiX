@@ -13,6 +13,7 @@ import {
   Plus,
   Sparkles,
   Users,
+  X,
 } from 'lucide-react-native';
 import { dayRange, shortDay } from '@/lib/format';
 
@@ -20,6 +21,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { useTabReselect } from '@/hooks/useTabReselect';
 import {
   Button,
+  ChoiceRow,
   Dropdown,
   EmptyState,
   ErrorState,
@@ -264,6 +266,16 @@ export default function MeetupsScreen() {
 
   const sportName = sport ? sportLabel(t, sport) : t('meetups.anySport');
   const whenName = windows.find((w) => w.value === when)?.label ?? t('meetups.anyDate');
+  /* A filter is on once a place has been applied, a sport is chosen, or the
+     date is narrower than every upcoming game. Typing a place does not count
+     until it is applied. */
+  const filtersOn = applied.length > 0 || sport !== null || when !== 'any';
+  const clearFilters = () => {
+    setPlace('');
+    setApplied('');
+    setSport(null);
+    setWhen('any');
+  };
 
   /** One labelled cell of the search card: a small caps label over a value. */
   const cell = (label: string, value: string, onPress: () => void, testID: string) => (
@@ -344,6 +356,31 @@ export default function MeetupsScreen() {
           </View>
         </View>
 
+        {filtersOn ? (
+          <Pressable
+            onPress={clearFilters}
+            accessibilityRole="button"
+            accessibilityLabel={t('meetups.clearFilters')}
+            testID="meetups-clear"
+            style={({ pressed }) => ({
+              alignSelf: 'flex-end',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              minHeight: 44,
+              paddingHorizontal: spacing.md,
+              marginTop: spacing.sm,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <X size={15} color={colors.primary} strokeWidth={2.4} />
+            <Text variant="captionStrong" color={colors.primary}>
+              {t('meetups.clearFilters')}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <Sheet
           visible={picking !== null}
           onClose={() => setPicking(null)}
@@ -351,6 +388,19 @@ export default function MeetupsScreen() {
         >
           {picking === 'sport' ? (
             <View style={{ paddingBottom: spacing.sm }}>
+              {/* The shared sport list has no empty choice, so this row sits
+                  above it and clears only the sport. */}
+              <View style={{ marginBottom: spacing.sm }}>
+                <ChoiceRow
+                  label={t('meetups.anySport')}
+                  on={sport === null}
+                  onPress={() => {
+                    setSport(null);
+                    setPicking(null);
+                  }}
+                  testID="meetups-sport-any"
+                />
+              </View>
               {/* The same dropdown as every other sport filter. Meetup search
                   takes one sport, so picking one closes the sheet. */}
               <Dropdown
@@ -502,11 +552,13 @@ export default function MeetupsScreen() {
           ) : (
             <EmptyState
               icon={<Users size={26} color={colors.textMuted} />}
-              title={t(applied || sport ? 'meetups.emptySearchTitle' : 'meetups.emptyTitle')}
-              body={t(applied || sport ? 'meetups.emptySearchBody' : 'meetups.emptyBody')}
+              title={t(filtersOn ? 'meetups.emptySearchTitle' : 'meetups.emptyTitle')}
+              body={t(filtersOn ? 'meetups.emptySearchBody' : 'meetups.emptyBody')}
               actionLabel={t('meetups.emptyAction')}
-              style={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
               onAction={() => router.push(Routes.newMeetup)}
+              secondaryLabel={filtersOn ? t('discover.clearFilters') : undefined}
+              onSecondary={filtersOn ? clearFilters : undefined}
+              style={{ paddingTop: spacing.sm, paddingBottom: spacing.lg }}
             />
           )
         }
