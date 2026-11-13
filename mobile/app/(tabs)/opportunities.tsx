@@ -26,7 +26,7 @@ import {
   Header,
   Input,
   Screen,
-  SegmentedControl,
+  TextTabs,
   Sheet,
   SkeletonList,
   Tappable,
@@ -95,9 +95,8 @@ function trialTypeMatches(actual: string | null | undefined, wanted: string): bo
 
 // ── Athlete ───────────────────────────────────────────────────────────────────
 /**
- * Open · Saved · Applied as text tabs with an underline under the open one,
- * over a hairline — the same light tabs as Profile, so Trials reads as pages
- * of one board rather than a setting.
+ * Open · Saved · Applied as equal text tabs. The open one carries the flame
+ * underline across its whole share, over the hairline.
  */
 function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: AthleteTab) => void }) {
   const t = useT();
@@ -114,7 +113,7 @@ function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: Ath
       testID="opportunities-tabs"
       style={{
         flexDirection: 'row',
-        gap: spacing.xl,
+        alignSelf: 'stretch',
         borderBottomWidth: 1,
         borderBottomColor: colors.divider,
       }}
@@ -130,16 +129,31 @@ function TrialTabs({ value, onChange }: { value: AthleteTab; onChange: (tab: Ath
             accessibilityLabel={opt.label}
             testID={`opportunities-tabs-${opt.value}`}
             hitSlop={{ top: 8, bottom: 0, left: 8, right: 8 }}
-            style={{ paddingVertical: spacing.sm, minHeight: 40, justifyContent: 'center' }}
+            style={{
+              flex: 1,
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.xs,
+              minHeight: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <Text variant="bodyStrong" color={active ? colors.text : colors.textMuted}>
+            <Text
+              variant="bodyStrong"
+              color={active ? colors.text : colors.textMuted}
+              align="center"
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={{ width: '100%' }}
+            >
               {opt.label}
             </Text>
             <View
               style={{
                 position: 'absolute',
-                left: 0,
-                right: 0,
+                start: 0,
+                end: 0,
                 bottom: -1,
                 height: 2,
                 borderRadius: 1,
@@ -777,13 +791,14 @@ function RecruiterOpportunities() {
   const recruiterListRef = useTabReselect(() => (tab === 'postings' ? postings.reload() : applicants.reload()));
 
   const segmented = (
-    <SegmentedControl<RecruiterTab>
+    <TextTabs<RecruiterTab>
       value={tab}
       onChange={setTab}
       options={[
         { value: 'postings', label: t('opportunities.tabs.postings') },
         { value: 'applicants', label: t('opportunities.tabs.applicants') },
       ]}
+      color={LogoColors.flame}
       testID="opportunities-tabs"
     />
   );

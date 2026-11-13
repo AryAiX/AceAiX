@@ -7,8 +7,9 @@ import { Text } from './Text';
 /**
  * Text tabs with an underline under the open one, over a hairline.
  *
- * Lighter than a switch, so a screen's tabs read as pages of one list rather
- * than as a setting. `color` paints the underline; it defaults to cobalt.
+ * Each tab takes an equal share of the width and centres its label. A long
+ * label wraps onto a second line, or shrinks slightly, instead of being cut
+ * off. `color` paints the underline; it defaults to cobalt.
  */
 export function TextTabs<T extends string>({
   options,
@@ -32,7 +33,7 @@ export function TextTabs<T extends string>({
       testID={testID}
       style={{
         flexDirection: 'row',
-        gap: spacing.xl,
+        alignSelf: 'stretch',
         borderBottomWidth: 1,
         borderBottomColor: colors.divider,
       }}
@@ -48,17 +49,32 @@ export function TextTabs<T extends string>({
             accessibilityLabel={opt.label}
             testID={testID ? `${testID}-${opt.value}` : undefined}
             hitSlop={{ top: 8, bottom: 0, left: 8, right: 8 }}
-            style={{ paddingVertical: spacing.sm, minHeight: 40, justifyContent: 'center' }}
+            style={{
+              flex: 1,
+              paddingVertical: spacing.sm,
+              paddingHorizontal: spacing.xs,
+              minHeight: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
           >
-            <Text variant="bodyStrong" color={active ? colors.text : colors.textMuted}>
+            <Text
+              variant="bodyStrong"
+              color={active ? colors.text : colors.textMuted}
+              align="center"
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={{ width: '100%' }}
+            >
               {opt.label}
             </Text>
-            {/* The underline sits on the hairline, so it reads as part of it. */}
+            {/* The underline sits on the hairline and spans this tab. */}
             <View
               style={{
                 position: 'absolute',
-                left: 0,
-                right: 0,
+                start: 0,
+                end: 0,
                 bottom: -1,
                 height: 2,
                 borderRadius: 1,

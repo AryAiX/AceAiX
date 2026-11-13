@@ -388,14 +388,14 @@ export default function SavedScreen() {
           <NewPlaybookTile onPress={() => setCreating(true)} />
         </ScrollView>
 
-        {/* Four tabs can outgrow a small phone in some languages, so they scroll. */}
+        {/* The tabs share the width. A long label wraps inside its share. */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={{ marginTop: spacing.lg }}
           contentContainerStyle={{ flexGrow: 1 }}
         >
-          <View style={{ flexGrow: 1 }}>
+          <View style={{ flexGrow: 1, minWidth: '100%' }}>
             <TextTabs<Tab>
               options={[
                 { value: 'all', label: `${t('feed.playbooks.all')} ${total}` },
