@@ -54,6 +54,7 @@ interface Skin {
     | 'success'
     | 'warning'
     | 'danger'
+    | 'like'
     | 'textSecondary';
 }
 
@@ -62,7 +63,7 @@ function skinFor(type: NotificationType): Skin {
     case 'follow':
       return { Icon: UserPlus, tint: 'info' };
     case 'like':
-      return { Icon: Heart, tint: 'danger' };
+      return { Icon: Heart, tint: 'like' };
     case 'comment':
     case 'reply':
       return { Icon: MessageCircle, tint: 'primary' };

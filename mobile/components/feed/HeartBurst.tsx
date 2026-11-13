@@ -149,7 +149,7 @@ export function HeartBurst({ trigger, size = 104 }: Props) {
         <Heart
           size={size}
           color={theme.colors.textOnBrand}
-          fill={theme.colors.primary}
+          fill={theme.colors.like}
           strokeWidth={1.4}
         />
       </Animated.View>

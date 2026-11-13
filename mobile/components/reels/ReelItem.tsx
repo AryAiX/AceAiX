@@ -490,8 +490,8 @@ function LikeButton({
         <Animated.View style={{ transform: [{ scale: pop }] }}>
           <Heart
             size={28}
-            color={liked ? theme.colors.primary : ON_VIDEO}
-            fill={liked ? theme.colors.primary : 'transparent'}
+            color={liked ? theme.colors.like : ON_VIDEO}
+            fill={liked ? theme.colors.like : 'transparent'}
             strokeWidth={2}
           />
         </Animated.View>

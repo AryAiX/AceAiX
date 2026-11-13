@@ -320,6 +320,8 @@ export interface Palette {
   warning: string;
   warningSoft: string;
   danger: string;
+  /** The colour of a liked heart, kept apart from danger so errors and likes can be tuned separately. */
+  like: string;
   dangerSoft: string;
 
   // Utility
@@ -383,6 +385,8 @@ const light: Palette = {
   warning: '#D9820B',
   warningSoft: '#FDF1DC',
   danger: '#D92D3F',
+  /** The colour of a liked heart, kept apart from danger so errors and likes can be tuned separately. */
+  like: '#E8294B',
   dangerSoft: '#FCE9EB',
 
   skeleton: '#E9E6F7',
@@ -447,6 +451,8 @@ const dark: Palette = {
   warning: '#FFC048',
   warningSoft: 'rgba(255,192,72,0.18)',
   danger: '#FF8A7A',
+  /** The colour of a liked heart, kept apart from danger so errors and likes can be tuned separately. */
+  like: '#FF4D67',
   dangerSoft: 'rgba(255,138,122,0.18)',
 
   skeleton: '#353B4A',

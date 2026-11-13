@@ -171,15 +171,15 @@ export function PostActions({
                 height: ICON + 8,
                 borderRadius: (ICON + 8) / 2,
                 borderWidth: 2,
-                borderColor: colors.primary,
+                borderColor: colors.like,
                 opacity: ping.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.7, 0] }),
                 transform: [{ scale: ping.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.9] }) }],
               }}
             />
             <Heart
               size={ICON}
-              color={liked ? colors.primary : colors.textSecondary}
-              fill={liked ? colors.primary : 'transparent'}
+              color={liked ? colors.like : colors.textSecondary}
+              fill={liked ? colors.like : 'transparent'}
               strokeWidth={liked ? 2.4 : 1.9}
             />
           </Animated.View>
