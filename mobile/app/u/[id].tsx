@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EyeOff, ShieldBan, UserX } from 'lucide-react-native';
@@ -22,10 +22,12 @@ import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { useAsync } from '@/hooks/useAsync';
 import { getProfile, unblockUser } from '@/lib/api';
+import { clubPageOf } from '@/lib/api.club';
 import { didIBlock } from '@/lib/api.profile';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { errorMessage } from '@/lib/errors';
+import { Routes } from '@/lib/routes';
 import { useT } from '@/i18n';
 
 /** A route param is only usable when it is a single, plausible user id. */
@@ -57,6 +59,35 @@ export default function PublicProfileScreen() {
     enabled: !!userId,
     refetchOnFocus: true,
   });
+
+  /* A club account's page is the real profile. Resolve it before painting
+     this screen, then replace so Back returns to where the tap came from.
+     No page, or a failed lookup, leaves this profile as it is. Own profile,
+     and every role other than club, never asks. */
+  const isClubAccount =
+    bundle.data?.user?.role === 'club' && bundle.data.viewer?.is_self !== true;
+  const [clubLookup, setClubLookup] = useState<{ userId: string; pageId: string | null } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!userId || !isClubAccount) return;
+    let cancelled = false;
+    clubPageOf(userId).then((pageId) => {
+      if (!cancelled) setClubLookup({ userId, pageId });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, isClubAccount]);
+
+  const clubPageKnown = clubLookup?.userId === userId;
+  const clubPageId = clubPageKnown ? clubLookup.pageId : null;
+
+  useEffect(() => {
+    if (!clubPageId) return;
+    router.replace(Routes.organization(clubPageId));
+  }, [clubPageId, router]);
 
   const iBlocked = useAsync(
     () => didIBlock(userId as string),
@@ -99,7 +130,9 @@ export default function PublicProfileScreen() {
     );
   }
 
-  if (bundle.loading && !bundle.data) {
+  /* Hold the skeleton until a club page is known, so the person profile
+     does not flash before the replacement. */
+  if ((bundle.loading && !bundle.data) || (isClubAccount && (!clubPageKnown || !!clubPageId))) {
     return (
       <Screen header={<Header back title={t('profile.title')} />}>
         <SkeletonList count={3} />
