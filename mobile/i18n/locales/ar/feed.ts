@@ -34,6 +34,12 @@ export const feed = {
   photoLibrary: 'مكتبة الصور',
   mediaOf: '{{current}} من {{total}}',
   captionPlaceholder: 'اكتب وصفًا… أشِر إلى أشخاص بـ @',
+  hashtagPostCount_zero: 'لا منشورات',
+  hashtagPostCount_one: 'منشور واحد',
+  hashtagPostCount_two: 'منشوران',
+  hashtagPostCount_few: '{{count}} منشورات',
+  hashtagPostCount_many: '{{count}} منشورًا',
+  hashtagPostCount_other: '{{count}} منشور',
   postTo: 'انشر لـ {{audience}}',
 
   messages: 'الرسائل',

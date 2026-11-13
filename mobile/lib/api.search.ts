@@ -63,6 +63,35 @@ export async function searchPosts(term: string, page = 0): Promise<PostHit[]> {
  * row rules as everything else, so a post the viewer may not see simply has
  * no picture.
  */
+export interface HashtagSuggestion {
+  tag: string;
+  post_count: number;
+}
+
+/**
+ * Hashtags that already appear on public posts, for the list shown while
+ * someone is typing `#`. A failure is an empty list: the caption can still
+ * be written, and a hashtag is plain text, not a person.
+ */
+export async function hashtagSuggestions(prefix: string): Promise<HashtagSuggestion[]> {
+  try {
+    const { data, error } = await supabase.rpc('hashtag_suggestions', {
+      p_prefix: prefix,
+    });
+    if (error || !Array.isArray(data)) return [];
+    const rows: HashtagSuggestion[] = [];
+    for (const row of data as { tag?: unknown; post_count?: unknown }[]) {
+      if (!row || typeof row.tag !== 'string' || row.tag.length === 0) continue;
+      const post_count = typeof row.post_count === 'number' ? row.post_count : Number(row.post_count);
+      if (!Number.isFinite(post_count)) continue;
+      rows.push({ tag: row.tag, post_count });
+    }
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 export async function postThumbnails(ids: string[]): Promise<Record<string, string>> {
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return {};

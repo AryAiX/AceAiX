@@ -36,6 +36,9 @@ export const feed = {
   photoLibrary: 'Fototeca',
   mediaOf: '{{current}} de {{total}}',
   captionPlaceholder: 'Escribe un texto… etiqueta a gente con @',
+  hashtagPostCount_one: '{{count}} publicación',
+  hashtagPostCount_many: '{{count}} publicaciones',
+  hashtagPostCount_other: '{{count}} publicaciones',
   postTo: 'Publicar para {{audience}}',
 
   messages: 'Mensajes',

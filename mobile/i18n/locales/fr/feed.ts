@@ -35,6 +35,9 @@ export const feed = {
   photoLibrary: 'Photothèque',
   mediaOf: '{{current}} sur {{total}}',
   captionPlaceholder: 'Écris une légende… identifie des gens avec @',
+  hashtagPostCount_one: '{{count}} publication',
+  hashtagPostCount_many: '{{count}} publications',
+  hashtagPostCount_other: '{{count}} publications',
   postTo: 'Publier pour {{audience}}',
 
   messages: 'Messages',

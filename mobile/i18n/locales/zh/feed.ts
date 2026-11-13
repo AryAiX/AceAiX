@@ -33,6 +33,7 @@ export const feed = {
   photoLibrary: '照片图库',
   mediaOf: '第 {{current}} / {{total}}',
   captionPlaceholder: '写点说明… 用 @ 标记好友',
+  hashtagPostCount_other: '{{count}} 条动态',
   postTo: '发布给{{audience}}',
 
   messages: '私信',

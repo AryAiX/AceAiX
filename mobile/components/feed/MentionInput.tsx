@@ -15,7 +15,10 @@ import {
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
+import { HashtagSuggestions } from '@/components/feed/HashtagSuggestions';
 import { mentionCandidates, type MentionCandidate } from '@/lib/api';
+import { hashtagSuggestions, type HashtagSuggestion } from '@/lib/api.search';
+import { activeHashtagQuery, applyHashtag } from '@/lib/hashtags';
 import {
   MENTION_LIMIT,
   activeMentionQuery,
@@ -33,10 +36,14 @@ import {
  * above it. Picked names are painted in the primary colour on a mirror of the
  * text; the input's own glyphs are transparent so the caret still sits in the
  * real field.
+ *
+ * A "#" query is separate from an "@" query. It suggests hashtags and never
+ * creates a mention or tells anyone. The two lists are never shown together.
  */
 
 const SUGGESTION_LIMIT = 5;
 const SEARCH_DELAY_MS = 250;
+const HASHTAG_SEARCH_DELAY_MS = 200;
 
 export interface MentionInputProps extends TextInputProps {
   value: string;
@@ -62,6 +69,18 @@ function sameQuery(a: ActiveQuery | null, b: ActiveQuery | null): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
   return a.start === b.start && a.query === b.query && a.cursor === b.cursor;
+}
+
+interface ActiveHashtag {
+  start: number;
+  tag: string;
+  cursor: number;
+}
+
+function sameHashtag(a: ActiveHashtag | null, b: ActiveHashtag | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.start === b.start && a.tag === b.tag && a.cursor === b.cursor;
 }
 
 function queryAt(text: string, cursor: number, mentions: readonly MentionSpan[]): ActiveQuery | null {
@@ -100,6 +119,8 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     onChangeText,
     onMentionsChange,
     onSelectionChange,
+    onFocus,
+    onBlur,
     containerStyle,
     suggestionsLayout = 'inline',
     style,
@@ -116,18 +137,25 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   const cursorRef = useRef(value.length);
   const onMentionsChangeRef = useRef(onMentionsChange);
   const requestRef = useRef(0);
+  const hashtagRequestRef = useRef(0);
   const choosingRef = useRef(false);
   const ignoreSelectionUntil = useRef(0);
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [active, setActive] = useState<ActiveQuery | null>(null);
   const [suggestions, setSuggestions] = useState<MentionCandidate[]>([]);
+  const [hashtag, setHashtag] = useState<ActiveHashtag | null>(null);
+  const [hashtagRows, setHashtagRows] = useState<HashtagSuggestion[]>([]);
+  const [focused, setFocused] = useState(false);
   const [pinnedCaret, setPinnedCaret] = useState<number | null>(null);
   const [scrollY, setScrollY] = useState(0);
 
   onMentionsChangeRef.current = onMentionsChange;
   const activeRef = useRef(active);
   activeRef.current = active;
+  const hashtagRef = useRef(hashtag);
+  hashtagRef.current = hashtag;
 
   const setRef = (node: TextInputInstance | null) => {
     inputRef.current = node;
@@ -138,6 +166,10 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   const publishQuery = (text: string, cursor: number, nextMentions: readonly MentionSpan[]) => {
     const next = editable === false ? null : queryAt(text, cursor, nextMentions);
     setActive((current) => (sameQuery(current, next) ? current : next));
+    // A person query wins. A hashtag is only searched when no "@" is active.
+    const found = editable === false || next ? null : activeHashtagQuery(text, cursor);
+    const hash = found ? { start: found.start, tag: found.tag, cursor } : null;
+    setHashtag((current) => (sameHashtag(current, hash) ? current : hash));
   };
 
   const remember = (nextMentions: MentionSpan[]) => {
@@ -163,7 +195,16 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     requestRef.current += 1;
     setActive(null);
     setSuggestions([]);
+    hashtagRequestRef.current += 1;
+    setHashtag(null);
+    setHashtagRows([]);
   }, [editable]);
+
+  useEffect(() => {
+    return () => {
+      if (blurTimer.current) clearTimeout(blurTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     const generation = ++requestRef.current;
@@ -185,6 +226,25 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     }, SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [active]);
+
+  useEffect(() => {
+    const generation = ++hashtagRequestRef.current;
+    setHashtagRows([]);
+    if (!hashtag || !focused) return;
+    const prefix = hashtag.tag;
+    const timer = setTimeout(() => {
+      hashtagSuggestions(prefix)
+        .then((rows) => {
+          if (hashtagRequestRef.current !== generation) return;
+          setHashtagRows(rows);
+        })
+        .catch(() => {
+          if (hashtagRequestRef.current !== generation) return;
+          setHashtagRows([]);
+        });
+    }, HASHTAG_SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [hashtag, focused]);
 
   const handleChange = (next: string) => {
     const cursor = caretAfterEdit(valueRef.current, next);
@@ -236,6 +296,28 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     });
   };
 
+  const pickHashtag = (tag: string) => {
+    if (choosingRef.current) return;
+    const current = hashtagRef.current;
+    if (!current) return;
+    const result = applyHashtag(valueRef.current, current.start, current.cursor, tag);
+    choosingRef.current = true;
+    if (blurTimer.current) clearTimeout(blurTimer.current);
+    handleChange(result.text);
+    cursorRef.current = result.cursor;
+    ignoreSelectionUntil.current = Date.now() + 200;
+    setPinnedCaret(result.cursor);
+    setHashtag(null);
+    hashtagRequestRef.current += 1;
+    setHashtagRows([]);
+    setFocused(true);
+    inputRef.current?.focus();
+    requestAnimationFrame(() => {
+      inputRef.current?.setSelection(result.cursor, result.cursor);
+      choosingRef.current = false;
+    });
+  };
+
   const flat = StyleSheet.flatten(style) ?? {};
   const {
     margin: _margin,
@@ -275,12 +357,13 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   const textColor = typeof flat.color === 'string' ? flat.color : colors.text;
   const runs = coloredRuns(value, mentions);
   const highlight = runs.some((run) => run.mention);
+  const showHashtags = focused && !active && suggestions.length === 0 && hashtagRows.length > 0;
 
   return (
     <View
       style={[
         marginStyle,
-        suggestionsLayout === 'overlay' && suggestions.length > 0
+        suggestionsLayout === 'overlay' && (suggestions.length > 0 || showHashtags)
           ? { position: 'relative', zIndex: 30 }
           : null,
       ]}
@@ -336,6 +419,12 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
             );
           })}
         </View>
+      ) : showHashtags ? (
+        <HashtagSuggestions
+          suggestions={hashtagRows}
+          layout={suggestionsLayout}
+          onPick={pickHashtag}
+        />
       ) : null}
 
       <View style={containerStyle}>
@@ -374,6 +463,17 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
             editable={editable}
             onChangeText={handleChange}
             onSelectionChange={handleSelection}
+            onFocus={(event) => {
+              if (blurTimer.current) clearTimeout(blurTimer.current);
+              setFocused(true);
+              onFocus?.(event);
+            }}
+            onBlur={(event) => {
+              // A tap on a row blurs the field first. Wait so that tap can land,
+              // then hide the list if focus did not come back.
+              blurTimer.current = setTimeout(() => setFocused(false), HASHTAG_SEARCH_DELAY_MS);
+              onBlur?.(event);
+            }}
             onScroll={(event) => {
               setScrollY(event.nativeEvent.contentOffset.y);
             }}

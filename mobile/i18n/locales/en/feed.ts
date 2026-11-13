@@ -34,6 +34,8 @@ export const feed = {
   photoLibrary: 'Photo library',
   mediaOf: '{{current}} of {{total}}',
   captionPlaceholder: 'Write a caption… tag people with @',
+  hashtagPostCount_one: '{{count}} post',
+  hashtagPostCount_other: '{{count}} posts',
   postTo: 'Post to {{audience}}',
 
   messages: 'Messages',

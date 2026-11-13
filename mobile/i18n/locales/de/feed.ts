@@ -34,6 +34,8 @@ export const feed = {
   photoLibrary: 'Fotomediathek',
   mediaOf: '{{current}} von {{total}}',
   captionPlaceholder: 'Schreib eine Bildunterschrift… markiere Leute mit @',
+  hashtagPostCount_one: '{{count}} Beitrag',
+  hashtagPostCount_other: '{{count}} Beiträge',
   postTo: 'Posten für {{audience}}',
 
   messages: 'Nachrichten',

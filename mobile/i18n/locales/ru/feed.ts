@@ -34,6 +34,10 @@ export const feed = {
   photoLibrary: 'Медиатека',
   mediaOf: '{{current}} из {{total}}',
   captionPlaceholder: 'Напишите подпись… отмечайте людей через @',
+  hashtagPostCount_one: '{{count}} пост',
+  hashtagPostCount_few: '{{count}} поста',
+  hashtagPostCount_many: '{{count}} постов',
+  hashtagPostCount_other: '{{count}} поста',
   postTo: 'Опубликовать: {{audience}}',
 
   messages: 'Сообщения',
