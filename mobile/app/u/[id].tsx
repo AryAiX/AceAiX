@@ -20,6 +20,7 @@ import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
 import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
+import { ClubPageView } from '@/components/club/page/ClubPageView';
 import { useAsync } from '@/hooks/useAsync';
 import { getProfile, unblockUser } from '@/lib/api';
 import { clubPageOf } from '@/lib/api.club';
@@ -27,7 +28,6 @@ import { didIBlock } from '@/lib/api.profile';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { errorMessage } from '@/lib/errors';
-import { Routes } from '@/lib/routes';
 import { useT } from '@/i18n';
 
 /** A route param is only usable when it is a single, plausible user id. */
@@ -60,18 +60,15 @@ export default function PublicProfileScreen() {
     refetchOnFocus: true,
   });
 
-  /* A club account's page is the real profile. Resolve it before painting
-     this screen, then replace so Back returns to where the tap came from.
-     No page, or a failed lookup, leaves this profile as it is. Own profile,
-     and every role other than club, never asks. */
-  const isClubAccount =
-    bundle.data?.user?.role === 'club' && bundle.data.viewer?.is_self !== true;
+  /* Asked at the same time as the profile. Null for anyone who is not a
+     club account, and null on failure, so this screen stays the person
+     profile. A page id is drawn here, with no second navigation. */
   const [clubLookup, setClubLookup] = useState<{ userId: string; pageId: string | null } | null>(
     null,
   );
 
   useEffect(() => {
-    if (!userId || !isClubAccount) return;
+    if (!userId) return;
     let cancelled = false;
     clubPageOf(userId).then((pageId) => {
       if (!cancelled) setClubLookup({ userId, pageId });
@@ -79,15 +76,10 @@ export default function PublicProfileScreen() {
     return () => {
       cancelled = true;
     };
-  }, [userId, isClubAccount]);
+  }, [userId]);
 
-  const clubPageKnown = clubLookup?.userId === userId;
+  const clubPageKnown = !!userId && clubLookup?.userId === userId;
   const clubPageId = clubPageKnown ? clubLookup.pageId : null;
-
-  useEffect(() => {
-    if (!clubPageId) return;
-    router.replace(Routes.organization(clubPageId));
-  }, [clubPageId, router]);
 
   const iBlocked = useAsync(
     () => didIBlock(userId as string),
@@ -130,14 +122,18 @@ export default function PublicProfileScreen() {
     );
   }
 
-  /* Hold the skeleton until a club page is known, so the person profile
-     does not flash before the replacement. */
-  if ((bundle.loading && !bundle.data) || (isClubAccount && (!clubPageKnown || !!clubPageId))) {
+  /* Hold the skeleton until the page lookup settles, so a club page and a
+     person profile are the same transition. */
+  if (!clubPageKnown || (bundle.loading && !bundle.data && !clubPageId)) {
     return (
       <Screen header={<Header back title={t('profile.title')} />}>
         <SkeletonList count={3} />
       </Screen>
     );
+  }
+
+  if (clubPageId) {
+    return <ClubPageView orgId={clubPageId} />;
   }
 
   if (bundle.error || !bundle.data) {
