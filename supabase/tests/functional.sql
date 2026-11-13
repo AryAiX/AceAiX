@@ -10048,4 +10048,133 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Mention suggestions while typing @ (QA-187).
+-- Fresh accounts only (7f0f0000): a viewer, a coach they
+-- follow, an athlete they do not follow, a 15-year-old they
+-- follow, and someone they follow who blocked them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── mention suggestions while typing ──'; end $$;
+
+do $$
+declare
+  v_viewer   uuid := '7f0f0000-0000-4000-8000-000000000001';
+  v_friend   uuid := '7f0f0000-0000-4000-8000-000000000002';
+  v_stranger uuid := '7f0f0000-0000-4000-8000-000000000003';
+  v_kid      uuid := '7f0f0000-0000-4000-8000-000000000004';
+  v_blocker  uuid := '7f0f0000-0000-4000-8000-000000000005';
+  v_empty_ids       uuid[];
+  v_empty_following boolean[];
+  v_null_ids        uuid[];
+  v_null_following  boolean[];
+  v_blank_ids       uuid[];
+  v_blank_following boolean[];
+  v_ids      uuid[];
+  v_only_friend boolean;
+  v_friend_first boolean;
+  v_hidden   boolean;
+  v_literal  boolean;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_viewer, 'qa187.viewer@test.local', '{"full_name":"Qmention Viewer","role":"athlete"}'),
+    (v_friend, 'qa187.friend@test.local', '{"full_name":"Zed Qmention Friend","role":"coach"}'),
+    (v_stranger, 'qa187.stranger@test.local', '{"full_name":"Alpha Qmention Stranger","role":"athlete"}'),
+    (v_kid, 'qa187.kid@test.local', '{"full_name":"Qmention Kid","role":"athlete"}'),
+    (v_blocker, 'qa187.blocker@test.local', '{"full_name":"Qmention Blocker","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '28 years'
+   where user_id in (v_viewer, v_friend, v_stranger, v_blocker);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id = v_kid;
+
+  insert into public.follows (follower_id, following_id) values
+    (v_viewer, v_friend),
+    (v_viewer, v_kid),
+    (v_viewer, v_blocker);
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_viewer);
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_empty_ids, v_empty_following
+  from public.mention_suggestions('') with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_null_ids, v_null_following
+  from public.mention_suggestions(null) with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_blank_ids, v_blank_following
+  from public.mention_suggestions('   ') with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_ids
+  from public.mention_suggestions('qmention') with ordinality as s;
+
+  v_literal :=
+    not exists (select 1 from public.mention_suggestions('Qmention%'))
+    and exists (select 1 from public.mention_suggestions('Qmention'));
+
+  reset role;
+
+  v_only_friend :=
+    v_empty_ids = array[v_friend]::uuid[]
+    and v_empty_following = array[true]::boolean[]
+    and v_null_ids = array[v_friend]::uuid[]
+    and v_null_following = array[true]::boolean[]
+    and v_blank_ids = array[v_friend]::uuid[]
+    and v_blank_following = array[true]::boolean[];
+
+  v_friend_first :=
+    array_position(v_ids, v_friend) < array_position(v_ids, v_stranger);
+
+  v_hidden :=
+    v_viewer <> all (v_ids)
+    and v_kid <> all (v_ids)
+    and v_blocker <> all (v_ids)
+    and v_viewer <> all (v_empty_ids)
+    and v_kid <> all (v_empty_ids)
+    and v_blocker <> all (v_empty_ids);
+
+  perform tests.ok(
+    v_only_friend,
+    'an empty query returns only the friend, with following true');
+
+  perform tests.ok(
+    v_friend_first,
+    'the query qmention lists the friend before the stranger');
+
+  perform tests.ok(
+    v_hidden,
+    'the viewer, the kid and the blocker never appear');
+
+  perform tests.ok(
+    v_literal,
+    '''Qmention%'' returns nothing while ''Qmention'' returns rows');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.mention_suggestions('qmention');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.mention_suggestions(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.mention_suggestions(text, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
