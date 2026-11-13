@@ -28,7 +28,7 @@ import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
 import { ScorePeek } from './ScorePeek';
 import { PostActions } from './PostActions';
-import { LikedBy, LikersSheet } from './PostLikers';
+import { LikersSheet } from './PostLikers';
 import { PostTagged } from './PostTagged';
 
 /**
@@ -592,9 +592,6 @@ function PostCardBase({
       {likersOpen ? (
         <LikersSheet postId={post.id} onClose={() => setLikersOpen(false)} />
       ) : null}
-
-      {/* The name line stays on your own posts. The count above opens the list for anyone. */}
-      {isOwnPost ? <LikedBy postId={post.id} likeCount={post.like_count} /> : null}
 
       {rendering ? <OffscreenBrandedCard /> : null}
 

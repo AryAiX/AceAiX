@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BadgeCheck } from 'lucide-react-native';
 
@@ -15,52 +15,6 @@ import { applyToggleFollow } from '@/lib/followCounts';
 import { errorMessage } from '@/lib/errors';
 import { displayName, roleLabel } from '@/lib/format';
 import { Routes } from '@/lib/routes';
-
-/**
- * "Liked by Maya and 12 others", under your own posts only.
- *
- * The line stays on the viewer's own posts so the feed does not ask who
- * liked every card. Tapping it opens the same list anyone can open from
- * the like count.
- */
-export function LikedBy({ postId, likeCount }: { postId: string; likeCount: number }) {
-  const t = useT();
-  const { spacing } = useTheme();
-  const [open, setOpen] = useState(false);
-
-  // The newest like names the line; re-read when the count moves.
-  const preview = useAsync(() => postLikers(postId, 1), [postId, likeCount], {
-    enabled: likeCount > 0,
-  });
-
-  if (likeCount <= 0) return null;
-
-  const first = preview.data?.likers[0];
-  const name = first ? displayName(first.full_name) : null;
-  const label = name
-    ? likeCount > 1
-      ? t('feed.likedByOthers', { name, count: likeCount - 1 })
-      : t('feed.likedBy', { name })
-    : t('feed.likedByCount', { count: likeCount });
-
-  return (
-    <>
-      <Pressable
-        onPress={() => setOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        testID="post-liked-by"
-        hitSlop={8}
-        style={({ pressed }) => ({ paddingVertical: spacing.xs, opacity: pressed ? 0.6 : 1 })}
-      >
-        <Text variant="captionStrong" tone="secondary" numberOfLines={1}>
-          {label}
-        </Text>
-      </Pressable>
-      {open ? <LikersSheet postId={postId} onClose={() => setOpen(false)} /> : null}
-    </>
-  );
-}
 
 /** Everyone this viewer may see on the like list, with a Follow button on each. */
 export function LikersSheet({
