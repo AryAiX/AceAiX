@@ -14,7 +14,7 @@ import { opportunityTypeLabel, sportEmoji, sportLabel, positionLabel } from '@/c
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
 import { discoverAthletes, openChallenges, searchOrganizations, searchPeople } from '@/lib/api';
-import { openOpportunities } from '@/lib/api.opportunities';
+import { searchOpportunities } from '@/lib/api.opportunities';
 import { findMeetups } from '@/lib/api.meetups';
 import { getSponsors } from '@/lib/api.sponsorship';
 import { searchPosts } from '@/lib/api.search';
@@ -106,7 +106,14 @@ export function AllResults({
     [term, queryForSearch],
     { enabled },
   );
-  const trials = useAsync(async () => ({ term, rows: await openOpportunities(50) }), [term], { enabled });
+  const trials = useAsync(
+    async () => ({
+      term,
+      rows: await searchOpportunities(queryForSearch, sportKey ? [sportKey] : [], []),
+    }),
+    [term, queryForSearch, sportKey],
+    { enabled },
+  );
   const challenges = useAsync(async () => ({ term, rows: await openChallenges(null, 50) }), [term], { enabled });
   const meetups = useAsync(async () => ({ term, rows: await findMeetups({ limit: 40 }) }), [term], { enabled });
   const sponsors = useAsync(
