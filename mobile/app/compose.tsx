@@ -587,44 +587,21 @@ export default function ComposeScreen() {
         </View>
       )}
 
-      {/* The caption, in its own card with your picture. */}
-      <View
-        style={{
-          marginTop: spacing.lg,
-          flexDirection: 'row',
-          gap: spacing.md,
-          padding: spacing.md,
-          borderRadius: radii.lg,
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.border,
-          ...theme.elevation(1),
-        }}
-      >
-        <Avatar uri={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size="sm" />
-        <View style={{ flex: 1 }}>
-          <MentionInput
-            value={text}
-            onChangeText={setText}
-            onMentionsChange={setMentions}
-            placeholder={t('feed.captionPlaceholder')}
-            placeholderTextColor={colors.textMuted}
-            multiline
-            maxLength={MAX_CHARS}
-            editable={!posting}
-            accessibilityLabel={t('feed.composeA11y')}
-            testID="compose-text"
-            style={{
-              minHeight: 72,
-              color: colors.text,
-              fontFamily: theme.font.regular,
-              fontSize: theme.size.md,
-              lineHeight: theme.size.md * theme.lineHeight.normal,
-              textAlignVertical: 'top',
-              textAlign: isRTL ? 'right' : undefined,
-              padding: 0,
-            }}
-          />
+      {/* The caption, in its own card with your picture. Suggestions open under the card. */}
+      <MentionInput
+        value={text}
+        onChangeText={setText}
+        onMentionsChange={setMentions}
+        placeholder={t('feed.captionPlaceholder')}
+        placeholderTextColor={colors.textMuted}
+        multiline
+        maxLength={MAX_CHARS}
+        editable={!posting}
+        accessibilityLabel={t('feed.composeA11y')}
+        testID="compose-text"
+        suggestionsLayout="below"
+        leading={<Avatar uri={profile?.avatar_url ?? null} name={profile?.full_name ?? null} size="sm" />}
+        fieldFooter={
           <Text
             variant="caption"
             tone={text.length >= MAX_CHARS ? 'danger' : 'muted'}
@@ -633,8 +610,30 @@ export default function ComposeScreen() {
           >
             {t('feed.charCount', { used: text.length, max: MAX_CHARS })}
           </Text>
-        </View>
-      </View>
+        }
+        containerStyle={{
+          marginTop: spacing.lg,
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: spacing.md,
+          padding: spacing.md,
+          borderRadius: radii.lg,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          ...theme.elevation(1),
+        }}
+        style={{
+          minHeight: 72,
+          color: colors.text,
+          fontFamily: theme.font.regular,
+          fontSize: theme.size.md,
+          lineHeight: theme.size.md * theme.lineHeight.normal,
+          textAlignVertical: 'top',
+          textAlign: isRTL ? 'right' : undefined,
+          padding: 0,
+        }}
+      />
 
       {/* People attached to the post. Separate from an @mention in the caption. */}
       <View

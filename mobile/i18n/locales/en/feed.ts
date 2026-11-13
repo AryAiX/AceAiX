@@ -36,6 +36,9 @@ export const feed = {
   captionPlaceholder: 'Write a caption… tag people with @',
   hashtagPostCount_one: '{{count}} post',
   hashtagPostCount_other: '{{count}} posts',
+  mentionFollowing: 'Following',
+  mentionPanelTitle: 'Mention people',
+  hashtagPanelTitle: 'Hashtags',
   postTo: 'Post to {{audience}}',
 
   messages: 'Messages',

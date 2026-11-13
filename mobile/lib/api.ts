@@ -469,6 +469,25 @@ export async function mentionCandidates(query: string): Promise<MentionCandidate
   return (data ?? []) as MentionCandidate[];
 }
 
+export interface MentionSuggestion extends MentionCandidate {
+  following: boolean;
+}
+
+/**
+ * People to offer while an @ is being typed.
+ *
+ * An empty query is allowed: it is the people the caller follows. A typed
+ * name narrows the list and still puts people they follow first.
+ */
+export async function mentionSuggestions(query: string): Promise<MentionSuggestion[]> {
+  const { data, error } = await supabase.rpc('mention_suggestions', {
+    p_query: query.trim(),
+    p_limit: 20,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as MentionSuggestion[];
+}
+
 /**
  * Search for people by name.
  *

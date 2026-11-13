@@ -36,6 +36,9 @@ export const feed = {
   captionPlaceholder: 'Schreib eine Bildunterschrift… markiere Leute mit @',
   hashtagPostCount_one: '{{count}} Beitrag',
   hashtagPostCount_other: '{{count}} Beiträge',
+  mentionFollowing: 'Folgst du',
+  mentionPanelTitle: 'Personen erwähnen',
+  hashtagPanelTitle: 'Hashtags',
   postTo: 'Posten für {{audience}}',
 
   messages: 'Nachrichten',

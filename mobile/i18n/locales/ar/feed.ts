@@ -40,6 +40,9 @@ export const feed = {
   hashtagPostCount_few: '{{count}} منشورات',
   hashtagPostCount_many: '{{count}} منشورًا',
   hashtagPostCount_other: '{{count}} منشور',
+  mentionFollowing: 'تتابعه',
+  mentionPanelTitle: 'الإشارة إلى أشخاص',
+  hashtagPanelTitle: 'الوسوم',
   postTo: 'انشر لـ {{audience}}',
 
   messages: 'الرسائل',

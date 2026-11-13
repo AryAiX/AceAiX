@@ -38,6 +38,9 @@ export const feed = {
   hashtagPostCount_one: '{{count}} publication',
   hashtagPostCount_many: '{{count}} publications',
   hashtagPostCount_other: '{{count}} publications',
+  mentionFollowing: 'Abonné',
+  mentionPanelTitle: 'Mentionner des personnes',
+  hashtagPanelTitle: 'Hashtags',
   postTo: 'Publier pour {{audience}}',
 
   messages: 'Messages',

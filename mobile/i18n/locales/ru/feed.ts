@@ -38,6 +38,9 @@ export const feed = {
   hashtagPostCount_few: '{{count}} поста',
   hashtagPostCount_many: '{{count}} постов',
   hashtagPostCount_other: '{{count}} поста',
+  mentionFollowing: 'Подписка',
+  mentionPanelTitle: 'Упомянуть людей',
+  hashtagPanelTitle: 'Хештеги',
   postTo: 'Опубликовать: {{audience}}',
 
   messages: 'Сообщения',

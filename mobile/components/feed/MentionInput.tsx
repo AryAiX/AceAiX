@@ -1,10 +1,15 @@
-import React, { forwardRef, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text as RNText,
   TextInput,
   View,
+  useWindowDimensions,
+  type ViewInstance,
   type StyleProp,
   type TextInputInstance,
   type TextInputProps,
@@ -12,13 +17,22 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AtSign, BadgeCheck, Hash } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
-import { HashtagSuggestions } from '@/components/feed/HashtagSuggestions';
-import { mentionCandidates, type MentionCandidate } from '@/lib/api';
+import {
+  HashtagSuggestions,
+  SUGGESTION_ROW_HEIGHT,
+  SUGGESTION_VISIBLE_ROWS,
+} from '@/components/feed/HashtagSuggestions';
+import { MatchText } from '@/components/feed/MatchText';
+import { mentionSuggestions, type MentionSuggestion } from '@/lib/api';
 import { hashtagSuggestions, type HashtagSuggestion } from '@/lib/api.search';
 import { activeHashtagQuery, applyHashtag } from '@/lib/hashtags';
+import { roleLabel } from '@/lib/format';
+import { useT } from '@/i18n';
 import {
   MENTION_LIMIT,
   activeMentionQuery,
@@ -32,31 +46,46 @@ import {
  * A TextInput that can @-mention people.
  *
  * The field itself keeps the caller's props, style and maxLength. While the
- * caret is in an "@query" of at least one character, suggestions appear just
- * above it. Picked names are painted in the primary colour on a mirror of the
- * text; the input's own glyphs are transparent so the caret still sits in the
- * real field.
+ * caret is in an "@" — including "@" with nothing typed yet — people you can
+ * mention appear. "@" alone lists people you follow. Picked names are painted
+ * in the primary colour on a mirror of the text; the input's own glyphs are
+ * transparent so the caret still sits in the real field.
  *
  * A "#" query is separate from an "@" query. It suggests hashtags and never
  * creates a mention or tells anyone. The two lists are never shown together.
+ *
+ * `inline` keeps the list above the field. `overlay` draws it over the
+ * thread, anchored to the field. `below` puts it under the field. The panel
+ * is only as tall as its rows, up to about seven, and then it scrolls.
  */
 
-const SUGGESTION_LIMIT = 5;
+const SUGGESTION_LIMIT = 20;
 const SEARCH_DELAY_MS = 250;
 const HASHTAG_SEARCH_DELAY_MS = 200;
+/** The comments sheet takes 88% of the screen. The handle and title sit above the thread. */
+const COMMENTS_SHEET_FRACTION = 0.88;
+const COMMENTS_SHEET_CHROME = 68;
+/** Room kept for the composer's pinned Post button, so the list stops above it. */
+const BELOW_FOOTER = 120;
+/** The title row: padding, then a 22pt icon. Kept in step with the title style below. */
+const TITLE_ICON = 22;
+const AVATAR_MD = 44;
 
 export interface MentionInputProps extends TextInputProps {
   value: string;
   onChangeText: (text: string) => void;
   onMentionsChange?: (mentions: MentionSpan[]) => void;
-  /** Border, padding and background around the field. Suggestions sit above this box. */
+  /** Border, padding and background around the field. */
   containerStyle?: StyleProp<ViewStyle>;
   /**
-   * `inline` takes space above the field, which is what a scrolling composer
-   * needs. `overlay` draws the list upward over whatever is already there, so
-   * a footer field does not get pushed off the bottom of the screen.
+   * `inline` takes space above the field. `overlay` draws the list over
+   * whatever is above the field. `below` draws it under the field.
    */
-  suggestionsLayout?: 'inline' | 'overlay';
+  suggestionsLayout?: 'inline' | 'overlay' | 'below';
+  /** Sits at the start of the field row, inside `containerStyle`. */
+  leading?: React.ReactNode;
+  /** Sits under the field, still inside `containerStyle`. */
+  fieldFooter?: React.ReactNode;
 }
 
 interface ActiveQuery {
@@ -86,10 +115,17 @@ function sameHashtag(a: ActiveHashtag | null, b: ActiveHashtag | null): boolean 
 function queryAt(text: string, cursor: number, mentions: readonly MentionSpan[]): ActiveQuery | null {
   if (mentions.length >= MENTION_LIMIT) return null;
   const active = activeMentionQuery(text, cursor);
-  if (!active || active.query.length < 1) return null;
+  if (!active) return null;
   // That "@" already belongs to a picked name. Typing after it is not a new search.
   if (mentions.some((mention) => mention.start === active.start)) return null;
   return { start: active.start, query: active.query, cursor };
+}
+
+interface Anchor {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 function coloredRuns(
@@ -123,6 +159,8 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     onBlur,
     containerStyle,
     suggestionsLayout = 'inline',
+    leading,
+    fieldFooter,
     style,
     editable = true,
     ...rest
@@ -130,8 +168,12 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   ref,
 ) {
   const theme = useTheme();
-  const { colors, radii, spacing } = theme;
+  const { colors, spacing } = theme;
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  const { height: screenH, width: screenW } = useWindowDimensions();
   const inputRef = useRef<TextInputInstance>(null);
+  const hostRef = useRef<ViewInstance>(null);
   const valueRef = useRef(value);
   const mentionsRef = useRef<MentionSpan[]>([]);
   const cursorRef = useRef(value.length);
@@ -144,12 +186,14 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
 
   const [mentions, setMentions] = useState<MentionSpan[]>([]);
   const [active, setActive] = useState<ActiveQuery | null>(null);
-  const [suggestions, setSuggestions] = useState<MentionCandidate[]>([]);
+  const [suggestions, setSuggestions] = useState<MentionSuggestion[]>([]);
   const [hashtag, setHashtag] = useState<ActiveHashtag | null>(null);
   const [hashtagRows, setHashtagRows] = useState<HashtagSuggestion[]>([]);
   const [focused, setFocused] = useState(false);
   const [pinnedCaret, setPinnedCaret] = useState<number | null>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [keyboardH, setKeyboardH] = useState(0);
+  const [anchor, setAnchor] = useState<Anchor | null>(null);
 
   onMentionsChangeRef.current = onMentionsChange;
   const activeRef = useRef(active);
@@ -177,6 +221,27 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     setMentions(nextMentions);
     onMentionsChangeRef.current?.(nextMentions);
   };
+
+  const measureHost = useCallback(() => {
+    hostRef.current?.measureInWindow((x, y, width, height) => {
+      if (width <= 0 || height <= 0) return;
+      const next = {
+        x: Math.round(x),
+        y: Math.round(y),
+        width: Math.round(width),
+        height: Math.round(height),
+      };
+      setAnchor((current) =>
+        current &&
+        current.x === next.x &&
+        current.y === next.y &&
+        current.width === next.width &&
+        current.height === next.height
+          ? current
+          : next,
+      );
+    });
+  }, []);
 
   useEffect(() => {
     if (value === valueRef.current) return;
@@ -207,6 +272,18 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   }, []);
 
   useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const show = Keyboard.addListener('keyboardWillShow', (event) => {
+      setKeyboardH(event.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboardH(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     const generation = ++requestRef.current;
     if (!active) {
       setSuggestions([]);
@@ -214,7 +291,7 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     }
     const query = active.query;
     const timer = setTimeout(() => {
-      mentionCandidates(query)
+      mentionSuggestions(query)
         .then((rows) => {
           if (requestRef.current !== generation) return;
           setSuggestions(rows.slice(0, SUGGESTION_LIMIT));
@@ -268,7 +345,7 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
     onSelectionChange?.(event);
   };
 
-  const choose = (person: MentionCandidate) => {
+  const choose = (person: MentionSuggestion) => {
     if (choosingRef.current) return;
     const current = activeRef.current;
     const name = person.full_name?.trim() ?? '';
@@ -357,134 +434,286 @@ export const MentionInput = forwardRef<TextInputInstance, MentionInputProps>(fun
   const textColor = typeof flat.color === 'string' ? flat.color : colors.text;
   const runs = coloredRuns(value, mentions);
   const highlight = runs.some((run) => run.mention);
-  const showHashtags = focused && !active && suggestions.length === 0 && hashtagRows.length > 0;
+  const people = suggestions
+    .filter((person) => (person.full_name?.trim() ?? '').length > 0)
+    .slice(0, SUGGESTION_LIMIT);
+  const showPeople = focused && people.length > 0;
+  const showHashtags = focused && !active && people.length === 0 && hashtagRows.length > 0;
+  const showPanel = showPeople || showHashtags;
+
+  useEffect(() => {
+    if (!showPanel || suggestionsLayout === 'inline') return;
+    const frame = requestAnimationFrame(measureHost);
+    return () => cancelAnimationFrame(frame);
+  }, [showPanel, suggestionsLayout, keyboardH, screenH, measureHost]);
+
+  // The list grows with its rows and stops at about seven. The title sits above that.
+  const titleBlock = spacing.sm + TITLE_ICON + spacing.sm;
+  const listCap =
+    SUGGESTION_ROW_HEIGHT * SUGGESTION_VISIBLE_ROWS +
+    StyleSheet.hairlineWidth * (SUGGESTION_VISIBLE_ROWS - 1);
+  let ceiling = titleBlock + listCap;
+  // The edge against the field is square. The outer corners are rounded, and
+  // start/end radii flip in Arabic. The shadow sits on that outer edge.
+  const meetsBelow = suggestionsLayout === 'below';
+  let panelStyle: ViewStyle = { marginBottom: 0 };
+
+  if (suggestionsLayout === 'overlay') {
+    panelStyle = {
+      position: 'absolute',
+      left: anchor ? -anchor.x : 0,
+      ...(anchor ? { width: screenW } : { right: 0 }),
+      bottom: '100%',
+      zIndex: 40,
+    };
+    if (anchor) {
+      const base = screenH * COMMENTS_SHEET_FRACTION;
+      const maxH =
+        keyboardH > 0 ? Math.min(base, screenH - keyboardH - insets.top - spacing.md) : base;
+      const sheetTop = (keyboardH > 0 ? screenH - keyboardH : screenH) - maxH;
+      const coverTop = sheetTop + COMMENTS_SHEET_CHROME;
+      const coverHeight = anchor.y - coverTop;
+      if (coverHeight > SUGGESTION_ROW_HEIGHT) ceiling = Math.min(ceiling, coverHeight);
+    }
+  } else if (suggestionsLayout === 'below' && anchor) {
+    const reserved = BELOW_FOOTER + (keyboardH > 0 ? 0 : insets.bottom);
+    const spaceBelow = screenH - keyboardH - reserved - (anchor.y + anchor.height);
+    if (spaceBelow > SUGGESTION_ROW_HEIGHT) {
+      ceiling = Math.min(ceiling, spaceBelow);
+      panelStyle = {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: '100%',
+        zIndex: 20,
+      };
+    } else {
+      panelStyle = { marginTop: spacing.sm };
+    }
+  } else if (suggestionsLayout === 'below') {
+    panelStyle = { marginTop: spacing.sm };
+  }
+
+  const listMaxHeight = Math.max(0, ceiling - titleBlock);
+  const rowCount = showPeople ? people.length : hashtagRows.length;
+  const contentHeight =
+    rowCount * SUGGESTION_ROW_HEIGHT + Math.max(0, rowCount - 1) * StyleSheet.hairlineWidth;
+  const listHeight = Math.min(contentHeight, listMaxHeight);
+  const lift = theme.elevation(3);
+  const liftDown = 'shadowOffset' in lift && lift.shadowOffset ? lift.shadowOffset.height : 3;
+  const shadow = meetsBelow
+    ? lift
+    : { ...lift, shadowOffset: { width: 0, height: -Math.abs(liftDown) } };
+  const radius = theme.radii.xl;
+  const corners: ViewStyle = meetsBelow
+    ? {
+        borderTopStartRadius: 0,
+        borderTopEndRadius: 0,
+        borderBottomStartRadius: radius,
+        borderBottomEndRadius: radius,
+      }
+    : {
+        borderTopStartRadius: radius,
+        borderTopEndRadius: radius,
+        borderBottomStartRadius: 0,
+        borderBottomEndRadius: 0,
+      };
+  const queryText = showPeople ? (active?.query ?? '') : (hashtag?.tag ?? '');
+
+  const panel = showPanel ? (
+    <View
+      testID={showPeople ? 'mention-suggestions' : 'hashtag-suggestions'}
+      style={[
+        panelStyle,
+        shadow,
+        corners,
+        {
+          maxHeight: ceiling,
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+      ]}
+    >
+      <View style={[{ overflow: 'hidden' }, corners]}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm,
+          }}
+        >
+          <View
+            accessible={false}
+            importantForAccessibility="no-hide-descendants"
+            style={{
+              width: TITLE_ICON,
+              height: TITLE_ICON,
+              borderRadius: theme.radii.pill,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {showPeople ? (
+              <AtSign size={13} color={colors.textOnBrand} strokeWidth={2.5} />
+            ) : (
+              <Hash size={13} color={colors.textOnBrand} strokeWidth={2.5} />
+            )}
+          </View>
+          <Text variant="captionStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+            {showPeople ? t('feed.mentionPanelTitle') : t('feed.hashtagPanelTitle')}
+          </Text>
+        </View>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          style={{ height: listHeight, flexGrow: 0 }}
+          showsVerticalScrollIndicator
+        >
+          {showPeople
+            ? people.map((person, index) => {
+                const name = person.full_name?.trim() ?? '';
+                const role = roleLabel(person.role);
+                const detail = person.following ? `${role} · ${t('feed.mentionFollowing')}` : role;
+                return (
+                  <View key={person.id}>
+                    {index > 0 ? (
+                      <View
+                        style={{
+                          height: StyleSheet.hairlineWidth,
+                          backgroundColor: colors.divider,
+                          marginStart: spacing.md + AVATAR_MD + spacing.md,
+                          marginEnd: spacing.md,
+                        }}
+                      />
+                    ) : null}
+                    <Pressable
+                      onPressIn={() => choose(person)}
+                      accessibilityRole="button"
+                      accessibilityLabel={person.following ? `${name}, ${detail}` : `${name}, ${role}`}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.md,
+                        minHeight: SUGGESTION_ROW_HEIGHT,
+                        paddingHorizontal: spacing.md,
+                        paddingVertical: spacing.xs,
+                        backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
+                      })}
+                    >
+                      <Avatar uri={person.avatar_url} name={name} size="md" />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <MatchText text={name} query={queryText} style={{ flexShrink: 1 }} />
+                          {person.is_verified ? (
+                            <BadgeCheck
+                              size={16}
+                              color={colors.info}
+                              fill={theme.alpha(colors.info, 0.16)}
+                            />
+                          ) : null}
+                        </View>
+                        <Text variant="caption" tone="muted" numberOfLines={1}>
+                          {detail}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  </View>
+                );
+              })
+            : (
+              <HashtagSuggestions
+                suggestions={hashtagRows}
+                query={queryText}
+                onPick={pickHashtag}
+              />
+            )}
+        </ScrollView>
+      </View>
+    </View>
+  ) : null;
+
+  const field = (
+    <View style={{ position: 'relative' }}>
+      {highlight ? (
+        <View
+          pointerEvents="none"
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}
+        >
+          <RNText
+            style={[
+              typeStyle,
+              {
+                color: textColor,
+                transform: [{ translateY: -scrollY }],
+              },
+            ]}
+          >
+            {runs.map((run, index) => (
+              <RNText key={index} style={run.mention ? { color: colors.primary } : undefined}>
+                {run.text}
+              </RNText>
+            ))}
+          </RNText>
+        </View>
+      ) : null}
+
+      <TextInput
+        {...rest}
+        ref={setRef}
+        value={value}
+        editable={editable}
+        onChangeText={handleChange}
+        onSelectionChange={handleSelection}
+        onFocus={(event) => {
+          if (blurTimer.current) clearTimeout(blurTimer.current);
+          setFocused(true);
+          onFocus?.(event);
+        }}
+        onBlur={(event) => {
+          // A tap on a row blurs the field first. Wait so that tap can land,
+          // then hide the list if focus did not come back.
+          blurTimer.current = setTimeout(() => setFocused(false), HASHTAG_SEARCH_DELAY_MS);
+          onBlur?.(event);
+        }}
+        onScroll={(event) => {
+          setScrollY(event.nativeEvent.contentOffset.y);
+        }}
+        {...(pinnedCaret == null
+          ? null
+          : { selection: { start: pinnedCaret, end: pinnedCaret } })}
+        {...(highlight ? { cursorColor: textColor } : null)}
+        style={highlight ? [inputStyle, { color: 'transparent' }] : inputStyle}
+      />
+    </View>
+  );
 
   return (
     <View
+      ref={hostRef}
+      collapsable={false}
+      onLayout={suggestionsLayout === 'inline' ? undefined : measureHost}
       style={[
         marginStyle,
-        suggestionsLayout === 'overlay' && (suggestions.length > 0 || showHashtags)
-          ? { position: 'relative', zIndex: 30 }
-          : null,
+        showPanel && suggestionsLayout !== 'inline' ? { zIndex: 30 } : null,
       ]}
     >
-      {suggestions.length > 0 ? (
-        <View
-          testID="mention-suggestions"
-          style={{
-            marginBottom: spacing.xs,
-            borderRadius: radii.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surface,
-            overflow: 'hidden',
-            ...(suggestionsLayout === 'overlay'
-              ? {
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: '100%',
-                  zIndex: 30,
-                  elevation: 8,
-                }
-              : null),
-          }}
-        >
-          {suggestions.map((person, index) => {
-            const name = person.full_name?.trim() ?? '';
-            if (!name) return null;
-            return (
-              <Pressable
-                key={person.id}
-                onPressIn={() => choose(person)}
-                accessibilityRole="button"
-                accessibilityLabel={name}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.sm,
-                  minHeight: theme.hit.min,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  borderTopWidth: index === 0 ? 0 : 1,
-                  borderTopColor: colors.border,
-                  backgroundColor: pressed ? colors.surfaceAlt : colors.surface,
-                })}
-              >
-                <Avatar uri={person.avatar_url} name={name} size="xs" verified={person.is_verified} />
-                <Text variant="body" numberOfLines={1} style={{ flex: 1 }}>
-                  {name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : showHashtags ? (
-        <HashtagSuggestions
-          suggestions={hashtagRows}
-          layout={suggestionsLayout}
-          onPick={pickHashtag}
-        />
-      ) : null}
+      {suggestionsLayout === 'below' ? null : panel}
 
       <View style={containerStyle}>
-        {/* The mirror is aligned to the field, inside the box's padding, so a
-            padded comment field and a padding-free caption share one path. */}
-        <View style={{ position: 'relative' }}>
-          {highlight ? (
-            <View
-              pointerEvents="none"
-              accessible={false}
-              importantForAccessibility="no-hide-descendants"
-              style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}
-            >
-              <RNText
-                style={[
-                  typeStyle,
-                  {
-                    color: textColor,
-                    transform: [{ translateY: -scrollY }],
-                  },
-                ]}
-              >
-                {runs.map((run, index) => (
-                  <RNText key={index} style={run.mention ? { color: colors.primary } : undefined}>
-                    {run.text}
-                  </RNText>
-                ))}
-              </RNText>
-            </View>
-          ) : null}
-
-          <TextInput
-            {...rest}
-            ref={setRef}
-            value={value}
-            editable={editable}
-            onChangeText={handleChange}
-            onSelectionChange={handleSelection}
-            onFocus={(event) => {
-              if (blurTimer.current) clearTimeout(blurTimer.current);
-              setFocused(true);
-              onFocus?.(event);
-            }}
-            onBlur={(event) => {
-              // A tap on a row blurs the field first. Wait so that tap can land,
-              // then hide the list if focus did not come back.
-              blurTimer.current = setTimeout(() => setFocused(false), HASHTAG_SEARCH_DELAY_MS);
-              onBlur?.(event);
-            }}
-            onScroll={(event) => {
-              setScrollY(event.nativeEvent.contentOffset.y);
-            }}
-            {...(pinnedCaret == null
-              ? null
-              : { selection: { start: pinnedCaret, end: pinnedCaret } })}
-            {...(highlight ? { cursorColor: textColor } : null)}
-            style={highlight ? [inputStyle, { color: 'transparent' }] : inputStyle}
-          />
+        {leading}
+        <View style={leading || fieldFooter ? { flex: 1 } : undefined}>
+          {field}
+          {fieldFooter}
         </View>
       </View>
+
+      {suggestionsLayout === 'below' ? panel : null}
     </View>
   );
 });
