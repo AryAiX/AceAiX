@@ -9939,6 +9939,11 @@ declare
   v_edited uuid;
   v_tags   text[];
   v_counts integer[];
+  v_prefix boolean;
+  v_never  boolean;
+  v_before boolean;
+  v_after  boolean;
+  v_empty  boolean;
   v_denied boolean := false;
 begin
   insert into auth.users (id, email, raw_user_meta_data) values
@@ -9971,22 +9976,32 @@ begin
     into v_tags, v_counts
   from public.hashtag_suggestions('#QZba') with ordinality as s;
 
-  perform tests.ok(
+  v_prefix :=
     v_tags = array['qzbaby', 'qzbabygym']::text[]
-    and v_counts = array[2, 1]::integer[],
+    and v_counts = array[2, 1]::integer[];
+
+  v_never :=
+    not exists (select 1 from public.hashtag_suggestions('qzbabysecret') where tag = 'qzbabysecret')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabyhidden') where tag = 'qzbabyhidden')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabynot') where tag = 'qzbabynot');
+
+  v_before :=
+    (select s.post_count from public.hashtag_suggestions('qzbefore') s where s.tag = 'qzbefore') = 1;
+
+  reset role;
+
+  perform tests.ok(
+    v_prefix,
     'hashtag_suggestions(''#QZba'') returns qzbaby with 2 posts, then qzbabygym with 1');
 
   perform tests.ok(
-    not exists (select 1 from public.hashtag_suggestions('qzbabysecret') where tag = 'qzbabysecret')
-    and not exists (select 1 from public.hashtag_suggestions('qzbabyhidden') where tag = 'qzbabyhidden')
-    and not exists (select 1 from public.hashtag_suggestions('qzbabynot') where tag = 'qzbabynot'),
+    v_never,
     'qzbabysecret, qzbabyhidden and qzbabynot are never suggested');
 
   perform tests.ok(
-    (select s.post_count from public.hashtag_suggestions('qzbefore') s where s.tag = 'qzbefore') = 1,
+    v_before,
     'qzbefore is suggested before the edit');
 
-  reset role;
   perform tests.as_user(v_author);
   set local role authenticated;
   update public.posts
@@ -9997,17 +10012,23 @@ begin
   perform tests.as_user(v_viewer);
   set local role authenticated;
 
-  perform tests.ok(
+  v_after :=
     not exists (select 1 from public.hashtag_suggestions('qzbefore') where tag = 'qzbefore')
-    and (select s.post_count from public.hashtag_suggestions('qzafter') s where s.tag = 'qzafter') = 1,
+    and (select s.post_count from public.hashtag_suggestions('qzafter') s where s.tag = 'qzafter') = 1;
+
+  v_empty :=
+    not exists (select 1 from public.hashtag_suggestions('#'))
+    and not exists (select 1 from public.hashtag_suggestions('q_%'));
+
+  reset role;
+
+  perform tests.ok(
+    v_after,
     'after the edit, qzbefore is gone and qzafter is there');
 
   perform tests.ok(
-    not exists (select 1 from public.hashtag_suggestions('#'))
-    and not exists (select 1 from public.hashtag_suggestions('q_%')),
+    v_empty,
     '''#'' alone and ''q_%'' return nothing');
-
-  reset role;
 
   perform set_config('request.jwt.claim.sub', '', true);
   perform set_config('request.jwt.claim.role', 'anon', true);
