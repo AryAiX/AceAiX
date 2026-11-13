@@ -106,10 +106,13 @@ export function AllResults({
     [term, queryForSearch],
     { enabled },
   );
+  /* A sport word is the sport filter, not text the title must also contain.
+     Passing both would hide a Football trial called "U16 summer trial",
+     because the server requires the name and the sport. */
   const trials = useAsync(
     async () => ({
       term,
-      rows: await searchOpportunities(queryForSearch, sportKey ? [sportKey] : [], []),
+      rows: await searchOpportunities(sportKey ? '' : queryForSearch, sportKey ? [sportKey] : [], []),
     }),
     [term, queryForSearch, sportKey],
     { enabled },
