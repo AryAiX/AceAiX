@@ -50,7 +50,7 @@ export function SponsorsTab({ query }: { query: string }) {
   const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
-  const { isAthlete, user } = useAuth();
+  const { isAthlete, isGuardian, user } = useAuth();
   const savedCalls = useSavedCalls(user?.id);
   const savedIds = useMemo(() => new Set(savedCalls.map((c) => c.id)), [savedCalls]);
 
@@ -205,9 +205,19 @@ export function SponsorsTab({ query }: { query: string }) {
               </Reveal>
             ))}
             {!isAthlete ? (
-              <Text variant="caption" tone="muted">
-                {t('sponsorship.athletesOnly')}
-              </Text>
+              isGuardian ? (
+                <InfoNote
+                  tone="info"
+                  actionLabel={t('coaching.openChildren')}
+                  onAction={() => router.push(Routes.childrenTab)}
+                >
+                  {t('sponsorship.guardianCalls')}
+                </InfoNote>
+              ) : (
+                <Text variant="caption" tone="muted">
+                  {t('sponsorship.athletesOnly')}
+                </Text>
+              )
             ) : gate === 'guardian_consent_required' ? (
               <InfoNote tone="warning" icon="warning">
                 {t('sponsorship.guardianBody')}

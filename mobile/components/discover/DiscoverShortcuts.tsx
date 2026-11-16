@@ -100,16 +100,19 @@ const ITEMS: { key: DiscoverShortcut; labelKey: string; Icon: () => React.ReactE
 
 interface Props {
   onOpen: (shortcut: DiscoverShortcut) => void;
+  /** Leave these out. The rest still share the bar evenly. */
+  hidden?: readonly DiscoverShortcut[];
 }
 
 /**
- * The five ways into the people side of Discover, in one white bar under the
+ * The ways into the people side of Discover, in one white bar under the
  * search. Each opens its own page; the clips stay on Discover itself.
  */
-export function DiscoverShortcuts({ onOpen }: Props) {
+export function DiscoverShortcuts({ onOpen, hidden }: Props) {
   const t = useT();
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
+  const items = hidden?.length ? ITEMS.filter((item) => !hidden.includes(item.key)) : ITEMS;
 
   return (
     <View
@@ -126,7 +129,7 @@ export function DiscoverShortcuts({ onOpen }: Props) {
       }}
       testID="discover-shortcuts"
     >
-      {ITEMS.map(({ key, labelKey, Icon }) => (
+      {items.map(({ key, labelKey, Icon }) => (
         <Pressable
           key={key}
           onPress={() => onOpen(key)}

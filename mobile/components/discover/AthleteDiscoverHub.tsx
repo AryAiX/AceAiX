@@ -8,6 +8,7 @@ import { Text } from '@/components/ui';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { useT } from '@/i18n';
 import { Routes } from '@/lib/routes';
+import { useAuth } from '@/providers/AuthProvider';
 import { discoverRowAfter } from './DiscoverRows';
 import { DiscoverShortcuts, type DiscoverShortcut } from './DiscoverShortcuts';
 
@@ -15,12 +16,16 @@ import { DiscoverShortcuts, type DiscoverShortcut } from './DiscoverShortcuts';
  * The athlete's Discover: a search, five ways into the people side, then the
  * clips. Clubs, coaches, the leaderboard and sponsors each open as their own
  * page, so the clips are what this screen is for.
+ *
+ * A parent sees Clubs, Coaches, the leaderboard and Sponsors. Challenges
+ * stay off this bar; search and a link can still open that page.
  */
 export function AthleteDiscoverHub() {
   const router = useRouter();
   const t = useT();
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
+  const { isGuardian } = useAuth();
 
   const open = useCallback(
     (shortcut: DiscoverShortcut) => {
@@ -60,7 +65,10 @@ export function AthleteDiscoverHub() {
           {t('discover.searchPeople')}
         </Text>
       </Pressable>
-      <DiscoverShortcuts onOpen={open} />
+      <DiscoverShortcuts
+        onOpen={open}
+        hidden={isGuardian ? ['challenges'] : undefined}
+      />
     </View>
   );
 

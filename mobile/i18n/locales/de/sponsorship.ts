@@ -63,6 +63,8 @@ export const sponsorship = {
   sendApplication: 'Bewerbung senden',
   applicationSent: 'Bewerbung gesendet',
   athletesOnly: 'Nur Athleten können sich bewerben.',
+  guardianCalls:
+    'Dein Kind bewirbt sich auf Ausschreibungen über das eigene Konto. Du wirst informiert und kannst unter Kinder zustimmen oder ablehnen.',
   seekersEmpty: 'Gerade fragt niemand an',
   seekersEmptyBody: 'Athleten, die um Sponsoring bitten, erscheinen hier.',
   seekersSearch: 'Nach Name oder Event suchen',
