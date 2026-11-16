@@ -10474,4 +10474,127 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Challenge and meetup notices arrive one by one (QA-195).
+-- Seeded coach 3333, athletes 1111 and 4444. Counts are limited
+-- to this challenge and this meetup.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── challenge and meetup notices one by one ──'; end $$;
+
+do $$
+declare
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_first    uuid := '11111111-1111-1111-1111-111111111111';
+  v_second   uuid := '44444444-4444-4444-4444-444444444444';
+  v_athlete1 uuid;
+  v_athlete2 uuid;
+  v_media1   uuid;
+  v_media2   uuid;
+  v_challenge uuid;
+  v_entry1   uuid;
+  v_meetup   uuid;
+  v_entries  integer;
+  v_entry_ones integer;
+  v_verified integer;
+  v_rejected integer;
+  v_requests integer;
+  v_accepted integer;
+  v_cancelled integer;
+begin
+  select id into v_athlete1 from public.athlete_profiles where user_id = v_first;
+  select id into v_athlete2 from public.athlete_profiles where user_id = v_second;
+
+  insert into public.athlete_media (athlete_id, title, media_type, storage_url, is_public)
+  values
+    (v_athlete1, 'QA195 clip one', 'highlight_reel', 'posts/test/qa195-one.mp4', true),
+    (v_athlete2, 'QA195 clip two', 'highlight_reel', 'posts/test/qa195-two.mp4', true);
+
+  select id into v_media1 from public.athlete_media
+   where athlete_id = v_athlete1 and storage_url = 'posts/test/qa195-one.mp4';
+  select id into v_media2 from public.athlete_media
+   where athlete_id = v_athlete2 and storage_url = 'posts/test/qa195-two.mp4';
+
+  perform tests.as_user(v_coach);
+  v_challenge := public.create_challenge(
+    'Football', 'QA195 one by one',
+    'Each entry should arrive as its own notice.',
+    now() + interval '10 days', null, null, null, 'higher', 13, 60);
+
+  perform tests.as_user(v_first);
+  v_entry1 := public.enter_challenge(v_challenge, v_media1, 10, null);
+  perform tests.as_user(v_second);
+  perform public.enter_challenge(v_challenge, v_media2, 12, null);
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_entries, v_entry_ones
+  from public.notifications
+  where user_id = v_coach
+    and type = 'challenge_entry'
+    and entity_id = v_challenge::text;
+
+  perform tests.as_user(v_coach);
+  perform public.judge_challenge_entry(v_entry1, true, 10, null);
+  perform public.judge_challenge_entry(v_entry1, false, null, null);
+
+  select count(*)::int into v_verified
+  from public.notifications
+  where user_id = v_first
+    and type = 'challenge_verified'
+    and entity_id = v_challenge::text;
+
+  select count(*)::int into v_rejected
+  from public.notifications
+  where user_id = v_first
+    and type = 'challenge_rejected'
+    and entity_id = v_challenge::text;
+
+  v_meetup := public.create_meetup(
+    'football', 'QA195 one by one', 'United Arab Emirates', 'Dubai',
+    now() + interval '4 days', 8);
+
+  perform tests.as_user(v_first);
+  perform public.request_to_join_meetup(v_meetup, null);
+  perform tests.as_user(v_second);
+  perform public.request_to_join_meetup(v_meetup, null);
+
+  select count(*)::int into v_requests
+  from public.notifications
+  where user_id = v_coach
+    and type = 'meetup_request'
+    and entity_id = v_meetup::text;
+
+  perform tests.as_user(v_coach);
+  perform public.decide_meetup_request(v_meetup, v_second, true);
+  perform public.cancel_meetup(v_meetup);
+
+  select count(*)::int into v_accepted
+  from public.notifications
+  where user_id = v_second
+    and type = 'meetup_accepted'
+    and entity_id = v_meetup::text;
+
+  select count(*)::int into v_cancelled
+  from public.notifications
+  where user_id = v_second
+    and type = 'meetup_cancelled'
+    and entity_id = v_meetup::text;
+
+  perform tests.ok(
+    v_entries = 2 and v_entry_ones = 2,
+    'the coach has two challenge_entry rows, each with actor_count 1');
+
+  perform tests.ok(
+    v_verified = 1 and v_rejected = 1,
+    'the first athlete has a verified row and a rejected row');
+
+  perform tests.ok(
+    v_requests = 2,
+    'the coach has two meetup_request rows');
+
+  perform tests.ok(
+    v_accepted = 1 and v_cancelled = 1,
+    'the second athlete has one meetup_accepted row and one meetup_cancelled row');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
