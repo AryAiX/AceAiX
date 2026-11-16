@@ -10177,4 +10177,128 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Challenges the caller set, including finished ones (QA-193).
+-- Fresh accounts only (7f110000): two coaches. The first set five
+-- challenges, the second set one that is still live.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── challenges the caller set ──'; end $$;
+
+do $$
+declare
+  v_one      uuid := '7f110000-0000-4000-8000-000000000001';
+  v_two      uuid := '7f110000-0000-4000-8000-000000000002';
+  v_live20   uuid := '7f110000-0000-4000-8000-000000000011';
+  v_live2    uuid := '7f110000-0000-4000-8000-000000000012';
+  v_old      uuid := '7f110000-0000-4000-8000-000000000013';
+  v_closed   uuid := '7f110000-0000-4000-8000-000000000014';
+  v_judging  uuid := '7f110000-0000-4000-8000-000000000015';
+  v_other    uuid := '7f110000-0000-4000-8000-000000000021';
+  v_ids      uuid[];
+  v_page_a   uuid[];
+  v_page_b   uuid[];
+  v_listed   integer;
+  v_owned    integer;
+  v_own      boolean;
+  v_old_open boolean;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_one, 'qa193.one@test.local', '{"full_name":"QA193 Coach One","role":"coach"}'),
+    (v_two, 'qa193.two@test.local', '{"full_name":"QA193 Coach Two","role":"coach"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '35 years'
+   where user_id in (v_one, v_two);
+
+  insert into public.challenges (
+    id, created_by, sport, title, brief, opens_at, closes_at, status
+  ) values
+    (v_live20, v_one, 'Football', 'Live in twenty days',
+     'Still taking clips for twenty days.',
+     now() - interval '1 day', now() + interval '20 days', 'open'),
+    (v_live2, v_one, 'Football', 'Live in two days',
+     'Still taking clips for two days.',
+     now() - interval '1 day', now() + interval '2 days', 'open'),
+    (v_old, v_one, 'Football', 'Open but long closed',
+     'The closing time passed thirty days ago.',
+     now() - interval '40 days', now() - interval '30 days', 'open'),
+    (v_closed, v_one, 'Football', 'Closed three days ago',
+     'This challenge is already closed.',
+     now() - interval '10 days', now() - interval '3 days', 'closed'),
+    (v_judging, v_one, 'Football', 'Judging one day ago',
+     'This challenge is in judging.',
+     now() - interval '8 days', now() - interval '1 day', 'judging'),
+    (v_other, v_two, 'Football', 'Other coach live one',
+     'A live challenge from the other coach.',
+     now() - interval '1 day', now() + interval '5 days', 'open');
+
+  perform tests.as_user(v_one);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_ids
+  from public.my_set_challenges() with ordinality as s;
+
+  select count(*)::int into v_listed from public.my_set_challenges();
+  select count(*)::int into v_owned
+  from public.challenges
+  where created_by = v_one;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_page_a
+  from public.my_set_challenges(2, 0) with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_page_b
+  from public.my_set_challenges(2, 2) with ordinality as s;
+
+  select coalesce(bool_and(s.setter_id = v_one and s.my_entry_id is null), false)
+    into v_own
+  from public.my_set_challenges() s;
+
+  select exists (
+    select 1 from public.open_challenges(null, 50, 0) o where o.id = v_old
+  ) into v_old_open;
+
+  reset role;
+
+  perform tests.ok(
+    v_ids = array[v_live2, v_live20, v_judging, v_closed, v_old]::uuid[]
+    and v_other <> all (v_ids),
+    'live in 2 days, live in 20 days, judging, closed, then the old open one, and not the other coach');
+
+  perform tests.ok(
+    v_listed = v_owned,
+    'the list has every challenge that coach set');
+
+  perform tests.ok(
+    v_page_a || v_page_b = v_ids[1:4],
+    'pages (2, 0) and (2, 2) are the first four, with no repeat and no gap');
+
+  perform tests.ok(
+    v_own,
+    'every row is that coach''s and my_entry_id is null');
+
+  perform tests.ok(
+    not v_old_open,
+    'open_challenges still leaves out the challenge that closed 30 days ago');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  set local role authenticated;
+  begin
+    perform 1 from public.my_set_challenges();
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.my_set_challenges(integer, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.my_set_challenges(integer, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

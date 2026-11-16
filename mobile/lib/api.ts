@@ -1084,6 +1084,16 @@ export async function openChallenges(sport?: string | null, limit = 20, offset =
   return (data ?? []) as Challenge[];
 }
 
+/** Every challenge the signed-in coach, club or scout set, including finished ones. */
+export async function mySetChallenges(limit = 50, offset = 0): Promise<Challenge[]> {
+  const { data, error } = await supabase.rpc('my_set_challenges', {
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as Challenge[];
+}
+
 export async function challengeLeaderboard(
   challengeId: string,
   limit = 25,

@@ -24,7 +24,7 @@ import {
 } from '@/components/challenges/ChallengeCard';
 import { useAsync } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
-import { openChallenges } from '@/lib/api';
+import { mySetChallenges, openChallenges } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { daysUntil } from '@/lib/format';
 import { SPORTS, sportLabel } from '@/constants/sports';
@@ -94,6 +94,25 @@ export default function ChallengesScreen() {
     { refetchOnFocus: true },
   );
 
+  /* Finished challenges stay on Mine. open_challenges drops them. */
+  const {
+    data: mineData,
+    loading: mineLoading,
+    error: mineError,
+    refreshing: mineRefreshing,
+    refresh: refreshMine,
+    reload: reloadMine,
+  } = useAsync<Challenge[]>(
+    () => mySetChallenges(),
+    [isSetter],
+    { enabled: isSetter, refetchOnFocus: true },
+  );
+
+  const refreshLists = useCallback(() => {
+    void refresh();
+    if (isSetter) void refreshMine();
+  }, [refresh, isSetter, refreshMine]);
+
   /* Which sports have a challenge right now. The sheet lists every sport;
      the ones with nothing open are faded, but can still be picked. */
   const sportsHere = useMemo(
@@ -108,6 +127,15 @@ export default function ChallengesScreen() {
           )
         : (data ?? []),
     [data, sports],
+  );
+  const mineShown = useMemo(
+    () =>
+      sports.length > 0
+        ? (mineData ?? []).filter((c) =>
+            sports.some((key) => key.toLowerCase() === (c.sport ?? '').toLowerCase()),
+          )
+        : (mineData ?? []),
+    [mineData, sports],
   );
 
   /* Open is split by time: inside a week first, then the rest. A challenge
@@ -127,7 +155,7 @@ export default function ChallengesScreen() {
     const cards = (list: Challenge[]): Row[] =>
       list.map((c) => ({ kind: 'card', key: c.id, challenge: c }));
     if (tab === 'entered') return cards(all.filter((c) => c.my_entry_id));
-    if (tab === 'mine') return cards(all.filter((c) => c.setter_id === profile?.id));
+    if (tab === 'mine') return cards(mineShown);
     if (open.live.length === 0) return [];
     const split = open.soon.length > 0 && open.later.length > 0;
     return [
@@ -137,7 +165,7 @@ export default function ChallengesScreen() {
       ...cards(open.later),
       ...cards(open.ended),
     ];
-  }, [shown, tab, profile?.id, open, t]);
+  }, [shown, tab, open, t, mineShown]);
 
   const tabs = useMemo(() => {
     const count = open.live.length;
@@ -296,6 +324,13 @@ export default function ChallengesScreen() {
     </View>
   );
 
+  const onMine = tab === 'mine';
+  const viewLoading = onMine ? mineLoading : loading;
+  const viewError = onMine ? mineError : error;
+  const viewData = onMine ? mineData : data;
+  const viewReload = onMine ? reloadMine : reload;
+  const viewRefreshing = onMine ? mineRefreshing : refreshing;
+
   return (
     <Screen
       scroll={false}
@@ -303,18 +338,18 @@ export default function ChallengesScreen() {
       header={<Header title={t('challenges.allTitle')} back large />}
       testID="challenges-screen"
     >
-      {loading && !data ? (
+      {viewLoading && !viewData ? (
         <View style={{ padding: spacing.lg }}>
           <SkeletonList count={4} />
         </View>
-      ) : error && !data ? (
-        <ErrorState message={error} onRetry={reload} />
+      ) : viewError && !viewData ? (
+        <ErrorState message={viewError} onRetry={viewReload} />
       ) : (
         <FlatList<Row>
           data={rows}
           keyExtractor={(item) => item.key}
-          refreshing={refreshing}
-          onRefresh={refresh}
+          refreshing={viewRefreshing}
+          onRefresh={refreshLists}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: spacing.lg,

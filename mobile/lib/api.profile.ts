@@ -658,9 +658,11 @@ async function exactCount(
 /**
  * Opportunities a coach posted and challenges they set.
  *
- * Own profile counts everything of theirs. Someone else's profile counts only
- * what is still open: active opportunities and challenges with status `open`.
- * Reads go through the tables' RLS.
+ * Own profile counts every challenge the person set, the same list as Mine.
+ * Someone else's profile counts only challenges that are still running:
+ * status `open` and closes_at later than now. Opportunities on someone
+ * else's profile stay limited to the active ones. Reads go through the
+ * tables' RLS.
  */
 export async function getCoachStats(userId: string, isSelf: boolean): Promise<CoachStats> {
   try {
@@ -674,7 +676,9 @@ export async function getCoachStats(userId: string, isSelf: boolean): Promise<Co
       .from('challenges')
       .select('id', { count: 'exact', head: true })
       .eq('created_by', userId);
-    if (!isSelf) challenges = challenges.eq('status', 'open');
+    if (!isSelf) {
+      challenges = challenges.eq('status', 'open').gt('closes_at', new Date().toISOString());
+    }
 
     const [opportunityCount, challengeCount] = await Promise.all([
       exactCount(opportunities),
