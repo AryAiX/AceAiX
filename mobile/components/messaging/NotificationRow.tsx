@@ -20,6 +20,7 @@ import {
   Heart,
   Mail,
   MessageCircle,
+  Sparkles,
   TrendingUp,
   UserPlus,
   Users,
@@ -84,6 +85,15 @@ function skinFor(type: NotificationType): Skin {
       // Volt is reserved for the Talent Score screen itself, so a tier-up
       // reads as "good news" here rather than borrowing the score's colour.
       return { Icon: TrendingUp, tint: 'success' };
+    case 'challenge_verified':
+      return { Icon: Trophy, tint: 'success' };
+    case 'challenge_rejected':
+      return { Icon: Trophy, tint: 'warning' };
+    case 'challenge_entry':
+      return { Icon: Trophy, tint: 'primary' };
+    case 'gi_completed':
+    case 'sport_fit_completed':
+      return { Icon: Sparkles, tint: 'primary' };
     case 'opportunity':
       return { Icon: Briefcase, tint: 'primary' };
     case 'sponsorship_offer':
@@ -150,16 +160,21 @@ function skinFor(type: NotificationType): Skin {
  * counts the rest in `actor_count`, so the name is swapped for the group
  * phrase only when it is genuinely the prefix — never by blind string surgery.
  *
- * KNOWN GAP: `n.title` and `n.body` arrive from the database as finished
- * English sentences — the notification triggers in
- * `20260904000004_notifications_and_counters.sql` concatenate them at insert
- * time ("<name> started following you", "Your application to <role> is now
- * <status>"). There is no key to look up here, so they are rendered exactly as
- * they arrive and stay English in every language. Fixing it properly means
- * changing the triggers to store the notification's type plus its parameters
- * (actor name, opportunity title, status) in `data`, and composing the
- * sentence on the client from a per-type key — which also fixes word order,
- * which no amount of client-side surgery on a finished sentence can.
+ * KNOWN GAP: some sentences are composed on the phone, and the rest still
+ * arrive as finished English. The triggers write the details into the
+ * sentence itself, so a translation here is only safe when the stored text
+ * matches a form we recognise. The others need those details sent separately
+ * by the server (the role, the offer, the session, the event, the tier, the
+ * skill) before a language can put the words in its own order.
+ *
+ * Composed on the phone: follow, like, comment, reply, message and
+ * profile_view (the actor's name, or "name and N others"); challenge_verified
+ * and challenge_rejected (the challenge title when the stored sentence has
+ * it, and the two default coach notes); mention, post_tag, meetup_nearby,
+ * referral_joined, referral_token, and the sport-request decisions.
+ *
+ * Still the stored sentence: application status, sponsorship, coaching,
+ * meetups other than a nearby game, club events, score tier, and endorsement.
  */
 export function notificationTitle(n: AppNotification, t: Translate): string {
   const name = n.actor?.full_name?.trim();
@@ -289,6 +304,91 @@ function sportRequestCopy(
   };
 }
 
+/**
+ * A sentence that is only the person's name plus a fixed ending.
+ *
+ * The stored title has to be that name followed by the ending, or the older
+ * merged form ("Sara and 2 others started following you"). Anything else, or
+ * a missing name, keeps the stored title.
+ */
+const ACTOR_SENTENCE: Partial<Record<NotificationType, { suffix: string; key: string }>> = {
+  follow: { suffix: ' started following you', key: 'messaging.followedYou' },
+  like: { suffix: ' liked your post', key: 'messaging.likedYourPost' },
+  comment: { suffix: ' commented on your post', key: 'messaging.commentedOnPost' },
+  reply: { suffix: ' replied to you', key: 'messaging.repliedToYou' },
+  message: { suffix: ' sent you a message', key: 'messaging.sentYouMessage' },
+  profile_view: { suffix: ' viewed your profile', key: 'messaging.viewedYourProfile' },
+};
+
+function actorPhrase(n: AppNotification, t: Translate, name: string): string {
+  if (n.actor_count > 1) {
+    return t('messaging.actorAndOthers', { name, count: n.actor_count - 1 });
+  }
+  return name;
+}
+
+function matchesActorTitle(title: string, name: string, suffix: string, actorCount: number): boolean {
+  if (title === `${name}${suffix}`) return true;
+  if (actorCount > 1) {
+    const others = actorCount - 1;
+    const word = others === 1 ? 'other' : 'others';
+    if (title === `${name} and ${others} ${word}${suffix}`) return true;
+  }
+  return false;
+}
+
+function actorCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  const spec = ACTOR_SENTENCE[n.type];
+  if (!spec) return null;
+  const name = n.actor?.full_name?.trim();
+  if (!name) return null;
+  if (!matchesActorTitle(n.title, name, spec.suffix, n.actor_count)) return null;
+  return {
+    title: t(spec.key, { actors: actorPhrase(n, t, name) }),
+    body: n.body,
+  };
+}
+
+const CHALLENGE_PREFIX = 'Your ';
+const CHALLENGE_CONFIRMED_SUFFIX = ' entry is confirmed';
+const CHALLENGE_ANOTHER_SUFFIX = ' entry needs another go';
+const COACH_CONFIRMED = 'A coach watched it and confirmed the result.';
+const COACH_RETRY = 'Read the brief again and send a new clip.';
+
+/** The challenge name between a fixed prefix and ending, or null when it is not that sentence. */
+function challengeName(title: string, suffix: string): string | null {
+  if (!title.startsWith(CHALLENGE_PREFIX) || !title.endsWith(suffix)) return null;
+  if (title.length <= CHALLENGE_PREFIX.length + suffix.length) return null;
+  const middle = title.slice(CHALLENGE_PREFIX.length, title.length - suffix.length);
+  if (!middle || middle !== middle.trim()) return null;
+  return middle;
+}
+
+/**
+ * A judged challenge. The title is translated with the challenge name only
+ * when the stored sentence is exactly "Your <title> entry is …". The body is
+ * the coach's note, and only the two default notes are translated.
+ */
+function challengeResultCopy(
+  n: AppNotification,
+  t: Translate,
+): { title: string; body: string | null } | null {
+  if (n.type !== 'challenge_verified' && n.type !== 'challenge_rejected') return null;
+  const confirmed = n.type === 'challenge_verified';
+  const challenge = challengeName(n.title, confirmed ? CHALLENGE_CONFIRMED_SUFFIX : CHALLENGE_ANOTHER_SUFFIX);
+  const title = challenge
+    ? t(confirmed ? 'messaging.challengeConfirmed' : 'messaging.challengeAnotherGo', { challenge })
+    : t(confirmed ? 'messaging.challengeConfirmedPlain' : 'messaging.challengeAnotherGoPlain');
+  const note = n.body?.trim();
+  let body = n.body;
+  if (note === COACH_CONFIRMED) body = t('messaging.challengeCoachConfirmed');
+  else if (note === COACH_RETRY) body = t('messaging.challengeCoachRetry');
+  return { title, body };
+}
+
 /** Title and body, including the sentences composed on the client. */
 export function notificationCopy(
   n: AppNotification,
@@ -304,6 +404,10 @@ export function notificationCopy(
   if (referral) return referral;
   const sportRequest = sportRequestCopy(n, t);
   if (sportRequest) return sportRequest;
+  const actor = actorCopy(n, t);
+  if (actor) return actor;
+  const challenge = challengeResultCopy(n, t);
+  if (challenge) return challenge;
   return { title: notificationTitle(n, t), body: n.body };
 }
 
@@ -329,9 +433,8 @@ export function NotificationRow({ notification, onPress, grouped, thumbUri, post
   const skin = skinFor(notification.type);
   const tint = colors[skin.tint];
   const unread = !notification.is_read;
-  /* KNOWN GAP: title and body are finished English sentences written by the
-     database triggers — see `notificationTitle` above for what a real fix
-     needs. Everything around them on this row is translated. */
+  /* Sentences we can recognise are composed here. The rest stay as stored —
+     see the note above `notificationTitle`. */
   const copy = notificationCopy(notification, t);
   const name = notification.actor?.full_name?.trim() ?? '';
   const title =

@@ -65,6 +65,22 @@ describe('notificationTarget', () => {
     expect(notificationTarget(notification())).toBe(Routes.profile('actor-1'));
   });
 
+  it('opens the challenge a result or an entry points at', () => {
+    for (const type of ['challenge_entry', 'challenge_verified', 'challenge_rejected'] as const) {
+      expect(
+        notificationTarget(notification({ type, entity_type: 'challenge', entity_id: 'c1' })),
+      ).toBe(Routes.challenge('c1'));
+    }
+  });
+
+  it('sends a finished game or Sport Fit to that person', () => {
+    for (const type of ['gi_completed', 'sport_fit_completed'] as const) {
+      expect(
+        notificationTarget(notification({ type, entity_type: 'user', entity_id: 'u1' })),
+      ).toBe(Routes.profile('u1'));
+    }
+  });
+
   it('splits the two application directions', () => {
     // A club receiving an application wants the applicant list…
     expect(

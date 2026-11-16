@@ -205,4 +205,18 @@ export const messaging = {
   sportApproved: 'Your sport was approved: {{sport}}',
   sportMatched: 'Your sport was set to {{sport}}',
   sportRejected: 'Your sport request was not approved',
+  /* Composed on the phone from the actor's name. {{actors}} is the name, or
+     "name and N others" when several people did the same thing. */
+  followedYou: '{{actors}} started following you',
+  likedYourPost: '{{actors}} liked your post',
+  commentedOnPost: '{{actors}} commented on your post',
+  repliedToYou: '{{actors}} replied to you',
+  sentYouMessage: '{{actors}} sent you a message',
+  viewedYourProfile: '{{actors}} viewed your profile',
+  challengeConfirmed: 'Your {{challenge}} entry is confirmed',
+  challengeConfirmedPlain: 'Your entry is confirmed',
+  challengeAnotherGo: 'Your {{challenge}} entry needs another go',
+  challengeAnotherGoPlain: 'Your entry needs another go',
+  challengeCoachConfirmed: 'A coach watched it and confirmed the result.',
+  challengeCoachRetry: 'Read the brief again and send a new clip.',
 };
