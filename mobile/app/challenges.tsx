@@ -64,10 +64,15 @@ export default function ChallengesScreen() {
 
   const isSetter =
     profile?.role === 'coach' || profile?.role === 'club' || profile?.role === 'scout';
+  const isAthlete = profile?.role === 'athlete';
 
   const params = useLocalSearchParams<{ tab?: string | string[] }>();
   const requested = tabFromParam(params.tab);
-  const [tab, setTab] = useState<Tab>(requested ?? 'open');
+  const [tab, setTab] = useState<Tab>(
+    (requested === 'entered' && !isAthlete) || (requested === 'mine' && !isSetter)
+      ? 'open'
+      : (requested ?? 'open'),
+  );
 
   // `/challenges?tab=mine` opens the challenges this person set.
   useEffect(() => {
@@ -76,8 +81,12 @@ export default function ChallengesScreen() {
       setTab('open');
       return;
     }
+    if (requested === 'entered' && !isAthlete) {
+      setTab('open');
+      return;
+    }
     setTab(requested);
-  }, [requested, isSetter]);
+  }, [requested, isSetter, isAthlete]);
 
   const { data, loading, error, refreshing, refresh, reload } = useAsync<Challenge[]>(
     () => openChallenges(null, 50, 0),
@@ -137,10 +146,10 @@ export default function ChallengesScreen() {
         value: 'open' as Tab,
         label: count > 0 ? `${t('challenges.tabOpen')} · ${count}` : t('challenges.tabOpen'),
       },
-      { value: 'entered' as Tab, label: t('challenges.tabEntered') },
+      ...(isAthlete ? [{ value: 'entered' as Tab, label: t('challenges.tabEntered') }] : []),
     ];
     return isSetter ? [...base, { value: 'mine' as Tab, label: t('challenges.tabMine') }] : base;
-  }, [isSetter, t, open.live.length]);
+  }, [isSetter, isAthlete, t, open.live.length]);
 
   const empty = useCallback(() => {
     if (sports.length > 0) {
