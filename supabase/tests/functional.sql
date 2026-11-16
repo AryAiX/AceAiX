@@ -10597,4 +10597,89 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Club event and fixture notices arrive one by one (QA-198).
+-- Harbour Academy, its owner, and follower club.fan@test.local.
+-- Counts are limited to these four.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club event and fixture notices one by one ──'; end $$;
+
+do $$
+declare
+  v_org      uuid;
+  v_owner    uuid;
+  v_fan      uuid;
+  v_event_a  uuid;
+  v_event_b  uuid;
+  v_match_a  uuid;
+  v_match_b  uuid;
+  v_events   integer;
+  v_event_ones integer;
+  v_matches  integer;
+  v_match_ones integer;
+begin
+  select id into v_org from public.organizations where name = 'Harbour Academy';
+  select user_id into v_owner
+    from public.organization_members
+   where organization_id = v_org and member_role = 'owner' and status = 'active';
+  select id into v_fan from auth.users where email = 'club.fan@test.local';
+
+  perform tests.as_user(v_owner);
+  v_event_a := public.save_club_event(v_org, null, jsonb_build_object(
+    'kind', 'open_day', 'title', 'QA198 Saturday open day', 'sport', 'Football',
+    'starts_at', now() + interval '12 days', 'location', 'North ground'));
+  v_event_b := public.save_club_event(v_org, null, jsonb_build_object(
+    'kind', 'camp', 'title', 'QA198 summer camp', 'sport', 'Football',
+    'starts_at', now() + interval '20 days', 'location', 'North ground'));
+  v_match_a := public.save_club_match(v_org, null, jsonb_build_object(
+    'sport', 'Football', 'opponent_name', 'QA198 City',
+    'kickoff_at', now() + interval '8 days', 'venue', 'North ground'));
+  v_match_b := public.save_club_match(v_org, null, jsonb_build_object(
+    'sport', 'Football', 'opponent_name', 'QA198 Desert',
+    'kickoff_at', now() + interval '9 days', 'venue', 'North ground'));
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_events, v_event_ones
+  from public.notifications
+  where user_id = v_fan
+    and type = 'club_event_new'
+    and entity_id in (v_event_a::text, v_event_b::text);
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_matches, v_match_ones
+  from public.notifications
+  where user_id = v_fan
+    and type = 'club_match_scheduled'
+    and entity_id in (v_match_a::text, v_match_b::text);
+
+  perform tests.ok(
+    v_events = 2 and v_event_ones = 2 and v_matches = 2 and v_match_ones = 2,
+    'the follower has two club_event_new rows and two club_match_scheduled rows, each with actor_count 1');
+
+  perform tests.ok(
+    exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_event_new'
+        and entity_id = v_event_a::text and title like '%QA198 Saturday open day%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_event_new'
+        and entity_id = v_event_b::text and title like '%QA198 summer camp%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_match_scheduled'
+        and entity_id = v_match_a::text and title like '%QA198 City%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_match_scheduled'
+        and entity_id = v_match_b::text and title like '%QA198 Desert%'
+    ),
+    'each row opens its own event or fixture and names that event or opponent');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
