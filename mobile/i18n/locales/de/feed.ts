@@ -236,6 +236,7 @@ export const feed = {
     kindPost: 'Beitrag',
     kindTrial: 'Probetraining',
     kindCall: 'Sponsoren-Aufruf',
+    kindAthlete: 'Athlet',
     savedAgo: 'gespeichert {{when}}',
     emptyBody: 'Tippe bei einem Beitrag, Probetraining oder Sponsoring auf das Lesezeichen, um es hier zu behalten.',
     all: 'Alle',

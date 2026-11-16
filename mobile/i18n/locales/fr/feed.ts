@@ -246,6 +246,7 @@ export const feed = {
     kindPost: 'Publication',
     kindTrial: 'Essai',
     kindCall: 'Appel de sponsor',
+    kindAthlete: 'Athlète',
     savedAgo: 'enregistré {{when}}',
     emptyBody: 'Touche le signet sur une publication, un essai ou un partenariat pour le garder ici.',
     all: 'Tout',

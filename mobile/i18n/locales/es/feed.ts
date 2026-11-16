@@ -248,6 +248,7 @@ export const feed = {
     kindPost: 'Publicación',
     kindTrial: 'Prueba',
     kindCall: 'Convocatoria de patrocinio',
+    kindAthlete: 'Atleta',
     savedAgo: 'guardado {{when}}',
     emptyBody: 'Toca el marcador en cualquier publicación, prueba o patrocinio para guardarlo aquí.',
     all: 'Todo',

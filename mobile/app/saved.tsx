@@ -141,6 +141,7 @@ export default function SavedScreen() {
     setGoneAthletes((s) => new Set(s).add(athlete.athlete_id));
     try {
       await removeFromShortlist(athlete.athlete_id);
+      if (user) void removeFromAllPlaybooks(user.id, 'athlete', athlete.user_id);
     } catch (err) {
       setGoneAthletes((s) => {
         const next = new Set(s);
@@ -178,6 +179,16 @@ export default function SavedScreen() {
     title: call.brand,
     subtitle: call.title,
     thumb: call.avatar,
+  });
+  const athleteItem = (athlete: DiscoveredAthlete): Omit<PlaybookItem, 'addedAt'> => ({
+    kind: 'athlete',
+    id: athlete.user_id,
+    title: displayName(athlete.full_name),
+    subtitle: metaLine(
+      athlete.sport ? sportLabel(t, athlete.sport) : null,
+      positionLabel(t, athlete.position, athlete.sport) || null,
+    ),
+    thumb: athlete.avatar_url,
   });
 
   const radius = theme.radii.xl;
@@ -248,6 +259,7 @@ export default function SavedScreen() {
           action="unsave"
           onPress={() => router.push(Routes.profile(athlete.user_id))}
           onAction={() => void unsaveAthlete(athlete)}
+          onLongPress={() => setSheetItem(athleteItem(athlete))}
           style={groupStyle(i, athleteRows.length)}
         />
       ))}
@@ -538,7 +550,7 @@ export default function SavedScreen() {
 
         {body}
 
-        {!loading && !failed && !tabEmpty && viewTab !== 'athletes' ? (
+        {!loading && !failed && !tabEmpty ? (
           <Text variant="caption" tone="muted" align="center" style={{ marginTop: spacing.lg }}>
             {t('feed.playbooks.holdHint')}
           </Text>

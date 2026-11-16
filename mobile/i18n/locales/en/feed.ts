@@ -237,6 +237,7 @@ export const feed = {
     kindPost: 'Post',
     kindTrial: 'Trial',
     kindCall: 'Sponsor call',
+    kindAthlete: 'Athlete',
     savedAgo: 'saved {{when}}',
     emptyBody: 'Tap the bookmark on any post, trial or sponsorship to keep it here.',
     all: 'All',

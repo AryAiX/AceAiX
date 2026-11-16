@@ -269,6 +269,7 @@ export const feed = {
     kindPost: 'منشور',
     kindTrial: 'تجربة',
     kindCall: 'طلب رعاية',
+    kindAthlete: 'رياضي',
     savedAgo: 'حُفظ {{when}}',
     emptyBody: 'اضغط على علامة الحفظ في أي منشور أو تجربة أو رعاية للاحتفاظ بها هنا.',
     all: 'الكل',

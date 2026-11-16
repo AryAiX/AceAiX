@@ -28,9 +28,9 @@ import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 
 /**
- * One playbook: what the athlete put in it, newest first. Tap to open a post
- * or trial; × takes it out of this playbook (it stays saved). The ⋯ menu
- * renames the playbook or deletes it.
+ * One playbook: what was put in it, newest first. Tap to open a post,
+ * trial, sponsor call or athlete profile; × takes it out of this playbook
+ * (it stays saved). The ⋯ menu renames the playbook or deletes it.
  */
 export default function PlaybookScreen() {
   const theme = useTheme();
@@ -93,7 +93,9 @@ export default function PlaybookScreen() {
                     ? t('feed.playbooks.kindPost')
                     : item.kind === 'call'
                       ? t('feed.playbooks.kindCall')
-                      : t('feed.playbooks.kindTrial')
+                      : item.kind === 'athlete'
+                        ? t('feed.playbooks.kindAthlete')
+                        : t('feed.playbooks.kindTrial')
                 }
                 action="remove"
                 onPress={() =>
@@ -102,7 +104,9 @@ export default function PlaybookScreen() {
                       ? Routes.post(item.id)
                       : item.kind === 'call'
                         ? Routes.discoverSection('sponsors')
-                        : Routes.opportunity(item.id),
+                        : item.kind === 'athlete'
+                          ? Routes.profile(item.id)
+                          : Routes.opportunity(item.id),
                   )
                 }
                 onAction={() => void togglePlaybookItem(user.id, playbook.id, item)}

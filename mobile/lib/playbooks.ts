@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Playbooks: the athlete's own named folders of saved posts, trials and sponsor calls, like
+ * Playbooks: named folders of saved posts, trials, sponsor calls and athletes, like
  * collections elsewhere. They live on this phone only (AsyncStorage, one list
  * per signed-in account); nothing goes to the server. Saving itself still
  * goes through the server as before; a playbook only groups what is saved.
@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * added, so a playbook opens without asking the server for anything.
  */
 
-export type PlaybookItemKind = 'post' | 'trial' | 'call';
+export type PlaybookItemKind = 'post' | 'trial' | 'call' | 'athlete';
 
 export interface PlaybookItem {
   kind: PlaybookItemKind;

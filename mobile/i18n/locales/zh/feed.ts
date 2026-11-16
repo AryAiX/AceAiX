@@ -228,6 +228,7 @@ export const feed = {
     kindPost: '帖子',
     kindTrial: '试训',
     kindCall: '赞助招募',
+    kindAthlete: '运动员',
     savedAgo: '{{when}}收藏',
     emptyBody: '点按任意帖子、试训或赞助机会上的书签，即可收藏到这里。',
     all: '全部',
