@@ -24,11 +24,11 @@ import {
 import { useAsync, useAction } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import {
+  challengeDetail,
   challengeLeaderboard,
   enterChallenge,
   myClips,
   judgeChallengeEntry,
-  openChallenges,
   withdrawChallengeEntry,
 } from '@/lib/api';
 import { Routes } from '@/lib/routes';
@@ -66,14 +66,9 @@ export default function ChallengeScreen() {
   const [judgeValue, setJudgeValue] = useState('');
   const [judgeNote, setJudgeNote] = useState('');
 
-  /* `open_challenges` is the only reader that also knows whether *I* am in it,
-     so the detail screen reads the list and picks its row rather than adding a
-     second RPC that would have to repeat the same joins. */
+  /* challenge_detail reads one challenge in any status, including the caller's own entry. */
   const challengeQuery = useAsync<Challenge | null>(
-    async () => {
-      const all = await openChallenges(null, 50, 0);
-      return all.find((c) => c.id === id) ?? null;
-    },
+    () => challengeDetail(id!),
     [id],
     { enabled: !!id, refetchOnFocus: true },
   );

@@ -10301,4 +10301,177 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- One challenge, including a finished one (QA-194).
+-- Fresh accounts only (7f120000): a coach, an athlete, and a
+-- second coach who is suspended. Sport QA194 keeps the live
+-- row inside open_challenges for the comparison.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── one challenge, including a finished one ──'; end $$;
+
+do $$
+declare
+  v_coach     uuid := '7f120000-0000-4000-8000-000000000001';
+  v_athlete   uuid := '7f120000-0000-4000-8000-000000000002';
+  v_suspended uuid := '7f120000-0000-4000-8000-000000000003';
+  v_old       uuid := '7f120000-0000-4000-8000-000000000011';
+  v_closed    uuid := '7f120000-0000-4000-8000-000000000012';
+  v_live      uuid := '7f120000-0000-4000-8000-000000000013';
+  v_hidden    uuid := '7f120000-0000-4000-8000-000000000014';
+  v_entry     uuid := '7f120000-0000-4000-8000-000000000021';
+  v_media     uuid := '7f120000-0000-4000-8000-000000000031';
+  v_unknown   uuid := '7f120000-0000-4000-8000-000000000099';
+  v_profile   uuid;
+  v_old_setter    uuid;
+  v_closed_setter uuid;
+  v_old_entry     uuid;
+  v_closed_entry  uuid;
+  v_detail        jsonb;
+  v_open          jsonb;
+  v_ath_entry     uuid;
+  v_ath_status    text;
+  v_ath_live_id   uuid;
+  v_ath_live_entry uuid;
+  v_ath_hidden    integer;
+  v_own_id        uuid;
+  v_own_setter    uuid;
+  v_missing       integer;
+  v_denied        boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_coach, 'qa194.coach@test.local', '{"full_name":"QA194 Coach","role":"coach"}'),
+    (v_athlete, 'qa194.athlete@test.local', '{"full_name":"QA194 Athlete","role":"athlete"}'),
+    (v_suspended, 'qa194.suspended@test.local', '{"full_name":"QA194 Suspended","role":"coach"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '28 years'
+   where user_id in (v_coach, v_athlete, v_suspended);
+
+  select id into v_profile
+  from public.athlete_profiles
+  where user_id = v_athlete;
+
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public)
+  values (v_media, v_profile, 'QA194 clip', 'highlight_reel', 'posts/test/qa194.mp4', true);
+
+  insert into public.challenges (
+    id, created_by, sport, title, brief, opens_at, closes_at, status
+  ) values
+    (v_old, v_coach, 'QA194', 'Open but long closed',
+     'The closing time passed thirty days ago.',
+     now() - interval '40 days', now() - interval '30 days', 'open'),
+    (v_closed, v_coach, 'QA194', 'Already closed',
+     'This challenge is already closed.',
+     now() - interval '10 days', now() - interval '3 days', 'closed'),
+    (v_live, v_coach, 'QA194', 'Still live now',
+     'This challenge is still taking clips.',
+     now() - interval '1 day', now() + interval '10 days', 'open'),
+    (v_hidden, v_suspended, 'QA194', 'Suspended coach live',
+     'A live challenge from a suspended coach.',
+     now() - interval '1 day', now() + interval '12 days', 'open');
+
+  insert into public.challenge_entries (
+    id, challenge_id, athlete_id, media_id, status, verified_by, verified_at
+  ) values (
+    v_entry, v_old, v_profile, v_media, 'verified', v_coach, now()
+  );
+
+  update public.user_profiles
+     set is_suspended = true
+   where id = v_suspended;
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+
+  select d.setter_id, d.my_entry_id
+    into v_old_setter, v_old_entry
+  from public.challenge_detail(v_old) d;
+
+  select d.setter_id, d.my_entry_id
+    into v_closed_setter, v_closed_entry
+  from public.challenge_detail(v_closed) d;
+
+  select to_jsonb(d) into v_detail
+  from public.challenge_detail(v_live) d;
+
+  select to_jsonb(o) into v_open
+  from public.open_challenges('QA194', 50, 0) o
+  where o.id = v_live;
+
+  reset role;
+
+  perform tests.as_user(v_athlete);
+  set local role authenticated;
+
+  select d.my_entry_id, d.my_entry_status
+    into v_ath_entry, v_ath_status
+  from public.challenge_detail(v_old) d;
+
+  select d.id, d.my_entry_id
+    into v_ath_live_id, v_ath_live_entry
+  from public.challenge_detail(v_live) d;
+
+  select count(*)::int into v_ath_hidden
+  from public.challenge_detail(v_hidden);
+
+  select count(*)::int into v_missing
+  from public.challenge_detail(v_unknown);
+
+  reset role;
+
+  perform tests.as_user(v_suspended);
+  set local role authenticated;
+
+  select d.id, d.setter_id
+    into v_own_id, v_own_setter
+  from public.challenge_detail(v_hidden) d;
+
+  reset role;
+
+  perform tests.ok(
+    v_old_setter = v_coach and v_closed_setter = v_coach,
+    'the coach gets the 30-day-old challenge and the closed one');
+
+  perform tests.ok(
+    v_old_entry is null and v_closed_entry is null,
+    'the coach''s my_entry_id is null');
+
+  perform tests.ok(
+    v_detail is not null and v_detail = v_open,
+    'the live challenge matches the open_challenges row');
+
+  perform tests.ok(
+    v_ath_entry = v_entry
+    and v_ath_status = 'verified'
+    and v_ath_live_id = v_live
+    and v_ath_live_entry is null,
+    'the athlete sees their verified entry on the old challenge and none on the live one');
+
+  perform tests.ok(
+    v_ath_hidden = 0
+    and v_own_id = v_hidden
+    and v_own_setter = v_suspended,
+    'a suspended coach is hidden from the athlete and visible to themselves');
+
+  perform tests.ok(
+    v_missing = 0,
+    'an unknown id returns no row');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  set local role authenticated;
+  begin
+    perform 1 from public.challenge_detail(v_live);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.challenge_detail(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.challenge_detail(uuid)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
