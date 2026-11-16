@@ -82,6 +82,8 @@ export const errors = {
   coachingLocationRequired: 'Sag, wo es stattfinden soll.',
   coachingServiceLimit: 'Du kannst höchstens zwölf Angebote haben.',
   coachingOwnCalendar: 'Du kannst deinen eigenen Kalender nicht buchen.',
+  coachingGuardianAccount:
+    'Ein Elternkonto kann keinen Termin buchen. Dein Kind bucht über das eigene Konto.',
   meetupMapUrlInvalid: 'Bitte einen Link von Google Maps, Apple Maps oder Waze verwenden.',
   clubMapUrlInvalid: 'Füge einen Link von Google Maps, Apple Maps oder Waze ein, oder Koordinaten.',
   meetupPlaceInvalid: 'Jeder Ort muss 2 bis 80 Zeichen lang sein.',

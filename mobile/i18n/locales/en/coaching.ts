@@ -109,6 +109,9 @@ export const coaching = {
   askGuardian: 'Ask my guardian',
   ownCalendar: 'This is your own calendar.',
   manageCalendar: 'Manage calendar',
+  guardianAccount:
+    'Your child books sessions from their own account. You will be told about every booking and can cancel it under Children.',
+  openChildren: 'Open Children',
   unavailable: 'This coach cannot be booked.',
   upcoming: 'Coming up',
   past: 'Earlier',
@@ -122,6 +125,7 @@ export const coaching = {
   forChild: 'For {{name}}',
   guardianIntro: 'Sessions booked by the young people you look after.',
   cardBook: 'Book a session',
+  seeSessions: 'See sessions',
   cardManage: 'Open my calendar',
   cardSetup: 'Take students: set up what you offer and open times.',
   priceFrom: 'From {{amount}}',

@@ -107,6 +107,9 @@ export const coaching = {
   askGuardian: 'اطلب من وليّ أمري',
   ownCalendar: 'هذا تقويمك الخاص.',
   manageCalendar: 'إدارة التقويم',
+  guardianAccount:
+    'يحجز طفلك الجلسات من حسابه. ستُبلَّغ بكل حجز ويمكنك إلغاءه من الأبناء.',
+  openChildren: 'افتح الأبناء',
   unavailable: 'لا يمكن الحجز مع هذا المدرب.',
   upcoming: 'القادمة',
   past: 'السابقة',
@@ -120,6 +123,7 @@ export const coaching = {
   forChild: 'لـ {{name}}',
   guardianIntro: 'الجلسات التي حجزها من ترعاهم.',
   cardBook: 'احجز جلسة',
+  seeSessions: 'شاهد الجلسات',
   cardManage: 'افتح تقويمي',
   cardSetup: 'اقبل متدربين: جهّز ما تقدّمه وافتح أوقاتًا.',
   priceFrom: 'ابتداءً من {{amount}}',

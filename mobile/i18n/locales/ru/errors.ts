@@ -82,6 +82,8 @@ export const errors = {
   coachingLocationRequired: 'Укажите, где это должно пройти.',
   coachingServiceLimit: 'Одновременно можно предлагать двенадцать услуг.',
   coachingOwnCalendar: 'Нельзя записаться в собственный календарь.',
+  coachingGuardianAccount:
+    'Родительский аккаунт не может записаться на занятие. Ваш ребёнок записывается со своего аккаунта.',
   meetupMapUrlInvalid: 'Используйте ссылку из Google Maps, Apple Maps или Waze.',
   clubMapUrlInvalid: 'Вставьте ссылку Google Maps, Apple Maps или Waze, или координаты.',
   meetupPlaceInvalid: 'Каждое место должно содержать от 2 до 80 символов.',

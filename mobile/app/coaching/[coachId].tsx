@@ -201,6 +201,15 @@ export default function CoachBookingScreen() {
             {t('coaching.ownCalendar')}
           </InfoNote>
         ) : null}
+        {data.gate === 'guardian_account' ? (
+          <InfoNote
+            tone="info"
+            actionLabel={t('coaching.openChildren')}
+            onAction={() => router.push(Routes.childrenTab)}
+          >
+            {t('coaching.guardianAccount')}
+          </InfoNote>
+        ) : null}
 
         {services.length > 0 ? (
           <View style={{ gap: spacing.md }}>

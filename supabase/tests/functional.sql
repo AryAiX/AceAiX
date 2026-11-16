@@ -10682,4 +10682,54 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- A parent account does not book coaching (QA-202).
+-- Seeded coach, seeded guardian, and the adult athlete.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a parent account does not book coaching ──'; end $$;
+
+do $$
+declare
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_adult    uuid := '44444444-4444-4444-4444-444444444444';
+  v_service  uuid;
+  v_slot     uuid;
+begin
+  insert into public.coaching_settings (user_id, accepting)
+  values (v_coach, true)
+  on conflict (user_id) do update
+    set accepting = true, updated_at = now();
+
+  insert into public.coaching_services
+    (coach_user_id, kind, title, duration_minutes, capacity, location_mode)
+  values
+    (v_coach, 'session', 'QA202 online session', 60, 1, 'online')
+  returning id into v_service;
+
+  insert into public.coaching_slots
+    (service_id, coach_user_id, starts_at, ends_at, capacity)
+  values
+    (v_service, v_coach, now() + interval '3 days', now() + interval '3 days 1 hour', 1)
+  returning id into v_slot;
+
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'guardian_account',
+    'a parent account is told it cannot book');
+
+  perform tests.ok(
+    tests.hint_of(format('select public.book_coaching_slot(%L::uuid)', v_slot)) = 'guardian_account'
+    and not exists (
+      select 1 from public.coaching_bookings
+      where slot_id = v_slot and athlete_user_id = v_guardian
+    ),
+    'booking is refused with hint guardian_account and no row is written for the parent');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'ok',
+    'an adult athlete can still book');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

@@ -7,6 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Button, Card, Text } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { useAuth } from '@/providers/AuthProvider';
 import { getCoachBookingPage, getMyCoaching } from '@/lib/api.coaching';
 import { isUpcoming, whenLabel } from '@/lib/coaching';
 import { currentLanguage } from '@/lib/i18n-bridge';
@@ -23,6 +24,7 @@ export function CoachBookingCard({ coachId, refreshKey }: { coachId: string; ref
   const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
+  const { isGuardian } = useAuth();
   const page = useAsync(() => getCoachBookingPage(coachId), [coachId, refreshKey], { refetchOnFocus: true });
   const data = page.data;
   if (!data || !data.coach.accepting) return null;
@@ -60,7 +62,7 @@ export function CoachBookingCard({ coachId, refreshKey }: { coachId: string; ref
       </Text>
       <Button
         size="sm"
-        label={t('coaching.cardBook')}
+        label={t(isGuardian ? 'coaching.seeSessions' : 'coaching.cardBook')}
         onPress={() => router.push(Routes.coachBooking(coachId))}
         testID="coach-book-button"
       />
