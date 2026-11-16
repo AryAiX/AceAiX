@@ -19,10 +19,11 @@ import { SavedRow } from '@/components/saved/SavedRow';
 import { NewPlaybookTile, PlaybookCover } from '@/components/saved/PlaybookCover';
 import { NewPlaybookForm, PlaybookSheet } from '@/components/saved/PlaybookSheet';
 import { groupedRowStyle } from '@/components/discover/groupedRow';
-import { opportunityTypeLabel, sportConfig, sportLabel } from '@/constants/sports';
+import { opportunityTypeLabel, positionLabel, sportConfig, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getSavedPosts, toggleSave, toggleSaveOpportunity } from '@/lib/api';
+import { removeFromShortlist, shortlistedAthletes } from '@/lib/api.discover';
 import { savedOpportunities } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, relativeTime } from '@/lib/format';
@@ -30,9 +31,9 @@ import { removeFromAllPlaybooks, usePlaybooks, type PlaybookItem } from '@/lib/p
 import { Routes } from '@/lib/routes';
 import { unsaveCall, useSavedCalls, type SavedCall } from '@/lib/savedCalls';
 import { useAuth } from '@/providers/AuthProvider';
-import type { Opportunity, SavedPost } from '@/types/models';
+import type { DiscoveredAthlete, Opportunity, SavedPost } from '@/types/models';
 
-type Tab = 'all' | 'posts' | 'trials' | 'sponsors';
+type Tab = 'all' | 'posts' | 'trials' | 'sponsors' | 'athletes';
 
 /* Saved posts come a page at a time from the server; one generous page is
    plenty for a list of what someone kept. */
@@ -45,9 +46,11 @@ function postThumb(post: SavedPost): string | null {
 }
 
 /**
- * Everything the athlete saved, in one place: their playbooks along the top,
- * then the posts and trials they bookmarked as compact rows. The bookmark on
- * a row unsaves it; pressing and holding a row adds it to a playbook.
+ * Everything this person saved: playbooks along the top, then compact rows.
+ * Athletes see posts, trials and sponsorships. Coaches, clubs and scouts see
+ * posts and the athletes on their shortlist. Everyone else sees posts only.
+ * The bookmark on a row unsaves it; pressing and holding a post adds it to a
+ * playbook.
  */
 export default function SavedScreen() {
   const theme = useTheme();
@@ -55,20 +58,28 @@ export default function SavedScreen() {
   const router = useRouter();
   const t = useT();
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, isAthlete, isRecruiter } = useAuth();
   const playbooks = usePlaybooks(user?.id);
-  const callRows = useSavedCalls(user?.id);
+  const callRows = useSavedCalls(isAthlete ? user?.id : null);
 
   const [tab, setTab] = useState<Tab>('all');
   const [creating, setCreating] = useState(false);
   const [sheetItem, setSheetItem] = useState<Omit<PlaybookItem, 'addedAt'> | null>(null);
   const [gonePosts, setGonePosts] = useState<Set<string>>(new Set());
   const [goneTrials, setGoneTrials] = useState<Set<string>>(new Set());
+  const [goneAthletes, setGoneAthletes] = useState<Set<string>>(new Set());
 
   const posts = useAsync<SavedPost[]>(() => getSavedPosts({ limit: POSTS_LIMIT }), [], {
     refetchOnFocus: true,
   });
-  const trials = useAsync<Opportunity[]>(() => savedOpportunities(), [], { refetchOnFocus: true });
+  const trials = useAsync<Opportunity[]>(() => savedOpportunities(), [], {
+    enabled: isAthlete,
+    refetchOnFocus: true,
+  });
+  const athletes = useAsync<DiscoveredAthlete[]>(() => shortlistedAthletes(), [isRecruiter], {
+    enabled: isRecruiter,
+    refetchOnFocus: true,
+  });
 
   const postRows = useMemo(
     () => (posts.data ?? []).filter((p) => !gonePosts.has(p.id)),
@@ -78,14 +89,23 @@ export default function SavedScreen() {
     () => (trials.data ?? []).filter((o) => !goneTrials.has(o.id)),
     [trials.data, goneTrials],
   );
+  const athleteRows = useMemo(
+    () => (athletes.data ?? []).filter((a) => !goneAthletes.has(a.athlete_id)),
+    [athletes.data, goneAthletes],
+  );
 
-  const refreshing = posts.refreshing || trials.refreshing;
+  const refreshing =
+    posts.refreshing ||
+    (isAthlete && trials.refreshing) ||
+    (isRecruiter && athletes.refreshing);
   const refresh = useCallback(() => {
     setGonePosts(new Set());
     setGoneTrials(new Set());
+    setGoneAthletes(new Set());
     posts.refresh();
-    trials.refresh();
-  }, [posts, trials]);
+    if (isAthlete) trials.refresh();
+    if (isRecruiter) athletes.refresh();
+  }, [posts, trials, athletes, isAthlete, isRecruiter]);
 
   const unsavePost = async (post: SavedPost) => {
     setGonePosts((s) => new Set(s).add(post.id));
@@ -111,6 +131,20 @@ export default function SavedScreen() {
       setGoneTrials((s) => {
         const next = new Set(s);
         next.delete(trial.id);
+        return next;
+      });
+      toast.error(errorMessage(err));
+    }
+  };
+
+  const unsaveAthlete = async (athlete: DiscoveredAthlete) => {
+    setGoneAthletes((s) => new Set(s).add(athlete.athlete_id));
+    try {
+      await removeFromShortlist(athlete.athlete_id);
+    } catch (err) {
+      setGoneAthletes((s) => {
+        const next = new Set(s);
+        next.delete(athlete.athlete_id);
         return next;
       });
       toast.error(errorMessage(err));
@@ -198,6 +232,28 @@ export default function SavedScreen() {
     </View>
   );
 
+  const athleteList = (
+    <View>
+      {athleteRows.map((athlete, i) => (
+        <SavedRow
+          key={athlete.athlete_id}
+          kind="athlete"
+          seed={athlete.user_id}
+          title={displayName(athlete.full_name)}
+          line={metaLine(
+            athlete.sport ? sportLabel(t, athlete.sport) : null,
+            positionLabel(t, athlete.position, athlete.sport) || null,
+          )}
+          thumb={athlete.avatar_url}
+          action="unsave"
+          onPress={() => router.push(Routes.profile(athlete.user_id))}
+          onAction={() => void unsaveAthlete(athlete)}
+          style={groupStyle(i, athleteRows.length)}
+        />
+      ))}
+    </View>
+  );
+
   const callList = (
     <View>
       {callRows.map((call, i) => (
@@ -223,9 +279,27 @@ export default function SavedScreen() {
     </View>
   );
 
-  const loading = (posts.loading && !posts.data) || (trials.loading && !trials.data);
-  const failed = (posts.error && !posts.data) || (trials.error && !trials.data);
-  const total = postRows.length + trialRows.length + callRows.length;
+  const loading =
+    (posts.loading && !posts.data) ||
+    (isAthlete && trials.loading && !trials.data) ||
+    (isRecruiter && athletes.loading && !athletes.data);
+  const failed =
+    (posts.error && !posts.data) ||
+    (isAthlete && trials.error && !trials.data) ||
+    (isRecruiter && athletes.error && !athletes.data);
+  const total = isRecruiter
+    ? postRows.length + athleteRows.length
+    : isAthlete
+      ? postRows.length + trialRows.length + callRows.length
+      : postRows.length;
+  const showTabs = isAthlete || isRecruiter;
+  const viewTab: Tab = !showTabs
+    ? 'posts'
+    : isRecruiter && (tab === 'trials' || tab === 'sponsors')
+      ? 'all'
+      : isAthlete && tab === 'athletes'
+        ? 'all'
+        : tab;
 
   const sectionTitle = (label: string) => (
     <Text variant="heading" style={{ marginTop: spacing.lg, marginBottom: spacing.sm }}>
@@ -235,24 +309,31 @@ export default function SavedScreen() {
 
   const tabEmpty =
     total === 0 ||
-    (tab === 'posts' && postRows.length === 0) ||
-    (tab === 'trials' && trialRows.length === 0) ||
-    (tab === 'sponsors' && callRows.length === 0);
+    (viewTab === 'posts' && postRows.length === 0) ||
+    (viewTab === 'trials' && trialRows.length === 0) ||
+    (viewTab === 'sponsors' && callRows.length === 0) ||
+    (viewTab === 'athletes' && athleteRows.length === 0);
 
   /* An empty tab: one small card under the tabs that says what belongs here
      and where to find it. */
   const empty =
-    tab === 'posts'
+    viewTab === 'posts'
       ? { title: t('feed.playbooks.emptyPostsTitle'), body: t('feed.playbooks.emptyPostsBody'), go: Routes.home }
-      : tab === 'trials'
+      : viewTab === 'trials'
         ? { title: t('feed.playbooks.emptyTrialsTitle'), body: t('feed.playbooks.emptyTrialsBody'), go: Routes.opportunities }
-        : tab === 'sponsors'
+        : viewTab === 'sponsors'
           ? {
               title: t('feed.playbooks.emptySponsorsTitle'),
               body: t('feed.playbooks.emptySponsorsBody'),
               go: Routes.discoverSection('sponsors'),
             }
-          : { title: t('feed.savedEmptyTitle'), body: t('feed.playbooks.emptyBody'), go: null };
+          : viewTab === 'athletes'
+            ? {
+                title: t('feed.playbooks.emptyAthletesTitle'),
+                body: t('feed.playbooks.emptyAthletesBody'),
+                go: Routes.discover,
+              }
+            : { title: t('feed.savedEmptyTitle'), body: t('feed.playbooks.emptyBody'), go: null };
   const emptyGo = empty.go;
   const emptyCard = (
     <View
@@ -309,20 +390,32 @@ export default function SavedScreen() {
               onPress={() => router.push(Routes.home)}
               testID="saved-empty-posts"
             />
-            <Button
-              label={t('feed.playbooks.trials')}
-              size="sm"
-              variant="soft"
-              onPress={() => router.push(Routes.opportunities)}
-              testID="saved-empty-trials"
-            />
-            <Button
-              label={t('feed.playbooks.sponsors')}
-              size="sm"
-              variant="soft"
-              onPress={() => router.push(Routes.discoverSection('sponsors'))}
-              testID="saved-empty-sponsors"
-            />
+            {isRecruiter ? (
+              <Button
+                label={t('feed.playbooks.athletes')}
+                size="sm"
+                variant="soft"
+                onPress={() => router.push(Routes.discover)}
+                testID="saved-empty-athletes"
+              />
+            ) : (
+              <>
+                <Button
+                  label={t('feed.playbooks.trials')}
+                  size="sm"
+                  variant="soft"
+                  onPress={() => router.push(Routes.opportunities)}
+                  testID="saved-empty-trials"
+                />
+                <Button
+                  label={t('feed.playbooks.sponsors')}
+                  size="sm"
+                  variant="soft"
+                  onPress={() => router.push(Routes.discoverSection('sponsors'))}
+                  testID="saved-empty-sponsors"
+                />
+              </>
+            )}
           </View>
         )}
       </View>
@@ -332,11 +425,34 @@ export default function SavedScreen() {
   let body: React.ReactNode;
   if (loading) body = <SkeletonList count={4} variant="row" />;
   else if (failed)
-    body = <ErrorState message={posts.error ?? trials.error ?? ''} onRetry={refresh} />;
+    body = (
+      <ErrorState
+        message={posts.error ?? trials.error ?? athletes.error ?? ''}
+        onRetry={refresh}
+      />
+    );
   else if (tabEmpty) body = emptyCard;
-  else if (tab === 'posts') body = <View style={{ marginTop: spacing.md }}>{postList}</View>;
-  else if (tab === 'trials') body = <View style={{ marginTop: spacing.md }}>{trialList}</View>;
-  else if (tab === 'sponsors') body = <View style={{ marginTop: spacing.md }}>{callList}</View>;
+  else if (viewTab === 'posts') body = <View style={{ marginTop: spacing.md }}>{postList}</View>;
+  else if (viewTab === 'trials') body = <View style={{ marginTop: spacing.md }}>{trialList}</View>;
+  else if (viewTab === 'sponsors') body = <View style={{ marginTop: spacing.md }}>{callList}</View>;
+  else if (viewTab === 'athletes') body = <View style={{ marginTop: spacing.md }}>{athleteList}</View>;
+  else if (isRecruiter)
+    body = (
+      <>
+        {athleteRows.length > 0 ? (
+          <>
+            {sectionTitle(t('feed.playbooks.athletes'))}
+            {athleteList}
+          </>
+        ) : null}
+        {postRows.length > 0 ? (
+          <>
+            {sectionTitle(t('feed.playbooks.posts'))}
+            {postList}
+          </>
+        ) : null}
+      </>
+    );
   else
     body = (
       <>
@@ -389,30 +505,40 @@ export default function SavedScreen() {
         </ScrollView>
 
         {/* The tabs share the width. A long label wraps inside its share. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginTop: spacing.lg }}
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
-          <View style={{ flexGrow: 1, minWidth: '100%' }}>
-            <TextTabs<Tab>
-              options={[
-                { value: 'all', label: `${t('feed.playbooks.all')} ${total}` },
-                { value: 'posts', label: `${t('feed.playbooks.posts')} ${postRows.length}` },
-                { value: 'trials', label: `${t('feed.playbooks.trials')} ${trialRows.length}` },
-                { value: 'sponsors', label: `${t('feed.playbooks.sponsors')} ${callRows.length}` },
-              ]}
-              value={tab}
-              onChange={setTab}
-              testID="saved-tabs"
-            />
-          </View>
-        </ScrollView>
+        {showTabs ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: spacing.lg }}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            <View style={{ flexGrow: 1, minWidth: '100%' }}>
+              <TextTabs<Tab>
+                options={
+                  isRecruiter
+                    ? [
+                        { value: 'all', label: `${t('feed.playbooks.all')} ${total}` },
+                        { value: 'posts', label: `${t('feed.playbooks.posts')} ${postRows.length}` },
+                        { value: 'athletes', label: `${t('feed.playbooks.athletes')} ${athleteRows.length}` },
+                      ]
+                    : [
+                        { value: 'all', label: `${t('feed.playbooks.all')} ${total}` },
+                        { value: 'posts', label: `${t('feed.playbooks.posts')} ${postRows.length}` },
+                        { value: 'trials', label: `${t('feed.playbooks.trials')} ${trialRows.length}` },
+                        { value: 'sponsors', label: `${t('feed.playbooks.sponsors')} ${callRows.length}` },
+                      ]
+                }
+                value={viewTab}
+                onChange={setTab}
+                testID="saved-tabs"
+              />
+            </View>
+          </ScrollView>
+        ) : null}
 
         {body}
 
-        {!loading && !failed && !tabEmpty ? (
+        {!loading && !failed && !tabEmpty && viewTab !== 'athletes' ? (
           <Text variant="caption" tone="muted" align="center" style={{ marginTop: spacing.lg }}>
             {t('feed.playbooks.holdHint')}
           </Text>

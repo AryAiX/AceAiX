@@ -13,7 +13,7 @@ import type { PlaybookItem } from '@/lib/playbooks';
 import { LogoColors } from '@/theme/tokens';
 
 interface Props {
-  kind: PlaybookItem['kind'];
+  kind: PlaybookItem['kind'] | 'athlete';
   /** Used for the picture's fallback colour. */
   seed: string;
   title: string;
@@ -56,7 +56,7 @@ export function SavedRow({
   const picture =
     kind === 'trial' ? (
       <ClubLogo uri={thumb ?? null} name={title} size="md" />
-    ) : kind === 'call' ? (
+    ) : kind === 'call' || kind === 'athlete' ? (
       <Avatar uri={thumb ?? null} name={title} size="lg" />
     ) : thumb ? (
       <RemoteImage uri={thumb} style={{ width: 52, height: 52, borderRadius: radii.lg }} />

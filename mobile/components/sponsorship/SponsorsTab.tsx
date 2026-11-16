@@ -200,7 +200,7 @@ export function SponsorsTab({ query }: { query: string }) {
                   onApply={isAthlete && gate === 'ok' ? setApplyTo : undefined}
                   onOpenSponsor={openProfile}
                   saved={savedIds.has(call.call_id)}
-                  onToggleSave={user ? toggleSave : undefined}
+                  onToggleSave={isAthlete ? toggleSave : undefined}
                 />
               </Reveal>
             ))}

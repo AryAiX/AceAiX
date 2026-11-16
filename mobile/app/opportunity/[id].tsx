@@ -392,7 +392,7 @@ export default function OpportunityDetailScreen() {
           disabled
           style={{ flex: 1 }}
         />
-        {bookmarkButton}
+        {isAthlete ? bookmarkButton : null}
       </View>
     );
   } else if (isAthlete) {
