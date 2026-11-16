@@ -80,7 +80,7 @@ export function HomeSpotlight({
   const { colors, spacing, radii } = theme;
   const t = useT();
   const router = useRouter();
-  const { profile, isGuardian } = useAuth();
+  const { profile } = useAuth();
 
   const isAthlete = profile?.role === 'athlete';
 
@@ -91,7 +91,7 @@ export function HomeSpotlight({
   /* Twenty open ones to choose from, and who you are, so the card can show
      one in your sport that you are old enough to enter. */
   const challenges = useAsync(() => openChallenges(null, 20, 0), [], {
-    enabled: !isGuardian,
+    enabled: isAthlete,
     refetchOnFocus: true,
   });
   const viewer = useAsync(() => getMyChallengeViewer().catch(() => ({ sports: [], birthDate: null })), [], {
@@ -106,11 +106,12 @@ export function HomeSpotlight({
 
   const rawViews = isAthlete && digest.data && digest.data.total > 0 ? digest.data : null;
 
-  // Parents cannot enter challenges, so the card has nothing for them (QA-151).
+  // Only athletes can enter a challenge, so the card is for athletes only
+  // (QA-197, extends QA-151).
   // Home's Following tab is people, so the challenge card stays on Playfeed;
   // Notifications always shows it.
   const rawChallenge =
-    isGuardian || (!showChallenge && !pinned)
+    !isAthlete || (!showChallenge && !pinned)
       ? null
       : pickChallenge((challenges.data ?? []).filter(isChallengeLive), {
           sports: viewer.data?.sports ?? [],
@@ -126,10 +127,13 @@ export function HomeSpotlight({
   const challenge =
     rawChallenge && (pinned || challengePutAway !== rawChallenge.id) ? rawChallenge : null;
 
-  /* Wait for all three answers before showing anything, so the rows arrive
-     together and in their final order: no challenge first and views half a
-     second later, and no challenge swapped once we know your sport and age. */
-  const settled = !digest.loading && !challenges.loading && !viewer.loading;
+  /* Wait for the answers we asked for before showing anything, so the rows
+     arrive together and in their final order: no challenge first and views
+     half a second later, and no challenge swapped once we know your sport
+     and age. The challenges request only runs for athletes; a disabled one
+     reports nothing in flight, and must not hold the views row or onReady. */
+  const settled =
+    !digest.loading && !viewer.loading && (!isAthlete || !challenges.loading);
   useEffect(() => {
     if (settled) onReady?.();
   }, [settled, onReady]);
