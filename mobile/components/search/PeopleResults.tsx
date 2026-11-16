@@ -113,7 +113,7 @@ export function PeopleResults({
   const parents = useAsync(
     async () => ({ term, rows: await searchPeople(queryForSearch, 'guardian', 40) }),
     [term, queryForSearch],
-    { enabled: kindShown === 'parents' },
+    { enabled: kindShown === 'parents' && term.trim().length > 0 },
   );
   const listed = kindShown === 'parents' ? parents : coaches;
 
@@ -242,6 +242,18 @@ export function PeopleResults({
           }
         />
         {sheet}
+      </View>
+    );
+  }
+
+  /* Parents are found by name. An empty box asks for one instead of searching. */
+  if (kindShown === 'parents' && term.trim().length === 0) {
+    return (
+      <View style={{ flex: 1, paddingHorizontal: spacing.lg }}>
+        {bar}
+        <Text variant="body" tone="secondary">
+          {t('discover.search.parentsHint')}
+        </Text>
       </View>
     );
   }

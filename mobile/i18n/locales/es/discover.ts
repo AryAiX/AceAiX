@@ -252,5 +252,7 @@ export const discover = {
     athletesBestFirst: 'Los que mejor encajan contigo primero',
     emptyBodyPeople: 'Prueba con un nombre más corto o abre Filtros para buscar por deporte, posición o país.',
     emptyBodyPosts: 'Aún no hay publicaciones con esa palabra. Prueba otra o una #etiqueta.',
+    postsHint: 'Busca publicaciones con una palabra o una #etiqueta.',
+    parentsHint: 'Escribe un nombre para encontrar padres.',
   },
 };

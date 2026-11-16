@@ -240,5 +240,7 @@ export const discover = {
     athletesBestFirst: 'Best match for you first',
     emptyBodyPeople: 'Try a shorter name, or open Filters to search by sport, position or country.',
     emptyBodyPosts: 'No posts use that word yet. Try another word or a #tag.',
+    postsHint: 'Find posts by a word or a #hashtag.',
+    parentsHint: 'Type a name to find parents.',
   },
 };

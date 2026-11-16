@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Grid3x3 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { EmptyState, ErrorState, SkeletonList } from '@/components/ui';
+import { EmptyState, ErrorState, SkeletonList, Text } from '@/components/ui';
 import { MediaGrid } from '@/components/profile/MediaGrid';
 import { useT } from '@/i18n';
 import { POST_PAGE, searchPosts, type PostHit } from '@/lib/api.search';
@@ -33,6 +33,7 @@ export function PostResults({ term, onOpen, endPadding }: Props) {
 
   const load = useCallback(
     async (nextPage: number, reset: boolean) => {
+      if (!term.trim()) return;
       setLoading(true);
       setError(null);
       try {
@@ -50,16 +51,27 @@ export function PostResults({ term, onOpen, endPadding }: Props) {
   );
 
   useEffect(() => {
+    if (!term.trim()) return;
     setRows([]);
     setDone(false);
     void load(0, true);
-  }, [load]);
+  }, [load, term]);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const nearEnd = layoutMeasurement.height + contentOffset.y >= contentSize.height - 400;
     if (nearEnd && !loading && !done && rows.length > 0) void load(page + 1, false);
   };
+
+  if (!term.trim()) {
+    return (
+      <View style={{ paddingHorizontal: spacing.lg }}>
+        <Text variant="body" tone="secondary">
+          {t('discover.search.postsHint')}
+        </Text>
+      </View>
+    );
+  }
 
   if (rows.length === 0) {
     return (

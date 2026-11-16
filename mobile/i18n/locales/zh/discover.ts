@@ -234,5 +234,7 @@ export const discover = {
     athletesBestFirst: '最匹配你的排在前面',
     emptyBodyPeople: '试试更短的名字，或打开筛选按项目、位置或国家查找。',
     emptyBodyPosts: '还没有使用这个词的动态。换个词或 #话题 试试。',
+    postsHint: '用一个词或 #话题 查找动态。',
+    parentsHint: '输入姓名来查找家长。',
   },
 };

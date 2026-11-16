@@ -93,7 +93,7 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  /* A new word starts from All with no leftover filters. */
+  /* A new word drops leftover people filters. The tab stays where it was. */
   useEffect(() => {
     setPeopleFilters({});
   }, [debounced]);
@@ -250,60 +250,56 @@ export default function SearchScreen() {
         />
       </View>
 
-      {active ? (
-        <>
-          <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
-            <TextTabs<Tab>
-              options={[
-                { value: 'all', label: t('discover.search.tabAll') },
-                { value: 'people', label: t('discover.search.tabPeople') },
-                { value: 'posts', label: t('discover.search.tabPosts') },
-              ]}
-              value={tab}
-              onChange={setTab}
-              color={LogoColors.flame}
-              testID="search-tabs"
-            />
-          </View>
-          {tab === 'all' ? (
-            <AllResults
-              term={debounced}
-              queryForSearch={queryForSearch}
-              sportKey={sportKey}
-              onSeePeople={() => {
-                remember(query);
-                setPeopleKind('athletes');
-                setTab('people');
-              }}
-              onSeePosts={() => {
-                remember(query);
-                setTab('posts');
-              }}
-              onOpen={opened}
-              endPadding={endPadding}
-            />
-          ) : tab === 'people' ? (
-            <View style={{ flex: 1, paddingTop: spacing.md }}>
-              <PeopleResults
-                term={debounced}
-                queryForSearch={queryForSearch}
-                sportKey={sportKey}
-                kind={peopleKind}
-                onKind={setPeopleKind}
-                filters={peopleFilters}
-                onFilters={setPeopleFilters}
-                onOpen={opened}
-                endPadding={endPadding}
-              />
-            </View>
-          ) : (
-            <View style={{ flex: 1, paddingTop: spacing.md }}>
-              <PostResults term={debounced} onOpen={opened} endPadding={endPadding} />
-            </View>
-          )}
-        </>
-      ) : (
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xs }}>
+        <TextTabs<Tab>
+          options={[
+            { value: 'all', label: t('discover.search.tabAll') },
+            { value: 'people', label: t('discover.search.tabPeople') },
+            { value: 'posts', label: t('discover.search.tabPosts') },
+          ]}
+          value={tab}
+          onChange={setTab}
+          color={LogoColors.flame}
+          testID="search-tabs"
+        />
+      </View>
+      {tab === 'all' && !active ? (
         startState
+      ) : tab === 'all' ? (
+        <AllResults
+          term={debounced}
+          queryForSearch={queryForSearch}
+          sportKey={sportKey}
+          onSeePeople={() => {
+            remember(query);
+            setPeopleKind('athletes');
+            setTab('people');
+          }}
+          onSeePosts={() => {
+            remember(query);
+            setTab('posts');
+          }}
+          onOpen={opened}
+          endPadding={endPadding}
+        />
+      ) : tab === 'people' ? (
+        <View style={{ flex: 1, paddingTop: spacing.md }}>
+          <PeopleResults
+            term={debounced}
+            queryForSearch={queryForSearch}
+            sportKey={sportKey}
+            kind={peopleKind}
+            onKind={setPeopleKind}
+            filters={peopleFilters}
+            onFilters={setPeopleFilters}
+            onOpen={opened}
+            endPadding={endPadding}
+          />
+        </View>
+      ) : (
+        <View style={{ flex: 1, paddingTop: spacing.md }}>
+          <PostResults term={debounced} onOpen={opened} endPadding={endPadding} />
+        </View>
       )}
     </Screen>
   );
