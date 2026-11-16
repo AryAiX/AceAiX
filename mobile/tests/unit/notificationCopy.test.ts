@@ -255,3 +255,279 @@ describe('challenge result sentences', () => {
     expect(notificationCopy(row, arabic).title).toBe('مشاركتك في sprint challenge تحتاج محاولة أخرى');
   });
 });
+
+const FIXED: { type: NotificationType; title: string; ar: string; body?: string }[] = [
+  { type: 'club_verification_approved', title: 'Your club page is verified', ar: 'تم توثيق صفحة ناديك' },
+  {
+    type: 'club_verification_rejected',
+    title: 'Your club verification was not approved',
+    ar: 'لم تُقبل عملية توثيق ناديك',
+    body: 'The licence photo is blurry.',
+  },
+  {
+    type: 'club_verification_more_info',
+    title: 'We need more information to verify your club',
+    ar: 'نحتاج إلى مزيد من المعلومات لتوثيق ناديك',
+    body: 'Send a clearer photo of the pitch.',
+  },
+  { type: 'club_invite_accepted', title: 'Your invitation was accepted', ar: 'قُبلت دعوتك' },
+  { type: 'guardian_consent_granted', title: 'Your parent approved your account', ar: 'وافق أحد والديك على حسابك' },
+  { type: 'guardian_consent_changed', title: 'Your parent changed what you can do', ar: 'غيّر أحد والديك ما يمكنك فعله' },
+  {
+    type: 'guardian_consent_revoked',
+    title: 'Your parent did not approve your request',
+    ar: 'لم يوافق أحد والديك على طلبك',
+  },
+  {
+    type: 'guardian_consent_revoked',
+    title: 'Your parent approval was withdrawn',
+    ar: 'سُحبت موافقة أحد والديك',
+  },
+];
+
+describe('club, guardian and consent sentences', () => {
+  for (const row of FIXED) {
+    it(`translates ${row.type}: ${row.title}`, () => {
+      const stored = notice({ type: row.type, title: row.title, body: row.body ?? null });
+      expect(notificationCopy(stored, english)).toEqual({ title: row.title, body: row.body ?? null });
+      expect(notificationCopy(stored, arabic)).toEqual({ title: row.ar, body: row.body ?? null });
+    });
+  }
+});
+
+describe('sentences with a name or a title in them', () => {
+  it('translates a finished Game Intelligence session, and its private note', () => {
+    const row = notice({
+      type: 'gi_completed',
+      title: 'Sara finished the Game Intelligence games',
+      body: 'Their results are private unless they choose to share them.',
+    });
+    expect(notificationCopy(row, english)).toEqual({
+      title: 'Sara finished the Game Intelligence games',
+      body: 'Their results are private unless they choose to share them.',
+    });
+    expect(notificationCopy(row, arabic)).toEqual({
+      title: 'أنهى Sara ألعاب ذكاء اللعب',
+      body: 'نتائجهم خاصة ما لم يختاروا مشاركتها.',
+    });
+  });
+
+  it('translates a finished Sport Fit, and its private note', () => {
+    const row = notice({
+      type: 'sport_fit_completed',
+      title: 'Sara completed Sport Fit',
+      body: 'Their answers and result are private to them.',
+    });
+    expect(notificationCopy(row, english)).toEqual({
+      title: 'Sara completed Sport Fit',
+      body: 'Their answers and result are private to them.',
+    });
+    expect(notificationCopy(row, arabic)).toEqual({
+      title: 'أكمل Sara ملاءمة الرياضة',
+      body: 'إجاباتهم ونتيجتهم خاصة بهم.',
+    });
+  });
+
+  it('rebuilds a tier change from data.tier and data.overall', () => {
+    const row = notice({
+      type: 'score_tier_up',
+      title: 'You reached Gold tier',
+      body: 'Your Talent Score is now 80.',
+      data: { tier: 'gold', overall: 80 },
+    });
+    expect(notificationCopy(row, english)).toEqual({
+      title: 'You reached Gold tier',
+      body: 'Your Talent Score is now 80.',
+    });
+    expect(notificationCopy(row, arabic)).toEqual({
+      title: 'وصلت إلى مستوى ذهبي',
+      body: 'درجة الموهبة لديك الآن 80.',
+    });
+  });
+
+  it('translates an invitation to help run a club', () => {
+    const row = notice({ type: 'club_invite', title: 'You were invited to help run Riverside' });
+    expect(notificationCopy(row, english).title).toBe('You were invited to help run Riverside');
+    expect(notificationCopy(row, arabic).title).toBe('دُعيت للمساعدة في إدارة Riverside');
+  });
+
+  it('translates a cancelled club event', () => {
+    const row = notice({ type: 'club_event_cancelled', title: 'Open trial was cancelled' });
+    expect(notificationCopy(row, english).title).toBe('Open trial was cancelled');
+    expect(notificationCopy(row, arabic).title).toBe('أُلغي Open trial');
+  });
+
+  it('translates a registration, for the club and for a parent', () => {
+    for (const type of ['club_event_registration', 'club_event_registration_minor'] as const) {
+      const row = notice({ type, title: 'Sara registered for Open trial' });
+      expect(notificationCopy(row, english).title).toBe('Sara registered for Open trial');
+      expect(notificationCopy(row, arabic).title).toBe('سجّل Sara في Open trial');
+    }
+  });
+
+  it('translates "Your child" on a minor registration, and keeps it as a name otherwise', () => {
+    const child = notice({
+      type: 'club_event_registration_minor',
+      title: 'Your child registered for Open trial',
+      actor: undefined,
+    });
+    expect(notificationCopy(child, english).title).toBe('Your child registered for Open trial');
+    expect(notificationCopy(child, arabic).title).toBe('سجّل طفلك في Open trial');
+
+    const named = notice({
+      type: 'club_event_registration',
+      title: 'Your child registered for Open trial',
+      actor: undefined,
+    });
+    expect(notificationCopy(named, arabic).title).toBe('سجّل Your child في Open trial');
+  });
+
+  it('translates a squad link and keeps the squad name as written', () => {
+    const row = notice({
+      type: 'club_squad_link',
+      title: 'Riverside added you to its U14 Football squad',
+    });
+    expect(notificationCopy(row, english).title).toBe('Riverside added you to its U14 Football squad');
+    expect(notificationCopy(row, arabic).title).toBe('أضافك Riverside إلى فريق U14 Football');
+  });
+
+  it('translates a live match, with the club and the opponent', () => {
+    const row = notice({ type: 'club_match_live', title: 'Riverside vs Marina is live' });
+    expect(notificationCopy(row, english).title).toBe('Riverside vs Marina is live');
+    expect(notificationCopy(row, arabic).title).toBe('Riverside ضد Marina مباشرة الآن');
+  });
+
+  it('translates a request to join, and keeps the message', () => {
+    const message = 'Can I bring a friend?';
+    const row = notice({
+      type: 'meetup_request',
+      title: 'Sara wants to join Tuesday kickabout',
+      body: message,
+    });
+    expect(notificationCopy(row, english)).toEqual({
+      title: 'Sara wants to join Tuesday kickabout',
+      body: message,
+    });
+    expect(notificationCopy(row, arabic)).toEqual({
+      title: 'يريد Sara الانضمام إلى Tuesday kickabout',
+      body: message,
+    });
+  });
+
+  it('translates an accepted meetup, and keeps the city and the date', () => {
+    const when = 'Dubai · Nov 16, 18:00';
+    const row = notice({ type: 'meetup_accepted', title: 'You are in: Tuesday kickabout', body: when });
+    expect(notificationCopy(row, english)).toEqual({ title: 'You are in: Tuesday kickabout', body: when });
+    expect(notificationCopy(row, arabic)).toEqual({ title: 'أنت مشارك: Tuesday kickabout', body: when });
+  });
+
+  it('translates a declined meetup', () => {
+    const row = notice({ type: 'meetup_declined', title: 'Not this time: Tuesday kickabout' });
+    expect(notificationCopy(row, english).title).toBe('Not this time: Tuesday kickabout');
+    expect(notificationCopy(row, arabic).title).toBe('ليس هذه المرة: Tuesday kickabout');
+  });
+
+  it('translates a meetup that was called off', () => {
+    const row = notice({ type: 'meetup_cancelled', title: 'Tuesday kickabout was called off' });
+    expect(notificationCopy(row, english).title).toBe('Tuesday kickabout was called off');
+    expect(notificationCopy(row, arabic).title).toBe('أُلغي Tuesday kickabout');
+  });
+
+  it('translates a challenge entry, and the default clip note', () => {
+    const row = notice({
+      type: 'challenge_entry',
+      title: 'Sara entered sprint challenge',
+      body: 'A new clip is waiting for you.',
+    });
+    expect(notificationCopy(row, english)).toEqual({
+      title: 'Sara entered sprint challenge',
+      body: 'A new clip is waiting for you.',
+    });
+    expect(notificationCopy(row, arabic)).toEqual({
+      title: 'شارك Sara في sprint challenge',
+      body: 'لقطة جديدة بانتظارك.',
+    });
+
+    const note = 'Watch the first touch.';
+    const coached = notice({
+      type: 'challenge_entry',
+      title: 'Sara entered sprint challenge',
+      body: note,
+    });
+    expect(notificationCopy(coached, english).body).toBe(note);
+    expect(notificationCopy(coached, arabic).body).toBe(note);
+    expect(notificationCopy(coached, arabic).title).toBe('شارك Sara في sprint challenge');
+  });
+});
+
+describe('sentences that are not the stored English', () => {
+  it('keeps a sentence with an extra word', () => {
+    const stored = 'Your club page is now verified';
+    const row = notice({ type: 'club_verification_approved', title: stored });
+    expect(notificationCopy(row, english).title).toBe(stored);
+    expect(notificationCopy(row, arabic).title).toBe(stored);
+
+    const tier = notice({
+      type: 'score_tier_up',
+      title: 'You reached the Gold tier',
+      body: 'Your Talent Score is now 80.',
+      data: { tier: 'gold', overall: 80 },
+    });
+    expect(notificationCopy(tier, arabic).title).toBe('You reached the Gold tier');
+    expect(notificationCopy(tier, arabic).body).toBe('Your Talent Score is now 80.');
+  });
+
+  it('keeps a sentence whose name is empty or has a space at the edge', () => {
+    const empty = ' finished the Game Intelligence games';
+    const blank = notice({
+      type: 'gi_completed',
+      title: empty,
+      body: 'Their results are private unless they choose to share them.',
+      actor: undefined,
+    });
+    expect(notificationCopy(blank, english).title).toBe(empty);
+    expect(notificationCopy(blank, arabic).title).toBe(empty);
+    expect(notificationCopy(blank, arabic).body).toBe(
+      'Their results are private unless they choose to share them.',
+    );
+
+    const padded = ' Sara registered for Open trial';
+    const spaced = notice({ type: 'club_event_registration', title: padded, actor: undefined });
+    expect(notificationCopy(spaced, english).title).toBe(padded);
+    expect(notificationCopy(spaced, arabic).title).toBe(padded);
+  });
+
+  it('keeps a live match when " vs " appears twice', () => {
+    const stored = 'Riverside vs Marina vs City is live';
+    const row = notice({ type: 'club_match_live', title: stored });
+    expect(notificationCopy(row, english).title).toBe(stored);
+    expect(notificationCopy(row, arabic).title).toBe(stored);
+  });
+
+  it('keeps the stored title when it does not start with the actor', () => {
+    const stored = 'Sam finished the Game Intelligence games';
+    const row = notice({
+      type: 'gi_completed',
+      title: stored,
+      body: 'Their results are private unless they choose to share them.',
+      actor: { full_name: 'Sara', avatar_url: null },
+    });
+    expect(notificationCopy(row, english).title).toBe(stored);
+    expect(notificationCopy(row, arabic).title).toBe(stored);
+    expect(notificationCopy(row, arabic).body).toBe(
+      'Their results are private unless they choose to share them.',
+    );
+  });
+
+  it('keeps a tier change when the score data is missing', () => {
+    const row = notice({
+      type: 'score_tier_up',
+      title: 'You reached Gold tier',
+      body: 'Your Talent Score is now 80.',
+      data: {},
+    });
+    expect(notificationCopy(row, english).title).toBe('You reached Gold tier');
+    expect(notificationCopy(row, arabic).title).toBe('You reached Gold tier');
+    expect(notificationCopy(row, arabic).body).toBe('Your Talent Score is now 80.');
+  });
+});
