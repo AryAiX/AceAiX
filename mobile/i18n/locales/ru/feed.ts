@@ -10,7 +10,7 @@
  */
 export const feed = {
   // ── Главная ────────────────────────────────────────────────────────────────
-  scopeForYou: 'Playfeed',
+  scopeForYou: 'Плейфид',
   scopeFollowing: 'Подписки',
   yourWeek: 'Твоя неделя',
   scorePeekA11y: 'Рейтинг таланта {{score}}. Нажми, чтобы узнать больше',

@@ -81,7 +81,8 @@ const carriesNoWords = (text: string) =>
   SAME_IN_ANY_LANGUAGE.test(text.replace(PLACEHOLDER, ''));
 const BRAND_OR_UNIT = new Set([
   'common.appName',
-  /* "Playfeed" is the feed's name and stays in English, as AceAiX does. */
+  /* "Playfeed" stays in Latin-script languages. Arabic, Persian and Russian
+     write it in their own script, so this only covers the ones that keep it. */
   'feed.scopeForYou',
   /* The feature's name, kept in English where "Talent Score" is. */
   'intelligence.title',

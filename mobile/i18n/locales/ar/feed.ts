@@ -10,7 +10,7 @@
  */
 export const feed = {
   // ── الرئيسية ──────────────────────────────────────────────────────────────
-  scopeForYou: 'Playfeed',
+  scopeForYou: 'بلاي فيد',
   scopeFollowing: 'من تتابعهم',
   yourWeek: 'أسبوعك',
   scorePeekA11y: 'تقييم الموهبة {{score}}. اضغط للتفاصيل',

@@ -9,7 +9,7 @@
  */
 export const feed = {
   // ── خانه ───────────────────────────────────────────────────────────────────
-  scopeForYou: 'Playfeed',
+  scopeForYou: 'پلی‌فید',
   scopeFollowing: 'دنبال‌شده‌ها',
   yourWeek: 'هفته‌ی شما',
   scorePeekA11y: 'امتیاز استعداد {{score}}. برای جزئیات بزنید',
