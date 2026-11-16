@@ -33,7 +33,7 @@ import { LogoColors, TierLabels, type Tier } from '@/theme/tokens';
 import { sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { relativeTime } from '@/lib/format';
-import type { Translate } from '@/lib/i18n-bridge';
+import { currentLanguage, type Translate } from '@/lib/i18n-bridge';
 import type { AppNotification, NotificationType } from '@/types/models';
 
 /**
@@ -160,28 +160,33 @@ function skinFor(type: NotificationType): Skin {
  * counts the rest in `actor_count`, so the name is swapped for the group
  * phrase only when it is genuinely the prefix — never by blind string surgery.
  *
- * KNOWN GAP: some sentences are composed on the phone, and the rest still
- * arrive as finished English. The stored text is translated only when it
- * matches a sentence we recognise exactly. A tier change is the one that
- * reads `data.tier` and `data.overall`, and only when both are there.
- * Anything else stays as stored.
+ * KNOWN GAP: every sentence is composed on the phone, except a club
+ * broadcast, a new event, a scheduled match and a match result. Those are
+ * only names and punctuation, so the stored text reads the same in every
+ * language.
+ *
+ * The stored text is translated only when it matches a sentence we recognise
+ * exactly. Names, titles and a coach's note stay as written. A tier change
+ * reads `data.tier` and `data.overall`, and only when both are there. An
+ * application status reads `data.status`, and only when it is the status in
+ * the sentence. A meetup's place and time are rewritten from the stored UTC
+ * line when that line is the English date we know. Anything else stays as
+ * stored.
  *
  * Composed on the phone: follow, like, comment, reply, message and
  * profile_view (the actor's name, or "name and N others"); mention and
  * post_tag; challenge_verified and challenge_rejected (the challenge title
  * when the stored sentence has it, and the two default coach notes);
  * challenge_entry (the name, the challenge, and the default new-clip note);
- * meetup_nearby, plus the titles of a meetup request, acceptance, decline
- * and cancellation; referral_joined, referral_token, and the sport-request
- * decisions; club verification, a club invite and its acceptance, a squad
- * link, a cancelled event, an event registration (a person's name, or
- * "Your child"), and a live match; guardian consent; Game Intelligence and
- * Sport Fit finished; and a score tier.
- *
- * Still stored English: applications, coaching, sponsorship, endorsement,
- * and meetup bodies. A club broadcast, a new event, a scheduled match and a
- * match result are names joined by punctuation, so the stored text is what
- * every language shows.
+ * meetup_nearby, the titles of a meetup request, acceptance, decline and
+ * cancellation, and the place and time on an acceptance or a cancellation;
+ * referral_joined, referral_token, and the sport-request decisions; club
+ * verification, a club invite and its acceptance, a squad link, a cancelled
+ * event, an event registration (a person's name, or "Your child"), and a
+ * live match; guardian consent; Game Intelligence and Sport Fit finished;
+ * a score tier; an application and its status; an endorsement; a coaching
+ * booking and a cancellation; and a sponsorship offer, application and
+ * answer.
  */
 export function notificationTitle(n: AppNotification, t: Translate): string {
   const name = n.actor?.full_name?.trim();
@@ -642,7 +647,7 @@ function meetupAcceptedCopy(n: AppNotification, t: Translate): NoticeCopy | null
   if (n.type !== 'meetup_accepted') return null;
   const meetup = afterPhrase(n.title, 'You are in: ');
   if (!meetup) return null;
-  return { title: t('messaging.meetupYouAreIn', { meetup }), body: n.body };
+  return { title: t('messaging.meetupYouAreIn', { meetup }), body: meetupWhen(n) };
 }
 
 function meetupDeclinedCopy(n: AppNotification, t: Translate): NoticeCopy | null {
@@ -656,7 +661,7 @@ function meetupCancelledCopy(n: AppNotification, t: Translate): NoticeCopy | nul
   if (n.type !== 'meetup_cancelled') return null;
   const meetup = beforePhrase(n.title, ' was called off');
   if (!meetup) return null;
-  return { title: t('messaging.meetupCalledOff', { meetup }), body: n.body };
+  return { title: t('messaging.meetupCalledOff', { meetup }), body: meetupWhen(n) };
 }
 
 const NEW_CLIP = 'A new clip is waiting for you.';
@@ -670,6 +675,279 @@ function challengeEntryCopy(n: AppNotification, t: Translate): NoticeCopy | null
     title: t('messaging.challengeEntered', { name: found.name, challenge: found.rest }),
     body: n.body === NEW_CLIP ? t('messaging.challengeNewClip') : n.body,
   };
+}
+
+/** "{name} applied to {opportunity}". */
+function applicationReceivedCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'application_received') return null;
+  const found = namedSplit(n.title, ' applied to ', n.actor?.full_name);
+  if (!found || exactPiece(found.rest) === null) return null;
+  return { title: t('messaging.appliedTo', { name: found.name, what: found.rest }), body: n.body };
+}
+
+const APPLICATION_STATUSES = new Set([
+  'applied',
+  'in_review',
+  'shortlisted',
+  'invited',
+  'accepted',
+  'rejected',
+  'withdrawn',
+]);
+
+/**
+ * "Your application to {opportunity} is now {status}".
+ *
+ * The status word has to be `data.status`, and one of the statuses the
+ * opportunity screen already names. The label replaces the raw word, so
+ * English no longer shows "in_review".
+ */
+function applicationStatusCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'application_status') return null;
+  const prefix = 'Your application to ';
+  const gap = ' is now ';
+  if (!n.title.startsWith(prefix)) return null;
+  const rest = n.title.slice(prefix.length);
+  if (phraseCount(rest, gap) !== 1) return null;
+  const at = rest.indexOf(gap);
+  const opportunity = exactPiece(rest.slice(0, at));
+  const status = exactPiece(rest.slice(at + gap.length));
+  const recorded = n.data?.status;
+  if (!opportunity || !status || typeof recorded !== 'string' || recorded !== status) return null;
+  if (!APPLICATION_STATUSES.has(status)) return null;
+  return {
+    title: t('messaging.applicationNow', {
+      opportunity,
+      status: t(`opportunities.status.athlete.${status}`),
+    }),
+    body: n.body,
+  };
+}
+
+/** "{name} endorsed you for {skill}". The body is the coach's note, kept as stored. */
+function endorsementCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'endorsement') return null;
+  const found = namedSplit(n.title, ' endorsed you for ', n.actor?.full_name);
+  if (!found || exactPiece(found.rest) === null) return null;
+  return { title: t('messaging.endorsedYouFor', { name: found.name, skill: found.rest }), body: n.body };
+}
+
+/** "{name} booked {service}". */
+function coachingBookedCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'coaching_booked') return null;
+  const found = namedSplit(n.title, ' booked ', n.actor?.full_name);
+  if (!found || exactPiece(found.rest) === null) return null;
+  return { title: t('messaging.bookedService', { name: found.name, service: found.rest }), body: n.body };
+}
+
+const ENGLISH_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+/** "16 Nov": two digits, one space, an English month. The year is not in the sentence. */
+function sessionDay(text: string): string | null {
+  const match = /^(\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/.exec(text);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = ENGLISH_MONTHS.indexOf(match[2] as (typeof ENGLISH_MONTHS)[number]);
+  if (month < 0 || day < 1 || day > 31) return null;
+  // 2024 is a leap year, so the 29th of February still has a day to format.
+  const utc = new Date(Date.UTC(2024, month, day));
+  if (utc.getUTCMonth() !== month || utc.getUTCDate() !== day) return null;
+  return new Intl.DateTimeFormat(currentLanguage(), {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  }).format(utc);
+}
+
+/** A cancelled booking with no service title says "a session". */
+function sessionWord(session: string, t: Translate): string {
+  return session === 'a session' ? t('messaging.aSession') : session;
+}
+
+/**
+ * Several cancellation sentences share this type. The first exact one wins,
+ * so a dated session is not read as "{name} cancelled {session}", and a
+ * parent's cancellation is not read as a name.
+ */
+function coachingCancelledCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'coaching_cancelled') return null;
+  if (n.title === 'A booking was cancelled by a guardian') {
+    return { title: t('messaging.bookingCancelledByGuardian'), body: n.body };
+  }
+  const reason = afterPhrase(n.title, 'AceAiX cancelled a coaching session: ');
+  if (reason) return { title: t('messaging.coachingCancelledByAce', { reason }), body: n.body };
+
+  const dated = namedSplit(n.title, ' cancelled the session on ', n.actor?.full_name);
+  const date = dated ? sessionDay(dated.rest) : null;
+  if (dated && date) {
+    return { title: t('messaging.cancelledSessionOn', { name: dated.name, date }), body: n.body };
+  }
+
+  const yours = afterPhrase(n.title, 'Your parent cancelled ');
+  if (yours) return { title: t('messaging.parentCancelled', { session: sessionWord(yours, t) }), body: n.body };
+
+  const parentPhrase = "'s parent cancelled ";
+  if (phraseCount(n.title, parentPhrase) === 1) {
+    const at = n.title.indexOf(parentPhrase);
+    const child = exactPiece(n.title.slice(0, at));
+    const session = exactPiece(n.title.slice(at + parentPhrase.length));
+    if (child && session) {
+      return {
+        title: t('messaging.childParentCancelled', { child, session: sessionWord(session, t) }),
+        body: n.body,
+      };
+    }
+  }
+
+  const actor = n.actor?.full_name?.trim();
+  if (actor && n.title.startsWith(`${actor} cancelled `)) {
+    const session = exactPiece(n.title.slice(actor.length + ' cancelled '.length));
+    if (session) {
+      return { title: t('messaging.cancelledSession', { name: actor, session: sessionWord(session, t) }), body: n.body };
+    }
+  }
+  return null;
+}
+
+/**
+ * The sponsor in the sentence is a company name, which is not the actor's
+ * name, so the phrase is split once rather than taken from the actor.
+ */
+function sponsorshipOfferCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'sponsorship_offer') return null;
+  const toChild = namedSplit(n.title, ' made a sponsorship offer to your child', null);
+  if (toChild && toChild.rest === '') {
+    return { title: t('messaging.sponsorshipOfferToChild', { sponsor: toChild.name }), body: n.body };
+  }
+  const found = namedSplit(n.title, ' made a sponsorship offer for ', null);
+  if (!found || exactPiece(found.rest) === null) return null;
+  return {
+    title: t('messaging.sponsorshipOfferFor', { sponsor: found.name, request: found.rest }),
+    body: n.body,
+  };
+}
+
+/** "{name} applied to {call}", or the guardian's "Your child applied…" line. */
+function sponsorshipApplicationCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'sponsorship_application') return null;
+  const call = afterPhrase(n.title, 'Your child applied to a sponsorship call: ');
+  if (call) return { title: t('messaging.childAppliedToCall', { call }), body: n.body };
+  const found = namedSplit(n.title, ' applied to ', n.actor?.full_name);
+  if (!found || exactPiece(found.rest) === null) return null;
+  const name = found.name === 'An athlete' ? t('messaging.anAthlete') : found.name;
+  return { title: t('messaging.appliedTo', { name, what: found.rest }), body: n.body };
+}
+
+const PARENT_RESPONSES: { ending: string; key: string }[] = [
+  { ending: "'s parent accepted your sponsorship offer", key: 'messaging.childParentAcceptedOffer' },
+  { ending: "'s parent declined your sponsorship offer", key: 'messaging.childParentDeclinedOffer' },
+  { ending: "'s parent withdrew the application to your call", key: 'messaging.childParentWithdrewCall' },
+];
+
+const NAMED_RESPONSES: { phrase: string; key: string }[] = [
+  { phrase: ' accepted your sponsorship offer', key: 'messaging.acceptedYourOffer' },
+  { phrase: ' declined your sponsorship offer', key: 'messaging.declinedYourOffer' },
+  { phrase: ' accepted your sponsorship application', key: 'messaging.acceptedYourApplication' },
+  { phrase: ' declined your sponsorship application', key: 'messaging.declinedYourApplication' },
+];
+
+/** The name before an ending, only when that ending appears once and finishes the title. */
+function nameBeforeEnding(title: string, ending: string): string | null {
+  if (phraseCount(title, ending) !== 1 || !title.endsWith(ending)) return null;
+  return exactPiece(title.slice(0, -ending.length));
+}
+
+/**
+ * Who answered a sponsorship deal. The "{child}'s parent" sentences are
+ * recognised before "{name} accepted…", because the parent sentence also
+ * ends with the name sentence.
+ */
+function sponsorshipResponseCopy(n: AppNotification, t: Translate): NoticeCopy | null {
+  if (n.type !== 'sponsorship_response') return null;
+  for (const row of PARENT_RESPONSES) {
+    const child = nameBeforeEnding(n.title, row.ending);
+    if (child) return { title: t(row.key, { child }), body: n.body };
+  }
+  for (const row of NAMED_RESPONSES) {
+    const found = namedSplit(n.title, row.phrase, n.actor?.full_name);
+    if (found && found.rest === '') return { title: t(row.key, { name: found.name }), body: n.body };
+  }
+  const acceptedFrom = afterPhrase(n.title, 'Your parent accepted the sponsorship offer from ');
+  if (acceptedFrom) return { title: t('messaging.parentAcceptedOfferFrom', { brand: acceptedFrom }), body: n.body };
+  const declinedFrom = afterPhrase(n.title, 'Your parent declined the sponsorship offer from ');
+  if (declinedFrom) return { title: t('messaging.parentDeclinedOfferFrom', { brand: declinedFrom }), body: n.body };
+  const withdrew = afterPhrase(n.title, 'Your parent withdrew your application to ');
+  if (withdrew) return { title: t('messaging.parentWithdrewApplication', { brand: withdrew }), body: n.body };
+  return (
+    exactTitle(n, t, 'sponsorship_response', 'A sponsorship offer for your child was accepted', 'messaging.childOfferAccepted') ??
+    exactTitle(n, t, 'sponsorship_response', 'A sponsorship offer for your child was declined', 'messaging.childOfferDeclined') ??
+    exactTitle(
+      n,
+      t,
+      'sponsorship_response',
+      'A sponsorship application for your child was accepted',
+      'messaging.childApplicationAccepted',
+    ) ??
+    exactTitle(
+      n,
+      t,
+      'sponsorship_response',
+      'A sponsorship application for your child was declined',
+      'messaging.childApplicationDeclined',
+    )
+  );
+}
+
+const MEETUP_WHEN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{2}):(\d{2})$/;
+
+/**
+ * The stored line is "{city} · {Mon DD, HH:MI}" in UTC, with no year. The
+ * year is the one that puts that UTC moment closest to when the notice was
+ * written; the clock is then the phone's own.
+ */
+function meetupWhen(n: AppNotification): string | null {
+  const body = n.body;
+  if (!body) return body;
+  const sep = ' · ';
+  if (phraseCount(body, sep) !== 1) return body;
+  const at = body.indexOf(sep);
+  const city = exactPiece(body.slice(0, at));
+  const match = MEETUP_WHEN.exec(body.slice(at + sep.length));
+  if (!city || !match) return body;
+  const month = ENGLISH_MONTHS.indexOf(match[1] as (typeof ENGLISH_MONTHS)[number]);
+  const day = Number(match[2]);
+  const hour = Number(match[3]);
+  const minute = Number(match[4]);
+  if (month < 0 || hour > 23 || minute > 59 || day < 1 || day > 31) return body;
+  const created = new Date(n.created_at);
+  if (Number.isNaN(created.getTime())) return body;
+  const year = created.getUTCFullYear();
+  let best: Date | null = null;
+  let bestDist = Infinity;
+  for (const candidateYear of [year - 1, year, year + 1]) {
+    const candidate = new Date(Date.UTC(candidateYear, month, day, hour, minute));
+    if (
+      candidate.getUTCFullYear() !== candidateYear ||
+      candidate.getUTCMonth() !== month ||
+      candidate.getUTCDate() !== day
+    ) {
+      continue;
+    }
+    const dist = Math.abs(candidate.getTime() - created.getTime());
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = candidate;
+    }
+  }
+  if (!best) return body;
+  const formatted = new Intl.DateTimeFormat(currentLanguage(), {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(best);
+  return `${city} · ${formatted}`;
 }
 
 /** Title and body, including the sentences composed on the client. */
@@ -711,9 +989,19 @@ export function notificationCopy(
     meetupAcceptedCopy(n, t) ??
     meetupDeclinedCopy(n, t) ??
     meetupCancelledCopy(n, t) ??
-    challengeEntryCopy(n, t);
+    challengeEntryCopy(n, t) ??
+    applicationReceivedCopy(n, t) ??
+    applicationStatusCopy(n, t) ??
+    endorsementCopy(n, t) ??
+    coachingBookedCopy(n, t) ??
+    coachingCancelledCopy(n, t) ??
+    sponsorshipOfferCopy(n, t) ??
+    sponsorshipApplicationCopy(n, t) ??
+    sponsorshipResponseCopy(n, t);
   if (recognised) return recognised;
-  return { title: notificationTitle(n, t), body: n.body };
+  const body =
+    n.type === 'meetup_accepted' || n.type === 'meetup_cancelled' ? meetupWhen(n) : n.body;
+  return { title: notificationTitle(n, t), body };
 }
 
 interface Props {
