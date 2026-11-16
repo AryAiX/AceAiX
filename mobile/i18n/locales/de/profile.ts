@@ -383,6 +383,8 @@ export const profile = {
   bestOfNamed: 'Vitrine von {{name}}',
   postCount_one: '{{count}} Beitrag',
   postCount_other: '{{count}} Beiträge',
+  taggedCount_one: '{{count}} markierter Beitrag',
+  taggedCount_other: '{{count}} markierte Beiträge',
   clipCount_one: '{{count}} Clip',
   clipCount_other: '{{count}} Clips',
   addClip: 'Clip hinzufügen',

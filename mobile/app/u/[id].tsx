@@ -283,7 +283,12 @@ export default function PublicProfileScreen() {
         ) : null}
 
         {!athlete || tab === 'posts' ? (
-          <PostsTab userId={data.user.id} isSelf={isSelf} refreshKey={childKey} />
+          <PostsTab
+            userId={data.user.id}
+            isSelf={isSelf}
+            refreshKey={childKey}
+            showLayoutRow={!athlete}
+          />
         ) : tab === 'highlights' ? (
           <HighlightsTab
             athleteId={athlete.id}

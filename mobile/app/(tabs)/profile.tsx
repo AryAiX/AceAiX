@@ -321,7 +321,12 @@ export default function MyProfileScreen() {
         ) : null}
 
         {data.user.role !== 'club' && (!athlete || tab === 'posts') ? (
-          <PostsTab userId={data.user.id} isSelf refreshKey={childKey} />
+          <PostsTab
+            userId={data.user.id}
+            isSelf
+            refreshKey={childKey}
+            showLayoutRow={!athlete}
+          />
         ) : athlete && tab === 'highlights' ? (
           <HighlightsTab
             athleteId={athlete.id}

@@ -18,13 +18,19 @@ import { relativeTime, truncate } from '@/lib/format';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 import { MediaGrid, MediaTile } from './MediaGrid';
-import { useProfileLayout } from './LayoutToggle';
+import { LayoutToggle, useProfileLayout } from './LayoutToggle';
 
 interface Props {
   userId: string;
   isSelf: boolean;
   /** Bumped by the parent's pull-to-refresh so this list reloads with it. */
   refreshKey?: number;
+  /**
+   * Coaches, scouts, clubs, sponsors and parents have no ProfileTabs, so the
+   * count and the Grid ⇄ Scroll switch live here. Athletes leave this off:
+   * their row is already under the tab bar.
+   */
+  showLayoutRow?: boolean;
 }
 
 type PostSource = 'posts' | 'tagged';
@@ -41,12 +47,18 @@ function ProfilePostList({
   loadTiles,
   showScores,
   empty,
+  showLayoutRow = false,
+  taggedPosts = false,
 }: {
   userId: string;
   refreshKey: number;
   loadTiles: (userId: string) => Promise<PostTile[]>;
   /** Score-when-posted belongs on your own posts, never on Tagged. */
   showScores: boolean;
+  /** Count and Grid ⇄ Scroll, once this list has something to lay out. */
+  showLayoutRow?: boolean;
+  /** Tagged has its own count; Posts uses profile.postCount. */
+  taggedPosts?: boolean;
   empty: {
     icon: React.ReactNode;
     title: string;
@@ -66,7 +78,7 @@ function ProfilePostList({
      score history (only you can read it). Others' grids stay as they are. */
   const myScores = useAsync(() => getMyPostScores(), [refreshKey], { enabled: showScores });
 
-  const [layout] = useProfileLayout();
+  const [layout, setLayout] = useProfileLayout();
 
   const openPost = useCallback((id: string) => router.push(Routes.post(id)), [router]);
 
@@ -154,9 +166,31 @@ function ProfilePostList({
   const scoreFor = (postId: string): number | null =>
     showScores && myScores.data ? scoreWhenPosted(myScores.data.saved[postId]) : null;
 
+  /* Same row ProfileTabs draws under its bar: the count on the start side,
+     the switch on the end side. Hidden while the list is empty, so a profile
+     with nothing to lay out stays as it was. */
+  const layoutRow =
+    showLayoutRow && rows.length > 0 ? (
+      <View
+        testID="profile-posts-layout-row"
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: theme.spacing.sm,
+        }}
+      >
+        <Text variant="captionStrong" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+          {t(taggedPosts ? 'profile.taggedCount' : 'profile.postCount', { count: rows.length })}
+        </Text>
+        <LayoutToggle value={layout} onChange={setLayout} />
+      </View>
+    ) : null;
+
   if (layout === 'scroll') {
     return (
       <>
+        {layoutRow}
         <View style={{ gap: theme.spacing.md }} testID="profile-posts-scroll">
           {cards.map((post) => (
             <PostCard
@@ -208,6 +242,7 @@ function ProfilePostList({
 
   return (
     <>
+      {layoutRow}
       <MediaGrid tiles={tiles} onPressTile={openPost} layout={layout} />
       {showsScores ? (
         <Text variant="caption" tone="muted" style={{ marginTop: theme.spacing.sm }}>
@@ -218,7 +253,7 @@ function ProfilePostList({
   );
 }
 
-export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
+export function PostsTab({ userId, isSelf, refreshKey = 0, showLayoutRow = false }: Props) {
   const theme = useTheme();
   const router = useRouter();
   const t = useT();
@@ -246,6 +281,8 @@ export function PostsTab({ userId, isSelf, refreshKey = 0 }: Props) {
         refreshKey={refreshKey}
         loadTiles={showingPosts ? getPostTiles : getTaggedPostTiles}
         showScores={showingPosts && isSelf}
+        showLayoutRow={showLayoutRow}
+        taggedPosts={!showingPosts}
         empty={
           showingPosts
             ? {

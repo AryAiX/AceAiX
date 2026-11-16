@@ -371,6 +371,7 @@ export const profile = {
   addToBestOfNamed: '添加到 {{name}} 的精选',
   bestOfNamed: '{{name}} 的精选',
   postCount_other: '{{count}} 条帖子',
+  taggedCount_other: '{{count}} 条已标记帖子',
   clipCount_other: '{{count}} 段',
   addClip: '添加片段',
 };

@@ -383,6 +383,8 @@ export const profile = {
   bestOfNamed: "{{name}}'s Showcase",
   postCount_one: '{{count}} post',
   postCount_other: '{{count}} posts',
+  taggedCount_one: '{{count}} tagged post',
+  taggedCount_other: '{{count}} tagged posts',
   clipCount_one: '{{count}} clip',
   clipCount_other: '{{count}} clips',
   addClip: 'Add a clip',

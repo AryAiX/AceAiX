@@ -8,8 +8,9 @@ import { useT } from '@/i18n';
 import type { MediaLayout } from './MediaGrid';
 
 /* One choice for the whole profile (Posts and Highlights together), kept on
-   the phone so it's still there next time. The switch lives in the tab row,
-   and the tabs below listen, so they all change together. */
+   the phone so it's still there next time. Athletes flip it from the tab row;
+   every other profile flips it from the posts list. The lists listen, so they
+   all change together. */
 const KEY = 'profile.layout.v1';
 let current: MediaLayout = 'grid';
 let loaded = false;
