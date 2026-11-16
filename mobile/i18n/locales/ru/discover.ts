@@ -38,6 +38,7 @@ export const discover = {
     sponsors: 'Спонсоры ищут спортсменов',
   },
   tabCoaches: 'Тренеры',
+  tabParents: 'Родители',
   tabClubs: 'Клубы',
   tabLeaderboard: 'Рейтинг',
 

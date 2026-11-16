@@ -37,6 +37,7 @@ export const discover = {
     sponsors: 'رعاة يبحثون عن رياضيين',
   },
   tabCoaches: 'المدرّبون',
+  tabParents: 'أولياء الأمور',
   tabClubs: 'الأندية',
   tabLeaderboard: 'لوحة الصدارة',
 

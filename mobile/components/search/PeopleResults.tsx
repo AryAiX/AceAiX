@@ -11,13 +11,14 @@ import { criteriaFromFilters } from '@/components/discover/MatchBadge';
 import { groupedRowStyle } from '@/components/discover/groupedRow';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { discoverAthletes } from '@/lib/api';
+import { discoverAthletes, searchPeople } from '@/lib/api';
 import { listCoaches } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
+import { useAuth } from '@/providers/AuthProvider';
 import type { DiscoveredAthlete, DiscoveryFilters, PersonResult } from '@/types/models';
 import { useFollowState } from './useFollowState';
 
-export type PeopleKind = 'athletes' | 'coaches';
+export type PeopleKind = 'athletes' | 'coaches' | 'parents';
 
 const PAGE = 20;
 
@@ -36,7 +37,8 @@ interface Props {
 
 /**
  * Everyone who matches, 20 at a time, best fit for you first. Athletes can be
- * narrowed with the same Filters sheet as Discover; coaches by name.
+ * narrowed with the same Filters sheet as Discover; coaches and parents by name.
+ * Parents are offered only to a parent, coach, club, scout or sponsor.
  */
 export function PeopleResults({
   term,
@@ -52,8 +54,16 @@ export function PeopleResults({
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
+  const { profile } = useAuth();
   const follow = useFollowState();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const canFindParents =
+    profile?.role === 'guardian' ||
+    profile?.role === 'coach' ||
+    profile?.role === 'club' ||
+    profile?.role === 'scout' ||
+    profile?.role === 'sponsor';
+  const kindShown: PeopleKind = kind === 'parents' && !canFindParents ? 'athletes' : kind;
 
   /* A sport word fills the sport filter instead of looking for that name. */
   const effective: DiscoveryFilters = {
@@ -89,17 +99,23 @@ export function PeopleResults({
   );
 
   useEffect(() => {
-    if (kind !== 'athletes') return;
+    if (kindShown !== 'athletes') return;
     setRows([]);
     setDone(false);
     void load(0, true);
-  }, [kind, load]);
+  }, [kindShown, load]);
 
   const coaches = useAsync(
     async () => ({ term, rows: await listCoaches(queryForSearch, 40) }),
     [term, queryForSearch],
-    { enabled: kind === 'coaches' },
+    { enabled: kindShown === 'coaches' },
   );
+  const parents = useAsync(
+    async () => ({ term, rows: await searchPeople(queryForSearch, 'guardian', 40) }),
+    [term, queryForSearch],
+    { enabled: kindShown === 'parents' },
+  );
+  const listed = kindShown === 'parents' ? parents : coaches;
 
   const active = isFilterActive(filters);
 
@@ -108,16 +124,24 @@ export function PeopleResults({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
         <View style={{ flex: 1 }}>
           <SegmentedControl<PeopleKind>
-            options={[
-              { value: 'athletes', label: t('discover.tabAthletes') },
-              { value: 'coaches', label: t('discover.tabCoaches') },
-            ]}
-            value={kind}
+            options={
+              canFindParents
+                ? [
+                    { value: 'athletes', label: t('discover.tabAthletes') },
+                    { value: 'coaches', label: t('discover.tabCoaches') },
+                    { value: 'parents', label: t('discover.tabParents') },
+                  ]
+                : [
+                    { value: 'athletes', label: t('discover.tabAthletes') },
+                    { value: 'coaches', label: t('discover.tabCoaches') },
+                  ]
+            }
+            value={kindShown}
             onChange={onKind}
             testID="search-people-kind"
           />
         </View>
-        {kind === 'athletes' ? (
+        {kindShown === 'athletes' ? (
           <Pressable
             onPress={() => setSheetOpen(true)}
             accessibilityRole="button"
@@ -143,12 +167,12 @@ export function PeopleResults({
           </Pressable>
         ) : null}
       </View>
-      {kind === 'athletes' && rows.length > 0 ? (
+      {kindShown === 'athletes' && rows.length > 0 ? (
         <Text variant="caption" tone="muted">
           {t('discover.search.athletesBestFirst')}
         </Text>
       ) : null}
-      {kind === 'athletes' && active ? (
+      {kindShown === 'athletes' && active ? (
         <Pressable onPress={() => onFilters({})} hitSlop={8} accessibilityRole="button">
           <Text variant="captionStrong" color={colors.primary}>
             {t('opportunities.athlete.clearFilters')}
@@ -166,7 +190,7 @@ export function PeopleResults({
     />
   );
 
-  if (kind === 'athletes') {
+  if (kindShown === 'athletes') {
     const sheet = (
       <FilterSheet
         visible={sheetOpen}
@@ -222,15 +246,15 @@ export function PeopleResults({
     );
   }
 
-  const coachRows: PersonResult[] = coaches.data?.term === term ? coaches.data.rows : [];
+  const listRows: PersonResult[] = listed.data?.term === term ? listed.data.rows : [];
   return (
     <View style={{ flex: 1 }}>
-      {coaches.error ? (
+      {listed.error ? (
         <View style={{ paddingHorizontal: spacing.lg }}>
           {bar}
-          <ErrorState message={coaches.error} onRetry={coaches.reload} />
+          <ErrorState message={listed.error} onRetry={listed.reload} />
         </View>
-      ) : coaches.loading || coaches.data?.term !== term ? (
+      ) : listed.loading || listed.data?.term !== term ? (
         <View style={{ paddingHorizontal: spacing.lg }}>
           {bar}
           <SkeletonList count={4} variant="row" />
@@ -238,7 +262,7 @@ export function PeopleResults({
       ) : (
         <FlatList<PersonResult>
           style={{ flex: 1 }}
-          data={coachRows}
+          data={listRows}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPadding }}
           keyboardShouldPersistTaps="handled"
@@ -246,7 +270,7 @@ export function PeopleResults({
           ListHeaderComponent={bar}
           renderItem={({ item, index }) => (
             <CoachRow
-              grouped={groupedRowStyle(index, coachRows.length, colors, radii.xl)}
+              grouped={groupedRowStyle(index, listRows.length, colors, radii.xl)}
               person={item}
               following={follow.isPersonFollowed(item.id)}
               pending={follow.pendingId === item.id}

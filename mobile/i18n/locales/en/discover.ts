@@ -37,6 +37,7 @@ export const discover = {
     sponsors: 'Sponsors looking for athletes',
   },
   tabCoaches: 'Coaches',
+  tabParents: 'Parents',
   tabClubs: 'Clubs',
   tabLeaderboard: 'Leaderboard',
 

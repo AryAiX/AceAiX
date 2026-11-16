@@ -36,6 +36,7 @@ export const discover = {
     sponsors: '寻找运动员的赞助商',
   },
   tabCoaches: '教练',
+  tabParents: '家长',
   tabClubs: '俱乐部',
   tabLeaderboard: '排行榜',
 

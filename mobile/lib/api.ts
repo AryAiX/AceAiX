@@ -499,7 +499,7 @@ export async function mentionSuggestions(query: string): Promise<MentionSuggesti
  */
 export async function searchPeople(
   query: string,
-  role?: 'athlete' | 'coach' | 'club' | 'scout',
+  role?: 'athlete' | 'coach' | 'club' | 'scout' | 'guardian',
   limit = 20,
 ): Promise<PersonResult[]> {
   const term = query.trim();

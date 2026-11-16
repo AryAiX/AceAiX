@@ -10732,4 +10732,110 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Who can find a parent account (QA-205).
+-- One parent with a unique name, and one searcher of each role:
+-- guardian, coach, club, scout, sponsor, an adult athlete and a
+-- 14-year-old athlete. A separate coach is the person everyone
+-- should still be able to find.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who can find a parent account ──'; end $$;
+
+do $$
+declare
+  v_parent       uuid := '7f205000-0000-4000-8000-000000000001';
+  v_coach        uuid := '7f205000-0000-4000-8000-000000000002';
+  v_guardian     uuid := '7f205000-0000-4000-8000-000000000011';
+  v_search_coach uuid := '7f205000-0000-4000-8000-000000000012';
+  v_club         uuid := '7f205000-0000-4000-8000-000000000013';
+  v_scout        uuid := '7f205000-0000-4000-8000-000000000014';
+  v_sponsor      uuid := '7f205000-0000-4000-8000-000000000015';
+  v_adult        uuid := '7f205000-0000-4000-8000-000000000016';
+  v_minor        uuid := '7f205000-0000-4000-8000-000000000017';
+  v_id           uuid;
+  v_label        text;
+  v_hit_parent   boolean;
+  v_hit_coach    boolean;
+  v_found_parent text[] := '{}';
+  v_found_coach  text[] := '{}';
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_parent, 'qa205.parent@test.local',
+     '{"full_name":"QA205 Parent Linden","role":"guardian"}'),
+    (v_coach, 'qa205.coach@test.local',
+     '{"full_name":"QA205 Coach Linden","role":"coach"}'),
+    (v_guardian, 'qa205.guardian@test.local',
+     '{"full_name":"QA205 Searcher Guardian","role":"guardian"}'),
+    (v_search_coach, 'qa205.searchcoach@test.local',
+     '{"full_name":"QA205 Searcher Coach","role":"coach"}'),
+    (v_club, 'qa205.club@test.local',
+     '{"full_name":"QA205 Searcher Club","role":"club"}'),
+    (v_scout, 'qa205.scout@test.local',
+     '{"full_name":"QA205 Searcher Scout","role":"scout"}'),
+    (v_sponsor, 'qa205.sponsor@test.local',
+     '{"full_name":"QA205 Searcher Sponsor","role":"sponsor"}'),
+    (v_adult, 'qa205.adult@test.local',
+     '{"full_name":"QA205 Searcher Adult","role":"athlete"}'),
+    (v_minor, 'qa205.minor@test.local',
+     '{"full_name":"QA205 Searcher Minor","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (
+     v_parent, v_coach, v_guardian, v_search_coach, v_club, v_scout, v_sponsor, v_adult
+   );
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id = v_minor;
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_guardian, 'guardian'),
+        (v_search_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_minor, 'minor')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    set local role authenticated;
+
+    select exists (
+      select 1 from public.search_people('QA205 Parent Linden', null, 50) p
+      where p.id = v_parent
+    ) into v_hit_parent;
+
+    select exists (
+      select 1 from public.search_people('QA205 Coach Linden', null, 50) c
+      where c.id = v_coach
+    ) into v_hit_coach;
+
+    if v_hit_parent then
+      v_found_parent := v_found_parent || v_label;
+    end if;
+    if v_hit_coach then
+      v_found_coach := v_found_coach || v_label;
+    end if;
+
+    reset role;
+  end loop;
+
+  perform tests.ok(
+    v_found_parent @> array['guardian', 'coach', 'club', 'scout', 'sponsor']::text[]
+    and cardinality(v_found_parent) = 5
+    and not ('adult' = any(v_found_parent))
+    and not ('minor' = any(v_found_parent)),
+    'a parent account is found by a parent, coach, club, scout and sponsor, and not by an adult or a minor athlete');
+
+  perform tests.ok(
+    v_found_coach @> array['guardian', 'coach', 'club', 'scout', 'sponsor', 'adult', 'minor']::text[]
+    and cardinality(v_found_coach) = 7,
+    'a coach is still found by everyone');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
