@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { useI18n } from '@/i18n';
-import { currentLanguage, tr, type Translate } from '@/lib/i18n-bridge';
+import { currentLanguage, intlLocale, tr, type Translate } from '@/lib/i18n-bridge';
 
 /**
  * Day helpers shared by the thread.
@@ -54,12 +54,12 @@ export function dayLabel(
 
   const withinAWeek = now.getTime() - d.getTime() < 6 * 86_400_000;
   if (withinAWeek) {
-    return d.toLocaleDateString(language, { weekday: 'long' });
+    return d.toLocaleDateString(intlLocale(language), { weekday: 'long' });
   }
 
   const sameYear = d.getFullYear() === now.getFullYear();
   return d.toLocaleDateString(
-    language,
+    intlLocale(language),
     sameYear
       ? { day: 'numeric', month: 'short' }
       : { day: 'numeric', month: 'short', year: 'numeric' },

@@ -28,6 +28,17 @@ export function currentLanguage(): string {
 }
 
 /**
+ * Locale tag for dates and numbers.
+ *
+ * Persian phones default `fa` to the Solar Hijri calendar. AceAiX keeps the
+ * Gregorian calendar and only switches the digits, via the Unicode `ca`
+ * extension. Every other language is passed through unchanged.
+ */
+export function intlLocale(code: string): string {
+  return code === 'fa' ? 'fa-u-ca-gregory' : code;
+}
+
+/**
  * Translate a key, or return `fallback` when no translator is registered or
  * the key is missing. Never returns a raw key to the interface.
  */

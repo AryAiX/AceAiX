@@ -15,6 +15,7 @@ import { sports as arSports } from '@/i18n/locales/ar/sports';
 import { sports as deSports } from '@/i18n/locales/de/sports';
 import { sports as enSports } from '@/i18n/locales/en/sports';
 import { sports as esSports } from '@/i18n/locales/es/sports';
+import { sports as faSports } from '@/i18n/locales/fa/sports';
 import { sports as frSports } from '@/i18n/locales/fr/sports';
 import { sports as ruSports } from '@/i18n/locales/ru/sports';
 import { sports as zhSports } from '@/i18n/locales/zh/sports';
@@ -106,6 +107,7 @@ describe('englishSportTerm', () => {
 const CATALOGUES = {
   en: enSports,
   ar: arSports,
+  fa: faSports,
   de: deSports,
   es: esSports,
   fr: frSports,
@@ -161,8 +163,8 @@ describe('sport and position label keys', () => {
     ]);
   });
 
-  it('gives every sport and every position a label key in all 7 languages', () => {
-    expect(Object.keys(CATALOGUES)).toHaveLength(7);
+  it('gives every sport and every position a label key in all 8 languages', () => {
+    expect(Object.keys(CATALOGUES)).toHaveLength(8);
     for (const sport of SPORTS) {
       const sportKey = sportLabel(t, sport.key);
       expect(sportKey, sport.key).toMatch(/^t:sports\.[^.]+$/);

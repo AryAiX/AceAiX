@@ -7,7 +7,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Text, ChevronBack } from '@/components/ui';
 import type { TextTone } from '@/components/ui';
 import { useT } from '@/i18n';
-import { currentLanguage } from '@/lib/i18n-bridge';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
 import { countryLabel, countryOptions } from '@/constants/sports';
 import { PickerSheet, SelectField } from './PickerSheet';
 
@@ -467,7 +467,7 @@ export function toIsoDate(date: Date): string {
 }
 
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString(currentLanguage(), {
+  return date.toLocaleDateString(intlLocale(currentLanguage()), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

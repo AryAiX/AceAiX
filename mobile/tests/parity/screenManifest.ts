@@ -120,7 +120,7 @@ export const SCREEN_PARITY: ScreenParity[] = [
   screen('settings/guardian.tsx', '/settings/guardian', ['minor', 'guardian', 'other adult'], ['loading', 'error', 'pending', 'granted', 'revoked', 'no links', 'no conversations'], ['request', 'resend', 'revoke', 'open minor', 'request age review', 'ask to add game intelligence', 'ask to add sport fit']),
   screen('settings/scouting.tsx', '/settings/scouting', ['recruiter', 'non-recruiter'], ['loading', 'error', 'restricted', 'clean', 'dirty', 'saving'], ['edit every preference', 'save']),
   screen('settings/appearance.tsx', '/settings/appearance', ['completed account'], ['system', 'light', 'dark'], ['change scheme']),
-  screen('settings/language.tsx', '/settings/language', ['completed account'], ['LTR', 'RTL', 'restart prompt'], ['change all seven languages', 'restart']),
+  screen('settings/language.tsx', '/settings/language', ['completed account'], ['LTR', 'RTL', 'restart prompt'], ['change all eight languages', 'restart']),
   screen('settings/delete-account.tsx', '/settings/delete-account', ['completed account'], ['ready', 'discovery already off', 'exporting', 'hiding', 'deleting', 'API error'], ['hide profile', 'export data', 'enter localized confirmation', 'delete permanently']),
 
   screen('legal/terms.tsx', '/legal/terms', ['public'], ['ready'], ['navigate back']),
@@ -144,4 +144,4 @@ export const REQUIRED_PARITY_VIEWPORTS = [
 ] as const;
 
 export const REQUIRED_PARITY_SCHEMES = ['light', 'dark'] as const;
-export const REQUIRED_PARITY_LANGUAGES = ['en', 'ar', 'de', 'es', 'fr', 'ru', 'zh'] as const;
+export const REQUIRED_PARITY_LANGUAGES = ['en', 'ar', 'fa', 'de', 'es', 'fr', 'ru', 'zh'] as const;

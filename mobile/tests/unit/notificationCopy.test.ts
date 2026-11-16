@@ -59,6 +59,7 @@ vi.mock('@/i18n', () => ({
 import { notificationCopy } from '@/components/messaging/NotificationRow';
 import { setGlobalTranslator } from '@/lib/i18n-bridge';
 import { ar } from '@/i18n/locales/ar';
+import { fa } from '@/i18n/locales/fa';
 import { en } from '@/i18n/locales/en';
 import type { Translate } from '@/lib/i18n-bridge';
 import type { AppNotification, NotificationType } from '@/types/models';
@@ -100,6 +101,7 @@ function translate(root: object, language: string): Translate {
 
 const english = translate(en, 'en');
 const arabic = translate(ar, 'ar');
+const persian = translate(fa, 'fa');
 
 function notice(over: Partial<AppNotification> = {}): AppNotification {
   return {
@@ -480,6 +482,24 @@ describe('sentences with a name or a title in them', () => {
     expect(notificationCopy(coached, english).body).toBe(note);
     expect(notificationCopy(coached, arabic).body).toBe(note);
     expect(notificationCopy(coached, arabic).title).toBe('شارك Sara في sprint challenge');
+  });
+});
+
+describe('Persian notification sentences', () => {
+  it('writes a follow from the name', () => {
+    expect(notificationCopy(notice(), persian).title).toBe('Sara شما را دنبال کرد');
+  });
+
+  it('writes a challenge entry and the default clip note', () => {
+    const row = notice({
+      type: 'challenge_entry',
+      title: 'Sara entered sprint challenge',
+      body: 'A new clip is waiting for you.',
+    });
+    expect(notificationCopy(row, persian)).toEqual({
+      title: 'Sara در sprint challenge شرکت کرد',
+      body: 'یک کلیپ تازه منتظر شماست.',
+    });
   });
 });
 

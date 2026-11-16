@@ -45,6 +45,7 @@ const OPENAI_MODEL = Deno.env.get("OPENAI_TRANSLATE_MODEL") ?? "gpt-4.1-mini";
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "English",
   ar: "Arabic",
+  fa: "Persian (Farsi)",
   es: "Spanish",
   fr: "French",
   de: "German",
@@ -52,8 +53,8 @@ const LANGUAGE_NAMES: Record<string, string> = {
   zh: "Simplified Chinese",
 };
 
-/** The seven the app itself speaks. A target outside this set is refused. */
-const SUPPORTED = ["en", "ar", "es", "fr", "de", "ru", "zh"];
+/** The eight the app itself speaks. A target outside this set is refused. */
+const SUPPORTED = ["en", "ar", "fa", "es", "fr", "de", "ru", "zh"];
 
 /** Long enough for any post; a wall of text is not what this is for. */
 const MAX_CHARS = 4000;
@@ -109,7 +110,7 @@ async function callProvider(text: string, target: string): Promise<Translated> {
     };
   }
 
-  if (DEEPL_KEY) {
+  if (DEEPL_KEY && target !== "fa") {
     const res = await fetch("https://api-free.deepl.com/v2/translate", {
       method: "POST",
       headers: {

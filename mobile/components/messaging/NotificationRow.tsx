@@ -33,7 +33,7 @@ import { LogoColors, TierLabels, type Tier } from '@/theme/tokens';
 import { sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { relativeTime } from '@/lib/format';
-import { currentLanguage, type Translate } from '@/lib/i18n-bridge';
+import { currentLanguage, intlLocale, type Translate } from '@/lib/i18n-bridge';
 import type { AppNotification, NotificationType } from '@/types/models';
 
 /**
@@ -766,7 +766,7 @@ function sessionDay(text: string): string | null {
   // 2024 is a leap year, so the 29th of February still has a day to format.
   const utc = new Date(Date.UTC(2024, month, day));
   if (utc.getUTCMonth() !== month || utc.getUTCDate() !== day) return null;
-  return new Intl.DateTimeFormat(currentLanguage(), {
+  return new Intl.DateTimeFormat(intlLocale(currentLanguage()), {
     day: 'numeric',
     month: 'long',
     timeZone: 'UTC',
@@ -954,7 +954,7 @@ function meetupWhen(n: AppNotification): string | null {
     }
   }
   if (!best) return body;
-  const formatted = new Intl.DateTimeFormat(currentLanguage(), {
+  const formatted = new Intl.DateTimeFormat(intlLocale(currentLanguage()), {
     weekday: 'short',
     day: 'numeric',
     month: 'short',

@@ -1,3 +1,5 @@
+import { intlLocale } from '@/lib/i18n-bridge';
+
 /**
  * Coach bookings: the calendar arithmetic every coaching screen shares.
  *
@@ -82,20 +84,20 @@ export function isUpcoming(iso: string, now: Date): boolean {
 /** "17:00 – 18:00" in the given locale's clock. */
 export function timeRange(startIso: string, endIso: string, locale: string): string {
   const fmt = (iso: string) =>
-    new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+    new Date(iso).toLocaleTimeString(intlLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false });
   return `${fmt(startIso)} – ${fmt(endIso)}`;
 }
 
 export function clockTime(iso: string, locale: string): string {
-  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return new Date(iso).toLocaleTimeString(intlLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /** The three small lines of a day chip: "Sat", "12", "Oct". */
 export function dayParts(date: Date, locale: string): { weekday: string; day: string; month: string } {
   return {
-    weekday: date.toLocaleDateString(locale, { weekday: 'short' }),
+    weekday: date.toLocaleDateString(intlLocale(locale), { weekday: 'short' }),
     day: String(date.getDate()),
-    month: date.toLocaleDateString(locale, { month: 'short' }),
+    month: date.toLocaleDateString(intlLocale(locale), { month: 'short' }),
   };
 }
 
@@ -103,7 +105,7 @@ export function dayParts(date: Date, locale: string): { weekday: string; day: st
 export function whenLabel(iso: string, locale: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' })}, ${clockTime(iso, locale)}`;
+  return `${d.toLocaleDateString(intlLocale(locale), { weekday: 'short', day: 'numeric', month: 'short' })}, ${clockTime(iso, locale)}`;
 }
 
 /** A class needs at least two places; anything else is one. */

@@ -1,4 +1,4 @@
-import { currentLanguage, type Translate } from '@/lib/i18n-bridge';
+import { currentLanguage, intlLocale, type Translate } from '@/lib/i18n-bridge';
 
 /**
  * What a host pays to play, stored in the existing `cost_note` text.
@@ -115,7 +115,7 @@ export function costLabel(costNote: string | null | undefined, t: Translate): st
 
   const paid = PAID_NOTE.exec(raw);
   if (paid) {
-    const formatted = new Intl.NumberFormat(currentLanguage(), {
+    const formatted = new Intl.NumberFormat(intlLocale(currentLanguage()), {
       maximumFractionDigits: 0,
     }).format(Number(paid[2]));
     return t('meetups.costEach', { cost: ltrIsolate(`${paid[1]} ${formatted}`) });

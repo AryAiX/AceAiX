@@ -124,7 +124,7 @@ export const errors = {
   clubEventCancelled: 'این رویداد لغو شده.',
   clubEventOwnClub: 'نمی‌توانید برای رویداد باشگاه خودتان ثبت‌نام کنید.',
   clubMinorNeedsVerified: 'فقط می‌توانید نزد باشگاه‌هایی ثبت‌نام کنید که AceAiX تأیید کرده.',
-  clubSeasonLabel: 'نام فصل: ۲ تا ۲۰ نویسه، مثلاً 2026–27.',
+  clubSeasonLabel: 'نام فصل: ۲ تا ۲۰ نویسه، مثلاً ۲۰۲۶–۲۷.',
   clubSeasonRequired: 'اول یک فصل انتخاب کنید.',
   clubSquadFields: 'یک ورزش و یک دسته انتخاب کنید.',
   clubSquadExists: 'آن تیم در این فصل از قبل وجود دارد.',

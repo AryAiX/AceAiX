@@ -1,4 +1,4 @@
-import type { Translate } from '@/lib/i18n-bridge';
+import { intlLocale, type Translate } from '@/lib/i18n-bridge';
 
 /**
  * Small display helpers the match screens share. Pure, no React.
@@ -59,13 +59,13 @@ export function dateTimeLabel(iso: string | null | undefined, locale: string): s
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const day = d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
-  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  const day = d.toLocaleDateString(intlLocale(locale), { weekday: 'short', day: 'numeric', month: 'short' });
+  const time = d.toLocaleTimeString(intlLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false });
   return `${day} · ${time}`;
 }
 
 export function timeLabel(iso: string, locale: string): string {
-  return new Date(iso).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return new Date(iso).toLocaleTimeString(intlLocale(locale), { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 /** A whole number from a text field, or null when it is empty or not a number. */

@@ -3,13 +3,14 @@
  *
  * English is the source of truth: every other catalogue is typed against it,
  * so a missing key is a compile error rather than a blank label on someone's
- * screen. `nativeName` is what the person sees — nobody looking for Arabic is
- * scanning a list for the word "Arabic".
+ * screen. Eight languages ship. `nativeName` is what the person sees — nobody
+ * looking for Persian is scanning a list for the word "Persian".
  */
 
 export const LANGUAGES = [
   { code: 'en', name: 'English',    nativeName: 'English',  dir: 'ltr' },
   { code: 'ar', name: 'Arabic',     nativeName: 'العربية',  dir: 'rtl' },
+  { code: 'fa', name: 'Persian',    nativeName: 'فارسی',    dir: 'rtl' },
   { code: 'es', name: 'Spanish',    nativeName: 'Español',  dir: 'ltr' },
   { code: 'fr', name: 'French',     nativeName: 'Français', dir: 'ltr' },
   { code: 'de', name: 'German',     nativeName: 'Deutsch',  dir: 'ltr' },

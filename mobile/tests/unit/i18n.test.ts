@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { COUNTRY_KEYS } from '@/constants/sports';
-import { LANGUAGES } from '@/i18n/languages';
+import { LANGUAGES, directionFor } from '@/i18n/languages';
 import { en } from '@/i18n/locales/en';
 
 /**
@@ -252,8 +252,8 @@ for (const lang of LANGUAGES.filter((l) => l.code !== 'en')) {
 describe('country names', () => {
   const required = Object.values(COUNTRY_KEYS);
 
-  it('defines every COUNTRY_KEYS entry in all 7 locales', () => {
-    expect(LANGUAGES).toHaveLength(7);
+  it('defines every COUNTRY_KEYS entry in all 8 locales', () => {
+    expect(LANGUAGES).toHaveLength(8);
     for (const lang of LANGUAGES) {
       const catalogue = loadLocale(lang.code);
       expect(catalogue, `mobile/i18n/locales/${lang.code} is missing`).not.toBeNull();
@@ -263,11 +263,20 @@ describe('country names', () => {
       expect(missing, `${lang.code} is missing ${missing.join(', ')}`).toEqual([]);
     }
   });
+
+  it('treats Arabic and Persian as right to left', () => {
+    expect(directionFor('ar')).toBe('rtl');
+    expect(directionFor('fa')).toBe('rtl');
+    expect(LANGUAGES.filter((lang) => lang.dir === 'rtl').map((lang) => lang.code)).toEqual([
+      'ar',
+      'fa',
+    ]);
+  });
 });
 
 // ── Every key a screen asks for exists ───────────────────────────────────────
 /**
- * The type system guarantees the seven catalogues agree with each other. It
+ * The type system guarantees the eight catalogues agree with each other. It
  * does not guarantee that `t('profile.tabMatches')` names a key any of them
  * has — `t` takes a string, so a typo or a renamed key falls through and the
  * raw path renders on screen, in production, in every language at once.
