@@ -66,8 +66,8 @@ export const feed = {
   // PLACEHOLDER: needs real translation per locale for savedTitle,
   // savedEmptyTitle, savedEmptyBody.
   savedTitle: 'Saved',
-  savedEmptyTitle: 'Nothing saved yet',
-  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+  savedEmptyTitle: 'Сохранённого пока нет',
+  savedEmptyBody: 'Нажми на закладку у публикации, чтобы сохранить её здесь.',
 
   // ── Карточка поста ─────────────────────────────────────────────────────────
   openProfileOf: 'Открыть профиль: {{name}}',

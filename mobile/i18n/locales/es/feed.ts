@@ -65,8 +65,8 @@ export const feed = {
   // PLACEHOLDER: needs real translation per locale for savedTitle,
   // savedEmptyTitle, savedEmptyBody.
   savedTitle: 'Saved',
-  savedEmptyTitle: 'Nothing saved yet',
-  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+  savedEmptyTitle: 'Aún no hay nada guardado',
+  savedEmptyBody: 'Toca el marcador en cualquier publicación para guardarla aquí.',
 
   // ── Tarjeta de publicación ─────────────────────────────────────────────────
   openProfileOf: 'Abrir el perfil de {{name}}',

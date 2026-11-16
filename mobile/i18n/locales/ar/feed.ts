@@ -72,8 +72,8 @@ export const feed = {
   // PLACEHOLDER: needs real translation per locale for savedTitle,
   // savedEmptyTitle, savedEmptyBody.
   savedTitle: 'Saved',
-  savedEmptyTitle: 'Nothing saved yet',
-  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+  savedEmptyTitle: 'لا شيء محفوظ بعد',
+  savedEmptyBody: 'اضغط على علامة الحفظ في أي منشور لحفظه هنا.',
 
   // ── بطاقة المنشور ─────────────────────────────────────────────────────────
   openProfileOf: 'فتح ملف {{name}}',

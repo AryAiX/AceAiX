@@ -56,8 +56,8 @@ export const feed = {
   // PLACEHOLDER: needs real translation per locale for savedTitle,
   // savedEmptyTitle, savedEmptyBody.
   savedTitle: 'Saved',
-  savedEmptyTitle: 'Nothing saved yet',
-  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+  savedEmptyTitle: '还没有收藏',
+  savedEmptyBody: '点按任意帖子上的书签，即可收藏到这里。',
 
   // ── 动态卡片 ───────────────────────────────────────────────────────────────
   openProfileOf: '打开{{name}}的主页',

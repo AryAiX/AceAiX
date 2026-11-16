@@ -64,8 +64,8 @@ export const feed = {
   // PLACEHOLDER: needs real translation per locale for savedTitle,
   // savedEmptyTitle, savedEmptyBody.
   savedTitle: 'Saved',
-  savedEmptyTitle: 'Nothing saved yet',
-  savedEmptyBody: 'Tap the bookmark icon on any post to save it here.',
+  savedEmptyTitle: 'Rien d’enregistré pour l’instant',
+  savedEmptyBody: 'Touche le signet sur une publication pour l’enregistrer ici.',
 
   // ── Carte de post ──────────────────────────────────────────────────────────
   openProfileOf: 'Ouvrir le profil de {{name}}',
