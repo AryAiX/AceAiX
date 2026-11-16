@@ -76,8 +76,9 @@ function serve() {
 }
 
 /** Console noise that says nothing about whether the screen works. */
+// The browser's own notice when a video is paused before it started, documented as harmless at https://goo.gl/LdLk22.
 const IGNORE =
-  /Failed to load resource|net::ERR|favicon|WebSocket|realtime|Download the React DevTools|useNativeDriver|componentWill|shadow\*|props\.pointerEvents|"shadow"|deprecated/i;
+  /Failed to load resource|net::ERR|favicon|WebSocket|realtime|Download the React DevTools|useNativeDriver|componentWill|shadow\*|props\.pointerEvents|"shadow"|deprecated|play\(\) request was interrupted by a call to pause\(\)/i;
 
 const results = [];
 
@@ -319,7 +320,8 @@ if (env.EXPO_PUBLIC_SUPABASE_URL && env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
 
 // ---- the tour ---------------------------------------------------------------
 const TOUR = [
-  ['home', '/', { expect: ['Ace'] }],
+  // The wordmark became the logo image in the re-skin; the feed switch names Home.
+  ['home', '/', { expect: LANG === 'en' ? ['Playfeed'] : [] }],
   ['discover', '/discover', {}],
   ['meetups', '/meetups', {}],
   ['opportunities', '/opportunities', {}],
