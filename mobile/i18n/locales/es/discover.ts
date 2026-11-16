@@ -254,6 +254,6 @@ export const discover = {
     emptyBodyPosts: 'Aún no hay publicaciones con esa palabra. Prueba otra o una #etiqueta.',
     postsHint: 'Busca publicaciones con una palabra o una #etiqueta.',
     parentsEmptyTitle: 'Aún no hay padres',
-    parentsEmptyBody: 'Los padres aparecen aquí cuando eligen que se les contacte por su hijo.',
+    parentsEmptyBody: 'Los padres aparecen aquí. Quien haya desactivado que se le contacte por su hijo no aparece en la lista.',
   },
 };

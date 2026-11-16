@@ -249,6 +249,6 @@ export const discover = {
     emptyBodyPosts: 'Aucune publication avec ce mot pour l’instant. Essaie un autre mot ou un #tag.',
     postsHint: 'Trouve des publications avec un mot ou un #tag.',
     parentsEmptyTitle: 'Pas encore de parents',
-    parentsEmptyBody: 'Les parents apparaissent ici dès qu’ils choisissent d’être contactés au sujet de leur enfant.',
+    parentsEmptyBody: 'Les parents apparaissent ici. Un parent qui a désactivé d’être contacté au sujet de son enfant n’est pas listé.',
   },
 };

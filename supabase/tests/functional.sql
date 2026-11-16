@@ -10862,6 +10862,7 @@ declare
   v_off          text[] := '{}';
   v_both         text[] := '{}';
   v_none         text[] := '{}';
+  v_shown_by_default boolean;
   v_hint         text;
   v_switched      boolean;
   v_coach_hidden  integer;
@@ -10906,6 +10907,15 @@ begin
     v_child, v_parent, 'QA206 Parent Linden', 'qa206.parent@test.local',
     'parent', 'granted', true, now()
   );
+
+  select show_on_profile into v_shown_by_default
+    from public.guardian_consents
+   where minor_user_id = v_child
+     and guardian_user_id = v_parent
+     and status = 'granted';
+
+  perform tests.as_user(v_parent);
+  perform public.set_guardian_on_profile(v_child, false);
 
   for v_id, v_label in
     select s.id, s.label
@@ -11000,8 +11010,12 @@ begin
   v_club_revoked := v_club_revoked + v_other;
 
   perform tests.ok(
+    v_shown_by_default,
+    'a new link is shown by default');
+
+  perform tests.ok(
     cardinality(v_off) = 9,
-    'off by default, nobody sees the parent on the child or the child on the parent');
+    'switched off, nobody sees the parent on the child or the child on the parent');
 
   perform tests.ok(
     v_hint = 'not_linked_guardian',

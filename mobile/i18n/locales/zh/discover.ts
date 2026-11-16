@@ -236,6 +236,6 @@ export const discover = {
     emptyBodyPosts: '还没有使用这个词的动态。换个词或 #话题 试试。',
     postsHint: '用一个词或 #话题 查找动态。',
     parentsEmptyTitle: '还没有家长',
-    parentsEmptyBody: '家长选择接受关于孩子的联系后，会出现在这里。',
+    parentsEmptyBody: '家长会出现在这里。已关闭就孩子接受联系的家长不会列出。',
   },
 };

@@ -243,6 +243,6 @@ export const discover = {
     emptyBodyPosts: 'Noch keine Beiträge mit diesem Wort. Versuch ein anderes Wort oder einen #Tag.',
     postsHint: 'Finde Beiträge über ein Wort oder einen #Tag.',
     parentsEmptyTitle: 'Noch keine Eltern',
-    parentsEmptyBody: 'Eltern erscheinen hier, sobald sie sich entscheiden, wegen ihres Kindes kontaktiert zu werden.',
+    parentsEmptyBody: 'Eltern erscheinen hier. Wer den Kontakt wegen des Kindes ausgeschaltet hat, wird nicht aufgeführt.',
   },
 };

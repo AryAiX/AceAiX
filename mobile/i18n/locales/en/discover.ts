@@ -242,6 +242,6 @@ export const discover = {
     emptyBodyPosts: 'No posts use that word yet. Try another word or a #tag.',
     postsHint: 'Find posts by a word or a #hashtag.',
     parentsEmptyTitle: 'No parents yet',
-    parentsEmptyBody: 'Parents appear here once they choose to be contacted about their child.',
+    parentsEmptyBody: 'Parents appear here. A parent who has switched off being contacted about their child is not listed.',
   },
 };
