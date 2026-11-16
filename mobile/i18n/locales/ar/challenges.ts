@@ -54,6 +54,9 @@ export const challenges = {
   seeOpen: 'عرض التحدّيات المفتوحة',
   tagLabel: 'تحدٍّ',
   enterChallenge: 'شارك في التحدّي',
+  athletesOnlyNote:
+    'لا يشارك في التحدّيات إلا اللاعبون. يمكنك متابعة المشاركات والنتائج من هنا.',
+  setYourOwn: 'ضع تحدّيك',
   statDays_zero: 'أيام متبقية',
   statDays_one: 'يوم متبقٍ',
   statDays_two: 'يومان متبقيان',

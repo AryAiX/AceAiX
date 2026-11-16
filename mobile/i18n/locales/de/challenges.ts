@@ -48,6 +48,9 @@ export const challenges = {
   seeOpen: 'Offene Aufgaben ansehen',
   tagLabel: 'Aufgabe',
   enterChallenge: 'Jetzt mitmachen',
+  athletesOnlyNote:
+    'Nur Sportler können bei Aufgaben mitmachen. Einsendungen und Ergebnisse kannst du hier verfolgen.',
+  setYourOwn: 'Eigene Aufgabe stellen',
   statDays_one: 'Tag übrig',
   statDays_other: 'Tage übrig',
   statEntries_one: 'Teilnahme',

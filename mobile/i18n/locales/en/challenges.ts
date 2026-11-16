@@ -43,6 +43,9 @@ export const challenges = {
   seeOpen: 'See open challenges',
   tagLabel: 'Challenge',
   enterChallenge: 'Enter challenge',
+  athletesOnlyNote:
+    'Only athletes can enter challenges. You can follow the entries and results here.',
+  setYourOwn: 'Set your own challenge',
   statDays_one: 'day left',
   statDays_other: 'days left',
   statEntries_one: 'entry',

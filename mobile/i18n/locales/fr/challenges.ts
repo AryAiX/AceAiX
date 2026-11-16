@@ -47,6 +47,9 @@ export const challenges = {
   seeOpen: 'Voir les défis ouverts',
   tagLabel: 'Défi',
   enterChallenge: 'Relever le défi',
+  athletesOnlyNote:
+    'Seuls les athlètes peuvent relever un défi. Tu peux suivre les participations et les résultats ici.',
+  setYourOwn: 'Proposer ton défi',
   statDays_one: 'jour restant',
   statDays_many: 'jours restants',
   statDays_other: 'jours restants',

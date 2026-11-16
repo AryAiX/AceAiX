@@ -161,6 +161,11 @@ export default function ChallengeScreen() {
   const live = isChallengeLive(challenge);
   const days = Math.max(daysUntil(challenge.closes_at) ?? 0, 0);
   const canEnter = isAthlete && live;
+  /* Same gate as the new-challenge screen: a verified coach, club, or scout.
+     A club account is also an academy. Anyone else only gets the note. */
+  const canSet =
+    profile?.is_verified === true &&
+    (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout');
 
   const tagText =
     challenge.status === 'judging'
@@ -220,6 +225,22 @@ export default function ChallengeScreen() {
                 variant="ghost"
                 fullWidth
                 onPress={() => setConfirmWithdraw(true)}
+              />
+            ) : null}
+          </View>
+        ) : !isAthlete && !isMine ? (
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="caption" tone="muted">
+              {t('challenges.athletesOnlyNote')}
+            </Text>
+            {/* A closed challenge has nothing to set against, so the note stands alone. */}
+            {live && canSet ? (
+              <Button
+                label={t('challenges.setYourOwn')}
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push(Routes.newChallenge)}
+                testID="challenge-set-own"
               />
             ) : null}
           </View>

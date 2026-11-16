@@ -38,6 +38,8 @@ export const challenges = {
   seeOpen: '查看开放中的挑战',
   tagLabel: '挑战',
   enterChallenge: '参加挑战',
+  athletesOnlyNote: '只有运动员可以参加挑战。你可以在这里关注参赛情况和结果。',
+  setYourOwn: '发布自己的挑战',
   statDays_other: '天剩余',
   statEntries_other: '个参赛',
   daysLeft_other: '还剩 {{count}} 天',

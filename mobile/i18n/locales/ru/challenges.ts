@@ -50,6 +50,9 @@ export const challenges = {
   seeOpen: 'Открытые испытания',
   tagLabel: 'Испытание',
   enterChallenge: 'Участвовать',
+  athletesOnlyNote:
+    'Участвовать в испытаниях могут только спортсмены. Заявки и результаты можно смотреть здесь.',
+  setYourOwn: 'Поставить своё испытание',
   statDays_one: 'день остался',
   statDays_few: 'дня осталось',
   statDays_many: 'дней осталось',

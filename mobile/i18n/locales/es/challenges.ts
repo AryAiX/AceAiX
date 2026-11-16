@@ -49,6 +49,9 @@ export const challenges = {
   seeOpen: 'Ver retos abiertos',
   tagLabel: 'Reto',
   enterChallenge: 'Participar en el reto',
+  athletesOnlyNote:
+    'Solo los deportistas pueden participar en los retos. Aquí puedes seguir las participaciones y los resultados.',
+  setYourOwn: 'Pon tu propio reto',
   statDays_one: 'día restante',
   statDays_many: 'días restantes',
   statDays_other: 'días restantes',
