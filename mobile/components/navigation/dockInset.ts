@@ -32,8 +32,12 @@ export function useDockMetrics() {
  */
 export const DockInsetContext = createContext(0);
 
-/** The empty space left between the end of a tab screen and the dock. */
-export const DOCK_END_SPACE = 180;
+/**
+ * A small gap above the dock, added on top of the dock's own height.
+ * The dock inset already lifts the last item clear of the bar; this is only
+ * the breathing room past it, not a second empty screen.
+ */
+export const DOCK_END_SPACE = 32;
 
 export function useDockInset(): number {
   return useContext(DockInsetContext);
