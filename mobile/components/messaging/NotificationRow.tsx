@@ -174,7 +174,8 @@ function skinFor(type: NotificationType): Skin {
  * stored.
  *
  * Composed on the phone: follow, like, comment, reply, message and
- * profile_view (the actor's name, or "name and N others"); mention and
+ * profile_view (the actor's name, "name and N others", or the organisation
+ * when the title does not start with the actor); mention and
  * post_tag; challenge_verified and challenge_rejected (the challenge title
  * when the stored sentence has it, and the two default coach notes);
  * challenge_entry (the name, the challenge, and the default new-clip note);
@@ -322,6 +323,11 @@ function sportRequestCopy(
  * The stored title has to be that name followed by the ending, or the older
  * merged form ("Sara and 2 others started following you"). Anything else, or
  * a missing name, keeps the stored title.
+ *
+ * A profile view may start with the viewer's organisation instead. When the
+ * actor's name is not the start of the title, that organisation is the part
+ * before " viewed your profile", and only when the ending appears once and
+ * the part has no space at either end. "and N others" stays the actor-name form.
  */
 const ACTOR_SENTENCE: Partial<Record<NotificationType, { suffix: string; key: string }>> = {
   follow: { suffix: ' started following you', key: 'messaging.followedYou' },
@@ -357,9 +363,17 @@ function actorCopy(
   if (!spec) return null;
   const name = n.actor?.full_name?.trim();
   if (!name) return null;
-  if (!matchesActorTitle(n.title, name, spec.suffix, n.actor_count)) return null;
+  if (matchesActorTitle(n.title, name, spec.suffix, n.actor_count)) {
+    return {
+      title: t(spec.key, { actors: actorPhrase(n, t, name) }),
+      body: n.body,
+    };
+  }
+  if (n.type !== 'profile_view' || n.title.startsWith(name)) return null;
+  const organisation = beforePhrase(n.title, spec.suffix);
+  if (!organisation) return null;
   return {
-    title: t(spec.key, { actors: actorPhrase(n, t, name) }),
+    title: t(spec.key, { actors: organisation }),
     body: n.body,
   };
 }

@@ -189,6 +189,28 @@ describe('actor notification sentences', () => {
     });
   }
 
+  it('translates a profile view that names the organisation, in English and Arabic', () => {
+    const row = notice({
+      type: 'profile_view',
+      title: 'Test FC viewed your profile',
+      actor: { full_name: 'Sam', avatar_url: null },
+      actor_count: 3,
+    });
+    expect(notificationCopy(row, english).title).toBe('Test FC viewed your profile');
+    expect(notificationCopy(row, arabic).title).toBe('شاهد Test FC ملفك');
+  });
+
+  it('keeps a profile view when " viewed your profile" appears twice', () => {
+    const stored = 'Test FC viewed your profile viewed your profile';
+    const row = notice({
+      type: 'profile_view',
+      title: stored,
+      actor: { full_name: 'Sam', avatar_url: null },
+    });
+    expect(notificationCopy(row, english).title).toBe(stored);
+    expect(notificationCopy(row, arabic).title).toBe(stored);
+  });
+
   it('keeps the stored title when the actor has no name', () => {
     const stored = 'Sara started following you';
     const nameless = notice({ title: stored, actor: undefined });
