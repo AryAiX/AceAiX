@@ -34,6 +34,7 @@ import {
 import { Routes } from '@/lib/routes';
 import { sportLabel } from '@/constants/sports';
 import { ageBandLabel, daysUntil, displayName, metaLine, relativeTime } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
 import { isChallengeLive, useChallengeInk } from '@/components/challenges/ChallengeCard';
 import { useT } from '@/i18n';
 import type { Challenge, ChallengeEntry } from '@/types/models';
@@ -89,7 +90,7 @@ export default function ChallengeScreen() {
 
   const enter = useAction(async () => {
     if (!id || !clipId) return;
-    const value = claimed.trim() ? Number(claimed.trim()) : null;
+    const value = claimed.trim() ? Number(toLatinDigits(claimed).trim()) : null;
     await enterChallenge(id, clipId, Number.isFinite(value as number) ? value : null, note);
   });
 
@@ -99,7 +100,7 @@ export default function ChallengeScreen() {
 
   const judge = useAction(async (accept: boolean) => {
     if (!judging) return;
-    const value = judgeValue.trim() ? Number(judgeValue.trim()) : null;
+    const value = judgeValue.trim() ? Number(toLatinDigits(judgeValue).trim()) : null;
     await judgeChallengeEntry(
       judging.entry_id,
       accept,

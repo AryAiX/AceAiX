@@ -1,4 +1,5 @@
 import { currentLanguage, intlLocale, type Translate } from '@/lib/i18n-bridge';
+import { toLatinDigits } from '@/lib/digits';
 
 /**
  * What a host pays to play, stored in the existing `cost_note` text.
@@ -95,8 +96,8 @@ export function toCostNote(choice: CostChoice | null): string | null {
 
   const currency = choice.currency.trim().toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) return null;
-  if (!/^\d{1,4}$/.test(choice.amount)) return null;
-  const amount = Number(choice.amount);
+  if (!/^\d{1,4}$/.test(toLatinDigits(choice.amount))) return null;
+  const amount = Number(toLatinDigits(choice.amount));
   if (!Number.isInteger(amount) || amount < 1 || amount > 9999) return null;
 
   const note = `${currency} ${amount}`;

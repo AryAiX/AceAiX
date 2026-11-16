@@ -1,4 +1,5 @@
 import { intlLocale } from '@/lib/i18n-bridge';
+import { toLatinDigits } from '@/lib/digits';
 
 /**
  * Coach bookings: the calendar arithmetic every coaching screen shares.
@@ -111,6 +112,6 @@ export function whenLabel(iso: string, locale: string): string {
 /** A class needs at least two places; anything else is one. */
 export function capacityFor(kind: ServiceKind, typed: string): number | undefined {
   if (kind !== 'class') return 1;
-  const n = Number(typed.trim());
+  const n = Number(toLatinDigits(typed).trim());
   return Number.isInteger(n) && n >= 2 && n <= 100 ? n : undefined;
 }

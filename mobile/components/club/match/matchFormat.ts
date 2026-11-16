@@ -1,4 +1,5 @@
 import { intlLocale, type Translate } from '@/lib/i18n-bridge';
+import { toLatinDigits } from '@/lib/digits';
 
 /**
  * Small display helpers the match screens share. Pure, no React.
@@ -70,7 +71,7 @@ export function timeLabel(iso: string, locale: string): string {
 
 /** A whole number from a text field, or null when it is empty or not a number. */
 export function parseWhole(text: string): number | null {
-  const v = text.trim();
+  const v = toLatinDigits(text).trim();
   if (!v) return null;
   if (!/^\d+$/.test(v)) return null;
   const n = Number(v);

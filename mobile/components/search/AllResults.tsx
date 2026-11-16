@@ -12,6 +12,7 @@ import { groupedRowStyle } from '@/components/discover/groupedRow';
 import { MediaGrid } from '@/components/profile/MediaGrid';
 import { opportunityTypeLabel, sportEmoji, sportLabel, positionLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
 import { useAsync } from '@/hooks/useAsync';
 import { discoverAthletes, openChallenges, searchOrganizations, searchPeople } from '@/lib/api';
 import { searchOpportunities } from '@/lib/api.opportunities';
@@ -464,5 +465,5 @@ export function AllResults({
 function shortDay(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  return date.toLocaleDateString(intlLocale(currentLanguage()), { weekday: 'short', day: 'numeric', month: 'short' });
 }

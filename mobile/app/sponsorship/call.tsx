@@ -24,6 +24,7 @@ import { useT } from '@/i18n';
 import { getMySponsorship, saveSponsorCall } from '@/lib/api.sponsorship';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
+import { toLatinDigits } from '@/lib/digits';
 import { OFFERS, parseAmount, parseDay, toggleTag, type Offer } from '@/lib/sponsorship';
 
 const CURRENCY = 'AED';
@@ -79,7 +80,7 @@ export default function SponsorCallScreen() {
     const lo = parseAmount(min);
     const hi = parseAmount(max);
     const day = parseDay(deadline);
-    const count = Math.min(500, Math.max(1, Math.round(Number(slots) || 1)));
+    const count = Math.min(500, Math.max(1, Math.round(Number(toLatinDigits(slots)) || 1)));
     const next = {
       title: title.trim().length < 3 ? t('sponsorship.titleRequired') : undefined,
       range:

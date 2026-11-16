@@ -94,7 +94,7 @@ export const opportunities = {
     /** آنچه ورزشکاری که فرستاده می‌خواند. */
     athlete: {
       applied: 'فرستاده',
-      in_review: 'در خواندن',
+      in_review: 'در حال بررسی',
       shortlisted: 'منتخب',
       invited: 'دعوت به تست',
       accepted: 'پذیرفته',

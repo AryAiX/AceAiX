@@ -24,6 +24,7 @@ import { getClubPage } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { toLatinDigits } from '@/lib/digits';
 
 const FALLBACK_SPORT = SPORTS[0]?.key ?? 'Football';
 
@@ -121,8 +122,8 @@ export default function NewChallengeScreen() {
       metricLabel: kind === 'measured' ? metricLabel : null,
       metricUnit: kind === 'measured' ? metricUnit || metricLabel : null,
       metricBetter: better,
-      ageMin: ageMin.trim() ? Number(ageMin) : null,
-      ageMax: ageMax.trim() ? Number(ageMax) : null,
+      ageMin: ageMin.trim() ? Number(toLatinDigits(ageMin).trim()) : null,
+      ageMax: ageMax.trim() ? Number(toLatinDigits(ageMax).trim()) : null,
       organizationId: orgId,
     });
   });

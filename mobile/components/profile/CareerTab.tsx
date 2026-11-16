@@ -39,6 +39,7 @@ import {
 } from '@/lib/api.profile';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, roleLabel } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
 import { toIsoDate } from '@/components/onboarding/Shared';
 import { useT } from '@/i18n';
 import { MatchDateField } from '@/components/profile/MatchDateField';
@@ -92,8 +93,9 @@ interface ShelfItem {
 
 const MIN_YEAR = 1950;
 function isValidYear(value: string): boolean {
-  if (!/^\d{4}$/.test(value)) return false;
-  const year = Number(value);
+  const yearText = toLatinDigits(value).trim();
+  if (!/^\d{4}$/.test(yearText)) return false;
+  const year = Number(yearText);
   return year >= MIN_YEAR && year <= new Date().getFullYear();
 }
 
@@ -236,7 +238,7 @@ export function CareerTab({
       if (!matchForm[key].trim()) errors[key] = t('profile.matchFieldRequired');
     });
     (['minutes_played', 'goals', 'assists'] as const).forEach((key) => {
-      const value = matchForm[key].trim();
+      const value = toLatinDigits(matchForm[key]).trim();
       if (!value) errors[key] = t('profile.matchFieldRequired');
       else if (!/^\d+$/.test(value)) errors[key] = t('profile.matchNumberInvalid');
     });
@@ -1112,7 +1114,7 @@ export function CareerTab({
 }
 
 function toNumber(value: string): number | null {
-  const trimmed = value.trim();
+  const trimmed = toLatinDigits(value).trim();
   if (!trimmed) return null;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? Math.round(parsed) : null;

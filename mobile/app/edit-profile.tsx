@@ -83,6 +83,7 @@ import {
 } from '@/constants/sports';
 import type { OtherSport } from '@/types/models';
 import { errorMessage } from '@/lib/errors';
+import { toLatinDigits } from '@/lib/digits';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -1309,7 +1310,7 @@ export default function EditProfileScreen() {
 }
 
 function toNumber(value: string): number | null {
-  const trimmed = value.trim();
+  const trimmed = toLatinDigits(value).trim();
   if (!trimmed) return null;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;

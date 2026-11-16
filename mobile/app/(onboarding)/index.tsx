@@ -19,6 +19,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
 import {
   addCustomCity,
   completeOnboarding,
@@ -287,14 +288,14 @@ export default function OnboardingScreen() {
   const teamsKeyboardOpen = useKeyboardVisible(step === 'teams');
 
   const heightError =
-    height && (Number(height) < HEIGHT_RANGE_CM.min || Number(height) > HEIGHT_RANGE_CM.max)
+    height && (Number(toLatinDigits(height)) < HEIGHT_RANGE_CM.min || Number(toLatinDigits(height)) > HEIGHT_RANGE_CM.max)
       ? t('onboarding.heightOutOfRange', {
           min: HEIGHT_RANGE_CM.min,
           max: HEIGHT_RANGE_CM.max,
         })
       : null;
   const weightError =
-    weight && (Number(weight) < WEIGHT_RANGE_KG.min || Number(weight) > WEIGHT_RANGE_KG.max)
+    weight && (Number(toLatinDigits(weight)) < WEIGHT_RANGE_KG.min || Number(toLatinDigits(weight)) > WEIGHT_RANGE_KG.max)
       ? t('onboarding.weightOutOfRange', {
           min: WEIGHT_RANGE_KG.min,
           max: WEIGHT_RANGE_KG.max,
@@ -352,8 +353,8 @@ export default function OnboardingScreen() {
         }
         case 'physical':
           await updateAthleteProfile({
-            height_cm: height ? Number(height) : null,
-            weight_kg: weight ? Number(weight) : null,
+            height_cm: height ? Number(toLatinDigits(height)) : null,
+            weight_kg: weight ? Number(toLatinDigits(weight)) : null,
             dominant_foot: side,
           });
           break;

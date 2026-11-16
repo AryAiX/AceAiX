@@ -11,8 +11,12 @@ import { Eye, EyeOff } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
+import { toLatinDigits } from '@/lib/digits';
 import { Text } from './Text';
 import { isRTL } from './rtl';
+
+/** Keyboards that type a number. Persian and Arabic ones emit their own digits. */
+const NUMBER_KEYBOARDS = new Set(['number-pad', 'numeric', 'decimal-pad', 'phone-pad']);
 
 interface Props extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -39,6 +43,8 @@ export const Input = forwardRef<TextInputInstance, Props>(function Input(
     multiline,
     onFocus,
     onBlur,
+    keyboardType,
+    onChangeText,
     ...rest
   },
   ref,
@@ -105,6 +111,15 @@ export const Input = forwardRef<TextInputInstance, Props>(function Input(
           aria-invalid={error ? true : undefined}
           aria-describedby={error || hint ? descriptionId : undefined}
           {...rest}
+          keyboardType={keyboardType}
+          onChangeText={
+            onChangeText
+              ? (text) =>
+                  onChangeText(
+                    keyboardType && NUMBER_KEYBOARDS.has(keyboardType) ? toLatinDigits(text) : text,
+                  )
+              : undefined
+          }
         />
 
         {password ? (

@@ -25,6 +25,7 @@ import { TimeWheel } from '@/components/meetups/TimeWheel';
 import { CityPicker, cityFromPicker } from '@/components/onboarding/CityPicker';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
 import { getMyProfile } from '@/lib/api';
@@ -271,7 +272,7 @@ export default function NewMeetupScreen() {
   ]);
 
   const whenLabel = startsAt
-    ? startsAt.toLocaleString(undefined, {
+    ? startsAt.toLocaleString(intlLocale(currentLanguage()), {
         weekday: 'short',
         day: 'numeric',
         month: 'short',

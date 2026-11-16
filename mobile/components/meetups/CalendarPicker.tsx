@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
 import { isRTL } from '@/components/ui/rtl';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
 
 function startOfDay(date: Date): Date {
   const next = new Date(date);
@@ -22,7 +23,7 @@ function sameDay(a: Date | null, b: Date | null): boolean {
  * Only days between `min` and `max` (inclusive) can be tapped; the rest are
  * drawn faded. Arrows step a month at a time, and stop at the months that
  * hold the allowed range. Weeks start on Monday, as in most of the markets
- * the app serves; day and month names come from the phone's language.
+ * the app serves; day and month names follow the app language.
  */
 export function CalendarPicker({
   value,
@@ -56,15 +57,17 @@ export function CalendarPicker({
     return out;
   }, [month]);
 
-  /* Seven short weekday names in the reader's language, Monday first. */
+  const locale = intlLocale(currentLanguage());
+
+  /* Seven short weekday names in the app language, Monday first. */
   const weekdays = useMemo(() => {
     const monday = new Date(2024, 0, 1); // a Monday
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
-      return d.toLocaleDateString(undefined, { weekday: 'narrow' });
+      return d.toLocaleDateString(locale, { weekday: 'narrow' });
     });
-  }, []);
+  }, [locale]);
 
   const canBack = month.getTime() > new Date(first.getFullYear(), first.getMonth(), 1).getTime();
   const canForward = month.getTime() < new Date(last.getFullYear(), last.getMonth(), 1).getTime();
@@ -98,7 +101,7 @@ export function CalendarPicker({
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         {arrow(canBack, () => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)), Back, '‹')}
         <Text variant="subheading">
-          {month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          {month.toLocaleDateString(locale, { month: 'long', year: 'numeric' })}
         </Text>
         {arrow(canForward, () => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)), Forward, '›')}
       </View>
@@ -124,7 +127,7 @@ export function CalendarPicker({
                 disabled={!allowed}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on, disabled: !allowed }}
-                accessibilityLabel={d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+                accessibilityLabel={d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
                 testID={testID ? `${testID}-${d.getDate()}` : undefined}
                 style={({ pressed }) => ({
                   width: 38,

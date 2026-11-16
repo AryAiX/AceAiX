@@ -34,6 +34,7 @@ import { deleteClubAward, getClubAwards, getClubPage, saveClubAward } from '@/li
 import { AWARD_PLACEMENTS, type AwardPlacement, type AwardRecipientKind } from '@/lib/club';
 import { clubLabel } from '@/lib/clubLabels';
 import { errorMessage } from '@/lib/errors';
+import { toLatinDigits } from '@/lib/digits';
 
 const RECIPIENTS: AwardRecipientKind[] = ['club', 'player', 'coach'];
 
@@ -138,7 +139,7 @@ export default function ClubAwardScreen() {
   );
 
   const save = async () => {
-    const yearNum = year.trim() ? Number(year.trim()) : null;
+    const yearNum = year.trim() ? Number(toLatinDigits(year).trim()) : null;
     const next = {
       title: title.trim().length < 2 ? t('clubManage.award.titleRequired') : undefined,
       year:
