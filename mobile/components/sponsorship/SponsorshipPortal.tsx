@@ -15,9 +15,9 @@ import {
   Reveal,
   Screen,
   SectionHeader,
-  SegmentedControl,
   SkeletonList,
   Text,
+  TextTabs,
   useToast,
 } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
@@ -173,7 +173,7 @@ export function SponsorshipPortal({
         ) : null}
 
         {isSponsor ? (
-          <SegmentedControl<'calls' | 'deals'>
+          <TextTabs<'calls' | 'deals'>
             testID="sponsorship-section"
             value={sponsorSection}
             onChange={setPicked}
@@ -185,7 +185,7 @@ export function SponsorshipPortal({
         ) : null}
 
         {isAthlete ? (
-          <SegmentedControl<'requests' | 'deals'>
+          <TextTabs<'requests' | 'deals'>
             testID="sponsorship-section"
             value={athleteSection}
             onChange={setPicked}
