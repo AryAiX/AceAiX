@@ -164,6 +164,11 @@ export const safety = {
   badgeWithdrawn: 'Retirée',
   badgeExpired: 'Expirée',
 
+  showOnProfile: 'Montre-moi sur le profil de {{name}}',
+  showOnProfileHint:
+    'Les clubs, les coachs, les recruteurs et les sponsors peuvent alors te voir et t’écrire au sujet de ton enfant.',
+  parentOf: 'Parent de',
+
   // Ce qu’un tuteur peut voir d’une conversation : qu’elle existe, jamais son contenu
   whoTheyTalkTo: 'À qui il parle',
   noConversations: 'Aucune conversation.',

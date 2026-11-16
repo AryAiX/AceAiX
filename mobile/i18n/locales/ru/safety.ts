@@ -168,6 +168,11 @@ export const safety = {
   badgeWithdrawn: 'Отозвано',
   badgeExpired: 'Истёк',
 
+  showOnProfile: 'Показывать меня в профиле {{name}}',
+  showOnProfileHint:
+    'Клубы, тренеры, скауты и спонсоры смогут видеть тебя и писать тебе о твоём ребёнке.',
+  parentOf: 'Родитель',
+
   // Что родитель видит о переписке: что она есть, но никогда — что в ней
   whoTheyTalkTo: 'С кем он общается',
   noConversations: 'Переписок пока нет.',

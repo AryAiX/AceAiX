@@ -890,6 +890,44 @@ export async function myLinkedMinors(): Promise<LinkedMinor[]> {
   return (data ?? []) as LinkedMinor[];
 }
 
+/** A parent who chose to be shown on this child's profile. */
+export interface GuardianContact {
+  guardian_user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  relationship: string;
+}
+
+/** A child shown on this parent's profile. */
+export interface ChildOnProfile {
+  minor_user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  relationship: string;
+}
+
+export async function guardianContactsOf(userId: string): Promise<GuardianContact[]> {
+  const { data, error } = await supabase.rpc('guardian_contacts_of', { p_user: userId });
+  if (error) throw new AppError(error);
+  return (data ?? []) as GuardianContact[];
+}
+
+export async function childrenOnProfile(guardianId: string): Promise<ChildOnProfile[]> {
+  const { data, error } = await supabase.rpc('children_on_profile', { p_guardian: guardianId });
+  if (error) throw new AppError(error);
+  return (data ?? []) as ChildOnProfile[];
+}
+
+/** The linked parent turns the profile link on or off. Returns the saved value. */
+export async function setGuardianOnProfile(minorId: string, show: boolean): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_guardian_on_profile', {
+    p_minor: minorId,
+    p_show: show,
+  });
+  if (error) throw new AppError(error);
+  return data === true;
+}
+
 /**
  * Who a minor is talking to — names and counts only, never message contents.
  * This is exactly what the in-app notice promises a guardian can see.

@@ -10838,4 +10838,195 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- A parent and their child on each other's profiles (QA-206).
+-- A 14-year-old, their parent, a granted consent, and one viewer
+-- of each kind that the rule treats differently.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a parent and their child on profiles ──'; end $$;
+
+do $$
+declare
+  v_child        uuid := '7f206000-0000-4000-8000-000000000001';
+  v_parent       uuid := '7f206000-0000-4000-8000-000000000002';
+  v_coach        uuid := '7f206000-0000-4000-8000-000000000011';
+  v_club         uuid := '7f206000-0000-4000-8000-000000000012';
+  v_scout        uuid := '7f206000-0000-4000-8000-000000000013';
+  v_sponsor      uuid := '7f206000-0000-4000-8000-000000000014';
+  v_adult        uuid := '7f206000-0000-4000-8000-000000000015';
+  v_other_parent uuid := '7f206000-0000-4000-8000-000000000016';
+  v_other_child  uuid := '7f206000-0000-4000-8000-000000000017';
+  v_id           uuid;
+  v_label        text;
+  v_contacts     integer;
+  v_kids         integer;
+  v_off          text[] := '{}';
+  v_both         text[] := '{}';
+  v_none         text[] := '{}';
+  v_hint         text;
+  v_switched      boolean;
+  v_coach_hidden  integer;
+  v_child_still   integer;
+  v_parent_still  integer;
+  v_coach_blocked integer;
+  v_club_revoked  integer;
+  v_other         integer;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child, 'qa206.child@test.local',
+     '{"full_name":"QA206 Child Linden","role":"athlete"}'),
+    (v_parent, 'qa206.parent@test.local',
+     '{"full_name":"QA206 Parent Linden","role":"guardian"}'),
+    (v_coach, 'qa206.coach@test.local',
+     '{"full_name":"QA206 Coach Linden","role":"coach"}'),
+    (v_club, 'qa206.club@test.local',
+     '{"full_name":"QA206 Club Linden","role":"club"}'),
+    (v_scout, 'qa206.scout@test.local',
+     '{"full_name":"QA206 Scout Linden","role":"scout"}'),
+    (v_sponsor, 'qa206.sponsor@test.local',
+     '{"full_name":"QA206 Sponsor Linden","role":"sponsor"}'),
+    (v_adult, 'qa206.adult@test.local',
+     '{"full_name":"QA206 Adult Linden","role":"athlete"}'),
+    (v_other_parent, 'qa206.otherparent@test.local',
+     '{"full_name":"QA206 Other Parent","role":"guardian"}'),
+    (v_other_child, 'qa206.otherchild@test.local',
+     '{"full_name":"QA206 Other Child","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_parent, v_coach, v_club, v_scout, v_sponsor, v_adult, v_other_parent);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child, v_other_child);
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at
+  ) values (
+    v_child, v_parent, 'QA206 Parent Linden', 'qa206.parent@test.local',
+    'parent', 'granted', true, now()
+  );
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_child, 'child'),
+        (v_parent, 'parent'),
+        (v_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_other_parent, 'other_parent'),
+        (v_other_child, 'other_child')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    select count(*)::int into v_contacts from public.guardian_contacts_of(v_child);
+    select count(*)::int into v_kids from public.children_on_profile(v_parent);
+    if v_contacts = 0 and v_kids = 0 then
+      v_off := v_off || v_label;
+    end if;
+  end loop;
+
+  perform tests.as_user(v_other_parent);
+  v_hint := tests.hint_of(format(
+    'select public.set_guardian_on_profile(%L::uuid, true)', v_child));
+
+  perform tests.as_user(v_parent);
+  v_switched := public.set_guardian_on_profile(v_child, true);
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_child, 'child'),
+        (v_parent, 'parent'),
+        (v_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_other_parent, 'other_parent'),
+        (v_other_child, 'other_child')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    select count(*)::int into v_contacts from public.guardian_contacts_of(v_child);
+    select count(*)::int into v_kids from public.children_on_profile(v_parent);
+    if v_contacts = 1 and v_kids = 1 then
+      v_both := v_both || v_label;
+    elsif v_contacts = 0 and v_kids = 0 then
+      v_none := v_none || v_label;
+    end if;
+  end loop;
+
+  update public.user_profiles set is_discoverable = false where id = v_child;
+
+  perform tests.as_user(v_coach);
+  select count(*)::int into v_coach_hidden from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_coach_hidden := v_coach_hidden + v_other;
+
+  perform tests.as_user(v_child);
+  select count(*)::int into v_child_still from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_child_still := v_child_still + v_other;
+
+  perform tests.as_user(v_parent);
+  select count(*)::int into v_parent_still from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_parent_still := v_parent_still + v_other;
+
+  -- Discoverable again, so the next zero is the block and not the hidden child.
+  update public.user_profiles set is_discoverable = true where id = v_child;
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_parent, v_coach);
+
+  perform tests.as_user(v_coach);
+  select count(*)::int into v_coach_blocked from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_coach_blocked := v_coach_blocked + v_other;
+
+  update public.guardian_consents
+     set status = 'revoked', revoked_at = now()
+   where minor_user_id = v_child
+     and guardian_user_id = v_parent
+     and status = 'granted';
+
+  perform tests.as_user(v_club);
+  select count(*)::int into v_club_revoked from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_club_revoked := v_club_revoked + v_other;
+
+  perform tests.ok(
+    cardinality(v_off) = 9,
+    'off by default, nobody sees the parent on the child or the child on the parent');
+
+  perform tests.ok(
+    v_hint = 'not_linked_guardian',
+    'another parent cannot switch the link on');
+
+  perform tests.ok(
+    v_switched
+    and v_both @> array['child', 'parent', 'coach', 'club', 'scout', 'sponsor']::text[]
+    and cardinality(v_both) = 6
+    and v_none @> array['adult', 'other_parent', 'other_child']::text[]
+    and cardinality(v_none) = 3,
+    'once the linked parent switches it on, a coach, club, scout, sponsor, the child and the parent each see one row, and an adult athlete, another parent and another child see none');
+
+  perform tests.ok(
+    v_coach_hidden = 0 and v_child_still = 2 and v_parent_still = 2,
+    'a hidden child disappears for the coach and stays visible to the child and the parent');
+
+  perform tests.ok(
+    v_coach_blocked = 0,
+    'a block between the parent and the coach hides the link from the coach');
+
+  perform tests.ok(
+    v_club_revoked = 0,
+    'revoking the consent hides the link from the club');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

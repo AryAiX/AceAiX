@@ -155,6 +155,11 @@ export const safety = {
   badgeWithdrawn: 'Withdrawn',
   badgeExpired: 'Expired',
 
+  showOnProfile: "Show me on {{name}}'s profile",
+  showOnProfileHint:
+    'Clubs, coaches, scouts and sponsors can then see you and message you about your child.',
+  parentOf: 'Parent of',
+
   // What a guardian may see of a conversation: that it exists, never its words
   whoTheyTalkTo: 'Who they are talking to',
   noConversations: 'No conversations yet.',

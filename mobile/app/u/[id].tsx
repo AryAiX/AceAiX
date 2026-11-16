@@ -6,6 +6,7 @@ import { EyeOff, ShieldBan, UserX } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { FamilyLinks } from '@/components/profile/FamilyLinks';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { CoachBookingCard } from '@/components/coaching/CoachingCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
@@ -22,7 +23,7 @@ import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
 import { ClubPageView } from '@/components/club/page/ClubPageView';
 import { useAsync } from '@/hooks/useAsync';
-import { getProfile, unblockUser } from '@/lib/api';
+import { childrenOnProfile, getProfile, guardianContactsOf, unblockUser } from '@/lib/api';
 import { clubPageOf } from '@/lib/api.club';
 import { didIBlock } from '@/lib/api.profile';
 import { compactNumber, displayName, metaLine } from '@/lib/format';
@@ -60,6 +61,21 @@ export default function PublicProfileScreen() {
     refetchOnFocus: true,
   });
 
+  /* Asked at the same time as the profile. Nothing is drawn until a row
+     comes back, and a slow answer never holds the profile. */
+  const guardians = useAsync(
+    async () => ({ userId, rows: await guardianContactsOf(userId as string) }),
+    [userId],
+    { enabled: !!userId },
+  );
+  const children = useAsync(
+    async () => ({ userId, rows: await childrenOnProfile(userId as string) }),
+    [userId],
+    { enabled: !!userId },
+  );
+  const guardianRows = guardians.data?.userId === userId ? guardians.data.rows : [];
+  const childRows = children.data?.userId === userId ? children.data.rows : [];
+
   /* Asked at the same time as the profile. Null for anyone who is not a
      club account, and null on failure, so this screen stays the person
      profile. A page id is drawn here, with no second navigation. */
@@ -89,9 +105,11 @@ export default function PublicProfileScreen() {
 
   const reloadAll = useCallback(() => {
     bundle.refresh();
+    guardians.refresh();
+    children.refresh();
     setChildKey((key) => key + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.refresh]);
+  }, [bundle.refresh, guardians.refresh, children.refresh]);
 
   const onUnblock = useCallback(async () => {
     if (!userId) return;
@@ -209,6 +227,7 @@ export default function PublicProfileScreen() {
           gap: spacing.lg,
         }}
       >
+        <FamilyLinks guardians={guardianRows} childLinks={childRows} />
         {athlete || data.user.role === 'coach' ? <TheirInviteBadge key={`ib-${childKey}`} userId={data.user.id} /> : null}
         {athlete ? <ScoreCard score={data.score} /> : null}
         {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}

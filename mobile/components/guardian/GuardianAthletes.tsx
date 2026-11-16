@@ -22,13 +22,14 @@ import {
   Divider,
   ErrorState,
   Skeleton,
+  Switch,
   Text,
   useToast,
 } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
-import { guardianConversationOverview } from '@/lib/api';
+import { guardianConversationOverview, setGuardianOnProfile } from '@/lib/api';
 import { getGuardianLinks, requestUnderageAgeAppeal } from '@/lib/api.settings';
 import { errorMessage } from '@/lib/errors';
 import { displayName, fullDate, metaLine, relativeTime, roleLabel } from '@/lib/format';
@@ -186,6 +187,7 @@ export function GuardianAthletes() {
   const t = useT();
   const toast = useToast();
   const [appealing, setAppealing] = useState<string | null>(null);
+  const [shownOnProfile, setShownOnProfile] = useState<Record<string, boolean>>({});
 
   const links = useAsync(getGuardianLinks, [], { refetchOnFocus: true });
   const rows = links.data ?? [];
@@ -201,6 +203,28 @@ export function GuardianAthletes() {
       setAppealing(null);
     }
   }, [t, toast]);
+
+  const onShowOnProfile = useCallback(async (linkId: string, minorUserId: string, next: boolean) => {
+    setShownOnProfile((current) => ({ ...current, [linkId]: next }));
+    try {
+      const saved = await setGuardianOnProfile(minorUserId, next);
+      links.mutate((current) =>
+        (current ?? []).map((row) => (row.id === linkId ? { ...row, show_on_profile: saved } : row)),
+      );
+      setShownOnProfile((current) => {
+        const rest = { ...current };
+        delete rest[linkId];
+        return rest;
+      });
+    } catch (err) {
+      setShownOnProfile((current) => {
+        const rest = { ...current };
+        delete rest[linkId];
+        return rest;
+      });
+      toast.error(errorMessage(err));
+    }
+  }, [links, toast]);
 
   return (
     <View style={{ paddingTop: spacing.lg, gap: spacing.xl }}>
@@ -290,6 +314,30 @@ export function GuardianAthletes() {
                 <>
                   <Divider style={{ marginVertical: spacing.md }} />
                   <ScopeList consent={link} />
+                  <Divider style={{ marginVertical: spacing.md }} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text variant="bodyStrong">
+                        {t('safety.showOnProfile', {
+                          name: displayName(link.minor?.full_name, t('common.athlete')),
+                        })}
+                      </Text>
+                      <Text variant="caption" tone="muted">
+                        {t('safety.showOnProfileHint')}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={
+                        link.id in shownOnProfile
+                          ? shownOnProfile[link.id]
+                          : !!link.show_on_profile
+                      }
+                      onValueChange={(next) => void onShowOnProfile(link.id, link.minor_user_id, next)}
+                      accessibilityLabel={t('safety.showOnProfile', {
+                        name: displayName(link.minor?.full_name, t('common.athlete')),
+                      })}
+                    />
+                  </View>
                   {link.allow_messaging ? (
                     <>
                       <Divider style={{ marginVertical: spacing.md }} />

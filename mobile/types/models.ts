@@ -522,6 +522,8 @@ export interface GuardianConsent {
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;
   allow_mindset?: boolean;
+  /** The linked parent chose to appear on the child's profile (QA-206). */
+  show_on_profile?: boolean;
   granted_at: string | null;
   created_at: string;
 }
