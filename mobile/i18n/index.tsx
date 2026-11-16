@@ -9,7 +9,7 @@ import React, {
 import { I18nManager, NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { setGlobalTranslator, intlLocale } from '@/lib/i18n-bridge';
+import { setGlobalTranslator, intlLocale, placeholderText } from '@/lib/i18n-bridge';
 
 import {
   DEFAULT_LANGUAGE,
@@ -104,11 +104,11 @@ function walk(source: unknown, path: string[]): unknown {
   return node;
 }
 
-function interpolate(template: string, vars?: Vars): string {
+function interpolate(template: string, code: LanguageCode, vars?: Vars): string {
   if (!vars) return template;
   return template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) => {
     const value = vars[name];
-    return value === undefined ? whole : String(value);
+    return value === undefined ? whole : placeholderText(value, code);
   });
 }
 
@@ -151,7 +151,17 @@ function lookup(
     if (__DEV__) console.warn(`[i18n] missing key: ${key}`);
     return key;
   }
-  return interpolate(value, vars);
+  return interpolate(value, code, vars);
+}
+
+/** Resolve one key. Tests use this; screens use `useT`. */
+export function translate(
+  catalogue: Catalogue,
+  code: LanguageCode,
+  key: string,
+  vars?: Vars,
+): string {
+  return lookup(catalogue, key, code, vars);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
