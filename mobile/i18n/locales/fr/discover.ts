@@ -248,6 +248,7 @@ export const discover = {
     emptyBodyPeople: 'Essaie un nom plus court, ou ouvre les filtres pour chercher par sport, poste ou pays.',
     emptyBodyPosts: 'Aucune publication avec ce mot pour l’instant. Essaie un autre mot ou un #tag.',
     postsHint: 'Trouve des publications avec un mot ou un #tag.',
-    parentsHint: 'Écris un nom pour trouver des parents.',
+    parentsEmptyTitle: 'Pas encore de parents',
+    parentsEmptyBody: 'Les parents apparaissent ici dès qu’ils choisissent d’être contactés au sujet de leur enfant.',
   },
 };

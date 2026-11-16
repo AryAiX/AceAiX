@@ -235,6 +235,7 @@ export const discover = {
     emptyBodyPeople: '试试更短的名字，或打开筛选按项目、位置或国家查找。',
     emptyBodyPosts: '还没有使用这个词的动态。换个词或 #话题 试试。',
     postsHint: '用一个词或 #话题 查找动态。',
-    parentsHint: '输入姓名来查找家长。',
+    parentsEmptyTitle: '还没有家长',
+    parentsEmptyBody: '家长选择接受关于孩子的联系后，会出现在这里。',
   },
 };

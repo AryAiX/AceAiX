@@ -242,6 +242,7 @@ export const discover = {
     emptyBodyPeople: 'Versuch einen kürzeren Namen oder öffne die Filter für Sportart, Position oder Land.',
     emptyBodyPosts: 'Noch keine Beiträge mit diesem Wort. Versuch ein anderes Wort oder einen #Tag.',
     postsHint: 'Finde Beiträge über ein Wort oder einen #Tag.',
-    parentsHint: 'Tippe einen Namen, um Eltern zu finden.',
+    parentsEmptyTitle: 'Noch keine Eltern',
+    parentsEmptyBody: 'Eltern erscheinen hier, sobald sie sich entscheiden, wegen ihres Kindes kontaktiert zu werden.',
   },
 };

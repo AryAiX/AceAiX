@@ -11,7 +11,7 @@ import { criteriaFromFilters } from '@/components/discover/MatchBadge';
 import { groupedRowStyle } from '@/components/discover/groupedRow';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
-import { discoverAthletes, searchPeople } from '@/lib/api';
+import { browseParents, discoverAthletes, searchPeople } from '@/lib/api';
 import { listCoaches } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
 import { useAuth } from '@/providers/AuthProvider';
@@ -37,8 +37,10 @@ interface Props {
 
 /**
  * Everyone who matches, 20 at a time, best fit for you first. Athletes can be
- * narrowed with the same Filters sheet as Discover; coaches and parents by name.
- * Parents are offered only to a parent, coach, club, scout or sponsor.
+ * narrowed with the same Filters sheet as Discover. Coaches are found by name,
+ * and an empty box browses them. Parents are offered only to a parent, coach,
+ * club, scout or sponsor: an empty box lists parents who chose to be contacted,
+ * and a typed name still searches every parent they may find.
  */
 export function PeopleResults({
   term,
@@ -111,9 +113,15 @@ export function PeopleResults({
     { enabled: kindShown === 'coaches' },
   );
   const parents = useAsync(
-    async () => ({ term, rows: await searchPeople(queryForSearch, 'guardian', 40) }),
+    async () => ({
+      term,
+      rows:
+        term.trim().length === 0
+          ? await browseParents()
+          : await searchPeople(queryForSearch, 'guardian', 40),
+    }),
     [term, queryForSearch],
-    { enabled: kindShown === 'parents' && term.trim().length > 0 },
+    { enabled: kindShown === 'parents' },
   );
   const listed = kindShown === 'parents' ? parents : coaches;
 
@@ -189,6 +197,13 @@ export function PeopleResults({
       body={t('discover.search.emptyBodyPeople')}
     />
   );
+  const parentsEmpty = (
+    <EmptyState
+      icon={<Users size={26} color={colors.textMuted} />}
+      title={t('discover.search.parentsEmptyTitle')}
+      body={t('discover.search.parentsEmptyBody')}
+    />
+  );
 
   if (kindShown === 'athletes') {
     const sheet = (
@@ -246,19 +261,8 @@ export function PeopleResults({
     );
   }
 
-  /* Parents are found by name. An empty box asks for one instead of searching. */
-  if (kindShown === 'parents' && term.trim().length === 0) {
-    return (
-      <View style={{ flex: 1, paddingHorizontal: spacing.lg }}>
-        {bar}
-        <Text variant="body" tone="secondary">
-          {t('discover.search.parentsHint')}
-        </Text>
-      </View>
-    );
-  }
-
   const listRows: PersonResult[] = listed.data?.term === term ? listed.data.rows : [];
+  const parentsBrowsing = kindShown === 'parents' && term.trim().length === 0;
   return (
     <View style={{ flex: 1 }}>
       {listed.error ? (
@@ -290,7 +294,7 @@ export function PeopleResults({
               onOpen={onOpen}
             />
           )}
-          ListEmptyComponent={empty}
+          ListEmptyComponent={parentsBrowsing ? parentsEmpty : empty}
         />
       )}
     </View>

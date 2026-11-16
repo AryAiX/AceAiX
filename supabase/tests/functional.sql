@@ -11029,4 +11029,110 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Browse parents who chose to be contacted (QA-208).
+-- Two 14-year-olds, one parent who switched the profile link on
+-- and one who left it off, plus a coach, a sponsor, an adult
+-- athlete and a 14-year-old athlete.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── browse parents who chose to be contacted ──'; end $$;
+
+do $$
+declare
+  v_child_in   uuid := '7f208000-0000-4000-8000-000000000001';
+  v_child_out  uuid := '7f208000-0000-4000-8000-000000000002';
+  v_parent_in  uuid := '7f208000-0000-4000-8000-000000000011';
+  v_parent_out uuid := '7f208000-0000-4000-8000-000000000012';
+  v_coach      uuid := '7f208000-0000-4000-8000-000000000021';
+  v_sponsor    uuid := '7f208000-0000-4000-8000-000000000022';
+  v_adult      uuid := '7f208000-0000-4000-8000-000000000023';
+  v_minor      uuid := '7f208000-0000-4000-8000-000000000024';
+  v_coach_in      boolean;
+  v_coach_out     boolean;
+  v_sponsor_in    boolean;
+  v_sponsor_out   boolean;
+  v_second_in     boolean;
+  v_second_out    boolean;
+  v_adult_in      boolean;
+  v_adult_out     boolean;
+  v_minor_in      boolean;
+  v_minor_out     boolean;
+  v_coach_blocked boolean;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child_in, 'qa208.childin@test.local',
+     '{"full_name":"QA208 Child In","role":"athlete"}'),
+    (v_child_out, 'qa208.childout@test.local',
+     '{"full_name":"QA208 Child Out","role":"athlete"}'),
+    (v_parent_in, 'qa208.parentin@test.local',
+     '{"full_name":"QA208 Parent In","role":"guardian"}'),
+    (v_parent_out, 'qa208.parentout@test.local',
+     '{"full_name":"QA208 Parent Out","role":"guardian"}'),
+    (v_coach, 'qa208.coach@test.local',
+     '{"full_name":"QA208 Coach","role":"coach"}'),
+    (v_sponsor, 'qa208.sponsor@test.local',
+     '{"full_name":"QA208 Sponsor","role":"sponsor"}'),
+    (v_adult, 'qa208.adult@test.local',
+     '{"full_name":"QA208 Adult","role":"athlete"}'),
+    (v_minor, 'qa208.minor@test.local',
+     '{"full_name":"QA208 Minor","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_parent_in, v_parent_out, v_coach, v_sponsor, v_adult);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child_in, v_child_out, v_minor);
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at, show_on_profile
+  ) values
+    (v_child_in, v_parent_in, 'QA208 Parent In', 'qa208.parentin@test.local',
+     'parent', 'granted', true, now(), true),
+    (v_child_out, v_parent_out, 'QA208 Parent Out', 'qa208.parentout@test.local',
+     'parent', 'granted', true, now(), false);
+
+  perform tests.as_user(v_coach);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_coach_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_coach_out;
+
+  perform tests.as_user(v_sponsor);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_sponsor_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_sponsor_out;
+
+  perform tests.as_user(v_parent_out);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_second_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_second_out;
+
+  perform tests.as_user(v_adult);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_adult_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_adult_out;
+
+  perform tests.as_user(v_minor);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_minor_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_minor_out;
+
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_parent_in, v_coach);
+
+  perform tests.as_user(v_coach);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_coach_blocked;
+
+  perform tests.ok(
+    v_coach_in and not v_coach_out
+    and v_sponsor_in and not v_sponsor_out
+    and v_second_in and not v_second_out,
+    'a coach, a sponsor and the other parent see the parent who chose to be contacted, and not the one who did not');
+
+  perform tests.ok(
+    not v_adult_in and not v_adult_out
+    and not v_minor_in and not v_minor_out,
+    'an adult athlete and a minor see neither parent');
+
+  perform tests.ok(
+    not v_coach_blocked,
+    'after the opted-in parent blocks the coach, the coach no longer sees them');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

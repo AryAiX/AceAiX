@@ -241,6 +241,7 @@ export const discover = {
     emptyBodyPeople: 'Try a shorter name, or open Filters to search by sport, position or country.',
     emptyBodyPosts: 'No posts use that word yet. Try another word or a #tag.',
     postsHint: 'Find posts by a word or a #hashtag.',
-    parentsHint: 'Type a name to find parents.',
+    parentsEmptyTitle: 'No parents yet',
+    parentsEmptyBody: 'Parents appear here once they choose to be contacted about their child.',
   },
 };

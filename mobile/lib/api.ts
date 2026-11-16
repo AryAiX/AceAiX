@@ -513,6 +513,21 @@ export async function searchPeople(
   return (data ?? []) as PersonResult[];
 }
 
+/**
+ * Parents who chose to be contacted about their child.
+ *
+ * An empty People box browses this list. A typed name still goes through
+ * `search_people`, which can find any parent the caller is allowed to find.
+ */
+export async function browseParents(limit = 40, offset = 0): Promise<PersonResult[]> {
+  const { data, error } = await supabase.rpc('browse_parents', {
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as PersonResult[];
+}
+
 /* Verified first, then name. The database applies that before `limit`, so a
    verified club is not dropped to make room for an unverified one. The page
    is sorted again case-insensitively: Postgres orders text by code point, and
