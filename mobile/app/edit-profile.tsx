@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Image, InteractionManager, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Image, Pressable, StyleSheet, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,6 +15,7 @@ import {
   ConfirmSheet,
   CoverCropper,
   Divider,
+  Dropdown,
   ErrorState,
   Header,
   IconButton,
@@ -31,15 +32,26 @@ import {
   useToast,
 } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import type { TabScrollable } from '@/hooks/useTabReselect';
+import { BirthDateForm } from '@/components/profile/BirthDateForm';
+import { RequestSportSheet } from '@/components/profile/RequestSportSheet';
+import { SportRequestNote } from '@/components/profile/SportRequestNote';
 import {
   addCustomCity,
+  getMyChallengeViewer,
   getMyProfile,
   refreshMyTalentScore,
   updateAthleteProfile,
   updateUserProfile,
 } from '@/lib/api';
 import { getMyScoutCredentials, updateCoachProfile, updateScoutProfile } from '@/lib/api.auth';
-import { removeOwnProfileImage, syncFullName, uploadAvatar, uploadCover } from '@/lib/api.profile';
+import {
+  mySportRequest,
+  removeOwnProfileImage,
+  syncFullName,
+  uploadAvatar,
+  uploadCover,
+} from '@/lib/api.profile';
 import {
   COVER_ASPECT,
   renderCoverCrop,
@@ -64,11 +76,14 @@ import {
   positionLabel,
   positionsFor,
   sideLabel,
+  isOtherSport,
   sportEmoji,
   sportLabel,
+  sportMatchesQuery,
 } from '@/constants/sports';
 import type { OtherSport } from '@/types/models';
 import { errorMessage } from '@/lib/errors';
+import { toLatinDigits } from '@/lib/digits';
 import { useT } from '@/i18n';
 import { useAuth } from '@/providers/AuthProvider';
 
@@ -126,6 +141,9 @@ export default function EditProfileScreen() {
   const { profile, refreshProfile } = useAuth();
 
   const bundle = useAsync(() => getMyProfile(), []);
+  /* Older accounts may have no birth date saved; offer to add it here. */
+  const birth = useAsync(() => getMyChallengeViewer(), []);
+  const [birthSheet, setBirthSheet] = useState(false);
   // Prefer the profile bundle's role once it has loaded. Until then, the
   // signed-in account from auth is enough to start the credentials read.
   const isClubAccount = (bundle.data?.user.role ?? profile?.role) === 'club';
@@ -151,8 +169,13 @@ export default function EditProfileScreen() {
     null,
   );
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [sportSheet, setSportSheet] = useState(false);
   const [alsoPlaysSheet, setAlsoPlaysSheet] = useState(false);
+  const [sportSheet, setSportSheet] = useState(false);
+  const [sportPrefill, setSportPrefill] = useState('');
+  const [sportOpenToken, setSportOpenToken] = useState(0);
+  const scrollNode = useRef<TabScrollable | null>(null);
+  const sportSectionY = useRef(0);
+  const [alsoPlaysQuery, setAlsoPlaysQuery] = useState('');
   const [countrySheet, setCountrySheet] = useState(false);
   const [countryQuery, setCountryQuery] = useState('');
   const [clubLoadFailed, setClubLoadFailed] = useState(false);
@@ -212,17 +235,63 @@ export default function EditProfileScreen() {
     if (form.otherSports.length >= MAX_OTHER_SPORTS) return;
 
     let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
+    const run = () => {
       if (cancelled) return;
       alsoPlaysFocusHandled.current = true;
       setAlsoPlaysSheet(true);
       router.setParams({ focus: undefined });
-    });
+    };
+    // InteractionManager is gone in React Native 0.88. Wait until the push
+    // animation is idle; Safari on the web has no requestIdleCallback.
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run);
+    else setTimeout(run, 300);
     return () => {
       cancelled = true;
-      task.cancel();
     };
   }, [focus, form, bundle.data, router]);
+
+  // A sport-request notification passes focus=sport. Scroll to the field and
+  // open the list once, then drop the param so a later visit stays closed.
+  const sportFocusHandled = useRef(false);
+  useEffect(() => {
+    if (sportFocusHandled.current) return;
+    if (focus !== 'sport' || !form || !bundle.data?.athlete) return;
+
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      sportFocusHandled.current = true;
+      const node = scrollNode.current;
+      if (node && 'scrollTo' in node) {
+        node.scrollTo({ y: Math.max(0, sportSectionY.current - 12), animated: true });
+      }
+      setSportOpenToken((n) => n + 1);
+      router.setParams({ focus: undefined });
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run);
+    else setTimeout(run, 300);
+    return () => {
+      cancelled = true;
+    };
+  }, [focus, form, bundle.data, router]);
+
+  const ownSportRequest = useAsync(() => mySportRequest(), [form?.sport], {
+    enabled: isOtherSport(form?.sport),
+    refetchOnFocus: true,
+  });
+
+  const selectSport = useCallback((key: string) => {
+    setForm((current) => {
+      if (!current || !key) return current;
+      if (key === current.sport && !isOtherSport(key)) return current;
+      return {
+        ...current,
+        sport: key,
+        position: '',
+        otherSports: current.otherSports.filter((entry) => entry.sport !== key),
+      };
+    });
+  }, []);
 
   const dirty = useMemo(
     () => !!form && !!initial && JSON.stringify(form) !== JSON.stringify(initial),
@@ -504,10 +573,35 @@ export default function EditProfileScreen() {
   const hasAthlete = !!bundle.data?.athlete;
   const hasCoach = !!bundle.data?.coach;
   const positions = positionsFor(form.sport);
-  const selectedSport = SPORTS.find((sport) => sport.key === form.sport);
+  const catalogueSports = SPORTS.map((sport) => ({
+    key: sport.key,
+    label: sportLabel(t, sport.key),
+    emoji: sport.emoji,
+  }));
+  const sportKnown =
+    !form.sport || SPORTS.some((sport) => sport.key.toLowerCase() === form.sport.toLowerCase());
+  const sportOptions = sportKnown
+    ? catalogueSports
+    : [
+        { key: form.sport, label: sportLabel(t, form.sport), emoji: sportEmoji(form.sport) },
+        ...catalogueSports,
+      ];
+  const alsoPlaysChoices = SPORTS.filter(
+    (sport) =>
+      sport.key !== form.sport &&
+      !form.otherSports.some((entry) => entry.sport === sport.key) &&
+      sportMatchesQuery(alsoPlaysQuery, sport.key, sportLabel(t, sport.key)),
+  );
 
   return (
-    <Screen header={header} keyboardAvoiding contentStyle={{ gap: spacing.xxl }}>
+    <Screen
+      header={header}
+      keyboardAvoiding
+      contentStyle={{ gap: spacing.xxl }}
+      scrollRef={(node) => {
+        scrollNode.current = node;
+      }}
+    >
       <Stack.Screen options={{ gestureEnabled: !dirty }} />
       {/* ── You ── */}
       <View style={{ marginTop: spacing.md }}>
@@ -739,53 +833,102 @@ export default function EditProfileScreen() {
         </View>
       </View>
 
+      {hasAthlete && birth.data && !birth.data.birthDate ? (
+        /* Only while none is saved: it is never a way to change a birth date. */
+        <View>
+          <SectionHeader title={t('profile.birthDate')} />
+          <Pressable
+            onPress={() => setBirthSheet(true)}
+            accessibilityRole="button"
+            testID="edit-profile-birth-date"
+          >
+            <Input
+              placeholder={t('auth.signUp.dobChoose')}
+              value=""
+              hint={t('profile.birthDateHint')}
+              editable={false}
+              pointerEvents="none"
+            />
+          </Pressable>
+          <Sheet visible={birthSheet} onClose={() => setBirthSheet(false)} title={t('profile.birthDate')}>
+            <BirthDateForm
+              onSaved={() => {
+                setBirthSheet(false);
+                void birth.reload();
+              }}
+            />
+          </Sheet>
+        </View>
+      ) : null}
+
       {hasAthlete ? (
         <>
           {/* ── Your sport ── */}
-          <View>
+          <View onLayout={(e) => { sportSectionY.current = e.nativeEvent.layout.y; }}>
             <SectionHeader title={t('profile.sectionSport')} />
             <View style={{ gap: spacing.md }}>
-              <Pressable
-                onPress={() => setSportSheet(true)}
-                accessibilityRole="button"
-                accessibilityLabel={t('profile.sportA11y', {
-                  value: form.sport ? sportLabel(t, form.sport) : t('profile.notSet'),
-                })}
-              >
-                <Input
-                  label={t('profile.sport')}
-                  placeholder={t('profile.sportPlaceholder')}
-                  value={
-                    selectedSport
-                      ? t('profile.sportWithEmoji', {
-                          emoji: selectedSport.emoji,
-                          name: sportLabel(t, selectedSport.key),
-                        })
-                      : form.sport
-                  }
-                  editable={false}
-                  pointerEvents="none"
+              {isOtherSport(form.sport) ? (
+                <SportRequestNote
+                  request={ownSportRequest.data}
+                  onChoose={() => setSportOpenToken((n) => n + 1)}
                 />
-              </Pressable>
+              ) : null}
+              <Dropdown
+                required
+                searchable
+                searchKeys
+                emptyLabel={t('sports.noSportMatches')}
+                label={t('profile.sport')}
+                placeholder={t('profile.sportPlaceholder')}
+                openToken={sportOpenToken}
+                unlisted={{
+                  label: t('sports.notListed'),
+                  onPress: (typed) => {
+                    setSportPrefill(typed);
+                    setSportSheet(true);
+                  },
+                }}
+                options={sportOptions}
+                value={form.sport ? [form.sport] : []}
+                onChange={(next) => {
+                  const key = next[0];
+                  // Positions are sport-specific, so a sport change clears the old one.
+                  // The new main sport also leaves the "also plays" list.
+                  if (key) selectSport(key);
+                }}
+                testID="edit-profile-sport"
+              />
+              <RequestSportSheet
+                visible={sportSheet}
+                initialName={sportPrefill}
+                onClose={() => setSportSheet(false)}
+                onSent={() => {
+                  selectSport('Other');
+                  setSportSheet(false);
+                  void ownSportRequest.reload();
+                }}
+                onSelectListed={(key) => {
+                  selectSport(key);
+                  setSportSheet(false);
+                }}
+              />
 
               {positions.length > 0 ? (
                 <View style={{ gap: spacing.sm }}>
                   <Text variant="captionStrong" tone="secondary">
                     {t('profile.position')}
                   </Text>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                    {positions.map((position) => (
-                      <Chip
-                        key={position}
-                        /* The English value is what is stored; only the chip is translated. */
-                        label={positionLabel(t, position)}
-                        selected={form.position === position}
-                        onPress={() =>
-                          set('position', form.position === position ? '' : position)
-                        }
-                      />
-                    ))}
-                  </View>
+                  <Dropdown
+                    placeholder={t('common.choose')}
+                    /* The English value is what is stored; only the label is translated. */
+                    options={positions.map((position) => ({
+                      key: position,
+                      label: positionLabel(t, position, form.sport),
+                    }))}
+                    value={form.position ? [form.position] : []}
+                    onChange={(next) => set('position', next[0] ?? '')}
+                    testID="edit-profile-position"
+                  />
                 </View>
               ) : null}
 
@@ -793,16 +936,16 @@ export default function EditProfileScreen() {
                 <Text variant="captionStrong" tone="secondary">
                   {t('profile.level')}
                 </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                  {LEVELS.map((level) => (
-                    <Chip
-                      key={level.key}
-                      label={levelLabelI18n(t, level.key)}
-                      selected={form.level === level.key}
-                      onPress={() => set('level', level.key)}
-                    />
-                  ))}
-                </View>
+                <Dropdown
+                  required
+                  placeholder={t('common.choose')}
+                  options={LEVELS.map((level) => ({ key: level.key, label: levelLabelI18n(t, level.key) }))}
+                  value={form.level ? [form.level] : []}
+                  onChange={(next) => {
+                    if (next[0]) set('level', next[0]);
+                  }}
+                  testID="edit-profile-level"
+                />
                 <Text variant="caption" tone="muted">
                   {levelHint(t, form.level) || t('profile.levelHintDefault')}
                 </Text>
@@ -1049,58 +1192,28 @@ export default function EditProfileScreen() {
         </View>
       ) : null}
 
-      {/* ── Sport picker ── */}
-      <Sheet
-        visible={sportSheet}
-        onClose={() => setSportSheet(false)}
-        title={t('profile.chooseSportTitle')}
-      >
-        {SPORTS.map((sport, index) => (
-          <View key={sport.key}>
-            {index > 0 ? <Divider /> : null}
-            <ListItem
-              title={t('profile.sportWithEmoji', {
-                emoji: sport.emoji,
-                name: sportLabel(t, sport.key),
-              })}
-              right={
-                form.sport === sport.key ? <Check size={20} color={colors.primary} /> : undefined
-              }
-              onPress={() => {
-                // Positions are sport-specific, so a sport change clears the old one.
-                // The new main sport also leaves the "also plays" list.
-                if (sport.key !== form.sport) {
-                  setForm((current) =>
-                    current
-                      ? {
-                          ...current,
-                          sport: sport.key,
-                          position: '',
-                          otherSports: current.otherSports.filter(
-                            (entry) => entry.sport !== sport.key,
-                          ),
-                        }
-                      : current,
-                  );
-                }
-                setSportSheet(false);
-              }}
-            />
-          </View>
-        ))}
-      </Sheet>
 
       {/* ── Also-plays picker ── */}
       <Sheet
         visible={alsoPlaysSheet}
-        onClose={() => setAlsoPlaysSheet(false)}
+        onClose={() => {
+          setAlsoPlaysSheet(false);
+          setAlsoPlaysQuery('');
+        }}
         title={t('profile.alsoPlaysChooseTitle')}
       >
-        {SPORTS.filter(
-          (sport) =>
-            sport.key !== form.sport &&
-            !form.otherSports.some((entry) => entry.sport === sport.key),
-        ).map((sport, index) => (
+        <Input
+          placeholder={t('sports.searchSports')}
+          value={alsoPlaysQuery}
+          onChangeText={setAlsoPlaysQuery}
+          icon={<Search size={18} color={colors.textMuted} />}
+          autoCorrect={false}
+          autoCapitalize="none"
+          accessibilityLabel={t('sports.searchSports')}
+          containerStyle={{ marginBottom: spacing.md }}
+          testID="also-plays-search"
+        />
+        {alsoPlaysChoices.map((sport, index) => (
           <View key={sport.key}>
             {index > 0 ? <Divider /> : null}
             <ListItem
@@ -1111,10 +1224,16 @@ export default function EditProfileScreen() {
               onPress={() => {
                 set('otherSports', [...form.otherSports, { sport: sport.key, level: 'casual' }]);
                 setAlsoPlaysSheet(false);
+                setAlsoPlaysQuery('');
               }}
             />
           </View>
         ))}
+        {alsoPlaysQuery.trim() && alsoPlaysChoices.length === 0 ? (
+          <Text variant="body" tone="muted" align="center" style={{ paddingVertical: spacing.xl }}>
+            {t('sports.noSportMatches')}
+          </Text>
+        ) : null}
       </Sheet>
 
       {/* ── Country picker ── */}
@@ -1191,7 +1310,7 @@ export default function EditProfileScreen() {
 }
 
 function toNumber(value: string): number | null {
-  const trimmed = value.trim();
+  const trimmed = toLatinDigits(value).trim();
   if (!trimmed) return null;
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;

@@ -7,7 +7,7 @@
  */
 export const views = {
   title: 'من اطّلع على ملفك',
-  subtitle: 'مدرّبون وكشّافون وأندية خلال آخر {{days}} يوم.',
+  subtitle: 'مشاهدات خلال آخر {{days}} يوم.',
 
   homeTitleNone: 'لم يطّلع أحد هذا الأسبوع بعد',
   homeTitle_zero: '{{count}} شخص اطّلع على ملفك',
@@ -29,6 +29,13 @@ export const views = {
   homeClubs_many: 'من {{count}} ناديًا',
   homeClubs_other: 'من {{count}} نادٍ',
   homeEmptyBody: 'أضف لقطة أو سجّل مباراة — الملفات التي فيها فيديو تُفتح أولًا.',
+  including: 'منهم {{name}}',
+  includingMore_zero: 'منهم {{name}}',
+  includingMore_one: 'منهم {{name}} وشخص آخر',
+  includingMore_two: 'منهم {{name}} وشخصان آخران',
+  includingMore_few: 'منهم {{name}} و{{count}} آخرين',
+  includingMore_many: 'منهم {{name}} و{{count}} آخرين',
+  includingMore_other: 'منهم {{name}} و{{count}} آخرين',
   homeCta: 'اعرف من',
 
   namedTitle: 'بالاسم',
@@ -64,4 +71,10 @@ export const views = {
   whyTitle: 'لماذا تنقص بعض الأسماء',
   whyBody:
     'نذكر بالاسم المدرّبين والكشّافين والأندية الموثّقين — أشخاصًا يتصرّفون بصفة مهنية على ملف نشرتَه لتُكتشف. أما الحسابات التي لم نوثّقها واللاعبون الآخرون فيُعدّون ولا يُذكرون بالاسم أبدًا. وهذه القاعدة لا تتغيّر لأحد.',
+  unnamedOnlyTitle_zero: 'مشاهدات لا نذكر أصحابها: {{count}}',
+  unnamedOnlyTitle_one: 'مشاهدات لا نذكر أصحابها: {{count}}',
+  unnamedOnlyTitle_two: 'مشاهدات لا نذكر أصحابها: {{count}}',
+  unnamedOnlyTitle_few: 'مشاهدات لا نذكر أصحابها: {{count}}',
+  unnamedOnlyTitle_many: 'مشاهدات لا نذكر أصحابها: {{count}}',
+  unnamedOnlyTitle_other: 'مشاهدات لا نذكر أصحابها: {{count}}',
 };

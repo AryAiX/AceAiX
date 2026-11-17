@@ -5,7 +5,6 @@ import { Bell } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
-  Divider,
   EmptyState,
   ErrorState,
   Header,
@@ -15,9 +14,13 @@ import {
   useToast,
 } from '@/components/ui';
 import { NotificationRow } from '@/components/messaging/NotificationRow';
+import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { groupedRowStyle } from '@/components/discover/groupedRow';
+import { useFollowState } from '@/components/search/useFollowState';
 import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { getNotifications, markNotificationsRead } from '@/lib/api';
+import { postThumbnails } from '@/lib/api.search';
 import { errorMessage } from '@/lib/errors';
 import { isUnreadNotification } from '@/lib/notificationBanner';
 import { Routes, notificationTarget } from '@/lib/routes';
@@ -30,6 +33,8 @@ interface Section {
   title: string;
   data: AppNotification[];
 }
+
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function NotificationsScreen() {
   const theme = useTheme();
@@ -113,8 +118,8 @@ export default function NotificationsScreen() {
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
-          // Grouped likes and messages rewrite the same row. Marking it read
-          // must not reload the list out from under the person.
+          // A message, or an old grouped like, rewrites the same row. Marking
+          // it read must not reload the list out from under the person.
           const row = payload.new as { is_read?: boolean | null; read?: boolean | null };
           if (isUnreadNotification(row)) refreshRef.current();
         },
@@ -126,14 +131,27 @@ export default function NotificationsScreen() {
     };
   }, [user]);
 
+  /* New, then This week, then Earlier. */
   const sections = useMemo<Section[]>(() => {
+    const now = Date.now();
+    const recent = (n: AppNotification) => now - new Date(n.created_at).getTime() < WEEK_MS;
     const fresh = items.filter((n) => !n.is_read);
-    const earlier = items.filter((n) => n.is_read);
+    const week = items.filter((n) => n.is_read && recent(n));
+    const earlier = items.filter((n) => n.is_read && !recent(n));
     const out: Section[] = [];
     if (fresh.length) out.push({ title: t('messaging.sectionNew'), data: fresh });
+    if (week.length) out.push({ title: t('messaging.sectionThisWeek'), data: week });
     if (earlier.length) out.push({ title: t('messaging.sectionEarlier'), data: earlier });
     return out;
   }, [items, t]);
+
+  /* The post's picture beside a like or a comment. */
+  const postIds = useMemo(
+    () => items.filter((n) => n.entity_type === 'post' && n.entity_id).map((n) => n.entity_id as string),
+    [items],
+  );
+  const thumbs = useAsync(() => postThumbnails(postIds).catch(() => ({}) as Record<string, string>), [postIds.join(',')]);
+  const follow = useFollowState();
 
   const open = useCallback(
     (notification: AppNotification) => {
@@ -142,9 +160,7 @@ export default function NotificationsScreen() {
 
       if (!notification.is_read) {
         mutate((current) =>
-          current
-            ? current.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
-            : current,
+          current ? current.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n)) : current,
         );
         markNotificationsRead([notification.id]).catch(() => {
           /* The bulk mark on leaving the screen catches this anyway. */
@@ -171,8 +187,19 @@ export default function NotificationsScreen() {
     }
   }, [markingAll, unreadCount, mutate, clearBadge, toast, reload]);
 
+  /* "Your week" at the top loads on its own. Hold the page on the skeleton
+     until it and the list are both in, so everything appears at once instead
+     of in pieces. Never wait more than a moment for it. */
+  const [spotlightReady, setSpotlightReady] = useState(false);
+  const markSpotlightReady = useCallback(() => setSpotlightReady(true), []);
+  useEffect(() => {
+    const id = setTimeout(markSpotlightReady, 2500);
+    return () => clearTimeout(id);
+  }, [markSpotlightReady]);
+  const waiting = (notifications.loading && items.length === 0) || !spotlightReady;
+
   const renderEmpty = () => {
-    if (notifications.loading && items.length === 0) {
+    if (waiting) {
       return (
         <View style={{ paddingHorizontal: spacing.lg }}>
           <SkeletonList count={5} variant="row" />
@@ -225,7 +252,7 @@ export default function NotificationsScreen() {
       />
 
       <SectionList
-        sections={sections}
+        sections={waiting ? [] : sections}
         keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled
         renderSectionHeader={({ section }) => (
@@ -242,16 +269,30 @@ export default function NotificationsScreen() {
             </Text>
           </View>
         )}
-        renderItem={({ item }) => {
+        renderItem={({ item, index, section }) => {
           const target = notificationTarget(item);
+          const actorId = item.actor_id;
+          const following = actorId ? follow.isPersonFollowed(actorId) : false;
           return (
-            <NotificationRow
-              notification={item}
-              onPress={target ? () => open(item) : undefined}
-            />
+            <View style={{ paddingHorizontal: spacing.lg }}>
+              <NotificationRow
+                notification={item}
+                grouped={groupedRowStyle(index, section.data.length, colors, theme.radii.xl)}
+                onPress={target ? () => open(item) : undefined}
+                thumbUri={item.entity_type === 'post' && item.entity_id ? thumbs.data?.[item.entity_id] : null}
+                follow={
+                  item.type === 'follow' && actorId
+                    ? {
+                        following,
+                        pending: follow.pendingId === actorId,
+                        onPress: () => void follow.togglePerson(actorId, !following, 0),
+                      }
+                    : undefined
+                }
+              />
+            </View>
           );
         }}
-        ItemSeparatorComponent={() => <Divider inset={spacing.lg + 44 + spacing.md} />}
         contentContainerStyle={{ paddingBottom: spacing.giant, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -262,6 +303,15 @@ export default function NotificationsScreen() {
             colors={[colors.primary]}
             progressBackgroundColor={colors.surface}
           />
+        }
+        ListHeaderComponent={
+          /* Who viewed your profile and the open challenge stay here even
+             after they are put away on Home, so nothing is lost. */
+          <View
+            style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg, display: waiting ? 'none' : 'flex' }}
+          >
+            <HomeSpotlight pinned onReady={markSpotlightReady} />
+          </View>
         }
         ListEmptyComponent={renderEmpty()}
         testID="notifications-list"

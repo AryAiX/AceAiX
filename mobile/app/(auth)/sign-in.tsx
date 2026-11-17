@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View, type TextInputInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from 'lucide-react-native';
 
@@ -19,7 +19,7 @@ export default function SignInScreen() {
   const toast = useToast();
   const { signIn } = useAuth();
 
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -155,6 +155,7 @@ export default function SignInScreen() {
 
         <Button
           label={t('auth.signIn.submit')}
+          variant="gradient"
           size="lg"
           fullWidth
           loading={submitting}
@@ -187,7 +188,9 @@ export default function SignInScreen() {
           })}
           testID="sign-in-create-account"
         >
-          <Text variant="captionStrong" tone="primary">
+          {/* Orange, like the logo's fire, so signing up stands out. A deeper
+              orange in light mode keeps it easy to read on white. */}
+          <Text variant="captionStrong" color={theme.scheme === 'dark' ? '#FFB27A' : '#D9560F'}>
             {t('auth.signIn.createAccount')}
           </Text>
         </Pressable>

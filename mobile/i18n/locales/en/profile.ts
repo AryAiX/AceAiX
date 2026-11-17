@@ -97,7 +97,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Tabs (components/profile/ProfileTabs.tsx) ──────────────────────────────
-  tabHighlights: 'Highlights',
+  tabHighlights: 'Showcase',
   tabCareer: 'Career',
 
   // ── Posts tab (components/profile/PostsTab.tsx) ────────────────────────────
@@ -107,22 +107,44 @@ export const profile = {
     'Share a training session, a result, or a clip. Active profiles get seen more.',
   postsEmptyBodyOther: 'When they post, it will show up here.',
   postsEmptyAction: 'Write a post',
+  postsSwitchPosts: 'Posts',
+  postsSwitchTagged: 'Tagged',
+  taggedEmptyTitle: 'No tagged posts yet',
+  taggedEmptyBodySelf: 'When someone tags you in a post, it shows up here.',
+  taggedEmptyBodyOther: 'Posts they are tagged in will show up here.',
 
   // ── Media grid (components/profile/MediaGrid.tsx) ──────────────────────────
-  addHighlight: 'Add highlight',
+  addHighlight: 'Add to Showcase',
   videoClipA11y: 'Video clip',
   photoA11y: 'Photo',
+  photoUnavailable: 'Photo unavailable',
+  scoreWhenPostedA11y: 'Score when posted: {{score}}',
+  scoreWhenPostedHint: 'The number on each post is your score when you posted it.',
+  highlightTag: 'Showcase',
+  clipQuickTechnique: 'Technique',
+  clipQuickMatch: 'Match',
+  clipQuickTraining: 'Training',
+  clipQuickBest: 'Personal best',
+  clipPointsHint: 'Adding a clip can raise your Talent Score',
 
   // ── Highlights tab (components/profile/HighlightsTab.tsx) ──────────────────
   photoPermission: 'AceAiX needs permission to open your photos.',
+  clipTooLong: 'Showcase clips need to be {{seconds}} seconds or shorter.',
 
-  noHighlightsTitle: 'No highlights here',
-  noHighlightsBody: 'Highlights are part of an athlete profile.',
+  noHighlightsTitle: 'No Showcase clips here',
+  noHighlightsBody: 'The Showcase is part of an athlete profile.',
   clipsEmptyTitleSelf: 'Coaches watch before they read.',
   clipsEmptyTitleOther: 'No clips yet',
   clipsEmptyBodySelf: 'Add your first clip. Three short ones is the sweet spot.',
   clipsEmptyBodyOther: 'When they upload a clip, it will show up here.',
   clipsEmptyAction: 'Add your first clip',
+  yourBest: 'Your best',
+  honourTypeLabel: 'Type of honour',
+  honourTypeTeam: 'Team',
+  honourTypeIndividual: 'Individual',
+  honourTypeNational: 'National',
+  clipsWorthLead: 'Worth up to',
+  clipsWorthTail: 'on your Talent Score',
 
   nameClipTitle: 'Name this clip',
   nameClipSubtitle: "A short title helps a coach know what they're watching.",
@@ -292,6 +314,10 @@ export const profile = {
   notSet: 'not set',
 
   sectionSport: 'Your sport',
+
+  birthDate: 'Date of birth',
+
+  birthDateHint: 'Needed once, so we know whether a parent has to approve some features. Only you can see it.',
   sectionAlsoPlays: 'Also plays',
   alsoPlaysHint: 'Up to 3 other sports you play often.',
   alsoPlaysAdd: 'Add a sport',
@@ -350,4 +376,16 @@ export const profile = {
   playerCardFailed: 'Could not build the card. Try again in a moment.',
   playerCardShare: 'Share',
   playerCardSave: 'Save image',
+  layoutGrid: 'Show as a grid',
+  layoutScroll: 'Show as a scroll',
+  morePosts: 'Show more posts',
+  addToBestOfNamed: "Add to {{name}}'s Showcase",
+  bestOfNamed: "{{name}}'s Showcase",
+  postCount_one: '{{count}} post',
+  postCount_other: '{{count}} posts',
+  taggedCount_one: '{{count}} tagged post',
+  taggedCount_other: '{{count}} tagged posts',
+  clipCount_one: '{{count}} clip',
+  clipCount_other: '{{count}} clips',
+  addClip: 'Add a clip',
 };

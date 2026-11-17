@@ -104,6 +104,7 @@ export function ImageField({
         </View>
       ) : null}
       <Button
+        size="sm"
         label={t(value ? 'clubManage.award.changeImage' : 'clubManage.award.addImage')}
         variant="secondary"
         icon={<ImagePlus size={18} color={colors.text} />}

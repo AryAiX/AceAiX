@@ -39,6 +39,11 @@ export const opportunities = {
 
   /** Sportarten kommen aus `sports.allSports`; nur die Art gehört uns. */
   allTypes: 'Alles',
+  searchPlaceholder: 'Trials oder Vereine suchen',
+  filters: 'Filter',
+  removeFilter: '{{label}} entfernen',
+  showResults_one: '{{count}} Ergebnis zeigen',
+  showResults_other: '{{count}} Ergebnisse zeigen',
 
   athlete: {
     appliedOn: 'Beworben am {{date}}',
@@ -206,7 +211,7 @@ export const opportunities = {
     whatTheySee: 'Was sie sehen',
     seeProfile: 'Deinen Namen und dein Profil',
     seeScore: 'Deinen Talent Score',
-    seeHighlights: 'Deine Highlights und Zahlen',
+    seeHighlights: 'Deine Vitrine und deine Zahlen',
     seeMessage: 'Die Nachricht, die du oben schreibst',
     guardianNotice: 'Dein Elternteil oder Vormund kann sehen, wo du dich bewirbst.',
   },

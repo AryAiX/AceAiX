@@ -6,6 +6,7 @@ import { BadgeCheck, CalendarDays, Users } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Button, Card, EmptyState, ErrorState, SkeletonList, Text } from '@/components/ui';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getBookableCoaches, type BookableCoach } from '@/lib/api.coaching';
 import { whenLabel } from '@/lib/coaching';
@@ -18,12 +19,17 @@ import { amountLabel } from '@/lib/sponsorship';
  * Coaches who are taking students, soonest free time first. A minor is only
  * ever handed coaches they could book (the database filters to verified ones).
  */
-export function BookableCoaches({ query }: { query: string }) {
+export function BookableCoaches({ query, country }: { query: string; country?: string }) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
   const router = useRouter();
   const coaches = useAsync(() => getBookableCoaches(query), [query], { refetchOnFocus: true });
+
+  /* Tap Discover while on "Taking students": back to the top, quiet reload. */
+  const listRef = useTabReselect(() => {
+    coaches.reload();
+  });
 
   if (coaches.error && !coaches.data) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
   if (coaches.loading && !coaches.data) {
@@ -36,8 +42,13 @@ export function BookableCoaches({ query }: { query: string }) {
 
   return (
     <FlatList<BookableCoach>
+      ref={listRef}
       style={{ flex: 1 }}
-      data={coaches.data ?? []}
+      data={
+        country
+          ? (coaches.data ?? []).filter((c) => (c.country ?? '').toLowerCase() === country.toLowerCase())
+          : (coaches.data ?? [])
+      }
       keyExtractor={(item) => item.id}
       contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.sm }}
       keyboardShouldPersistTaps="handled"

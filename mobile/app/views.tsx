@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BadgeCheck, Eye, Info } from 'lucide-react-native';
+import { BadgeCheck, Clapperboard, Eye, Info } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -141,12 +141,36 @@ export default function ProfileViewsScreen() {
                   <Info size={18} color={colors.textMuted} />
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyStrong">
-                      {t('views.unnamedTitle', { count: data.unnamed })}
+                      {/* "And N more" only makes sense after a named list. */}
+                      {t(data.named.length > 0 ? 'views.unnamedTitle' : 'views.unnamedOnlyTitle', {
+                        count: data.unnamed,
+                      })}
                     </Text>
                     <Text variant="caption" tone="muted">
                       {t('views.unnamedBody')}
                     </Text>
                   </View>
+                </View>
+              </Card>
+            ) : null}
+
+            {/* The same tip as on Home and Notifications, so it doesn't vanish
+                when you tap through. Shown while no coach is named yet. */}
+            {data.total > 0 && data.named.length === 0 ? (
+              <Card
+                padded
+                onPress={() =>
+                  router.navigate({ pathname: Routes.myProfile, params: { tab: 'highlights', add: 'highlight' } })
+                }
+                accessibilityRole="button"
+                accessibilityLabel={t('views.homeEmptyBody')}
+                testID="views-tip"
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                  <Clapperboard size={18} color={colors.primary} />
+                  <Text variant="caption" tone="secondary" style={{ flex: 1 }}>
+                    {t('views.homeEmptyBody')}
+                  </Text>
                 </View>
               </Card>
             ) : null}

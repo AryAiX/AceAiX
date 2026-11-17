@@ -5,13 +5,18 @@ import {
   TextInputProps,
   View,
   ViewStyle,
+  type TextInputInstance,
 } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { useT } from '@/i18n';
+import { toLatinDigits } from '@/lib/digits';
 import { Text } from './Text';
 import { isRTL } from './rtl';
+
+/** Keyboards that type a number. Persian and Arabic ones emit their own digits. */
+const NUMBER_KEYBOARDS = new Set(['number-pad', 'numeric', 'decimal-pad', 'phone-pad']);
 
 interface Props extends Omit<TextInputProps, 'style'> {
   label?: string;
@@ -25,7 +30,7 @@ interface Props extends Omit<TextInputProps, 'style'> {
   required?: boolean;
 }
 
-export const Input = forwardRef<TextInput, Props>(function Input(
+export const Input = forwardRef<TextInputInstance, Props>(function Input(
   {
     label,
     hint,
@@ -38,6 +43,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
     multiline,
     onFocus,
     onBlur,
+    keyboardType,
+    onChangeText,
     ...rest
   },
   ref,
@@ -64,9 +71,10 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         style={{
           flexDirection: 'row',
           alignItems: multiline ? 'flex-start' : 'center',
-          backgroundColor: colors.surface,
+          backgroundColor: colors.field,
           borderWidth: 1.5,
-          borderColor,
+          borderColor: borderColor === colors.border ? colors.fieldBorder : borderColor,
+          ...(focused || error ? null : theme.raised('control')),
           borderRadius: radii.md,
           paddingHorizontal: spacing.lg,
           minHeight: multiline ? 112 : 52,
@@ -103,6 +111,15 @@ export const Input = forwardRef<TextInput, Props>(function Input(
           aria-invalid={error ? true : undefined}
           aria-describedby={error || hint ? descriptionId : undefined}
           {...rest}
+          keyboardType={keyboardType}
+          onChangeText={
+            onChangeText
+              ? (text) =>
+                  onChangeText(
+                    keyboardType && NUMBER_KEYBOARDS.has(keyboardType) ? toLatinDigits(text) : text,
+                  )
+              : undefined
+          }
         />
 
         {password ? (

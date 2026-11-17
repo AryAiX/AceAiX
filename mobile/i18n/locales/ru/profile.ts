@@ -103,7 +103,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Вкладки (components/profile/ProfileTabs.tsx) ───────────────────────────
-  tabHighlights: 'Хайлайты',
+  tabHighlights: 'Витрина',
   tabCareer: 'Карьера',
 
   // ── Вкладка постов (components/profile/PostsTab.tsx) ───────────────────────
@@ -113,22 +113,44 @@ export const profile = {
     'Выложи тренировку, результат или клип. Активные профили смотрят чаще.',
   postsEmptyBodyOther: 'Когда здесь появится пост, он будет виден тут.',
   postsEmptyAction: 'Написать пост',
+  postsSwitchPosts: 'Посты',
+  postsSwitchTagged: 'Отмеченные',
+  taggedEmptyTitle: 'Отмеченных постов пока нет',
+  taggedEmptyBodySelf: 'Когда тебя отметят в посте, он появится здесь.',
+  taggedEmptyBodyOther: 'Посты, в которых этот человек отмечен, появятся здесь.',
 
   // ── Сетка медиа (components/profile/MediaGrid.tsx) ─────────────────────────
-  addHighlight: 'Добавить хайлайт',
+  addHighlight: 'Добавить в витрину',
   videoClipA11y: 'Видеоклип',
   photoA11y: 'Фото',
+  photoUnavailable: 'Фото недоступно',
+  scoreWhenPostedA11y: 'Рейтинг при публикации: {{score}}',
+  scoreWhenPostedHint: 'Число на каждой публикации — твой рейтинг в момент публикации.',
+  highlightTag: 'Витрина',
+  clipQuickTechnique: 'Техника',
+  clipQuickMatch: 'Матч',
+  clipQuickTraining: 'Тренировка',
+  clipQuickBest: 'Личный рекорд',
+  clipPointsHint: 'Клип может поднять вашу оценку таланта',
 
   // ── Вкладка хайлайтов (components/profile/HighlightsTab.tsx) ───────────────
   photoPermission: 'AceAiX нужен доступ к твоим фото.',
+  clipTooLong: 'Клипы витрины должны быть не длиннее {{seconds}} секунд.',
 
-  noHighlightsTitle: 'Здесь нет хайлайтов',
-  noHighlightsBody: 'Хайлайты бывают только в профиле спортсмена.',
+  noHighlightsTitle: 'В витрине пока пусто',
+  noHighlightsBody: 'Витрина есть только в профиле спортсмена.',
   clipsEmptyTitleSelf: 'Тренер сначала смотрит, потом читает.',
   clipsEmptyTitleOther: 'Клипов пока нет',
   clipsEmptyBodySelf: 'Добавь первый клип. Три коротких — самое то.',
   clipsEmptyBodyOther: 'Когда появится клип, он будет здесь.',
   clipsEmptyAction: 'Добавить первый клип',
+  yourBest: 'Твои лучшие',
+  honourTypeLabel: 'Тип награды',
+  honourTypeTeam: 'Команда',
+  honourTypeIndividual: 'Личная',
+  honourTypeNational: 'Национальная',
+  clipsWorthLead: 'До',
+  clipsWorthTail: 'к твоей Оценке таланта',
 
   nameClipTitle: 'Назови клип',
   nameClipSubtitle: 'Короткое название подскажет тренеру, что он смотрит.',
@@ -307,6 +329,10 @@ export const profile = {
   notSet: 'не указано',
 
   sectionSport: 'Твой спорт',
+
+  birthDate: 'Дата рождения',
+
+  birthDateHint: 'Нужна один раз, чтобы понять, должен ли родитель одобрить некоторые функции. Видишь её только ты.',
   sectionAlsoPlays: 'Другие виды спорта',
   alsoPlaysHint: 'До 3 других видов спорта, которыми вы часто занимаетесь.',
   alsoPlaysAdd: 'Добавить вид спорта',
@@ -365,4 +391,22 @@ export const profile = {
   playerCardFailed: 'Не получилось собрать карточку. Попробуй ещё раз через минуту.',
   playerCardShare: 'Поделиться',
   playerCardSave: 'Сохранить изображение',
+  layoutGrid: 'Показать сеткой',
+  layoutScroll: 'Показать лентой',
+  morePosts: 'Показать больше публикаций',
+  addToBestOfNamed: 'Добавить в витрину: {{name}}',
+  bestOfNamed: 'Витрина: {{name}}',
+  postCount_one: '{{count}} пост',
+  postCount_few: '{{count}} поста',
+  postCount_many: '{{count}} постов',
+  postCount_other: '{{count}} поста',
+  taggedCount_one: '{{count}} отмеченный пост',
+  taggedCount_few: '{{count}} отмеченных поста',
+  taggedCount_many: '{{count}} отмеченных постов',
+  taggedCount_other: '{{count}} отмеченного поста',
+  clipCount_one: '{{count}} ролик',
+  clipCount_few: '{{count}} ролика',
+  clipCount_many: '{{count}} роликов',
+  clipCount_other: '{{count}} ролика',
+  addClip: 'Добавить ролик',
 };

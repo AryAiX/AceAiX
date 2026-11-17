@@ -28,6 +28,31 @@ export function currentLanguage(): string {
 }
 
 /**
+ * Locale tag for dates and numbers.
+ *
+ * Persian phones default `fa` to the Solar Hijri calendar. AceAiX keeps the
+ * Gregorian calendar and only switches the digits, via the Unicode `ca`
+ * extension. Every other language is passed through unchanged.
+ */
+export function intlLocale(code: string): string {
+  return code === 'fa' ? 'fa-u-ca-gregory' : code;
+}
+
+/**
+ * A value dropped into a translated sentence.
+ *
+ * Persian reads ۴۷, not 47. Only numbers change, and only in Persian: a name,
+ * a title, or text that is already formatted stays as it was passed, and
+ * every other language keeps today's digits.
+ */
+export function placeholderText(value: string | number, language: string): string {
+  if (typeof value === 'number' && language === 'fa') {
+    return new Intl.NumberFormat(intlLocale('fa'), { useGrouping: false }).format(value);
+  }
+  return String(value);
+}
+
+/**
  * Translate a key, or return `fallback` when no translator is registered or
  * the key is missing. Never returns a raw key to the interface.
  */
@@ -45,6 +70,6 @@ export function tr(
 function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;
   return template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) =>
-    vars[name] === undefined ? whole : String(vars[name]),
+    vars[name] === undefined ? whole : placeholderText(vars[name], activeLanguage),
   );
 }

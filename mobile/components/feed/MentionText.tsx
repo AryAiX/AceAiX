@@ -8,17 +8,19 @@ import {
 import { useRouter } from 'expo-router';
 
 import { Text, type TextTone, type TextVariant } from '@/components/ui';
+import { splitHashtags } from '@/lib/hashtags';
 import { splitMentions, type MentionSpan } from '@/lib/mentions';
 import { Routes } from '@/lib/routes';
 import { useTheme } from '@/theme/ThemeProvider';
 
 /**
- * A caption or comment with its @-names drawn as links.
+ * A caption or comment with its @-names and #tags drawn as links.
  *
- * The plain words and the names are sibling spans inside one text node, so a
- * tap on a name does not also fire the caption's own tap. Spans do not set
- * their own alignment: the paragraph direction, including right to left,
- * comes from the surrounding text.
+ * The plain words, the names and the tags are sibling spans inside one text
+ * node, so a tap on a name or a tag does not also fire the caption's own tap.
+ * A hashtag is only read inside the plain words, so it never cuts a mention
+ * in two. Spans do not set their own alignment: the paragraph direction,
+ * including right to left, comes from the surrounding text.
  */
 
 interface Props {
@@ -29,7 +31,7 @@ interface Props {
   color?: string;
   numberOfLines?: number;
   style?: StyleProp<TextStyle>;
-  /** Tap on the words that are not a mention. */
+  /** Tap on the words that are not a mention or a hashtag. */
   onPressText?: () => void;
   pressLabel?: string;
   /**
@@ -68,6 +70,7 @@ export function MentionText({
       variant === 'bodyStrong' || variant === 'captionStrong' ? font.semibold : font.regular,
     color: plainColor,
   };
+  const linkStyle: TextStyle = { color: colors.primary, fontFamily: font.semibold };
 
   const openMention = (userId: string, event: GestureResponderEvent) => {
     stopPress(event);
@@ -75,16 +78,21 @@ export function MentionText({
     else router.push(Routes.profile(userId));
   };
 
+  const openHashtag = (tag: string, event: GestureResponderEvent) => {
+    stopPress(event);
+    router.push(Routes.searchHashtag(tag));
+  };
+
   let labelledPlain = false;
 
   return (
     <Text variant={variant} tone={tone} color={color} numberOfLines={numberOfLines} style={style}>
-      {pieces.map((piece, index) => {
+      {pieces.flatMap((piece, index) => {
         if (piece.kind === 'mention') {
           return (
             <RNText
               key={`m-${piece.user_id}-${index}`}
-              style={[runStyle, { color: colors.primary, fontFamily: font.semibold }]}
+              style={[runStyle, linkStyle]}
               onPress={(event) => openMention(piece.user_id, event)}
               suppressHighlighting
               accessibilityRole="link"
@@ -94,28 +102,45 @@ export function MentionText({
           );
         }
 
-        if (!onPressText) return piece.text;
+        return splitHashtags(piece.text).map((part, partIndex) => {
+          const key = `t-${index}-${partIndex}`;
+          if (part.kind === 'hashtag') {
+            return (
+              <RNText
+                key={key}
+                style={[runStyle, linkStyle]}
+                onPress={(event) => openHashtag(part.tag, event)}
+                suppressHighlighting
+                accessibilityRole="link"
+              >
+                {part.text}
+              </RNText>
+            );
+          }
 
-        const label = !labelledPlain ? pressLabel : undefined;
-        labelledPlain = true;
-        return (
+          if (!onPressText) return part.text;
+
+          const label = !labelledPlain ? pressLabel : undefined;
+          labelledPlain = true;
+          return (
             <RNText
-              key={`t-${index}`}
+              key={key}
               style={runStyle}
               onPress={onPressText}
               suppressHighlighting
               accessibilityRole="button"
               accessibilityLabel={label}
             >
-            {piece.text}
-          </RNText>
-        );
+              {part.text}
+            </RNText>
+          );
+        });
       })}
     </Text>
   );
 }
 
-/** A mention tap must not continue on to a caption Pressable around this text. */
+/** A mention or hashtag tap must not continue on to a caption Pressable around this text. */
 function stopPress(event: GestureResponderEvent): void {
   const withStop = event as GestureResponderEvent & { stopPropagation?: () => void };
   withStop.stopPropagation?.();

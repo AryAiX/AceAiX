@@ -67,6 +67,7 @@ export function AddOwnInput({
         testID={testID}
       />
       <Button
+        size="sm"
         label={t('clubSetup.add')}
         variant="secondary"
         disabled={!value.trim()}

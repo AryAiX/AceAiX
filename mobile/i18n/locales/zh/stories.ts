@@ -63,4 +63,9 @@ export const stories = {
   expiresNote: '快拍会在 24 小时后消失。',
   needText: '请先为卡片写点内容。',
   needPhoto: '请先选择一张照片或一段视频。',
+  tabText: '文字',
+  tabColour: '颜色',
+  tabSticker: '贴纸',
+  tabWho: '谁可以看',
+  tabPhoto: '照片',
 };

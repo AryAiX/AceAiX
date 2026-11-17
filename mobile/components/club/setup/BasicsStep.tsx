@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { TextInput, View } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Input } from '@/components/ui';
@@ -20,9 +20,9 @@ export function BasicsFields({
 }) {
   const { spacing } = useTheme();
   const t = useT();
-  const localRef = useRef<TextInput>(null);
-  const yearRef = useRef<TextInput>(null);
-  const ceoRef = useRef<TextInput>(null);
+  const localRef = useRef<TextInputInstance>(null);
+  const yearRef = useRef<TextInputInstance>(null);
+  const ceoRef = useRef<TextInputInstance>(null);
 
   return (
     <View style={{ gap: spacing.xl }}>

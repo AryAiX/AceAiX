@@ -81,6 +81,7 @@ export function OfferSheet({
         />
         <Button
           label={t('sponsorship.sendOffer')}
+          variant="warm"
           fullWidth
           loading={sending}
           onPress={send}
@@ -144,6 +145,7 @@ export function ApplySheet({
         </Text>
         <Button
           label={t('sponsorship.sendApplication')}
+          variant="warm"
           fullWidth
           loading={sending}
           onPress={send}

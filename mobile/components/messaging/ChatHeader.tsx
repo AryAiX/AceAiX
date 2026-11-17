@@ -51,7 +51,7 @@ export function ChatHeader({ peer, loading, onBack, onOpenProfile, onOpenMenu }:
         style={({ pressed }) => ({
           width: hit.min,
           height: hit.min,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.6 : 1,
@@ -116,7 +116,7 @@ export function ChatHeader({ peer, loading, onBack, onOpenProfile, onOpenMenu }:
         style={({ pressed }) => ({
           width: hit.min,
           height: hit.min,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.6 : 1,

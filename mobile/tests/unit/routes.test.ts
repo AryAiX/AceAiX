@@ -56,10 +56,29 @@ describe('notificationTarget', () => {
     expect(
       notificationTarget(notification({ type: 'comment', entity_type: 'post', entity_id: 'p1' })),
     ).toBe(Routes.post('p1'));
+    expect(
+      notificationTarget(notification({ type: 'post_tag', entity_type: 'post', entity_id: 'p1' })),
+    ).toBe(Routes.post('p1'));
   });
 
   it('sends a follow to the follower profile', () => {
     expect(notificationTarget(notification())).toBe(Routes.profile('actor-1'));
+  });
+
+  it('opens the challenge a result or an entry points at', () => {
+    for (const type of ['challenge_entry', 'challenge_verified', 'challenge_rejected'] as const) {
+      expect(
+        notificationTarget(notification({ type, entity_type: 'challenge', entity_id: 'c1' })),
+      ).toBe(Routes.challenge('c1'));
+    }
+  });
+
+  it('sends a finished game or Sport Fit to that person', () => {
+    for (const type of ['gi_completed', 'sport_fit_completed'] as const) {
+      expect(
+        notificationTarget(notification({ type, entity_type: 'user', entity_id: 'u1' })),
+      ).toBe(Routes.profile('u1'));
+    }
   });
 
   it('splits the two application directions', () => {
@@ -118,6 +137,25 @@ describe('notificationTarget', () => {
   it('returns null when there is genuinely nowhere to go', () => {
     const n = notification({ entity_type: null, entity_id: null, actor_id: null });
     expect(notificationTarget(n)).toBeNull();
+  });
+
+  it('sends a sport request decision to edit profile, on the sport', () => {
+    for (const type of [
+      'sport_request_approved',
+      'sport_request_matched',
+      'sport_request_rejected',
+    ] as const) {
+      expect(
+        notificationTarget(
+          notification({
+            type,
+            entity_type: 'sport_request',
+            entity_id: 'req-1',
+            actor_id: 'actor-9',
+          }),
+        ),
+      ).toEqual({ pathname: Routes.editProfile, params: { focus: 'sport' } });
+    }
   });
 });
 
@@ -218,5 +256,7 @@ describe('Routes', () => {
     });
     expect(Routes.followers('u1')).toBe('/u/u1/followers');
     expect(Routes.following('u1')).toBe('/u/u1/following');
+    expect(Routes.searchHashtag('u16')).toBe('/search?q=%23u16&tab=posts');
+    expect(Routes.searchHashtag('كرة')).toBe(`/search?q=${encodeURIComponent('#كرة')}&tab=posts`);
   });
 });

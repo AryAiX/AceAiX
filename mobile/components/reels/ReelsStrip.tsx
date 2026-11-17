@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, Clapperboard, Play } from 'lucide-react-native';
+import { ChevronRight, Play, Zap } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Reveal, Tappable, Text } from '@/components/ui';
@@ -26,14 +26,19 @@ const CARD_W = 118;
 const CARD_H = 196;
 const ON_POSTER = '#FFFFFF';
 
-export function ReelsStrip() {
+export function ReelsStrip({ items: given }: { items?: FeedPost[] }) {
   const theme = useTheme();
   const { spacing } = theme;
   const router = useRouter();
   const t = useT();
 
-  const reels = useAsync(() => getReels({ limit: 6 }), [], { refetchOnFocus: true });
-  const items = reels.data ?? [];
+  /* Home passes its own copy, because a list cell can unmount and remount;
+     anywhere else the strip still loads for itself. */
+  const reels = useAsync(() => getReels({ limit: 6 }), [], {
+    enabled: !given,
+    refetchOnFocus: true,
+  });
+  const items = given ?? reels.data ?? [];
   if (items.length === 0) return null;
 
   /* A poster plays that reel; "See all" opens the whole collection as a grid. */
@@ -65,13 +70,14 @@ export function ReelsStrip() {
           }}
         >
           <LinearGradient
-            colors={theme.gradients.party}
+            colors={theme.gradients.cool}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
           <View>
-            <Clapperboard size={16} color={ON_POSTER} strokeWidth={2.2} />
+            {/* A bolt, not a clapperboard: a quick catch-up, not Reels. */}
+            <Zap size={16} color={ON_POSTER} fill={ON_POSTER} strokeWidth={2} />
           </View>
         </View>
         <View style={{ flex: 1 }}>

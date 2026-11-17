@@ -9,15 +9,25 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { LogoColors } from '@/theme/tokens';
 import { Text } from './Text';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant =
+  | 'primary'   // flat cobalt — the default
+  | 'gradient'  // the screen's one main button, on the blue side: solid cobalt
+  | 'warm'      // the main button for something to act on (Apply, Enter, Ask): solid flame
+  | 'outline'   // white with a strong blue edge: Follow on someone's profile
+  | 'soft'      // soft blue fill, cobalt text: Follow, View, Apply in lists, Post a game
+  | 'secondary'
+  | 'ghost'
+  | 'danger'
+  | 'accent';
+/** `xs` is the compact pill for tight list rows (Follow on a club row). */
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg';
 
 interface Props extends Omit<PressableProps, 'style' | 'children'> {
   label: string;
@@ -51,10 +61,13 @@ export function Button({
   const scale = useRef(new Animated.Value(1)).current;
 
   const isDisabled = disabled || loading;
-  const shouldHaptic = haptic ?? (variant === 'primary' || variant === 'accent');
+  const shouldHaptic =
+    haptic ??
+    (variant === 'primary' || variant === 'gradient' || variant === 'warm' || variant === 'accent');
 
-  const heights: Record<ButtonSize, number> = { sm: 40, md: 52, lg: 58 };
+  const heights: Record<ButtonSize, number> = { xs: 32, sm: 40, md: 52, lg: 58 };
   const paddings: Record<ButtonSize, number> = {
+    xs: spacing.md,
     sm: spacing.lg,
     md: spacing.xl,
     lg: spacing.xxl,
@@ -64,11 +77,43 @@ export function Button({
     ButtonVariant,
     { bg: string; border: string; fg: string; pressedBg: string }
   > = {
+    /* Flat cobalt. One flat colour is the rule; the ombre is the exception. */
     primary: {
       bg: colors.primary,
       border: 'transparent',
       fg: colors.textOnBrand,
       pressedBg: colors.primaryPressed,
+    },
+    /* The one main button on a screen, on the logo's blue side (Post, Share,
+       Sign in…). Solid: small controls read sharper in one colour. */
+    gradient: {
+      bg: colors.primary,
+      border: 'transparent',
+      fg: colors.textOnBrand,
+      pressedBg: colors.primaryPressed,
+    },
+    /* The main button on the logo's fire side: something to act on (Apply,
+       Enter a challenge, Ask for sponsorship, Create account). Solid flame. */
+    warm: {
+      bg: LogoColors.flame,
+      border: 'transparent',
+      fg: '#FFFFFF',
+      pressedBg: '#E8661A',
+    },
+    /* White with a strong cobalt edge and cobalt text — Follow on a profile:
+       clearer than a soft fill, calmer than a solid button. */
+    outline: {
+      bg: colors.surface,
+      border: colors.primary,
+      fg: colors.primary,
+      pressedBg: colors.primarySoft,
+    },
+    /* Soft blue fill with cobalt text, no shadow — small list actions. */
+    soft: {
+      bg: colors.primarySoft,
+      border: 'transparent',
+      fg: colors.primary,
+      pressedBg: colors.primaryBorder,
     },
     accent: {
       bg: colors.accent,
@@ -97,11 +142,6 @@ export function Button({
   };
 
   const skin = skins[variant];
-
-  /* The primary action is the one thing on most screens that has permission to
-     be loud, and a flat fill wastes it. Gradient underneath, transparent fill
-     on top; the pressed state stays a flat colour so the press still reads. */
-  const gradient = variant === 'primary' ? theme.gradients.action : null;
 
   const animate = (to: number) =>
     Animated.spring(scale, {
@@ -137,36 +177,25 @@ export function Button({
           {
             height: heights[size],
             paddingHorizontal: paddings[size],
-            borderRadius: radii.pill,
-            backgroundColor: gradient ? skin.pressedBg : pressed ? skin.pressedBg : skin.bg,
+            borderRadius: radii.button,
+            backgroundColor: pressed ? skin.pressedBg : skin.bg,
             borderColor: skin.border,
-            borderWidth: skin.border === 'transparent' ? 0 : 1.5,
+            borderWidth: skin.border === 'transparent' ? 0 : variant === 'outline' ? 2 : 1.5,
             opacity: isDisabled ? 0.45 : 1,
             overflow: 'hidden',
           },
         ]}
         {...rest}
       >
-        {({ pressed }: { pressed: boolean }) => (
+        {() => (
           <>
-            {gradient ? (
-              /* Dimmed rather than swapped on press: a gradient that vanished
-                 for a flat colour would read as a different button. */
-              <LinearGradient
-                colors={gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFill, { opacity: pressed ? 0.82 : 1 }]}
-                pointerEvents="none"
-              />
-            ) : null}
             {loading ? (
               <ActivityIndicator color={skin.fg} size="small" />
             ) : (
               <View style={styles.content}>
                 {icon ? <View style={{ marginRight: spacing.sm }}>{icon}</View> : null}
                 <Text
-                  variant={size === 'sm' ? 'captionStrong' : 'subheading'}
+                  variant={size === 'sm' || size === 'xs' ? 'captionStrong' : 'subheading'}
                   color={skin.fg}
                   numberOfLines={1}
                 >

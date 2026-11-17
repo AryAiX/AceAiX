@@ -122,7 +122,7 @@ export function SettingsRow({
   title,
   subtitle,
   icon,
-  iconTone = 'neutral',
+  iconTone = 'primary',
   value,
   onPress,
   destructive,

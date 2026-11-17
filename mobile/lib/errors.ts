@@ -115,6 +115,10 @@ const EN: Record<string, string> = {
   'errors.clubMatchKickoff': "Pick the date and kick-off time.",
   'errors.clubAwardTitle': "Give the award a name.",
   'errors.clubAwardLink': "You can only link people who are on your squads.",
+  'errors.sportNameInvalid': "Use 2 to 40 letters for the sport name.",
+  'errors.sportRequestLimit': "You can ask for a sport 5 times a day.",
+  'errors.coachingGuardianAccount':
+    'A parent account cannot book a session. Your child books from their own account.',
 };
 
 function say(key: string): string {
@@ -162,6 +166,7 @@ const HINTS: Record<string, string> = {
   coaching_location_required: 'errors.coachingLocationRequired',
   coaching_service_limit: 'errors.coachingServiceLimit',
   own_calendar: 'errors.coachingOwnCalendar',
+  guardian_account: 'errors.coachingGuardianAccount',
   gi_attempt_limit: 'errors.giAttemptLimit',
   gi_session_closed: 'errors.giSessionClosed',
   gi_already_done: 'errors.giAlreadyDone',
@@ -177,6 +182,8 @@ const HINTS: Record<string, string> = {
   club_map_url_invalid: 'errors.clubMapUrlInvalid',
   meetup_place_invalid: 'errors.meetupPlaceInvalid',
   city_length: 'errors.cityLength',
+  sport_name_invalid: 'errors.sportNameInvalid',
+  sport_request_limit: 'errors.sportRequestLimit',
   meetup_places_limit: 'errors.meetupPlacesLimit',
   mention_limit: 'errors.mentionLimit',
   mention_invalid: 'errors.mentionInvalid',

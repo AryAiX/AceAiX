@@ -15,6 +15,7 @@ Admins sign in with a normal account whose role is `admin` or `super_admin`.
 | Dashboard | See every queue that needs action, plus growth numbers, a 30-day sign-up chart, users by role and reports by reason. |
 | Reports | Work the queue of in-app reports. Child-safety and minor-related reports always come first. The admin sees the reported post, story, comment or message (with media) and can **Dismiss**, **Remove content**, **Warn**, **Suspend (1/3/7/30 days) or Ban**, or **Escalate**. One decision closes every duplicate report on the same item. |
 | Account approval | Approve, reject or ask for more information on verification requests, with documents shown. Can also verify coaches, clubs, scouts and sponsors who never asked. Unverified sponsors cannot make offers. |
+| Sport requests | Review a sport an athlete typed because it is not in the list of 30. Approve the typed name (tidied if needed), match it to a listed sport, or reject it with an optional note. The typed name is not public until it is approved. |
 | Content | Browse posts, reels, stories, highlight clips and comments, including hidden ones. Can hide for review, remove (the author is told why) or restore. Can filter to content by minors. |
 | Users | Search by name, email, country or id. Filter by role, suspended, unverified, minors or reported. |
 | User detail | See the profile, activity, guardian consent and its scopes, reports against the user, and admin history. Can warn, verify or unverify, suspend, ban or reinstate. A super admin can also change the role. |

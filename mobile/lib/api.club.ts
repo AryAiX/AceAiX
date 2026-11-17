@@ -517,6 +517,21 @@ export async function getClubPage(orgId: string): Promise<ClubPage | null> {
   return unwrap<ClubPage | null>(await supabase.rpc('club_page', { p_org: orgId }));
 }
 
+/**
+ * The club page this account owns, or null.
+ *
+ * A failure returns null so the person profile still shows. The page is a
+ * shortcut, not a gate, and only a club role can own one.
+ */
+export async function clubPageOf(userId: string): Promise<string | null> {
+  try {
+    const id = unwrap<string | null>(await supabase.rpc('club_page_of', { p_user: userId }));
+    return id || null;
+  } catch {
+    return null;
+  }
+}
+
 /** The club's map link. Not part of `club_page`; `organizations` is readable directly. */
 export async function getClubMapUrl(orgId: string): Promise<string | null> {
   const { data, error } = await supabase

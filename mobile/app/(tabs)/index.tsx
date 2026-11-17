@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, type ViewToken } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FlatList, RefreshControl, View, type ListViewToken as ViewToken } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Clapperboard, MessageSquare, Users } from 'lucide-react-native';
+import { Bell, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -14,8 +13,8 @@ import {
   Screen,
   SegmentedControl,
   SkeletonList,
-  Tappable,
 } from '@/components/ui';
+import { FollowingStarter } from '@/components/feed/FollowingStarter';
 import { PostCard } from '@/components/feed/PostCard';
 import { CommentSheet } from '@/components/feed/CommentSheet';
 import {
@@ -23,19 +22,23 @@ import {
   type ContentTarget,
 } from '@/components/feed/ContentActionsSheet';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getFeed } from '@/lib/api';
 import { postLink } from '@/lib/api.feed';
+import { getFollowingReels } from '@/lib/api.reels';
 import { Routes } from '@/lib/routes';
 import { StreakChip } from '@/components/celebrate/StreakChip';
 import { HomeSpotlight } from '@/components/feed/HomeSpotlight';
+import { MessagesButton } from '@/components/feed/MessagesButton';
+import { MatchedTrial } from '@/components/feed/MatchedTrial';
 import { StoryRail } from '@/components/stories/StoryRail';
 import { ReelsStrip } from '@/components/reels/ReelsStrip';
-import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { Wordmark } from '@/components/common/Wordmark';
 import { useAuth } from '@/providers/AuthProvider';
 import { useUnread } from '@/providers/UnreadProvider';
 import type { FeedPost } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 /**
  * Home.
@@ -47,10 +50,13 @@ import type { FeedPost } from '@/types/models';
  */
 
 const PAGE_SIZE = 20;
+/** Posters in Your Rundown, read from the people and club pages you follow. */
+const RUNDOWN_SHOWN = 6;
 
 type Scope = 'for_you' | 'following';
 
 export default function HomeScreen() {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const router = useRouter();
@@ -78,6 +84,16 @@ export default function HomeScreen() {
   const feed = useAsync<FeedPost[]>(
     () => getFeed({ scope, limit: PAGE_SIZE }),
     [scope],
+    { refetchOnFocus: true },
+  );
+
+  /* Loaded here, not inside the strip: the strip now sits in a list cell, and
+     a cell scrolled far enough away is unmounted. Loading on remount would pop
+     the strip in from nothing and jump the feed under your thumb. These six
+     are the clips from people and club pages you follow. */
+  const reels = useAsync(
+    () => getFollowingReels({ limit: RUNDOWN_SHOWN }),
+    [],
     { refetchOnFocus: true },
   );
 
@@ -127,11 +143,36 @@ export default function HomeScreen() {
     [mutate],
   );
 
+  /* A follow from one card applies to every post by that author on screen, so
+     a second card by the same person can never offer (and toggle back off)
+     the follow that was just made. */
+  const setAuthorFollowed = useCallback(
+    (authorId: string, following: boolean) => {
+      const apply = (list: FeedPost[]) =>
+        list.map((p) => (p.author_id === authorId ? { ...p, viewer_follows: following } : p));
+      mutate((current) => (current ? apply(current) : current));
+      setOlder(apply);
+    },
+    [mutate],
+  );
+
   const refresh = useCallback(() => {
     setOlder([]);
     setReachedEnd(false);
     refetch();
   }, [refetch]);
+
+  /* Tap Home while on Home: back to the top and a fresh first page. Quietly —
+     a `refreshing` flag set without a finger-pull sticks on iOS (see
+     hooks/useAsync.ts). Older pages are dropped once the new page is in, so
+     the list does not shrink under the scroll on its way up. `reload` never
+     rejects (useAsync catches), so the `then` always runs. */
+  const listRef = useTabReselect(() => {
+    void feed.reload().then(() => {
+      setOlder([]);
+      setReachedEnd(false);
+    });
+  });
 
   const loadMore = useCallback(async () => {
     if (loadingMore || reachedEnd || feed.loading || items.length === 0) return;
@@ -202,24 +243,39 @@ export default function HomeScreen() {
     },
   ).current;
 
+  /* Your Rundown sits right under Stories, on the Following tab only. */
+  const rundown = scope === 'following' && reels.data?.length ? reels.data : null;
+
   const renderItem = useCallback(
     /* The stagger is keyed off the position in the list, and `Reveal` caps it
        at six — so the first screenful arrives in sequence and everything the
        person scrolls to afterwards is already in place. */
-    ({ item, index }: { item: FeedPost; index: number }) => (
-      <Reveal index={index}>
-        <PostCard
-          post={item}
-          isActive={item.id === activeId}
-          onPatch={patchPost}
-          onOpenComments={setCommentsFor}
-          onOpenActions={openActions}
-          onOpenProfile={openProfile}
-          onOpenPost={openPost}
-        />
-      </Reveal>
-    ),
-    [activeId, patchPost, openActions, openProfile, openPost],
+    ({ item, index }: { item: FeedPost; index: number }) => {
+      const card = (
+        <Reveal index={index}>
+          <PostCard
+            post={item}
+            isActive={item.id === activeId}
+            onPatch={patchPost}
+            onOpenComments={setCommentsFor}
+            onOpenActions={openActions}
+            onOpenProfile={openProfile}
+            onOpenPost={openPost}
+            onFollowChange={setAuthorFollowed}
+            scoreCorner={scope === 'for_you'}
+          />
+        </Reveal>
+      );
+      return card;
+    },
+    [activeId, patchPost, openActions, openProfile, openPost, setAuthorFollowed, scope],
+  );
+
+  /* Everything renderItem reads besides `data`, so the list redraws when any of
+     it changes — FlatList is a PureComponent and only compares `extraData`. */
+  const listExtra = useMemo(
+    () => ({ activeId, scope }),
+    [activeId, scope],
   );
 
   /* Returns an element, not a component: a fresh component type on every
@@ -229,17 +285,8 @@ export default function HomeScreen() {
     if (feed.error && items.length === 0) {
       return <ErrorState message={feed.error} onRetry={feed.reload} />;
     }
-    if (scope === 'following') {
-      return (
-        <EmptyState
-          icon={<Users size={26} color={colors.textMuted} />}
-          title={t('feed.emptyFollowingTitle')}
-          body={t('feed.emptyFollowingBody')}
-          actionLabel={t('feed.emptyFollowingAction')}
-          onAction={() => router.push(Routes.discover)}
-        />
-      );
-    }
+    /* Following: the starter sits in the header, above the (empty) list. */
+    if (scope === 'following') return undefined;
     return (
       <EmptyState
         icon={<Users size={26} color={colors.textMuted} />}
@@ -265,28 +312,11 @@ export default function HomeScreen() {
       >
         <Wordmark />
 
-        {/* The streak sits before the inbox icons: it is the one thing in the
-            header that rewards opening the app rather than asking something
-            of you. */}
+        {/* The streak sits before the bell: it is the one thing in the header
+            that rewards opening the app rather than asking something of you.
+            Messages moved down beside the Playfeed switch. */}
         <StreakChip testID="home-streak" />
 
-        {/* Light and dark are one tap apart, because nobody walks into the sun
-            and then goes looking through a settings tree. */}
-        <ThemeToggle testID="home-theme" />
-
-        <ReelsButton label={t('reels.open')} onPress={() => router.push(Routes.reels)} />
-        <IconButton
-          icon={<MessageSquare size={20} color={colors.text} strokeWidth={1.9} />}
-          label={
-            unread.messages > 0
-              ? t('feed.messagesUnread', { count: unread.messages })
-              : t('feed.messages')
-          }
-          badge={unread.messages}
-          size={38}
-          onPress={() => router.push(Routes.inbox)}
-          testID="home-messages"
-        />
         <IconButton
           icon={<Bell size={20} color={colors.text} strokeWidth={1.9} />}
           label={
@@ -301,51 +331,81 @@ export default function HomeScreen() {
         />
       </View>
 
+      {/* The Playfeed switch sits above the list, outside it, so it stays put
+          while stories and posts scroll under it — and Messages with it. Home
+          is the only way into the inbox, so this button must never go. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.md,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <SegmentedControl
+            options={scopes}
+            value={scope}
+            onChange={setScope}
+            testID="home-scope"
+          />
+        </View>
+        <MessagesButton
+          count={unread.messages}
+          label={
+            unread.messages > 0
+              ? t('feed.messagesUnread', { count: unread.messages })
+              : t('feed.messages')
+          }
+          onPress={() => router.push(Routes.inbox)}
+          testID="home-messages"
+        />
+      </View>
+
       {feed.error ? (
         <View style={{ flex: 1 }}>
-          <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.md }}>
-            <SegmentedControl
-              options={scopes}
-              value={scope}
-              onChange={setScope}
-              testID="home-scope"
-            />
-          </View>
           <ErrorState message={feed.error} onRetry={feed.reload} />
         </View>
       ) : (
       <FlatList
+        ref={listRef}
         data={items}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        extraData={activeId}
+        extraData={listExtra}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.giant,
+          paddingBottom: endPad,
           gap: spacing.md,
           flexGrow: 1,
         }}
         ListHeaderComponent={
-          /* Stories, then reels, then the spotlight, then the feed's own
-             switch — each arriving a beat after the one above it. */
+          /* Stories, then Your Rundown (Following only), then your week, then
+             one matched trial — each arriving a beat after the one above it.
+             The challenge and the matched trial are Playfeed only: Following
+             is the people you follow. */
           <View style={{ gap: spacing.lg }}>
             <Reveal index={0}>
               <StoryRail />
             </Reveal>
+            {rundown ? (
+              <Reveal index={1}>
+                <ReelsStrip items={rundown} />
+              </Reveal>
+            ) : null}
             <Reveal index={1}>
-              <ReelsStrip />
+              <HomeSpotlight showChallenge={scope === 'for_you'} />
             </Reveal>
-            <Reveal index={2}>
-              <HomeSpotlight />
-            </Reveal>
-            <Reveal index={3}>
-              <SegmentedControl
-                options={scopes}
-                value={scope}
-                onChange={setScope}
-                testID="home-scope"
-              />
-            </Reveal>
+            {scope === 'following' && !(feed.loading && items.length === 0) && !feed.error ? (
+              /* Follow 3 to get going. Stays while their posts arrive below. */
+              <FollowingStarter feedEmpty={items.length === 0} onFollowed={feed.reload} />
+            ) : null}
+            {scope === 'for_you' ? (
+              <Reveal index={2}>
+                <MatchedTrial />
+              </Reveal>
+            ) : null}
           </View>
         }
         showsVerticalScrollIndicator={false}
@@ -391,44 +451,8 @@ export default function HomeScreen() {
         onClose={() => setActionTarget(null)}
         onDeleted={(target) => removePost(target.id)}
         onBlocked={removeAuthor}
+        onTagsChanged={(postId, tagged) => patchPost(postId, { tagged })}
       />
     </Screen>
-  );
-}
-
-/**
- * The way into Reels from the header. The one header button painted rather
- * than outlined, because it is the one that leads somewhere that moves.
- */
-function ReelsButton({ label, onPress }: { label: string; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Tappable
-      onPress={onPress}
-      scaleTo={0.88}
-      haptic="light"
-      hitSlop={6}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      testID="home-reels"
-      style={{
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        overflow: 'hidden',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <LinearGradient
-        colors={theme.gradients.party}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <View>
-        <Clapperboard size={19} color={theme.colors.textOnBrand} strokeWidth={2.1} />
-      </View>
-    </Tappable>
   );
 }

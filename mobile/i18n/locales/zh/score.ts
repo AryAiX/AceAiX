@@ -126,7 +126,7 @@ export const score = {
   simGain_other: '+{{count}}分',
   simHonest: '这是预估，不是承诺 —— 它假设这些练习是真做了的，成绩也站得住。',
 
-  simVideos: '集锦短片',
+  simVideos: '精选短片',
   simMatches: '今年记录的比赛',
   simVerified: '其中已核实的',
   simEndorsements: '推荐',

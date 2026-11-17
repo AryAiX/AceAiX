@@ -9,7 +9,6 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { NATIVE_DRIVER } from '@/lib/motion';
@@ -19,7 +18,8 @@ import { ChevronForward, isRTL } from './rtl';
 // ── SegmentedControl ──────────────────────────────────────────────────────────
 interface SegmentedProps<T extends string> {
   options: { value: T; label: string }[];
-  value: T;
+  /** `null` = nothing chosen yet: no pill is drawn until the first tap. */
+  value: T | null;
   onChange: (value: T) => void;
   style?: ViewStyle;
   testID?: string;
@@ -40,6 +40,7 @@ export function SegmentedControl<T extends string>({
   const [segmentWidth, setSegmentWidth] = useState(0);
 
   const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const hasValue = options.some((o) => o.value === value);
   /* forceRTL mirrors the row and swaps left/right, but translateX stays
      physical, so the pill has to travel the other way in Arabic. */
   const direction = isRTL ? -1 : 1;
@@ -69,8 +70,8 @@ export function SegmentedControl<T extends string>({
       style={[
         {
           flexDirection: 'row',
-          backgroundColor: colors.surfaceSunken,
-          borderRadius: radii.pill,
+          backgroundColor: colors.surfaceAlt,
+          borderRadius: radii.button,
           padding: TRACK_PAD,
           position: 'relative',
         },
@@ -85,8 +86,8 @@ export function SegmentedControl<T extends string>({
           bottom: TRACK_PAD,
           left: TRACK_PAD,
           width: segmentWidth,
-          opacity: segmentWidth === 0 ? 0 : 1,
-          borderRadius: radii.pill,
+          opacity: segmentWidth === 0 || !hasValue ? 0 : 1,
+          borderRadius: radii.button,
           backgroundColor: colors.surface,
           transform: [{ translateX: indicator }],
           ...theme.elevation(1),
@@ -97,6 +98,7 @@ export function SegmentedControl<T extends string>({
         return (
           <Pressable
             key={opt.value}
+            testID={testID ? `${testID}-${opt.value}` : undefined}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => {
@@ -109,7 +111,13 @@ export function SegmentedControl<T extends string>({
               paddingVertical: spacing.sm + 2,
             }}
           >
-            <Text variant="captionStrong" tone={active ? 'default' : 'muted'}>
+            <Text
+              variant="captionStrong"
+              tone={active ? 'default' : 'muted'}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               {opt.label}
             </Text>
           </Pressable>
@@ -129,6 +137,9 @@ interface ListItemProps {
   showChevron?: boolean;
   destructive?: boolean;
   disabled?: boolean;
+  /** Draws the title and subtitle in this colour, for a row on a coloured
+      background (the subtitle a little softer). Omit for the normal inks. */
+  onColor?: string;
   /**
    * Pad the row's own left and right edges.
    *
@@ -159,6 +170,7 @@ export function ListItem({
   destructive,
   disabled,
   inset = false,
+  onColor,
   style,
   testID,
 }: ListItemProps) {
@@ -182,11 +194,22 @@ export function ListItem({
     >
       {left}
       <View style={{ flex: 1 }}>
-        <Text variant="bodyStrong" tone={destructive ? 'danger' : 'default'} numberOfLines={1}>
+        <Text
+          variant="bodyStrong"
+          tone={onColor ? undefined : destructive ? 'danger' : 'default'}
+          color={onColor}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text variant="caption" tone="muted" numberOfLines={2} style={{ marginTop: 1 }}>
+          <Text
+            variant="caption"
+            tone={onColor ? undefined : 'muted'}
+            color={onColor}
+            numberOfLines={2}
+            style={{ marginTop: 1, opacity: onColor ? 0.88 : 1 }}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -284,7 +307,7 @@ export function IconButton({
         {
           width: size,
           height: size,
-          borderRadius: radii.pill,
+          borderRadius: radii.button,
           backgroundColor: bg,
           alignItems: 'center',
           justifyContent: 'center',
@@ -304,7 +327,9 @@ export function IconButton({
             height: 18,
             paddingHorizontal: 4,
             borderRadius: 9,
-            backgroundColor: colors.primary,
+            /* Green on the bell (the only icon button with a count); the
+               Messages button's count is red. */
+            backgroundColor: colors.success,
             alignItems: 'center',
             justifyContent: 'center',
             borderWidth: 2,
@@ -339,11 +364,20 @@ export function SectionHeader({
   action,
   onAction,
   style,
+  color,
+  count,
+  compact,
 }: {
   title: string;
   action?: string;
   onAction?: () => void;
   style?: ViewStyle;
+  /** The bar's colour, e.g. a Career section's colour. Cobalt when unset. */
+  color?: string;
+  /** A small number after the title, e.g. "Matches 2". Hidden when undefined. */
+  count?: number;
+  /** A smaller heading and bar, for sections inside a tab. */
+  compact?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -370,15 +404,22 @@ export function SectionHeader({
       >
         {/* A short coloured bar. Twelve of these down a screen is what stops a
             list of sections reading as a list of grey headings. */}
-        <LinearGradient
-          colors={theme.gradients.action}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={{ width: 4, height: 20, borderRadius: 2 }}
+        <View
+          style={{
+            width: compact ? 3 : 4,
+            height: compact ? 16 : 20,
+            borderRadius: 2,
+            backgroundColor: color ?? theme.colors.primary,
+          }}
         />
-        <Text variant="heading" style={{ flexShrink: 1 }}>
+        <Text variant={compact ? 'subheading' : 'heading'} style={{ flexShrink: 1 }}>
           {title}
         </Text>
+        {count != null ? (
+          <Text variant="number" tone="muted" style={{ fontSize: theme.size.sm }}>
+            {count}
+          </Text>
+        ) : null}
       </View>
       {action && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button" style={{ flexShrink: 0 }}>

@@ -8,6 +8,7 @@ import { Chip, EmptyState, ErrorState, Input, Reveal, SkeletonList, Text } from 
 import { InfoNote } from '@/components/settings/Notes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { useT } from '@/i18n';
 import { getSeekers, type Seeker } from '@/lib/api.sponsorship';
 import { displayName } from '@/lib/format';
@@ -15,6 +16,7 @@ import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import { SeekerCard } from './SeekerCard';
 import { OfferSheet } from './Sheets';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 const DEBOUNCE_MS = 300;
 
@@ -25,6 +27,7 @@ const DEBOUNCE_MS = 300;
  * worth verifying for — but sees no amounts and cannot make an offer.
  */
 export function SeekersList() {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const { colors, spacing } = theme;
   const t = useT();
@@ -47,6 +50,9 @@ export function SeekersList() {
   });
   const openProfile = useCallback((id: string) => router.push(Routes.profile(id)), [router]);
   const rows = seekers.data ?? [];
+  const listRef = useTabReselect(() => {
+    seekers.reload();
+  });
 
   const header = (
     <View style={{ gap: spacing.md, paddingBottom: spacing.md }}>
@@ -68,9 +74,10 @@ export function SeekersList() {
         contentInset={{ left: spacing.lg, right: spacing.lg }}
       >
         <View style={{ width: spacing.lg - spacing.sm }} />
-        <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} />
+        <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} tone="accent" />
         {SPORTS.map((s) => (
           <Chip
+            tone="accent"
             key={s.key}
             label={sportLabel(t, s.key)}
             icon={<Text variant="caption">{s.emoji}</Text>}
@@ -96,9 +103,10 @@ export function SeekersList() {
   return (
     <View style={{ flex: 1 }} testID="seekers-list">
       <FlatList
+        ref={listRef}
         data={seekers.loading && !seekers.data ? [] : rows}
         keyExtractor={(row) => row.request_id}
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.giant, gap: spacing.md }}
+        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: endPad, gap: spacing.md }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={header}

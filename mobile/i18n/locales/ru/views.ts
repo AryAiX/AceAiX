@@ -8,7 +8,7 @@
  */
 export const views = {
   title: 'Кто смотрел твой профиль',
-  subtitle: 'Тренеры, скауты и клубы за последние {{days}} дней.',
+  subtitle: 'Просмотры за последние {{days}} дней.',
 
   homeTitleNone: 'На этой неделе профиль ещё никто не открывал',
   homeTitle_one: 'Твой профиль открыл {{count}} человек',
@@ -24,6 +24,11 @@ export const views = {
   homeClubs_many: 'из {{count}} клубов',
   homeClubs_other: 'из {{count}} клубов',
   homeEmptyBody: 'Добавь клип или запиши матч — профили с видео открывают первыми.',
+  including: 'Среди них {{name}}',
+  includingMore_one: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_few: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_many: 'Среди них {{name}} и ещё {{count}}',
+  includingMore_other: 'Среди них {{name}} и ещё {{count}}',
   homeCta: 'Посмотреть, кто',
 
   namedTitle: 'С именами',
@@ -53,4 +58,8 @@ export const views = {
   whyTitle: 'Почему часть имён не показана',
   whyBody:
     'Мы называем проверенных тренеров, скаутов и клубы — тех, кто заходит по работе в профиль, опубликованный для того, чтобы тебя нашли. Непроверенные аккаунты и других спортсменов мы считаем, но никогда не называем. Это правило не меняется ни для кого.',
+  unnamedOnlyTitle_one: '{{count}} просмотр без имени',
+  unnamedOnlyTitle_few: '{{count}} просмотра без имени',
+  unnamedOnlyTitle_many: '{{count}} просмотров без имени',
+  unnamedOnlyTitle_other: '{{count}} просмотра без имени',
 };

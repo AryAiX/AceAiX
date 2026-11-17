@@ -10,6 +10,7 @@ export const progress = {
   title: '成就',
   subtitle: '这里的每一项，都来自你真正做过的事。',
   earnedOf: '{{total}} 项中的 {{earned}} 项',
+  newTag: '新',
   unlockedOn: '{{date}} 获得',
   tileEarnedA11y: '{{title}}。{{date}} 获得。{{hint}}',
   tileLockedA11y: '{{title}}。尚未获得。{{hint}}',

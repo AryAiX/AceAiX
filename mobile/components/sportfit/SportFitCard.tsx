@@ -9,6 +9,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { useT } from '@/i18n';
 import { Routes } from '@/lib/routes';
 import { getSportFitState, type SfState } from '@/lib/api.sportfit';
+import { LogoColors } from '@/theme/tokens';
 
 /**
  * My Sport Fit, on my profile tab, under Game Intelligence.
@@ -37,7 +38,7 @@ export function MySportFitCard({ refreshKey }: { refreshKey?: number }) {
   if (!fits.length) {
     return (
       <Card onPress={go} padded={false} level={1} testID="sf-card">
-        <AnimatedGradient colors={theme.gradients.cool} radius={theme.radii.lg} style={{ padding: spacing.lg }}>
+        <AnimatedGradient colors={[LogoColors.amber, LogoColors.flame, LogoColors.ember]} radius={theme.radii.lg} style={{ padding: spacing.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
             <View
               style={{

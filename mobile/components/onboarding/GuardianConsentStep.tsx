@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View, type TextInputInstance } from 'react-native';
 import { Eye, MessageCircle, ShieldCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -85,7 +85,7 @@ export function GuardianConsentStep({
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
-  const emailRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInputInstance>(null);
 
   return (
     <View>

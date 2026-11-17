@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { EyeOff, ShieldBan, UserX } from 'lucide-react-native';
@@ -6,6 +6,7 @@ import { EyeOff, ShieldBan, UserX } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, EmptyState, ErrorState, Header, Screen, SkeletonList, useToast } from '@/components/ui';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { FamilyLinks } from '@/components/profile/FamilyLinks';
 import { ScoreCard } from '@/components/profile/ScoreCard';
 import { CoachBookingCard } from '@/components/coaching/CoachingCard';
 import { SponsorshipProfileCard } from '@/components/sponsorship/SponsorshipCard';
@@ -20,10 +21,13 @@ import { ProfileTabs, ProfileTab } from '@/components/profile/ProfileTabs';
 import { PostsTab } from '@/components/profile/PostsTab';
 import { HighlightsTab } from '@/components/profile/HighlightsTab';
 import { CareerTab } from '@/components/profile/CareerTab';
+import { ClubPageView } from '@/components/club/page/ClubPageView';
 import { useAsync } from '@/hooks/useAsync';
-import { getProfile, unblockUser } from '@/lib/api';
+import { childrenOnProfile, getProfile, guardianContactsOf, unblockUser } from '@/lib/api';
+import { clubPageOf } from '@/lib/api.club';
 import { didIBlock } from '@/lib/api.profile';
-import { compactNumber, displayName } from '@/lib/format';
+import { compactNumber, displayName, metaLine } from '@/lib/format';
+import { positionLabel, sportLabel } from '@/constants/sports';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 
@@ -57,6 +61,42 @@ export default function PublicProfileScreen() {
     refetchOnFocus: true,
   });
 
+  /* Asked at the same time as the profile. Nothing is drawn until a row
+     comes back, and a slow answer never holds the profile. */
+  const guardians = useAsync(
+    async () => ({ userId, rows: await guardianContactsOf(userId as string) }),
+    [userId],
+    { enabled: !!userId },
+  );
+  const children = useAsync(
+    async () => ({ userId, rows: await childrenOnProfile(userId as string) }),
+    [userId],
+    { enabled: !!userId },
+  );
+  const guardianRows = guardians.data?.userId === userId ? guardians.data.rows : [];
+  const childRows = children.data?.userId === userId ? children.data.rows : [];
+
+  /* Asked at the same time as the profile. Null for anyone who is not a
+     club account, and null on failure, so this screen stays the person
+     profile. A page id is drawn here, with no second navigation. */
+  const [clubLookup, setClubLookup] = useState<{ userId: string; pageId: string | null } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    clubPageOf(userId).then((pageId) => {
+      if (!cancelled) setClubLookup({ userId, pageId });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  const clubPageKnown = !!userId && clubLookup?.userId === userId;
+  const clubPageId = clubPageKnown ? clubLookup.pageId : null;
+
   const iBlocked = useAsync(
     () => didIBlock(userId as string),
     [userId, bundle.data?.blocked],
@@ -65,9 +105,11 @@ export default function PublicProfileScreen() {
 
   const reloadAll = useCallback(() => {
     bundle.refresh();
+    guardians.refresh();
+    children.refresh();
     setChildKey((key) => key + 1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bundle.refresh]);
+  }, [bundle.refresh, guardians.refresh, children.refresh]);
 
   const onUnblock = useCallback(async () => {
     if (!userId) return;
@@ -98,12 +140,18 @@ export default function PublicProfileScreen() {
     );
   }
 
-  if (bundle.loading && !bundle.data) {
+  /* Hold the skeleton until the page lookup settles, so a club page and a
+     person profile are the same transition. */
+  if (!clubPageKnown || (bundle.loading && !bundle.data && !clubPageId)) {
     return (
       <Screen header={<Header back title={t('profile.title')} />}>
         <SkeletonList count={3} />
       </Screen>
     );
+  }
+
+  if (clubPageId) {
+    return <ClubPageView orgId={clubPageId} />;
   }
 
   if (bundle.error || !bundle.data) {
@@ -132,6 +180,7 @@ export default function PublicProfileScreen() {
         {iBlocked.data ? (
           <View style={{ alignItems: 'center' }}>
             <Button
+              size="sm"
               label={t('common.unblock')}
               variant="secondary"
               loading={unblocking}
@@ -178,6 +227,7 @@ export default function PublicProfileScreen() {
           gap: spacing.lg,
         }}
       >
+        <FamilyLinks guardians={guardianRows} childLinks={childRows} />
         {athlete || data.user.role === 'coach' ? <TheirInviteBadge key={`ib-${childKey}`} userId={data.user.id} /> : null}
         {athlete ? <ScoreCard score={data.score} /> : null}
         {athlete ? <TheirGiCard key={childKey} userId={data.user.id} /> : null}
@@ -242,12 +292,35 @@ export default function PublicProfileScreen() {
           />
         )}
 
-        {athlete ? <ProfileTabs value={tab} onChange={setTab} /> : null}
+        {athlete ? (
+          <ProfileTabs
+            value={tab}
+            onChange={setTab}
+            postCount={data.stats?.posts ?? 0}
+            clipCount={data.stats?.media ?? 0}
+          />
+        ) : null}
 
         {!athlete || tab === 'posts' ? (
-          <PostsTab userId={data.user.id} isSelf={isSelf} refreshKey={childKey} />
+          <PostsTab
+            userId={data.user.id}
+            isSelf={isSelf}
+            refreshKey={childKey}
+            showLayoutRow={!athlete}
+          />
         ) : tab === 'highlights' ? (
-          <HighlightsTab athleteId={athlete.id} isSelf={isSelf} refreshKey={childKey} />
+          <HighlightsTab
+            athleteId={athlete.id}
+            isSelf={isSelf}
+            refreshKey={childKey}
+            author={{
+              name: displayName(data.user.full_name),
+              avatar: data.user.avatar_url ?? null,
+              verified: !!data.user.is_verified,
+              score: data.score?.overall ?? null,
+              meta: metaLine(positionLabel(t, athlete.position, athlete.sport), sportLabel(t, athlete.sport)),
+            }}
+          />
         ) : (
           <CareerTab
             athleteId={athlete.id}

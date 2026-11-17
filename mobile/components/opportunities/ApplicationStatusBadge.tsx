@@ -32,7 +32,7 @@ const STATUSES: Record<ApplicationStatus, { tone: Tone }> = {
   shortlisted: { tone: 'warning' },
   invited: { tone: 'success' },
   accepted: { tone: 'success' },
-  rejected: { tone: 'danger' },
+  rejected: { tone: 'neutral' },
   withdrawn: { tone: 'muted' },
 };
 

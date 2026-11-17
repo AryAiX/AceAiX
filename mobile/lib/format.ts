@@ -1,4 +1,4 @@
-import { currentLanguage, tr } from './i18n-bridge';
+import { currentLanguage, intlLocale, tr } from './i18n-bridge';
 
 /**
  * Small, boring formatters. Shared so the app speaks with one voice.
@@ -44,18 +44,30 @@ export function fullDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = parseDate(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(currentLanguage(), {
+  return d.toLocaleDateString(intlLocale(currentLanguage()), {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
   });
 }
 
+/** A day with its weekday, for a hint line: "Wed 11 Nov". */
+export function shortDay(date: Date): string {
+  return date.toLocaleDateString(intlLocale(currentLanguage()), { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/** Two days as a span, for a hint line: "11 Nov – 18 Nov". */
+export function dayRange(from: Date, to: Date): string {
+  const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+  const lang = intlLocale(currentLanguage());
+  return `${from.toLocaleDateString(lang, opts)} – ${to.toLocaleDateString(lang, opts)}`;
+}
+
 export function timeOfDay(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString(currentLanguage(), { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(intlLocale(currentLanguage()), { hour: '2-digit', minute: '2-digit' });
 }
 
 /**

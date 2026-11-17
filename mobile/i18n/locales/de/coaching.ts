@@ -107,6 +107,9 @@ export const coaching = {
   askGuardian: 'Meine Eltern fragen',
   ownCalendar: 'Das ist dein eigener Kalender.',
   manageCalendar: 'Kalender verwalten',
+  guardianAccount:
+    'Dein Kind bucht Termine über das eigene Konto. Du wirst über jede Buchung informiert und kannst sie unter Kinder absagen.',
+  openChildren: 'Kinder öffnen',
   unavailable: 'Dieser Trainer kann nicht gebucht werden.',
   upcoming: 'Demnächst',
   past: 'Früher',
@@ -120,6 +123,7 @@ export const coaching = {
   forChild: 'Für {{name}}',
   guardianIntro: 'Termine der Jugendlichen, für die du verantwortlich bist.',
   cardBook: 'Termin buchen',
+  seeSessions: 'Termine ansehen',
   cardManage: 'Meinen Kalender öffnen',
   cardSetup: 'Schüler annehmen: Lege dein Angebot an und öffne Zeiten.',
   priceFrom: 'Ab {{amount}}',

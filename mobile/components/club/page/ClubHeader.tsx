@@ -5,8 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck, ChevronRight, ShieldCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Button, Text } from '@/components/ui';
+import { Badge, Text } from '@/components/ui';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
+import { FollowButton } from '@/components/discover/FollowButton';
 import { countryLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import type { ClubPage } from '@/lib/api.club';
@@ -215,12 +216,12 @@ export function ClubHeader({ page, following, followers, followBusy, onToggleFol
             {followerLabel}
           </Text>
           {team ? null : (
-            <Button
-              label={following ? t('common.following') : t('common.follow')}
-              variant={following ? 'secondary' : 'primary'}
-              size="sm"
-              loading={followBusy}
+            <FollowButton
+              following={following}
+              pending={followBusy}
               onPress={onToggleFollow}
+              role="club"
+              name={org.name}
               accessibilityLabel={
                 following
                   ? t('opportunities.org.unfollowA11y', { name: org.name })

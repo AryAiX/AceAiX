@@ -6,6 +6,7 @@
  * the whole UI is written against.
  */
 
+import type { TaggedPerson } from '@/lib/api.postTags';
 import type { MentionSpan } from '@/lib/mentions';
 
 export type UserRole =
@@ -192,6 +193,8 @@ export interface FeedPost {
   created_at: string;
   /** Code-point spans. The character at `start` is "@". Loaders fill this in. */
   mentions?: MentionSpan[];
+  /** People attached to the post itself. Not the same as @mentions. */
+  tagged?: TaggedPerson[];
 }
 
 export interface SavedPost extends FeedPost {
@@ -370,12 +373,21 @@ export type NotificationType =
   | 'comment'
   | 'reply'
   | 'mention'
+  | 'post_tag'
+  | 'sport_request_approved'
+  | 'sport_request_matched'
+  | 'sport_request_rejected'
   | 'like'
   | 'application_received'
   | 'application_status'
   | 'profile_view'
   | 'endorsement'
   | 'score_tier_up'
+  | 'challenge_entry'
+  | 'challenge_verified'
+  | 'challenge_rejected'
+  | 'gi_completed'
+  | 'sport_fit_completed'
   | 'opportunity'
   | 'sponsorship_offer'
   | 'sponsorship_application'
@@ -429,6 +441,7 @@ export interface AppNotification {
     | 'club_match'
     | 'club_event'
     | 'guardian_consent'
+    | 'sport_request'
     | null;
   entity_id: string | null;
   actor_count: number;
@@ -509,6 +522,8 @@ export interface GuardianConsent {
   allow_sponsorship?: boolean;
   allow_bookings?: boolean;
   allow_mindset?: boolean;
+  /** The linked parent chose to appear on the child's profile (QA-206). */
+  show_on_profile?: boolean;
   granted_at: string | null;
   created_at: string;
 }

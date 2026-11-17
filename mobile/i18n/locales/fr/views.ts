@@ -9,7 +9,7 @@
  */
 export const views = {
   title: 'Qui a regardé ton profil',
-  subtitle: 'Les coachs, recruteurs et clubs des {{days}} derniers jours.',
+  subtitle: 'Vues sur les {{days}} derniers jours.',
 
   homeTitleNone: 'Personne n’a encore regardé cette semaine',
   homeTitle_one: '{{count}} personne a regardé ton profil',
@@ -22,6 +22,10 @@ export const views = {
   homeClubs_many: 'de {{count}} clubs',
   homeClubs_other: 'de {{count}} clubs',
   homeEmptyBody: 'Ajoute un clip ou note un match — les profils avec des vidéos sont ouverts en premier.',
+  including: 'Dont {{name}}',
+  includingMore_one: 'Dont {{name}} et {{count}} autre',
+  includingMore_many: 'Dont {{name}} et {{count}} autres',
+  includingMore_other: 'Dont {{name}} et {{count}} autres',
   homeCta: 'Voir qui',
 
   namedTitle: 'Nommés',
@@ -48,4 +52,7 @@ export const views = {
   whyTitle: 'Pourquoi certains noms manquent',
   whyBody:
     'Nous nommons les coachs, les recruteurs et les clubs vérifiés — des gens qui agissent à titre professionnel sur un profil que tu as publié pour être trouvé. Les comptes non vérifiés et les autres athlètes sont comptés, jamais nommés. Cette règle ne change pour personne.',
+  unnamedOnlyTitle_one: '{{count}} vue sans nom',
+  unnamedOnlyTitle_many: '{{count}} vues sans nom',
+  unnamedOnlyTitle_other: '{{count}} vues sans nom',
 };

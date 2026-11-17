@@ -17,6 +17,7 @@ import {
   type ServiceKind,
 } from '@/lib/coaching';
 import { errorMessage } from '@/lib/errors';
+import { toLatinDigits } from '@/lib/digits';
 import { Routes } from '@/lib/routes';
 import { parseAmount } from '@/lib/sponsorship';
 
@@ -67,7 +68,7 @@ export default function CoachingServiceScreen() {
   const submit = async () => {
     const places = capacityFor(kind, capacity);
     /* A price of 0 is a free session, which parseAmount reads as "not a number". */
-    const cost = price.trim() === '0' ? 0 : parseAmount(price);
+    const cost = toLatinDigits(price).trim() === '0' ? 0 : parseAmount(price);
     const next = {
       title: title.trim().length < 3 ? t('coaching.titleRequired') : undefined,
       capacity: places === undefined ? t('coaching.capacityInvalid') : undefined,

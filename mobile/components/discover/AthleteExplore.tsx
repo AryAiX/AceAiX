@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Building2, Check, Search, Trophy, Users } from 'lucide-react-native';
+import { Building2, Check, ChevronDown, Lock, MapPin, Search, Trophy, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
@@ -21,12 +21,14 @@ import {
 import { SPORTS, countryLabel, countryOptions, positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { myLinkedMinors, searchOrganizations, searchPeople } from '@/lib/api';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import {
   followedOrganizationIds,
   followedUserIds,
-  leaderboard,
+  leaderboardPage,
+  leaderboardWaiting,
   listCoaches,
   toggleOrganizationFollow,
 } from '@/lib/api.discover';
@@ -42,14 +44,44 @@ import { SponsorsTab } from '@/components/sponsorship/SponsorsTab';
 import { BookableCoaches } from '@/components/coaching/BookableCoaches';
 import { ClubCard } from './ClubCard';
 import { CoachRow } from './CoachRow';
+import { LeaderboardPodium } from './LeaderboardPodium';
 import { LeaderboardRow } from './LeaderboardRow';
+import { groupedRowStyle } from './groupedRow';
 import { tierLabel } from './MatchBadge';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 export type AthleteDiscoverTab = 'explore' | 'clubs' | 'coaches' | 'sponsors' | 'leaderboard';
 type Tab = AthleteDiscoverTab;
 
 const SEARCH_DEBOUNCE_MS = 300;
 const BOARD_SIZE = 50;
+
+interface BoardPage {
+  term: string;
+  rows: LeaderboardEntry[];
+  /** A full page came back, so another may follow. */
+  hasMore: boolean;
+  /** Minors the board does not name. Loaded once, with the first page. */
+  waiting: number;
+}
+
+interface BoardExtra {
+  /** The first page these later rows belong to. */
+  base: BoardPage | null;
+  rows: LeaderboardEntry[];
+  /** Rows the server has already sent, including any duplicate it repeated. */
+  fetched: number;
+  hasMore: boolean;
+  failed: boolean;
+}
+
+const EMPTY_EXTRA: BoardExtra = {
+  base: null,
+  rows: [],
+  fetched: 0,
+  hasMore: false,
+  failed: false,
+};
 
 interface Page<T> {
   term: string;
@@ -72,12 +104,28 @@ interface Props {
   /** Main's link into a tab; tabRequestKey changes on every new request. */
   requestedTab?: string;
   tabRequestKey?: string;
+  /** Show just this one side, with no tab row: a page opened from Discover. */
+  only?: AthleteDiscoverTab;
+  /** A word to start with, typed in the box (search's "See all"). */
+  initialQuery?: string;
 }
 
 /** Same case-insensitive equality the talent_leaderboard RPC uses via `ilike`. */
 function matchesChip(value: string | null | undefined, selected: string | undefined): boolean {
   if (!selected) return true;
   return (value ?? '').toLowerCase() === selected.toLowerCase();
+}
+
+/** Keep the first row for an athlete and drop a later copy of the same id. */
+function uniqueAthletes(rows: LeaderboardEntry[]): LeaderboardEntry[] {
+  const seen = new Set<string>();
+  const out: LeaderboardEntry[] = [];
+  for (const row of rows) {
+    if (seen.has(row.athlete_id)) continue;
+    seen.add(row.athlete_id);
+    out.push(row);
+  }
+  return out;
 }
 
 /**
@@ -96,7 +144,7 @@ function AthleteSearchRow({ person, isYou }: { person: PersonResult; isYou: bool
   const tierName = tierLabel(t, tier);
   const meta = metaLine(
     sportLabel(t, person.sport),
-    positionLabel(t, person.position),
+    positionLabel(t, person.position, person.sport),
     person.country,
   );
 
@@ -164,7 +212,10 @@ export function AthleteExplore({
   initialTab = 'explore',
   requestedTab,
   tabRequestKey,
+  only,
+  initialQuery,
 }: Props) {
+  const endPad = useEndPadding();
   const router = useRouter();
   const theme = useTheme();
   const t = useT();
@@ -173,15 +224,15 @@ export function AthleteExplore({
   const { profile, isGuardian } = useAuth();
   const canSearchBoard = profile?.is_minor === false;
 
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTab] = useState<Tab>(only ?? initialTab);
 
   /* A link that names a side wins over whatever was open before it. */
   useEffect(() => {
-    setTab(initialTab);
-  }, [initialTab]);
+    setTab(only ?? initialTab);
+  }, [initialTab, only]);
 
   useEffect(() => {
-    if (!tabRequestKey) return;
+    if (!tabRequestKey || only) return;
     if (
       requestedTab === 'clubs' ||
       requestedTab === 'coaches' ||
@@ -191,10 +242,10 @@ export function AthleteExplore({
       setQuery('');
       setDebounced('');
     }
-  }, [tabRequestKey, requestedTab]);
+  }, [tabRequestKey, requestedTab, only]);
 
-  const [query, setQuery] = useState('');
-  const [debounced, setDebounced] = useState('');
+  const [query, setQuery] = useState(initialQuery ?? '');
+  const [debounced, setDebounced] = useState(initialQuery ?? '');
   const [sport, setSport] = useState<string | undefined>(undefined);
   const [country, setCountry] = useState<string | undefined>(undefined);
   const [countrySheet, setCountrySheet] = useState(false);
@@ -205,6 +256,8 @@ export function AthleteExplore({
   );
   /* Coaches: everyone, or only those who can be booked. */
   const [bookable, setBookable] = useState(false);
+  /* Clubs: all of them, the ones I follow, or academies only. On the phone. */
+  const [clubFilter, setClubFilter] = useState<'all' | 'following' | 'academies'>('all');
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(query), SEARCH_DEBOUNCE_MS);
@@ -225,11 +278,107 @@ export function AthleteExplore({
   );
   const boardScope = `${sport ?? ''}|${country ?? ''}`;
   const searchingBoard = tab === 'leaderboard' && canSearchBoard && !!debounced;
-  const board = useAsync<Page<LeaderboardEntry>>(
-    async () => ({ term: boardScope, rows: await leaderboard(sport, country, BOARD_SIZE) }),
+  const board = useAsync<BoardPage>(
+    async () => {
+      const [rows, waiting] = await Promise.all([
+        leaderboardPage(sport, country, 0, BOARD_SIZE),
+        leaderboardWaiting(),
+      ]);
+      return {
+        term: boardScope,
+        rows,
+        hasMore: rows.length >= BOARD_SIZE,
+        waiting,
+      };
+    },
     [sport, country],
     { enabled: tab === 'leaderboard' && !searchingBoard },
   );
+  /* Pages after the first. Dropped when the first page is replaced. */
+  const [extra, setExtra] = useState<BoardExtra>(EMPTY_EXTRA);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const requestGen = useRef(0);
+
+  /* A new first page (filter, pull to refresh, tapping the tab again) starts
+     over at offset 0. While that request is out, a scroll must not append a
+     page of the board we just left. */
+  const restartBoard = useCallback(() => {
+    requestGen.current += 1;
+    loadingMoreRef.current = true;
+    setLoadingMore(false);
+    setExtra(EMPTY_EXTRA);
+  }, []);
+
+  const sawBoardScope = useRef(false);
+  useEffect(() => {
+    // The first run is the screen opening, and the first page is already loading.
+    if (!sawBoardScope.current) {
+      sawBoardScope.current = true;
+      return;
+    }
+    restartBoard();
+  }, [boardScope, restartBoard]);
+
+  useEffect(() => {
+    if (board.data) loadingMoreRef.current = false;
+  }, [board.data]);
+
+  const loadMore = useCallback(
+    async (retry = false) => {
+      const first = board.data;
+      if (!first || first.term !== boardScope) return;
+      if (loadingMoreRef.current) return;
+
+      const current: BoardExtra =
+        extra.base === first
+          ? extra
+          : {
+              base: first,
+              rows: [],
+              fetched: first.rows.length,
+              hasMore: first.hasMore,
+              failed: false,
+            };
+      if (!current.hasMore) return;
+      if (current.failed && !retry) return;
+
+      const gen = requestGen.current;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      if (current.failed) setExtra({ ...current, failed: false });
+
+      try {
+        const page = await leaderboardPage(sport, country, current.fetched, BOARD_SIZE);
+        if (requestGen.current !== gen) return;
+        const seen = new Set<string>();
+        for (const row of first.rows) seen.add(row.athlete_id);
+        for (const row of current.rows) seen.add(row.athlete_id);
+        const fresh = page.filter((row) => {
+          if (seen.has(row.athlete_id)) return false;
+          seen.add(row.athlete_id);
+          return true;
+        });
+        setExtra({
+          base: first,
+          rows: [...current.rows, ...fresh],
+          fetched: current.fetched + page.length,
+          hasMore: page.length >= BOARD_SIZE,
+          failed: false,
+        });
+      } catch {
+        if (requestGen.current !== gen) return;
+        setExtra({ ...current, base: first, failed: true });
+      } finally {
+        if (requestGen.current === gen) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        }
+      }
+    },
+    [board.data, boardScope, extra, sport, country],
+  );
+
   const athletes = useAsync<Page<PersonResult>>(
     async () => ({ term: debounced, rows: await searchPeople(debounced, 'athlete', 30) }),
     [debounced],
@@ -324,11 +473,29 @@ export function AthleteExplore({
     [profile?.following_count, toast, viewerId],
   );
 
+  /* Tap Discover while on Discover. Clubs, coaches and the leaderboard are
+     lists drawn here, one at a time, so they share one ref. Explore, Sponsors
+     and "Taking students" draw their own lists and answer the tap themselves.
+     Each reload mirrors that list's pull-to-refresh, minus the spinner. */
+  const attachList = useTabReselect(() => {
+    if (tab === 'clubs') clubs.reload();
+    else if (tab === 'coaches' && !bookable) coaches.reload();
+    else if (tab === 'leaderboard') {
+      if (searchingBoard) athletes.reload();
+      else {
+        restartBoard();
+        board.reload();
+      }
+    }
+  });
+
   const listStyle = {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.giant,
-    gap: spacing.sm,
+    paddingBottom: endPad,
   };
+  /* Each list is drawn as one white card, a row at a time. */
+  const rowStyle = (index: number, count: number, background?: string) =>
+    groupedRowStyle(index, count, colors, theme.radii.xl, background);
 
   const busy = (count: number) => (
     <View style={{ paddingHorizontal: spacing.lg }}>
@@ -366,24 +533,39 @@ export function AthleteExplore({
     />
   );
 
+  /* Where: its own chip with a pin and a ▾, because it opens a list rather
+     than switching something on. A thin line keeps it apart from the sports. */
+  const locationChip = (
+    <Chip
+      label={country ? countryLabel(t, country) : t('discover.explore.anywhere')}
+      selected={!!country}
+      onPress={() => setCountrySheet(true)}
+      icon={<MapPin size={14} color={country ? colors.primary : colors.textSecondary} />}
+      trailing={<ChevronDown size={14} color={country ? colors.primary : colors.textSecondary} />}
+      testID="discover-location-chip"
+    />
+  );
+  const chipDivider = (
+    <View style={{ width: 1, height: 22, alignSelf: 'center', backgroundColor: colors.border }} />
+  );
+
   const boardFilters = (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ gap: spacing.sm, paddingRight: spacing.lg }}
     >
+      {locationChip}
+      {chipDivider}
       <Chip
-        label={country ?? t('discover.explore.anywhere')}
-        selected={!!country}
-        onPress={() => setCountrySheet(true)}
-      />
-      <Chip
+        tone="accent"
         label={t('sports.allSports')}
         selected={!sport}
         onPress={() => setSport(undefined)}
       />
       {SPORTS.map((s) => (
         <Chip
+          tone="accent"
           key={s.key}
           label={sportLabel(t, s.key)}
           icon={<Text variant="caption">{s.emoji}</Text>}
@@ -397,11 +579,21 @@ export function AthleteExplore({
   function renderClubs() {
     if (clubs.error) return <ErrorState message={clubs.error} onRetry={clubs.reload} />;
     if (clubs.loading || clubs.data?.term !== debounced) return busy(4);
+    const clubRows = (clubs.data?.rows ?? []).filter(
+      (club) =>
+        matchesChip(club.country, country) &&
+        (clubFilter === 'following'
+          ? isOrgFollowed(club.id)
+          : clubFilter === 'academies'
+            ? club.type === 'academy'
+            : true),
+    );
 
     return (
       <FlatList<Organization>
+        ref={attachList}
         style={{ flex: 1 }}
-        data={clubs.data?.rows ?? []}
+        data={clubRows}
         keyExtractor={(item) => item.id}
         contentContainerStyle={listStyle}
         keyboardShouldPersistTaps="handled"
@@ -413,8 +605,9 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <ClubCard
+            grouped={rowStyle(index, clubRows.length)}
             organization={{
               ...item,
               followers_count: shiftedCount(
@@ -448,14 +641,16 @@ export function AthleteExplore({
   }
 
   function renderCoaches() {
-    if (bookable) return <BookableCoaches query={debounced} />;
+    if (bookable) return <BookableCoaches query={debounced} country={country} />;
     if (coaches.error) return <ErrorState message={coaches.error} onRetry={coaches.reload} />;
     if (coaches.loading || coaches.data?.term !== debounced) return busy(4);
+    const coachRows = (coaches.data?.rows ?? []).filter((coach) => matchesChip(coach.country, country));
 
     return (
       <FlatList<PersonResult>
+        ref={attachList}
         style={{ flex: 1 }}
-        data={coaches.data?.rows ?? []}
+        data={coachRows}
         keyExtractor={(item) => item.id}
         contentContainerStyle={listStyle}
         keyboardShouldPersistTaps="handled"
@@ -467,8 +662,9 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <CoachRow
+            grouped={rowStyle(index, coachRows.length)}
             person={item}
             following={isPersonFollowed(item.id)}
             pending={pendingId === item.id}
@@ -500,6 +696,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<PersonResult>
+        ref={attachList}
         style={{ flex: 1 }}
         data={athleteHits}
         keyExtractor={(item) => item.id}
@@ -513,6 +710,7 @@ export function AthleteExplore({
             colors={[colors.primary]}
           />
         }
+        ItemSeparatorComponent={RowGap}
         renderItem={({ item }) => (
           <AthleteSearchRow person={item} isYou={item.id === viewerId} />
         )}
@@ -531,10 +729,20 @@ export function AthleteExplore({
     if (searchingBoard) return renderBoardSearch();
 
     if (board.error) return <ErrorState message={board.error} onRetry={board.reload} />;
-    if (board.loading || board.data?.term !== boardScope) return busy(5);
+    if (board.loading || board.data?.term !== boardScope || !board.data) return busy(5);
 
-    const rows = board.data.rows;
-    const youAreOnIt = !!viewerId && rows.some((row) => row.user_id === viewerId);
+    const first = board.data;
+    const paging = extra.base === first ? extra : null;
+    const allRows = uniqueAthletes([...first.rows, ...(paging?.rows ?? [])]);
+    const hasMore = paging ? paging.hasMore : first.hasMore;
+    const moreFailed = paging?.failed ?? false;
+    const reachedEnd = !hasMore && !loadingMore && !moreFailed;
+    const showWaiting = reachedEnd && !sport && !country && first.waiting > 0;
+    /* The first three stand on the podium; the list carries on from fourth.
+       The number on each row is the server's rank, not its place in this array. */
+    const podium = allRows.length >= 3 ? allRows.slice(0, 3) : [];
+    const rows = podium.length ? allRows.slice(3) : allRows;
+    const youAreOnIt = !!viewerId && allRows.some((row) => row.user_id === viewerId);
     /* The scope reads back to the reader, so it is built from translated parts
        rather than glued together from the filter values. */
     const scopeSport = sport ? sportLabel(t, sport) : t('discover.board.everySport');
@@ -544,6 +752,7 @@ export function AthleteExplore({
 
     return (
       <FlatList<LeaderboardEntry>
+        ref={attachList}
         style={{ flex: 1 }}
         data={rows}
         keyExtractor={(item) => item.athlete_id}
@@ -551,18 +760,29 @@ export function AthleteExplore({
         refreshControl={
           <RefreshControl
             refreshing={board.refreshing}
-            onRefresh={board.refresh}
+            onRefresh={() => {
+              restartBoard();
+              board.refresh();
+            }}
             tintColor={colors.primary}
             colors={[colors.primary]}
           />
         }
+        onEndReachedThreshold={0.4}
+        onEndReached={() => {
+          void loadMore();
+        }}
         ListHeaderComponent={
-          rows.length > 0 ? (
-            <Text variant="caption" tone="muted" style={{ marginBottom: spacing.xs }}>
-              {t('discover.board.caption', { scope })}
-            </Text>
-          ) : null
+          allRows.length > 0 ? (
+            <View>
+              <Text variant="caption" tone="muted" style={{ marginBottom: spacing.sm }}>
+                {t('discover.board.caption', { scope })}
+              </Text>
+              <LeaderboardPodium top={podium} viewerId={viewerId} />
+            </View>
+          ) : undefined
         }
+        ItemSeparatorComponent={RowGap}
         renderItem={({ item }) => (
           <LeaderboardRow
             entry={item}
@@ -571,23 +791,74 @@ export function AthleteExplore({
           />
         )}
         ListFooterComponent={
-          rows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
-            <Text
-              variant="caption"
-              tone="muted"
-              align="center"
-              style={{ marginTop: spacing.lg, paddingHorizontal: spacing.lg }}
-            >
-              {t('discover.board.keepBuilding')}
-            </Text>
-          ) : null
+          loadingMore || moreFailed || showWaiting || (allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian) ? (
+            <View>
+              {loadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ marginTop: spacing.lg }}
+                  accessibilityLabel={t('common.loading')}
+                />
+              ) : null}
+              {moreFailed ? (
+                <Pressable
+                  onPress={() => {
+                    void loadMore(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.retry')}
+                  style={{
+                    marginTop: spacing.md,
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: spacing.lg,
+                  }}
+                >
+                  <Text variant="caption" color={colors.primary}>
+                    {t('common.retry')}
+                  </Text>
+                </Pressable>
+              ) : null}
+              {showWaiting ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: spacing.xs,
+                    marginTop: spacing.lg,
+                    paddingHorizontal: spacing.lg,
+                  }}
+                >
+                  <Lock size={14} color={colors.textMuted} accessibilityElementsHidden />
+                  <Text variant="caption" tone="muted" align="center" style={{ flexShrink: 1 }}>
+                    {t('discover.board.waiting', { count: first.waiting })}
+                  </Text>
+                </View>
+              ) : null}
+              {allRows.length > 0 && viewerId && !youAreOnIt && !isGuardian ? (
+                <Text
+                  variant="caption"
+                  tone="muted"
+                  align="center"
+                  style={{ marginTop: spacing.lg, paddingHorizontal: spacing.lg }}
+                >
+                  {t('discover.board.keepBuilding')}
+                </Text>
+              ) : null}
+            </View>
+          ) : undefined
         }
         ListEmptyComponent={
-          <EmptyState
-            icon={<Trophy size={26} color={colors.textMuted} />}
-            title={t('discover.board.emptyTitle')}
-            body={t('discover.board.emptyBody')}
-          />
+          allRows.length > 0 ? undefined : (
+            <EmptyState
+              icon={<Trophy size={26} color={colors.textMuted} />}
+              title={t('discover.board.emptyTitle')}
+              body={t('discover.board.emptyBody')}
+            />
+          )
         }
       />
     );
@@ -595,18 +866,20 @@ export function AthleteExplore({
 
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ paddingBottom: spacing.md }}>
-        <ScrollTabs<Tab>
-          options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
-          value={tab}
-          onChange={(next) => {
-            setTab(next);
-            setQuery('');
-            setDebounced('');
-          }}
-          testID="explore-tabs"
-        />
-      </View>
+      {only ? null : (
+        <View style={{ paddingBottom: spacing.md }}>
+          <ScrollTabs<Tab>
+            options={TABS.map((entry) => ({ value: entry.value, label: t(entry.labelKey) }))}
+            value={tab}
+            onChange={(next) => {
+              setTab(next);
+              setQuery('');
+              setDebounced('');
+            }}
+            testID="explore-tabs"
+          />
+        </View>
+      )}
 
       <View style={{ paddingLeft: spacing.lg, paddingBottom: spacing.md, gap: spacing.md }}>
         {tab === 'explore' ? (
@@ -642,14 +915,51 @@ export function AthleteExplore({
               <View style={{ paddingRight: spacing.lg, gap: spacing.sm }}>
                 {searchField}
                 {tab === 'coaches' ? (
-                  <View style={{ flexDirection: 'row' }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: spacing.sm }}
+                  >
+                    {locationChip}
+                    {chipDivider}
+                    <Chip
+                      label={t('discover.filterAll')}
+                      selected={!bookable}
+                      onPress={() => setBookable(false)}
+                    />
                     <Chip
                       label={t('coaching.takingStudentsFilter')}
                       selected={bookable}
                       onPress={() => setBookable((b) => !b)}
                       testID="coaches-bookable-filter"
                     />
-                  </View>
+                  </ScrollView>
+                ) : tab === 'clubs' ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: spacing.sm }}
+                  >
+                    {locationChip}
+                    {chipDivider}
+                    <Chip
+                      label={t('discover.filterAll')}
+                      selected={clubFilter === 'all'}
+                      onPress={() => setClubFilter('all')}
+                    />
+                    <Chip
+                      label={t('common.following')}
+                      selected={clubFilter === 'following'}
+                      onPress={() => setClubFilter((f) => (f === 'following' ? 'all' : 'following'))}
+                      testID="clubs-following-filter"
+                    />
+                    <Chip
+                      label={t('discover.filterAcademies')}
+                      selected={clubFilter === 'academies'}
+                      onPress={() => setClubFilter((f) => (f === 'academies' ? 'all' : 'academies'))}
+                      testID="clubs-academies-filter"
+                    />
+                  </ScrollView>
                 ) : null}
               </View>
             ) : null}
@@ -674,7 +984,7 @@ export function AthleteExplore({
         visible={countrySheet}
         onClose={() => setCountrySheet(false)}
         title={t('discover.explore.countryTitle')}
-        subtitle={t('discover.explore.countrySubtitle')}
+        subtitle={tab === 'leaderboard' ? t('discover.explore.countrySubtitle') : undefined}
       >
         <Input
           placeholder={t('profile.searchCountries')}
@@ -716,4 +1026,8 @@ export function AthleteExplore({
       </Sheet>
     </View>
   );
+}
+
+function RowGap() {
+  return <View style={{ height: 8 }} />;
 }

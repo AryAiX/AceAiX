@@ -48,6 +48,9 @@ export const onboarding = {
   citySearchPlaceholder: 'Search cities',
   cityNoMatch: 'No city matches that. Try a shorter search.',
   cityShowAll: 'Show all cities',
+  countryChoose: 'Choose a country',
+  cityChoose: 'Choose a city',
+  cityUseTyped: 'Use “{{name}}”',
 
   // ── Athlete: physical ─────────────────────────────────────────────────────
   physicalTitle: 'A few numbers',
@@ -174,7 +177,7 @@ export const onboarding = {
   tipsTitle: 'How to move it up',
   tipPoints: '+{{points}}',
   tipsEmpty:
-    'Post a highlight, add your stats, and get your club to back you up. Every piece you add moves the score.',
+    'Add a clip to your Showcase, add your stats, and get your club to back you up. Every piece you add moves the score.',
   guardianRequested:
     'We emailed {{name}}. As soon as they approve, coaches can find you. Until then your profile stays private.',
   guardianPendingTitle: 'One thing left',

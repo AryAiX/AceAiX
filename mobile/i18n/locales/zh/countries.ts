@@ -200,4 +200,9 @@ export const countries = {
   yemen: '也门',
   zambia: '赞比亚',
   zimbabwe: '津巴布韦',
+  /* Short names for small cards. */
+  unitedArabEmiratesShort: '阿联酋',
+  unitedStatesShort: '美国',
+  unitedKingdomShort: '英国',
+  saudiArabiaShort: '沙特',
 };

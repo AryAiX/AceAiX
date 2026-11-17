@@ -159,7 +159,7 @@ export function ScorekeeperPanel({ match, clubName, busy, onStatus, onClock, onS
                 key={n}
                 label={t('clubMatch.score.plusMinutes', { n })}
                 variant="secondary"
-                size="md"
+                size="sm"
                 disabled={locked}
                 onPress={() => onClock({ minute: (match.minute ?? 0) + n })}
                 accessibilityLabel={t('clubMatch.score.addMinutesA11y', { n })}

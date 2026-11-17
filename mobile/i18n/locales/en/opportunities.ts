@@ -37,6 +37,11 @@ export const opportunities = {
 
   /** Sports come from `sports.allSports`; only the type row is ours. */
   allTypes: 'Everything',
+  searchPlaceholder: 'Search trials or clubs',
+  filters: 'Filters',
+  removeFilter: 'Remove {{label}}',
+  showResults_one: 'Show {{count}} result',
+  showResults_other: 'Show {{count}} results',
 
   athlete: {
     appliedOn: 'Applied {{date}}',
@@ -204,7 +209,7 @@ export const opportunities = {
     whatTheySee: 'What they will see',
     seeProfile: 'Your name and profile',
     seeScore: 'Your Talent Score',
-    seeHighlights: 'Your highlights and stats',
+    seeHighlights: 'Your Showcase clips and stats',
     seeMessage: 'The message you write above',
     guardianNotice: 'Your parent or guardian will be able to see applications you send.',
   },

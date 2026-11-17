@@ -157,6 +157,11 @@ export const safety = {
   badgeWithdrawn: 'Zurückgezogen',
   badgeExpired: 'Abgelaufen',
 
+  showOnProfile: 'Zeig mich auf dem Profil von {{name}}',
+  showOnProfileHint:
+    'Vereine, Trainer, Scouts und Sponsoren können dich dann sehen und dir wegen deines Kindes schreiben.',
+  parentOf: 'Elternteil von',
+
   // Was ein Elternteil sieht: dass es ein Gespräch gibt, nie seinen Inhalt
   whoTheyTalkTo: 'Mit wem gesprochen wird',
   noConversations: 'Noch keine Gespräche.',

@@ -9,6 +9,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useT } from '@/i18n';
 import { compactNumber } from '@/lib/format';
 import { NATIVE_DRIVER } from '@/lib/motion';
+import { LogoColors } from '@/theme/tokens';
 
 const formatCount = (n: number) => compactNumber(Math.round(n));
 
@@ -18,6 +19,11 @@ interface Props {
   commentCount: number;
   saved: boolean;
   onLike: () => void;
+  /**
+   * Opens the list of people who liked this post. The heart stays the like
+   * control. The number beside it uses this only when the count is above 0.
+   */
+  onPressLikeCount?: () => void;
   onComment: () => void;
   onShare: () => void;
   onSave: () => void;
@@ -38,12 +44,13 @@ export function PostActions({
   commentCount,
   saved,
   onLike,
+  onPressLikeCount,
   onComment,
   onShare,
   onSave,
 }: Props) {
   const theme = useTheme();
-  const { colors, spacing } = theme;
+  const { colors, radii, spacing } = theme;
   const t = useT();
   const reduced = useReducedMotion();
 
@@ -133,13 +140,19 @@ export function PostActions({
     }
   };
 
+  /* The number is its own target only after the first like. A zero is
+     absent, the same as the comment count beside it. */
+  const likeCountOpensList = !!onPressLikeCount && likeCount > 0;
+
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Action
         label={liked ? t('feed.unlikePost') : t('feed.likePost')}
         onPress={handleLike}
         selected={liked}
-        count={likeCount}
+        count={likeCountOpensList ? undefined : likeCount}
+        flushEnd={likeCountOpensList}
         icon={
           <Animated.View
             style={{
@@ -158,20 +171,45 @@ export function PostActions({
                 height: ICON + 8,
                 borderRadius: (ICON + 8) / 2,
                 borderWidth: 2,
-                borderColor: colors.primary,
+                borderColor: colors.like,
                 opacity: ping.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.7, 0] }),
                 transform: [{ scale: ping.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1.9] }) }],
               }}
             />
             <Heart
               size={ICON}
-              color={liked ? colors.primary : colors.textSecondary}
-              fill={liked ? colors.primary : 'transparent'}
+              color={liked ? colors.like : colors.textSecondary}
+              fill={liked ? colors.like : 'transparent'}
               strokeWidth={liked ? 2.4 : 1.9}
             />
           </Animated.View>
         }
       />
+      {likeCountOpensList ? (
+        <Tappable
+          onPress={onPressLikeCount}
+          accessibilityRole="button"
+          accessibilityLabel={t('feed.seeWhoLiked', { count: likeCount })}
+          hitSlop={12}
+          testID="post-like-count"
+          style={({ pressed }) => ({
+            paddingStart: spacing.xs + 2,
+            borderRadius: radii.button,
+            backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
+          })}
+        >
+          <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <AnimatedNumber
+              value={likeCount}
+              variant="captionStrong"
+              tone={liked ? 'primary' : 'secondary'}
+              format={formatCount}
+              duration={theme.duration.base}
+            />
+          </View>
+        </Tappable>
+      ) : null}
+      </View>
 
       <Action
         label={t('feed.readAndAddComments')}
@@ -213,8 +251,8 @@ export function PostActions({
             >
               <Bookmark
                 size={ICON}
-                color={colors.primary}
-                fill={colors.primary}
+                color={LogoColors.gold}
+                fill={LogoColors.gold}
                 strokeWidth={2.4}
               />
             </Animated.View>
@@ -232,6 +270,7 @@ function Action({
   onPress,
   selected,
   haptic,
+  flushEnd,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -239,6 +278,8 @@ function Action({
   onPress: () => void;
   selected?: boolean;
   haptic?: boolean;
+  /** Drop the end padding so a separate count can sit in the same gap. */
+  flushEnd?: boolean;
 }) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -257,10 +298,11 @@ function Action({
         alignItems: 'center',
         gap: spacing.xs + 2,
         minHeight: theme.hit.min,
-        minWidth: theme.hit.min,
-        justifyContent: 'center',
-        paddingHorizontal: spacing.sm,
-        borderRadius: radii.pill,
+        minWidth: flushEnd ? undefined : theme.hit.min,
+        justifyContent: flushEnd ? 'flex-start' : 'center',
+        paddingStart: spacing.sm,
+        paddingEnd: flushEnd ? 0 : spacing.sm,
+        borderRadius: radii.button,
         backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
       })}
     >

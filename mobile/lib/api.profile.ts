@@ -5,8 +5,8 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 import { supabase, Buckets, publicUrl, SUPABASE_URL } from '@/lib/supabase';
 import { getSponsorshipCard } from '@/lib/api.sponsorship';
 import { AppError } from '@/lib/errors';
-import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
-import { getUserPosts, myLinkedMinors } from '@/lib/api';
+import { isAbsoluteMediaUrl, posterOf } from '@/lib/mediaUrl';
+import { getUserPosts, myLinkedMinors, signPostMedia } from '@/lib/api';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { prepareVideo } from '@/lib/videoPrep';
 import { randomUploadId } from '@/lib/uploadId';
@@ -424,13 +424,33 @@ export async function deleteAthleteMedia(mediaId: string): Promise<void> {
 export async function getPostTiles(userId: string): Promise<PostTile[]> {
   const posts = await getUserPosts(userId);
   const firstMedia = posts
-    .map((post) => post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null)
+    .map((post) => posterOf(post.media?.[0]))
     .filter((value): value is string => !!value);
 
   const urls = await resolveMediaUrls(firstMedia);
 
   return posts.map((post) => {
-    const key = post.media?.[0]?.thumbnail ?? post.media?.[0]?.url ?? null;
+    const key = posterOf(post.media?.[0]);
+    return { ...post, thumbnail: (key && urls[key]) ?? null };
+  });
+}
+
+/** Posts this person is tagged in. The server already hides what you cannot see. */
+export async function getTaggedPostTiles(userId: string): Promise<PostTile[]> {
+  const { data, error } = await supabase.rpc('get_tagged_posts', {
+    p_user: userId,
+    p_limit: 24,
+  });
+  if (error) throw new AppError(error);
+  const posts = await signPostMedia((data ?? []) as UserPost[]);
+  const firstMedia = posts
+    .map((post) => posterOf(post.media?.[0]))
+    .filter((value): value is string => !!value);
+
+  const urls = await resolveMediaUrls(firstMedia);
+
+  return posts.map((post) => {
+    const key = posterOf(post.media?.[0]);
     return { ...post, thumbnail: (key && urls[key]) ?? null };
   });
 }
@@ -638,9 +658,11 @@ async function exactCount(
 /**
  * Opportunities a coach posted and challenges they set.
  *
- * Own profile counts everything of theirs. Someone else's profile counts only
- * what is still open: active opportunities and challenges with status `open`.
- * Reads go through the tables' RLS.
+ * Own profile counts every challenge the person set, the same list as Mine.
+ * Someone else's profile counts only challenges that are still running:
+ * status `open` and closes_at later than now. Opportunities on someone
+ * else's profile stay limited to the active ones. Reads go through the
+ * tables' RLS.
  */
 export async function getCoachStats(userId: string, isSelf: boolean): Promise<CoachStats> {
   try {
@@ -654,7 +676,9 @@ export async function getCoachStats(userId: string, isSelf: boolean): Promise<Co
       .from('challenges')
       .select('id', { count: 'exact', head: true })
       .eq('created_by', userId);
-    if (!isSelf) challenges = challenges.eq('status', 'open');
+    if (!isSelf) {
+      challenges = challenges.eq('status', 'open').gt('closes_at', new Date().toISOString());
+    }
 
     const [opportunityCount, challengeCount] = await Promise.all([
       exactCount(opportunities),
@@ -798,4 +822,61 @@ export function toHistoryPoints(rows: unknown[]): ScoreHistoryPoint[] {
     })
     .filter((point): point is ScoreHistoryPoint => point !== null)
     .sort((a, b) => a.recorded_on.localeCompare(b.recorded_on));
+}
+
+// ── A sport that is not in the list ─────────────────────────────────────────
+
+export interface SportRequest {
+  id: string;
+  requested_name: string;
+  status: 'pending' | 'approved' | 'matched' | 'rejected';
+  decided_sport: string | null;
+  admin_note: string | null;
+  created_at: string;
+}
+
+const SPORT_REQUEST_STATUSES = new Set<SportRequest['status']>([
+  'pending',
+  'approved',
+  'matched',
+  'rejected',
+]);
+
+/** Ask for a sport that is not in the list. The profile sport becomes Other. */
+export async function requestSport(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('request_sport', { p_name: name });
+  if (error) throw new AppError(error);
+  if (typeof data !== 'string' || !data) throw new AppError('Something went wrong');
+  return data;
+}
+
+/** The caller's newest sport request, or null when they have never asked. */
+export async function mySportRequest(): Promise<SportRequest | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return null;
+  const { data, error } = await supabase
+    .from('sport_requests')
+    .select('id, requested_name, status, decided_sport, admin_note, created_at')
+    .eq('user_id', auth.user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new AppError(error);
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  const status = typeof row.status === 'string' ? row.status : '';
+  if (!SPORT_REQUEST_STATUSES.has(status as SportRequest['status'])) return null;
+  const id = typeof row.id === 'string' ? row.id : '';
+  const requestedName = typeof row.requested_name === 'string' ? row.requested_name : '';
+  const createdAt = typeof row.created_at === 'string' ? row.created_at : '';
+  if (!id || !requestedName || !createdAt) return null;
+  const note = typeof row.admin_note === 'string' ? row.admin_note.trim() : '';
+  return {
+    id,
+    requested_name: requestedName,
+    status: status as SportRequest['status'],
+    decided_sport: typeof row.decided_sport === 'string' ? row.decided_sport : null,
+    admin_note: note || null,
+    created_at: createdAt,
+  };
 }

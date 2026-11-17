@@ -144,6 +144,10 @@ export const safety = {
   badgeWithdrawn: '已撤回',
   badgeExpired: '已过期',
 
+  showOnProfile: '在{{name}}的资料页显示我',
+  showOnProfileHint: '俱乐部、教练、球探和赞助商之后就能看到你，并就你的孩子给你发消息。',
+  parentOf: '家长',
+
   // 监护人能看到一段对话的什么：只看到它存在，永远看不到内容
   whoTheyTalkTo: '他们在和谁说话',
   noConversations: '还没有对话。',

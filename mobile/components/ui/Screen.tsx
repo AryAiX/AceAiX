@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   RefreshControl,
   ScrollView,
@@ -13,6 +15,8 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { useTheme } from '@/theme/ThemeProvider';
+import { DOCK_END_SPACE, useDockInset } from '@/components/navigation/dockInset';
+import type { TabScrollable } from '@/hooks/useTabReselect';
 
 interface Props {
   children: React.ReactNode;
@@ -34,6 +38,10 @@ interface Props {
    * is open. Off by default so every other screen keeps today's padding.
    */
   dropFooterInsetWithKeyboard?: boolean;
+  /** The scroll view, for tap-the-tab-again-to-top (`useTabReselect`). */
+  scrollRef?: (node: TabScrollable | null) => void;
+  /** Scroll position, for screens that change things as you scroll. */
+  onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   testID?: string;
 }
 
@@ -50,21 +58,28 @@ export function Screen({
   contentStyle,
   keyboardAvoiding = false,
   dropFooterInsetWithKeyboard = false,
+  scrollRef,
+  onScroll,
   testID,
 }: Props) {
   const theme = useTheme();
   const { colors, spacing } = theme;
   const insets = useSafeAreaInsets();
+  const dockInset = useDockInset();
   const keyboardOpen = useKeyboardVisible(!!dropFooterInsetWithKeyboard && Platform.OS === 'ios');
 
   const bg = background === 'surface' ? colors.surface : colors.bg;
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef as never}
+      onScroll={onScroll}
+      scrollEventThrottle={onScroll ? 32 : undefined}
       style={{ flex: 1 }}
       contentContainerStyle={[
         padded ? { paddingHorizontal: spacing.lg } : null,
-        { paddingBottom: spacing.giant },
+        /* On a tab screen the last thing must scroll clear of the dock. */
+        { paddingBottom: dockInset ? dockInset + DOCK_END_SPACE : spacing.giant },
         contentStyle,
       ]}
       keyboardShouldPersistTaps="handled"

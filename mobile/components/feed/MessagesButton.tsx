@@ -1,0 +1,88 @@
+import React from 'react';
+import { Pressable, View } from 'react-native';
+import { MessageSquare } from 'lucide-react-native';
+
+import { useTheme } from '@/theme/ThemeProvider';
+import { Text } from '@/components/ui';
+
+const SIZE = 44;
+const INK = '#FFFFFF';
+
+/**
+ * The way into Messages, beside the Playfeed switch on Home.
+ *
+ * Home is the only door to the inbox, so this button has to be found without
+ * looking for it: a warm sweep with a white icon. It is the one place warm is
+ * used for something other than time — a deliberate exception, agreed in the
+ * design review. The unread count sits on a green badge with a white number,
+ * rimmed in the page colour so it reads against the orange in both themes.
+ */
+export function MessagesButton({
+  count,
+  label,
+  onPress,
+  testID,
+}: {
+  count: number;
+  /** Read out to screen readers; says how many are unread. */
+  label: string;
+  onPress: () => void;
+  testID?: string;
+}) {
+  const theme = useTheme();
+  const { colors, radii } = theme;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      testID={testID}
+      style={({ pressed }) => ({
+        width: SIZE,
+        height: SIZE,
+        borderRadius: radii.button,
+        opacity: pressed ? 0.8 : 1,
+      })}
+    >
+      <View
+        style={{
+          flex: 1,
+          borderRadius: radii.button,
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          /* Messages are people, so they are on the blue side of the logo. */
+          backgroundColor: colors.primary,
+        }}
+      >
+        <MessageSquare size={20} color={INK} strokeWidth={2.2} />
+      </View>
+
+      {count > 0 ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: -5,
+            right: -5,
+            minWidth: 18,
+            height: 18,
+            paddingHorizontal: 4,
+            borderRadius: 9,
+            backgroundColor: colors.danger,
+            borderWidth: 2,
+            borderColor: colors.bg,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text variant="overline" color={INK} style={{ fontSize: 10 }} allowFontScaling={false}>
+            {count > 99 ? '99+' : count}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}

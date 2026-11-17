@@ -74,7 +74,7 @@ export function Header({
           style={({ pressed }) => ({
             width: 40,
             height: 40,
-            borderRadius: 20,
+            borderRadius: theme.radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.surfaceAlt,
@@ -89,7 +89,7 @@ export function Header({
 
       <View style={{ flex: 1 }}>
         {title ? (
-          <Text variant={large ? 'title' : 'heading'} numberOfLines={1}>
+          <Text variant={large ? 'screenTitle' : 'heading'} numberOfLines={1}>
             {title}
           </Text>
         ) : null}

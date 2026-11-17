@@ -22,7 +22,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { AthleteCard, COMPACT_CARD_WIDTH } from '@/components/discover/AthleteCard';
-import { AthleteExplore } from '@/components/discover/AthleteExplore';
+import { AthleteDiscoverHub } from '@/components/discover/AthleteDiscoverHub';
 import { DiscoverSwitch, type DiscoverView } from '@/components/explore/DiscoverSwitch';
 import { ExploreGrid } from '@/components/explore/ExploreGrid';
 import { SeekersList } from '@/components/sponsorship/SeekersList';
@@ -36,6 +36,7 @@ import {
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { useAsync } from '@/hooks/useAsync';
+import { useTabReselect } from '@/hooks/useTabReselect';
 import { discoverAthletes, getMatchPreferences } from '@/lib/api';
 import {
   addToShortlist,
@@ -47,6 +48,7 @@ import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { DiscoveredAthlete, DiscoveryFilters } from '@/types/models';
+import { useEndPadding } from '@/components/navigation/dockInset';
 
 const PAGE_SIZE = 20;
 const QUERY_DEBOUNCE_MS = 300;
@@ -77,7 +79,7 @@ function FilterButton({ active, onPress }: { active: boolean; onPress: () => voi
       style={({ pressed }) => ({
         width: theme.hit.min,
         height: theme.hit.min,
-        borderRadius: radii.pill,
+        borderRadius: radii.button,
         backgroundColor: active ? colors.primarySoft : colors.surfaceAlt,
         alignItems: 'center',
         justifyContent: 'center',
@@ -106,6 +108,7 @@ function FilterButton({ active, onPress }: { active: boolean; onPress: () => voi
 
 // ── Recruiter face ────────────────────────────────────────────────────────────
 function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
+  const endPad = useEndPadding();
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
@@ -178,6 +181,12 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
   useEffect(() => {
     load(0, 'initial');
   }, [load]);
+
+  /* Tap Discover while on Athletes: back to the top and reload. The list stays
+     on screen; only the count line reads "Searching…" for a moment. */
+  const listRef = useTabReselect(() => {
+    load(0, 'initial');
+  });
 
   // ── Shortlist ──
   const shortlist = useAsync(() => shortlistedAthleteIds(), [], { refetchOnFocus: true });
@@ -309,12 +318,14 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
         style={{ marginHorizontal: -spacing.lg }}
       >
         <Chip
+          tone="accent"
           label={t('sports.allSports')}
           selected={!filters.sport}
           onPress={() => setFilters((f) => ({ ...f, sport: undefined, positions: [] }))}
         />
         {SPORTS.map((sport) => (
           <Chip
+            tone="accent"
             key={sport.key}
             label={sportLabel(t, sport.key)}
             icon={<Text variant="caption">{sport.emoji}</Text>}
@@ -407,12 +418,13 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
       </View>
 
       <FlatList<DiscoveredAthlete>
+        ref={listRef}
         data={items}
         keyExtractor={(item) => item.athlete_id}
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.giant,
+          paddingBottom: endPad,
           gap: spacing.md,
         }}
         keyboardShouldPersistTaps="handled"
@@ -455,7 +467,7 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
             >
               {error}
             </Text>
-          ) : null
+          ) : undefined
         }
         /* The header carries the filters, so it stays mounted through every
            state — a skeleton must never take the controls away. */
@@ -526,8 +538,9 @@ function RecruiterDiscover({ switcher }: { switcher: React.ReactNode }) {
 /**
  * Everyone gets Explore — every public clip, in a mosaic.
  *
- * For an athlete or a guardian it is the first of four tabs, beside Clubs,
- * Coaches and Leaderboard, with the search bar under them. A recruiter keeps
+ * For an athlete or a guardian it is the whole screen: a search, five buttons
+ * (Players, Clubs, Coaches, Leaderboard, Sponsors) that each open their own
+ * page, then the clips. A recruiter keeps
  * their athlete search and opens on it, because finding athletes is the job;
  * Explore and Sponsors are the tabs next to it. A sponsor opens on the athletes
  * who are asking for backing. `/discover?view=explore|people|sponsors` picks.
@@ -550,6 +563,27 @@ export default function DiscoverScreen() {
     if (asked) setChosen(asked);
   }, [asked]);
 
+  /* An athlete's Discover has no tabs: a link into Clubs, Coaches, Sponsors or
+     the Leaderboard opens that page on top of it. The params are cleared so
+     coming back to Discover does not open the page again. */
+  const athleteSide: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors' | null =
+    isRecruiter || isSponsor
+      ? null
+      : params.view === 'coaches'
+        ? 'coaches'
+        : params.view === 'sponsors'
+          ? 'sponsors'
+          : params.view === 'people'
+            ? 'clubs'
+            : requestedTab === 'clubs' || requestedTab === 'coaches' || requestedTab === 'leaderboard'
+              ? requestedTab
+              : null;
+  useEffect(() => {
+    if (loading || !athleteSide) return;
+    router.setParams({ view: undefined, tab: undefined, at: undefined });
+    router.push(Routes.discoverSection(athleteSide));
+  }, [athleteSide, tabRequestKey, loading, router]);
+
   if (loading && !profile) {
     return (
       <Screen scroll={false} padded={false} testID="discover-screen">
@@ -564,21 +598,8 @@ export default function DiscoverScreen() {
   if (!isRecruiter && !isSponsor) {
     return (
       <Screen scroll={false} padded={false} testID="discover-screen">
-        <Header title={t('common.tabDiscover')} subtitle={t('discover.athleteSubtitle')} large />
-        <AthleteExplore
-          viewerId={profile?.id ?? null}
-          initialTab={
-            params.view === 'coaches'
-              ? 'coaches'
-              : asked === 'people'
-                ? 'clubs'
-                : asked === 'sponsors'
-                  ? 'sponsors'
-                  : 'explore'
-          }
-          requestedTab={requestedTab}
-          tabRequestKey={tabRequestKey}
-        />
+        <Header title={t('common.tabDiscover')} large />
+        <AthleteDiscoverHub />
       </Screen>
     );
   }

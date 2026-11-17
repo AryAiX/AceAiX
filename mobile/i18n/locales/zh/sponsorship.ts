@@ -63,6 +63,7 @@ export const sponsorship = {
   sendApplication: '发送申请',
   applicationSent: '申请已发送',
   athletesOnly: '只有运动员可以申请征集。',
+  guardianCalls: '你的孩子从自己的账号申请征集。每次申请都会通知你，你可以在「孩子」里同意或拒绝。',
   seekersEmpty: '目前没有人申请',
   seekersEmptyBody: '申请赞助的运动员会显示在这里。',
   seekersSearch: '按姓名或赛事搜索',

@@ -1,20 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Clipboard, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RemoteImage } from '@/components/ui/RemoteImage';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  BadgeCheck,
-  Bookmark,
-  Flag,
-  Lock,
-  MapPin,
-  MessageCircle,
-  MoreHorizontal,
-  Settings,
-  Share2,
-  ShieldBan,
-} from 'lucide-react-native';
+import { BadgeCheck, Bookmark, Flag, Link2, Lock, MapPin, MessageCircle, MoreHorizontal, Settings, Share2, ShieldBan } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore, tierGradient } from '@/theme/tokens';
@@ -34,7 +24,10 @@ import {
   Text,
   useToast,
 } from '@/components/ui';
+import { useAsync } from '@/hooks/useAsync';
 import { blockUser, canMessage, reportContent, startConversation } from '@/lib/api';
+import { mySportRequest } from '@/lib/api.profile';
+import { SportRequestNote } from '@/components/profile/SportRequestNote';
 import {
   applyToggleFollow,
   useFollowCount,
@@ -47,6 +40,7 @@ import {
   levelLabelI18n,
   otherSportLevelLabel,
   positionLabel,
+  isOtherSport,
   sportEmoji,
   sportLabel,
 } from '@/constants/sports';
@@ -56,8 +50,10 @@ import type { ClubType } from '@/lib/club';
 import { errorMessage } from '@/lib/errors';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
+import { ShareSheet } from '@/components/share/ShareSheet';
 import { useT } from '@/i18n';
 import type { MessageBlockReason, ProfileBundle } from '@/types/models';
+import { FollowButton } from '@/components/discover/FollowButton';
 
 /**
  * A listed coach role is stored as a key and shown translated, the same way
@@ -127,6 +123,8 @@ interface Props {
    * Club vs academy lives on the page, not on `user_profiles.role`.
    */
   pageType?: ClubType | null;
+  /** Run the cover up under the status bar (own profile tab, no header). */
+  coverUnderStatusBar?: boolean;
 }
 
 /** The club/academy choice from setup step 1. Other page types keep the role label. */
@@ -136,15 +134,20 @@ function managedPageLabel(t: (key: string) => string, pageType: ClubType | null 
   return null;
 }
 
-export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
+export function ProfileHeader({ bundle, onChanged, pageType, coverUnderStatusBar = false }: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const toast = useToast();
   const t = useT();
 
   const { user, athlete, coach, score, viewer } = bundle;
   const isSelf = viewer?.is_self === true;
+  const sportRequest = useAsync(() => mySportRequest(), [isSelf, athlete?.sport], {
+    enabled: isSelf && isOtherSport(athlete?.sport),
+    refetchOnFocus: true,
+  });
   const { user: account, profile: accountProfile } = useAuth();
 
   // The button flips instantly. Both totals live in the shared follow counts,
@@ -186,7 +189,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
        translated. A club name, or an older free-text role, stays as written. */
     if (athlete) {
       return metaLine(
-        positionLabel(t, athlete.position),
+        positionLabel(t, athlete.position, athlete.sport),
         sportLabel(t, athlete.sport),
         athlete.club,
       );
@@ -255,20 +258,27 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
     }
   }, [messageBusy, viewer?.can_message, user.id, router, toast]);
 
-  const onShare = useCallback(async () => {
+  /* Share profile: the menu closes, then the share sheet opens (one sheet
+     at a time). Your chats on top, then copy or the phone's own share. */
+  const [shareOpen, setShareOpen] = useState(false);
+  const profileLink = webAppLink(`/u/${user.id}`);
+  const onShare = useCallback(() => {
     setMenuOpen(false);
-    const url = webAppLink(`/u/${user.id}`);
-    try {
-      const message = t('profile.shareMessage', {
-        name,
-        url,
-      });
-      const outcome = await shareContent({ message, url, title: name });
-      if (outcome === 'copied') toast.success(t('feed.linkCopied'));
-    } catch {
-      toast.error(t('common.somethingWentWrong'));
-    }
-  }, [name, t, toast, user.id]);
+    setTimeout(() => setShareOpen(true), 300);
+  }, []);
+
+  const shareElsewhere = useCallback(() => {
+    setShareOpen(false);
+    setTimeout(async () => {
+      try {
+        const message = t('profile.shareMessage', { name, url: profileLink });
+        const outcome = await shareContent({ message, url: profileLink, title: name });
+        if (outcome === 'copied') toast.success(t('feed.linkCopied'));
+      } catch {
+        toast.error(t('common.somethingWentWrong'));
+      }
+    }, 280);
+  }, [name, profileLink, t, toast]);
 
   const onReport = useCallback(
     async (reason: string) => {
@@ -299,7 +309,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
   }, [name, onChanged, router, t, toast, user.id]);
 
   const athleteSportDetail = athlete
-    ? metaLine(positionLabel(t, athlete.position), athlete.club)
+    ? metaLine(positionLabel(t, athlete.position, athlete.sport), athlete.club)
     : '';
 
   return (
@@ -313,7 +323,9 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
       <View
         style={{
           width: '100%',
-          aspectRatio: COVER_ASPECT,
+          /* Under the status bar the band grows by the bar's height, so the
+             part below it keeps the cover's shape. */
+          paddingTop: coverUnderStatusBar ? insets.top : 0,
           borderBottomLeftRadius: radii.xl,
           borderBottomRightRadius: radii.xl,
           overflow: 'hidden',
@@ -343,6 +355,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
           pointerEvents="none"
         />
         <Shine every={7} />
+        <View style={{ width: '100%', aspectRatio: COVER_ASPECT }} pointerEvents="none" />
       </View>
 
       {/* 48 = half the 88pt avatar, plus its 3pt ring, plus a point. The circle
@@ -378,7 +391,11 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
           <View
             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md }}
           >
-            <Text variant="title" numberOfLines={2} style={{ flexShrink: 1 }}>
+            <Text
+              variant="title"
+              numberOfLines={2}
+              style={{ flexShrink: 1 }}
+            >
               {name}
             </Text>
             {user?.is_verified ? (
@@ -397,6 +414,14 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
             <Text variant="caption" tone="secondary" style={{ marginTop: 2 }}>
               {meta}
             </Text>
+          ) : null}
+          {isSelf && isOtherSport(athlete?.sport) ? (
+            <SportRequestNote
+              request={sportRequest.data}
+              onChoose={() =>
+                router.push({ pathname: Routes.editProfile, params: { focus: 'sport' } })
+              }
+            />
           ) : null}
           {athlete?.other_sports && athlete.other_sports.length > 0 ? (
             <View
@@ -458,7 +483,7 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
               <Badge label={levelLabelI18n(t, athlete.level)} tone="neutral" />
             ) : null}
             {athlete?.is_open_to_offers ? (
-              <Badge label={t('profile.openToOffers')} tone="success" />
+              <Badge label={t('profile.openToOffers')} tone="flame" />
             ) : null}
           </View>
         </Reveal>
@@ -520,13 +545,15 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
             </>
           ) : (
             <>
-              <Button
-                label={t(following ? 'common.following' : 'common.follow')}
-                variant={following ? 'secondary' : 'primary'}
-                style={{ flex: 1 }}
-                fullWidth
-                loading={followBusy}
+              <FollowButton
+                following={following}
+                pending={followBusy}
                 onPress={onToggleFollow}
+                role={user.role}
+                name={displayName(user.full_name)}
+                large
+                fullWidth
+                style={{ flex: 1 }}
               />
               <Button
                 label={t('common.message')}
@@ -565,6 +592,30 @@ export function ProfileHeader({ bundle, onChanged, pageType }: Props) {
         uri={user?.avatar_url ?? null}
         caption={name}
         onClose={() => setPhotoOpen(false)}
+      />
+
+      <ShareSheet
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        link={profileLink}
+        options={[
+          {
+            key: 'copy',
+            label: t('messaging.copyLink'),
+            icon: <Link2 size={18} color={colors.textSecondary} />,
+            onPress: () => {
+              Clipboard.setString(profileLink);
+              setShareOpen(false);
+              toast.success(t('feed.linkCopied'));
+            },
+          },
+          {
+            key: 'link',
+            label: t('messaging.moreOptions'),
+            icon: <Share2 size={18} color={colors.textSecondary} />,
+            onPress: shareElsewhere,
+          },
+        ]}
       />
 
       {/* ── Overflow menu ── */}
@@ -685,7 +736,7 @@ function CountLink({
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text variant="bodyStrong">{compactNumber(value)}</Text>
+      <Text variant="numberStrong">{compactNumber(value)}</Text>
       <Text variant="caption" tone="muted">
         {label}
       </Text>

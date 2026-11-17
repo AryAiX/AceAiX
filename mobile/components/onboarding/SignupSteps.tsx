@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
-import { Platform, Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, View, type TextInputInstance } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarDays, Lock, Mail, ShieldAlert, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Button, Card, Input, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { toLatinDigits } from '@/lib/digits';
 import { sanitizeNameInput } from '@/lib/nameInput';
 import type { SignupRole } from '@/types/models';
 import {
@@ -123,7 +124,7 @@ export function NameStep({
 }) {
   const theme = useTheme();
   const t = useT();
-  const lastRef = useRef<TextInput>(null);
+  const lastRef = useRef<TextInputInstance>(null);
   const isSponsor = role === 'sponsor';
   const isClub = role === 'club';
 
@@ -251,9 +252,9 @@ function WebDateField({
       return;
     }
 
-    const numericDay = Number(nextDay);
-    const numericMonth = Number(nextMonth);
-    const numericYear = Number(nextYear);
+    const numericDay = Number(toLatinDigits(nextDay));
+    const numericMonth = Number(toLatinDigits(nextMonth));
+    const numericYear = Number(toLatinDigits(nextYear));
     const date = new Date(numericYear, numericMonth - 1, numericDay);
     const maximum = new Date();
     maximum.setHours(0, 0, 0, 0);
@@ -271,7 +272,7 @@ function WebDateField({
   };
 
   const digits = (input: string, maxLength: number) =>
-    input.replace(/\D/g, '').slice(0, maxLength);
+    toLatinDigits(input).replace(/\D/g, '').slice(0, maxLength);
 
   return (
     <View
@@ -606,7 +607,7 @@ export function AccountStep({
   const theme = useTheme();
   const t = useT();
   const { colors, spacing } = theme;
-  const passwordRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const strength = passwordStrength(password);
 
   return (

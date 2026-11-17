@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Header, Screen, SegmentedControl } from '@/components/ui';
+import { Header, Screen, TextTabs } from '@/components/ui';
 import { CoachingHome } from '@/components/coaching/CoachingHome';
 import { SponsorshipPortal } from '@/components/sponsorship/SponsorshipPortal';
 import { useT } from '@/i18n';
@@ -22,11 +22,12 @@ function sectionOf(value: string | string[] | undefined): Section | null {
  * in place rather than as links. Each half is the same body as `/coaching`
  * or `/sponsorship`, including its empty states, and each refetches when
  * this tab is focused. `?section=sessions` or `?section=sponsorship` picks
- * the segment. There is no back button: this is a tab.
+ * the section. There is no back button: this is a tab.
  *
- * The control is the shared one, which already walks its pill the other
- * way in Arabic. The options stay Sessions then Sponsorship; reversing
- * them would fight that flip.
+ * The switch is the underlined text tabs used on Trials and Challenges:
+ * full width, the same space above and below, labels centred in each tab.
+ * The options stay Sessions then Sponsorship; the row already mirrors in
+ * Arabic, so reversing them would fight that flip.
  */
 export default function ChildrenTab() {
   const theme = useTheme();
@@ -42,8 +43,8 @@ export default function ChildrenTab() {
 
   return (
     <Screen header={<Header title={t('common.tabChildren')} large />} testID="children-tab">
-      <View style={{ paddingTop: spacing.lg, gap: spacing.xl }}>
-        <SegmentedControl<Section>
+      <View style={{ paddingTop: spacing.lg, gap: spacing.lg }}>
+        <TextTabs<Section>
           testID="children-section"
           value={section}
           onChange={setSection}

@@ -164,6 +164,11 @@ export const safety = {
   badgeWithdrawn: 'Retirado',
   badgeExpired: 'Caducada',
 
+  showOnProfile: 'Muéstrame en el perfil de {{name}}',
+  showOnProfileHint:
+    'Los clubes, entrenadores, ojeadores y patrocinadores podrán verte y escribirte sobre tu hijo.',
+  parentOf: 'Madre o padre de',
+
   // Lo que un adulto puede ver de una conversación: que existe, nunca sus palabras
   whoTheyTalkTo: 'Con quién habla',
   noConversations: 'Todavía no hay conversaciones.',

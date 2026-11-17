@@ -9,7 +9,7 @@ import React, {
 import { I18nManager, NativeModules, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { setGlobalTranslator } from '@/lib/i18n-bridge';
+import { setGlobalTranslator, intlLocale, placeholderText } from '@/lib/i18n-bridge';
 
 import {
   DEFAULT_LANGUAGE,
@@ -26,8 +26,8 @@ import type { Translations } from './locales/en';
  * Translation.
  *
  * English is the source of truth and is bundled eagerly, so the app always has
- * something to render even if another catalogue fails to load. The other six
- * are `require`d on demand — no reason to ship six unused dictionaries in the
+ * something to render even if another catalogue fails to load. The other seven
+ * are `require`d on demand — no reason to ship seven unused dictionaries in the
  * first screen's bundle.
  *
  * Plurals go through `Intl.PluralRules`, which knows that Russian has four
@@ -40,12 +40,14 @@ const RTL_APPLIED_KEY = 'aceaix.rtl-applied';
 
 export type { Translations };
 export * from './languages';
+export { intlLocale } from '@/lib/i18n-bridge';
 
 type Catalogue = Translations;
 
 const CATALOGUES: Record<LanguageCode, () => Catalogue> = {
   en: () => en,
   ar: () => require('./locales/ar').ar as Catalogue,
+  fa: () => require('./locales/fa').fa as Catalogue,
   es: () => require('./locales/es').es as Catalogue,
   fr: () => require('./locales/fr').fr as Catalogue,
   de: () => require('./locales/de').de as Catalogue,
@@ -102,11 +104,11 @@ function walk(source: unknown, path: string[]): unknown {
   return node;
 }
 
-function interpolate(template: string, vars?: Vars): string {
+function interpolate(template: string, code: LanguageCode, vars?: Vars): string {
   if (!vars) return template;
   return template.replace(/\{\{(\w+)\}\}/g, (whole, name: string) => {
     const value = vars[name];
-    return value === undefined ? whole : String(value);
+    return value === undefined ? whole : placeholderText(value, code);
   });
 }
 
@@ -149,7 +151,17 @@ function lookup(
     if (__DEV__) console.warn(`[i18n] missing key: ${key}`);
     return key;
   }
-  return interpolate(value, vars);
+  return interpolate(value, code, vars);
+}
+
+/** Resolve one key. Tests use this; screens use `useT`. */
+export function translate(
+  catalogue: Catalogue,
+  code: LanguageCode,
+  key: string,
+  vars?: Vars,
+): string {
+  return lookup(catalogue, key, code, vars);
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
@@ -251,12 +263,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       hasChosen,
       t,
       setLanguage,
-      formatNumber: (n, options) => new Intl.NumberFormat(language, options).format(n),
+      formatNumber: (n, options) => new Intl.NumberFormat(intlLocale(language), options).format(n),
       formatDate: (iso, options) => {
         const d = new Date(iso);
         if (Number.isNaN(d.getTime())) return '';
         return new Intl.DateTimeFormat(
-          language,
+          intlLocale(language),
           options ?? { day: 'numeric', month: 'short', year: 'numeric' },
         ).format(d);
       },

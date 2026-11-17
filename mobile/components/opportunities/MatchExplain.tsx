@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, ViewStyle } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { Check } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Text } from '@/components/ui';
+import { SweepArc, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import type { Translate } from '@/lib/i18n-bridge';
 import type { Opportunity } from '@/types/models';
@@ -160,18 +161,53 @@ export function MatchPill({
   );
 }
 
+/**
+ * The match as a ring: the share of the circle filled, the number inside.
+ *
+ * Quieter than the pill on a card footer — a shape that reads at a glance
+ * rather than a coloured block. The arc is the logo's sweep: a low match stays
+ * blue, a strong one warms towards fire.
+ */
+export function MatchRing({ percent, size = 36 }: { percent: number; size?: number }) {
+  const t = useT();
+  const { colors } = useTheme();
+  const value = Math.max(0, Math.min(100, Math.round(percent)));
+  const width = size >= 48 ? 5 : 3.5;
+  const r = (size - width) / 2;
+
+  return (
+    <View
+      accessible
+      accessibilityLabel={t('opportunities.match.percentA11y', { percent: value })}
+      style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.divider} strokeWidth={width} fill="none" />
+        <SweepArc size={size} strokeWidth={width} percent={value} />
+      </Svg>
+      <Text
+        variant="captionStrong"
+        style={{ fontSize: size >= 48 ? 14 : 10 }}
+        allowFontScaling={false}
+      >
+        {`${value}%`}
+      </Text>
+    </View>
+  );
+}
+
 /** The full explanation: the number, then every reason behind it, ticked off. */
 export function MatchBlock({ match, style }: { match: MatchExplanation; style?: ViewStyle }) {
   const t = useT();
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
-  const { fg } = useMatchSkin(match.percent);
 
   return (
     <View
       style={[
         {
           flexDirection: 'row',
+          alignItems: 'center',
           gap: spacing.lg,
           padding: spacing.lg,
           borderRadius: radii.lg,
@@ -182,19 +218,17 @@ export function MatchBlock({ match, style }: { match: MatchExplanation; style?: 
         style,
       ]}
     >
-      <MatchPill percent={match.percent} />
+      <MatchRing percent={match.percent} size={56} />
 
-      <View style={{ flex: 1, gap: spacing.sm }}>
-        <Text variant="captionStrong" tone="secondary">
-          {t('opportunities.match.why')}
-        </Text>
+      <View style={{ flex: 1, gap: spacing.xs, justifyContent: 'center' }}>
+        <Text variant="bodyStrong">{t('opportunities.match.why')}</Text>
         <View style={{ gap: 6 }}>
           {match.reasons.map((reason) => (
             <View
               key={reason}
               style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
             >
-              <Check size={15} color={fg} strokeWidth={2.6} />
+              <Check size={14} color={colors.success} strokeWidth={2.6} />
               <Text variant="caption" tone="secondary" style={{ flex: 1 }}>
                 {reason}
               </Text>

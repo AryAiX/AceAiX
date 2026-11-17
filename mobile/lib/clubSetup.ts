@@ -2,6 +2,7 @@ import type { ClubBasicsInput, ClubPage, ClubPageUpdate, ClubSocials, ClubSport 
 import { cleanList, isValidEmail, isValidFoundedYear, isValidPhone, type ClubType } from '@/lib/club';
 import { common as enCommon } from '@/i18n/locales/en/common';
 import { isAllowedMapUrl } from '@/lib/mapLinks';
+import { toLatinDigits } from '@/lib/digits';
 
 /**
  * Setting up and editing a club page (1014/01): the draft the wizard and the
@@ -298,7 +299,7 @@ const trimOrNull = (value: string): string | null => {
 
 /** "1998" → 1998; anything else → null. */
 export function parseFoundedYear(text: string, now = new Date()): number | null {
-  const v = text.trim();
+  const v = toLatinDigits(text).trim();
   if (!/^\d{4}$/.test(v)) return null;
   const year = Number(v);
   return isValidFoundedYear(year, now) ? year : null;

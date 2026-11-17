@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import {
   Brain,
-  CalendarClock,
   Clock,
   Eye,
   Lightbulb,
@@ -38,7 +37,9 @@ import { Confetti } from '@/components/celebrate/Confetti';
 import { InfoNote } from '@/components/settings/Notes';
 import { GiRing, SubScoreBar } from '@/components/intelligence/shared';
 import { TestIcon } from '@/components/intelligence/TestIcon';
+import { MedalChip } from '@/components/intelligence/Result';
 import { useAsync } from '@/hooks/useAsync';
+import { BirthDateForm } from '@/components/profile/BirthDateForm';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAuth } from '@/providers/AuthProvider';
 import { useT } from '@/i18n';
@@ -151,15 +152,9 @@ export default function GameIntelligenceScreen() {
         />
       );
     } else if (data.consent === 'age_unknown') {
-      body = (
-        <EmptyState
-          icon={<CalendarClock size={26} color={colors.textMuted} />}
-          title={t('intelligence.consentAgeUnknownTitle')}
-          body={t('intelligence.consentAgeUnknownBody')}
-          actionLabel={t('intelligence.consentAgeUnknownAction')}
-          onAction={() => router.push(Routes.editProfile)}
-        />
-      );
+      /* No birth date saved (an older account): ask for it right here,
+         with the same picker as sign-up, then open the games. */
+      body = <BirthDateForm onSaved={() => void state.reload()} />;
     } else {
       body = (
         <EmptyState
@@ -300,12 +295,19 @@ export default function GameIntelligenceScreen() {
       <View style={{ gap: spacing.md }}>
         {GI_TESTS.map((x, i) => (
           <Reveal key={x.key} index={i}>
-            <SubScoreBar
-              label={t(`intelligence.tests.${x.i18n}.name`)}
-              hint={t(`intelligence.tests.${x.i18n}.what`)}
-              value={gi.subscores[x.key]}
-              color={colors.play[x.hue]}
-            />
+            {/* Each game keeps its icon and hue, and the medal its last round earned. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <TestIcon test={x.key} color={colors.play[x.hue]} size={40} />
+              <View style={{ flex: 1 }}>
+                <SubScoreBar
+                  label={t(`intelligence.tests.${x.i18n}.name`)}
+                  hint={t(`intelligence.tests.${x.i18n}.what`)}
+                  value={gi.subscores[x.key]}
+                  color={colors.play[x.hue]}
+                />
+              </View>
+              <MedalChip score={gi.subscores[x.key]} size={26} />
+            </View>
           </Reveal>
         ))}
       </View>

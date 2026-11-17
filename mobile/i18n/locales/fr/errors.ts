@@ -82,6 +82,8 @@ export const errors = {
   coachingLocationRequired: 'Indiquez où cela doit avoir lieu.',
   coachingServiceLimit: 'Douze prestations à la fois au maximum.',
   coachingOwnCalendar: 'Vous ne pouvez pas réserver votre propre calendrier.',
+  coachingGuardianAccount:
+    'Un compte parent ne peut pas réserver une séance. Votre enfant réserve depuis son propre compte.',
   meetupMapUrlInvalid: 'Utilisez un lien Google Maps, Apple Maps ou Waze.',
   clubMapUrlInvalid: 'Collez un lien Google Maps, Apple Maps ou Waze, ou des coordonnées.',
   meetupPlaceInvalid: 'Chaque lieu doit comporter entre 2 et 80 caractères.',
@@ -139,4 +141,6 @@ export const errors = {
   clubMatchKickoff: "Choisissez la date et l'heure du coup d'envoi.",
   clubAwardTitle: "Donnez un nom à la récompense.",
   clubAwardLink: "Vous ne pouvez lier que des personnes de vos effectifs.",
+  sportNameInvalid: "Utilise de 2 à 40 lettres pour le nom du sport.",
+  sportRequestLimit: "Tu peux demander un sport 5 fois par jour.",
 };

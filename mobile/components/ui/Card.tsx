@@ -74,6 +74,9 @@ export function Card({
     borderWidth: level === 0 ? 1 : 0,
     borderColor: colors.border,
     ...theme.elevation(level),
+    /* Dark mode: only the plain surface card lifts off the page; tinted
+       cards already stand out by colour. */
+    ...(tone === 'surface' || tone === 'alt' ? theme.raised('card') : null),
   };
 
   // The press animation lives on a wrapper that otherwise ignores flex, so a

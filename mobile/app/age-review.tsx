@@ -46,6 +46,7 @@ export default function AgeReviewScreen() {
         </Text>
         {error ? <Text variant="caption" tone="danger">{error}</Text> : null}
         <Button
+          size="sm"
           label={requested ? t('safety.ageReviewRequestedButton') : t('safety.ageReviewRequest')}
           onPress={requestReview}
           loading={requesting}
@@ -61,6 +62,7 @@ export default function AgeReviewScreen() {
           {t('safety.ageReviewEmail', { email: COMPANY.safetyEmail })}
         </Text>
         <Button
+          size="sm"
           label={t('settings.signOut')}
           variant="secondary"
           onPress={signOut}

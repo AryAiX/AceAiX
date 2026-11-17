@@ -54,6 +54,10 @@ export const auth = {
     highlightTrials: '来自俱乐部和青训营的真实试训与名额',
     highlightGuardian: '未满18岁？家长批准之后，别人才能找到你的资料',
     signIn: '我已经有账号了',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: '将你列入U21阵容候选名单',
+    demoScoreDelta: '本月 +{{count}}',
+    demoScouts: '本周有 {{count}} 位球探看过',
   },
 
   // ── 登录 ──────────────────────────────────────────────────────────────────

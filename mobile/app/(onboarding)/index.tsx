@@ -19,6 +19,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { useKeyboardVisible } from '@/hooks/useKeyboardVisible';
 import { errorMessage } from '@/lib/errors';
 import { firstName as firstNameOf } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
 import {
   addCustomCity,
   completeOnboarding,
@@ -40,7 +41,7 @@ import {
   uploadAvatar,
 } from '@/lib/api.auth';
 import { removeOwnProfileImage } from '@/lib/api.profile';
-import type { FullTalentScore, GuardianConsent, Team } from '@/types/models';
+import type { FullTalentScore, GuardianConsent, ProfileBundle, Team } from '@/types/models';
 import { cityFromPicker } from '@/components/onboarding/CityPicker';
 import { WizardTopBar, isValidEmail } from '@/components/onboarding/Shared';
 import {
@@ -174,6 +175,8 @@ export default function OnboardingScreen() {
   const [photoError, setPhotoError] = useState<string | null>(null);
 
   const [score, setScore] = useState<FullTalentScore | null>(null);
+  /* The profile as saved by the wizard, re-read at the end for the card. */
+  const [cardBundle, setCardBundle] = useState<ProfileBundle | null>(null);
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState<string | null>(null);
 
@@ -285,14 +288,14 @@ export default function OnboardingScreen() {
   const teamsKeyboardOpen = useKeyboardVisible(step === 'teams');
 
   const heightError =
-    height && (Number(height) < HEIGHT_RANGE_CM.min || Number(height) > HEIGHT_RANGE_CM.max)
+    height && (Number(toLatinDigits(height)) < HEIGHT_RANGE_CM.min || Number(toLatinDigits(height)) > HEIGHT_RANGE_CM.max)
       ? t('onboarding.heightOutOfRange', {
           min: HEIGHT_RANGE_CM.min,
           max: HEIGHT_RANGE_CM.max,
         })
       : null;
   const weightError =
-    weight && (Number(weight) < WEIGHT_RANGE_KG.min || Number(weight) > WEIGHT_RANGE_KG.max)
+    weight && (Number(toLatinDigits(weight)) < WEIGHT_RANGE_KG.min || Number(toLatinDigits(weight)) > WEIGHT_RANGE_KG.max)
       ? t('onboarding.weightOutOfRange', {
           min: WEIGHT_RANGE_KG.min,
           max: WEIGHT_RANGE_KG.max,
@@ -304,7 +307,14 @@ export default function OnboardingScreen() {
     setScoreLoading(true);
     setScoreError(null);
     try {
-      setScore(await refreshMyTalentScore());
+      /* The profile is only for the player card. If it fails, the score still
+         shows (FinishStep falls back to the ring). */
+      const [nextScore, nextBundle] = await Promise.all([
+        refreshMyTalentScore(),
+        getMyProfile().catch(() => null),
+      ]);
+      setScore(nextScore);
+      setCardBundle(nextBundle);
     } catch (err) {
       setScoreError(errorMessage(err));
     } finally {
@@ -343,8 +353,8 @@ export default function OnboardingScreen() {
         }
         case 'physical':
           await updateAthleteProfile({
-            height_cm: height ? Number(height) : null,
-            weight_kg: weight ? Number(weight) : null,
+            height_cm: height ? Number(toLatinDigits(height)) : null,
+            weight_kg: weight ? Number(toLatinDigits(weight)) : null,
             dominant_foot: side,
           });
           break;
@@ -690,6 +700,9 @@ export default function OnboardingScreen() {
       ) : (
         <Button
           label={continueLabel}
+          /* The warm ombre of Create account on the welcome screen carries
+             through the whole joining flow; signing in stays blue. */
+          variant="warm"
           size="lg"
           fullWidth
           loading={saving}
@@ -717,6 +730,7 @@ export default function OnboardingScreen() {
       dropFooterInsetWithKeyboard
       header={
         <WizardTopBar
+          warm
           step={safeIndex}
           total={steps.length}
           hideBack={safeIndex === 0}
@@ -876,6 +890,8 @@ export default function OnboardingScreen() {
             <AthleteFinishStep
               firstName={name}
               score={score}
+              bundle={cardBundle}
+              teams={favoriteTeams}
               loading={scoreLoading}
               error={scoreError}
               onRetry={() => void loadScore()}

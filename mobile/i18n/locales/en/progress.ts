@@ -20,6 +20,7 @@ export const progress = {
   title: 'Achievements',
   subtitle: 'Every one of these comes from something you actually did.',
   earnedOf: '{{earned}} of {{total}}',
+  newTag: 'New',
   unlockedOn: 'Earned {{date}}',
   tileEarnedA11y: '{{title}}. Earned {{date}}. {{hint}}',
   tileLockedA11y: '{{title}}. Not earned yet. {{hint}}',
@@ -89,11 +90,11 @@ export const progress = {
     },
     first_clip: {
       title: 'First clip',
-      hint: 'You added your first video to your highlights.',
+      hint: 'You added your first video to your Showcase.',
     },
     three_clips: {
       title: 'Three clips',
-      hint: 'Three videos in your highlights. That is a reel a scout can watch.',
+      hint: 'Three videos in your Showcase. That is a reel a scout can watch.',
     },
     first_match: {
       title: 'First match',

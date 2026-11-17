@@ -1,6 +1,8 @@
 import { supabase } from './supabase';
+import { loadScoreSnapshots } from '@/lib/scoreSnapshots';
 import { AppError } from './errors';
 import { parseMentions, type MentionSpan } from './mentions';
+import { attachPostTags } from './api.postTags';
 import { attachPostMentions } from './postMentions';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
 import type {
@@ -201,6 +203,11 @@ export async function getScoreHistory(athleteId: string) {
   return data ?? [];
 }
 
+/** The scores this phone saved at the moment you posted, by post id. */
+export async function getMyPostScores(): Promise<{ saved: Record<string, number> }> {
+  return { saved: await loadScoreSnapshots() };
+}
+
 // ── Feed ─────────────────────────────────────────────────────────────────────
 export async function signPostMedia<T extends { media: PostMedia[] }>(rows: T[]): Promise<T[]> {
   const paths = Array.from(
@@ -244,7 +251,8 @@ export async function getFeed(params: {
   });
   if (error) throw new AppError(error);
   const signed = await signPostMedia((data ?? []) as FeedPost[]);
-  return attachPostMentions(signed);
+  const mentioned = await attachPostMentions(signed);
+  return attachPostTags(mentioned);
 }
 
 export async function getSavedPosts(params: {
@@ -461,6 +469,25 @@ export async function mentionCandidates(query: string): Promise<MentionCandidate
   return (data ?? []) as MentionCandidate[];
 }
 
+export interface MentionSuggestion extends MentionCandidate {
+  following: boolean;
+}
+
+/**
+ * People to offer while an @ is being typed.
+ *
+ * An empty query is allowed: it is the people the caller follows. A typed
+ * name narrows the list and still puts people they follow first.
+ */
+export async function mentionSuggestions(query: string): Promise<MentionSuggestion[]> {
+  const { data, error } = await supabase.rpc('mention_suggestions', {
+    p_query: query.trim(),
+    p_limit: 20,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as MentionSuggestion[];
+}
+
 /**
  * Search for people by name.
  *
@@ -472,7 +499,7 @@ export async function mentionCandidates(query: string): Promise<MentionCandidate
  */
 export async function searchPeople(
   query: string,
-  role?: 'athlete' | 'coach' | 'club' | 'scout',
+  role?: 'athlete' | 'coach' | 'club' | 'scout' | 'guardian',
   limit = 20,
 ): Promise<PersonResult[]> {
   const term = query.trim();
@@ -481,6 +508,21 @@ export async function searchPeople(
     p_query: term,
     p_role: role ?? null,
     p_limit: limit,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as PersonResult[];
+}
+
+/**
+ * Parents who chose to be contacted about their child.
+ *
+ * An empty People box browses this list. A typed name still goes through
+ * `search_people`, which can find any parent the caller is allowed to find.
+ */
+export async function browseParents(limit = 40, offset = 0): Promise<PersonResult[]> {
+  const { data, error } = await supabase.rpc('browse_parents', {
+    p_limit: limit,
+    p_offset: offset,
   });
   if (error) throw new AppError(error);
   return (data ?? []) as PersonResult[];
@@ -863,6 +905,44 @@ export async function myLinkedMinors(): Promise<LinkedMinor[]> {
   return (data ?? []) as LinkedMinor[];
 }
 
+/** A parent who chose to be shown on this child's profile. */
+export interface GuardianContact {
+  guardian_user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  relationship: string;
+}
+
+/** A child shown on this parent's profile. */
+export interface ChildOnProfile {
+  minor_user_id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  relationship: string;
+}
+
+export async function guardianContactsOf(userId: string): Promise<GuardianContact[]> {
+  const { data, error } = await supabase.rpc('guardian_contacts_of', { p_user: userId });
+  if (error) throw new AppError(error);
+  return (data ?? []) as GuardianContact[];
+}
+
+export async function childrenOnProfile(guardianId: string): Promise<ChildOnProfile[]> {
+  const { data, error } = await supabase.rpc('children_on_profile', { p_guardian: guardianId });
+  if (error) throw new AppError(error);
+  return (data ?? []) as ChildOnProfile[];
+}
+
+/** The linked parent turns the profile link on or off. Returns the saved value. */
+export async function setGuardianOnProfile(minorId: string, show: boolean): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_guardian_on_profile', {
+    p_minor: minorId,
+    p_show: show,
+  });
+  if (error) throw new AppError(error);
+  return data === true;
+}
+
 /**
  * Who a minor is talking to — names and counts only, never message contents.
  * This is exactly what the in-app notice promises a guardian can see.
@@ -1050,6 +1130,24 @@ export async function fansOfTeam(teamId: string, limit = 20, offset = 0): Promis
 export async function openChallenges(sport?: string | null, limit = 20, offset = 0): Promise<Challenge[]> {
   const { data, error } = await supabase.rpc('open_challenges', {
     p_sport: sport ?? null,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) throw new AppError(error);
+  return (data ?? []) as Challenge[];
+}
+
+/** One challenge in any status, including the caller's own entry. */
+export async function challengeDetail(id: string): Promise<Challenge | null> {
+  const { data, error } = await supabase.rpc('challenge_detail', { p_id: id });
+  if (error) throw new AppError(error);
+  const rows = (data ?? []) as Challenge[];
+  return rows[0] ?? null;
+}
+
+/** Every challenge the signed-in coach, club or scout set, including finished ones. */
+export async function mySetChallenges(limit = 50, offset = 0): Promise<Challenge[]> {
+  const { data, error } = await supabase.rpc('my_set_challenges', {
     p_limit: limit,
     p_offset: offset,
   });
@@ -1247,4 +1345,24 @@ export async function talentInsight(athleteId?: string): Promise<string | null> 
   if (error) return null;
   const summary = (data as { summary?: string } | null)?.summary;
   return typeof summary === 'string' && summary.trim().length > 0 ? summary.trim() : null;
+}
+
+/**
+ * Your own sport(s) and age, to pick a challenge that fits you on Home.
+ * Both reads are your own rows; a failure just means "unknown".
+ */
+export async function getMyChallengeViewer(): Promise<{ sports: string[]; birthDate: string | null }> {
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { sports: [], birthDate: null };
+  const [athlete, priv] = await Promise.all([
+    supabase.from('athlete_profiles').select('sport, other_sports').eq('user_id', auth.user.id).maybeSingle(),
+    supabase.from('user_private').select('date_of_birth').eq('user_id', auth.user.id).maybeSingle(),
+  ]);
+  const row = (athlete.data ?? null) as { sport: string | null; other_sports: OtherSport[] | null } | null;
+  const list = row && Array.isArray(row.other_sports) ? row.other_sports : [];
+  const others = list.map((o) => o.sport);
+  return {
+    sports: [row?.sport ?? '', ...others].filter((s): s is string => !!s),
+    birthDate: ((priv.data ?? null) as { date_of_birth: string | null } | null)?.date_of_birth ?? null,
+  };
 }

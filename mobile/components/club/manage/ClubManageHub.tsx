@@ -281,6 +281,7 @@ export function ClubManageHub({ page }: { page: ClubPage }) {
         </View>
       ) : viewer.role ? (
         <Button
+          size="sm"
           label={t('clubManage.hub.pageTeam')}
           variant="secondary"
           icon={<Users size={18} color={colors.text} />}

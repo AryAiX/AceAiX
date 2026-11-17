@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { Clapperboard } from 'lucide-react-native';
+import { Clapperboard, ImagePlus, Play, Star } from 'lucide-react-native';
 
 import { useCachedVideoSource } from '@/lib/videoCache';
 
@@ -12,7 +12,7 @@ import {
   ConfirmSheet,
   EmptyState,
   ErrorState,
-  Input,
+  PointsChip,
   RemoteImage,
   Sheet,
   Skeleton,
@@ -30,9 +30,12 @@ import {
 import { recordHighlightView } from '@/lib/api.explore';
 import { knownViewCount, useViewCountUpdates } from '@/lib/viewCounts';
 import { errorMessage } from '@/lib/errors';
-import { fullDate } from '@/lib/format';
+import { fullDate, relativeTime } from '@/lib/format';
 import { useT } from '@/i18n';
-import { MediaGrid, MediaTile } from './MediaGrid';
+import type { ScoreTip } from '@/types/models';
+import { MediaAuthor, MediaGrid, MediaTile } from './MediaGrid';
+import { HighlightSpotlight } from './HighlightSpotlight';
+import { useProfileLayout } from './LayoutToggle';
 
 /**
  * The fallback title stored when someone uploads without naming the clip.
@@ -48,6 +51,14 @@ interface Props {
   refreshKey?: number;
   /** Fired after an upload or delete, so the score can be re-read. */
   onChanged?: () => void;
+  /** The score's tips, so the empty state can say what clips are worth. */
+  tips?: ScoreTip[];
+  /** Open the photo library to add a highlight as soon as this shows (the + menu). */
+  autoAdd?: boolean;
+  /** Called once that has happened, so it doesn't happen again. */
+  onAutoAdded?: () => void;
+  /** Whose profile this is, for the top row of each card in the scroll view. */
+  author?: MediaAuthor | null;
 }
 
 interface Picked {
@@ -58,11 +69,21 @@ interface Picked {
   durationSeconds: number | null;
 }
 
-export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: Props) {
+export function HighlightsTab({
+  athleteId,
+  isSelf,
+  refreshKey = 0,
+  onChanged,
+  tips = [],
+  autoAdd = false,
+  onAutoAdded,
+  author = null,
+}: Props) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const toast = useToast();
   const t = useT();
+  const [layout] = useProfileLayout();
 
   const media = useAsync(
     () => (athleteId ? getAthleteMedia(athleteId) : Promise.resolve([])),
@@ -117,7 +138,7 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
         durationSeconds &&
         durationSeconds > MAX_HIGHLIGHT_VIDEO_SECONDS
       ) {
-        toast.error('Highlights need to be 90 seconds or shorter.');
+        toast.error(t('profile.clipTooLong', { seconds: MAX_HIGHLIGHT_VIDEO_SECONDS }));
         return;
       }
       setPicked({
@@ -131,6 +152,15 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
       toast.error(errorMessage(err));
     }
   }, [t, toast]);
+
+  /* The + menu's Highlight bubble lands here: go straight to picking a clip. */
+  useEffect(() => {
+    if (!autoAdd || !isSelf) return;
+    onAutoAdded?.();
+    void pick();
+    // Only when the request arrives, not on every re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAdd, isSelf]);
 
   const confirmUpload = useCallback(async () => {
     if (!picked || !athleteId) return;
@@ -172,62 +202,41 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
     }
   }, [media, onChanged, pendingDelete, t, toast]);
 
+  /* What a clip adds to the score, from the score's tips. */
+  const clipPoints = tips.find((tip) => tip.key === 'add_highlights')?.points ?? null;
+
   const uploadSheet = (
-    <Sheet
-      visible={picked !== null}
-      onClose={() => {
-        if (!uploading) setPicked(null);
-      }}
-      title={t('profile.nameClipTitle')}
-      subtitle={t('profile.nameClipSubtitle')}
-      scrollable={false}
-    >
-      {picked && !picked.isVideo ? (
-        <RemoteImage
-          uri={picked.uri}
-          style={{
-            width: '100%',
-            height: 180,
-            borderRadius: radii.md,
-            marginBottom: spacing.lg,
-          }}
-          placeholderColor={colors.surfaceAlt}
-          contentFit="cover"
-        />
-      ) : null}
-
-      <Input
-        label={t('profile.clipTitleLabel')}
-        placeholder={t(
-          picked?.isVideo
-            ? 'profile.clipTitlePlaceholderVideo'
-            : 'profile.clipTitlePlaceholderPhoto',
-        )}
-        value={picked?.title ?? ''}
-        onChangeText={(text) =>
-          setPicked((current) => (current ? { ...current, title: text } : current))
-        }
-        maxLength={80}
-        returnKeyType="done"
-      />
-
-      <Button
-        label={t('profile.addToProfile')}
-        fullWidth
-        loading={uploading}
-        style={{ marginTop: spacing.xl }}
-        onPress={confirmUpload}
-      />
-      <Button
-        label={t('common.cancel')}
-        variant="ghost"
-        fullWidth
-        disabled={uploading}
-        style={{ marginTop: spacing.sm }}
-        onPress={() => setPicked(null)}
-      />
-    </Sheet>
+    <HighlightSpotlight
+      clip={picked}
+      uploading={uploading}
+      points={clipPoints}
+      onChangeTitle={(text) => setPicked((current) => (current ? { ...current, title: text } : current))}
+      onAdd={confirmUpload}
+      onCancel={() => setPicked(null)}
+    />
   );
+
+  /* "Best of <name>": whose best moments these are, with the count. Shown
+     above the clips, and above the empty card while there are none. */
+  const bestOfTitle = author?.name ? (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }} testID="best-of-title">
+      <View
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: theme.alpha(theme.play.flame, theme.scheme === 'dark' ? 0.2 : 0.14),
+        }}
+      >
+        <Star size={15} color={theme.play.flame} fill={theme.play.flame} />
+      </View>
+      <Text variant="subheading" numberOfLines={1} style={{ flex: 1 }} accessibilityRole="header">
+        {t('profile.bestOfNamed', { name: author.name })}
+      </Text>
+    </View>
+  ) : null;
 
   if (!athleteId) {
     return (
@@ -251,16 +260,101 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
   if (media.error) return <ErrorState message={media.error} onRetry={media.reload} compact />;
 
   if (items.length === 0) {
+    const clipTip = tips.find((tip) => tip.key === 'add_highlights') ?? null;
     return (
       <>
-        <EmptyState
-          compact
-          icon={<Clapperboard size={26} color={colors.textMuted} />}
-          title={t(isSelf ? 'profile.clipsEmptyTitleSelf' : 'profile.clipsEmptyTitleOther')}
-          body={t(isSelf ? 'profile.clipsEmptyBodySelf' : 'profile.clipsEmptyBodyOther')}
-          actionLabel={isSelf ? t('profile.clipsEmptyAction') : undefined}
-          onAction={isSelf ? pick : undefined}
-        />
+        {bestOfTitle ? <View style={{ marginBottom: spacing.md }}>{bestOfTitle}</View> : null}
+        {isSelf ? (
+          /* Your own empty reel: three slots to fill, the first one lit. */
+          <View
+            style={{
+              gap: spacing.md,
+              padding: spacing.lg,
+              borderRadius: radii.lg,
+              borderWidth: 1,
+              borderColor: colors.border,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <View style={{ gap: spacing.xs }}>
+              <Text variant="heading" align="center">
+                {t('profile.clipsEmptyTitleSelf')}
+              </Text>
+              <Text variant="caption" tone="muted" align="center">
+                {t('profile.clipsEmptyBodySelf')}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              {[1, 2, 3].map((slot) => {
+                const lit = slot === 1;
+                return (
+                  <Pressable
+                    key={slot}
+                    onPress={pick}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('profile.clipsEmptyAction')}
+                    testID={`clip-slot-${slot}`}
+                    style={({ pressed }) => ({
+                      flex: 1,
+                      aspectRatio: 0.78,
+                      borderRadius: radii.md,
+                      borderWidth: 1.5,
+                      borderStyle: 'dashed',
+                      borderColor: lit ? colors.primary : colors.border,
+                      backgroundColor: lit ? colors.primarySoft : colors.surfaceAlt,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: spacing.xs,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    {lit ? (
+                      <ImagePlus size={20} color={colors.primary} />
+                    ) : (
+                      <Play size={18} color={colors.textMuted} />
+                    )}
+                    <Text variant="number" color={lit ? colors.primary : colors.textMuted}>
+                      {slot}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <Button label={t('profile.clipsEmptyAction')} fullWidth onPress={pick} />
+          </View>
+        ) : (
+          <EmptyState
+            compact
+            icon={<Clapperboard size={26} color={colors.textMuted} />}
+            title={t('profile.clipsEmptyTitleOther')}
+            body={t('profile.clipsEmptyBodyOther')}
+          />
+        )}
+        {isSelf && clipTip ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: spacing.xs,
+              marginTop: spacing.sm,
+            }}
+          >
+            <Text variant="caption" tone="muted">
+              {t('profile.clipsWorthLead')}
+            </Text>
+            <PointsChip points={clipTip.points} label={t('score.tipPoints', { points: clipTip.points })} />
+            <Text variant="caption" tone="muted">
+              {t('profile.clipsWorthTail')}
+            </Text>
+          </View>
+        ) : null}
+        {isSelf ? (
+          <Text variant="caption" tone="muted" align="center" style={{ marginTop: spacing.sm }}>
+            {t('profile.holdToRemoveClip')}
+          </Text>
+        ) : null}
         {isSelf ? uploadSheet : null}
       </>
     );
@@ -268,18 +362,28 @@ export function HighlightsTab({ athleteId, isSelf, refreshKey = 0, onChanged }: 
 
   const tiles: MediaTile[] = items.map((item) => ({
     id: item.id,
-    uri: item.display_url,
+    /* A clip with no preview picture shows as a dark video tile, not its video file. */
+    uri:
+      (item.media_type === 'video' || item.media_type === 'highlight_reel') && !item.thumbnail_url
+        ? null
+        : item.display_url,
     isVideo: item.media_type === 'video' || item.media_type === 'highlight_reel',
     caption: item.title,
+    when: relativeTime(item.created_at),
+    durationSeconds: item.duration_seconds,
+    views: item.views_count,
   }));
 
   return (
     <View style={{ gap: spacing.md }}>
+      {bestOfTitle}
       <MediaGrid
+        layout={layout}
+        author={author}
         tiles={tiles}
         onAdd={isSelf ? pick : undefined}
         adding={uploading}
-        addLabel={t('profile.addHighlight')}
+        addLabel={author?.name ? t('profile.addClip') : t('profile.addHighlight')}
         onPressTile={(id) => setPreview(items.find((item) => item.id === id) ?? null)}
         onLongPressTile={
           isSelf

@@ -51,6 +51,9 @@ export const onboarding = {
   citySearchPlaceholder: 'Buscar ciudades',
   cityNoMatch: 'Ninguna ciudad coincide. Prueba con una búsqueda más corta.',
   cityShowAll: 'Ver todas las ciudades',
+  countryChoose: 'Elige un país',
+  cityChoose: 'Elige una ciudad',
+  cityUseTyped: 'Usar «{{name}}»',
 
   // ── Deportista: datos físicos ─────────────────────────────────────────────
   physicalTitle: 'Unos números',

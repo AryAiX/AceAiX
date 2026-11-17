@@ -39,6 +39,12 @@ export const opportunities = {
 
   /** Los deportes vienen de `sports.allSports`; solo la fila de tipo es nuestra. */
   allTypes: 'Todo',
+  searchPlaceholder: 'Busca pruebas o clubes',
+  filters: 'Filtros',
+  removeFilter: 'Quitar {{label}}',
+  showResults_one: 'Ver {{count}} resultado',
+  showResults_many: 'Ver {{count}} resultados',
+  showResults_other: 'Ver {{count}} resultados',
 
   athlete: {
     appliedOn: 'Solicitada el {{date}}',
@@ -208,7 +214,7 @@ export const opportunities = {
     whatTheySee: 'Lo que van a ver',
     seeProfile: 'Tu nombre y tu perfil',
     seeScore: 'Tu Puntuación de talento',
-    seeHighlights: 'Tus destacados y tus estadísticas',
+    seeHighlights: 'Tu vitrina y tus estadísticas',
     seeMessage: 'El mensaje que escribas arriba',
     guardianNotice: 'Tu madre, padre o tutor podrá ver las solicitudes que envíes.',
   },

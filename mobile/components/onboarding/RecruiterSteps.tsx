@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { TextInput, View } from 'react-native';
+import { View, type TextInputInstance } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Chip, Input, Text } from '@/components/ui';
@@ -91,7 +91,7 @@ export function RecruiterRoleStep({
 }) {
   const theme = useTheme();
   const t = useT();
-  const clubRef = useRef<TextInput>(null);
+  const clubRef = useRef<TextInputInstance>(null);
   const roleKeys = isClub ? CLUB_ROLE_KEYS : COACH_ROLE_KEYS;
   const roleNamespace = isClub ? 'common.clubRoles' : 'common.coachRoles';
 
@@ -300,7 +300,11 @@ export function RecruiterTargetStep({
               {available.map((position) => (
                 <Chip
                   key={position}
-                  label={positionLabel(t, position)}
+                  label={positionLabel(
+                    t,
+                    position,
+                    sports.find((sport) => positionsFor(sport).includes(position)),
+                  )}
                   selected={positions.includes(position)}
                   onPress={() => onTogglePosition(position)}
                   style={{ minHeight: theme.hit.min }}

@@ -8,7 +8,7 @@
  */
 export const views = {
   title: 'Who looked at your profile',
-  subtitle: 'Coaches, scouts and clubs from the last {{days}} days.',
+  subtitle: 'Views in the last {{days}} days.',
 
   homeTitleNone: 'Nobody has looked yet this week',
   homeTitle_one: '{{count}} person looked at your profile',
@@ -18,6 +18,9 @@ export const views = {
   homeClubs_one: 'from {{count}} club',
   homeClubs_other: 'from {{count}} clubs',
   homeEmptyBody: 'Add a clip or log a match — profiles with footage get opened first.',
+  including: 'Including {{name}}',
+  includingMore_one: 'Including {{name}} and {{count}} more',
+  includingMore_other: 'Including {{name}} and {{count}} more',
   homeCta: 'See who',
 
   namedTitle: 'Named',
@@ -41,4 +44,6 @@ export const views = {
   whyTitle: 'Why some names are missing',
   whyBody:
     'We name verified coaches, scouts and clubs — people acting professionally on a profile you published to be found. Unverified accounts and other athletes are counted but never named. That rule does not change for anyone.',
+  unnamedOnlyTitle_one: '{{count}} view we don’t name',
+  unnamedOnlyTitle_other: '{{count}} views we don’t name',
 };

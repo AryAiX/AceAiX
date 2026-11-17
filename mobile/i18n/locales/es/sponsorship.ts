@@ -63,6 +63,8 @@ export const sponsorship = {
   sendApplication: 'Enviar solicitud',
   applicationSent: 'Solicitud enviada',
   athletesOnly: 'Solo los atletas pueden solicitar una convocatoria.',
+  guardianCalls:
+    'Tu hijo solicita las convocatorias desde su propia cuenta. Te avisaremos y puedes aprobar o rechazar en Hijos.',
   seekersEmpty: 'Nadie lo pide ahora mismo',
   seekersEmptyBody: 'Los atletas que piden patrocinio aparecen aquí.',
   seekersSearch: 'Buscar por nombre o evento',

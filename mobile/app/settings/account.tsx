@@ -188,7 +188,7 @@ export default function AccountSettingsScreen() {
           <SettingsRow
             title={t('settings.emailLabel')}
             subtitle={email || t('settings.notSignedIn')}
-            icon={<Mail size={17} color={colors.text} />}
+            icon={<Mail size={17} color={colors.primary} />}
             right={
               profile?.is_verified ? (
                 <Badge label={t('common.verified')} tone="info" />
@@ -197,7 +197,7 @@ export default function AccountSettingsScreen() {
           />
           <SettingsRow
             title={t('settings.changePassword')}
-            icon={<KeyRound size={17} color={colors.text} />}
+            icon={<KeyRound size={17} color={colors.primary} />}
             onPress={() => setPasswordOpen(true)}
             testID="change-password"
           />
@@ -227,7 +227,7 @@ export default function AccountSettingsScreen() {
           <SettingsRow
             title={exporting ? t('settings.preparingFile') : t('settings.downloadMyData')}
             subtitle={t('settings.downloadSubtitle')}
-            icon={<Download size={17} color={colors.text} />}
+            icon={<Download size={17} color={colors.primary} />}
             onPress={exporting ? undefined : downloadMyData}
             disabled={exporting}
             testID="download-my-data"

@@ -268,6 +268,7 @@ export default function ClubSquadsScreen() {
               ))
             )}
             <Button
+              size="sm"
               label={t('clubManage.squads.newSquad')}
               variant="secondary"
               icon={<Plus size={18} color={colors.text} />}
@@ -380,6 +381,7 @@ export default function ClubSquadsScreen() {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
                 {sports.map((s) => (
                   <Chip
+                    tone="accent"
                     key={s.sport}
                     label={sportLabel(t, s.sport)}
                     selected={s.sport === chosenSport}

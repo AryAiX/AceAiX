@@ -13,6 +13,18 @@ export function isAbsoluteMediaUrl(value: string | null | undefined): boolean {
   return typeof value === 'string' && ABSOLUTE.test(value);
 }
 
+/**
+ * The picture to show for a post's media in a grid or list: its preview
+ * picture, or the photo itself. A video with no preview picture has none —
+ * its video file is not something an image can draw.
+ */
+export function posterOf(
+  media: { type?: string | null; url?: string | null; thumbnail?: string | null } | null | undefined,
+): string | null {
+  if (!media) return null;
+  return media.thumbnail ?? (media.type === 'video' ? null : (media.url ?? null));
+}
+
 /** The subset of references that still need signing, de-duplicated. */
 export function pathsToSign(values: (string | null | undefined)[]): string[] {
   const out = new Set<string>();

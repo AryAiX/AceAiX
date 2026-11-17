@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Badge, Button, Card, EmptyState, Text } from '@/components/ui';
+import { Button, Card, EmptyState, PointsChip, Text } from '@/components/ui';
 import { useT } from '@/i18n';
 import { tipText } from '@/lib/scoreTips';
 import type { ScoreTip } from '@/types/models';
@@ -47,7 +47,7 @@ export function TipList({ tips, onAction }: Props) {
                 {text.detail}
               </Text>
             </View>
-            <Badge label={t('score.tipPoints', { points: tip.points })} tone="accent" />
+            <PointsChip points={tip.points} label={t('score.tipPoints', { points: tip.points })} />
           </View>
           <Button
             label={ACTION_KEYS[tip.key] ? t(ACTION_KEYS[tip.key]) : t('score.tipOpen')}

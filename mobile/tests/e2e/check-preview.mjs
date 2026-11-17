@@ -195,7 +195,6 @@ await tap(page.getByText(/Real Madrid/).first(), 2400); await shot('team');
 await ensureHome();
 await tap(page.getByText(/looked at your profile/i).first(), 2400); await shot('views');
 await ensureHome();
-await tap(page.getByTestId('home-theme'), 1400); await shot('theme-toggled');
 
 await browser.close();
 server.close();

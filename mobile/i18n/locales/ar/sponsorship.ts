@@ -63,6 +63,8 @@ export const sponsorship = {
   sendApplication: 'أرسل الطلب',
   applicationSent: 'تم إرسال الطلب',
   athletesOnly: 'يمكن للرياضيين فقط التقديم على الدعوة.',
+  guardianCalls:
+    'يتقدّم طفلك إلى دعوات الرعاية من حسابه. ستُبلَّغ ويمكنك الموافقة أو الرفض من الأبناء.',
   seekersEmpty: 'لا أحد يطلب الآن',
   seekersEmptyBody: 'يظهر هنا الرياضيون الذين يطلبون رعاية.',
   seekersSearch: 'ابحث بالاسم أو الحدث',

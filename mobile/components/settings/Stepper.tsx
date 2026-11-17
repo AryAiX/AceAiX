@@ -60,10 +60,10 @@ export function Stepper({
         style={({ pressed }) => ({
           width: hit.min,
           height: hit.min,
-          borderRadius: radii.sm,
+          borderRadius: radii.button,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: colors.surfaceAlt,
+          backgroundColor: colors.sun,
           opacity: inert ? 0.35 : pressed ? 0.6 : 1,
         })}
       >
@@ -93,7 +93,7 @@ export function Stepper({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
         {button(
           -1,
-          <Minus size={18} color={colors.text} />,
+          <Minus size={18} color={colors.onSun} />,
           t('settings.stepperDecrease', { label }),
         )}
         <View style={{ minWidth: 56, alignItems: 'center' }}>
@@ -117,7 +117,7 @@ export function Stepper({
         </View>
         {button(
           1,
-          <Plus size={18} color={colors.text} />,
+          <Plus size={18} color={colors.onSun} />,
           t('settings.stepperIncrease', { label }),
         )}
       </View>

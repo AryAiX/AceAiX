@@ -1,16 +1,22 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Clipboard, Platform, Share, View } from 'react-native';
+import { Clipboard, Platform, Pressable, Share, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import * as Sharing from 'expo-sharing';
-import { MoreHorizontal } from 'lucide-react-native';
+import { ImagePlus, Link2, MoreHorizontal, Share2, Smartphone } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Avatar, Divider, ListItem, Sheet, Tappable, Text, useToast } from '@/components/ui';
+import { TierColors, tierForScore } from '@/theme/tokens';
+import { Avatar, Tappable, Text, useToast } from '@/components/ui';
+import { ShareSheet, type ShareOption } from '@/components/share/ShareSheet';
 import { positionLabel, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
 import { TranslatableText } from '@/components/common/TranslatableText';
+import { FollowButton } from '@/components/discover/FollowButton';
+import { ClubLogo } from '@/components/opportunities/ClubLogo';
 import { useAuth } from '@/providers/AuthProvider';
 import { toggleLike, toggleSave } from '@/lib/api';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
+import { applyToggleFollow } from '@/lib/followCounts';
 import { getPostAudience, postLink } from '@/lib/api.feed';
 import { brandedShareCaption, buildBrandedImage, type BrandedKind } from '@/lib/brandedShare';
 import { errorMessage } from '@/lib/errors';
@@ -20,7 +26,10 @@ import type { FeedPost } from '@/types/models';
 import { OffscreenBrandedCard } from './BrandedShareCard';
 import { HeartBurst } from './HeartBurst';
 import { MediaCarousel } from './MediaCarousel';
+import { ScorePeek } from './ScorePeek';
 import { PostActions } from './PostActions';
+import { LikersSheet } from './PostLikers';
+import { PostTagged } from './PostTagged';
 
 /**
  * The most-seen component in the app.
@@ -52,6 +61,17 @@ export interface PostCardProps {
   onOpenProfile: (userId: string) => void;
   /** Omit on the single-post screen — there is nowhere further to go. */
   onOpenPost?: (post: FeedPost) => void;
+  /**
+   * Home only. When passed, the card offers Follow for an author you do not
+   * follow yet, and reports the change so the list can update every post by
+   * that author. Saved and the single-post screen leave it out.
+   */
+  onFollowChange?: (authorId: string, following: boolean) => void;
+  /** Playfeed: an athlete's photo or video post shows their Talent Score in
+      a cut corner of the media; tapping it opens a quick look at the score. */
+  scoreCorner?: boolean;
+  /** Single-post screen, your own post: your score the day it went up. */
+  scoreThen?: number | null;
 }
 
 function PostCardBase({
@@ -63,6 +83,9 @@ function PostCardBase({
   onOpenActions,
   onOpenProfile,
   onOpenPost,
+  onFollowChange,
+  scoreCorner = false,
+  scoreThen = null,
 }: PostCardProps) {
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -71,6 +94,11 @@ function PostCardBase({
   const { user, profile } = useAuth();
 
   const [showAll, setShowAll] = useState(expanded);
+  const [peek, setPeek] = useState(false);
+  const showCorner =
+    scoreCorner && post.author_role === 'athlete' && post.media.length > 0;
+  /* No score worked out yet: the corner says New instead of 0, and has no pop-up. */
+  const scored = post.author_score > 0;
 
   const lastMediaTap = useRef(0);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -89,7 +117,7 @@ function PostCardBase({
   const caption = post.caption?.trim() ?? '';
   /* Sport and position are stored in English; only their labels are translated. */
   const meta = metaLine(
-    positionLabel(t, post.athlete_position),
+    positionLabel(t, post.athlete_position, post.athlete_sport),
     sportLabel(t, post.athlete_sport),
     relativeTime(post.created_at),
   );
@@ -120,12 +148,75 @@ function PostCardBase({
     try {
       const result = await toggleSave(post.id);
       onPatch(post.id, { viewer_saved: result.saved });
-      if (result.saved) toast.success(t('common.saved'));
+      /* Saved: offer to put it in a playbook too. Unsaved: it leaves them. */
+      if (result.saved) {
+        const picture = post.media[0];
+        offerPlaybooks({
+          kind: 'post',
+          id: post.id,
+          title: displayName(post.author_name),
+          subtitle: post.caption,
+          thumb: picture ? (picture.type === 'video' ? (picture.thumbnail ?? null) : picture.url) : null,
+        });
+      } else if (user) {
+        void removeFromAllPlaybooks(user.id, 'post', post.id);
+      }
     } catch (err) {
       onPatch(post.id, { viewer_saved: post.viewer_saved });
       toast.error(errorMessage(err));
     }
-  }, [post.id, post.viewer_saved, onPatch, toast, t]);
+  }, [post, onPatch, toast, user]);
+
+  /*
+   * Quick follow (Home only — the list passes `onFollowChange`).
+   *
+   * Offered only to someone you do not follow yet. `viewer_follows` is also
+   * true when you follow the club a post was made for, and FeedPost carries no
+   * club id, so a toggle on the author from here could not undo that — those
+   * posts never show the button. Once tapped, it stays on this card, so the
+   * person can see, and undo, what they did.
+   */
+  const isOwnPost = !!user && post.author_id === user.id;
+  const [followTapped, setFollowTapped] = useState(false);
+  const [followPending, setFollowPending] = useState(false);
+  /* A club is followed through its club page (organization_follows), not
+     through the account that posted — so a club's post never offers this. */
+  const showFollow =
+    !!onFollowChange &&
+    !isOwnPost &&
+    post.author_role !== 'club' &&
+    (!post.viewer_follows || followTapped);
+
+  const handleFollow = useCallback(async () => {
+    if (!onFollowChange || followPending) return;
+    const next = !post.viewer_follows;
+    setFollowTapped(true);
+    setFollowPending(true);
+    onFollowChange(post.author_id, next);
+    try {
+      const result = await applyToggleFollow({
+        targetId: post.author_id,
+        myId: user?.id ?? null,
+        wasFollowing: !next,
+        targetFollowers: null,
+        myFollowing: profile?.following_count ?? 0,
+      });
+      if (result.following !== next) onFollowChange(post.author_id, result.following);
+    } catch (err) {
+      onFollowChange(post.author_id, !next);
+      toast.error(errorMessage(err));
+    } finally {
+      setFollowPending(false);
+    }
+  }, [
+    onFollowChange,
+    followPending,
+    post.viewer_follows,
+    post.author_id,
+    user?.id,
+    profile?.following_count,
+    toast,
+  ]);
 
   const firstMedia = post.media[0];
   const canBrandShare =
@@ -138,6 +229,9 @@ function PostCardBase({
     (firstMedia.type === 'photo' || (firstMedia.type === 'video' && !!firstMedia.thumbnail));
 
   const [shareOpen, setShareOpen] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
+  /* The story / post images are only offered for a public post. */
+  const [brandOk, setBrandOk] = useState(false);
   const [rendering, setRendering] = useState(false);
   const shareJob = useRef<{
     kind: BrandedKind;
@@ -165,24 +259,26 @@ function PostCardBase({
   }, [post.id, t, toast]);
 
   const onShare = useCallback(() => {
-    if (!canBrandShare) {
-      void handleShare();
-      return;
-    }
-    if (shareLookup.current) return;
+    setBrandOk(false);
+    setShareOpen(true);
+    if (!canBrandShare || shareLookup.current) return;
     shareLookup.current = true;
     void (async () => {
       try {
-        const audience = await getPostAudience(post.id);
-        if (audience === 'public') setShareOpen(true);
-        else void handleShare();
+        setBrandOk((await getPostAudience(post.id)) === 'public');
       } catch {
-        void handleShare();
+        setBrandOk(false);
       } finally {
         shareLookup.current = false;
       }
     })();
-  }, [canBrandShare, handleShare, post.id]);
+  }, [canBrandShare, post.id]);
+
+  const copyLink = useCallback(() => {
+    Clipboard.setString(postLink(post.id));
+    setShareOpen(false);
+    toast.success(t('feed.linkCopied'));
+  }, [post.id, t, toast]);
 
   /* The sheet is a Modal. iOS will not present the system share sheet until
      that modal has left, so the link row closes first and then calls the
@@ -332,15 +428,20 @@ function PostCardBase({
             minHeight: theme.hit.min,
           }}
         >
-          <Avatar
-            uri={post.author_avatar}
-            name={name}
-            size="md"
-            score={post.author_score}
-            verified={post.author_verified}
-          />
+          {post.author_role === 'club' ? (
+            /* Square, so a club never reads as a person. */
+            <ClubLogo uri={post.author_avatar} name={name} size="sm" />
+          ) : (
+            <Avatar
+              uri={post.author_avatar}
+              name={name}
+              size="md"
+              score={post.author_score}
+              verified={post.author_verified}
+            />
+          )}
           <View style={{ flex: 1 }}>
-            <Text variant="bodyStrong" numberOfLines={1}>
+            <Text variant="name" numberOfLines={1}>
               {name}
             </Text>
             {meta ? (
@@ -348,8 +449,52 @@ function PostCardBase({
                 {meta}
               </Text>
             ) : null}
+            {scoreThen != null && scoreThen > 0 && post.author_score > 0 ? (
+              <View
+                testID="post-score-then"
+                style={{
+                  alignSelf: 'flex-start',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 6,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: radii.sm,
+                  backgroundColor: colors.surfaceAlt,
+                }}
+              >
+                <Text variant="captionStrong" tone="secondary">
+                  {t(scoreThen === post.author_score ? 'feed.postedAtSame' : 'feed.postedAtNow', {
+                    then: scoreThen,
+                    now: post.author_score,
+                  })}
+                </Text>
+                {scoreThen !== post.author_score ? (
+                  <Text variant="captionStrong" tone={post.author_score > scoreThen ? 'success' : 'danger'}>
+                    {post.author_score > scoreThen
+                      ? `↑ +${post.author_score - scoreThen}`
+                      : `↓ −${scoreThen - post.author_score}`}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         </Tappable>
+
+        {showFollow ? (
+          /* Wrapped: Button sets `alignSelf: 'flex-start'`, which in this row
+             would pin it to the top instead of centring it on the name. */
+          <View>
+            <FollowButton
+              following={post.viewer_follows}
+              pending={followPending}
+              onPress={handleFollow}
+              role={post.author_role}
+              name={name}
+            />
+          </View>
+        ) : null}
 
         <Tappable
           onPress={() => onOpenActions(post)}
@@ -360,7 +505,7 @@ function PostCardBase({
           style={({ pressed }) => ({
             width: theme.hit.min,
             height: theme.hit.min,
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
@@ -395,6 +540,10 @@ function PostCardBase({
         />
       ) : null}
 
+      {caption && (post.tagged?.length ?? 0) > 0 ? (
+        <PostTagged post={post} onPatch={onPatch} />
+      ) : null}
+
       {post.media.length > 0 ? (
         <View>
           <MediaCarousel
@@ -406,7 +555,26 @@ function PostCardBase({
           {/* Announced nowhere and touchable nowhere: the like it stands for is
               already announced by the heart button below. */}
           <HeartBurst trigger={bursts} size={theme.hit.comfortable * 2} />
+          {showCorner ? (
+            <ScoreCorner score={post.author_score} onPress={scored ? () => setPeek(true) : undefined} />
+          ) : null}
         </View>
+      ) : null}
+      {showCorner && scored ? (
+        <ScorePeek
+          visible={peek}
+          onClose={() => setPeek(false)}
+          userId={post.author_id}
+          name={post.author_name ?? ''}
+          avatar={post.author_avatar}
+          score={post.author_score}
+          postedAt={post.created_at}
+          postId={post.id}
+        />
+      ) : null}
+
+      {!caption && (post.tagged?.length ?? 0) > 0 ? (
+        <PostTagged post={post} onPatch={onPatch} />
       ) : null}
 
       <PostActions
@@ -415,40 +583,54 @@ function PostCardBase({
         commentCount={post.comment_count}
         saved={post.viewer_saved}
         onLike={handleLike}
+        onPressLikeCount={() => setLikersOpen(true)}
         onComment={() => onOpenComments(post)}
         onShare={onShare}
         onSave={handleSave}
       />
 
+      {likersOpen ? (
+        <LikersSheet postId={post.id} onClose={() => setLikersOpen(false)} />
+      ) : null}
+
       {rendering ? <OffscreenBrandedCard /> : null}
 
       {shareOpen ? (
-      <Sheet
-        visible
-        onClose={() => setShareOpen(false)}
-        title={t('common.share')}
-      >
-        <ListItem
-          title={t('feed.shareAsStory')}
-          showChevron={false}
-          testID="share-story"
-          onPress={() => startBrandedShare('story')}
+        <ShareSheet
+          visible
+          onClose={() => setShareOpen(false)}
+          link={postLink(post.id)}
+          options={[
+            ...(brandOk
+              ? ([
+                  {
+                    key: 'story',
+                    label: t('feed.shareAsStory'),
+                    icon: <Smartphone size={18} color={colors.textSecondary} />,
+                    onPress: () => startBrandedShare('story'),
+                  },
+                  {
+                    key: 'post',
+                    label: t('feed.shareAsPost'),
+                    icon: <ImagePlus size={18} color={colors.textSecondary} />,
+                    onPress: () => startBrandedShare('post'),
+                  },
+                ] as ShareOption[])
+              : []),
+            {
+              key: 'copy',
+              label: t('messaging.copyLink'),
+              icon: <Link2 size={18} color={colors.textSecondary} />,
+              onPress: copyLink,
+            },
+            {
+              key: 'link',
+              label: t('messaging.moreOptions'),
+              icon: <Share2 size={18} color={colors.textSecondary} />,
+              onPress: shareLinkFromSheet,
+            },
+          ]}
         />
-        <Divider />
-        <ListItem
-          title={t('feed.shareAsPost')}
-          showChevron={false}
-          testID="share-post"
-          onPress={() => startBrandedShare('post')}
-        />
-        <Divider />
-        <ListItem
-          title={t('feed.shareLink')}
-          showChevron={false}
-          testID="share-link"
-          onPress={shareLinkFromSheet}
-        />
-      </Sheet>
       ) : null}
     </View>
   );
@@ -461,6 +643,103 @@ async function presentPng(uri: string): Promise<void> {
     return;
   }
   await Share.share({ url: uri });
+}
+
+/* A deeper shade of each tier's colour, so the small number reads on white.
+   Dark mode uses the tier colour itself, which reads on the dark card. */
+const TIER_INK = {
+  rising: '#1E8FD6',
+  bronze: '#2F6BFF',
+  silver: '#7A6CFF',
+  gold: '#C77D00',
+  elite: '#E8372B',
+} as const;
+
+const CORNER = 52;
+/* The cut's diagonal: corner × √2. */
+const EDGE = Math.round(CORNER * Math.SQRT2 * 10) / 10;
+
+/** The cut corner on the media, with the score in the tier's colour. */
+function ScoreCorner({ score, onPress }: { score: number; onPress?: () => void }) {
+  const theme = useTheme();
+  const { colors } = theme;
+  const t = useT();
+  const tier = tierForScore(score);
+  const ink = theme.scheme === 'dark' ? TierColors[tier] : TIER_INK[tier];
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={8}
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={onPress ? t('feed.scorePeekA11y', { score }) : t('feed.scoreNew')}
+      testID="post-score-corner"
+      style={{ position: 'absolute', top: 0, right: 0, width: CORNER, height: CORNER }}
+    >
+      {/* A triangle in the card's own colour: the photo looks cut on the diagonal. */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: 0,
+          height: 0,
+          borderTopWidth: CORNER,
+          borderLeftWidth: CORNER,
+          borderTopColor: colors.surface,
+          borderLeftColor: 'transparent',
+        }}
+      />
+      {/* A thin line in the tier's colour along the cut, like a folded sticker. */}
+      <View
+        style={{
+          position: 'absolute',
+          left: CORNER / 2 - EDGE / 2,
+          top: CORNER / 2 - 1.5,
+          width: EDGE,
+          height: 3,
+          borderRadius: 1.5,
+          backgroundColor: ink,
+          transform: [{ rotate: '45deg' }],
+        }}
+      />
+      {/* The score ring's own number font, so it reads as a score. */}
+      {onPress ? null : (
+        <Text
+          variant="stat"
+          /* Kept inside the white triangle: longer words get a smaller size. */
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 5,
+            fontSize: t('feed.scoreNew').length <= 3 ? 12 : 10,
+            lineHeight: 14,
+            letterSpacing: 0.6,
+            color: ink,
+          }}
+          allowFontScaling={false}
+          numberOfLines={1}
+        >
+          {t('feed.scoreNew')}
+        </Text>
+      )}
+      {onPress ? <Text
+        variant="stat"
+        style={{
+          position: 'absolute',
+          top: 2,
+          right: 7,
+          /* "100" is a digit wider; a size down keeps it inside the white. */
+          fontSize: score >= 100 ? 17 : 21,
+          lineHeight: score >= 100 ? 21 : 25,
+          color: ink,
+        }}
+        allowFontScaling={false}
+      >
+        {score}
+      </Text> : null}
+    </Pressable>
+  );
 }
 
 export const PostCard = memo(PostCardBase);

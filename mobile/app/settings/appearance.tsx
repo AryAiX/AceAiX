@@ -69,7 +69,7 @@ function PreviewPost() {
 
       <View style={{ flexDirection: 'row', gap: spacing.lg, marginTop: spacing.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-          <Heart size={15} color={colors.primary} fill={colors.primary} />
+          <Heart size={15} color={colors.like} fill={colors.like} />
           <Text variant="caption" tone="muted">
             {formatNumber(124)}
           </Text>

@@ -25,6 +25,20 @@ export const Routes = {
   notifications: '/notifications' as const,
   inbox: '/inbox' as const,
   search: '/search' as const,
+  /** Posts search for one hashtag. `#` is encoded so it stays in the query. */
+  searchHashtag: (tag: string) =>
+    `/search?q=${encodeURIComponent(`#${tag}`)}&tab=posts` as unknown as Href,
+  /** One of the athlete's playbooks (saved folders, kept on the phone). */
+  playbook: (id: string) => ({ pathname: '/playbook/[id]', params: { id } }) as unknown as Href,
+  /** One side of the athlete's Discover on its own page. */
+  /* Cast: the typed-route list only learns a new screen when Expo restarts,
+     and a link should not fail the typecheck before then. */
+  discoverSection: (section: 'clubs' | 'coaches' | 'leaderboard' | 'sponsors', q?: string) =>
+    ({ pathname: '/discover-section', params: q ? { section, q } : { section } }) as unknown as Href,
+  /** Trials, on Open, with a search word already typed (search's "See all").
+      `at` makes a repeat of the same word still count as a new link. */
+  opportunitiesSearch: (q: string) =>
+    ({ pathname: '/(tabs)/opportunities', params: { q, at: String(Date.now()) } }) as unknown as Href,
   score: '/score' as const,
   intelligence: '/intelligence' as const,
   intelligenceSession: '/intelligence/session' as const,
@@ -275,6 +289,9 @@ export function notificationTarget(n: AppNotification): Href | null {
     case 'referral':
       // A friend joined through my invite, or I earned a token.
       return Routes.invite;
+    case 'sport_request':
+      // Approved, matched or rejected: the sport field on Edit profile.
+      return { pathname: Routes.editProfile, params: { focus: 'sport' } };
     default:
       break;
   }

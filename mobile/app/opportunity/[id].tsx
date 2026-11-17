@@ -5,23 +5,19 @@ import {
   AlertTriangle,
   BadgeCheck,
   Bookmark,
-  BookmarkCheck,
-  CalendarClock,
+  Check,
   CheckCircle2,
   Flag,
-  MapPin,
   MoreHorizontal,
   Share2,
   ShieldCheck,
   Target,
-  Trophy,
   Users,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Avatar,
-  Badge,
   Button,
   Card,
   ConfirmSheet,
@@ -38,12 +34,15 @@ import {
   SkeletonList,
   Text,
   useToast,
+  ChevronForward,
 } from '@/components/ui';
 import { ClubLogo } from '@/components/opportunities/ClubLogo';
-import { DeadlineChip, isClosed } from '@/components/opportunities/DeadlineChip';
+import { DaysLeftTag, isClosed } from '@/components/opportunities/DeadlineChip';
+import { Tag } from '@/components/opportunities/Tag';
 import { MatchBlock, explainMatch } from '@/components/opportunities/MatchExplain';
 import { ApplicationStatusBadge } from '@/components/opportunities/ApplicationStatusBadge';
 import {
+  SPORTS,
   opportunityTypeLabel,
   positionLabel,
   sportLabel,
@@ -62,12 +61,14 @@ import {
   reapplyToOpportunity,
 } from '@/lib/api.opportunities';
 import { errorMessage } from '@/lib/errors';
-import { fullDate, roleLabel } from '@/lib/format';
+import { fullDate, metaLine, roleLabel } from '@/lib/format';
 import { formatLocation } from '@/lib/location';
 import { Routes } from '@/lib/routes';
 import { shareContent } from '@/lib/share';
 import { webAppLink } from '@/lib/webLinks';
+import { offerPlaybooks, removeFromAllPlaybooks } from '@/lib/playbooks';
 import { useAuth } from '@/providers/AuthProvider';
+import { LogoColors } from '@/theme/tokens';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -86,28 +87,14 @@ const REPORT_REASONS: { value: string; label: string; hint?: string }[] = [
   { value: 'other', label: 'opportunities.report.reason.other' },
 ];
 
-/** One label-and-value cell in the facts grid. */
-function Fact({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  const { spacing } = useTheme();
+/** One label-and-value cell in the facts grid: a small label over the value. */
+function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flexBasis: '47%', flexGrow: 1, gap: 4 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        {icon}
-        <Text variant="overline" tone="muted">
-          {label}
-        </Text>
-      </View>
-      <Text variant="captionStrong" style={{ paddingLeft: spacing.xl }}>
-        {value}
+    <View style={{ flexBasis: '47%', flexGrow: 1, gap: 2 }}>
+      <Text variant="overline" tone="muted">
+        {label}
       </Text>
+      <Text variant="bodyStrong">{value}</Text>
     </View>
   );
 }
@@ -188,12 +175,22 @@ export default function OpportunityDetailScreen() {
     setSavedOverride(next);
     try {
       await toggleSaveOpportunity(opportunity.id, saved);
-      if (next) toast.success(t('opportunities.savedToast'));
+      if (next) {
+        offerPlaybooks({
+          kind: 'trial',
+          id: opportunity.id,
+          title: opportunity.title,
+          subtitle: opportunity.org_name,
+          thumb: opportunity.org_logo,
+        });
+      } else if (profile) {
+        void removeFromAllPlaybooks(profile.id, 'trial', opportunity.id);
+      }
     } catch (err) {
       setSavedOverride(!next);
       toast.error(errorMessage(err));
     }
-  }, [t, opportunity, saved, toast]);
+  }, [opportunity, saved, toast, profile]);
 
   const onApply = useCallback(async () => {
     if (!opportunity || busy) return;
@@ -312,13 +309,17 @@ export default function OpportunityDetailScreen() {
     : undefined;
   const openByline = openClub ?? openPoster;
   const typeLabel = opportunityTypeLabel(t, opportunity.type);
+  const sport = sportLabel(t, opportunity.sport);
+  const sportEmoji = SPORTS.find(
+    (entry) => entry.key.toLowerCase() === (opportunity.sport ?? '').toLowerCase(),
+  )?.emoji;
 
   // ── Sticky bar ──
   const bookmarkButton = (
     <IconButton
       icon={
         saved ? (
-          <BookmarkCheck size={20} color={colors.primary} strokeWidth={2.2} />
+          <Bookmark size={20} color={LogoColors.gold} fill={LogoColors.gold} strokeWidth={2.2} />
         ) : (
           <Bookmark size={20} color={colors.textMuted} strokeWidth={2} />
         )
@@ -391,7 +392,7 @@ export default function OpportunityDetailScreen() {
           disabled
           style={{ flex: 1 }}
         />
-        {bookmarkButton}
+        {isAthlete ? bookmarkButton : null}
       </View>
     );
   } else if (isAthlete) {
@@ -399,6 +400,7 @@ export default function OpportunityDetailScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
         <Button
           label={t('common.apply')}
+          variant="warm"
           fullWidth
           style={{ flex: 1 }}
           onPress={() => setApplyOpen(true)}
@@ -411,7 +413,7 @@ export default function OpportunityDetailScreen() {
   return (
     <>
       <Screen
-        header={<Header back title={typeLabel || t('opportunities.detail.title')} right={overflow} />}
+        header={<Header back right={overflow} />}
         footer={footer}
         onRefresh={() => {
           detail.refresh();
@@ -460,13 +462,18 @@ export default function OpportunityDetailScreen() {
                   />
                 ) : null}
               </View>
-              <Text variant="caption" tone="muted">
-                {opportunity.org_id
-                  ? t('opportunities.detail.viewClub')
-                  : poster
-                    ? roleLabel(poster.role)
-                    : t('opportunities.detail.postedByMember')}
-              </Text>
+              {opportunity.org_id ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                  <Text variant="captionStrong" color={colors.primary}>
+                    {t('opportunities.detail.viewClub')}
+                  </Text>
+                  <ChevronForward size={14} color={colors.primary} />
+                </View>
+              ) : (
+                <Text variant="caption" tone="muted">
+                  {poster ? roleLabel(poster.role) : t('opportunities.detail.postedByMember')}
+                </Text>
+              )}
             </View>
           </Pressable>
 
@@ -474,10 +481,11 @@ export default function OpportunityDetailScreen() {
           <View style={{ gap: spacing.md }}>
             <Text variant="title">{opportunity.title}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
-              {typeLabel ? <Badge label={typeLabel} tone="primary" size="md" /> : null}
-              <DeadlineChip deadline={opportunity.deadline} size="md" />
+              {typeLabel ? <Tag label={typeLabel} tone="warm" size="md" /> : null}
+              {sport ? <Tag label={sportEmoji ? `${sportEmoji} ${sport}` : sport} size="md" /> : null}
+              <DaysLeftTag deadline={opportunity.deadline} size="md" />
               {!opportunity.is_active ? (
-                <Badge label={t('opportunities.detail.closed')} tone="neutral" size="md" />
+                <Tag label={t('opportunities.detail.closed')} size="md" />
               ) : null}
             </View>
           </View>
@@ -485,54 +493,37 @@ export default function OpportunityDetailScreen() {
           {/* Match */}
           {explanation ? <MatchBlock match={explanation} /> : null}
 
-          {/* Description */}
-          {opportunity.description?.trim() ? (
-            <View style={{ gap: spacing.sm }}>
-              <Text variant="heading">{t('opportunities.detail.about')}</Text>
-              <ExpandableText
-                text={opportunity.description.trim()}
-                lines={6}
-                variant="body"
-                tone="secondary"
-              />
-            </View>
-          ) : null}
-
-          {/* Facts */}
-          <Card tone="alt" style={{ gap: spacing.lg }}>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg }}>
-              {typeLabel ? (
-                <Fact
-                  icon={<Target size={14} color={colors.textMuted} />}
-                  label={t('opportunities.detail.factType')}
-                  value={typeLabel}
+          {/* What it is, then the facts, in one card. Type and sport are
+              already on the tags above, so the grid keeps the rest. */}
+          <Card style={{ gap: spacing.lg }}>
+            {opportunity.description?.trim() ? (
+              <View style={{ gap: spacing.sm }}>
+                <Text variant="subheading">{t('opportunities.detail.about')}</Text>
+                <ExpandableText
+                  text={opportunity.description.trim()}
+                  lines={6}
+                  variant="body"
+                  tone="secondary"
                 />
-              ) : null}
-              {opportunity.sport ? (
-                <Fact
-                  icon={<Trophy size={14} color={colors.textMuted} />}
-                  label={t('opportunities.detail.factSport')}
-                  value={sportLabel(t, opportunity.sport)}
-                />
-              ) : null}
+              </View>
+            ) : null}
+            {opportunity.description?.trim() ? <Divider /> : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing.lg, columnGap: spacing.lg }}>
               <Fact
-                icon={<Users size={14} color={colors.textMuted} />}
                 label={t('opportunities.detail.factPosition')}
                 value={
                   opportunity.position
-                    ? positionLabel(t, opportunity.position)
+                    ? positionLabel(t, opportunity.position, opportunity.sport)
                     : t('sports.anyPosition')
                 }
               />
               {opportunity.location ? (
                 <Fact
-                  icon={<MapPin size={14} color={colors.textMuted} />}
                   label={t('opportunities.detail.factWhere')}
                   value={formatLocation(opportunity.location, t)}
                 />
               ) : null}
               <Fact
-                icon={<CalendarClock size={14} color={colors.textMuted} />}
                 label={t('opportunities.detail.factDeadline')}
                 value={
                   opportunity.deadline
@@ -541,7 +532,6 @@ export default function OpportunityDetailScreen() {
                 }
               />
               <Fact
-                icon={<CalendarClock size={14} color={colors.textMuted} />}
                 label={t('opportunities.detail.factPosted')}
                 value={fullDate(opportunity.created_at)}
               />
@@ -643,10 +633,11 @@ export default function OpportunityDetailScreen() {
         visible={applyOpen}
         onClose={() => setApplyOpen(false)}
         title={t('common.apply')}
-        subtitle={opportunity.title}
+        subtitle={metaLine(opportunity.title, byline)}
         footer={
           <Button
             label={t('opportunities.apply.send')}
+            variant="warm"
             fullWidth
             loading={busy}
             onPress={onApply}
@@ -664,8 +655,8 @@ export default function OpportunityDetailScreen() {
             hint={`${message.trim().length}/600`}
           />
 
-          <Card tone="alt" style={{ gap: spacing.sm }}>
-            <Text variant="captionStrong">{t('opportunities.apply.whatTheySee')}</Text>
+          <Card style={{ gap: spacing.sm }}>
+            <Text variant="bodyStrong">{t('opportunities.apply.whatTheySee')}</Text>
             <View style={{ gap: 6 }}>
               {[
                 'opportunities.apply.seeProfile',
@@ -677,7 +668,7 @@ export default function OpportunityDetailScreen() {
                   key={key}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}
                 >
-                  <CheckCircle2 size={14} color={colors.textMuted} strokeWidth={2.4} />
+                  <Check size={14} color={colors.success} strokeWidth={2.6} />
                   <Text variant="caption" tone="secondary" style={{ flex: 1 }}>
                     {t(key)}
                   </Text>

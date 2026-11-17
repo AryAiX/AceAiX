@@ -4,7 +4,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Text } from '@/components/ui';
-import { useI18n, useT } from '@/i18n';
+import { useI18n, useT, intlLocale } from '@/i18n';
 import type { Streak } from '@/types/models';
 
 interface Props {
@@ -47,7 +47,7 @@ export function StreakCalendar({ streak, days = [], showTotals = true, style, te
 
   const week = useMemo(() => {
     const today = new Date();
-    const narrow = new Intl.DateTimeFormat(language, { weekday: 'narrow' });
+    const narrow = new Intl.DateTimeFormat(intlLocale(language), { weekday: 'narrow' });
 
     return Array.from({ length: WEEK }, (_, index) => {
       const date = new Date(today);

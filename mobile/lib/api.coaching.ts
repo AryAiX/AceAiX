@@ -38,7 +38,8 @@ export type CoachingGate =
   | 'own_calendar'
   | 'coach_not_accepting'
   | 'minor_needs_verified_coach'
-  | 'guardian_consent_required';
+  | 'guardian_consent_required'
+  | 'guardian_account';
 
 export interface CoachBookingPage {
   coach: {

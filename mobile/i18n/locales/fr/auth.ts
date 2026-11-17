@@ -61,6 +61,10 @@ export const auth = {
     highlightTrials: 'De vrais essais et de vraies places dans des clubs et des académies',
     highlightGuardian: 'Moins de 18 ans ? Un parent valide ton profil avant que qui que ce soit puisse te trouver',
     signIn: 'J’ai déjà un compte',
+    /* The sample cards on the welcome screen. */
+    demoShortlist: 'T’a présélectionné pour l’équipe U21',
+    demoScoreDelta: '+{{count}} ce mois-ci',
+    demoScouts: '{{count}} recruteurs ont regardé cette semaine',
   },
 
   // ── Connexion ─────────────────────────────────────────────────────────────

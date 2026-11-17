@@ -13,6 +13,7 @@ import {
   View,
   ViewStyle,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
@@ -100,7 +101,7 @@ export function Sheet({
 
   const translate = useRef(new Animated.Value(screenH)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
-  const sheetRef = useRef<View>(null);
+  const sheetRef = useRef<ViewInstance>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const dismissableRef = useRef(dismissable);
@@ -286,6 +287,22 @@ export function Sheet({
               ...theme.elevation(3),
             }}
           >
+            {/* The keyboard has rounded top corners. Without this, the dark
+                backdrop shows in the gaps beside them; this paints the sheet's
+                own colour down behind the keyboard so the two meet cleanly. */}
+            {keyboardH > 0 ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: '100%',
+                  height: keyboardH + 40,
+                  backgroundColor: colors.surface,
+                }}
+              />
+            ) : null}
             {dismissable ? (
               <View style={{ alignItems: 'center', paddingTop: spacing.md, paddingBottom: spacing.sm }}>
                 <View
@@ -328,7 +345,7 @@ export function Sheet({
                     style={{
                       width: 32,
                       height: 32,
-                      borderRadius: 16,
+                      borderRadius: radii.button,
                       alignItems: 'center',
                       justifyContent: 'center',
                       backgroundColor: colors.surfaceAlt,

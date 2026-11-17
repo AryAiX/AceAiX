@@ -103,7 +103,7 @@ export const profile = {
   statA11y: '{{value}} {{label}}',
 
   // ── Pestañas (components/profile/ProfileTabs.tsx) ──────────────────────────
-  tabHighlights: 'Destacados',
+  tabHighlights: 'Vitrina',
   tabCareer: 'Trayectoria',
 
   // ── Pestaña de publicaciones (components/profile/PostsTab.tsx) ─────────────
@@ -113,22 +113,44 @@ export const profile = {
     'Comparte un entrenamiento, un resultado o un clip. Los perfiles activos se ven más.',
   postsEmptyBodyOther: 'Cuando publique algo, aparecerá aquí.',
   postsEmptyAction: 'Escribir una publicación',
+  postsSwitchPosts: 'Publicaciones',
+  postsSwitchTagged: 'Etiquetados',
+  taggedEmptyTitle: 'Aún no hay publicaciones etiquetadas',
+  taggedEmptyBodySelf: 'Cuando alguien te etiquete en una publicación, aparecerá aquí.',
+  taggedEmptyBodyOther: 'Las publicaciones en las que esté etiquetada esta persona aparecerán aquí.',
 
   // ── Cuadrícula de contenido (components/profile/MediaGrid.tsx) ─────────────
-  addHighlight: 'Añadir destacado',
+  addHighlight: 'Añadir a la vitrina',
   videoClipA11y: 'Clip de video',
   photoA11y: 'Foto',
+  photoUnavailable: 'Foto no disponible',
+  scoreWhenPostedA11y: 'Puntuación al publicar: {{score}}',
+  scoreWhenPostedHint: 'El número de cada publicación es tu puntuación cuando la publicaste.',
+  highlightTag: 'Vitrina',
+  clipQuickTechnique: 'Técnica',
+  clipQuickMatch: 'Partido',
+  clipQuickTraining: 'Entreno',
+  clipQuickBest: 'Marca personal',
+  clipPointsHint: 'Añadir un clip puede subir tu puntuación de talento',
 
   // ── Pestaña de destacados (components/profile/HighlightsTab.tsx) ───────────
   photoPermission: 'AceAiX necesita permiso para abrir tus fotos.',
+  clipTooLong: 'Los clips de la vitrina tienen que durar {{seconds}} segundos como máximo.',
 
-  noHighlightsTitle: 'Aquí no hay destacados',
-  noHighlightsBody: 'Los destacados forman parte del perfil de un deportista.',
+  noHighlightsTitle: 'Aún no hay nada en la vitrina',
+  noHighlightsBody: 'La vitrina forma parte del perfil de un deportista.',
   clipsEmptyTitleSelf: 'Los entrenadores miran antes de leer.',
   clipsEmptyTitleOther: 'Todavía no hay clips',
   clipsEmptyBodySelf: 'Añade tu primer clip. Tres cortos es el punto justo.',
   clipsEmptyBodyOther: 'Cuando suba un clip, aparecerá aquí.',
   clipsEmptyAction: 'Añadir tu primer clip',
+  yourBest: 'Lo mejor de ti',
+  honourTypeLabel: 'Tipo de reconocimiento',
+  honourTypeTeam: 'Equipo',
+  honourTypeIndividual: 'Individual',
+  honourTypeNational: 'Nacional',
+  clipsWorthLead: 'Vale hasta',
+  clipsWorthTail: 'en tu Puntuación de talento',
 
   nameClipTitle: 'Ponle nombre a este clip',
   nameClipSubtitle: 'Un título corto ayuda al entrenador a saber qué está viendo.',
@@ -307,6 +329,10 @@ export const profile = {
   notSet: 'sin definir',
 
   sectionSport: 'Tu deporte',
+
+  birthDate: 'Fecha de nacimiento',
+
+  birthDateHint: 'Solo una vez, para saber si un padre o madre debe aprobar algunas funciones. Solo tú la ves.',
   sectionAlsoPlays: 'Otros deportes',
   alsoPlaysHint: 'Hasta 3 deportes más que practicas a menudo.',
   alsoPlaysAdd: 'Añadir un deporte',
@@ -365,4 +391,19 @@ export const profile = {
   playerCardFailed: 'No pudimos crear la tarjeta. Inténtalo de nuevo en un momento.',
   playerCardShare: 'Compartir',
   playerCardSave: 'Guardar imagen',
+  layoutGrid: 'Ver en cuadrícula',
+  layoutScroll: 'Ver en lista',
+  morePosts: 'Ver más publicaciones',
+  addToBestOfNamed: 'Añadir a la vitrina de {{name}}',
+  bestOfNamed: 'Vitrina de {{name}}',
+  postCount_one: '{{count}} publicación',
+  postCount_many: '{{count}} publicaciones',
+  postCount_other: '{{count}} publicaciones',
+  taggedCount_one: '{{count}} publicación etiquetada',
+  taggedCount_many: '{{count}} publicaciones etiquetadas',
+  taggedCount_other: '{{count}} publicaciones etiquetadas',
+  clipCount_one: '{{count}} vídeo',
+  clipCount_many: '{{count}} vídeos',
+  clipCount_other: '{{count}} vídeos',
+  addClip: 'Añadir un vídeo',
 };

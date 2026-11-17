@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Chip, Text } from '@/components/ui';
-import { useI18n, useT } from '@/i18n';
+import { useI18n, useT, intlLocale } from '@/i18n';
 
 interface Props {
   label: string;
@@ -112,7 +112,7 @@ export function MatchDateField({ label, value, onChange, required, error }: Prop
   };
 
   const monthName = (m: number) =>
-    new Date(2000, m - 1, 1).toLocaleDateString(language, { month: 'short' });
+    new Date(2000, m - 1, 1).toLocaleDateString(intlLocale(language), { month: 'short' });
 
   const toggle = (part: Part) => setOpen((current) => (current === part ? null : part));
 

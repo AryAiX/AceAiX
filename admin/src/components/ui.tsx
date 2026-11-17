@@ -61,7 +61,7 @@ export function StatusBadge({ status }: { status: string }) {
   const color =
     ({
       open: 'amber', pending: 'amber', more_info: 'violet', reviewing: 'blue', escalated: 'red',
-      resolved: 'green', approved: 'green', granted: 'green', accepted: 'green', booked: 'green', visible: 'green', live: 'blue',
+      resolved: 'green', approved: 'green', matched: 'blue', granted: 'green', accepted: 'green', booked: 'green', visible: 'green', live: 'blue',
       dismissed: 'slate', rejected: 'red', revoked: 'red', removed: 'red', declined: 'slate', withdrawn: 'slate',
       cancelled: 'slate', expired: 'slate', hidden: 'amber', under_review: 'amber', none: 'red', closed: 'slate', funded: 'green',
     } as Record<string, string>)[status] ?? 'slate';

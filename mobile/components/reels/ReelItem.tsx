@@ -8,6 +8,7 @@ import { BadgeCheck, Heart, MessageCircle, Play, Share2, Volume2, VolumeX } from
 import { useTheme } from '@/theme/ThemeProvider';
 import { Avatar, Text } from '@/components/ui';
 import { HeartBurst } from '@/components/feed/HeartBurst';
+import { LikersSheet } from '@/components/feed/PostLikers';
 import { MentionText } from '@/components/feed/MentionText';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { positionLabel, sportLabel } from '@/constants/sports';
@@ -79,6 +80,7 @@ function ReelItemBase({
   const [userPaused, setUserPaused] = useState(false);
   const [bursts, setBursts] = useState(0);
   const [captionOpen, setCaptionOpen] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
 
   const player = useVideoPlayer(video?.url ?? null, (p) => {
@@ -165,7 +167,7 @@ function ReelItemBase({
   };
 
   const name = displayName(post.author_name);
-  const meta = metaLine(positionLabel(t, post.athlete_position), sportLabel(t, post.athlete_sport));
+  const meta = metaLine(positionLabel(t, post.athlete_position, post.athlete_sport), sportLabel(t, post.athlete_sport));
   const caption = post.caption?.trim() ?? '';
 
   return (
@@ -267,7 +269,7 @@ function ReelItemBase({
               style={({ pressed }) => ({
                 paddingHorizontal: spacing.md,
                 height: 30,
-                borderRadius: 15,
+                borderRadius: theme.radii.button,
                 borderWidth: 1.5,
                 borderColor: ON_VIDEO,
                 alignItems: 'center',
@@ -339,6 +341,7 @@ function ReelItemBase({
             count={post.like_count}
             label={post.viewer_liked ? t('feed.unlikePost') : t('feed.likePost')}
             onPress={() => onLike(post)}
+            onPressCount={() => setLikersOpen(true)}
           />
 
           <RailButton
@@ -349,12 +352,13 @@ function ReelItemBase({
           >
             <MessageCircle size={28} color={ON_VIDEO} strokeWidth={2} />
           </RailButton>
-
-          <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
-            <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
-          </RailButton>
           </>
         ) : null}
+
+        {/* Share works on every clip, a Best of highlight included. */}
+        <RailButton label={t('feed.sharePost')} onPress={() => onShare(post)} testID="reel-share">
+          <Share2 size={26} color={ON_VIDEO} strokeWidth={2} />
+        </RailButton>
       </View>
 
       {/* ── Thin progress ── */}
@@ -379,6 +383,10 @@ function ReelItemBase({
           }}
         />
       </View>
+
+      {reactable && likersOpen ? (
+        <LikersSheet postId={post.id} onClose={() => setLikersOpen(false)} />
+      ) : null}
     </View>
   );
 }
@@ -400,6 +408,7 @@ function RailButton({
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const reduced = useReducedMotion();
+  const theme = useTheme();
   const press = (to: number) => {
     if (reduced) return;
     Animated.spring(scale, { toValue: to, speed: 50, bounciness: 10, useNativeDriver: NATIVE_DRIVER }).start();
@@ -420,7 +429,7 @@ function RailButton({
         style={{
           width: 48,
           height: 48,
-          borderRadius: 24,
+          borderRadius: theme.radii.button,
           backgroundColor: CHIP,
           alignItems: 'center',
           justifyContent: 'center',
@@ -443,13 +452,16 @@ function LikeButton({
   count,
   label,
   onPress,
+  onPressCount,
 }: {
   liked: boolean;
   count: number;
   label: string;
   onPress: () => void;
+  onPressCount: () => void;
 }) {
   const theme = useTheme();
+  const t = useT();
   const reduced = useReducedMotion();
   const pop = useRef(new Animated.Value(1)).current;
   const was = useRef(liked);
@@ -473,15 +485,34 @@ function LikeButton({
   }, [liked, pop, reduced]);
 
   return (
-    <RailButton label={label} onPress={onPress} count={count} testID="reel-like">
-      <Animated.View style={{ transform: [{ scale: pop }] }}>
-        <Heart
-          size={28}
-          color={liked ? theme.colors.primary : ON_VIDEO}
-          fill={liked ? theme.colors.primary : 'transparent'}
-          strokeWidth={2}
-        />
-      </Animated.View>
-    </RailButton>
+    <View style={{ alignItems: 'center', gap: 2 }}>
+      <RailButton label={label} onPress={onPress} testID="reel-like">
+        <Animated.View style={{ transform: [{ scale: pop }] }}>
+          <Heart
+            size={28}
+            color={liked ? theme.colors.like : ON_VIDEO}
+            fill={liked ? theme.colors.like : 'transparent'}
+            strokeWidth={2}
+          />
+        </Animated.View>
+      </RailButton>
+      {count > 0 ? (
+        <Pressable
+          onPress={onPressCount}
+          accessibilityRole="button"
+          accessibilityLabel={t('feed.seeWhoLiked', { count })}
+          hitSlop={12}
+          testID="reel-like-count"
+          style={({ pressed }) => ({
+            borderRadius: theme.radii.button,
+            backgroundColor: pressed ? 'rgba(255,255,255,0.18)' : 'transparent',
+          })}
+        >
+          <Text variant="captionStrong" color={ON_VIDEO} importantForAccessibility="no" accessibilityElementsHidden>
+            {compactNumber(count)}
+          </Text>
+        </Pressable>
+      ) : null}
+    </View>
   );
 }

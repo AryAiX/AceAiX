@@ -40,6 +40,7 @@ import { STAFF_ROLES, type StaffRole } from '@/lib/club';
 import { clubLabel } from '@/lib/clubLabels';
 import { errorMessage } from '@/lib/errors';
 import { displayName } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
 import { Routes } from '@/lib/routes';
 import type { PersonResult } from '@/types/models';
 
@@ -169,7 +170,7 @@ export default function ClubSquadMemberScreen() {
     }
     let number: number | null = null;
     if (kind === 'player' && shirt.trim()) {
-      number = Number(shirt.trim());
+      number = Number(toLatinDigits(shirt).trim());
       if (!Number.isInteger(number) || number < 0 || number > 999) {
         setShirtError(t('clubManage.member.shirtInvalid'));
         return;
@@ -278,7 +279,7 @@ export default function ClubSquadMemberScreen() {
                   {positions.map((p) => (
                     <Chip
                       key={p}
-                      label={positionLabel(t, p)}
+                      label={positionLabel(t, p, squad.sport)}
                       selected={position === p}
                       onPress={() => setPosition(position === p ? '' : p)}
                     />
@@ -363,6 +364,7 @@ export default function ClubSquadMemberScreen() {
           ) : null}
 
           <Button
+            size="sm"
             label={t(linkedUserId ? 'clubManage.member.linkSomeoneElse' : 'clubManage.member.findProfile')}
             variant="secondary"
             icon={<UserRoundSearch size={18} color={colors.text} />}
@@ -374,6 +376,7 @@ export default function ClubSquadMemberScreen() {
 
         {memberId ? (
           <Button
+            size="sm"
             label={t('clubManage.member.delete')}
             variant="ghost"
             icon={<Trash2 size={18} color={colors.danger} />}

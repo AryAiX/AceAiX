@@ -177,6 +177,11 @@ export const safety = {
   badgeWithdrawn: 'مسحوب',
   badgeExpired: 'منتهٍ',
 
+  showOnProfile: 'أظهرني في ملف {{name}}',
+  showOnProfileHint:
+    'يمكن للأندية والمدرّبين والكشّافين والرعاة حينها رؤيتك ومراسلتك بشأن طفلك.',
+  parentOf: 'أحد والدي',
+
   // ما يراه ولي الأمر من المحادثة: أنها قائمة، لا ما فيها من كلام
   whoTheyTalkTo: 'مع من يتحدث',
   noConversations: 'لا محادثات بعد.',

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
-  Chip,
   DateField,
+  Dropdown,
   ErrorState,
   Header,
   Input,
@@ -24,6 +24,7 @@ import { useT } from '@/i18n';
 import { getMySponsorship, saveSponsorCall } from '@/lib/api.sponsorship';
 import { errorMessage } from '@/lib/errors';
 import { Routes } from '@/lib/routes';
+import { toLatinDigits } from '@/lib/digits';
 import { OFFERS, parseAmount, parseDay, toggleTag, type Offer } from '@/lib/sponsorship';
 
 const CURRENCY = 'AED';
@@ -79,7 +80,7 @@ export default function SponsorCallScreen() {
     const lo = parseAmount(min);
     const hi = parseAmount(max);
     const day = parseDay(deadline);
-    const count = Math.min(500, Math.max(1, Math.round(Number(slots) || 1)));
+    const count = Math.min(500, Math.max(1, Math.round(Number(toLatinDigits(slots)) || 1)));
     const next = {
       title: title.trim().length < 3 ? t('sponsorship.titleRequired') : undefined,
       range:
@@ -193,18 +194,13 @@ export default function SponsorCallScreen() {
           <Text variant="captionStrong" tone="secondary">
             {t('sponsorship.cSport')}
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-            <Chip label={t('sponsorship.anySport')} selected={!sport} onPress={() => setSport(null)} />
-            {SPORTS.map((s) => (
-              <Chip
-                key={s.key}
-                label={sportLabel(t, s.key)}
-                icon={<Text variant="caption">{s.emoji}</Text>}
-                selected={sport === s.key}
-                onPress={() => setSport(s.key)}
-              />
-            ))}
-          </ScrollView>
+          <Dropdown
+            placeholder={t('sponsorship.anySport')}
+            options={SPORTS.map((s) => ({ key: s.key, label: sportLabel(t, s.key), emoji: s.emoji }))}
+            value={sport ? [sport] : []}
+            onChange={(next) => setSport(next[0] ?? null)}
+            testID="sponsorship-call-sport"
+          />
         </View>
 
         <TagPicker

@@ -15,6 +15,7 @@ export type TextVariant =
   | 'hero'          // splash / onboarding headline
   | 'display'       // big score numbers
   | 'title'         // screen title
+  | 'screenTitle'   // the big title at the top of a tab — Bebas Neue
   | 'heading'       // section heading
   | 'subheading'
   | 'body'
@@ -22,7 +23,11 @@ export type TextVariant =
   | 'caption'
   | 'captionStrong'
   | 'overline'      // ALL-CAPS label
-  | 'stat';         // condensed numeric
+  | 'stat'          // condensed numeric
+  | 'name'          // a person, coach or club name — Barlow Semi Condensed
+  | 'meta'          // the small spaced-capitals line under a name
+  | 'number'        // a count, score or time — JetBrains Mono
+  | 'numberStrong'; // the same, bold
 
 export type TextTone =
   | 'default'
@@ -74,11 +79,20 @@ export function Text({
       lineHeight: size.xxl * lineHeight.tight,
       letterSpacing: 0.2,
     },
+    /* Section headings and the titles of inner screens: the title face, a
+       step smaller than a screen's large title. Saira runs narrow, so it
+       sits two points above the Inter it replaced. */
+    screenTitle: {
+      fontFamily: font.screenTitle,
+      fontSize: 40,
+      lineHeight: 44,
+      letterSpacing: 0.6,
+    },
     heading: {
-      fontFamily: font.bold,
-      fontSize: size.lg,
-      lineHeight: size.lg * lineHeight.snug,
-      letterSpacing: -0.1,
+      fontFamily: font.display,
+      fontSize: 20,
+      lineHeight: 20 * lineHeight.snug,
+      letterSpacing: 0.2,
     },
     subheading: {
       fontFamily: font.semibold,
@@ -118,6 +132,31 @@ export function Text({
       lineHeight: size.xl * lineHeight.tight,
       letterSpacing: 0.3,
     },
+    name: {
+      fontFamily: font.name,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.snug,
+      letterSpacing: 0.2,
+    },
+    meta: {
+      fontFamily: font.semibold,
+      fontSize: size.xxs,
+      lineHeight: size.xxs * lineHeight.normal,
+      letterSpacing: 1.1,
+      textTransform: 'uppercase',
+    },
+    number: {
+      fontFamily: font.mono,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.normal,
+      fontVariant: ['tabular-nums'],
+    },
+    numberStrong: {
+      fontFamily: font.monoBold,
+      fontSize: size.md,
+      lineHeight: size.md * lineHeight.normal,
+      fontVariant: ['tabular-nums'],
+    },
   };
 
   const toneColor: Record<TextTone, string> = {
@@ -138,7 +177,7 @@ export function Text({
       {...rest}
       style={[
         variantStyle[variant],
-        variant === 'overline' ? RTL_OVERLINE : null,
+        variant === 'overline' || variant === 'meta' || variant === 'name' ? RTL_OVERLINE : null,
         { color: color ?? toneColor[tone] },
         align ? { textAlign: align } : START_ALIGN,
         style,

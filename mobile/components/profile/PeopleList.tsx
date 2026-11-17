@@ -4,16 +4,7 @@ import { useRouter } from 'expo-router';
 import { Search, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import {
-  Avatar,
-  Button,
-  EmptyState,
-  ErrorState,
-  Input,
-  SkeletonList,
-  Text,
-  useToast,
-} from '@/components/ui';
+import { Avatar, EmptyState, ErrorState, Input, SkeletonList, Text, useToast } from '@/components/ui';
 import { applyToggleFollow, knownFollowCount } from '@/lib/followCounts';
 import { useAuth } from '@/providers/AuthProvider';
 import { Routes } from '@/lib/routes';
@@ -21,6 +12,7 @@ import { displayName, metaLine, roleLabel } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
 import type { UserSummary } from '@/types/models';
+import { FollowButton } from '@/components/discover/FollowButton';
 
 interface Props {
   people: UserSummary[] | null;
@@ -177,15 +169,15 @@ export function PeopleList({
               </View>
 
               {isMe ? null : (
-                <Button
-                  label={t(isFollowing ? 'common.following' : 'common.follow')}
-                  variant={isFollowing ? 'secondary' : 'primary'}
-                  size="sm"
+                <FollowButton
+                  following={isFollowing}
+                  pending={busyId === item.id}
+                  onPress={() => onFollow(item, isFollowing)}
+                  role={item.role}
+                  name={displayName(item.full_name)}
                   /* The pill is 40pt tall to fit the row; the slop takes the
                      real target past 44. */
                   hitSlop={8}
-                  loading={busyId === item.id}
-                  onPress={() => onFollow(item, isFollowing)}
                 />
               )}
             </Pressable>

@@ -46,6 +46,9 @@ export const onboarding = {
   citySearchPlaceholder: 'ابحث عن مدينة',
   cityNoMatch: 'لا مدينة تطابق ذلك. جرّب بحثًا أقصر.',
   cityShowAll: 'عرض كل المدن',
+  countryChoose: 'اختر دولة',
+  cityChoose: 'اختر مدينة',
+  cityUseTyped: 'استخدم «{{name}}»',
 
   // ── اللاعب: القياسات ──────────────────────────────────────────────────────
   physicalTitle: 'بعض الأرقام',

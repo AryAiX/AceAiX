@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, TextStyle, View, ViewStyle } from 'react-native';
-import { Check, Search } from 'lucide-react-native';
+import { Animated, Easing, Pressable, StyleSheet, TextStyle, View, ViewStyle } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Check } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Text, Chip, Input, ChevronBack } from '@/components/ui';
+import { Text, ChevronBack } from '@/components/ui';
 import type { TextTone } from '@/components/ui';
 import { useT } from '@/i18n';
-import { currentLanguage } from '@/lib/i18n-bridge';
-import { PRIORITY_COUNTRIES, countryLabel, countryOptions } from '@/constants/sports';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
+import { countryLabel, countryOptions } from '@/constants/sports';
+import { PickerSheet, SelectField } from './PickerSheet';
 
 /**
  * The pieces every wizard step is built from — sign-up and onboarding share
@@ -15,7 +17,16 @@ import { PRIORITY_COUNTRIES, countryLabel, countryOptions } from '@/constants/sp
  */
 
 // ── Progress ─────────────────────────────────────────────────────────────────
-export function WizardProgress({ step, total }: { step: number; total: number }) {
+export function WizardProgress({
+  step,
+  total,
+  warm = false,
+}: {
+  step: number;
+  total: number;
+  /** Fill with the warm ombre, as the joining flow's buttons are. */
+  warm?: boolean;
+}) {
   const theme = useTheme();
   const t = useT();
   const { colors, radii, duration } = theme;
@@ -50,13 +61,23 @@ export function WizardProgress({ step, total }: { step: number; total: number })
         style={{
           height: '100%',
           borderRadius: radii.pill,
-          backgroundColor: colors.primary,
+          backgroundColor: warm ? theme.gradients.warm[1] : colors.primary,
+          overflow: 'hidden',
           width: width.interpolate({
             inputRange: [0, 1],
             outputRange: ['0%', '100%'],
           }),
         }}
-      />
+      >
+        {warm ? (
+          <LinearGradient
+            colors={theme.gradients.warm}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+      </Animated.View>
     </View>
   );
 }
@@ -69,6 +90,7 @@ export function WizardTopBar({
   backLabel,
   hideBack = false,
   right,
+  warm = false,
 }: {
   step: number;
   total: number;
@@ -77,6 +99,8 @@ export function WizardTopBar({
   /** Keeps the layout steady on the first step, where there is no way back. */
   hideBack?: boolean;
   right?: React.ReactNode;
+  /** The joining flow's warm progress bar. */
+  warm?: boolean;
 }) {
   const theme = useTheme();
   const t = useT();
@@ -103,7 +127,7 @@ export function WizardTopBar({
           style={({ pressed }) => ({
             width: hit.min,
             height: hit.min,
-            borderRadius: radii.pill,
+            borderRadius: radii.button,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: colors.surfaceAlt,
@@ -114,7 +138,7 @@ export function WizardTopBar({
         </Pressable>
       )}
 
-      <WizardProgress step={step} total={total} />
+      <WizardProgress step={step} total={total} warm={warm} />
 
       {right ?? (
         <Text variant="caption" tone="muted" style={{ minWidth: 40, textAlign: 'right' }}>
@@ -360,8 +384,14 @@ export function CheckboxRow({
 }
 
 // ── Country picker ───────────────────────────────────────────────────────────
+/** No longer used by the pickers (they list everything in a sheet); kept for anything importing it. */
 export const COUNTRIES_BEFORE_EXPAND = 10;
 
+/**
+ * One country: a field that shows the choice, and a sheet with a search box
+ * and the full list (the region's countries first). Typing narrows the list
+ * by English or translated name.
+ */
 export function CountryPicker({
   value,
   onChange,
@@ -371,67 +401,51 @@ export function CountryPicker({
   onChange: (country: string) => void;
   label?: string;
 }) {
-  const theme = useTheme();
   const t = useT();
-  const { colors, spacing } = theme;
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState(false);
+  const title = label ?? t('onboarding.countryLabel');
 
-  const matches = useMemo(() => {
-    const q = query.trim();
-    if (q || expanded) return countryOptions(q, (country) => countryLabel(t, country));
+  const rows = useMemo(
+    () =>
+      open
+        ? countryOptions(query, (country) => countryLabel(t, country)).map((country) => ({
+            key: country,
+            label: countryLabel(t, country),
+          }))
+        : [],
+    [open, query, t],
+  );
 
-    // Keep the first tap cheap: a short list, plus whatever is already chosen.
-    const short = PRIORITY_COUNTRIES.slice(0, COUNTRIES_BEFORE_EXPAND);
-    if (value && !short.includes(value)) short.push(value);
-    return short;
-  }, [query, expanded, value, t]);
-
-  const showMore =
-    !query.trim() && !expanded && PRIORITY_COUNTRIES.length > COUNTRIES_BEFORE_EXPAND;
+  const close = () => {
+    setOpen(false);
+    setQuery('');
+  };
 
   return (
-    <View style={{ gap: spacing.md }}>
-      <Input
-        label={label ?? t('onboarding.countryLabel')}
-        value={query}
-        onChangeText={setQuery}
-        placeholder={t('onboarding.countrySearchPlaceholder')}
-        autoCorrect={false}
-        icon={<Search size={18} color={colors.textMuted} />}
-        returnKeyType="search"
+    <>
+      <SelectField
+        label={title}
+        value={countryLabel(t, value)}
+        placeholder={t('onboarding.countryChoose')}
+        onPress={() => setOpen(true)}
       />
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-        {matches.map((country) => (
-          <Chip
-            key={country}
-            label={countryLabel(t, country)}
-            selected={value === country}
-            onPress={() => onChange(country)}
-          />
-        ))}
-        {matches.length === 0 ? (
-          <Text variant="caption" tone="muted">
-            {t('onboarding.countryNoMatch')}
-          </Text>
-        ) : null}
-      </View>
-
-      {showMore ? (
-        <Pressable
-          onPress={() => setExpanded(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t('onboarding.countryShowAll')}
-          hitSlop={8}
-          style={{ minHeight: 44, justifyContent: 'center' }}
-        >
-          <Text variant="captionStrong" tone="primary">
-            {t('onboarding.countryShowAll')}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
+      <PickerSheet
+        visible={open}
+        onClose={close}
+        title={title}
+        query={query}
+        onQueryChange={setQuery}
+        searchPlaceholder={t('onboarding.countrySearchPlaceholder')}
+        rows={rows}
+        selected={value}
+        onPick={(country) => {
+          onChange(country);
+          close();
+        }}
+        emptyText={t('onboarding.countryNoMatch')}
+      />
+    </>
   );
 }
 
@@ -453,7 +467,7 @@ export function toIsoDate(date: Date): string {
 }
 
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString(currentLanguage(), {
+  return date.toLocaleDateString(intlLocale(currentLanguage()), {
     day: 'numeric',
     month: 'long',
     year: 'numeric',

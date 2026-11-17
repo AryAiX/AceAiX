@@ -55,8 +55,8 @@ export default function SettingsScreen() {
   const showGuardian = !!profile?.is_minor || isGuardian;
 
   const iconFor = useCallback(
-    (Icon: typeof UserCog, color?: string) => <Icon size={17} color={color ?? colors.text} />,
-    [colors.text],
+    (Icon: typeof UserCog, color?: string) => <Icon size={17} color={color ?? colors.primary} />,
+    [colors.primary],
   );
 
   const contactSupport = useCallback(() => {

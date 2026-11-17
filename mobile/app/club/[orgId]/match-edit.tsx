@@ -201,6 +201,7 @@ export default function ClubMatchEditScreen() {
       <View style={{ gap: spacing.lg }}>
         <SectionHeader title={t('clubMatch.fixture.sectionWhat')} />
         <ChipField
+          tone="accent"
           label={t('clubMatch.fixture.sport')}
           options={page.data.sports.map((s) => ({
             value: s.sport,
@@ -348,6 +349,7 @@ export default function ClubMatchEditScreen() {
 
       {editId ? (
         <Button
+          size="sm"
           label={t('clubMatch.fixture.delete')}
           variant="ghost"
           icon={<Trash2 size={18} color={colors.danger} />}

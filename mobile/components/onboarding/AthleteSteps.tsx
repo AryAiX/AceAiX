@@ -1,19 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
+import { Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, EmptyState, Input, Text } from '@/components/ui';
+import { Button, Chip, EmptyState, Input, Text } from '@/components/ui';
+import { RequestSportSheet } from '@/components/profile/RequestSportSheet';
 import { useT } from '@/i18n';
 import {
   DOMINANT_SIDE,
   LEVELS,
   SPORTS,
+  isOtherSport,
   levelHint,
   levelLabelI18n,
   positionLabel,
   positionsFor,
   sideLabel,
   sportLabel,
+  sportMatchesQuery,
 } from '@/constants/sports';
 import { CityPicker, cityFromPicker } from './CityPicker';
 import { CountryPicker, OptionCard, SportTile, StepHeading } from './Shared';
@@ -30,27 +34,74 @@ export function SportStep({
 }) {
   const theme = useTheme();
   const t = useT();
+  const [query, setQuery] = useState('');
+  const [sheet, setSheet] = useState(false);
+  const [prefill, setPrefill] = useState('');
+  const visible = SPORTS.filter((sport) =>
+    sportMatchesQuery(query, sport.key, sportLabel(t, sport.key)),
+  );
+  const noMatches = query.trim().length > 0 && visible.length === 0;
+
+  const openRequest = () => {
+    setPrefill(query.trim());
+    setSheet(true);
+  };
 
   return (
-    <View>
+    <View style={{ gap: theme.spacing.md }}>
       <StepHeading title={t('onboarding.sportTitle')} subtitle={t('onboarding.sportSubtitle')} />
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: theme.spacing.md,
+      <Input
+        value={query}
+        onChangeText={setQuery}
+        placeholder={t('sports.searchSports')}
+        icon={<Search size={18} color={theme.colors.textMuted} />}
+        autoCorrect={false}
+        autoCapitalize="none"
+        accessibilityLabel={t('sports.searchSports')}
+        testID="onboarding-sport-search"
+      />
+      {visible.length === 0 ? (
+        <Text variant="body" tone="muted" align="center">
+          {t('sports.noSportMatches')}
+        </Text>
+      ) : (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: theme.spacing.md,
+          }}
+        >
+          {visible.map((sport) => (
+            <SportTile
+              key={sport.key}
+              label={sportLabel(t, sport.key)}
+              emoji={sport.emoji}
+              selected={value === sport.key}
+              onPress={() => onChange(sport.key)}
+            />
+          ))}
+        </View>
+      )}
+      <Button
+        label={t('sports.notListed')}
+        variant={noMatches || isOtherSport(value) ? 'primary' : 'secondary'}
+        onPress={openRequest}
+        testID="onboarding-sport-unlisted"
+      />
+      <RequestSportSheet
+        visible={sheet}
+        initialName={prefill}
+        onClose={() => setSheet(false)}
+        onSent={() => {
+          onChange('Other');
+          setSheet(false);
         }}
-      >
-        {SPORTS.map((sport) => (
-          <SportTile
-            key={sport.key}
-            label={sportLabel(t, sport.key)}
-            emoji={sport.emoji}
-            selected={value === sport.key}
-            onPress={() => onChange(sport.key)}
-          />
-        ))}
-      </View>
+        onSelectListed={(key) => {
+          onChange(key);
+          setSheet(false);
+        }}
+      />
     </View>
   );
 }
@@ -92,7 +143,7 @@ export function PositionStep({
           {positions.map((position) => (
             <Chip
               key={position}
-              label={positionLabel(t, position)}
+              label={positionLabel(t, position, sport)}
               selected={value === position}
               onPress={() => onChange(position)}
               style={{ minHeight: theme.hit.min }}

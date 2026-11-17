@@ -41,7 +41,7 @@ export default function LanguageSettingsScreen() {
         <Header
           title={t('language.settingsTitle')}
           back
-          onBack={() => router.replace(Routes.settings)}
+          onBack={() => (router.canGoBack() ? router.back() : router.replace(Routes.settings))}
           bordered
         />
       }

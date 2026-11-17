@@ -25,6 +25,7 @@ import {
   alpha,
   elevation,
   hueFor,
+  raised,
   huePair,
 } from './tokens';
 
@@ -43,6 +44,8 @@ export interface Theme {
   hit: typeof HitSize;
   duration: typeof Duration;
   elevation: (level: 0 | 1 | 2 | 3) => ReturnType<typeof elevation>;
+  /** Dark mode: a lit top edge and a shadow, so a card or control sits above the page. */
+  raised: (strength: 'card' | 'control') => ReturnType<typeof raised>;
   alpha: typeof alpha;
   /** Scheme-aware gradient stops. Same object as `colors.gradients`. */
   gradients: GradientSet;
@@ -109,6 +112,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       hit: HitSize,
       duration: Duration,
       elevation: (level) => elevation(colors, level),
+      raised: (strength) => raised(colors, strength),
       alpha,
       gradients: colors.gradients,
       play: Play,

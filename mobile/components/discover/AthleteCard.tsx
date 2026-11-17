@@ -106,7 +106,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
   /* Sport, position and level are stored in English; only the label reads in
      the viewer's language. */
   const role = metaLine(
-    positionLabel(t, athlete.position),
+    positionLabel(t, athlete.position, athlete.sport),
     sportLabel(t, athlete.sport),
     athlete.level ? levelLabelI18n(t, athlete.level) : null,
   );
@@ -173,7 +173,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
         </View>
 
         <View>
-          <Text variant="bodyStrong" numberOfLines={1}>
+          <Text variant="name" numberOfLines={1}>
             {name}
           </Text>
           {role ? (
@@ -212,7 +212,7 @@ export function AthleteCard({ athlete, criteria, saved, onToggleSave, onOpen, co
         />
 
         <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyStrong" numberOfLines={1}>
+          <Text variant="name" numberOfLines={1}>
             {name}
           </Text>
           {role ? (

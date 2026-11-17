@@ -186,6 +186,7 @@ export function WhereFields({
 
         {draft.branches.length < LIMITS.branches ? (
           <Button
+            size="sm"
             label={t('clubSetup.where.addBranch')}
             variant="secondary"
             icon={<Plus size={16} color={colors.text} />}

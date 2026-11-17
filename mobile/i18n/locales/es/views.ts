@@ -9,7 +9,7 @@
  */
 export const views = {
   title: 'Quién miró tu perfil',
-  subtitle: 'Entrenadores, reclutadores y clubes de los últimos {{days}} días.',
+  subtitle: 'Visitas en los últimos {{days}} días.',
 
   homeTitleNone: 'Esta semana todavía no te ha mirado nadie',
   homeTitle_one: '{{count}} persona miró tu perfil',
@@ -23,6 +23,10 @@ export const views = {
   homeClubs_other: 'de {{count}} clubes',
   homeEmptyBody:
     'Añade un clip o registra un partido: los perfiles con imágenes se abren antes.',
+  including: 'Entre ellos, {{name}}',
+  includingMore_one: 'Entre ellos, {{name}} y {{count}} más',
+  includingMore_many: 'Entre ellos, {{name}} y {{count}} más',
+  includingMore_other: 'Entre ellos, {{name}} y {{count}} más',
   homeCta: 'Ver quién',
 
   namedTitle: 'Con nombre',
@@ -50,4 +54,7 @@ export const views = {
   whyTitle: 'Por qué faltan algunos nombres',
   whyBody:
     'Damos el nombre de entrenadores, reclutadores y clubes verificados: gente que actúa de forma profesional sobre un perfil que publicaste para que te encontraran. Las cuentas sin verificar y los demás deportistas se cuentan, pero no se nombran nunca. Esa regla no cambia para nadie.',
+  unnamedOnlyTitle_one: '{{count}} visita sin nombre',
+  unnamedOnlyTitle_many: '{{count}} visitas sin nombre',
+  unnamedOnlyTitle_other: '{{count}} visitas sin nombre',
 };

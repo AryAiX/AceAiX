@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { LayoutChangeEvent, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import Svg, { Defs, LinearGradient, Polygon, Polyline, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient, Polygon, Polyline, Stop } from 'react-native-svg';
 import { Info, Sparkles, TrendingDown, TrendingUp, Trophy } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -387,7 +387,9 @@ function Sparkline({ points, color }: { points: ScoreHistoryPoint[]; color: stri
 
     const line = points.map((point, index) => `${x(index)},${y(point.overall)}`).join(' ');
     const area = `${x(0)},${height} ${line} ${x(points.length - 1)},${height}`;
-    return { line, area, min, max };
+    const last = points[points.length - 1];
+    const end = { x: x(points.length - 1), y: y(last.overall) };
+    return { line, area, min, max, end };
   }, [points, width]);
 
   return (
@@ -423,6 +425,8 @@ function Sparkline({ points, color }: { points: ScoreHistoryPoint[]; color: stri
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            {/* Today, marked. */}
+            <Circle cx={geometry.end.x} cy={geometry.end.y} r={4.5} fill={color} />
           </Svg>
         ) : null}
       </View>

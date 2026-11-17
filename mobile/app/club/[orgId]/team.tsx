@@ -257,6 +257,7 @@ export default function ClubTeamScreen() {
 
         {me && me.role !== 'owner' ? (
           <Button
+            size="sm"
             label={t('clubManage.team.leave')}
             variant="ghost"
             icon={<LogOut size={18} color={colors.danger} />}

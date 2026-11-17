@@ -4,7 +4,7 @@ import { Minus, Plus, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
-import { Button, Chip, Divider, Input, Sheet, Switch, Text } from '@/components/ui';
+import { Button, Chip, Divider, Dropdown, Input, Sheet, Switch, Text } from '@/components/ui';
 import {
   LEVELS,
   SPORTS,
@@ -18,6 +18,7 @@ import {
   sportEmoji,
   sportLabel,
 } from '@/constants/sports';
+import { OptionList, SelectedPills } from '@/components/onboarding/PickerSheet';
 import { useT } from '@/i18n';
 import { saveMatchPreferences } from '@/lib/api';
 import { countDiscoverAthletes } from '@/lib/api.discover';
@@ -34,7 +35,7 @@ const DEFAULT_AGE_MIN = 13;
 const DEFAULT_AGE_MAX = 25;
 const SCORE_STEP = 5;
 const SCORE_CEILING = 90;
-const COUNTRY_PAGE = 10;
+const COUNTRY_PAGE = 6;
 const COUNT_DEBOUNCE_MS = 350;
 
 interface Draft {
@@ -249,26 +250,21 @@ function PreferenceSports({
     <>
       <View>
         <SectionLabel title={t('discover.filters.sport')} />
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {SPORTS.map((sport) => (
-            <Chip
-              key={sport.key}
-              label={sportLabel(t, sport.key)}
-              icon={<Text variant="caption">{sport.emoji}</Text>}
-              selected={sports.includes(sport.key)}
-              onPress={() => onToggleSport(sport.key)}
-            />
-          ))}
-          {extraSports.map((sport) => (
-            <Chip
-              key={sport}
-              label={sportLabel(t, sport)}
-              icon={<Text variant="caption">{sportEmoji(sport)}</Text>}
-              selected
-              onPress={() => onToggleSport(sport)}
-            />
-          ))}
-        </View>
+        <Dropdown
+          multiple
+          options={[
+            ...SPORTS.map((sport) => ({ key: sport.key, label: sportLabel(t, sport.key), emoji: sport.emoji })),
+            ...extraSports.map((sport) => ({ key: sport, label: sportLabel(t, sport), emoji: sportEmoji(sport) })),
+          ]}
+          value={sports}
+          onChange={(next) => {
+            /* The brief toggles one sport at a time; pass on whichever changed. */
+            const changed =
+              next.find((key) => !sports.includes(key)) ?? sports.find((key) => !next.includes(key));
+            if (changed) onToggleSport(changed);
+          }}
+          testID="discover-filter-sports"
+        />
       </View>
 
       <Divider />
@@ -286,16 +282,16 @@ function PreferenceSports({
             <View key={sport} style={{ gap: spacing.sm }}>
               <Text variant="captionStrong">{sportLabel(t, sport)}</Text>
               {options.length > 0 ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                  {options.map((position) => (
-                    <Chip
-                      key={`${sport}:${position}`}
-                      label={positionLabel(t, position)}
-                      selected={selected.includes(position)}
-                      onPress={() => onTogglePosition(position)}
-                    />
-                  ))}
-                </View>
+                <Dropdown
+                  multiple
+                  options={options.map((position) => ({ key: position, label: positionLabel(t, position, sport) }))}
+                  value={selected}
+                  onChange={(next) => {
+                    const changed =
+                      next.find((key) => !selected.includes(key)) ?? selected.find((key) => !next.includes(key));
+                    if (changed) onTogglePosition(changed);
+                  }}
+                />
               ) : null}
             </View>
           );
@@ -487,7 +483,7 @@ export function FilterSheet({
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-        <Button label={t('common.clearAll')} variant="ghost" onPress={clearAll} />
+        <Button size="sm" label={t('common.clearAll')} variant="ghost" onPress={clearAll} />
         <Button
           label={mode === 'preferences' ? t('common.save') : showLabel}
           onPress={mode === 'preferences' ? savePreferences : apply}
@@ -531,25 +527,19 @@ export function FilterSheet({
             {/* Sport */}
             <View>
               <SectionLabel title={t('discover.filters.sport')} />
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                {SPORTS.map((sport) => (
-                  <Chip
-                    key={sport.key}
-                    label={sportLabel(t, sport.key)}
-                    icon={<Text variant="caption">{sport.emoji}</Text>}
-                    selected={draft.sport === sport.key}
-                    onPress={() =>
-                      // Positions belong to a sport; keeping them across a change
-                      // would filter for a position the new sport does not have.
-                      patch(
-                        draft.sport === sport.key
-                          ? { sport: undefined, positions: [] }
-                          : { sport: sport.key, positions: [] },
-                      )
-                    }
-                  />
-                ))}
-              </View>
+              <Dropdown
+                options={SPORTS.map((sport) => ({ key: sport.key, label: sportLabel(t, sport.key), emoji: sport.emoji }))}
+                value={draft.sport ? [draft.sport] : []}
+                /* Positions belong to a sport; keeping them across a change
+                   would filter for a position the new sport does not have. */
+                onChange={(next) => patch({ sport: next[0], positions: [] })}
+                testID="discover-filter-sport"
+              />
+              {/* The player search takes one sport, and positions follow it,
+                  so say so: everywhere else lets you tick several. */}
+              <Text variant="captionStrong" color={colors.primary} style={{ marginTop: spacing.sm }}>
+                {t('discover.filters.oneSportHint')}
+              </Text>
             </View>
 
             <Divider />
@@ -561,16 +551,16 @@ export function FilterSheet({
                 hint={draft.sport ? undefined : t('discover.filters.positionHint')}
               />
               {positions.length > 0 ? (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                  {positions.map((position) => (
-                    <Chip
-                      key={position}
-                      label={positionLabel(t, position)}
-                      selected={draft.positions.includes(position)}
-                      onPress={() => patch({ positions: toggle(draft.positions, position) })}
-                    />
-                  ))}
-                </View>
+                <Dropdown
+                  multiple
+                  options={positions.map((position) => ({
+                    key: position,
+                    label: positionLabel(t, position, draft.sport),
+                  }))}
+                  value={draft.positions}
+                  onChange={(next) => patch({ positions: next })}
+                  testID="discover-filter-positions"
+                />
               ) : null}
             </View>
           </>
@@ -581,16 +571,13 @@ export function FilterSheet({
         {/* Level */}
         <View>
           <SectionLabel title={t('discover.filters.level')} />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {LEVELS.map((level) => (
-              <Chip
-                key={level.key}
-                label={levelLabelI18n(t, level.key)}
-                selected={draft.levels.includes(level.key)}
-                onPress={() => patch({ levels: toggle(draft.levels, level.key) })}
-              />
-            ))}
-          </View>
+          <Dropdown
+            multiple
+            options={LEVELS.map((level) => ({ key: level.key, label: levelLabelI18n(t, level.key) }))}
+            value={draft.levels}
+            onChange={(next) => patch({ levels: next as typeof draft.levels })}
+            testID="discover-filter-levels"
+          />
         </View>
 
         <Divider />
@@ -607,22 +594,19 @@ export function FilterSheet({
             icon={<Search size={18} color={colors.textMuted} />}
             containerStyle={{ marginBottom: spacing.md }}
           />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-            {draft.countries.map((country) => (
-              <Chip
-                key={country}
-                label={countryLabel(t, country)}
-                selected
-                onPress={() => patch({ countries: toggle(draft.countries, country) })}
-              />
-            ))}
-            {visibleCountries.map((country) => (
-              <Chip
-                key={country}
-                label={countryLabel(t, country)}
-                onPress={() => patch({ countries: toggle(draft.countries, country) })}
-              />
-            ))}
+          <View style={{ gap: spacing.sm }}>
+            <SelectedPills
+              items={draft.countries.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+              onRemove={(country) => patch({ countries: toggle(draft.countries, country) })}
+            />
+            <OptionList
+              rows={visibleCountries.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+              onPick={(country) => {
+                patch({ countries: toggle(draft.countries, country) });
+                setCountryQuery('');
+              }}
+              limit={COUNTRY_PAGE}
+            />
           </View>
           {hiddenCountries > 0 ? (
             <Text variant="caption" tone="muted" style={{ marginTop: spacing.sm }}>

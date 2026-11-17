@@ -6,6 +6,8 @@
  * `save_sponsor_call` and `save_sponsor_profile` (1008/02). A tag that is not
  * here is dropped by the database, so adding one means adding it there first.
  */
+import { toLatinDigits } from '@/lib/digits';
+
 export { LOCATION_MAX, formatLocation, joinLocation, parseLocation } from '@/lib/location';
 
 export const NEEDS = ['entry_fee', 'travel', 'equipment', 'coaching', 'nutrition', 'other'] as const;
@@ -42,7 +44,7 @@ export function rangeLabel(
 
 /** A typed amount: digits only, no zero, no decimals. `undefined` means "not a number". */
 export function parseAmount(text: string): number | null | undefined {
-  const trimmed = text.trim().replace(/[,\s]/g, '');
+  const trimmed = toLatinDigits(text).trim().replace(/[,\s]/g, '');
   if (trimmed === '') return null;
   if (!/^\d{1,9}$/.test(trimmed)) return undefined;
   const value = Number(trimmed);

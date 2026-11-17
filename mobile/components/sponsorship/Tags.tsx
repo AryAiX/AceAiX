@@ -13,17 +13,22 @@ export function TagRow({
   tags,
   label,
   otherText,
+  max,
 }: {
   group: Group;
   tags: readonly string[];
   label?: string;
   /** Free text stored with the "other" need, shown as "Other: …". */
   otherText?: string | null;
+  /** Show this many, then a "+N" for the rest. */
+  max?: number;
 }) {
   const { colors, spacing, radii } = useTheme();
   const t = useT();
   if (tags.length === 0) return null;
   const detail = otherText?.trim();
+  const shown = max && tags.length > max ? tags.slice(0, max) : tags;
+  const more = tags.length - shown.length;
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
       {label ? (
@@ -31,7 +36,7 @@ export function TagRow({
           {label}
         </Text>
       ) : null}
-      {tags.map((tag) => (
+      {shown.map((tag) => (
         <View
           key={tag}
           style={{
@@ -48,6 +53,20 @@ export function TagRow({
           </Text>
         </View>
       ))}
+      {more > 0 ? (
+        <View
+          style={{
+            paddingHorizontal: spacing.sm,
+            paddingVertical: 3,
+            borderRadius: radii.pill,
+            backgroundColor: colors.surfaceAlt,
+          }}
+        >
+          <Text variant="caption" tone="secondary">
+            {`+${more}`}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

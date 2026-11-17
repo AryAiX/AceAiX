@@ -8274,4 +8274,3195 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+-- Trials search reaches past the first page (QA-166).
+-- Fresh accounts only (7fa00000): an athlete, a coach named Zara
+-- Coachwell who posts personal listings, and a second coach the
+-- athlete has blocked. A club called Qx Falcons Academy.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── trials search reaches past the first page ──'; end $$;
+
+do $$
+declare
+  v_athlete    uuid := '7fa00000-0000-4000-8000-000000000001';
+  v_zara       uuid := '7fa00000-0000-4000-8000-000000000002';
+  v_blocked    uuid := '7fa00000-0000-4000-8000-000000000003';
+  v_org        uuid;
+  v_gem        uuid;
+  v_scholarship uuid;
+  v_percent    uuid;
+  v_under      uuid;
+  v_offer      uuid;
+  v_basket     uuid;
+  v_closed     uuid;
+  v_expired    uuid;
+  v_blocked_trial uuid;
+  v_i          integer;
+  v_gem_page   integer;
+  v_gem_found  integer;
+  v_limit      integer;
+  v_limit_one  integer;
+  v_limit_cap  integer;
+  v_limit_100  integer;
+  v_hidden     integer;
+  v_closed_hit integer;
+  v_expired_hit integer;
+  v_blocked_hit integer;
+  v_club       integer;
+  v_club_other integer;
+  v_poster_gem integer;
+  v_poster_club integer;
+  v_poster_org integer;
+  v_sport      integer;
+  v_sport_case integer;
+  v_sport_other integer;
+  v_both       integer;
+  v_both_trial integer;
+  v_both_n     integer;
+  v_pct        integer;
+  v_pct_other  integer;
+  v_us         integer;
+  v_us_other   integer;
+  v_as_contract integer;
+  v_contract   integer;
+  v_offer_miss integer;
+  v_eligible   integer;
+  v_all        integer;
+  v_blank      integer;
+  v_mismatch   integer;
+  v_unsorted   integer;
+  v_probe      integer;
+  v_denied     boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_athlete, 'qa166.athlete@test.local', '{"full_name":"QA166 Athlete","role":"athlete"}'),
+    (v_zara, 'qa166.zara@test.local', '{"full_name":"Zara Coachwell","role":"coach"}'),
+    (v_blocked, 'qa166.blocked@test.local', '{"full_name":"Blocked Coach","role":"coach"}');
+
+  insert into public.organizations (name, type)
+  values ('Qx Falcons Academy', 'club')
+  returning id into v_org;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_athlete, v_blocked);
+
+  /* Sixty newer fillers, so the old trial falls off the first page. */
+  for v_i in 1..60 loop
+    insert into public.opportunities (created_by_id, title, type, sport, is_active)
+    values (v_zara, 'Qx Filler Trial ' || v_i, 'trial', 'Football', true);
+  end loop;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active, created_at)
+  values (v_zara, 'Qx Hidden Gem Trial', 'trial', 'QxTennis', true, now() - interval '30 days')
+  returning id into v_gem;
+
+  insert into public.opportunities (
+    created_by_id, organization_id, title, type, sport, is_active
+  ) values (
+    v_zara, v_org, 'Qx Academy Scholarship', 'scholarship', 'QxBasket', true
+  ) returning id into v_scholarship;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx 100% contract', 'contract', 'Football', true)
+  returning id into v_percent;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx under_score trial', 'trial', 'Football', true)
+  returning id into v_under;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Legacy Offer', 'offer', 'Football', true)
+  returning id into v_offer;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Basket Trial', 'trial', 'QxBasket', true)
+  returning id into v_basket;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_zara, 'Qx Closed Door Trial', 'trial', 'Football', false)
+  returning id into v_closed;
+
+  insert into public.opportunities (
+    created_by_id, title, type, sport, is_active, application_deadline
+  ) values (
+    v_zara, 'Qx Expired Window Trial', 'trial', 'Football', true, current_date - 1
+  ) returning id into v_expired;
+
+  insert into public.opportunities (created_by_id, title, type, sport, is_active)
+  values (v_blocked, 'Qx Blocked Coach Trial', 'trial', 'Football', true)
+  returning id into v_blocked_trial;
+
+  /* Count as the table owner. A signed-in read would hide rows the
+     search function is still allowed to consider, and then reject. */
+  select count(*) into v_eligible
+    from public.opportunities o
+   where o.is_active
+     and (o.application_deadline is null or o.application_deadline >= current_date)
+     and not exists (
+       select 1 from public.user_blocks b
+       where (b.blocker_id = v_athlete and b.blocked_id = o.created_by_id)
+          or (b.blocker_id = o.created_by_id and b.blocked_id = v_athlete)
+     );
+
+  perform tests.as_user(v_athlete);
+  set local role authenticated;
+
+  select count(*) into v_gem_page
+    from public.recommended_opportunities(50) r
+   where r.id = v_gem;
+  select count(*) into v_gem_found
+    from public.search_opportunities('Qx Hidden Gem', null, null, 50) s
+   where s.id = v_gem;
+
+  select count(*) into v_limit
+    from public.search_opportunities(null, null, null, 5);
+  select count(*) into v_limit_one
+    from public.search_opportunities(null, null, null, 0);
+  select count(*) into v_limit_cap
+    from public.search_opportunities(null, null, null, 1000);
+  select count(*) into v_limit_100
+    from public.search_opportunities(null, null, null, 100);
+
+  select count(*) into v_hidden
+    from public.search_opportunities(null, null, null, 100) s
+   where s.id in (v_closed, v_expired, v_blocked_trial);
+  select count(*) into v_closed_hit
+    from public.search_opportunities('Qx Closed Door', null, null, 50);
+  select count(*) into v_expired_hit
+    from public.search_opportunities('Qx Expired Window', null, null, 50);
+  select count(*) into v_blocked_hit
+    from public.search_opportunities('Qx Blocked Coach', null, null, 50);
+
+  select count(*) into v_club
+    from public.search_opportunities('qx falcons academy', null, null, 50) s
+   where s.id = v_scholarship;
+  select count(*) into v_club_other
+    from public.search_opportunities('qx falcons academy', null, null, 50) s
+   where s.id <> v_scholarship;
+
+  select count(*) into v_poster_gem
+    from public.search_opportunities('Zara Coachwell', null, null, 100) s
+   where s.id = v_gem;
+  select count(*) into v_poster_club
+    from public.search_opportunities('Zara Coachwell', null, null, 100) s
+   where s.id = v_scholarship;
+  select count(*) into v_poster_org
+    from public.search_opportunities('zara coachwell', null, null, 100) s
+   where s.org_id is not null;
+
+  select count(*) into v_sport
+    from public.search_opportunities(null, array['qxbasket'], null, 100) s
+   where s.id in (v_scholarship, v_basket);
+  select count(*) into v_sport_case
+    from public.search_opportunities(null, array['QXBASKET'], null, 100) s
+   where s.id in (v_scholarship, v_basket);
+  select count(*) into v_sport_other
+    from public.search_opportunities(null, array['QxBasket'], null, 100) s
+   where lower(s.sport) is distinct from 'qxbasket';
+
+  select count(*) into v_both
+    from public.search_opportunities(null, array['qxbasket'], array['SCHOLARSHIP'], 100) s
+   where s.id = v_scholarship;
+  select count(*) into v_both_trial
+    from public.search_opportunities(null, array['qxbasket'], array['scholarship'], 100) s
+   where s.id = v_basket;
+  select count(*) into v_both_n
+    from public.search_opportunities(null, array['QxBasket'], array['scholarship'], 100);
+
+  select count(*) into v_pct
+    from public.search_opportunities('%', null, null, 100) s
+   where s.id = v_percent;
+  select count(*) into v_pct_other
+    from public.search_opportunities('%', null, null, 100) s
+   where s.id = v_gem;
+  select count(*) into v_us
+    from public.search_opportunities('_', null, null, 100) s
+   where s.id = v_under;
+  select count(*) into v_us_other
+    from public.search_opportunities('_', null, null, 100) s
+   where s.id = v_gem;
+
+  select count(*) into v_as_contract
+    from public.search_opportunities(null, null, array['contract'], 100) s
+   where s.id = v_offer;
+  select count(*) into v_contract
+    from public.search_opportunities(null, null, array['Contract'], 100) s
+   where s.id = v_percent;
+  select count(*) into v_offer_miss
+    from public.search_opportunities(null, null, array['offer'], 100) s
+   where s.id = v_percent;
+
+  select count(*) into v_all
+    from public.search_opportunities(null, null, null, 100);
+  select count(*) into v_blank
+    from public.search_opportunities('   ', array[]::text[], array[]::text[], 100);
+
+  select count(*) into v_mismatch
+    from public.recommended_opportunities(50) r
+    join public.search_opportunities(null, null, null, 100) s on s.id = r.id
+   where r.match_percent is distinct from s.match_percent
+      or r.reasons is distinct from s.reasons;
+
+  select count(*) into v_unsorted
+    from (
+      select
+        s.match_percent,
+        s.created_at,
+        lag(s.match_percent) over (order by s.ordinality) as prev_match,
+        lag(s.created_at) over (order by s.ordinality) as prev_created
+      from public.search_opportunities(null, null, null, 100) with ordinality as s
+    ) ordered
+   where prev_match is not null
+     and (
+       match_percent > prev_match
+       or (match_percent = prev_match and created_at > prev_created)
+     );
+
+  reset role;
+
+  perform tests.ok(v_gem_page = 0 and v_gem_found = 1,
+    'the old trial is missing from the first page but found by search');
+  perform tests.ok(v_limit = 5 and v_limit_one = 1 and v_limit_cap = v_limit_100,
+    'the limit is kept between 1 and 100');
+  perform tests.ok(
+    v_hidden = 0 and v_closed_hit = 0 and v_expired_hit = 0 and v_blocked_hit = 0,
+    'closed, expired and blocked trials never come back');
+  perform tests.ok(v_club = 1 and v_club_other = 0,
+    'the club name finds that club''s trial');
+  perform tests.ok(v_poster_gem = 1 and v_poster_club = 0 and v_poster_org = 0,
+    'the poster name finds a personal listing and not a club listing');
+  perform tests.ok(v_sport = 2 and v_sport_case = 2 and v_sport_other = 0,
+    'the sport filter matches ignoring case');
+  perform tests.ok(v_both = 1 and v_both_trial = 0 and v_both_n = 1,
+    'sport and type together keep only trials that are both');
+  perform tests.ok(v_pct = 1 and v_pct_other = 0 and v_us = 1 and v_us_other = 0,
+    'percent and underscore are plain text');
+  perform tests.ok(v_as_contract = 1 and v_contract = 1 and v_offer_miss = 0,
+    'the contract filter also finds a trial saved as offer');
+  perform tests.ok(v_all = least(v_eligible, 100) and v_blank = v_all,
+    'empty search and empty filters keep everything');
+  perform tests.ok(v_mismatch = 0 and v_unsorted = 0,
+    'search uses the same match, reasons and order');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select 1 into v_probe from public.search_opportunities(null, null, null, 10) limit 1;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.search_opportunities(text, text[], text[], integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.search_opportunities(text, text[], text[], integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── Your Rundown ──'; end $$;
+
+/*
+ * QA-167. Reading the newest reels and then keeping follows misses clips
+ * once newer posts from everyone else fill the page. The followed feed
+ * has to be read on its own: an old public clip, an old followers-only
+ * clip, an old profile clip, and an old clip on a club page, buried
+ * under photos and under a stranger's newer videos.
+ */
+do $$
+declare
+  v_viewer   uuid := '7fe00000-0000-4000-8000-000000000001';
+  v_followed uuid := '7fe00000-0000-4000-8000-000000000002';
+  v_stranger uuid := '7fe00000-0000-4000-8000-000000000003';
+  v_club_user uuid := '7fe00000-0000-4000-8000-000000000004';
+  v_public   uuid := '7fe00000-0000-4000-8000-000000000011';
+  v_followers uuid := '7fe00000-0000-4000-8000-000000000012';
+  v_club_post uuid := '7fe00000-0000-4000-8000-000000000013';
+  v_own      uuid := '7fe00000-0000-4000-8000-000000000014';
+  v_highlight uuid := '7fe00000-0000-4000-8000-000000000015';
+  v_stranger_highlight uuid := '7fe00000-0000-4000-8000-000000000016';
+  v_org      uuid;
+  v_followed_athlete uuid;
+  v_stranger_athlete uuid;
+  v_ids      uuid[];
+  v_page     uuid[];
+  v_next     uuid[];
+  v_before   timestamptz;
+  v_missed   integer;
+  v_probe    integer;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_viewer,    'qa167.viewer@test.local',   '{"full_name":"QA167 Viewer","role":"athlete"}'),
+    (v_followed,  'qa167.followed@test.local', '{"full_name":"QA167 Followed","role":"athlete"}'),
+    (v_stranger,  'qa167.stranger@test.local', '{"full_name":"QA167 Stranger","role":"athlete"}'),
+    (v_club_user, 'qa167.club@test.local',     '{"full_name":"QA167 Club","role":"club"}');
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_viewer, v_followed, v_stranger, v_club_user);
+
+  perform tests.as_user(v_club_user);
+  v_org := public.create_club_page(
+    '{"type":"club","name":"QA167 Harbour","founded_year":2008,"ceo_name":"QA Director"}');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+
+  insert into public.follows (follower_id, following_id) values (v_viewer, v_followed);
+  insert into public.organization_follows (follower_id, organization_id) values (v_viewer, v_org);
+
+  insert into public.posts (id, author_id, type, caption, text, audience, media, organization_id, created_at) values
+    (v_public, v_followed, 'video', 'public clip', 'public clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_followed::text || '/clips/public.mp4', 'type', 'video')),
+     null, now() - interval '10 days' - interval '1 hour'),
+    (v_followers, v_followed, 'video', 'followers clip', 'followers clip', 'followers',
+     jsonb_build_array(jsonb_build_object('url', v_followed::text || '/clips/followers.mp4', 'type', 'video')),
+     null, now() - interval '10 days' - interval '2 hours'),
+    (v_club_post, v_stranger, 'video', 'club clip', 'club clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_stranger::text || '/clips/club.mp4', 'type', 'video')),
+     v_org, now() - interval '10 days'),
+    (v_own, v_viewer, 'video', 'my clip', 'my clip', 'public',
+     jsonb_build_array(jsonb_build_object('url', v_viewer::text || '/clips/own.mp4', 'type', 'video')),
+     null, now());
+
+  insert into public.posts (author_id, type, caption, text, audience, media, created_at)
+  select v_followed, 'standard', 'photo', 'photo', 'public',
+         jsonb_build_array(jsonb_build_object('url', v_followed::text || '/photos/' || g || '.jpg', 'type', 'photo')),
+         now() - interval '36 hours' - (g || ' seconds')::interval
+    from generate_series(1, 360) g;
+
+  insert into public.posts (author_id, type, caption, text, audience, media, created_at)
+  select v_stranger, 'video', 'stranger clip', 'stranger clip', 'public',
+         jsonb_build_array(jsonb_build_object('url', v_stranger::text || '/clips/' || g || '.mp4', 'type', 'video')),
+         now() + interval '30 days' - (g || ' seconds')::interval
+    from generate_series(1, 60) g;
+
+  select id into v_followed_athlete from public.athlete_profiles where user_id = v_followed;
+  select id into v_stranger_athlete from public.athlete_profiles where user_id = v_stranger;
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public, created_at) values
+    (v_highlight, v_followed_athlete, 'Followed highlight', 'highlight_reel',
+     v_followed::text || '/highlights/profile.mp4', true, now() - interval '10 days' - interval '3 hours'),
+    (v_stranger_highlight, v_stranger_athlete, 'Stranger highlight', 'highlight_reel',
+     v_stranger::text || '/highlights/profile.mp4', true, now() + interval '30 days' + interval '1 minute');
+
+  perform tests.as_user(v_viewer);
+
+  select count(*) into v_missed
+    from public.get_reels(30, null) r
+   where r.viewer_follows
+     and r.id in (v_public, v_followers, v_highlight, v_club_post);
+  perform tests.ok(v_missed = 0,
+    'the old way (get_reels 30, then viewer_follows) misses the followed clip');
+
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}')
+    into v_ids
+    from public.get_following_reels(30, null) r;
+  perform tests.ok(
+    v_ids = array[v_club_post, v_public, v_followers, v_highlight]::uuid[],
+    'get_following_reels returns the two followed clips, the profile clip and the club page clip, newest first');
+  perform tests.ok(
+    v_ids <@ array[v_club_post, v_public, v_followers, v_highlight]::uuid[]
+    and not v_own = any(v_ids),
+    'nothing else from the stranger comes back, the viewer''s own clip never comes back, and photos never come back');
+
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}'), min(r.created_at)
+    into v_page, v_before
+    from public.get_following_reels(2, null) r;
+  select coalesce(array_agg(r.id order by r.created_at desc, r.id), '{}')
+    into v_next
+    from public.get_following_reels(2, v_before) r;
+  perform tests.ok(
+    v_page = array[v_club_post, v_public]::uuid[]
+    and v_next = array[v_followers, v_highlight]::uuid[],
+    'a limit of 2 returns the two newest, and the next page using the oldest time returns the next two with no gap and no repeat');
+
+  delete from public.follows where follower_id = v_viewer and following_id = v_followed;
+  delete from public.organization_follows where follower_id = v_viewer and organization_id = v_org;
+  perform tests.ok(
+    (select count(*) from public.get_following_reels(30, null)) = 0,
+    'after unfollowing both, it comes back empty');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    select 1 into v_probe from public.get_following_reels(12, null) limit 1;
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.get_following_reels(integer, timestamptz)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.get_following_reels(integer, timestamptz)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Tagging people on a post (QA-169).
+-- A mention is text. A tag is a person attached to the post.
+-- Fresh accounts only (7f020000): an author, a friend, a coach
+-- the caption @mentions, a 15-year-old, someone the author
+-- blocked, a stranger, and a follower of the author. One public
+-- post and one followers-only post. tests.ok runs only after
+-- the role is reset, because authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── tagging people on a post ──'; end $$;
+
+do $$
+declare
+  v_author    uuid := '7f020000-0000-4000-8000-000000000001';
+  v_friend    uuid := '7f020000-0000-4000-8000-000000000002';
+  v_coach     uuid := '7f020000-0000-4000-8000-000000000003';
+  v_minor     uuid := '7f020000-0000-4000-8000-000000000004';
+  v_blocked   uuid := '7f020000-0000-4000-8000-000000000005';
+  v_stranger  uuid := '7f020000-0000-4000-8000-000000000006';
+  v_follower  uuid := '7f020000-0000-4000-8000-000000000007';
+  v_public    uuid := '7f020000-0000-4000-8000-000000000011';
+  v_followers uuid := '7f020000-0000-4000-8000-000000000012';
+  v_caption   text;
+  v_who       text;
+  v_len       integer;
+  v_kept      uuid[];
+  v_many      uuid[];
+  v_msg       text;
+  v_state     text;
+  v_hint      text;
+  v_limit     boolean := false;
+  v_not_author boolean := false;
+  v_notes_before integer;
+  v_notes_after  integer;
+  v_friend_notes integer;
+  v_seen_public integer;
+  v_seen_public_all integer;
+  v_seen_followers integer;
+  v_public_only integer;
+  v_other integer;
+  v_insert_refused boolean := false;
+  v_follower_ids uuid[];
+  v_follower_authors integer;
+  v_friend_tags integer;
+  v_friend_posts integer;
+  v_own integer;
+  v_cleared uuid[];
+  v_tags_before_delete integer;
+  v_anon_denied boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author,   'qa169.author@test.local',   '{"full_name":"Tag Author","role":"athlete"}'),
+    (v_friend,   'qa169.friend@test.local',   '{"full_name":"Tag Friend","role":"athlete"}'),
+    (v_coach,    'qa169.coach@test.local',    '{"full_name":"Tag Coach","role":"coach"}'),
+    (v_minor,    'qa169.minor@test.local',    '{"full_name":"Tag Minor","role":"athlete"}'),
+    (v_blocked,  'qa169.blocked@test.local',  '{"full_name":"Tag Blocked","role":"athlete"}'),
+    (v_stranger, 'qa169.stranger@test.local', '{"full_name":"Tag Stranger","role":"athlete"}'),
+    (v_follower, 'qa169.follower@test.local', '{"full_name":"Tag Follower","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_author, v_friend, v_coach, v_blocked, v_stranger, v_follower);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id = v_minor;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_author, v_blocked);
+  insert into public.follows (follower_id, following_id)
+  values (v_follower, v_author);
+
+  perform tests.ok(
+    (select full_name from public.user_profiles where id = v_author) = 'Tag Author'
+    and (select is_minor from public.user_profiles where id = v_minor)
+    and not (select is_minor from public.user_profiles where id = v_coach)
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_author and blocked_id = v_blocked
+    ),
+    'the author is Tag Author, the 15-year-old is a minor, and one account is blocked');
+
+  select full_name into v_who from public.user_profiles where id = v_coach;
+  v_caption := '@' || v_who || ' see this';
+  v_len := char_length('@' || v_who);
+
+  insert into public.posts (
+    id, author_id, type, caption, text, audience, mentions, created_at
+  ) values (
+    v_public, v_author, 'standard', v_caption, v_caption, 'public',
+    jsonb_build_array(jsonb_build_object(
+      'user_id', v_coach, 'start', 0, 'length', v_len
+    )),
+    now()
+  ), (
+    v_followers, v_author, 'standard', 'followers only', 'followers only', 'followers',
+    '[]'::jsonb,
+    now() - interval '1 hour'
+  );
+
+  perform tests.as_user(v_author);
+  v_kept := public.set_post_tags(
+    v_public,
+    array[v_friend, v_coach, v_minor, v_blocked, v_author, v_friend]
+  );
+  perform tests.ok(
+    v_kept @> array[v_friend, v_coach]::uuid[]
+    and array[v_friend, v_coach]::uuid[] @> v_kept
+    and cardinality(v_kept) = 2
+    and (select count(*) from public.post_tags where post_id = v_public) = 2
+    and not exists (
+      select 1 from public.post_tags
+      where post_id = v_public
+        and user_id in (v_minor, v_blocked, v_author)
+    ),
+    'tagging the friend, the coach, the minor, the blocked person, the author and the friend twice keeps only the friend and the coach');
+
+  select count(*) into v_friend_notes
+    from public.notifications
+   where user_id = v_friend
+     and type = 'post_tag'
+     and title = 'Tag Author tagged you in a post'
+     and actor_id = v_author
+     and entity_type = 'post'
+     and entity_id = v_public::text
+     and body = v_caption;
+  perform tests.ok(
+    v_friend_notes = 1
+    and (select count(*) from public.notifications
+          where user_id = v_friend and type = 'post_tag') = 1,
+    'the friend gets exactly one post_tag notification with the title "Tag Author tagged you in a post"');
+  perform tests.ok(
+    (select count(*) from public.notifications
+      where user_id = v_coach and type = 'post_tag') = 0
+    and (select count(*) from public.notifications
+      where user_id = v_minor and type = 'post_tag') = 0,
+    'the mentioned coach gets no post_tag notification, and the minor gets none');
+
+  select count(*) into v_notes_before
+    from public.notifications
+   where type = 'post_tag';
+  v_kept := public.set_post_tags(
+    v_public,
+    array[v_friend, v_coach, v_minor, v_blocked, v_author, v_friend]
+  );
+  select count(*) into v_notes_after
+    from public.notifications
+   where type = 'post_tag';
+  perform tests.ok(
+    v_notes_before = 1
+    and v_notes_after = v_notes_before
+    and cardinality(v_kept) = 2,
+    'saving the same list again notifies nobody again');
+
+  select coalesce(array_agg(gen_random_uuid()), '{}'::uuid[])
+    into v_many
+    from generate_series(1, 21);
+  begin
+    perform public.set_post_tags(v_public, v_many);
+  exception when invalid_parameter_value then
+    get stacked diagnostics
+      v_msg = message_text,
+      v_state = returned_sqlstate,
+      v_hint = pg_exception_hint;
+    v_limit := v_msg = 'You can tag up to 20 people'
+      and v_state = '22023'
+      and v_hint = 'post_tags_limit';
+  end;
+  perform tests.ok(v_limit, '21 people raises the limit error');
+
+  perform tests.as_user(v_stranger);
+  begin
+    perform public.set_post_tags(v_public, array[v_friend]);
+  exception when insufficient_privilege then
+    get stacked diagnostics v_state = returned_sqlstate;
+    v_not_author := v_state = '42501';
+  end;
+  perform tests.ok(v_not_author, 'someone who is not the author gets 42501');
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_followers, array[v_friend, v_coach]);
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_seen_public
+    from public.post_tags
+   where post_id = v_public
+     and user_id in (v_friend, v_coach);
+  select count(*) into v_seen_public_all
+    from public.post_tags
+   where post_id = v_public;
+  select count(*) into v_seen_followers
+    from public.post_tags
+   where post_id = v_followers;
+  select count(*) into v_public_only
+    from public.get_tagged_posts(v_friend, 24, null) g
+   where g.id = v_public and g.author_id = v_author;
+  select count(*) into v_other
+    from public.get_tagged_posts(v_friend, 24, null) g
+   where g.id is distinct from v_public;
+  begin
+    insert into public.post_tags (post_id, user_id, tagged_by)
+    values (v_public, v_stranger, v_stranger);
+    v_insert_refused := false;
+  exception when insufficient_privilege then
+    v_insert_refused := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_seen_public = 2 and v_seen_public_all = 2 and v_seen_followers = 0,
+    'a stranger sees both tags on the public post and no tags on the followers-only post');
+  perform tests.ok(
+    v_public_only = 1 and v_other = 0,
+    'get_tagged_posts for the friend returns only the public post');
+  perform tests.ok(v_insert_refused, 'a direct insert into post_tags is refused');
+
+  perform tests.as_user(v_follower);
+  set local role authenticated;
+  select coalesce(array_agg(g.id order by g.created_at desc), '{}'::uuid[]),
+         (count(*) filter (where g.author_id = v_author))::integer
+    into v_follower_ids, v_follower_authors
+    from public.get_tagged_posts(v_friend, 24, null) g;
+  reset role;
+  perform tests.ok(
+    v_follower_ids = array[v_public, v_followers]::uuid[]
+    and v_follower_authors = 2,
+    'a follower sees both tagged posts');
+
+  perform tests.as_user(v_friend);
+  perform public.block_user(v_stranger);
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*) into v_friend_tags
+    from public.post_tags
+   where user_id = v_friend;
+  select count(*) into v_friend_posts
+    from public.get_tagged_posts(v_friend, 24, null);
+  reset role;
+  perform tests.ok(
+    v_friend_tags = 0 and v_friend_posts = 0,
+    'after the friend blocks the stranger, the stranger sees none of the friend''s tags and none of the friend''s tagged posts');
+
+  perform tests.as_user(v_friend);
+  set local role authenticated;
+  select count(*) into v_own
+    from public.post_tags
+   where user_id = auth.uid()
+     and post_id in (v_public, v_followers);
+  perform public.remove_post_tag(v_public);
+  reset role;
+  perform tests.ok(v_own = 2, 'the friend always sees their own tags');
+  perform tests.ok(
+    not exists (
+      select 1 from public.post_tags
+      where post_id = v_public and user_id = v_friend
+    )
+    and exists (
+      select 1 from public.post_tags
+      where post_id = v_public and user_id = v_coach
+    )
+    and exists (
+      select 1 from public.post_tags
+      where post_id = v_followers and user_id = v_friend
+    ),
+    'remove_post_tag removes only the friend''s own tag');
+
+  perform tests.as_user(v_author);
+  v_cleared := public.set_post_tags(v_public, '{}'::uuid[]);
+  perform tests.ok(
+    v_cleared = '{}'::uuid[]
+    and not exists (select 1 from public.post_tags where post_id = v_public),
+    'the author can clear the list with an empty array');
+
+  select count(*) into v_tags_before_delete
+    from public.post_tags
+   where post_id = v_followers;
+  delete from public.posts where id = v_followers;
+  perform tests.ok(
+    v_tags_before_delete > 0
+    and not exists (select 1 from public.post_tags where post_id = v_followers),
+    'deleting a post removes its tags');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.post_tags limit 1;
+    v_anon_denied := false;
+  exception when insufficient_privilege then
+    v_anon_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_anon_denied
+    and not has_table_privilege('anon', 'public.post_tags', 'SELECT'),
+    'a signed-out caller cannot read post_tags');
+end $$;
+
+-- ------------------------------------------------------------
+-- Who liked a post (QA-170).
+-- A like row is no longer readable by every signed-in account.
+-- Fresh accounts only (7f040000): an author, an adult coach,
+-- a 15-year-old whose parent approved everything, that parent,
+-- a second 15-year-old with no approval, a stranger, and an
+-- adult who blocked the stranger. The author has a public post
+-- liked by the coach, both minors, the blocker and the stranger,
+-- and a followers-only post liked by the coach.
+-- tests.ok runs only after the role is reset, because
+-- authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who liked a post ──'; end $$;
+
+do $$
+declare
+  v_author    uuid := '7f040000-0000-4000-8000-000000000001';
+  v_adult     uuid := '7f040000-0000-4000-8000-000000000002';
+  v_kid       uuid := '7f040000-0000-4000-8000-000000000003';
+  v_parent    uuid := '7f040000-0000-4000-8000-000000000004';
+  v_other     uuid := '7f040000-0000-4000-8000-000000000005';
+  v_stranger  uuid := '7f040000-0000-4000-8000-000000000006';
+  v_blocker   uuid := '7f040000-0000-4000-8000-000000000007';
+  v_public    uuid := '7f040000-0000-4000-8000-000000000011';
+  v_followers uuid := '7f040000-0000-4000-8000-000000000012';
+  v_token     text;
+  v_granted   jsonb;
+  v_res       jsonb;
+  v_names     text[];
+  v_msg       text;
+  v_state     text;
+  v_missing   boolean := false;
+  v_seen      integer;
+  v_own       integer;
+  v_author_seen integer;
+  v_denied    boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author,   'qa170.author@test.local',   '{"full_name":"Author","role":"athlete"}'),
+    (v_adult,    'qa170.adult@test.local',    '{"full_name":"Adult","role":"coach"}'),
+    (v_kid,      'qa170.kid@test.local',      '{"full_name":"Kid","role":"athlete"}'),
+    (v_parent,   'qa170.parent@test.local',   '{"full_name":"Parent","role":"athlete"}'),
+    (v_other,    'qa170.other@test.local',    '{"full_name":"Other","role":"athlete"}'),
+    (v_stranger, 'qa170.stranger@test.local', '{"full_name":"Stranger","role":"athlete"}'),
+    (v_blocker,  'qa170.blocker@test.local',  '{"full_name":"Blocker","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '30 years'
+   where user_id in (v_author, v_adult, v_parent, v_stranger, v_blocker);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id in (v_kid, v_other);
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_stranger);
+
+  perform tests.as_user(v_kid);
+  v_token := tests.request_consent('Parent', 'qa170.parent@test.local', 'parent');
+  v_granted := public.confirm_guardian_consent(
+    v_token, true, true, true, true, true, true, true);
+  update public.guardian_consents
+     set guardian_user_id = v_parent
+   where token = v_token;
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  perform tests.ok(
+    (v_granted ->> 'ok')::boolean
+    and (select is_minor from public.user_profiles where id = v_kid)
+    and (select is_discoverable from public.user_profiles where id = v_kid)
+    and (select is_minor from public.user_profiles where id = v_other)
+    and not (select is_discoverable from public.user_profiles where id = v_other)
+    and exists (
+      select 1 from public.guardian_consents
+      where minor_user_id = v_kid
+        and guardian_user_id = v_parent
+        and status = 'granted'
+        and allow_discovery and allow_messaging and allow_media
+        and allow_assessments and allow_sponsorship
+        and allow_bookings and allow_mindset
+    )
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_blocker and blocked_id = v_stranger
+    ),
+    'the parent approved everything for Kid, Other has no approval, and Blocker blocked Stranger');
+
+  insert into public.posts (id, author_id, type, caption, text, audience, created_at) values
+    (v_public, v_author, 'standard', 'public', 'public', 'public', now() - interval '1 day'),
+    (v_followers, v_author, 'standard', 'followers', 'followers', 'followers', now() - interval '2 days');
+
+  insert into public.post_likes (post_id, user_id, created_at) values
+    (v_public, v_adult,    now() - interval '5 hours'),
+    (v_public, v_kid,      now() - interval '4 hours'),
+    (v_public, v_other,    now() - interval '2 hours'),
+    (v_public, v_blocker,  now() - interval '3 hours'),
+    (v_public, v_stranger, now() - interval '1 hour'),
+    (v_followers, v_adult, now());
+
+  perform tests.as_user(v_author);
+  v_res := public.post_likers(v_public);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Blocker', 'Kid', 'Adult']
+    and (v_res->>'hidden')::integer = 1
+    and (v_res->>'total')::integer = 5
+    and ((v_res->'likers'->0) ?& array['id', 'full_name', 'avatar_url', 'role', 'is_verified', 'liked_at']),
+    'the author gets Stranger, Blocker, Kid, Adult in that order, with hidden 1 and total 5');
+
+  perform tests.as_user(v_stranger);
+  v_res := public.post_likers(v_public);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Adult']
+    and (v_res->>'hidden')::integer = 3
+    and (v_res->>'total')::integer = 5,
+    'the stranger gets only Stranger and Adult, with hidden 3');
+
+  begin
+    perform public.post_likers(v_followers);
+  exception when no_data_found then
+    get stacked diagnostics
+      v_msg = message_text,
+      v_state = returned_sqlstate;
+    v_missing := v_msg = 'Not found' and v_state = 'P0002';
+  end;
+  perform tests.ok(v_missing, 'the stranger gets P0002 on the followers-only post');
+
+  perform tests.as_user(v_kid);
+  v_res := public.post_likers(v_public);
+  perform tests.ok(
+    exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_kid
+    ),
+    'the approved minor sees themselves');
+
+  perform tests.as_user(v_parent);
+  v_res := public.post_likers(v_public);
+  perform tests.ok(
+    exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_kid
+    )
+    and not exists (
+      select 1
+      from jsonb_array_elements(v_res->'likers') elem
+      where (elem->>'id')::uuid = v_other
+    ),
+    'the parent sees their child named but not the other minor');
+
+  perform tests.as_user(v_author);
+  v_res := public.post_likers(v_public, 2);
+  select coalesce(array_agg(elem->>'full_name' order by ord), '{}')
+    into v_names
+    from jsonb_array_elements(v_res->'likers') with ordinality as t(elem, ord);
+  perform tests.ok(
+    v_names = array['Stranger', 'Blocker']
+    and cardinality(v_names) = 2
+    and (v_res->>'hidden')::integer = 1
+    and (v_res->>'total')::integer = 5,
+    'a limit of 2 for the author returns 2 people and still says hidden 1');
+
+  perform tests.as_user(v_stranger);
+  set local role authenticated;
+  select count(*)::integer,
+         count(*) filter (where user_id = v_stranger)::integer
+    into v_seen, v_own
+    from public.post_likes
+   where post_id = v_public;
+  reset role;
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  select count(*)::integer
+    into v_author_seen
+    from public.post_likes
+   where post_id = v_public;
+  reset role;
+
+  perform tests.ok(
+    v_seen = 1 and v_own = 1,
+    'reading post_likes directly, the stranger sees only their own one like on that post');
+  perform tests.ok(
+    v_author_seen = 5,
+    'reading post_likes directly, the author sees all 5');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform public.post_likers(v_public);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.post_likers(uuid, integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.post_likers(uuid, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Leaderboard pages past the first hundred (QA-172).
+-- talent_leaderboard stops at 100. Fresh accounts only
+-- (7f060000): 134 Qxball athletes. 131 and 132 are fifteen.
+-- 131 is approved by a parent with discovery on. 132 has no
+-- approval. 133 is the viewer. 134 blocks the viewer.
+-- Every athlete already has a talent_scores row, so the
+-- scores are written with an upsert after the profile writes
+-- that would recompute them. tests.ok runs only after the
+-- role is reset, because authenticated cannot call it.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── leaderboard paging ──'; end $$;
+
+do $$
+declare
+  v_approved uuid := '7f060000-0000-4000-8000-000000000131';
+  v_waiting  uuid := '7f060000-0000-4000-8000-000000000132';
+  v_viewer   uuid := '7f060000-0000-4000-8000-000000000133';
+  v_blocker  uuid := '7f060000-0000-4000-8000-000000000134';
+  v_token    text;
+  v_granted  jsonb;
+  v_ids      uuid[];
+  v_ranks    bigint[];
+  v_hundred_ids   uuid[];
+  v_hundred_ranks bigint[];
+  v_past     integer;
+  v_waiting_count integer;
+  v_denied   boolean := false;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  select
+    ('7f060000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid,
+    'qa172.' || n || '@test.local',
+    jsonb_build_object('full_name', 'Qx ' || n, 'role', 'athlete')
+  from generate_series(1, 134) as n;
+
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id in (v_approved, v_waiting);
+
+  update public.athlete_profiles
+     set sport = 'Qxball'
+   where user_id::text like '7f060000-%';
+
+  perform tests.as_user(v_approved);
+  v_token := tests.request_consent('Parent', 'qa172.parent@test.local', 'parent');
+  v_granted := public.confirm_guardian_consent(v_token, true);
+
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_viewer);
+
+  -- The sport and birth-date writes above recompute the score.
+  -- This upsert is what the board actually ranks.
+  insert into public.talent_scores (athlete_id, overall, tier)
+  select scored.id,
+         scored.overall,
+         case
+           when scored.overall >= 85 then 'elite'
+           when scored.overall >= 70 then 'gold'
+           when scored.overall >= 55 then 'silver'
+           when scored.overall >= 40 then 'bronze'
+           else 'rising'
+         end
+  from (
+    select ap.id,
+           (5 + ((right(ap.user_id::text, 12)::integer - 1) % 90))::integer as overall
+    from public.athlete_profiles ap
+    where ap.user_id::text like '7f060000-%'
+  ) scored
+  on conflict (athlete_id) do update
+    set overall = excluded.overall,
+        tier = excluded.tier;
+
+  perform tests.ok(
+    (v_granted ->> 'ok')::boolean
+    and (select count(*) from public.athlete_profiles where sport = 'Qxball') = 134
+    and (select is_minor and is_discoverable from public.user_profiles where id = v_approved)
+    and (select is_minor and not is_discoverable from public.user_profiles where id = v_waiting)
+    and not (select is_minor from public.user_profiles where id = v_viewer)
+    and (select min(ts.overall) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball') = 5
+    and (select max(ts.overall) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball') = 94
+    and (select count(*) from public.talent_scores ts
+         join public.athlete_profiles ap on ap.id = ts.athlete_id
+         where ap.sport = 'Qxball'
+           and ts.overall between 5 and 94
+           and ts.tier in ('rising', 'bronze', 'silver', 'gold', 'elite')) = 134
+    and exists (
+      select 1 from public.user_blocks
+      where blocker_id = v_blocker and blocked_id = v_viewer
+    ),
+    '134 Qxball athletes are scored from 5 to 94, 131 is approved for discovery, 132 is waiting, and 134 blocks the viewer');
+
+  perform tests.as_user(v_viewer);
+
+  select coalesce(array_agg(user_id order by board_rank), '{}'::uuid[]),
+         coalesce(array_agg(board_rank order by board_rank), '{}'::bigint[])
+    into v_ids, v_ranks
+  from (
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 0, 50)
+    union all
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 50, 50)
+    union all
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 100, 50)
+  ) pages;
+
+  select coalesce(array_agg(user_id order by board_rank), '{}'::uuid[]),
+         coalesce(array_agg(board_rank order by board_rank), '{}'::bigint[])
+    into v_hundred_ids, v_hundred_ranks
+  from (
+    select user_id, "rank" as board_rank
+    from public.talent_leaderboard_page('Qxball', null, 0, 100)
+  ) page;
+
+  select count(*)::integer into v_past
+  from public.talent_leaderboard_page('Qxball', null, 132, 50);
+
+  v_waiting_count := public.talent_leaderboard_waiting();
+
+  perform tests.ok(
+    cardinality(v_ids) = 132
+    and v_viewer = any(v_ids)
+    and v_approved = any(v_ids)
+    and (
+      select count(*)
+      from unnest(v_ids) as t(member_id)
+      join public.user_profiles up on up.id = t.member_id
+      where not up.is_minor
+        and t.member_id <> v_viewer
+    ) = 130
+    and (select count(*) from public.talent_leaderboard('Qxball', null, 100)) = 100,
+    '132 athletes come back: 130 adults, the approved minor and the viewer, past the old 100 cap');
+
+  perform tests.ok(
+    v_ranks = (select array_agg(g::bigint order by g) from generate_series(1, 132) g),
+    'the ranks are exactly 1 to 132');
+
+  perform tests.ok(
+    (select count(distinct t.member_id) from unnest(v_ids) as t(member_id)) = 132,
+    'nobody repeats');
+
+  perform tests.ok(
+    v_ids[1:100] = v_hundred_ids
+    and v_ranks[1:100] = v_hundred_ranks,
+    'the first 100 equal a single read of 100 in the same order');
+
+  perform tests.ok(
+    v_approved = any(v_ids)
+    and not (v_waiting = any(v_ids)),
+    'the approved minor is on the board and the waiting minor is not');
+
+  perform tests.ok(
+    not (v_blocker = any(v_ids)),
+    'the blocker is not');
+
+  perform tests.ok(
+    v_waiting_count >= 1,
+    'talent_leaderboard_waiting is at least 1');
+
+  perform tests.ok(
+    v_past = 0,
+    'an offset past the end returns nothing');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.talent_leaderboard_page('Qxball', null, 0, 50);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege(
+      'anon', 'public.talent_leaderboard_page(text, text, integer, integer)', 'EXECUTE')
+    and not has_function_privilege(
+      'anon', 'public.talent_leaderboard_waiting()', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.talent_leaderboard_page(text, text, integer, integer)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated', 'public.talent_leaderboard_waiting()', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Each like is its own notice (QA-173). Fresh accounts only
+-- (7f080000): Notice Author and Liker One, Liker Two and
+-- Liker Three, plus two public posts by the author. Titles
+-- are varchar, so they are cast to text before the array
+-- comparison. tests.ok runs in this block because the session
+-- role stays the superuser.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── like notices one by one ──'; end $$;
+
+do $$
+declare
+  v_author uuid := '7f080000-0000-4000-8000-000000000001';
+  v_one    uuid := '7f080000-0000-4000-8000-000000000002';
+  v_two    uuid := '7f080000-0000-4000-8000-000000000003';
+  v_three  uuid := '7f080000-0000-4000-8000-000000000004';
+  v_post1  uuid;
+  v_post2  uuid;
+  v_res    jsonb;
+  v_titles text[];
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values
+    (v_author, 'qa173.author@test.local',
+     jsonb_build_object('full_name', 'Notice Author', 'role', 'athlete')),
+    (v_one, 'qa173.one@test.local',
+     jsonb_build_object('full_name', 'Liker One', 'role', 'athlete')),
+    (v_two, 'qa173.two@test.local',
+     jsonb_build_object('full_name', 'Liker Two', 'role', 'athlete')),
+    (v_three, 'qa173.three@test.local',
+     jsonb_build_object('full_name', 'Liker Three', 'role', 'athlete'));
+
+  perform tests.as_user(v_author);
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', 'First public post', 'public')
+  returning id into v_post1;
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', 'Second public post', 'public')
+  returning id into v_post2;
+
+  perform tests.as_user(v_one);
+  perform public.toggle_post_like(v_post1);
+  perform tests.as_user(v_two);
+  perform public.toggle_post_like(v_post1);
+  perform tests.as_user(v_three);
+  perform public.toggle_post_like(v_post1);
+
+  select coalesce(array_agg(n.title::text order by n.title::text), '{}'::text[])
+    into v_titles
+  from public.notifications n
+  where n.user_id = v_author
+    and n.type = 'like'
+    and n.entity_id = v_post1::text;
+
+  perform tests.ok(
+    v_titles = array[
+      'Liker One liked your post',
+      'Liker Three liked your post',
+      'Liker Two liked your post'
+    ]::text[],
+    'three likes on the first post make three like notifications for the author');
+
+  perform tests.ok(
+    not exists (
+      select 1
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and entity_id = v_post1::text
+        and group_key is not null
+    ),
+    'none of them has a group key');
+
+  perform tests.as_user(v_one);
+  perform public.toggle_post_like(v_post1);
+  v_res := public.toggle_post_like(v_post1);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and (
+      select count(*)
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_one
+        and entity_type = 'post'
+        and entity_id = v_post1::text
+    ) = 1,
+    'Liker One unliking and liking the first post again still leaves exactly one notification from Liker One for that post');
+
+  v_res := public.toggle_post_like(v_post2);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and (
+      select count(*)
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_one
+    ) = 2,
+    'Liker One liking the second post adds a new one, two from Liker One in total');
+
+  perform tests.as_user(v_author);
+  v_res := public.toggle_post_like(v_post1);
+  perform tests.ok(
+    (v_res ->> 'liked')::boolean
+    and not exists (
+      select 1
+      from public.notifications
+      where user_id = v_author
+        and type = 'like'
+        and actor_id = v_author
+    ),
+    'the author liking their own post makes no notification');
+end $$;
+
+-- ------------------------------------------------------------
+-- More sports on also plays (QA-177). One fresh athlete
+-- (7f090000). The main sport is Football. tests.ok runs in
+-- this block because the session role stays the superuser.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── more sports ──'; end $$;
+
+do $$
+declare
+  v_athlete uuid := '7f090000-0000-4000-8000-000000000001';
+  v_kept    jsonb;
+  v_msg     text;
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values (
+    v_athlete, 'qa177.athlete@test.local',
+    jsonb_build_object('full_name', 'More Sports', 'role', 'athlete')
+  );
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         other_sports = jsonb_build_array(
+           jsonb_build_object('sport', 'Rugby', 'level', 'club'),
+           jsonb_build_object('sport', 'Jiu-Jitsu', 'level', 'competitive'),
+           jsonb_build_object('sport', 'Table Tennis', 'level', 'casual')
+         )
+   where user_id = v_athlete
+  returning other_sports into v_kept;
+
+  perform tests.ok(
+    jsonb_array_length(v_kept) = 3
+    and v_kept -> 0 ->> 'sport' = 'Rugby'
+    and v_kept -> 1 ->> 'sport' = 'Jiu-Jitsu'
+    and v_kept -> 2 ->> 'sport' = 'Table Tennis',
+    'Rugby, Jiu-Jitsu and Table Tennis are accepted beside Football, and all 3 are kept');
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         other_sports = jsonb_build_array(
+           jsonb_build_object('sport', 'Martial Arts', 'level', 'club'),
+           jsonb_build_object('sport', 'Football', 'level', 'casual')
+         )
+   where user_id = v_athlete
+  returning other_sports into v_kept;
+
+  perform tests.ok(
+    jsonb_array_length(v_kept) = 1
+    and v_kept -> 0 ->> 'sport' = 'Martial Arts'
+    and (select sport from public.athlete_profiles where user_id = v_athlete) = 'Football',
+    'Martial Arts plus Football as other sports, with main sport Football, keeps only Martial Arts');
+
+  v_msg := null;
+  begin
+    update public.athlete_profiles
+       set other_sports = jsonb_build_array(
+             jsonb_build_object('sport', 'Underwater hockey', 'level', 'casual')
+           )
+     where user_id = v_athlete;
+  exception when raise_exception then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Unknown sport in other_sports',
+    'Underwater hockey is refused with Unknown sport in other_sports');
+end $$;
+
+-- ------------------------------------------------------------
+-- Typed sports stay private until an admin decides (QA-178).
+-- Fresh accounts only (7f0a0000): three athletes, one admin
+-- and one coach. tests.ok runs as the superuser. The
+-- authenticated and anon checks put the role back first.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── sport requests ──'; end $$;
+
+do $$
+declare
+  v_one     uuid := '7f0a0000-0000-4000-8000-000000000001';
+  v_two     uuid := '7f0a0000-0000-4000-8000-000000000002';
+  v_three   uuid := '7f0a0000-0000-4000-8000-000000000003';
+  v_admin   uuid := '7f0a0000-0000-4000-8000-000000000004';
+  v_coach   uuid := '7f0a0000-0000-4000-8000-000000000005';
+  v_req1    uuid;
+  v_req2    uuid;
+  v_req3    uuid;
+  v_again   uuid;
+  v_seen    integer;
+  v_own     integer;
+  v_waiting integer;
+  v_blocked boolean := false;
+  v_denied  boolean := false;
+  v_msg     text;
+  v_msg2    text;
+  v_hint    text;
+  v_hint2   text;
+  v_note    text := 'Kabaddi league is not on the list.';
+begin
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+
+  insert into auth.users (id, email, raw_user_meta_data)
+  values
+    (v_one, 'qa178.one@test.local',
+     jsonb_build_object('full_name', 'Asker One', 'role', 'athlete')),
+    (v_two, 'qa178.two@test.local',
+     jsonb_build_object('full_name', 'Asker Two', 'role', 'athlete')),
+    (v_three, 'qa178.three@test.local',
+     jsonb_build_object('full_name', 'Asker Three', 'role', 'athlete')),
+    (v_admin, 'qa178.admin@test.local',
+     jsonb_build_object('full_name', 'Sport Admin', 'role', 'athlete')),
+    (v_coach, 'qa178.coach@test.local',
+     jsonb_build_object('full_name', 'Sport Coach', 'role', 'coach'));
+
+  update public.user_profiles set role = 'admin' where id = v_admin;
+
+  update public.athlete_profiles
+     set sport = 'Football',
+         "position" = 'Forward',
+         position_primary = 'Striker'
+   where user_id = v_one;
+
+  perform tests.as_user(v_one);
+  v_req1 := public.request_sport('  kabaddi   league ');
+  perform tests.ok(
+    (select requested_name from public.sport_requests where id = v_req1) = 'kabaddi league'
+    and (select sport from public.athlete_profiles where user_id = v_one) = 'Other'
+    and (select "position" from public.athlete_profiles where user_id = v_one) is null
+    and (select position_primary from public.athlete_profiles where user_id = v_one) is null,
+    'asking stores the tidied name, sets the sport to Other and clears the position');
+
+  v_again := public.request_sport('kho kho');
+  perform tests.ok(
+    v_again = v_req1
+    and (select count(*) from public.sport_requests where user_id = v_one) = 1
+    and (select requested_name from public.sport_requests where id = v_req1) = 'kho kho',
+    'asking again replaces the waiting request and still leaves one row');
+
+  v_hint := null;
+  v_msg := null;
+  begin
+    perform public.request_sport('x');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_msg = message_text, v_hint = pg_exception_hint;
+  end;
+  v_hint2 := null;
+  v_msg2 := null;
+  begin
+    perform public.request_sport('<script>');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_msg2 = message_text, v_hint2 = pg_exception_hint;
+  end;
+  perform tests.ok(
+    v_hint = 'sport_name_invalid'
+    and v_msg = 'Use 2 to 40 letters for the sport name'
+    and v_hint2 = 'sport_name_invalid'
+    and v_msg2 = 'Use 2 to 40 letters for the sport name'
+    and (select count(*) from public.sport_requests where user_id = v_one) = 1,
+    '"x" and "<script>" are refused');
+
+  perform tests.as_user(v_coach);
+  v_msg := null;
+  begin
+    perform public.request_sport('Kabaddi');
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Only athletes choose a sport'
+    and not exists (select 1 from public.sport_requests where user_id = v_coach),
+    'a coach is refused');
+
+  perform tests.as_user(v_two);
+  v_req2 := public.request_sport('sepak takraw');
+  perform tests.as_user(v_three);
+  v_req3 := public.request_sport('kho kho');
+
+  perform tests.as_user(v_one);
+  set local role authenticated;
+  select count(*) into v_seen from public.sport_requests;
+  select count(*) into v_own
+  from public.sport_requests
+  where user_id = v_one
+    and requested_name = 'kho kho';
+  v_blocked := false;
+  begin
+    insert into public.sport_requests (user_id, requested_name)
+    values (v_one, 'Secret sport');
+  exception when insufficient_privilege then
+    v_blocked := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_blocked
+    and v_seen = 1
+    and v_own = 1
+    and has_table_privilege('authenticated', 'public.sport_requests', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.sport_requests', 'INSERT'),
+    'as a signed-in athlete, only their own request is visible and a direct insert is refused');
+
+  perform tests.as_user(v_one);
+  v_msg := null;
+  begin
+    perform public.admin_sport_requests();
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg = message_text;
+  end;
+  v_msg2 := null;
+  begin
+    perform public.admin_review_sport_request(v_req1, 'approve', 'Kabaddi');
+  exception when insufficient_privilege then
+    get stacked diagnostics v_msg2 = message_text;
+  end;
+  perform tests.ok(
+    v_msg = 'Admin access required'
+    and v_msg2 = 'Admin access required',
+    'a non-admin can neither list nor decide');
+
+  perform tests.as_user(v_admin);
+  select count(*) into v_waiting from public.admin_sport_requests();
+  perform tests.ok(
+    v_waiting = 3
+    and (select count(*) from public.admin_sport_requests() q
+         where q.user_id in (v_one, v_two, v_three)
+           and q.status = 'pending') = 3
+    and exists (
+      select 1 from public.admin_sport_requests() q
+      where q.user_id = v_one
+        and q.full_name = 'Asker One'
+        and q.email = 'qa178.one@test.local'
+        and q.is_minor = false
+        and q.current_sport = 'Other'
+        and q.requested_name = 'kho kho'
+    ),
+    'the admin sees the three waiting requests');
+
+  perform public.admin_review_sport_request(v_req1, 'approve', 'Kabaddi');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_one) = 'Kabaddi'
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_one
+        and type = 'sport_request_approved'
+        and title = 'Your sport was approved: Kabaddi'
+        and body is null
+        and actor_id is null
+        and entity_type = 'sport_request'
+        and entity_id = v_req1::text
+        and data ->> 'request_id' = v_req1::text
+        and data ->> 'status' = 'approved'
+        and data ->> 'sport' = 'Kabaddi'
+    )
+    and exists (
+      select 1 from public.audit_logs
+      where user_id = v_admin
+        and action = 'sport_request.approve'
+        and table_name = 'sport_requests'
+        and record_id = v_one
+        and old_value ->> 'status' = 'pending'
+        and new_value ->> 'status' = 'approved'
+        and new_value ->> 'decided_sport' = 'Kabaddi'
+    ),
+    'approve with Kabaddi sets the sport, sends the sport_request_approved notification with the title "Your sport was approved: Kabaddi", and writes an audit log row');
+
+  perform public.admin_review_sport_request(v_req2, 'match', 'Football');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_two) = 'Football'
+    and (select status from public.sport_requests where id = v_req2) = 'matched',
+    'match with Football sets Football');
+
+  perform public.admin_review_sport_request(v_req3, 'reject', null, v_note);
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_three) = 'Other'
+    and (select body from public.notifications
+         where user_id = v_three and type = 'sport_request_rejected') = v_note,
+    'reject with a note keeps Other and the notification body is the note');
+
+  v_hint := null;
+  begin
+    perform public.admin_review_sport_request(v_req1, 'reject');
+  exception when invalid_parameter_value then
+    get stacked diagnostics v_hint = pg_exception_hint;
+  end;
+  perform tests.ok(
+    v_hint = 'sport_request_decided'
+    and (select sport from public.athlete_profiles where user_id = v_one) = 'Kabaddi',
+    'a decided request cannot be decided again');
+
+  perform tests.as_user(v_three);
+  v_req3 := public.request_sport('Floorball');
+  update public.athlete_profiles
+     set sport = 'Tennis'
+   where user_id = v_three;
+  perform tests.as_user(v_admin);
+  perform public.admin_review_sport_request(v_req3, 'approve', 'Floorball');
+  perform tests.ok(
+    (select sport from public.athlete_profiles where user_id = v_three) = 'Tennis'
+    and (select status from public.sport_requests where id = v_req3) = 'approved'
+    and (select decided_sport from public.sport_requests where id = v_req3) = 'Floorball',
+    'approval does not overwrite Tennis when the athlete switched before the admin decided');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  v_denied := false;
+  begin
+    set local role anon;
+    perform public.request_sport('Kabaddi');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.request_sport(text)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.request_sport(text)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.admin_sport_requests(text)', 'EXECUTE')
+    and has_function_privilege(
+      'authenticated',
+      'public.admin_review_sport_request(uuid, text, text, text)',
+      'EXECUTE'),
+    'a signed-out caller cannot call request_sport');
+end $$;
+
+-- ------------------------------------------------------------
+-- A tap on a club account opens its page (QA-183).
+-- Fresh accounts only (7f0c0000): a club account owning a
+-- club page, a coach owning an academy page, a club account
+-- with no page, and a viewer.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a tap on a club account opens its page ──'; end $$;
+
+do $$
+declare
+  v_club      uuid := '7f0c0000-0000-4000-8000-000000000001';
+  v_coach     uuid := '7f0c0000-0000-4000-8000-000000000002';
+  v_nopage    uuid := '7f0c0000-0000-4000-8000-000000000003';
+  v_viewer    uuid := '7f0c0000-0000-4000-8000-000000000004';
+  v_club_page uuid;
+  v_academy   uuid;
+  v_page      uuid;
+  v_coach_page uuid;
+  v_none      uuid;
+  v_denied    boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_club, 'qa183.club@test.local', '{"full_name":"QA183 Club","role":"club"}'),
+    (v_coach, 'qa183.coach@test.local', '{"full_name":"QA183 Coach","role":"coach"}'),
+    (v_nopage, 'qa183.nopage@test.local', '{"full_name":"QA183 Club No Page","role":"club"}'),
+    (v_viewer, 'qa183.viewer@test.local', '{"full_name":"QA183 Viewer","role":"athlete"}');
+
+  insert into public.organizations (name, type)
+  values ('QA183 Club Page', 'club')
+  returning id into v_club_page;
+  insert into public.organizations (name, type)
+  values ('QA183 Academy Page', 'academy')
+  returning id into v_academy;
+
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values
+    (v_club_page, v_club, 'owner', 'active'),
+    (v_academy, v_coach, 'owner', 'active');
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  v_page := public.club_page_of(v_club);
+  v_coach_page := public.club_page_of(v_coach);
+  v_none := public.club_page_of(v_nopage);
+
+  reset role;
+
+  perform tests.ok(v_page = v_club_page, 'the club account returns its page id');
+  perform tests.ok(v_coach_page is null, 'the coach returns null');
+  perform tests.ok(v_none is null, 'the club without a page returns null');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform public.club_page_of(v_club);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.club_page_of(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.club_page_of(uuid)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Hashtag suggestions while typing (QA-185).
+-- Fresh accounts only (7f0d0000): an author and a viewer.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── hashtag suggestions while typing ──'; end $$;
+
+do $$
+declare
+  v_author uuid := '7f0d0000-0000-4000-8000-000000000001';
+  v_viewer uuid := '7f0d0000-0000-4000-8000-000000000002';
+  v_edited uuid;
+  v_tags   text[];
+  v_counts integer[];
+  v_prefix boolean;
+  v_never  boolean;
+  v_before boolean;
+  v_after  boolean;
+  v_empty  boolean;
+  v_denied boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_author, 'qa185.author@test.local', '{"full_name":"QA185 Author","role":"athlete"}'),
+    (v_viewer, 'qa185.viewer@test.local', '{"full_name":"QA185 Viewer","role":"athlete"}');
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+
+  insert into public.posts (author_id, type, caption, audience) values
+    (v_author, 'standard', 'Day one #Qzbaby', 'public'),
+    (v_author, 'standard', 'Again #qzbaby #qzbabygym', 'public'),
+    (v_author, 'standard', 'x#qzbabynot is not a tag', 'public'),
+    (v_author, 'standard', '#qzbabysecret', 'followers');
+
+  insert into public.posts (author_id, type, caption, audience, is_hidden) values
+    (v_author, 'standard', '#qzbabyhidden', 'public', true);
+
+  insert into public.posts (author_id, type, caption, audience)
+  values (v_author, 'standard', '#qzbefore', 'public')
+  returning id into v_edited;
+
+  reset role;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.tag order by s.ordinality), '{}'::text[]),
+         coalesce(array_agg(s.post_count order by s.ordinality), '{}'::integer[])
+    into v_tags, v_counts
+  from public.hashtag_suggestions('#QZba') with ordinality as s;
+
+  v_prefix :=
+    v_tags = array['qzbaby', 'qzbabygym']::text[]
+    and v_counts = array[2, 1]::integer[];
+
+  v_never :=
+    not exists (select 1 from public.hashtag_suggestions('qzbabysecret') where tag = 'qzbabysecret')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabyhidden') where tag = 'qzbabyhidden')
+    and not exists (select 1 from public.hashtag_suggestions('qzbabynot') where tag = 'qzbabynot');
+
+  v_before :=
+    (select s.post_count from public.hashtag_suggestions('qzbefore') s where s.tag = 'qzbefore') = 1;
+
+  reset role;
+
+  perform tests.ok(
+    v_prefix,
+    'hashtag_suggestions(''#QZba'') returns qzbaby with 2 posts, then qzbabygym with 1');
+
+  perform tests.ok(
+    v_never,
+    'qzbabysecret, qzbabyhidden and qzbabynot are never suggested');
+
+  perform tests.ok(
+    v_before,
+    'qzbefore is suggested before the edit');
+
+  perform tests.as_user(v_author);
+  set local role authenticated;
+  update public.posts
+     set caption = '#qzafter'
+   where id = v_edited;
+  reset role;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  v_after :=
+    not exists (select 1 from public.hashtag_suggestions('qzbefore') where tag = 'qzbefore')
+    and (select s.post_count from public.hashtag_suggestions('qzafter') s where s.tag = 'qzafter') = 1;
+
+  v_empty :=
+    not exists (select 1 from public.hashtag_suggestions('#'))
+    and not exists (select 1 from public.hashtag_suggestions('q_%'));
+
+  reset role;
+
+  perform tests.ok(
+    v_after,
+    'after the edit, qzbefore is gone and qzafter is there');
+
+  perform tests.ok(
+    v_empty,
+    '''#'' alone and ''q_%'' return nothing');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.hashtag_suggestions('#QZba');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.hashtag_suggestions(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.hashtag_suggestions(text, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Mention suggestions while typing @ (QA-187).
+-- Fresh accounts only (7f0f0000): a viewer, a coach they
+-- follow, an athlete they do not follow, a 15-year-old they
+-- follow, and someone they follow who blocked them.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── mention suggestions while typing ──'; end $$;
+
+do $$
+declare
+  v_viewer   uuid := '7f0f0000-0000-4000-8000-000000000001';
+  v_friend   uuid := '7f0f0000-0000-4000-8000-000000000002';
+  v_stranger uuid := '7f0f0000-0000-4000-8000-000000000003';
+  v_kid      uuid := '7f0f0000-0000-4000-8000-000000000004';
+  v_blocker  uuid := '7f0f0000-0000-4000-8000-000000000005';
+  v_empty_ids       uuid[];
+  v_empty_following boolean[];
+  v_null_ids        uuid[];
+  v_null_following  boolean[];
+  v_blank_ids       uuid[];
+  v_blank_following boolean[];
+  v_ids      uuid[];
+  v_only_friend boolean;
+  v_friend_first boolean;
+  v_hidden   boolean;
+  v_literal  boolean;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_viewer, 'qa187.viewer@test.local', '{"full_name":"Qmention Viewer","role":"athlete"}'),
+    (v_friend, 'qa187.friend@test.local', '{"full_name":"Zed Qmention Friend","role":"coach"}'),
+    (v_stranger, 'qa187.stranger@test.local', '{"full_name":"Alpha Qmention Stranger","role":"athlete"}'),
+    (v_kid, 'qa187.kid@test.local', '{"full_name":"Qmention Kid","role":"athlete"}'),
+    (v_blocker, 'qa187.blocker@test.local', '{"full_name":"Qmention Blocker","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '28 years'
+   where user_id in (v_viewer, v_friend, v_stranger, v_blocker);
+  update public.user_private
+     set date_of_birth = current_date - interval '15 years'
+   where user_id = v_kid;
+
+  insert into public.follows (follower_id, following_id) values
+    (v_viewer, v_friend),
+    (v_viewer, v_kid),
+    (v_viewer, v_blocker);
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_blocker, v_viewer);
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_empty_ids, v_empty_following
+  from public.mention_suggestions('') with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_null_ids, v_null_following
+  from public.mention_suggestions(null) with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[]),
+         coalesce(array_agg(s.following order by s.ordinality), '{}'::boolean[])
+    into v_blank_ids, v_blank_following
+  from public.mention_suggestions('   ') with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_ids
+  from public.mention_suggestions('qmention') with ordinality as s;
+
+  v_literal :=
+    not exists (select 1 from public.mention_suggestions('Qmention%'))
+    and exists (select 1 from public.mention_suggestions('Qmention'));
+
+  reset role;
+
+  v_only_friend :=
+    v_empty_ids = array[v_friend]::uuid[]
+    and v_empty_following = array[true]::boolean[]
+    and v_null_ids = array[v_friend]::uuid[]
+    and v_null_following = array[true]::boolean[]
+    and v_blank_ids = array[v_friend]::uuid[]
+    and v_blank_following = array[true]::boolean[];
+
+  v_friend_first :=
+    array_position(v_ids, v_friend) < array_position(v_ids, v_stranger);
+
+  v_hidden :=
+    v_viewer <> all (v_ids)
+    and v_kid <> all (v_ids)
+    and v_blocker <> all (v_ids)
+    and v_viewer <> all (v_empty_ids)
+    and v_kid <> all (v_empty_ids)
+    and v_blocker <> all (v_empty_ids);
+
+  perform tests.ok(
+    v_only_friend,
+    'an empty query returns only the friend, with following true');
+
+  perform tests.ok(
+    v_friend_first,
+    'the query qmention lists the friend before the stranger');
+
+  perform tests.ok(
+    v_hidden,
+    'the viewer, the kid and the blocker never appear');
+
+  perform tests.ok(
+    v_literal,
+    '''Qmention%'' returns nothing while ''Qmention'' returns rows');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  set local role anon;
+  begin
+    perform 1 from public.mention_suggestions('qmention');
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.mention_suggestions(text, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.mention_suggestions(text, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Challenges the caller set, including finished ones (QA-193).
+-- Fresh accounts only (7f110000): two coaches. The first set five
+-- challenges, the second set one that is still live.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── challenges the caller set ──'; end $$;
+
+do $$
+declare
+  v_one      uuid := '7f110000-0000-4000-8000-000000000001';
+  v_two      uuid := '7f110000-0000-4000-8000-000000000002';
+  v_live20   uuid := '7f110000-0000-4000-8000-000000000011';
+  v_live2    uuid := '7f110000-0000-4000-8000-000000000012';
+  v_old      uuid := '7f110000-0000-4000-8000-000000000013';
+  v_closed   uuid := '7f110000-0000-4000-8000-000000000014';
+  v_judging  uuid := '7f110000-0000-4000-8000-000000000015';
+  v_other    uuid := '7f110000-0000-4000-8000-000000000021';
+  v_ids      uuid[];
+  v_page_a   uuid[];
+  v_page_b   uuid[];
+  v_listed   integer;
+  v_owned    integer;
+  v_own      boolean;
+  v_old_open boolean;
+  v_denied   boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_one, 'qa193.one@test.local', '{"full_name":"QA193 Coach One","role":"coach"}'),
+    (v_two, 'qa193.two@test.local', '{"full_name":"QA193 Coach Two","role":"coach"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '35 years'
+   where user_id in (v_one, v_two);
+
+  insert into public.challenges (
+    id, created_by, sport, title, brief, opens_at, closes_at, status
+  ) values
+    (v_live20, v_one, 'Football', 'Live in twenty days',
+     'Still taking clips for twenty days.',
+     now() - interval '1 day', now() + interval '20 days', 'open'),
+    (v_live2, v_one, 'Football', 'Live in two days',
+     'Still taking clips for two days.',
+     now() - interval '1 day', now() + interval '2 days', 'open'),
+    (v_old, v_one, 'Football', 'Open but long closed',
+     'The closing time passed thirty days ago.',
+     now() - interval '40 days', now() - interval '30 days', 'open'),
+    (v_closed, v_one, 'Football', 'Closed three days ago',
+     'This challenge is already closed.',
+     now() - interval '10 days', now() - interval '3 days', 'closed'),
+    (v_judging, v_one, 'Football', 'Judging one day ago',
+     'This challenge is in judging.',
+     now() - interval '8 days', now() - interval '1 day', 'judging'),
+    (v_other, v_two, 'Football', 'Other coach live one',
+     'A live challenge from the other coach.',
+     now() - interval '1 day', now() + interval '5 days', 'open');
+
+  perform tests.as_user(v_one);
+  set local role authenticated;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_ids
+  from public.my_set_challenges() with ordinality as s;
+
+  select count(*)::int into v_listed from public.my_set_challenges();
+  select count(*)::int into v_owned
+  from public.challenges
+  where created_by = v_one;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_page_a
+  from public.my_set_challenges(2, 0) with ordinality as s;
+
+  select coalesce(array_agg(s.id order by s.ordinality), '{}'::uuid[])
+    into v_page_b
+  from public.my_set_challenges(2, 2) with ordinality as s;
+
+  select coalesce(bool_and(s.setter_id = v_one and s.my_entry_id is null), false)
+    into v_own
+  from public.my_set_challenges() s;
+
+  select exists (
+    select 1 from public.open_challenges(null, 50, 0) o where o.id = v_old
+  ) into v_old_open;
+
+  reset role;
+
+  perform tests.ok(
+    v_ids = array[v_live2, v_live20, v_judging, v_closed, v_old]::uuid[]
+    and v_other <> all (v_ids),
+    'live in 2 days, live in 20 days, judging, closed, then the old open one, and not the other coach');
+
+  perform tests.ok(
+    v_listed = v_owned,
+    'the list has every challenge that coach set');
+
+  perform tests.ok(
+    v_page_a || v_page_b = v_ids[1:4],
+    'pages (2, 0) and (2, 2) are the first four, with no repeat and no gap');
+
+  perform tests.ok(
+    v_own,
+    'every row is that coach''s and my_entry_id is null');
+
+  perform tests.ok(
+    not v_old_open,
+    'open_challenges still leaves out the challenge that closed 30 days ago');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  set local role authenticated;
+  begin
+    perform 1 from public.my_set_challenges();
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.my_set_challenges(integer, integer)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.my_set_challenges(integer, integer)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- One challenge, including a finished one (QA-194).
+-- Fresh accounts only (7f120000): a coach, an athlete, and a
+-- second coach who is suspended. Sport QA194 keeps the live
+-- row inside open_challenges for the comparison.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── one challenge, including a finished one ──'; end $$;
+
+do $$
+declare
+  v_coach     uuid := '7f120000-0000-4000-8000-000000000001';
+  v_athlete   uuid := '7f120000-0000-4000-8000-000000000002';
+  v_suspended uuid := '7f120000-0000-4000-8000-000000000003';
+  v_old       uuid := '7f120000-0000-4000-8000-000000000011';
+  v_closed    uuid := '7f120000-0000-4000-8000-000000000012';
+  v_live      uuid := '7f120000-0000-4000-8000-000000000013';
+  v_hidden    uuid := '7f120000-0000-4000-8000-000000000014';
+  v_entry     uuid := '7f120000-0000-4000-8000-000000000021';
+  v_media     uuid := '7f120000-0000-4000-8000-000000000031';
+  v_unknown   uuid := '7f120000-0000-4000-8000-000000000099';
+  v_profile   uuid;
+  v_old_setter    uuid;
+  v_closed_setter uuid;
+  v_old_entry     uuid;
+  v_closed_entry  uuid;
+  v_detail        jsonb;
+  v_open          jsonb;
+  v_ath_entry     uuid;
+  v_ath_status    text;
+  v_ath_live_id   uuid;
+  v_ath_live_entry uuid;
+  v_ath_hidden    integer;
+  v_own_id        uuid;
+  v_own_setter    uuid;
+  v_missing       integer;
+  v_denied        boolean := false;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_coach, 'qa194.coach@test.local', '{"full_name":"QA194 Coach","role":"coach"}'),
+    (v_athlete, 'qa194.athlete@test.local', '{"full_name":"QA194 Athlete","role":"athlete"}'),
+    (v_suspended, 'qa194.suspended@test.local', '{"full_name":"QA194 Suspended","role":"coach"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '28 years'
+   where user_id in (v_coach, v_athlete, v_suspended);
+
+  select id into v_profile
+  from public.athlete_profiles
+  where user_id = v_athlete;
+
+  insert into public.athlete_media (id, athlete_id, title, media_type, storage_url, is_public)
+  values (v_media, v_profile, 'QA194 clip', 'highlight_reel', 'posts/test/qa194.mp4', true);
+
+  insert into public.challenges (
+    id, created_by, sport, title, brief, opens_at, closes_at, status
+  ) values
+    (v_old, v_coach, 'QA194', 'Open but long closed',
+     'The closing time passed thirty days ago.',
+     now() - interval '40 days', now() - interval '30 days', 'open'),
+    (v_closed, v_coach, 'QA194', 'Already closed',
+     'This challenge is already closed.',
+     now() - interval '10 days', now() - interval '3 days', 'closed'),
+    (v_live, v_coach, 'QA194', 'Still live now',
+     'This challenge is still taking clips.',
+     now() - interval '1 day', now() + interval '10 days', 'open'),
+    (v_hidden, v_suspended, 'QA194', 'Suspended coach live',
+     'A live challenge from a suspended coach.',
+     now() - interval '1 day', now() + interval '12 days', 'open');
+
+  insert into public.challenge_entries (
+    id, challenge_id, athlete_id, media_id, status, verified_by, verified_at
+  ) values (
+    v_entry, v_old, v_profile, v_media, 'verified', v_coach, now()
+  );
+
+  update public.user_profiles
+     set is_suspended = true
+   where id = v_suspended;
+
+  perform tests.as_user(v_coach);
+  set local role authenticated;
+
+  select d.setter_id, d.my_entry_id
+    into v_old_setter, v_old_entry
+  from public.challenge_detail(v_old) d;
+
+  select d.setter_id, d.my_entry_id
+    into v_closed_setter, v_closed_entry
+  from public.challenge_detail(v_closed) d;
+
+  select to_jsonb(d) into v_detail
+  from public.challenge_detail(v_live) d;
+
+  select to_jsonb(o) into v_open
+  from public.open_challenges('QA194', 50, 0) o
+  where o.id = v_live;
+
+  reset role;
+
+  perform tests.as_user(v_athlete);
+  set local role authenticated;
+
+  select d.my_entry_id, d.my_entry_status
+    into v_ath_entry, v_ath_status
+  from public.challenge_detail(v_old) d;
+
+  select d.id, d.my_entry_id
+    into v_ath_live_id, v_ath_live_entry
+  from public.challenge_detail(v_live) d;
+
+  select count(*)::int into v_ath_hidden
+  from public.challenge_detail(v_hidden);
+
+  select count(*)::int into v_missing
+  from public.challenge_detail(v_unknown);
+
+  reset role;
+
+  perform tests.as_user(v_suspended);
+  set local role authenticated;
+
+  select d.id, d.setter_id
+    into v_own_id, v_own_setter
+  from public.challenge_detail(v_hidden) d;
+
+  reset role;
+
+  perform tests.ok(
+    v_old_setter = v_coach and v_closed_setter = v_coach,
+    'the coach gets the 30-day-old challenge and the closed one');
+
+  perform tests.ok(
+    v_old_entry is null and v_closed_entry is null,
+    'the coach''s my_entry_id is null');
+
+  perform tests.ok(
+    v_detail is not null and v_detail = v_open,
+    'the live challenge matches the open_challenges row');
+
+  perform tests.ok(
+    v_ath_entry = v_entry
+    and v_ath_status = 'verified'
+    and v_ath_live_id = v_live
+    and v_ath_live_entry is null,
+    'the athlete sees their verified entry on the old challenge and none on the live one');
+
+  perform tests.ok(
+    v_ath_hidden = 0
+    and v_own_id = v_hidden
+    and v_own_setter = v_suspended,
+    'a suspended coach is hidden from the athlete and visible to themselves');
+
+  perform tests.ok(
+    v_missing = 0,
+    'an unknown id returns no row');
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  set local role authenticated;
+  begin
+    perform 1 from public.challenge_detail(v_live);
+  exception when insufficient_privilege then
+    v_denied := true;
+  end;
+  reset role;
+
+  perform tests.ok(
+    v_denied
+    and not has_function_privilege('anon', 'public.challenge_detail(uuid)', 'EXECUTE')
+    and has_function_privilege('authenticated', 'public.challenge_detail(uuid)', 'EXECUTE'),
+    'a signed-out caller gets a permission error');
+end $$;
+
+-- ------------------------------------------------------------
+-- Challenge and meetup notices arrive one by one (QA-195).
+-- Seeded coach 3333, athletes 1111 and 4444. Counts are limited
+-- to this challenge and this meetup.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── challenge and meetup notices one by one ──'; end $$;
+
+do $$
+declare
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_first    uuid := '11111111-1111-1111-1111-111111111111';
+  v_second   uuid := '44444444-4444-4444-4444-444444444444';
+  v_athlete1 uuid;
+  v_athlete2 uuid;
+  v_media1   uuid;
+  v_media2   uuid;
+  v_challenge uuid;
+  v_entry1   uuid;
+  v_meetup   uuid;
+  v_entries  integer;
+  v_entry_ones integer;
+  v_verified integer;
+  v_rejected integer;
+  v_requests integer;
+  v_accepted integer;
+  v_cancelled integer;
+begin
+  select id into v_athlete1 from public.athlete_profiles where user_id = v_first;
+  select id into v_athlete2 from public.athlete_profiles where user_id = v_second;
+
+  insert into public.athlete_media (athlete_id, title, media_type, storage_url, is_public)
+  values
+    (v_athlete1, 'QA195 clip one', 'highlight_reel', 'posts/test/qa195-one.mp4', true),
+    (v_athlete2, 'QA195 clip two', 'highlight_reel', 'posts/test/qa195-two.mp4', true);
+
+  select id into v_media1 from public.athlete_media
+   where athlete_id = v_athlete1 and storage_url = 'posts/test/qa195-one.mp4';
+  select id into v_media2 from public.athlete_media
+   where athlete_id = v_athlete2 and storage_url = 'posts/test/qa195-two.mp4';
+
+  perform tests.as_user(v_coach);
+  v_challenge := public.create_challenge(
+    'Football', 'QA195 one by one',
+    'Each entry should arrive as its own notice.',
+    now() + interval '10 days', null, null, null, 'higher', 13, 60);
+
+  perform tests.as_user(v_first);
+  v_entry1 := public.enter_challenge(v_challenge, v_media1, 10, null);
+  perform tests.as_user(v_second);
+  perform public.enter_challenge(v_challenge, v_media2, 12, null);
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_entries, v_entry_ones
+  from public.notifications
+  where user_id = v_coach
+    and type = 'challenge_entry'
+    and entity_id = v_challenge::text;
+
+  perform tests.as_user(v_coach);
+  perform public.judge_challenge_entry(v_entry1, true, 10, null);
+  perform public.judge_challenge_entry(v_entry1, false, null, null);
+
+  select count(*)::int into v_verified
+  from public.notifications
+  where user_id = v_first
+    and type = 'challenge_verified'
+    and entity_id = v_challenge::text;
+
+  select count(*)::int into v_rejected
+  from public.notifications
+  where user_id = v_first
+    and type = 'challenge_rejected'
+    and entity_id = v_challenge::text;
+
+  v_meetup := public.create_meetup(
+    'football', 'QA195 one by one', 'United Arab Emirates', 'Dubai',
+    now() + interval '4 days', 8);
+
+  perform tests.as_user(v_first);
+  perform public.request_to_join_meetup(v_meetup, null);
+  perform tests.as_user(v_second);
+  perform public.request_to_join_meetup(v_meetup, null);
+
+  select count(*)::int into v_requests
+  from public.notifications
+  where user_id = v_coach
+    and type = 'meetup_request'
+    and entity_id = v_meetup::text;
+
+  perform tests.as_user(v_coach);
+  perform public.decide_meetup_request(v_meetup, v_second, true);
+  perform public.cancel_meetup(v_meetup);
+
+  select count(*)::int into v_accepted
+  from public.notifications
+  where user_id = v_second
+    and type = 'meetup_accepted'
+    and entity_id = v_meetup::text;
+
+  select count(*)::int into v_cancelled
+  from public.notifications
+  where user_id = v_second
+    and type = 'meetup_cancelled'
+    and entity_id = v_meetup::text;
+
+  perform tests.ok(
+    v_entries = 2 and v_entry_ones = 2,
+    'the coach has two challenge_entry rows, each with actor_count 1');
+
+  perform tests.ok(
+    v_verified = 1 and v_rejected = 1,
+    'the first athlete has a verified row and a rejected row');
+
+  perform tests.ok(
+    v_requests = 2,
+    'the coach has two meetup_request rows');
+
+  perform tests.ok(
+    v_accepted = 1 and v_cancelled = 1,
+    'the second athlete has one meetup_accepted row and one meetup_cancelled row');
+end $$;
+
+-- ------------------------------------------------------------
+-- Club event and fixture notices arrive one by one (QA-198).
+-- Harbour Academy, its owner, and follower club.fan@test.local.
+-- Counts are limited to these four.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── club event and fixture notices one by one ──'; end $$;
+
+do $$
+declare
+  v_org      uuid;
+  v_owner    uuid;
+  v_fan      uuid;
+  v_event_a  uuid;
+  v_event_b  uuid;
+  v_match_a  uuid;
+  v_match_b  uuid;
+  v_events   integer;
+  v_event_ones integer;
+  v_matches  integer;
+  v_match_ones integer;
+begin
+  select id into v_org from public.organizations where name = 'Harbour Academy';
+  select user_id into v_owner
+    from public.organization_members
+   where organization_id = v_org and member_role = 'owner' and status = 'active';
+  select id into v_fan from auth.users where email = 'club.fan@test.local';
+
+  perform tests.as_user(v_owner);
+  v_event_a := public.save_club_event(v_org, null, jsonb_build_object(
+    'kind', 'open_day', 'title', 'QA198 Saturday open day', 'sport', 'Football',
+    'starts_at', now() + interval '12 days', 'location', 'North ground'));
+  v_event_b := public.save_club_event(v_org, null, jsonb_build_object(
+    'kind', 'camp', 'title', 'QA198 summer camp', 'sport', 'Football',
+    'starts_at', now() + interval '20 days', 'location', 'North ground'));
+  v_match_a := public.save_club_match(v_org, null, jsonb_build_object(
+    'sport', 'Football', 'opponent_name', 'QA198 City',
+    'kickoff_at', now() + interval '8 days', 'venue', 'North ground'));
+  v_match_b := public.save_club_match(v_org, null, jsonb_build_object(
+    'sport', 'Football', 'opponent_name', 'QA198 Desert',
+    'kickoff_at', now() + interval '9 days', 'venue', 'North ground'));
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_events, v_event_ones
+  from public.notifications
+  where user_id = v_fan
+    and type = 'club_event_new'
+    and entity_id in (v_event_a::text, v_event_b::text);
+
+  select count(*)::int,
+         count(*) filter (where actor_count = 1)::int
+    into v_matches, v_match_ones
+  from public.notifications
+  where user_id = v_fan
+    and type = 'club_match_scheduled'
+    and entity_id in (v_match_a::text, v_match_b::text);
+
+  perform tests.ok(
+    v_events = 2 and v_event_ones = 2 and v_matches = 2 and v_match_ones = 2,
+    'the follower has two club_event_new rows and two club_match_scheduled rows, each with actor_count 1');
+
+  perform tests.ok(
+    exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_event_new'
+        and entity_id = v_event_a::text and title like '%QA198 Saturday open day%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_event_new'
+        and entity_id = v_event_b::text and title like '%QA198 summer camp%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_match_scheduled'
+        and entity_id = v_match_a::text and title like '%QA198 City%'
+    )
+    and exists (
+      select 1 from public.notifications
+      where user_id = v_fan and type = 'club_match_scheduled'
+        and entity_id = v_match_b::text and title like '%QA198 Desert%'
+    ),
+    'each row opens its own event or fixture and names that event or opponent');
+end $$;
+
+-- ------------------------------------------------------------
+-- A parent account does not book coaching (QA-202).
+-- Seeded coach, seeded guardian, and the adult athlete.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a parent account does not book coaching ──'; end $$;
+
+do $$
+declare
+  v_coach    uuid := '33333333-3333-3333-3333-333333333333';
+  v_guardian uuid := '66666666-6666-6666-6666-666666666666';
+  v_adult    uuid := '44444444-4444-4444-4444-444444444444';
+  v_service  uuid;
+  v_slot     uuid;
+begin
+  insert into public.coaching_settings (user_id, accepting)
+  values (v_coach, true)
+  on conflict (user_id) do update
+    set accepting = true, updated_at = now();
+
+  insert into public.coaching_services
+    (coach_user_id, kind, title, duration_minutes, capacity, location_mode)
+  values
+    (v_coach, 'session', 'QA202 online session', 60, 1, 'online')
+  returning id into v_service;
+
+  insert into public.coaching_slots
+    (service_id, coach_user_id, starts_at, ends_at, capacity)
+  values
+    (v_service, v_coach, now() + interval '3 days', now() + interval '3 days 1 hour', 1)
+  returning id into v_slot;
+
+  perform tests.as_user(v_guardian);
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'guardian_account',
+    'a parent account is told it cannot book');
+
+  perform tests.ok(
+    tests.hint_of(format('select public.book_coaching_slot(%L::uuid)', v_slot)) = 'guardian_account'
+    and not exists (
+      select 1 from public.coaching_bookings
+      where slot_id = v_slot and athlete_user_id = v_guardian
+    ),
+    'booking is refused with hint guardian_account and no row is written for the parent');
+
+  perform tests.as_user(v_adult);
+  perform tests.ok(
+    (public.coach_booking_page(v_coach) ->> 'gate') = 'ok',
+    'an adult athlete can still book');
+end $$;
+
+-- ------------------------------------------------------------
+-- Who can find a parent account (QA-205).
+-- One parent with a unique name, and one searcher of each role:
+-- guardian, coach, club, scout, sponsor, an adult athlete and a
+-- 14-year-old athlete. A separate coach is the person everyone
+-- should still be able to find.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── who can find a parent account ──'; end $$;
+
+do $$
+declare
+  v_parent       uuid := '7f205000-0000-4000-8000-000000000001';
+  v_coach        uuid := '7f205000-0000-4000-8000-000000000002';
+  v_guardian     uuid := '7f205000-0000-4000-8000-000000000011';
+  v_search_coach uuid := '7f205000-0000-4000-8000-000000000012';
+  v_club         uuid := '7f205000-0000-4000-8000-000000000013';
+  v_scout        uuid := '7f205000-0000-4000-8000-000000000014';
+  v_sponsor      uuid := '7f205000-0000-4000-8000-000000000015';
+  v_adult        uuid := '7f205000-0000-4000-8000-000000000016';
+  v_minor        uuid := '7f205000-0000-4000-8000-000000000017';
+  v_id           uuid;
+  v_label        text;
+  v_hit_parent   boolean;
+  v_hit_coach    boolean;
+  v_found_parent text[] := '{}';
+  v_found_coach  text[] := '{}';
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_parent, 'qa205.parent@test.local',
+     '{"full_name":"QA205 Parent Linden","role":"guardian"}'),
+    (v_coach, 'qa205.coach@test.local',
+     '{"full_name":"QA205 Coach Linden","role":"coach"}'),
+    (v_guardian, 'qa205.guardian@test.local',
+     '{"full_name":"QA205 Searcher Guardian","role":"guardian"}'),
+    (v_search_coach, 'qa205.searchcoach@test.local',
+     '{"full_name":"QA205 Searcher Coach","role":"coach"}'),
+    (v_club, 'qa205.club@test.local',
+     '{"full_name":"QA205 Searcher Club","role":"club"}'),
+    (v_scout, 'qa205.scout@test.local',
+     '{"full_name":"QA205 Searcher Scout","role":"scout"}'),
+    (v_sponsor, 'qa205.sponsor@test.local',
+     '{"full_name":"QA205 Searcher Sponsor","role":"sponsor"}'),
+    (v_adult, 'qa205.adult@test.local',
+     '{"full_name":"QA205 Searcher Adult","role":"athlete"}'),
+    (v_minor, 'qa205.minor@test.local',
+     '{"full_name":"QA205 Searcher Minor","role":"athlete"}');
+
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_search_coach, v_club, v_scout, v_sponsor);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (
+     v_parent, v_coach, v_guardian, v_search_coach, v_club, v_scout, v_sponsor, v_adult
+   );
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id = v_minor;
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_guardian, 'guardian'),
+        (v_search_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_minor, 'minor')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    set local role authenticated;
+
+    select exists (
+      select 1 from public.search_people('QA205 Parent Linden', null, 50) p
+      where p.id = v_parent
+    ) into v_hit_parent;
+
+    select exists (
+      select 1 from public.search_people('QA205 Coach Linden', null, 50) c
+      where c.id = v_coach
+    ) into v_hit_coach;
+
+    if v_hit_parent then
+      v_found_parent := v_found_parent || v_label;
+    end if;
+    if v_hit_coach then
+      v_found_coach := v_found_coach || v_label;
+    end if;
+
+    reset role;
+  end loop;
+
+  perform tests.ok(
+    v_found_parent @> array['guardian', 'coach', 'club', 'scout', 'sponsor']::text[]
+    and cardinality(v_found_parent) = 5
+    and not ('adult' = any(v_found_parent))
+    and not ('minor' = any(v_found_parent)),
+    'a parent account is found by a parent, coach, club, scout and sponsor, and not by an adult or a minor athlete');
+
+  perform tests.ok(
+    v_found_coach @> array['guardian', 'coach', 'club', 'scout', 'sponsor', 'adult', 'minor']::text[]
+    and cardinality(v_found_coach) = 7,
+    'a coach is still found by everyone');
+end $$;
+
+-- ------------------------------------------------------------
+-- A parent and their child on each other's profiles (QA-206).
+-- A 14-year-old, their parent, a granted consent, and one viewer
+-- of each kind that the rule treats differently.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── a parent and their child on profiles ──'; end $$;
+
+do $$
+declare
+  v_child        uuid := '7f206000-0000-4000-8000-000000000001';
+  v_parent       uuid := '7f206000-0000-4000-8000-000000000002';
+  v_coach        uuid := '7f206000-0000-4000-8000-000000000011';
+  v_club         uuid := '7f206000-0000-4000-8000-000000000012';
+  v_scout        uuid := '7f206000-0000-4000-8000-000000000013';
+  v_sponsor      uuid := '7f206000-0000-4000-8000-000000000014';
+  v_adult        uuid := '7f206000-0000-4000-8000-000000000015';
+  v_other_parent uuid := '7f206000-0000-4000-8000-000000000016';
+  v_other_child  uuid := '7f206000-0000-4000-8000-000000000017';
+  v_id           uuid;
+  v_label        text;
+  v_contacts     integer;
+  v_kids         integer;
+  v_off          text[] := '{}';
+  v_both         text[] := '{}';
+  v_none         text[] := '{}';
+  v_shown_by_default boolean;
+  v_hint         text;
+  v_switched      boolean;
+  v_coach_hidden  integer;
+  v_child_still   integer;
+  v_parent_still  integer;
+  v_coach_blocked integer;
+  v_club_revoked  integer;
+  v_other         integer;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child, 'qa206.child@test.local',
+     '{"full_name":"QA206 Child Linden","role":"athlete"}'),
+    (v_parent, 'qa206.parent@test.local',
+     '{"full_name":"QA206 Parent Linden","role":"guardian"}'),
+    (v_coach, 'qa206.coach@test.local',
+     '{"full_name":"QA206 Coach Linden","role":"coach"}'),
+    (v_club, 'qa206.club@test.local',
+     '{"full_name":"QA206 Club Linden","role":"club"}'),
+    (v_scout, 'qa206.scout@test.local',
+     '{"full_name":"QA206 Scout Linden","role":"scout"}'),
+    (v_sponsor, 'qa206.sponsor@test.local',
+     '{"full_name":"QA206 Sponsor Linden","role":"sponsor"}'),
+    (v_adult, 'qa206.adult@test.local',
+     '{"full_name":"QA206 Adult Linden","role":"athlete"}'),
+    (v_other_parent, 'qa206.otherparent@test.local',
+     '{"full_name":"QA206 Other Parent","role":"guardian"}'),
+    (v_other_child, 'qa206.otherchild@test.local',
+     '{"full_name":"QA206 Other Child","role":"athlete"}');
+
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_club, v_scout, v_sponsor);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_parent, v_coach, v_club, v_scout, v_sponsor, v_adult, v_other_parent);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child, v_other_child);
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at
+  ) values (
+    v_child, v_parent, 'QA206 Parent Linden', 'qa206.parent@test.local',
+    'parent', 'granted', true, now()
+  );
+
+  select show_on_profile into v_shown_by_default
+    from public.guardian_consents
+   where minor_user_id = v_child
+     and guardian_user_id = v_parent
+     and status = 'granted';
+
+  perform tests.as_user(v_parent);
+  perform public.set_guardian_on_profile(v_child, false);
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_child, 'child'),
+        (v_parent, 'parent'),
+        (v_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_other_parent, 'other_parent'),
+        (v_other_child, 'other_child')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    select count(*)::int into v_contacts from public.guardian_contacts_of(v_child);
+    select count(*)::int into v_kids from public.children_on_profile(v_parent);
+    if v_contacts = 0 and v_kids = 0 then
+      v_off := v_off || v_label;
+    end if;
+  end loop;
+
+  perform tests.as_user(v_other_parent);
+  v_hint := tests.hint_of(format(
+    'select public.set_guardian_on_profile(%L::uuid, true)', v_child));
+
+  perform tests.as_user(v_parent);
+  v_switched := public.set_guardian_on_profile(v_child, true);
+
+  for v_id, v_label in
+    select s.id, s.label
+    from (
+      values
+        (v_child, 'child'),
+        (v_parent, 'parent'),
+        (v_coach, 'coach'),
+        (v_club, 'club'),
+        (v_scout, 'scout'),
+        (v_sponsor, 'sponsor'),
+        (v_adult, 'adult'),
+        (v_other_parent, 'other_parent'),
+        (v_other_child, 'other_child')
+    ) as s(id, label)
+  loop
+    perform tests.as_user(v_id);
+    select count(*)::int into v_contacts from public.guardian_contacts_of(v_child);
+    select count(*)::int into v_kids from public.children_on_profile(v_parent);
+    if v_contacts = 1 and v_kids = 1 then
+      v_both := v_both || v_label;
+    elsif v_contacts = 0 and v_kids = 0 then
+      v_none := v_none || v_label;
+    end if;
+  end loop;
+
+  update public.user_profiles set is_discoverable = false where id = v_child;
+
+  perform tests.as_user(v_coach);
+  select count(*)::int into v_coach_hidden from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_coach_hidden := v_coach_hidden + v_other;
+
+  perform tests.as_user(v_child);
+  select count(*)::int into v_child_still from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_child_still := v_child_still + v_other;
+
+  perform tests.as_user(v_parent);
+  select count(*)::int into v_parent_still from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_parent_still := v_parent_still + v_other;
+
+  -- Discoverable again, so the next zero is the block and not the hidden child.
+  update public.user_profiles set is_discoverable = true where id = v_child;
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_parent, v_coach);
+
+  perform tests.as_user(v_coach);
+  select count(*)::int into v_coach_blocked from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_coach_blocked := v_coach_blocked + v_other;
+
+  update public.guardian_consents
+     set status = 'revoked', revoked_at = now()
+   where minor_user_id = v_child
+     and guardian_user_id = v_parent
+     and status = 'granted';
+
+  perform tests.as_user(v_club);
+  select count(*)::int into v_club_revoked from public.guardian_contacts_of(v_child);
+  select count(*)::int into v_other from public.children_on_profile(v_parent);
+  v_club_revoked := v_club_revoked + v_other;
+
+  perform tests.ok(
+    v_shown_by_default,
+    'a new link is shown by default');
+
+  perform tests.ok(
+    cardinality(v_off) = 9,
+    'switched off, nobody sees the parent on the child or the child on the parent');
+
+  perform tests.ok(
+    v_hint = 'not_linked_guardian',
+    'another parent cannot switch the link on');
+
+  perform tests.ok(
+    v_switched
+    and v_both @> array['child', 'parent', 'coach', 'club', 'scout', 'sponsor']::text[]
+    and cardinality(v_both) = 6
+    and v_none @> array['adult', 'other_parent', 'other_child']::text[]
+    and cardinality(v_none) = 3,
+    'once the linked parent switches it on, a coach, club, scout, sponsor, the child and the parent each see one row, and an adult athlete, another parent and another child see none');
+
+  perform tests.ok(
+    v_coach_hidden = 0 and v_child_still = 2 and v_parent_still = 2,
+    'a hidden child disappears for the coach and stays visible to the child and the parent');
+
+  perform tests.ok(
+    v_coach_blocked = 0,
+    'a block between the parent and the coach hides the link from the coach');
+
+  perform tests.ok(
+    v_club_revoked = 0,
+    'revoking the consent hides the link from the club');
+end $$;
+
+-- ------------------------------------------------------------
+-- Browse parents who chose to be contacted (QA-208).
+-- Two 14-year-olds, one parent who switched the profile link on
+-- and one who left it off, plus a coach, a sponsor, an adult
+-- athlete and a 14-year-old athlete.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── browse parents who chose to be contacted ──'; end $$;
+
+do $$
+declare
+  v_child_in   uuid := '7f208000-0000-4000-8000-000000000001';
+  v_child_out  uuid := '7f208000-0000-4000-8000-000000000002';
+  v_parent_in  uuid := '7f208000-0000-4000-8000-000000000011';
+  v_parent_out uuid := '7f208000-0000-4000-8000-000000000012';
+  v_coach      uuid := '7f208000-0000-4000-8000-000000000021';
+  v_sponsor    uuid := '7f208000-0000-4000-8000-000000000022';
+  v_adult      uuid := '7f208000-0000-4000-8000-000000000023';
+  v_minor      uuid := '7f208000-0000-4000-8000-000000000024';
+  v_coach_in      boolean;
+  v_coach_out     boolean;
+  v_sponsor_in    boolean;
+  v_sponsor_out   boolean;
+  v_second_in     boolean;
+  v_second_out    boolean;
+  v_adult_in      boolean;
+  v_adult_out     boolean;
+  v_minor_in      boolean;
+  v_minor_out     boolean;
+  v_coach_blocked boolean;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child_in, 'qa208.childin@test.local',
+     '{"full_name":"QA208 Child In","role":"athlete"}'),
+    (v_child_out, 'qa208.childout@test.local',
+     '{"full_name":"QA208 Child Out","role":"athlete"}'),
+    (v_parent_in, 'qa208.parentin@test.local',
+     '{"full_name":"QA208 Parent In","role":"guardian"}'),
+    (v_parent_out, 'qa208.parentout@test.local',
+     '{"full_name":"QA208 Parent Out","role":"guardian"}'),
+    (v_coach, 'qa208.coach@test.local',
+     '{"full_name":"QA208 Coach","role":"coach"}'),
+    (v_sponsor, 'qa208.sponsor@test.local',
+     '{"full_name":"QA208 Sponsor","role":"sponsor"}'),
+    (v_adult, 'qa208.adult@test.local',
+     '{"full_name":"QA208 Adult","role":"athlete"}'),
+    (v_minor, 'qa208.minor@test.local',
+     '{"full_name":"QA208 Minor","role":"athlete"}');
+
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_sponsor);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (v_parent_in, v_parent_out, v_coach, v_sponsor, v_adult);
+
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child_in, v_child_out, v_minor);
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at, show_on_profile
+  ) values
+    (v_child_in, v_parent_in, 'QA208 Parent In', 'qa208.parentin@test.local',
+     'parent', 'granted', true, now(), true),
+    (v_child_out, v_parent_out, 'QA208 Parent Out', 'qa208.parentout@test.local',
+     'parent', 'granted', true, now(), false);
+
+  perform tests.as_user(v_coach);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_coach_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_coach_out;
+
+  perform tests.as_user(v_sponsor);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_sponsor_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_sponsor_out;
+
+  perform tests.as_user(v_parent_out);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_second_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_second_out;
+
+  perform tests.as_user(v_adult);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_adult_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_adult_out;
+
+  perform tests.as_user(v_minor);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_minor_in;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_out) into v_minor_out;
+
+  insert into public.user_blocks (blocker_id, blocked_id) values (v_parent_in, v_coach);
+
+  perform tests.as_user(v_coach);
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_in) into v_coach_blocked;
+
+  perform tests.ok(
+    v_coach_in and not v_coach_out
+    and v_sponsor_in and not v_sponsor_out
+    and v_second_in and not v_second_out,
+    'a coach, a sponsor and the other parent see the parent who chose to be contacted, and not the one who did not');
+
+  perform tests.ok(
+    not v_adult_in and not v_adult_out
+    and not v_minor_in and not v_minor_out,
+    'an adult athlete and a minor see neither parent');
+
+  perform tests.ok(
+    not v_coach_blocked,
+    'after the opted-in parent blocks the coach, the coach no longer sees them');
+end $$;
+
+-- ------------------------------------------------------------
+-- Verified professionals, a hidden child, and the tag fixes
+-- (QA-221, QA-222, QA-223, QA-209).
+-- A parent of a hidden child, a parent of a discoverable child,
+-- another parent, an unverified coach, an unverified scout, a
+-- verified coach, and a club account that is not verified but
+-- owns a verified club page. Then an author, the person they
+-- tag, another viewer, and someone who cannot see a
+-- followers-only post. Results are read as authenticated.
+-- tests.ok runs only after the role is reset.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── verified parents, hidden children and tags ──'; end $$;
+
+do $$
+declare
+  v_child_hidden  uuid := '7f221000-0000-4000-8000-000000000001';
+  v_child_shown   uuid := '7f221000-0000-4000-8000-000000000002';
+  v_parent_hidden uuid := '7f221000-0000-4000-8000-000000000011';
+  v_parent_shown  uuid := '7f221000-0000-4000-8000-000000000012';
+  v_other_parent  uuid := '7f221000-0000-4000-8000-000000000013';
+  v_coach_no      uuid := '7f221000-0000-4000-8000-000000000021';
+  v_scout_no      uuid := '7f221000-0000-4000-8000-000000000022';
+  v_coach_yes     uuid := '7f221000-0000-4000-8000-000000000023';
+  v_club          uuid := '7f221000-0000-4000-8000-000000000024';
+  v_org           uuid := '7f221000-0000-4000-8000-000000000031';
+  v_author        uuid := '7f223000-0000-4000-8000-000000000001';
+  v_tagged        uuid := '7f223000-0000-4000-8000-000000000002';
+  v_viewer        uuid := '7f223000-0000-4000-8000-000000000003';
+  v_outsider      uuid := '7f223000-0000-4000-8000-000000000004';
+  v_public        uuid := '7f223000-0000-4000-8000-000000000011';
+  v_followers     uuid := '7f223000-0000-4000-8000-000000000012';
+  v_browse_hidden boolean;
+  v_browse_shown  boolean;
+  v_coach_no_browse integer;
+  v_coach_no_search integer;
+  v_coach_no_contacts integer;
+  v_coach_no_kids integer;
+  v_scout_no_browse integer;
+  v_scout_no_search integer;
+  v_scout_no_contacts integer;
+  v_scout_no_kids integer;
+  v_coach_yes_hidden boolean;
+  v_coach_yes_shown boolean;
+  v_coach_yes_search boolean;
+  v_coach_yes_contacts integer;
+  v_coach_yes_kids integer;
+  v_club_unverified boolean;
+  v_club_page boolean;
+  v_club_hidden boolean;
+  v_club_shown boolean;
+  v_club_search boolean;
+  v_club_contacts integer;
+  v_club_kids integer;
+  v_parent_browse_hidden boolean;
+  v_parent_browse_shown boolean;
+  v_parent_search boolean;
+  v_default text;
+  v_notes integer;
+  v_viewer_before integer;
+  v_viewer_after integer;
+  v_own integer;
+  v_outsider_tag integer;
+  v_outsider_notes integer;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child_hidden, 'qa221.childhidden@test.local',
+     '{"full_name":"QA221 Hidden Child","role":"athlete"}'),
+    (v_child_shown, 'qa221.childshown@test.local',
+     '{"full_name":"QA221 Shown Child","role":"athlete"}'),
+    (v_parent_hidden, 'qa221.parenthidden@test.local',
+     '{"full_name":"QA221 Hidden Parent","role":"guardian"}'),
+    (v_parent_shown, 'qa221.parentshown@test.local',
+     '{"full_name":"QA221 Shown Parent","role":"guardian"}'),
+    (v_other_parent, 'qa221.otherparent@test.local',
+     '{"full_name":"QA221 Other Parent","role":"guardian"}'),
+    (v_coach_no, 'qa221.coachno@test.local',
+     '{"full_name":"QA221 Unverified Coach","role":"coach"}'),
+    (v_scout_no, 'qa221.scoutno@test.local',
+     '{"full_name":"QA221 Unverified Scout","role":"scout"}'),
+    (v_coach_yes, 'qa221.coachyes@test.local',
+     '{"full_name":"QA221 Verified Coach","role":"coach"}'),
+    (v_club, 'qa221.club@test.local',
+     '{"full_name":"QA221 Club Owner","role":"club"}'),
+    (v_author, 'qa223.author@test.local',
+     '{"full_name":"QA223 Tag Author","role":"athlete"}'),
+    (v_tagged, 'qa223.tagged@test.local',
+     '{"full_name":"QA223 Tagged","role":"athlete"}'),
+    (v_viewer, 'qa223.viewer@test.local',
+     '{"full_name":"QA223 Viewer","role":"athlete"}'),
+    (v_outsider, 'qa223.outsider@test.local',
+     '{"full_name":"QA223 Outsider","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (
+     v_parent_hidden, v_parent_shown, v_other_parent,
+     v_coach_no, v_scout_no, v_coach_yes, v_club
+   );
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child_hidden, v_child_shown);
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_author, v_tagged, v_viewer, v_outsider);
+
+  update public.user_profiles
+     set is_verified = true
+   where id = v_coach_yes;
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at
+  ) values
+    (v_child_hidden, v_parent_hidden, 'QA221 Hidden Parent', 'qa221.parenthidden@test.local',
+     'parent', 'granted', true, now()),
+    (v_child_shown, v_parent_shown, 'QA221 Shown Parent', 'qa221.parentshown@test.local',
+     'parent', 'granted', true, now());
+
+  update public.user_profiles
+     set is_discoverable = false
+   where id = v_child_hidden;
+
+  insert into public.organizations (id, name, type, is_verified, verification_status)
+  values (v_org, 'QA221 Verified Club', 'club', true, 'approved');
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_club, 'owner', 'active');
+
+  select not coalesce(is_verified, false)
+    into v_club_unverified
+    from public.user_profiles
+   where id = v_club;
+  select exists (
+    select 1
+      from public.organization_members m
+      join public.organizations o on o.id = m.organization_id
+     where m.user_id = v_club
+       and m.status = 'active'
+       and m.member_role = 'owner'
+       and o.is_verified
+  ) into v_club_page;
+
+  perform tests.as_user(v_coach_yes);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_browse_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_browse_shown;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_coach_yes_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_coach_yes_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_coach_yes_search;
+  select count(*)::int into v_coach_yes_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_coach_yes_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_coach_no);
+  set local role authenticated;
+  select count(*)::int into v_coach_no_browse from public.browse_parents(50, 0);
+  select count(*)::int into v_coach_no_search
+    from public.search_people('QA221', 'guardian', 50);
+  select count(*)::int into v_coach_no_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_coach_no_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_scout_no);
+  set local role authenticated;
+  select count(*)::int into v_scout_no_browse from public.browse_parents(50, 0);
+  select count(*)::int into v_scout_no_search
+    from public.search_people('QA221', 'guardian', 50);
+  select count(*)::int into v_scout_no_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_scout_no_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_club);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_club_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_club_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_club_search;
+  select count(*)::int into v_club_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_club_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_other_parent);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_parent_browse_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_parent_browse_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_parent_search;
+  reset role;
+
+  select column_default into v_default
+    from information_schema.columns
+   where table_schema = 'public'
+     and table_name = 'guardian_consents'
+     and column_name = 'show_on_profile';
+
+  insert into public.posts (id, author_id, type, caption, text, audience)
+  values
+    (v_public, v_author, 'standard', 'public tag', 'public tag', 'public'),
+    (v_followers, v_author, 'standard', 'followers tag', 'followers tag', 'followers');
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_public, array[v_tagged]);
+  perform public.set_post_tags(v_public, '{}'::uuid[]);
+  perform public.set_post_tags(v_public, array[v_tagged]);
+
+  select count(*)::int into v_notes
+    from public.notifications
+   where user_id = v_tagged
+     and type = 'post_tag'
+     and entity_type = 'post'
+     and entity_id = v_public::text;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+  select count(*)::int into v_viewer_before
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_tagged, v_author);
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+  select count(*)::int into v_viewer_after
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  perform tests.as_user(v_tagged);
+  set local role authenticated;
+  select count(*)::int into v_own
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_followers, array[v_outsider]);
+
+  select count(*)::int into v_outsider_tag
+    from public.post_tags
+   where post_id = v_followers
+     and user_id = v_outsider;
+  select count(*)::int into v_outsider_notes
+    from public.notifications
+   where user_id = v_outsider
+     and type = 'post_tag'
+     and entity_id = v_followers::text;
+
+  perform tests.ok(
+    not v_browse_hidden and v_browse_shown,
+    'a parent whose child is hidden is not listed in browse_parents, and the parent of a discoverable child is');
+
+  perform tests.ok(
+    v_coach_no_browse = 0 and v_coach_no_search = 0
+    and v_coach_no_contacts = 0 and v_coach_no_kids = 0
+    and v_scout_no_browse = 0 and v_scout_no_search = 0
+    and v_scout_no_contacts = 0 and v_scout_no_kids = 0,
+    'an unverified coach and an unverified scout see no parents in browse_parents or search_people, and get no rows from guardian_contacts_of or children_on_profile');
+
+  perform tests.ok(
+    not v_coach_yes_hidden and v_coach_yes_shown and v_coach_yes_search
+    and v_coach_yes_contacts = 1 and v_coach_yes_kids = 1,
+    'a verified coach sees the parent of a discoverable child, finds them in search, and gets one family row each way');
+
+  perform tests.ok(
+    v_club_unverified and v_club_page
+    and not v_club_hidden and v_club_shown and v_club_search
+    and v_club_contacts = 1 and v_club_kids = 1,
+    'a club whose account is not verified but who is the active owner of a verified club page counts as verified');
+
+  perform tests.ok(
+    not v_parent_browse_hidden and v_parent_browse_shown and v_parent_search,
+    'another parent still browses and finds parents');
+
+  perform tests.ok(
+    v_default = 'true',
+    'the column default of guardian_consents.show_on_profile is true');
+
+  perform tests.ok(
+    v_viewer_before = 1 and v_viewer_after = 0 and v_own = 1,
+    'after the tagged person blocks the author, another viewer no longer sees the tag, and the tagged person still sees their own row');
+
+  perform tests.ok(
+    v_notes = 1,
+    'removing and re-adding a tag gives exactly one post_tag notice');
+
+  perform tests.ok(
+    v_outsider_tag = 1 and v_outsider_notes = 0,
+    'tagging someone on a followers-only post they cannot see sends no notice');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BadgeCheck, Film, Trophy, Users } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, BadgeCheck, Film, Flame, Star, Trophy } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
@@ -15,7 +15,6 @@ import {
   Header,
   Input,
   Screen,
-  SectionHeader,
   Sheet,
   SkeletonList,
   Tappable,
@@ -25,16 +24,18 @@ import {
 import { useAsync, useAction } from '@/hooks/useAsync';
 import { useAuth } from '@/providers/AuthProvider';
 import {
+  challengeDetail,
   challengeLeaderboard,
   enterChallenge,
   myClips,
   judgeChallengeEntry,
-  openChallenges,
   withdrawChallengeEntry,
 } from '@/lib/api';
 import { Routes } from '@/lib/routes';
 import { sportLabel } from '@/constants/sports';
-import { ageBandLabel, deadlineLabel, displayName, metaLine, relativeTime } from '@/lib/format';
+import { ageBandLabel, daysUntil, displayName, metaLine, relativeTime } from '@/lib/format';
+import { toLatinDigits } from '@/lib/digits';
+import { isChallengeLive, useChallengeInk } from '@/components/challenges/ChallengeCard';
 import { useT } from '@/i18n';
 import type { Challenge, ChallengeEntry } from '@/types/models';
 
@@ -53,6 +54,7 @@ export default function ChallengeScreen() {
   const router = useRouter();
   const toast = useToast();
   const { profile } = useAuth();
+  const ink = useChallengeInk();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [entering, setEntering] = useState(false);
@@ -65,14 +67,9 @@ export default function ChallengeScreen() {
   const [judgeValue, setJudgeValue] = useState('');
   const [judgeNote, setJudgeNote] = useState('');
 
-  /* `open_challenges` is the only reader that also knows whether *I* am in it,
-     so the detail screen reads the list and picks its row rather than adding a
-     second RPC that would have to repeat the same joins. */
+  /* challenge_detail reads one challenge in any status, including the caller's own entry. */
   const challengeQuery = useAsync<Challenge | null>(
-    async () => {
-      const all = await openChallenges(null, 50, 0);
-      return all.find((c) => c.id === id) ?? null;
-    },
+    () => challengeDetail(id!),
     [id],
     { enabled: !!id, refetchOnFocus: true },
   );
@@ -93,7 +90,7 @@ export default function ChallengeScreen() {
 
   const enter = useAction(async () => {
     if (!id || !clipId) return;
-    const value = claimed.trim() ? Number(claimed.trim()) : null;
+    const value = claimed.trim() ? Number(toLatinDigits(claimed).trim()) : null;
     await enterChallenge(id, clipId, Number.isFinite(value as number) ? value : null, note);
   });
 
@@ -103,7 +100,7 @@ export default function ChallengeScreen() {
 
   const judge = useAction(async (accept: boolean) => {
     if (!judging) return;
-    const value = judgeValue.trim() ? Number(judgeValue.trim()) : null;
+    const value = judgeValue.trim() ? Number(toLatinDigits(judgeValue).trim()) : null;
     await judgeChallengeEntry(
       judging.entry_id,
       accept,
@@ -157,12 +154,55 @@ export default function ChallengeScreen() {
     );
   }
 
-  const closing = deadlineLabel(challenge.closes_at);
-  const canEnter = isAthlete && challenge.status === 'open';
+  const live = isChallengeLive(challenge);
+  const days = Math.max(daysUntil(challenge.closes_at) ?? 0, 0);
+  const canEnter = isAthlete && live;
+  /* Same gate as the new-challenge screen: a verified coach, club, or scout.
+     A club account is also an academy. Anyone else only gets the note. */
+  const canSet =
+    profile?.is_verified === true &&
+    (profile.role === 'coach' || profile.role === 'club' || profile.role === 'scout');
+
+  const tagText =
+    challenge.status === 'judging'
+      ? metaLine(t('challenges.tagLabel'), t('challenges.judging'))
+      : !live
+        ? metaLine(t('challenges.tagLabel'), t('challenges.closed'))
+        : metaLine(t('challenges.tagLabel'), t('challenges.daysLeft', { count: days }));
+
+  const ages =
+    challenge.age_min != null && challenge.age_max != null
+      ? t('challenges.ageRange', { min: challenge.age_min, max: challenge.age_max })
+      : challenge.age_min != null
+        ? t('challenges.ageMin', { min: challenge.age_min })
+        : challenge.age_max != null
+          ? t('challenges.ageMax', { max: challenge.age_max })
+          : null;
+
+  const RuleIcon = challenge.metric_label
+    ? challenge.metric_better === 'lower'
+      ? ArrowDown
+      : ArrowUp
+    : Star;
+  const ruleLabel = challenge.metric_label
+    ? challenge.metric_better === 'lower'
+      ? t('challenges.lowerWins')
+      : t('challenges.higherWins')
+    : t('challenges.measuredNo');
+
+  /** One of the three small facts under the title. */
+  const stat = (value: React.ReactNode, label: string) => (
+    <Card padded="sm" style={{ flex: 1, alignItems: 'center', gap: 2, paddingVertical: spacing.md }}>
+      {value}
+      <Text variant="caption" tone="muted" numberOfLines={1}>
+        {label}
+      </Text>
+    </Card>
+  );
 
   return (
     <Screen
-      header={<Header title={challenge.title} back bordered />}
+      header={<Header back />}
       onRefresh={afterChange}
       refreshing={challengeQuery.refreshing || board.refreshing}
       testID="challenge-screen"
@@ -170,7 +210,8 @@ export default function ChallengeScreen() {
         canEnter ? (
           <View style={{ gap: spacing.sm }}>
             <Button
-              label={t(challenge.my_entry_id ? 'challenges.enterAgain' : 'challenges.enter')}
+              label={t(challenge.my_entry_id ? 'challenges.enterAgain' : 'challenges.enterChallenge')}
+              variant="warm"
               fullWidth
               onPress={() => setEntering(true)}
             />
@@ -183,50 +224,101 @@ export default function ChallengeScreen() {
               />
             ) : null}
           </View>
+        ) : !isAthlete && !isMine ? (
+          <View style={{ gap: spacing.sm }}>
+            <Text variant="caption" tone="muted">
+              {t('challenges.athletesOnlyNote')}
+            </Text>
+            {/* A closed challenge has nothing to set against, so the note stands alone. */}
+            {live && canSet ? (
+              <Button
+                label={t('challenges.setYourOwn')}
+                variant="secondary"
+                fullWidth
+                onPress={() => router.push(Routes.newChallenge)}
+                testID="challenge-set-own"
+              />
+            ) : null}
+          </View>
         ) : null
       }
     >
-      <View style={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
-        {/* ── Who set it, and when it ends ── */}
-        <Card padded>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Avatar uri={challenge.setter_avatar} name={challenge.setter_name} size="md" />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text variant="bodyStrong" numberOfLines={1}>
-                  {displayName(challenge.org_name ?? challenge.setter_name)}
-                </Text>
-                {challenge.setter_verified ? (
-                  <BadgeCheck size={14} color={colors.info} />
-                ) : null}
-              </View>
-              <Text variant="caption" tone="muted">
-                {metaLine(
-                  sportLabel(t, challenge.sport),
-                  challenge.status === 'closed' || !closing ? t('challenges.closed') : closing,
-                )}
-              </Text>
-            </View>
-            <Badge
-              label={t('challenges.entries', { count: challenge.entry_count })}
-              tone="neutral"
-              icon={<Users size={12} color={colors.textMuted} />}
-            />
+      <View style={{ gap: spacing.xl, paddingBottom: spacing.xl }}>
+        {/* ── What it is: the tag, the title, who set it ── */}
+        <View style={{ gap: spacing.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              alignSelf: 'flex-start',
+              gap: 6,
+              paddingHorizontal: spacing.md,
+              paddingVertical: 6,
+              borderRadius: theme.radii.pill,
+              backgroundColor: live ? theme.alpha(theme.play.flame, 0.14) : colors.surfaceAlt,
+            }}
+          >
+            <Flame size={14} color={live ? ink : colors.textSecondary} strokeWidth={2.4} />
+            <Text variant="captionStrong" color={live ? ink : colors.textSecondary}>
+              {tagText}
+            </Text>
           </View>
-        </Card>
+
+          <Text variant="title">{challenge.title}</Text>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Avatar uri={challenge.setter_avatar} name={challenge.setter_name} size="sm" />
+            <Text variant="bodyStrong" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {displayName(challenge.org_name ?? challenge.setter_name)}
+            </Text>
+            {challenge.setter_verified ? <BadgeCheck size={15} color={colors.info} /> : null}
+            <Text variant="caption" tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>
+              {metaLine(sportLabel(t, challenge.sport), ages)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Three small facts ── */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {stat(
+            <Text variant="heading">{live ? String(days) : '–'}</Text>,
+            live ? t('challenges.statDays', { count: days }) : t('challenges.closed'),
+          )}
+          {stat(
+            <Text variant="heading">{String(challenge.entry_count)}</Text>,
+            t('challenges.statEntries', { count: challenge.entry_count }),
+          )}
+          {stat(<RuleIcon size={22} color={colors.text} strokeWidth={2.4} />, ruleLabel)}
+        </View>
 
         {/* ── The brief ── */}
         <View style={{ gap: spacing.sm }}>
-          <SectionHeader title={t('challenges.briefTitle')} />
+          <Text variant="overline" tone="muted">
+            {t('challenges.briefTitle')}
+          </Text>
           <Card padded>
             <Text variant="body">{challenge.brief}</Text>
           </Card>
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <SectionHeader title={t('challenges.rulesTitle')} />
-          <Card padded tone="alt">
-            <Text variant="body" tone="secondary">
+          <Text variant="overline" tone="muted">
+            {t('challenges.rulesTitle')}
+          </Text>
+          <Card padded style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <View
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: colors.surfaceAlt,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <RuleIcon size={18} color={colors.textSecondary} strokeWidth={2.4} />
+            </View>
+            <Text variant="body" tone="secondary" style={{ flex: 1 }}>
               {metricNote}
             </Text>
           </Card>
@@ -234,22 +326,36 @@ export default function ChallengeScreen() {
 
         {/* ── Leaderboard ── */}
         <View style={{ gap: spacing.sm }}>
-          <SectionHeader
-            title={t('challenges.leaderboardTitle')}
-            action={
-              board.data?.length
-                ? t('challenges.entries', { count: board.data.length })
-                : undefined
-            }
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text variant="overline" tone="muted">
+              {t('challenges.leaderboardTitle')}
+            </Text>
+            {board.data?.length ? (
+              <Text variant="caption" tone="muted">
+                {t('challenges.entries', { count: board.data.length })}
+              </Text>
+            ) : null}
+          </View>
           {board.loading && !board.data ? (
             <SkeletonList count={3} variant="row" />
           ) : !board.data?.length ? (
-            <EmptyState
-              compact
-              icon={<Trophy size={22} color={colors.textMuted} />}
-              title={t('challenges.leaderboardEmpty')}
-            />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: spacing.md,
+                padding: spacing.lg,
+                borderRadius: theme.radii.lg,
+                borderWidth: StyleSheet.hairlineWidth * 2,
+                borderStyle: 'dashed',
+                borderColor: colors.border,
+              }}
+            >
+              <Trophy size={22} color={colors.textMuted} />
+              <Text variant="body" tone="secondary" style={{ flex: 1 }}>
+                {t('challenges.leaderboardEmpty')}
+              </Text>
+            </View>
           ) : (
             <Card padded={false}>
               {board.data.map((entry, index) => (

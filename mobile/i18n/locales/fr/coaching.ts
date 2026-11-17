@@ -107,6 +107,9 @@ export const coaching = {
   askGuardian: 'Demander à mon responsable',
   ownCalendar: 'C’est votre propre calendrier.',
   manageCalendar: 'Gérer le calendrier',
+  guardianAccount:
+    'Votre enfant réserve les séances depuis son propre compte. Vous serez informé de chaque réservation et pourrez l’annuler dans Enfants.',
+  openChildren: 'Ouvrir Enfants',
   unavailable: 'Ce coach ne peut pas être réservé.',
   upcoming: 'À venir',
   past: 'Passées',
@@ -120,6 +123,7 @@ export const coaching = {
   forChild: 'Pour {{name}}',
   guardianIntro: 'Séances réservées par les jeunes dont vous êtes responsable.',
   cardBook: 'Réserver une séance',
+  seeSessions: 'Voir les séances',
   cardManage: 'Ouvrir mon calendrier',
   cardSetup: 'Prenez des élèves : configurez votre offre et ouvrez des créneaux.',
   priceFrom: 'À partir de {{amount}}',

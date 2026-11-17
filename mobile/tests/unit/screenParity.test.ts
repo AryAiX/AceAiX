@@ -46,15 +46,16 @@ describe('web parity manifest', () => {
     expect(invalid).toEqual([]);
   });
 
-  it('requires mobile, tablet, desktop, both schemes, all seven languages, and RTL', () => {
+  it('requires mobile, tablet, desktop, both schemes, all eight languages, and RTL', () => {
     expect(REQUIRED_PARITY_VIEWPORTS.map(({ name }) => name)).toEqual([
       'mobile',
       'tablet',
       'desktop',
     ]);
     expect(REQUIRED_PARITY_SCHEMES).toEqual(['light', 'dark']);
-    expect(REQUIRED_PARITY_LANGUAGES).toEqual(['en', 'ar', 'de', 'es', 'fr', 'ru', 'zh']);
+    expect(REQUIRED_PARITY_LANGUAGES).toEqual(['en', 'ar', 'fa', 'de', 'es', 'fr', 'ru', 'zh']);
     expect(REQUIRED_PARITY_LANGUAGES).toContain('ar');
+    expect(REQUIRED_PARITY_LANGUAGES).toContain('fa');
   });
 
   it('tracks every browser platform capability with explicit acceptance criteria', () => {

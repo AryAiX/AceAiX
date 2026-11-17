@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BadgeCheck } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
-import { huePair, tierForScore, tierGradient } from '@/theme/tokens';
+import { TierColors, huePair, tierForScore } from '@/theme/tokens';
 import { RemoteImage } from './RemoteImage';
 import { Text } from './Text';
 
@@ -65,10 +65,9 @@ export function Avatar({
   const outer = px + ringWidth * 2 + (score != null ? 4 : 0);
   const showImage = !!uri && !failed;
 
-  /* The ring is a gradient rather than a stroke: a filled circle behind an
-     opaque, centred photo, so the margin between them *is* the ring. A tier is
-     two colours now, and a single-stop border could only ever show one. */
-  const ringStops = score != null ? tierGradient(tierForScore(score)) : null;
+  /* The ring is a filled circle behind an opaque, centred photo, so the
+     margin between them *is* the ring. One flat tier colour. */
+  const ringColor = score != null ? TierColors[tierForScore(score)] : null;
 
   const content = (
     <View
@@ -85,12 +84,9 @@ export function Avatar({
       ]}
       testID={testID}
     >
-      {ringStops ? (
-        <LinearGradient
-          colors={ringStops}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[StyleSheet.absoluteFill, { borderRadius: outer / 2 }]}
+      {ringColor ? (
+        <View
+          style={[StyleSheet.absoluteFill, { borderRadius: outer / 2, backgroundColor: ringColor }]}
           pointerEvents="none"
         />
       ) : null}

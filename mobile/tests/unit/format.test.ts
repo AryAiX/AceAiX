@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 
+import { intlLocale } from '@/lib/i18n-bridge';
 import {
   ageBandLabel,
   compactNumber,
@@ -139,5 +140,22 @@ describe('misc', () => {
     expect(heightLabel(181.4)).toBe('181 cm');
     expect(heightLabel(null)).toBeNull();
     expect(heightLabel(0)).toBeNull();
+  });
+});
+
+describe('intlLocale', () => {
+  it('formats a Persian date on the Gregorian calendar with Persian digits', () => {
+    const date = new Date(2026, 0, 15);
+    const fa = new Intl.DateTimeFormat(intlLocale('fa'), {
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    }).format(date);
+    expect(fa).toContain('۲۰۲۶');
+    expect(fa).not.toMatch(/[0-9]/);
+
+    const en = new Intl.DateTimeFormat(intlLocale('en'), { year: 'numeric' }).format(date);
+    expect(en).toContain('2026');
+    expect(en).not.toMatch(/[۰-۹]/);
   });
 });

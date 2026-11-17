@@ -2,6 +2,7 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { AppError } from '@/lib/errors';
 import { parseMentions } from '@/lib/mentions';
+import { attachPostTags } from '@/lib/api.postTags';
 import { rememberPostMentions } from '@/lib/postMentions';
 import { IMAGE_PRESETS, isAnimatedType, prepareImage } from '@/lib/imagePrep';
 import { isAbsoluteMediaUrl } from '@/lib/mediaUrl';
@@ -97,7 +98,7 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     }];
   });
 
-  return {
+  const post: FeedPost = {
     id: row.id as string,
     author_id: authorId,
     author_name: author?.full_name ?? null,
@@ -121,6 +122,8 @@ export async function getPostById(postId: string): Promise<FeedPost | null> {
     created_at: row.created_at as string,
     mentions,
   };
+  const [withTags] = await attachPostTags([post]);
+  return withTags;
 }
 
 /** The post's own audience. Only the author can read this (RLS). */
@@ -428,4 +431,65 @@ export async function recordPostView(postId: string): Promise<void> {
   } catch {
     /* A missed view is not worth an error on screen. */
   }
+}
+
+/** Someone the server decided this viewer may see on a like list. */
+export interface PostLiker {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: UserRole | null;
+  is_verified: boolean | null;
+  liked_at: string;
+}
+
+/** Named people, plus how many likes stay unnamed, plus every like. */
+export interface PostLikersResult {
+  likers: PostLiker[];
+  hidden: number;
+  total: number;
+}
+
+function asPostLiker(value: unknown): PostLiker | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  if (typeof row.id !== 'string') return null;
+  return {
+    id: row.id,
+    full_name: typeof row.full_name === 'string' ? row.full_name : null,
+    avatar_url: typeof row.avatar_url === 'string' ? row.avatar_url : null,
+    role: typeof row.role === 'string' ? (row.role as UserRole) : null,
+    is_verified: typeof row.is_verified === 'boolean' ? row.is_verified : null,
+    liked_at: typeof row.liked_at === 'string' ? row.liked_at : '',
+  };
+}
+
+/**
+ * Who liked a post.
+ *
+ * `post_likers` names a person only when this viewer may see them. A minor
+ * is named only to the person who posted, the minor, and their approved
+ * parent. `hidden` counts everyone else, not people left off by the limit.
+ * A post this viewer cannot see is P0002, and that is thrown as an AppError
+ * the same way every other call throws.
+ */
+export async function postLikers(postId: string, limit = 100): Promise<PostLikersResult> {
+  const { data, error } = await supabase.rpc('post_likers', {
+    p_post: postId,
+    p_limit: limit,
+  });
+  if (error) throw new AppError(error);
+
+  const body = (data ?? {}) as { likers?: unknown; hidden?: unknown; total?: unknown };
+  const likers = Array.isArray(body.likers)
+    ? body.likers.flatMap((item) => {
+        const person = asPostLiker(item);
+        return person ? [person] : [];
+      })
+    : [];
+  return {
+    likers,
+    hidden: typeof body.hidden === 'number' ? body.hidden : 0,
+    total: typeof body.total === 'number' ? body.total : 0,
+  };
 }

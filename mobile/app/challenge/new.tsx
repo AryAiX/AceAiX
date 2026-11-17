@@ -6,7 +6,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
-  Chip,
+  Dropdown,
   EmptyState,
   Header,
   Input,
@@ -24,6 +24,7 @@ import { getClubPage } from '@/lib/api.club';
 import { Routes } from '@/lib/routes';
 import { SPORTS, sportLabel } from '@/constants/sports';
 import { useT } from '@/i18n';
+import { toLatinDigits } from '@/lib/digits';
 
 const FALLBACK_SPORT = SPORTS[0]?.key ?? 'Football';
 
@@ -121,8 +122,8 @@ export default function NewChallengeScreen() {
       metricLabel: kind === 'measured' ? metricLabel : null,
       metricUnit: kind === 'measured' ? metricUnit || metricLabel : null,
       metricBetter: better,
-      ageMin: ageMin.trim() ? Number(ageMin) : null,
-      ageMax: ageMax.trim() ? Number(ageMax) : null,
+      ageMin: ageMin.trim() ? Number(toLatinDigits(ageMin).trim()) : null,
+      ageMax: ageMax.trim() ? Number(toLatinDigits(ageMax).trim()) : null,
       organizationId: orgId,
     });
   });
@@ -186,20 +187,19 @@ export default function NewChallengeScreen() {
           {t('challenges.newBody')}
         </Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {SPORTS.map((item) => (
-            <Chip
-              key={item.key}
-              label={sportLabel(t, item.key)}
-              icon={<Text variant="caption">{item.emoji}</Text>}
-              selected={sport === item.key}
-              onPress={() => {
-                setSportChosen(true);
-                setSport(item.key);
-              }}
-            />
-          ))}
-        </View>
+        <Dropdown
+          required
+          label={t('opportunities.detail.factSport')}
+          placeholder={t('common.choose')}
+          options={SPORTS.map((item) => ({ key: item.key, label: sportLabel(t, item.key), emoji: item.emoji }))}
+          value={sport ? [sport] : []}
+          onChange={(next) => {
+            if (!next[0]) return;
+            setSportChosen(true);
+            setSport(next[0]);
+          }}
+          testID="challenge-new-sport"
+        />
 
         <Input
           label={t('challenges.fieldTitle')}

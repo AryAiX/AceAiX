@@ -18,7 +18,10 @@ vi.mock('lucide-react-native', () => {
     Building2: Icon,
     Megaphone: Icon,
     Radio: Icon,
+    ShieldAlert: Icon,
     ShieldCheck: Icon,
+    Sparkles: Icon,
+    Tag: Icon,
     Trophy: Icon,
     Briefcase: Icon,
     Handshake: Icon,
@@ -40,6 +43,12 @@ vi.mock('@/components/ui', () => ({
   Text: () => null,
 }));
 
+/* The row's Follow button pulls in native modules (gradient, haptics) that
+   cannot load in a node test; the copy under test does not need it. */
+vi.mock('@/components/discover/FollowButton', () => ({
+  FollowButton: () => null,
+}));
+
 vi.mock('@/theme/ThemeProvider', () => ({
   useTheme: () => ({}),
 }));
@@ -54,8 +63,10 @@ import {
   applyHydratedRow,
   bannerEventFromPayload,
   bannerText,
+  dequeueBanner,
+  emptyBannerQueue,
+  enqueueBanner,
   isUnreadNotification,
-  newerBannerEvent,
   rowNeedsHydration,
   shouldShowBanner,
   type BannerContext,
@@ -428,18 +439,65 @@ describe('partial realtime rows', () => {
   });
 });
 
-describe('newerBannerEvent', () => {
-  it('keeps the row with the later server activity time', () => {
-    const older = event({ row: { id: 'old', created_at: at(0) } });
-    const newer = event({ row: { id: 'new', created_at: at(2000) } });
-    expect(newerBannerEvent(older, newer).row.id).toBe('new');
-    expect(newerBannerEvent(newer, older).row.id).toBe('new');
+describe('banner queue', () => {
+  function queued(ids: string[]) {
+    return ids.reduce(
+      (queue, id) => enqueueBanner(queue, event({ row: { id, title: id } })),
+      emptyBannerQueue(),
+    );
+  }
+
+  function taken(queue: ReturnType<typeof emptyBannerQueue>, times: number) {
+    const turns = [];
+    let current = queue;
+    for (let i = 0; i < times; i += 1) {
+      const step = dequeueBanner(current);
+      current = step.queue;
+      turns.push(step.turn);
+    }
+    return { queue: current, turns };
+  }
+
+  it('keeps arrival order', () => {
+    const { turns } = taken(queued(['a', 'b', 'c']), 4);
+    expect(turns.map((turn) => (turn.kind === 'event' ? turn.event.row.id : turn.kind))).toEqual([
+      'a',
+      'b',
+      'c',
+      'idle',
+    ]);
   });
 
-  it('keeps the one that just arrived when the times match', () => {
-    const first = event({ row: { id: 'first' } });
-    const second = event({ row: { id: 'second' } });
-    expect(newerBannerEvent(first, second).row.id).toBe('second');
+  it('replaces a waiting entry instead of adding a second one', () => {
+    const first = event({ row: { id: 'a', title: 'first' } });
+    const other = event({ row: { id: 'b', title: 'other' } });
+    const updated = event({ eventType: 'UPDATE', row: { id: 'a', title: 'updated' } });
+    const queue = enqueueBanner(enqueueBanner(enqueueBanner(emptyBannerQueue(), first), other), updated);
+
+    expect(queue.waiting.map((item) => item.row.title)).toEqual(['updated', 'other']);
+    expect(queue.overflow).toBe(0);
+
+    const onScreen = enqueueBanner(queue, event({ row: { id: 'shown', title: 'again' } }), 'shown');
+    expect(onScreen).toBe(queue);
+  });
+
+  it('counts anything past five waiting, and summarises them once at the end', () => {
+    const full = queued(['1', '2', '3', '4', '5', '6', '7']);
+    expect(full.waiting.map((item) => item.row.id)).toEqual(['1', '2', '3', '4', '5']);
+    expect(full.overflow).toBe(2);
+
+    const { turns, queue } = taken(full, 8);
+    expect(turns.slice(0, 5).map((turn) => (turn.kind === 'event' ? turn.event.row.id : turn.kind))).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+    ]);
+    expect(turns[5]).toEqual({ kind: 'summary', count: 2 });
+    expect(turns[6]).toEqual({ kind: 'idle' });
+    expect(turns[7]).toEqual({ kind: 'idle' });
+    expect(queue.overflow).toBe(0);
   });
 });
 
@@ -500,6 +558,12 @@ const NOTIFICATION_TYPES: Array<{
     actorName: 'Sam',
     expectedTitle: 'Sam mentioned you in a post',
   },
+  {
+    type: 'post_tag',
+    title: 'Sam tagged you in a post',
+    actorName: 'Sam',
+    expectedTitle: 'Sam tagged you in a post',
+  },
   { type: 'application_received', title: 'Sam applied to a trial' },
   { type: 'application_status', title: 'Your application to a trial is now accepted' },
   { type: 'profile_view', title: 'Sam viewed your profile' },
@@ -546,6 +610,24 @@ const NOTIFICATION_TYPES: Array<{
     expectedTitle: 'Sam joined through your invite',
   },
   { type: 'referral_token', title: 'You earned a token', expectedTitle: 'You earned a token' },
+  {
+    type: 'sport_request_approved',
+    title: 'stored title',
+    data: { sport: 'Kabaddi' },
+    expectedTitle: 'Your sport was approved: Kabaddi',
+  },
+  {
+    type: 'sport_request_matched',
+    title: 'stored title',
+    data: { sport: 'Football' },
+    expectedTitle: 'Your sport was set to Football',
+  },
+  {
+    type: 'sport_request_rejected',
+    title: 'stored title',
+    data: { sport: null },
+    expectedTitle: 'Your sport request was not approved',
+  },
 ];
 
 function asNotification(row: (typeof NOTIFICATION_TYPES)[number]): AppNotification {
@@ -574,6 +656,7 @@ describe('every notification type', () => {
       'reply',
       'like',
       'mention',
+      'post_tag',
       'application_received',
       'application_status',
       'profile_view',
@@ -611,6 +694,9 @@ describe('every notification type', () => {
       'system',
       'referral_joined',
       'referral_token',
+      'sport_request_approved',
+      'sport_request_matched',
+      'sport_request_rejected',
     ]);
 
     for (const row of NOTIFICATION_TYPES) {

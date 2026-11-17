@@ -1,4 +1,4 @@
-import type { Translate } from '@/lib/i18n-bridge';
+import { intlLocale, type Translate } from '@/lib/i18n-bridge';
 
 import { dateTimeLabel, timeLabel } from '../match/matchFormat';
 
@@ -23,7 +23,7 @@ export function ageRange(t: Translate, min: number | null, max: number | null): 
 export function priceLabel(t: Translate, price: number | null, currency: string, locale: string): string {
   if (price == null || price <= 0) return t('clubMatch.event.free');
   try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
+    return new Intl.NumberFormat(intlLocale(locale), { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
   } catch {
     return `${price} ${currency}`;
   }

@@ -308,6 +308,22 @@ export interface ReferralRow {
   id: string; status: 'pending' | 'qualified' | 'revoked'; revoked_reason: string | null;
   created_at: string; qualified_at: string | null; referrer: Person | null; referred: Person | null;
 }
+/** One row from admin_sport_requests (20261112000005_sport_requests.sql). */
+export interface SportRequest {
+  id: string;
+  user_id: string;
+  full_name: string | null;
+  email: string | null;
+  is_minor: boolean;
+  current_sport: string | null;
+  requested_name: string;
+  status: string;
+  decided_sport: string | null;
+  admin_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
+}
+
 export interface CustomCity {
   id: string;
   country: string;
@@ -416,6 +432,18 @@ export const api = {
     }),
   reviewSportFitSport: (sport: string, reviewedBy: string | null) =>
     rpc<SportFitSport>('admin_review_sport_fit_sport', { p_sport: sport, p_reviewed_by: reviewedBy }),
+
+  sportRequests: (status: string) =>
+    rpc<SportRequest[]>('admin_sport_requests', { p_status: status }),
+  reviewSportRequest: (
+    id: string,
+    action: 'approve' | 'match' | 'reject',
+    value: string | null,
+    note: string | null,
+  ) =>
+    rpc<unknown>('admin_review_sport_request', {
+      p_id: id, p_action: action, p_value: value, p_note: note,
+    }),
 
   customCities: () => rpc<CustomCity[]>('admin_list_custom_cities'),
   reviewCity: (id: string, approve: boolean) =>

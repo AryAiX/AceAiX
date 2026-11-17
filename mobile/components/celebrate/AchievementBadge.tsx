@@ -111,6 +111,7 @@ export function AchievementBadge({
           fill={skin.bg}
           stroke={skin.ring}
           strokeWidth={ring}
+          strokeDasharray={earned ? undefined : [4, 4]}
         />
       </Svg>
       <Icon size={icon} color={skin.fg} strokeWidth={earned ? 2 : 1.75} />

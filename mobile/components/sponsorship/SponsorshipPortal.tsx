@@ -15,9 +15,9 @@ import {
   Reveal,
   Screen,
   SectionHeader,
-  SegmentedControl,
   SkeletonList,
   Text,
+  TextTabs,
   useToast,
 } from '@/components/ui';
 import { InfoNote } from '@/components/settings/Notes';
@@ -173,7 +173,7 @@ export function SponsorshipPortal({
         ) : null}
 
         {isSponsor ? (
-          <SegmentedControl<'calls' | 'deals'>
+          <TextTabs<'calls' | 'deals'>
             testID="sponsorship-section"
             value={sponsorSection}
             onChange={setPicked}
@@ -185,7 +185,7 @@ export function SponsorshipPortal({
         ) : null}
 
         {isAthlete ? (
-          <SegmentedControl<'requests' | 'deals'>
+          <TextTabs<'requests' | 'deals'>
             testID="sponsorship-section"
             value={athleteSection}
             onChange={setPicked}
@@ -224,8 +224,13 @@ export function SponsorshipPortal({
           <View>
             <SectionHeader
               title={t('sponsorship.myRequests')}
-              action={data.gate === 'ok' ? t('sponsorship.newRequest') : undefined}
-              onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipRequest) : undefined}
+              /* With nothing asked yet, the empty state's one button does this. */
+              action={data.gate === 'ok' && data.requests.length > 0 ? t('sponsorship.newRequest') : undefined}
+              onAction={
+                data.gate === 'ok' && data.requests.length > 0
+                  ? () => router.push(Routes.sponsorshipRequest)
+                  : undefined
+              }
             />
             {data.requests.length === 0 ? (
               <EmptyState
@@ -233,6 +238,7 @@ export function SponsorshipPortal({
                 title={t('sponsorship.noRequests')}
                 body={t('sponsorship.seekBody')}
                 actionLabel={data.gate === 'ok' ? t('sponsorship.seekCta') : undefined}
+                actionVariant="warm"
                 onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipRequest) : undefined}
               />
             ) : (
@@ -266,7 +272,7 @@ export function SponsorshipPortal({
                       ) : null}
                       <TagRow group="need" tags={request.needs} otherText={request.needs_other} />
                       {request.pending_offers > 0 ? (
-                        <Text variant="captionStrong" tone="primary">
+                        <Text variant="captionStrong" tone="warning">
                           {t('sponsorship.pendingOffers', { n: request.pending_offers })}
                         </Text>
                       ) : null}
@@ -319,8 +325,8 @@ export function SponsorshipPortal({
           <View>
             <SectionHeader
               title={t('sponsorship.myCalls')}
-              action={data.gate === 'ok' ? t('sponsorship.newCall') : undefined}
-              onAction={data.gate === 'ok' ? () => router.push(Routes.sponsorshipCall) : undefined}
+              action={data.gate === 'ok' && data.calls.length > 0 ? t('sponsorship.newCall') : undefined}
+              onAction={data.gate === 'ok' && data.calls.length > 0 ? () => router.push(Routes.sponsorshipCall) : undefined}
             />
             {data.calls.length === 0 ? (
               <EmptyState
@@ -409,7 +415,7 @@ export function SponsorshipPortal({
           {t('sponsorship.noMoneyNote')}
         </Text>
 
-        {showRequests && data.gate === 'ok' ? (
+        {showRequests && data.gate === 'ok' && data.requests.length > 0 ? (
           <Button
             label={t('sponsorship.newRequest')}
             fullWidth

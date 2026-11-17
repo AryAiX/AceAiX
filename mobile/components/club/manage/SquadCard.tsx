@@ -19,14 +19,22 @@ function LinkBadge({ status }: { status: SquadPerson['link_status'] }) {
   return null;
 }
 
-function PersonRow({ person, onPress }: { person: SquadPerson; onPress: () => void }) {
+function PersonRow({
+  person,
+  sport,
+  onPress,
+}: {
+  person: SquadPerson;
+  sport: string;
+  onPress: () => void;
+}) {
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
   const sub =
     person.kind === 'staff'
       ? clubLabel(t, 'staffRole', person.staff_role ?? 'other')
-      : positionLabel(t, person.position);
+      : positionLabel(t, person.position, sport);
 
   return (
     <Pressable
@@ -132,7 +140,9 @@ export function SquadCard({
             {t('clubManage.squads.noStaff')}
           </Text>
         ) : (
-          squad.staff.map((p) => <PersonRow key={p.id} person={p} onPress={() => onOpenPerson(p)} />)
+          squad.staff.map((p) => (
+            <PersonRow key={p.id} person={p} sport={squad.sport} onPress={() => onOpenPerson(p)} />
+          ))
         )}
       </View>
 
@@ -147,7 +157,9 @@ export function SquadCard({
             {t('clubManage.squads.noPlayers')}
           </Text>
         ) : (
-          squad.players.map((p) => <PersonRow key={p.id} person={p} onPress={() => onOpenPerson(p)} />)
+          squad.players.map((p) => (
+            <PersonRow key={p.id} person={p} sport={squad.sport} onPress={() => onOpenPerson(p)} />
+          ))
         )}
       </View>
 

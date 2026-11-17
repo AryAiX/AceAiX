@@ -10,7 +10,7 @@
     "primaryColor": "#FF5A1F",
     "description": "AceAiX is where young athletes get discovered. Build a sporting profile, get an AI Talent Score, share your highlights, and be found by verified coaches and clubs.",
     "githubUrl": "https://github.com/AryAiX/AceAiX",
-    "backgroundColor": "#0B0A16",
+    "backgroundColor": "#181B24",
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -214,7 +214,7 @@
           "backgroundColor": "#F7F6FD",
           "dark": {
             "image": "./assets/images/splash-icon-dark.png",
-            "backgroundColor": "#0B0A16"
+            "backgroundColor": "#181B24"
           }
         }
       ],

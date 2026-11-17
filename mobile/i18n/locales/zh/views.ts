@@ -7,13 +7,15 @@
  */
 export const views = {
   title: '谁看过你的主页',
-  subtitle: '过去{{days}}天里的教练、球探和俱乐部。',
+  subtitle: '最近 {{days}} 天的浏览。',
 
   homeTitleNone: '这周还没有人看过',
   homeTitle_other: '有{{count}}人看过你的主页',
   homeProfessional_other: '其中{{count}}位是教练、球探或俱乐部',
   homeClubs_other: '来自{{count}}家俱乐部',
   homeEmptyBody: '加一段短片，或者记录一场比赛 —— 有影像的主页会先被点开。',
+  including: '包括{{name}}',
+  includingMore_other: '包括{{name}}和另外 {{count}} 位',
   homeCta: '看看是谁',
 
   namedTitle: '列出名字的',
@@ -34,4 +36,5 @@ export const views = {
   whyTitle: '为什么有些名字看不到',
   whyBody:
     '我们只列出经过认证的教练、球探和俱乐部 —— 他们是以职业身份，来看一份你为了被找到而公开的主页。未认证的账号和其他运动员只计入数量，从不列出名字。这条规则对谁都不例外。',
+  unnamedOnlyTitle_other: '{{count}} 次浏览不显示名字',
 };

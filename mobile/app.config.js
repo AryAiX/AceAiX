@@ -21,6 +21,7 @@ module.exports = ({ config }) => {
         },
       ],
       "@react-native-community/datetimepicker",
+      "expo-image",
       "expo-sharing",
       "expo-status-bar",
       "react-native-compressor",

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { TierColors, tierForScore } from '@/theme/tokens';
-import { AnimatedNumber, Button, Card, Switch, Text } from '@/components/ui';
+import { AnimatedNumber, Button, Card, PointsChip, Switch, Text } from '@/components/ui';
 import { Stepper } from '@/components/score/Stepper';
 import { simulateScore } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
@@ -157,9 +157,7 @@ export function ScoreSimulator() {
             color={TierColors[tierForScore(projected?.overall ?? 0)]}
           />
           {gain > 0 ? (
-            <Text variant="captionStrong" tone="success">
-              {t('score.simGain', { count: gain })}
-            </Text>
+            <PointsChip points={gain} label={t('score.simGain', { count: gain })} />
           ) : (
             <Text variant="caption" tone="muted">
               {t('score.simNoChange')}

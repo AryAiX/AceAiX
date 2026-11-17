@@ -11,7 +11,7 @@ import type { ClubSquad, SquadPerson } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
 import { Routes } from '@/lib/routes';
 
-function PersonRow({ person }: { person: SquadPerson }) {
+function PersonRow({ person, sport }: { person: SquadPerson; sport: string }) {
   const t = useT();
   const theme = useTheme();
   const { colors, radii, spacing } = theme;
@@ -22,7 +22,7 @@ function PersonRow({ person }: { person: SquadPerson }) {
     person.kind === 'staff'
       ? clubLabel(t, 'staffRole', person.staff_role ?? 'other')
       : person.position
-        ? positionLabel(t, person.position)
+        ? positionLabel(t, person.position, sport)
         : null;
 
   const lead =
@@ -122,7 +122,7 @@ export function SquadCard({ squad, showYouthNote }: { squad: ClubSquad; showYout
             {t('club.squads.staff')}
           </Text>
           {squad.staff.map((p) => (
-            <PersonRow key={p.id} person={p} />
+            <PersonRow key={p.id} person={p} sport={squad.sport} />
           ))}
         </View>
       ) : null}
@@ -133,7 +133,7 @@ export function SquadCard({ squad, showYouthNote }: { squad: ClubSquad; showYout
             {t('club.squads.players')}
           </Text>
           {squad.players.map((p) => (
-            <PersonRow key={p.id} person={p} />
+            <PersonRow key={p.id} person={p} sport={squad.sport} />
           ))}
         </View>
       ) : null}

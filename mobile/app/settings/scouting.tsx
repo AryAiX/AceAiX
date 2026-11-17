@@ -1,18 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BackHandler, Pressable, View } from 'react-native';
+import { BackHandler, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Cake, Handshake } from 'lucide-react-native';
+import { Cake, Handshake, Search } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import {
   Button,
   Card,
-  Chip,
   ConfirmSheet,
   Divider,
+  Dropdown,
   EmptyState,
   ErrorState,
   Header,
+  Input,
   Screen,
   Skeleton,
   Switch,
@@ -20,6 +21,7 @@ import {
   useToast,
 } from '@/components/ui';
 import { ChipPicker } from '@/components/settings/ChipPicker';
+import { OptionList, SelectedPills } from '@/components/onboarding/PickerSheet';
 import { Stepper } from '@/components/settings/Stepper';
 import { InfoNote } from '@/components/settings/Notes';
 import { useAsync } from '@/hooks/useAsync';
@@ -37,6 +39,7 @@ import {
   positionsBySport,
   positionsFor,
   prunePositions,
+  sportEmoji,
   sportLabel,
 } from '@/constants/sports';
 import type { MatchPreferences } from '@/types/models';
@@ -53,7 +56,6 @@ type Draft = {
   notify_on_match: boolean;
 };
 
-const COUNTRIES_BEFORE_EXPAND = 10;
 
 const AGE_FLOOR = 13;
 const AGE_CEILING = 60;
@@ -114,17 +116,16 @@ export default function ScoutingPreferencesScreen() {
   const dirty = JSON.stringify(draft) !== baseline;
   const anyAge = draft.age_min == null && draft.age_max == null;
   const [discardOpen, setDiscardOpen] = useState(false);
-  const [countriesExpanded, setCountriesExpanded] = useState(false);
-  const countryChoices = useMemo(() => {
-    const all = countryOptions(undefined, (country) => countryLabel(t, country));
-    if (countriesExpanded) return all;
-    const short = all.slice(0, COUNTRIES_BEFORE_EXPAND);
-    for (const selected of draft.countries) {
-      if (!short.includes(selected)) short.push(selected);
-    }
-    return short;
-  }, [countriesExpanded, draft.countries, t]);
-  const showAllCountries = !countriesExpanded && countryOptions().length > COUNTRIES_BEFORE_EXPAND;
+  /* Countries: what is picked shows as pills; a search box narrows the rest
+     to a short list under it. */
+  const [countryQuery, setCountryQuery] = useState('');
+  const countryMatches = useMemo(
+    () =>
+      countryOptions(countryQuery, (country) => countryLabel(t, country)).filter(
+        (country) => !draft.countries.includes(country),
+      ),
+    [countryQuery, draft.countries, t],
+  );
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -244,12 +245,14 @@ export default function ScoutingPreferencesScreen() {
         </Text>
 
         <ChipPicker
+          tone="accent"
           label={t('settings.scoutingSports')}
           hint={t('settings.scoutingSportsHint')}
           options={sportOptions}
           selected={draft.sports}
           onToggle={(v) => toggle('sports', v)}
           labelOf={(key) => sportLabel(t, key)}
+          emojiOf={(key) => sportEmoji(key)}
         />
 
         <View style={{ gap: spacing.sm }}>
@@ -274,16 +277,19 @@ export default function ScoutingPreferencesScreen() {
                 <View key={sport} style={{ gap: spacing.sm }}>
                   <Text variant="captionStrong">{sportLabel(t, sport)}</Text>
                   {options.length > 0 ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-                      {options.map((position) => (
-                        <Chip
-                          key={`${sport}:${position}`}
-                          label={positionLabel(t, position)}
-                          selected={selected.includes(position)}
-                          onPress={() => toggle('positions', position)}
-                        />
-                      ))}
-                    </View>
+                    <Dropdown
+                      multiple
+                      options={options.map((position) => ({
+                        key: position,
+                        label: positionLabel(t, position, sport),
+                      }))}
+                      value={selected}
+                      onChange={(next) => {
+                        const changed =
+                          next.find((key) => !selected.includes(key)) ?? selected.find((key) => !next.includes(key));
+                        if (changed) toggle('positions', changed);
+                      }}
+                    />
                   ) : null}
                 </View>
               );
@@ -301,26 +307,39 @@ export default function ScoutingPreferencesScreen() {
         />
 
         <View style={{ gap: spacing.sm }}>
-          <ChipPicker
-            label={t('settings.scoutingCountries')}
-            hint={t('settings.scoutingCountriesHint')}
-            options={countryChoices}
-            selected={draft.countries}
-            onToggle={(v) => toggle('countries', v)}
-            labelOf={(key) => countryLabel(t, key)}
+          <View style={{ gap: 2 }}>
+            <Text variant="captionStrong" tone="secondary">
+              {t('settings.scoutingCountries')}
+            </Text>
+            <Text variant="caption" tone="muted">
+              {t('settings.scoutingCountriesHint')}
+            </Text>
+          </View>
+          <SelectedPills
+            items={draft.countries.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+            onRemove={(country) => toggle('countries', country)}
           />
-          {showAllCountries ? (
-            <Pressable
-              onPress={() => setCountriesExpanded(true)}
-              accessibilityRole="button"
-              accessibilityLabel={t('onboarding.countryShowAll')}
-              hitSlop={8}
-              style={{ minHeight: 44, justifyContent: 'center' }}
-            >
-              <Text variant="captionStrong" tone="primary">
-                {t('onboarding.countryShowAll')}
-              </Text>
-            </Pressable>
+          <Input
+            value={countryQuery}
+            onChangeText={setCountryQuery}
+            placeholder={t('onboarding.countrySearchPlaceholder')}
+            autoCorrect={false}
+            icon={<Search size={18} color={colors.textMuted} />}
+            returnKeyType="search"
+          />
+          <OptionList
+            rows={countryMatches.map((country) => ({ key: country, label: countryLabel(t, country) }))}
+            onPick={(country) => {
+              toggle('countries', country);
+              setCountryQuery('');
+            }}
+            limit={6}
+            emptyText={t('onboarding.countryNoMatch')}
+          />
+          {countryMatches.length > 6 ? (
+            <Text variant="caption" tone="muted">
+              {t('discover.filters.moreCountries', { count: countryMatches.length - 6 })}
+            </Text>
           ) : null}
         </View>
 

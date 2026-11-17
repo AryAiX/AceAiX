@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, View } from 'react-native';
-import { Search } from 'lucide-react-native';
 
-import { useTheme } from '@/theme/ThemeProvider';
-import { Chip, Input, Text, useToast } from '@/components/ui';
+import { useToast } from '@/components/ui';
 import { searchCities } from '@/lib/api';
 import { errorMessage } from '@/lib/errors';
 import { useT } from '@/i18n';
-import { COUNTRIES_BEFORE_EXPAND } from './Shared';
+import { PickerSheet, SelectField } from './PickerSheet';
 
 /**
  * A tapped chip, or a name left in the box. Two characters is enough for a
@@ -20,12 +17,13 @@ export function cityFromPicker(selected: string, typed: string): string {
 }
 
 /**
- * One city, chosen the same way as a country: a search box, then chips.
+ * One city, chosen the same way as a country: a field that shows the choice,
+ * and a sheet with a search box and the country's cities.
  *
- * The chosen city is the orange chip. A place that is not in the catalogue
- * can still be picked — what they typed becomes a chip when nothing already
- * spells it. A caller that must not lose an untapped name reads it back
- * with `cityFromPicker`.
+ * A place that is not in the catalogue can still be picked — once two
+ * letters are typed and nothing spells them, a "Use …" row is pinned on top.
+ * Closing the sheet without picking drops the search, so what the field shows
+ * is always what will be saved.
  */
 export function CityPicker({
   country,
@@ -45,16 +43,15 @@ export function CityPicker({
   /** When set, the parent owns the search text. */
   query?: string;
   onQueryChange?: (query: string) => void;
-  /** Under the box, once a country is chosen. */
+  /** Under the field, once a country is chosen. */
   hint?: string;
 }) {
-  const theme = useTheme();
-  const { colors, spacing } = theme;
   const t = useT();
   const toast = useToast();
 
   const countryKey = country?.trim() ?? '';
   const ready = countryKey.length > 0;
+  const [open, setOpen] = useState(false);
   const [localQuery, setLocalQuery] = useState('');
   const controlled = queryProp !== undefined;
   const query = controlled ? queryProp : localQuery;
@@ -64,19 +61,19 @@ export function CityPicker({
     if (!controlled) setLocalQuery(next);
     onQueryChangeRef.current?.(next);
   };
-  const [expanded, setExpanded] = useState(false);
   const [results, setResults] = useState<string[]>([]);
   const prevCountry = useRef(countryKey);
 
   useEffect(() => {
-    setExpanded(false);
+    setOpen(false);
     writeQuery('');
     // A new country drops the search. `writeQuery` tells the parent too.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- countryKey only
   }, [countryKey]);
 
   /* One in-flight search at a time, and a late reply never overwrites a newer
-     one. Opening loads at once; keystrokes wait 220ms. */
+     one. Only while the sheet is open: opening loads at once, keystrokes wait
+     220ms. */
   useEffect(() => {
     const countryChanged = prevCountry.current !== countryKey;
     prevCountry.current = countryKey;
@@ -86,6 +83,7 @@ export function CityPicker({
       return;
     }
     if (countryChanged) setResults([]);
+    if (!open) return;
 
     let cancelled = false;
     const handle = setTimeout(async () => {
@@ -101,81 +99,50 @@ export function CityPicker({
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [countryKey, query, toast]);
+  }, [countryKey, query, toast, open]);
 
   const typed = query.trim();
+  const rows = useMemo(() => results.map((city) => ({ key: city, label: city })), [results]);
+  const extraRow =
+    typed.length >= 2 &&
+    typed.length <= 80 &&
+    !results.some((city) => city.toLowerCase() === typed.toLowerCase())
+      ? { key: typed, label: t('onboarding.cityUseTyped', { name: typed }) }
+      : null;
 
-  const matches = useMemo(() => {
-    const same = (name: string) => name.toLowerCase() === typed.toLowerCase();
-    if (typed || expanded) {
-      const list = [...results];
-      if (typed.length >= 2 && typed.length <= 80 && !results.some(same)) list.push(typed);
-      else if (!typed && value && !list.includes(value)) list.push(value);
-      return list;
-    }
-    const short = results.slice(0, COUNTRIES_BEFORE_EXPAND);
-    if (value && !short.includes(value)) short.push(value);
-    return short;
-  }, [results, typed, expanded, value]);
-
-  const showMore =
-    ready && !typed && !expanded && results.length > COUNTRIES_BEFORE_EXPAND;
-
-  const chips = ready ? matches : value ? [value] : [];
+  const close = () => {
+    setOpen(false);
+    writeQuery('');
+  };
 
   return (
-    <View style={{ gap: spacing.md }}>
-      <Input
+    <>
+      <SelectField
         label={label}
-        value={query}
-        onChangeText={ready ? writeQuery : undefined}
-        placeholder={t('onboarding.citySearchPlaceholder')}
+        value={value}
+        placeholder={t('onboarding.cityChoose')}
         hint={ready ? hint : t('onboarding.cityPickCountryFirst')}
-        editable={ready}
-        autoCorrect={false}
-        icon={<Search size={18} color={colors.textMuted} />}
-        returnKeyType="search"
+        disabled={!ready}
+        onPress={() => setOpen(true)}
         testID={testID}
       />
-
-      {ready || value ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-          {chips.map((city) => (
-            <Chip
-              key={city}
-              label={city}
-              selected={value === city}
-              onPress={
-                ready
-                  ? () => {
-                      onChange(city);
-                      writeQuery('');
-                    }
-                  : () => undefined
-              }
-            />
-          ))}
-          {ready && chips.length === 0 ? (
-            <Text variant="caption" tone="muted">
-              {t('onboarding.cityNoMatch')}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      {showMore ? (
-        <Pressable
-          onPress={() => setExpanded(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t('onboarding.cityShowAll')}
-          hitSlop={8}
-          style={{ minHeight: 44, justifyContent: 'center' }}
-        >
-          <Text variant="captionStrong" tone="primary">
-            {t('onboarding.cityShowAll')}
-          </Text>
-        </Pressable>
-      ) : null}
-    </View>
+      <PickerSheet
+        visible={open}
+        onClose={close}
+        title={label}
+        query={query}
+        onQueryChange={writeQuery}
+        searchPlaceholder={t('onboarding.citySearchPlaceholder')}
+        rows={rows}
+        selected={value || null}
+        onPick={(city) => {
+          onChange(city);
+          close();
+        }}
+        emptyText={t('onboarding.cityNoMatch')}
+        extraRow={extraRow}
+        testID={testID ? `${testID}-sheet` : undefined}
+      />
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { CalendarDays, MapPin, Users } from 'lucide-react-native';
 import { useTheme } from '@/theme/ThemeProvider';
 import { Badge, Card, Text } from '@/components/ui';
 import { useT } from '@/i18n';
+import { currentLanguage, intlLocale } from '@/lib/i18n-bridge';
 import type { ClubEventSummary } from '@/lib/api.club';
 import { clubLabel } from '@/lib/clubLabels';
 import { Routes } from '@/lib/routes';
@@ -25,7 +26,7 @@ export function agesLabel(
 function priceLabel(t: (key: string) => string, price: number | null, currency: string): string {
   if (price == null || price <= 0) return t('club.events.free');
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(price);
+    return new Intl.NumberFormat(intlLocale(currentLanguage()), { style: 'currency', currency }).format(price);
   } catch {
     return `${price} ${currency}`;
   }
