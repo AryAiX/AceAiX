@@ -17,4 +17,13 @@ export const whatsNew = {
     live: 'Sieh Likes, neue Follower und Nachrichten, sobald sie ankommen.',
     maps: 'Vereine können einen beliebigen Google-Maps-Link für ihren Standort einfügen.',
   },
+  v2_1_0: {
+    look: 'Ein frischer neuer Look in der ganzen App.',
+    persian: 'AceAiX gibt es jetzt auch auf Persisch.',
+    tags: 'Markiere Leute in deinen Beiträgen. Beiträge, in denen du markiert bist, erscheinen auf deinem Profil.',
+    likes: 'Tippe auf die Anzahl der Likes, um zu sehen, wem ein Beitrag gefällt.',
+    suggestions: 'Vorschläge für Hashtags und @Erwähnungen beim Tippen. Tippe auf einen Hashtag, um seine Beiträge zu sehen.',
+    sports: 'Mehr Sportarten, und du kannst deine Sportart bei uns anfragen.',
+    leaderboard: 'Scrolle durch die ganze Rangliste, mit weltweiten Plätzen.',
+  },
 };
