@@ -17,4 +17,13 @@ export const whatsNew = {
     live: 'Vois les likes, les nouveaux abonnés et les messages dès qu’ils arrivent.',
     maps: 'Les clubs peuvent coller n’importe quel lien Google Maps vers leur lieu.',
   },
+  v2_1_0: {
+    look: 'Un tout nouveau look dans toute l’app.',
+    persian: 'AceAiX est désormais disponible en persan.',
+    tags: 'Identifie des personnes dans tes publications. Les publications où tu es identifié apparaissent sur ton profil.',
+    likes: 'Touche le nombre de j’aime pour voir qui a aimé une publication.',
+    suggestions: 'Suggestions de hashtags et de @mentions pendant la saisie. Touche un hashtag pour voir ses publications.',
+    sports: 'Plus de sports, et tu peux nous demander d’ajouter le tien.',
+    leaderboard: 'Parcours tout le classement, avec les rangs mondiaux.',
+  },
 };

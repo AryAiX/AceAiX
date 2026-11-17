@@ -3,7 +3,7 @@
  *
  * Release notes are keyed by the installed version: dots become underscores
  * and a v is added, so 2.0.6 is `v2_0_6`. A version with no block here shows
- * nothing. The 2.0.6 lines are draft copy — edit them before that release.
+ * nothing.
  */
 export const whatsNew = {
   updateTitle: 'A new version is ready',
@@ -22,5 +22,14 @@ export const whatsNew = {
     sports: 'Coaches and scouts can follow several sports in their brief.',
     live: 'See likes, follows and messages the moment they arrive.',
     maps: 'Clubs can paste any Google Maps link for their location.',
+  },
+  v2_1_0: {
+    look: 'A fresh new look across the app.',
+    persian: 'AceAiX now speaks Persian (فارسی).',
+    tags: 'Tag people in your posts. Posts you’re tagged in show on your profile.',
+    likes: 'Tap the like count to see who liked a post.',
+    suggestions: 'Hashtag and @mention suggestions as you type. Tap a hashtag to see its posts.',
+    sports: 'More sports, and you can ask us to add yours.',
+    leaderboard: 'Scroll the whole leaderboard, with global ranks.',
   },
 };

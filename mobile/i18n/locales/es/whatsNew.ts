@@ -17,4 +17,13 @@ export const whatsNew = {
     live: 'Mira los me gusta, los nuevos seguidores y los mensajes en cuanto llegan.',
     maps: 'Los clubes pueden pegar cualquier enlace de Google Maps de su ubicación.',
   },
+  v2_1_0: {
+    look: 'Un aspecto nuevo en toda la app.',
+    persian: 'AceAiX ya está disponible en persa.',
+    tags: 'Etiqueta a personas en tus publicaciones. Las publicaciones en las que te etiquetan aparecen en tu perfil.',
+    likes: 'Toca el número de me gusta para ver a quién le gustó una publicación.',
+    suggestions: 'Sugerencias de hashtags y @menciones mientras escribes. Toca un hashtag para ver sus publicaciones.',
+    sports: 'Más deportes, y puedes pedirnos que añadamos el tuyo.',
+    leaderboard: 'Recorre toda la clasificación, con posiciones globales.',
+  },
 };
