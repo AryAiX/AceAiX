@@ -242,5 +242,7 @@ export const discover = {
     postsHint: 'پست‌ها را با یک کلمه یا یک #hashtag پیدا کنید.',
     parentsEmptyTitle: 'هنوز والدی نیست',
     parentsEmptyBody: 'والد‌ها اینجا ظاهر می‌شوند. والدی که تماس درباره‌ی فرزندش را خاموش کرده، فهرست نمی‌شود.',
+    parentsUnverifiedNote: 'والدها به مربی‌ها، باشگاه‌ها، استعدادیاب‌ها و حامی‌های تأییدشده نشان داده می‌شوند.',
+    parentsUnverifiedAction: 'حساب',
   },
 };

@@ -259,5 +259,7 @@ export const discover = {
     postsHint: 'ابحث عن المنشورات بكلمة أو بوسم #.',
     parentsEmptyTitle: 'لا يوجد أولياء أمور بعد',
     parentsEmptyBody: 'يظهر أولياء الأمور هنا. من أوقف التواصل بشأن طفله لا يظهر في القائمة.',
+    parentsUnverifiedNote: 'يظهر أولياء الأمور للمدرّبين والأندية وكشّافي المواهب والرعاة الموثّقين.',
+    parentsUnverifiedAction: 'الحساب',
   },
 };

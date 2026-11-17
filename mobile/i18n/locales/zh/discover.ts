@@ -237,5 +237,7 @@ export const discover = {
     postsHint: '用一个词或 #话题 查找动态。',
     parentsEmptyTitle: '还没有家长',
     parentsEmptyBody: '家长会出现在这里。已关闭就孩子接受联系的家长不会列出。',
+    parentsUnverifiedNote: '家长会显示给已认证的教练、俱乐部、球探和赞助商。',
+    parentsUnverifiedAction: '账号',
   },
 };

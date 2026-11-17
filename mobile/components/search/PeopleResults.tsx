@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SlidersHorizontal, Users } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
@@ -14,6 +15,7 @@ import { useAsync } from '@/hooks/useAsync';
 import { browseParents, discoverAthletes, searchPeople } from '@/lib/api';
 import { listCoaches } from '@/lib/api.discover';
 import { errorMessage } from '@/lib/errors';
+import { Routes } from '@/lib/routes';
 import { useAuth } from '@/providers/AuthProvider';
 import type { DiscoveredAthlete, DiscoveryFilters, PersonResult } from '@/types/models';
 import { useFollowState } from './useFollowState';
@@ -56,6 +58,7 @@ export function PeopleResults({
   const theme = useTheme();
   const { colors, spacing, radii } = theme;
   const t = useT();
+  const router = useRouter();
   const { profile } = useAuth();
   const follow = useFollowState();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -204,6 +207,22 @@ export function PeopleResults({
       body={t('discover.search.parentsEmptyBody')}
     />
   );
+  /* An unverified coach, club, scout or sponsor is told why the list is
+     empty. A parent, and a verified professional, keep the ordinary text. */
+  const parentsUnverified =
+    (profile?.role === 'coach' ||
+      profile?.role === 'club' ||
+      profile?.role === 'scout' ||
+      profile?.role === 'sponsor') &&
+    profile?.is_verified !== true;
+  const parentsUnverifiedEmpty = (
+    <EmptyState
+      icon={<Users size={26} color={colors.textMuted} />}
+      title={t('discover.search.parentsUnverifiedNote')}
+      actionLabel={t('discover.search.parentsUnverifiedAction')}
+      onAction={() => router.push(Routes.settingsAccount)}
+    />
+  );
 
   if (kindShown === 'athletes') {
     const sheet = (
@@ -294,7 +313,13 @@ export function PeopleResults({
               onOpen={onOpen}
             />
           )}
-          ListEmptyComponent={parentsBrowsing ? parentsEmpty : empty}
+          ListEmptyComponent={
+            parentsUnverified && kindShown === 'parents'
+              ? parentsUnverifiedEmpty
+              : parentsBrowsing
+                ? parentsEmpty
+                : empty
+          }
         />
       )}
     </View>

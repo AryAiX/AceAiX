@@ -250,5 +250,7 @@ export const discover = {
     postsHint: 'Trouve des publications avec un mot ou un #tag.',
     parentsEmptyTitle: 'Pas encore de parents',
     parentsEmptyBody: 'Les parents apparaissent ici. Un parent qui a désactivé d’être contacté au sujet de son enfant n’est pas listé.',
+    parentsUnverifiedNote: 'Les parents sont montrés aux coachs, clubs, recruteurs et sponsors vérifiés.',
+    parentsUnverifiedAction: 'Compte',
   },
 };

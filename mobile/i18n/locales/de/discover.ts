@@ -244,5 +244,7 @@ export const discover = {
     postsHint: 'Finde Beiträge über ein Wort oder einen #Tag.',
     parentsEmptyTitle: 'Noch keine Eltern',
     parentsEmptyBody: 'Eltern erscheinen hier. Wer den Kontakt wegen des Kindes ausgeschaltet hat, wird nicht aufgeführt.',
+    parentsUnverifiedNote: 'Eltern werden geprüften Trainern, Vereinen, Scouts und Sponsoren angezeigt.',
+    parentsUnverifiedAction: 'Konto',
   },
 };

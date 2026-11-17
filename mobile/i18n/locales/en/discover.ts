@@ -243,5 +243,7 @@ export const discover = {
     postsHint: 'Find posts by a word or a #hashtag.',
     parentsEmptyTitle: 'No parents yet',
     parentsEmptyBody: 'Parents appear here. A parent who has switched off being contacted about their child is not listed.',
+    parentsUnverifiedNote: 'Parents are shown to verified coaches, clubs, scouts and sponsors.',
+    parentsUnverifiedAction: 'Account',
   },
 };

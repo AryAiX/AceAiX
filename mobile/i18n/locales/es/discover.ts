@@ -255,5 +255,7 @@ export const discover = {
     postsHint: 'Busca publicaciones con una palabra o una #etiqueta.',
     parentsEmptyTitle: 'Aún no hay padres',
     parentsEmptyBody: 'Los padres aparecen aquí. Quien haya desactivado que se le contacte por su hijo no aparece en la lista.',
+    parentsUnverifiedNote: 'Los padres se muestran a entrenadores, clubes, reclutadores y patrocinadores verificados.',
+    parentsUnverifiedAction: 'Cuenta',
   },
 };

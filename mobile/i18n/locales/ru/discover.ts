@@ -255,5 +255,7 @@ export const discover = {
     postsHint: 'Ищи публикации по слову или #тегу.',
     parentsEmptyTitle: 'Родителей пока нет',
     parentsEmptyBody: 'Родители появляются здесь. Кто отключил связь по поводу ребёнка, в список не попадает.',
+    parentsUnverifiedNote: 'Родители показаны проверенным тренерам, клубам, скаутам и спонсорам.',
+    parentsUnverifiedAction: 'Аккаунт',
   },
 };

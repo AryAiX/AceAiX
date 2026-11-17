@@ -10778,6 +10778,11 @@ begin
     (v_minor, 'qa205.minor@test.local',
      '{"full_name":"QA205 Searcher Minor","role":"athlete"}');
 
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_search_coach, v_club, v_scout, v_sponsor);
+
   update public.user_private
      set date_of_birth = current_date - interval '40 years'
    where user_id in (
@@ -10891,6 +10896,11 @@ begin
      '{"full_name":"QA206 Other Parent","role":"guardian"}'),
     (v_other_child, 'qa206.otherchild@test.local',
      '{"full_name":"QA206 Other Child","role":"athlete"}');
+
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_club, v_scout, v_sponsor);
 
   update public.user_private
      set date_of_birth = current_date - interval '40 years'
@@ -11090,6 +11100,11 @@ begin
     (v_minor, 'qa208.minor@test.local',
      '{"full_name":"QA208 Minor","role":"athlete"}');
 
+  -- Seeing parents and family links needs a verified professional (QA-221).
+  update public.user_profiles
+     set is_verified = true
+   where id in (v_coach, v_sponsor);
+
   update public.user_private
      set date_of_birth = current_date - interval '40 years'
    where user_id in (v_parent_in, v_parent_out, v_coach, v_sponsor, v_adult);
@@ -11146,6 +11161,307 @@ begin
   perform tests.ok(
     not v_coach_blocked,
     'after the opted-in parent blocks the coach, the coach no longer sees them');
+end $$;
+
+-- ------------------------------------------------------------
+-- Verified professionals, a hidden child, and the tag fixes
+-- (QA-221, QA-222, QA-223, QA-209).
+-- A parent of a hidden child, a parent of a discoverable child,
+-- another parent, an unverified coach, an unverified scout, a
+-- verified coach, and a club account that is not verified but
+-- owns a verified club page. Then an author, the person they
+-- tag, another viewer, and someone who cannot see a
+-- followers-only post. Results are read as authenticated.
+-- tests.ok runs only after the role is reset.
+-- ------------------------------------------------------------
+do $$ begin raise notice E'\n── verified parents, hidden children and tags ──'; end $$;
+
+do $$
+declare
+  v_child_hidden  uuid := '7f221000-0000-4000-8000-000000000001';
+  v_child_shown   uuid := '7f221000-0000-4000-8000-000000000002';
+  v_parent_hidden uuid := '7f221000-0000-4000-8000-000000000011';
+  v_parent_shown  uuid := '7f221000-0000-4000-8000-000000000012';
+  v_other_parent  uuid := '7f221000-0000-4000-8000-000000000013';
+  v_coach_no      uuid := '7f221000-0000-4000-8000-000000000021';
+  v_scout_no      uuid := '7f221000-0000-4000-8000-000000000022';
+  v_coach_yes     uuid := '7f221000-0000-4000-8000-000000000023';
+  v_club          uuid := '7f221000-0000-4000-8000-000000000024';
+  v_org           uuid := '7f221000-0000-4000-8000-000000000031';
+  v_author        uuid := '7f223000-0000-4000-8000-000000000001';
+  v_tagged        uuid := '7f223000-0000-4000-8000-000000000002';
+  v_viewer        uuid := '7f223000-0000-4000-8000-000000000003';
+  v_outsider      uuid := '7f223000-0000-4000-8000-000000000004';
+  v_public        uuid := '7f223000-0000-4000-8000-000000000011';
+  v_followers     uuid := '7f223000-0000-4000-8000-000000000012';
+  v_browse_hidden boolean;
+  v_browse_shown  boolean;
+  v_coach_no_browse integer;
+  v_coach_no_search integer;
+  v_coach_no_contacts integer;
+  v_coach_no_kids integer;
+  v_scout_no_browse integer;
+  v_scout_no_search integer;
+  v_scout_no_contacts integer;
+  v_scout_no_kids integer;
+  v_coach_yes_hidden boolean;
+  v_coach_yes_shown boolean;
+  v_coach_yes_search boolean;
+  v_coach_yes_contacts integer;
+  v_coach_yes_kids integer;
+  v_club_unverified boolean;
+  v_club_page boolean;
+  v_club_hidden boolean;
+  v_club_shown boolean;
+  v_club_search boolean;
+  v_club_contacts integer;
+  v_club_kids integer;
+  v_parent_browse_hidden boolean;
+  v_parent_browse_shown boolean;
+  v_parent_search boolean;
+  v_default text;
+  v_notes integer;
+  v_viewer_before integer;
+  v_viewer_after integer;
+  v_own integer;
+  v_outsider_tag integer;
+  v_outsider_notes integer;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_child_hidden, 'qa221.childhidden@test.local',
+     '{"full_name":"QA221 Hidden Child","role":"athlete"}'),
+    (v_child_shown, 'qa221.childshown@test.local',
+     '{"full_name":"QA221 Shown Child","role":"athlete"}'),
+    (v_parent_hidden, 'qa221.parenthidden@test.local',
+     '{"full_name":"QA221 Hidden Parent","role":"guardian"}'),
+    (v_parent_shown, 'qa221.parentshown@test.local',
+     '{"full_name":"QA221 Shown Parent","role":"guardian"}'),
+    (v_other_parent, 'qa221.otherparent@test.local',
+     '{"full_name":"QA221 Other Parent","role":"guardian"}'),
+    (v_coach_no, 'qa221.coachno@test.local',
+     '{"full_name":"QA221 Unverified Coach","role":"coach"}'),
+    (v_scout_no, 'qa221.scoutno@test.local',
+     '{"full_name":"QA221 Unverified Scout","role":"scout"}'),
+    (v_coach_yes, 'qa221.coachyes@test.local',
+     '{"full_name":"QA221 Verified Coach","role":"coach"}'),
+    (v_club, 'qa221.club@test.local',
+     '{"full_name":"QA221 Club Owner","role":"club"}'),
+    (v_author, 'qa223.author@test.local',
+     '{"full_name":"QA223 Tag Author","role":"athlete"}'),
+    (v_tagged, 'qa223.tagged@test.local',
+     '{"full_name":"QA223 Tagged","role":"athlete"}'),
+    (v_viewer, 'qa223.viewer@test.local',
+     '{"full_name":"QA223 Viewer","role":"athlete"}'),
+    (v_outsider, 'qa223.outsider@test.local',
+     '{"full_name":"QA223 Outsider","role":"athlete"}');
+
+  update public.user_private
+     set date_of_birth = current_date - interval '40 years'
+   where user_id in (
+     v_parent_hidden, v_parent_shown, v_other_parent,
+     v_coach_no, v_scout_no, v_coach_yes, v_club
+   );
+  update public.user_private
+     set date_of_birth = current_date - interval '14 years'
+   where user_id in (v_child_hidden, v_child_shown);
+  update public.user_private
+     set date_of_birth = current_date - interval '25 years'
+   where user_id in (v_author, v_tagged, v_viewer, v_outsider);
+
+  update public.user_profiles
+     set is_verified = true
+   where id = v_coach_yes;
+
+  insert into public.guardian_consents (
+    minor_user_id, guardian_user_id, guardian_name, guardian_email,
+    relationship, status, allow_discovery, granted_at
+  ) values
+    (v_child_hidden, v_parent_hidden, 'QA221 Hidden Parent', 'qa221.parenthidden@test.local',
+     'parent', 'granted', true, now()),
+    (v_child_shown, v_parent_shown, 'QA221 Shown Parent', 'qa221.parentshown@test.local',
+     'parent', 'granted', true, now());
+
+  update public.user_profiles
+     set is_discoverable = false
+   where id = v_child_hidden;
+
+  insert into public.organizations (id, name, type, is_verified, verification_status)
+  values (v_org, 'QA221 Verified Club', 'club', true, 'approved');
+  insert into public.organization_members (organization_id, user_id, member_role, status)
+  values (v_org, v_club, 'owner', 'active');
+
+  select not coalesce(is_verified, false)
+    into v_club_unverified
+    from public.user_profiles
+   where id = v_club;
+  select exists (
+    select 1
+      from public.organization_members m
+      join public.organizations o on o.id = m.organization_id
+     where m.user_id = v_club
+       and m.status = 'active'
+       and m.member_role = 'owner'
+       and o.is_verified
+  ) into v_club_page;
+
+  perform tests.as_user(v_coach_yes);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_browse_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_browse_shown;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_coach_yes_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_coach_yes_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_coach_yes_search;
+  select count(*)::int into v_coach_yes_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_coach_yes_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_coach_no);
+  set local role authenticated;
+  select count(*)::int into v_coach_no_browse from public.browse_parents(50, 0);
+  select count(*)::int into v_coach_no_search
+    from public.search_people('QA221', 'guardian', 50);
+  select count(*)::int into v_coach_no_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_coach_no_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_scout_no);
+  set local role authenticated;
+  select count(*)::int into v_scout_no_browse from public.browse_parents(50, 0);
+  select count(*)::int into v_scout_no_search
+    from public.search_people('QA221', 'guardian', 50);
+  select count(*)::int into v_scout_no_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_scout_no_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_club);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_club_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_club_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_club_search;
+  select count(*)::int into v_club_contacts from public.guardian_contacts_of(v_child_shown);
+  select count(*)::int into v_club_kids from public.children_on_profile(v_parent_shown);
+  reset role;
+
+  perform tests.as_user(v_other_parent);
+  set local role authenticated;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_hidden) into v_parent_browse_hidden;
+  select exists (select 1 from public.browse_parents(50, 0) p where p.id = v_parent_shown) into v_parent_browse_shown;
+  select exists (
+    select 1 from public.search_people('QA221 Shown Parent', 'guardian', 50) p
+    where p.id = v_parent_shown
+  ) into v_parent_search;
+  reset role;
+
+  select column_default into v_default
+    from information_schema.columns
+   where table_schema = 'public'
+     and table_name = 'guardian_consents'
+     and column_name = 'show_on_profile';
+
+  insert into public.posts (id, author_id, type, caption, text, audience)
+  values
+    (v_public, v_author, 'standard', 'public tag', 'public tag', 'public'),
+    (v_followers, v_author, 'standard', 'followers tag', 'followers tag', 'followers');
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_public, array[v_tagged]);
+  perform public.set_post_tags(v_public, '{}'::uuid[]);
+  perform public.set_post_tags(v_public, array[v_tagged]);
+
+  select count(*)::int into v_notes
+    from public.notifications
+   where user_id = v_tagged
+     and type = 'post_tag'
+     and entity_type = 'post'
+     and entity_id = v_public::text;
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+  select count(*)::int into v_viewer_before
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  insert into public.user_blocks (blocker_id, blocked_id)
+  values (v_tagged, v_author);
+
+  perform tests.as_user(v_viewer);
+  set local role authenticated;
+  select count(*)::int into v_viewer_after
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  perform tests.as_user(v_tagged);
+  set local role authenticated;
+  select count(*)::int into v_own
+    from public.post_tags
+   where post_id = v_public
+     and user_id = v_tagged;
+  reset role;
+
+  perform tests.as_user(v_author);
+  perform public.set_post_tags(v_followers, array[v_outsider]);
+
+  select count(*)::int into v_outsider_tag
+    from public.post_tags
+   where post_id = v_followers
+     and user_id = v_outsider;
+  select count(*)::int into v_outsider_notes
+    from public.notifications
+   where user_id = v_outsider
+     and type = 'post_tag'
+     and entity_id = v_followers::text;
+
+  perform tests.ok(
+    not v_browse_hidden and v_browse_shown,
+    'a parent whose child is hidden is not listed in browse_parents, and the parent of a discoverable child is');
+
+  perform tests.ok(
+    v_coach_no_browse = 0 and v_coach_no_search = 0
+    and v_coach_no_contacts = 0 and v_coach_no_kids = 0
+    and v_scout_no_browse = 0 and v_scout_no_search = 0
+    and v_scout_no_contacts = 0 and v_scout_no_kids = 0,
+    'an unverified coach and an unverified scout see no parents in browse_parents or search_people, and get no rows from guardian_contacts_of or children_on_profile');
+
+  perform tests.ok(
+    not v_coach_yes_hidden and v_coach_yes_shown and v_coach_yes_search
+    and v_coach_yes_contacts = 1 and v_coach_yes_kids = 1,
+    'a verified coach sees the parent of a discoverable child, finds them in search, and gets one family row each way');
+
+  perform tests.ok(
+    v_club_unverified and v_club_page
+    and not v_club_hidden and v_club_shown and v_club_search
+    and v_club_contacts = 1 and v_club_kids = 1,
+    'a club whose account is not verified but who is the active owner of a verified club page counts as verified');
+
+  perform tests.ok(
+    not v_parent_browse_hidden and v_parent_browse_shown and v_parent_search,
+    'another parent still browses and finds parents');
+
+  perform tests.ok(
+    v_default = 'true',
+    'the column default of guardian_consents.show_on_profile is true');
+
+  perform tests.ok(
+    v_viewer_before = 1 and v_viewer_after = 0 and v_own = 1,
+    'after the tagged person blocks the author, another viewer no longer sees the tag, and the tagged person still sees their own row');
+
+  perform tests.ok(
+    v_notes = 1,
+    'removing and re-adding a tag gives exactly one post_tag notice');
+
+  perform tests.ok(
+    v_outsider_tag = 1 and v_outsider_notes = 0,
+    'tagging someone on a followers-only post they cannot see sends no notice');
 end $$;
 
 -- ------------------------------------------------------------
