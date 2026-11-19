@@ -190,10 +190,16 @@ export function PostActions({
           onPress={onPressLikeCount}
           accessibilityRole="button"
           accessibilityLabel={t('feed.seeWhoLiked', { count: likeCount })}
-          hitSlop={12}
+          /* No extra reach to the left: the number sits on top of the heart,
+             so a left hit slop took taps meant for the heart and opened the
+             likers list instead of liking. It reaches up, down and right. */
+          hitSlop={{ top: 8, bottom: 8, left: 0, right: 12 }}
           testID="post-like-count"
           style={({ pressed }) => ({
-            paddingStart: spacing.xs + 2,
+            minHeight: theme.hit.min,
+            justifyContent: 'center',
+            paddingStart: spacing.xxs,
+            paddingEnd: spacing.xs,
             borderRadius: radii.button,
             backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
           })}
@@ -301,7 +307,10 @@ function Action({
         minWidth: flushEnd ? undefined : theme.hit.min,
         justifyContent: flushEnd ? 'flex-start' : 'center',
         paddingStart: spacing.sm,
-        paddingEnd: flushEnd ? 0 : spacing.sm,
+        /* With a separate count beside it, the heart keeps a little room on
+           its right, so a tap just past the icon still likes. The count's
+           own padding is trimmed by the same amount, so nothing moves. */
+        paddingEnd: flushEnd ? spacing.xs : spacing.sm,
         borderRadius: radii.button,
         backgroundColor: pressed ? colors.surfaceAlt : 'transparent',
       })}
