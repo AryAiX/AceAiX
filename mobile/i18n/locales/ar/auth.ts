@@ -112,6 +112,10 @@ export const auth = {
     lastNameLabel: 'اسم العائلة',
     lastNamePlaceholder: 'كريمي',
     lastNameRequired: 'أدخل اسم عائلتك.',
+    nameSubtitleGuardian:
+      'استخدم اسمك أنت، لا اسم طفلك. ستربط حسابك بطفلك بعد التسجيل.',
+    firstNameLabelGuardian: 'اسمك الأول',
+    lastNameLabelGuardian: 'اسم عائلتك',
     brandTitle: 'ما اسم علامتك التجارية؟',
     brandSubtitle: 'هذا هو الاسم الذي سيراه الرياضيون وعائلاتهم.',
     brandNameLabel: 'اسم الشركة أو العلامة',

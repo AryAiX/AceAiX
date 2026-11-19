@@ -102,6 +102,10 @@ export const auth = {
     lastNameLabel: 'نام خانوادگی',
     lastNamePlaceholder: 'کریمی',
     lastNameRequired: 'نام خانوادگی‌تان را وارد کنید.',
+    nameSubtitleGuardian:
+      'نام خودتان را بگذارید، نه نام فرزندتان را. بعد از ثبت‌نام به فرزندتان وصل می‌شوید.',
+    firstNameLabelGuardian: 'نام شما',
+    lastNameLabelGuardian: 'نام خانوادگی شما',
     brandTitle: 'برندتان چه نام دارد؟',
     brandSubtitle: 'این نامی است که ورزشکاران و خانواده‌ها می‌بینند.',
     brandNameLabel: 'نام شرکت یا برند',

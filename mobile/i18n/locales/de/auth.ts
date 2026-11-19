@@ -106,6 +106,10 @@ export const auth = {
     lastNameLabel: 'Nachname',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Gib deinen Nachnamen ein.',
+    nameSubtitleGuardian:
+      'Nimm deinen eigenen Namen, nicht den deines Kindes. Mit deinem Kind verbindest du dich nach der Anmeldung.',
+    firstNameLabelGuardian: 'Dein Vorname',
+    lastNameLabelGuardian: 'Dein Nachname',
     brandTitle: 'Wie heißt deine Marke?',
     brandSubtitle: 'Diesen Namen sehen Sportler und Familien.',
     brandNameLabel: 'Firmen- oder Markenname',

@@ -110,6 +110,10 @@ export const auth = {
     lastNameLabel: 'Apellido',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Escribe tu apellido.',
+    nameSubtitleGuardian:
+      'Usa tu propio nombre, no el de tu hijo o hija. Te conectarás con tu hijo o hija después de registrarte.',
+    firstNameLabelGuardian: 'Tu nombre',
+    lastNameLabelGuardian: 'Tu apellido',
     brandTitle: '¿Cómo se llama tu marca?',
     brandSubtitle: 'Este es el nombre que verán los deportistas y sus familias.',
     brandNameLabel: 'Nombre de la empresa o marca',
