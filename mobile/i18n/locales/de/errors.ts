@@ -143,4 +143,12 @@ export const errors = {
   clubAwardLink: "Du kannst nur Personen aus deinen Kadern verknüpfen.",
   sportNameInvalid: "Der Name der Sportart braucht 2 bis 40 Buchstaben.",
   sportRequestLimit: "Du kannst 5-mal am Tag eine Sportart anfragen.",
+  childProfilesOff: 'Kinderprofile sind nicht verfügbar.',
+  childProfileParentOnly: 'Nur ein Elternkonto kann Kinderprofile anlegen.',
+  childFirstName: 'Gib den Vornamen deines Kindes ohne Zahlen oder Zeichen ein.',
+  childBirthYear: 'Ein Kinderprofil ist für ein Kind unter 13. Wähle sein Geburtsjahr.',
+  childSport: 'Wähle eine Sportart.',
+  childLevel: 'Wähle ein Niveau.',
+  childProfileLimit: 'Du kannst bis zu 5 Kinderprofile anlegen.',
+  childProfileNotFound: 'Dieses Kinderprofil gibt es nicht mehr.',
 };
