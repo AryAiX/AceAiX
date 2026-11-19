@@ -4,6 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { Header, Screen, TextTabs } from '@/components/ui';
+import { ChildProfilesSection } from '@/components/children/ChildProfilesSection';
 import { CoachingHome } from '@/components/coaching/CoachingHome';
 import { SponsorshipPortal } from '@/components/sponsorship/SponsorshipPortal';
 import { useT } from '@/i18n';
@@ -44,6 +45,8 @@ export default function ChildrenTab() {
   return (
     <Screen header={<Header title={t('common.tabChildren')} large />} testID="children-tab">
       <View style={{ paddingTop: spacing.lg, gap: spacing.lg }}>
+        {/* Children under 13 (QA-174). Renders nothing while the switch is off. */}
+        <ChildProfilesSection />
         <TextTabs<Section>
           testID="children-section"
           value={section}

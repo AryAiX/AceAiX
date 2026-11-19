@@ -182,4 +182,41 @@ export const safety = {
   adultNothingTitle: 'Rien à valider',
   adultNothingBody:
     'L’autorisation d’un tuteur concerne les comptes des jeunes de 13 à 17 ans. Le tien est un compte adulte : ton profil et tes messages dépendent donc de tes propres réglages de confidentialité.',
+
+  under13: {
+    sectionTitle: 'Enfants de moins de 13 ans',
+    sectionIntro:
+      'Ils ne sont visibles que par toi. Ce ne sont pas des comptes : ton enfant ne peut pas se connecter, et ils n’apparaissent jamais dans la recherche, Découvrir, les classements ou les publications.',
+    emptyBody:
+      'Trop jeune pour un compte ? Garde ici le prénom, l’année de naissance, le sport et le niveau de ton enfant jusqu’à ses 13 ans.',
+    meta: '{{sport}} · {{level}} · Naissance : {{year}}',
+    canHaveAccount:
+      '{{name}} peut avoir son propre compte dès 13 ans. Une fois son compte créé et approuvé par toi, supprime ce profil.',
+    offNote: 'Les profils enfants sont désactivés. Tu peux quand même supprimer ceux que tu as.',
+    add: 'Ajouter un enfant de moins de 13 ans',
+    limitNote: 'Tu peux garder jusqu’à {{max}} profils enfants.',
+    removedNote:
+      'Chaque profil est supprimé automatiquement à la fin de l’année des 14 ans de l’enfant.',
+    deleted: 'Profil enfant supprimé',
+    deleteTitle: 'Supprimer le profil de {{name}} ?',
+    deleteBody: 'Il est supprimé entièrement et ne peut pas être récupéré.',
+    delete: 'Supprimer le profil',
+    newTitle: 'Enfant de moins de 13 ans',
+    editTitle: 'Profil enfant',
+    notAvailable: 'Les profils enfants ne sont pas disponibles.',
+    notFound: 'Ce profil enfant n’existe plus.',
+    privacyNote:
+      'Il n’est visible que par toi. Ce n’est pas un compte : ton enfant ne peut pas se connecter, et il n’apparaît jamais dans la recherche, Découvrir, les classements ou les publications.',
+    firstNameLabel: 'Prénom de ton enfant',
+    firstNameHint: 'Le prénom seulement, sans nom de famille.',
+    birthYearLabel: 'Année de naissance',
+    yearOption: '{{year}}',
+    sportLabel: 'Sport',
+    levelLabel: 'Niveau',
+    save: 'Enregistrer',
+    saved: 'Profil enfant enregistré',
+    firstNameRequired: 'Saisis le prénom de ton enfant.',
+    birthYearRequired: 'Choisis une année de naissance.',
+    sportRequired: 'Choisis un sport.',
+  },
 };

@@ -20,6 +20,9 @@ export const Routes = {
   myProfile: '/(tabs)/profile' as const,
   /** The guardian's Children tab: sessions, sponsorship, and approvals. */
   childrenTab: '/(tabs)/children' as const,
+  /** A child profile for a child under 13 (QA-174): new, or one to change. */
+  childProfile: (id?: string) =>
+    ({ pathname: '/child-profile', params: id ? { id } : {} }) as unknown as Href,
 
   compose: '/compose' as const,
   notifications: '/notifications' as const,

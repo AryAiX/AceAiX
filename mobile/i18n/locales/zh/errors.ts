@@ -140,4 +140,12 @@ export const errors = {
   clubAwardLink: "你只能关联你阵容中的人员。",
   sportNameInvalid: "项目名称需要 2 到 40 个字母。",
   sportRequestLimit: "每天最多可以申请 5 次项目。",
+  childProfilesOff: '儿童资料功能暂不可用。',
+  childProfileParentOnly: '只有家长账号可以保存儿童资料。',
+  childFirstName: '请填写孩子的名字，不要包含数字或符号。',
+  childBirthYear: '儿童资料仅适用于13岁以下的孩子。请选择出生年份。',
+  childSport: '请选择运动项目。',
+  childLevel: '请选择水平。',
+  childProfileLimit: '最多可以保存5份儿童资料。',
+  childProfileNotFound: '这份儿童资料已不存在。',
 };
