@@ -127,6 +127,9 @@ export function NameStep({
   const lastRef = useRef<TextInputInstance>(null);
   const isSponsor = role === 'sponsor';
   const isClub = role === 'club';
+  /* A parent signs up for themselves; some typed their child's name here
+     (QA-168), so the parent's step asks for their own name. */
+  const isGuardian = role === 'guardian';
 
   return (
     <View>
@@ -143,9 +146,11 @@ export function NameStep({
             ? 'auth.signUp.brandSubtitle'
             : isClub
               ? 'auth.signUp.nameSubtitleClub'
-              : !role || role === 'athlete'
-                ? 'auth.signUp.nameSubtitle'
-                : 'auth.signUp.nameSubtitleOther',
+              : isGuardian
+                ? 'auth.signUp.nameSubtitleGuardian'
+                : !role || role === 'athlete'
+                  ? 'auth.signUp.nameSubtitle'
+                  : 'auth.signUp.nameSubtitleOther',
         )}
       />
       {isSponsor ? (
@@ -175,7 +180,11 @@ export function NameStep({
           instead of after a tap on a field that then sits there doing nothing.
         */}
         <Input
-          label={t('auth.signUp.firstNameLabel')}
+          label={t(
+            isGuardian
+              ? 'auth.signUp.firstNameLabelGuardian'
+              : 'auth.signUp.firstNameLabel',
+          )}
           required
           value={firstName}
           onChangeText={(value) => onChangeFirst(sanitizeNameInput(value))}
@@ -192,7 +201,11 @@ export function NameStep({
         />
         <Input
           ref={lastRef}
-          label={t('auth.signUp.lastNameLabel')}
+          label={t(
+            isGuardian
+              ? 'auth.signUp.lastNameLabelGuardian'
+              : 'auth.signUp.lastNameLabel',
+          )}
           required
           value={lastName}
           onChangeText={(value) => onChangeLast(sanitizeNameInput(value))}

@@ -100,6 +100,10 @@ export const auth = {
     lastNameLabel: '姓氏',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: '请填写你的姓氏。',
+    nameSubtitleGuardian:
+      '请填写你自己的名字，而不是孩子的名字。注册后再和孩子的账号关联。',
+    firstNameLabelGuardian: '你的名字',
+    lastNameLabelGuardian: '你的姓氏',
     brandTitle: '你的品牌叫什么？',
     brandSubtitle: '运动员和家长会看到这个名称。',
     brandNameLabel: '公司或品牌名称',

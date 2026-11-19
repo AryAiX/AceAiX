@@ -106,6 +106,10 @@ export const auth = {
     lastNameLabel: 'Last name',
     lastNamePlaceholder: 'Karimi',
     lastNameRequired: 'Enter your last name.',
+    nameSubtitleGuardian:
+      "Use your own name, not your child's. You'll connect to your child after you sign up.",
+    firstNameLabelGuardian: 'Your first name',
+    lastNameLabelGuardian: 'Your last name',
     brandTitle: 'What is your brand called?',
     brandSubtitle: 'This is the name athletes and families will see.',
     brandNameLabel: 'Company or brand name',

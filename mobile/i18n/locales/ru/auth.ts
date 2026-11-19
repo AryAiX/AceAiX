@@ -109,6 +109,10 @@ export const auth = {
     lastNameLabel: 'Фамилия',
     lastNamePlaceholder: 'Карими',
     lastNameRequired: 'Введи фамилию.',
+    nameSubtitleGuardian:
+      'Пиши своё имя, а не имя ребёнка. Связаться с ребёнком можно будет после регистрации.',
+    firstNameLabelGuardian: 'Твоё имя',
+    lastNameLabelGuardian: 'Твоя фамилия',
     brandTitle: 'Как называется твой бренд?',
     brandSubtitle: 'Это имя увидят спортсмены и их семьи.',
     brandNameLabel: 'Название компании или бренда',
