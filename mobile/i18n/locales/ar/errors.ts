@@ -140,4 +140,12 @@ export const errors = {
   clubAwardLink: "يمكنك فقط ربط أشخاص ضمن فرقك.",
   sportNameInvalid: "استخدم من حرفين إلى 40 حرفًا لاسم الرياضة.",
   sportRequestLimit: "يمكنك طلب رياضة 5 مرات في اليوم.",
+  childProfilesOff: 'ملفات الأطفال غير متاحة.',
+  childProfileParentOnly: 'حساب وليّ الأمر وحده يمكنه الاحتفاظ بملفات الأطفال.',
+  childFirstName: 'أدخل الاسم الأول لطفلك دون أرقام أو رموز.',
+  childBirthYear: 'ملف الطفل مخصص لطفل دون 13 عامًا. اختر سنة ميلاده.',
+  childSport: 'اختر رياضة.',
+  childLevel: 'اختر مستوى.',
+  childProfileLimit: 'يمكنك الاحتفاظ بما يصل إلى 5 ملفات أطفال.',
+  childProfileNotFound: 'لم يعد ملف الطفل هذا موجودًا.',
 };

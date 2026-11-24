@@ -175,4 +175,41 @@ export const safety = {
   adultNothingTitle: 'Nichts freizugeben',
   adultNothingBody:
     'Die Freigabe durch Eltern gilt für Konten von 13- bis 17-Jährigen. Deins ist ein Erwachsenenkonto, für Profil und Nachrichten gelten also deine eigenen Privatsphäre-Einstellungen.',
+
+  under13: {
+    sectionTitle: 'Kinder unter 13',
+    sectionIntro:
+      'Nur du siehst sie. Es sind keine Konten: Dein Kind kann sich nicht anmelden, und sie erscheinen nie in Suche, Entdecken, Ranglisten oder Beiträgen.',
+    emptyBody:
+      'Zu jung für ein Konto? Hier kannst du Vorname, Geburtsjahr, Sportart und Niveau deines Kindes festhalten, bis es 13 wird.',
+    meta: '{{sport}} · {{level}} · Jahrgang {{year}}',
+    canHaveAccount:
+      'Ab 13 kann {{name}} ein eigenes Konto haben. Wenn das Konto erstellt ist und du es bestätigt hast, lösche dieses Profil.',
+    offNote: 'Kinderprofile sind ausgeschaltet. Vorhandene kannst du trotzdem löschen.',
+    add: 'Kind unter 13 hinzufügen',
+    limitNote: 'Du kannst bis zu {{max}} Kinderprofile anlegen.',
+    removedNote:
+      'Jedes Profil wird nach Ende des Jahres, in dem das Kind 14 wird, automatisch gelöscht.',
+    deleted: 'Kinderprofil gelöscht',
+    deleteTitle: 'Profil von {{name}} löschen?',
+    deleteBody: 'Es wird vollständig gelöscht und kann nicht wiederhergestellt werden.',
+    delete: 'Profil löschen',
+    newTitle: 'Kind unter 13',
+    editTitle: 'Kinderprofil',
+    notAvailable: 'Kinderprofile sind nicht verfügbar.',
+    notFound: 'Dieses Kinderprofil gibt es nicht mehr.',
+    privacyNote:
+      'Nur du siehst es. Es ist kein Konto: Dein Kind kann sich nicht anmelden, und es erscheint nie in Suche, Entdecken, Ranglisten oder Beiträgen.',
+    firstNameLabel: 'Vorname deines Kindes',
+    firstNameHint: 'Nur der Vorname, kein Nachname.',
+    birthYearLabel: 'Geburtsjahr',
+    yearOption: '{{year}}',
+    sportLabel: 'Sportart',
+    levelLabel: 'Niveau',
+    save: 'Speichern',
+    saved: 'Kinderprofil gespeichert',
+    firstNameRequired: 'Gib den Vornamen deines Kindes ein.',
+    birthYearRequired: 'Wähle ein Geburtsjahr.',
+    sportRequired: 'Wähle eine Sportart.',
+  },
 };

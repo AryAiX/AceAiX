@@ -32,4 +32,8 @@ export const whatsNew = {
     sports: 'More sports, and you can ask us to add yours.',
     leaderboard: 'Scroll the whole leaderboard, with global ranks.',
   },
+  v2_1_1: {
+    likeTap: 'Tapping the heart now always likes the post. Tap the number to see who liked it.',
+    parentName: 'Parents are now asked for their own name at sign-up.',
+  },
 };

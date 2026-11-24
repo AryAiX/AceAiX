@@ -143,4 +143,12 @@ export const errors = {
   clubAwardLink: "You can only link people who are on your squads.",
   sportNameInvalid: "Use 2 to 40 letters for the sport name.",
   sportRequestLimit: "You can ask for a sport 5 times a day.",
+  childProfilesOff: 'Child profiles are not available.',
+  childProfileParentOnly: 'Only a parent account can keep child profiles.',
+  childFirstName: "Enter your child's first name, without numbers or symbols.",
+  childBirthYear: 'A child profile is for a child under 13. Choose their birth year.',
+  childSport: 'Choose a sport.',
+  childLevel: 'Choose a level.',
+  childProfileLimit: 'You can keep up to 5 child profiles.',
+  childProfileNotFound: 'This child profile no longer exists.',
 };

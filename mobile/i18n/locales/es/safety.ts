@@ -182,4 +182,41 @@ export const safety = {
   adultNothingTitle: 'Nada que aprobar',
   adultNothingBody:
     'El permiso de la madre, el padre o el tutor se aplica a las cuentas de personas de 13 a 17 años. La tuya es una cuenta de adulto, así que tu perfil y tus mensajes se rigen por tus propios ajustes de privacidad.',
+
+  under13: {
+    sectionTitle: 'Menores de 13 años',
+    sectionIntro:
+      'Solo tú puedes verlos. No son cuentas: tu hijo o hija no puede iniciar sesión, y nunca aparecen en la búsqueda, Descubrir, las clasificaciones ni las publicaciones.',
+    emptyBody:
+      '¿Tu hijo o hija es demasiado pequeño para tener cuenta? Guarda aquí su nombre, año de nacimiento, deporte y nivel hasta que cumpla 13.',
+    meta: '{{sport}} · {{level}} · Nacimiento: {{year}}',
+    canHaveAccount:
+      '{{name}} puede tener su propia cuenta a partir de los 13. Cuando se registre y apruebes su cuenta, elimina este perfil.',
+    offNote: 'Los perfiles infantiles están desactivados. Aún puedes eliminar los que tienes.',
+    add: 'Añadir un menor de 13 años',
+    limitNote: 'Puedes tener hasta {{max}} perfiles infantiles.',
+    removedNote:
+      'Cada perfil se elimina automáticamente al terminar el año en que el niño o la niña cumple 14.',
+    deleted: 'Perfil infantil eliminado',
+    deleteTitle: '¿Eliminar el perfil de {{name}}?',
+    deleteBody: 'Se elimina por completo y no se puede recuperar.',
+    delete: 'Eliminar perfil',
+    newTitle: 'Menor de 13 años',
+    editTitle: 'Perfil infantil',
+    notAvailable: 'Los perfiles infantiles no están disponibles.',
+    notFound: 'Este perfil infantil ya no existe.',
+    privacyNote:
+      'Solo tú puedes verlo. No es una cuenta: tu hijo o hija no puede iniciar sesión, y nunca aparece en la búsqueda, Descubrir, las clasificaciones ni las publicaciones.',
+    firstNameLabel: 'Nombre de tu hijo o hija',
+    firstNameHint: 'Solo el nombre, sin apellidos.',
+    birthYearLabel: 'Año de nacimiento',
+    yearOption: '{{year}}',
+    sportLabel: 'Deporte',
+    levelLabel: 'Nivel',
+    save: 'Guardar',
+    saved: 'Perfil infantil guardado',
+    firstNameRequired: 'Escribe el nombre de tu hijo o hija.',
+    birthYearRequired: 'Elige un año de nacimiento.',
+    sportRequired: 'Elige un deporte.',
+  },
 };

@@ -501,7 +501,9 @@ function LikeButton({
           onPress={onPressCount}
           accessibilityRole="button"
           accessibilityLabel={t('feed.seeWhoLiked', { count })}
-          hitSlop={12}
+          /* No extra reach upwards: the number sits under the heart, and an
+             upward hit slop took taps on the bottom of the heart. */
+          hitSlop={{ top: 0, bottom: 12, left: 12, right: 12 }}
           testID="reel-like-count"
           style={({ pressed }) => ({
             borderRadius: theme.radii.button,

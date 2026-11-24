@@ -173,4 +173,40 @@ export const safety = {
   adultNothingTitle: 'Nothing to approve',
   adultNothingBody:
     'Guardian permission applies to accounts belonging to 13 to 17 year olds. Yours is an adult account, so your profile and messages are governed by your own privacy settings.',
+
+  under13: {
+    sectionTitle: 'Children under 13',
+    sectionIntro:
+      "Only you can see these. They aren't accounts: your child can't sign in, and they never appear in search, discovery, leaderboards or posts.",
+    emptyBody:
+      "Too young for an account? Keep your child's first name, birth year, sport and level here until they turn 13.",
+    meta: '{{sport}} · {{level}} · Born {{year}}',
+    canHaveAccount:
+      "{{name}} can have their own account from 13. Once they've signed up and you've approved it, delete this profile.",
+    offNote: 'Child profiles are switched off. You can still delete the ones you have.',
+    add: 'Add a child under 13',
+    limitNote: 'You can keep up to {{max}} child profiles.',
+    removedNote: 'Each profile is deleted automatically after the year the child turns 14.',
+    deleted: 'Child profile deleted',
+    deleteTitle: "Delete {{name}}'s profile?",
+    deleteBody: 'It is deleted completely and cannot be brought back.',
+    delete: 'Delete profile',
+    newTitle: 'Child under 13',
+    editTitle: 'Child profile',
+    notAvailable: 'Child profiles are not available.',
+    notFound: 'This child profile no longer exists.',
+    privacyNote:
+      "Only you can see this. It isn't an account: your child can't sign in, and it never appears in search, discovery, leaderboards or posts.",
+    firstNameLabel: "Your child's first name",
+    firstNameHint: 'First name only, no surname.',
+    birthYearLabel: 'Birth year',
+    yearOption: '{{year}}',
+    sportLabel: 'Sport',
+    levelLabel: 'Level',
+    save: 'Save',
+    saved: 'Child profile saved',
+    firstNameRequired: "Enter your child's first name.",
+    birthYearRequired: 'Choose a birth year.',
+    sportRequired: 'Choose a sport.',
+  },
 };

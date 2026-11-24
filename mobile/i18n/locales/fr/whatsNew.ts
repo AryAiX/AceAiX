@@ -26,4 +26,8 @@ export const whatsNew = {
     sports: 'Plus de sports, et tu peux nous demander d’ajouter le tien.',
     leaderboard: 'Parcours tout le classement, avec les rangs mondiaux.',
   },
+  v2_1_1: {
+    likeTap: 'Toucher le cœur aime maintenant toujours la publication. Touche le nombre pour voir qui l’a aimée.',
+    parentName: 'Les parents indiquent maintenant leur propre nom à l’inscription.',
+  },
 };

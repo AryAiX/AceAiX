@@ -11465,4 +11465,205 @@ begin
 end $$;
 
 -- ------------------------------------------------------------
+do $$ begin raise notice E'\n── child profiles for children under 13 (QA-174) ──'; end $$;
+
+do $$
+declare
+  p constant text := 'c174abcd-0000-4000-8000-0000000000';
+  v_parent   uuid := (p||'01')::uuid;  -- parent who keeps child profiles
+  v_parent2  uuid := (p||'02')::uuid;  -- another parent
+  v_athlete  uuid := (p||'03')::uuid;  -- adult athlete
+  v_coach    uuid := (p||'04')::uuid;  -- verified coach
+  v_gone     uuid := (p||'05')::uuid;  -- parent who deletes their account
+  v_year integer := extract(year from (now() at time zone 'utc'))::int;
+  v_list jsonb;
+  v_child uuid; v_other uuid; v_young uuid; v_teen uuid;
+  v_off_hint text; v_off_list jsonb;
+  v_athlete_hint text; v_coach_hint text; v_athlete_list jsonb;
+  v_h_old text; v_h_future text; v_h_digits text; v_h_email text;
+  v_h_sport text; v_h_level text; v_h_limit text;
+  v_p2_list jsonb; v_p2_edit text; v_p2_delete boolean; v_still_there integer;
+  v_after_edit record;
+  v_teen_row jsonb; v_young_row jsonb;
+  v_expired_left integer; v_purged integer;
+  v_auth_select boolean; v_anon_select boolean; v_auth_schema boolean;
+  v_search integer;
+  v_export jsonb;
+  v_off2 jsonb; v_deleted boolean; v_left integer; v_audit record;
+  v_gone_left integer;
+begin
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (v_parent,  'c174.parent@test.local',  '{"full_name":"C174 Parent","role":"guardian"}'),
+    (v_parent2, 'c174.parent2@test.local', '{"full_name":"C174 Parenttwo","role":"guardian"}'),
+    (v_athlete, 'c174.athlete@test.local', '{"full_name":"C174 Athlete","role":"athlete"}'),
+    (v_coach,   'c174.coach@test.local',   '{"full_name":"C174 Coach","role":"coach"}'),
+    (v_gone,    'c174.gone@test.local',    '{"full_name":"C174 Gone","role":"guardian"}');
+  update public.user_profiles set role = 'guardian' where id in (v_parent, v_parent2, v_gone);
+  update public.user_profiles set is_verified = true where id = v_coach;
+  update public.user_private set date_of_birth = current_date - interval '40 years'
+   where user_id::text like 'c174abcd-%';
+
+  -- The switch is off: nothing can be added, and the list says so.
+  perform tests.as_user(v_parent);
+  v_off_hint := tests.hint_of(format(
+    'select public.save_child_profile(null, %L, %s, %L, %L)', 'Sara', v_year - 9, 'Football', 'club'));
+  v_off_list := public.my_child_profiles();
+  reset role;
+
+  -- Switch on for the rest of this block (it is switched off again at the end).
+  update public.platform_settings
+     set value = jsonb_set(value, '{child_profiles}', 'true')
+   where key = 'features';
+
+  perform tests.as_user(v_parent);
+  v_child := public.save_child_profile(null, '  Sara   Lee ', v_year - 9, 'Football', 'club');
+  v_young := public.save_child_profile(null, 'Omid', v_year - 3, 'Swimming', 'casual');
+  v_teen  := public.save_child_profile(null, 'Leila', v_year - 13, 'Tennis', 'competitive');
+  perform public.save_child_profile(v_child, 'Sara', v_year - 10, 'Basketball', 'competitive');
+  v_list := public.my_child_profiles();
+
+  -- Only what a child profile allows.
+  v_h_old    := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ali', v_year - 14, 'Football', 'club'));
+  v_h_future := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ali', v_year + 1, 'Football', 'club'));
+  v_h_digits := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ali 0501234567', v_year - 8, 'Football', 'club'));
+  v_h_email  := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'ali@x.com', v_year - 8, 'Football', 'club'));
+  v_h_sport  := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ali', v_year - 8, 'Quidditch', 'club'));
+  v_h_level  := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ali', v_year - 8, 'Football', 'professional'));
+
+  -- Five at most.
+  perform public.save_child_profile(null, 'Dara', v_year - 7, 'Chess', 'casual');
+  perform public.save_child_profile(null, 'Nima', v_year - 6, 'Judo', 'club');
+  v_h_limit := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Ava', v_year - 5, 'Golf', 'casual'));
+
+  -- Not a parent.
+  perform tests.as_user(v_athlete);
+  v_athlete_hint := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Sam', v_year - 8, 'Football', 'club'));
+  v_athlete_list := public.my_child_profiles();
+  perform tests.as_user(v_coach);
+  v_coach_hint := tests.hint_of(format('select public.save_child_profile(null, %L, %s, %L, %L)', 'Sam', v_year - 8, 'Football', 'club'));
+
+  -- Another parent sees, changes and deletes nothing of the first parent's.
+  perform tests.as_user(v_parent2);
+  v_p2_list := public.my_child_profiles();
+  v_p2_edit := tests.hint_of(format('select public.save_child_profile(%L, %L, %s, %L, %L)', v_child, 'Hacked', v_year - 8, 'Football', 'club'));
+  v_p2_delete := public.delete_child_profile(v_child);
+  reset role;
+  select count(*) into v_still_there from private.child_profiles where id = v_child;
+  select first_name, birth_year, sport, level into v_after_edit from private.child_profiles where id = v_child;
+
+  select e into v_teen_row  from jsonb_array_elements(v_list -> 'profiles') e where (e ->> 'id')::uuid = v_teen;
+  select e into v_young_row from jsonb_array_elements(v_list -> 'profiles') e where (e ->> 'id')::uuid = v_young;
+
+  -- Past 13 for sure: removed when the parent next opens the list,
+  -- and by the service-role purge for everyone.
+  insert into private.child_profiles (guardian_user_id, first_name, birth_year, sport, level)
+  values (v_parent, 'Expired', v_year - 15, 'Golf', 'casual'),
+         (v_parent2, 'Expiredtoo', v_year - 16, 'Golf', 'casual');
+  perform tests.as_user(v_parent);
+  perform public.my_child_profiles();
+  reset role;
+  select count(*) into v_expired_left from private.child_profiles
+   where guardian_user_id = v_parent and first_name = 'Expired';
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  v_purged := private.purge_expired_child_profiles();
+
+  -- Nobody reaches the table directly, and search never finds a child.
+  v_auth_select := has_table_privilege('authenticated', 'private.child_profiles', 'select');
+  v_anon_select := has_table_privilege('anon', 'private.child_profiles', 'select');
+  v_auth_schema := has_function_privilege('authenticated', 'private.purge_expired_child_profiles()', 'execute');
+  perform tests.as_user(v_coach);
+  select count(*) into v_search from public.search_people('Leila', null, 20);
+
+  -- "Download my data" lists the parent's child profiles.
+  perform tests.as_user(v_parent);
+  v_export := public.export_my_data();
+  reset role;
+
+  -- Switched off again: the parent still sees and can delete what they have.
+  update public.platform_settings
+     set value = jsonb_set(value, '{child_profiles}', 'false')
+   where key = 'features';
+  perform tests.as_user(v_parent);
+  v_off2 := public.my_child_profiles();
+  v_deleted := public.delete_child_profile(v_child);
+  reset role;
+  select count(*) into v_left from private.child_profiles where id = v_child;
+  select * into v_audit from public.audit_logs
+   where action = 'child_profile.deleted' and record_id = v_child;
+
+  -- Deleting the parent's account deletes their child profiles.
+  insert into private.child_profiles (guardian_user_id, first_name, birth_year, sport, level)
+  values (v_gone, 'Kian', v_year - 8, 'Football', 'club');
+  delete from auth.users where id = v_gone;
+  select count(*) into v_gone_left from private.child_profiles where guardian_user_id = v_gone;
+
+  perform tests.ok(
+    v_off_hint = 'child_profiles_off'
+    and (v_off_list ->> 'enabled')::boolean = false
+    and jsonb_array_length(v_off_list -> 'profiles') = 0,
+    'with the switch off, a parent cannot add a child profile');
+
+  perform tests.ok(
+    (v_list ->> 'enabled')::boolean
+    and jsonb_array_length(v_list -> 'profiles') = 3
+    and v_after_edit.first_name = 'Sara' and v_after_edit.birth_year = v_year - 10
+    and v_after_edit.sport = 'Basketball' and v_after_edit.level = 'competitive',
+    'a parent adds child profiles and changes one of their own');
+
+  perform tests.ok(
+    (select array_agg(k order by k) from jsonb_object_keys(v_young_row) k)
+      = array['birth_year','can_have_account','first_name','id','level','removed_after_year','sport'],
+    'a child profile holds a first name, birth year, sport and level, and nothing else');
+
+  perform tests.ok(
+    v_h_old = 'child_birth_year' and v_h_future = 'child_birth_year'
+    and v_h_digits = 'child_first_name' and v_h_email = 'child_first_name'
+    and v_h_sport = 'child_sport' and v_h_level = 'child_level',
+    'a child profile is only for a child 13 or younger this year, with a plain first name, a listed sport and a level');
+
+  perform tests.ok(v_h_limit = 'child_profile_limit', 'a parent keeps at most 5 child profiles');
+
+  perform tests.ok(
+    v_athlete_hint = 'child_profile_parent_only' and v_coach_hint = 'child_profile_parent_only'
+    and (v_athlete_list ->> 'enabled')::boolean = false
+    and jsonb_array_length(v_athlete_list -> 'profiles') = 0,
+    'an athlete or a coach cannot keep child profiles');
+
+  perform tests.ok(
+    jsonb_array_length(v_p2_list -> 'profiles') = 0
+    and v_p2_edit = 'child_profile_not_found' and not v_p2_delete and v_still_there = 1,
+    'another parent cannot see, change or delete a child profile that is not theirs');
+
+  perform tests.ok(
+    (v_teen_row ->> 'can_have_account')::boolean
+    and not (v_young_row ->> 'can_have_account')::boolean
+    and (v_young_row ->> 'removed_after_year')::int = v_year - 3 + 14,
+    'the list says when a child can have their own account and when the profile is removed');
+
+  perform tests.ok(
+    v_expired_left = 0 and v_purged >= 1 and not v_auth_schema
+    and not exists (select 1 from private.child_profiles where birth_year + 14 < v_year),
+    'a profile of a child surely past 13 is removed, and only the service role runs the purge');
+
+  perform tests.ok(
+    not v_auth_select and not v_anon_select and not v_auth_schema and v_search = 0,
+    'nobody reads child profiles directly, and search never finds a child');
+
+  perform tests.ok(
+    v_export -> 'included_data' ? 'child profiles'
+    and jsonb_array_length(v_export -> 'child_profiles') = 5
+    and v_export -> 'child_profiles' @> '[{"first_name":"Sara"}]',
+    'a parent''s data download lists their child profiles');
+
+  perform tests.ok(
+    (v_off2 ->> 'enabled')::boolean = false and (v_off2 ->> 'can_add')::boolean = false
+    and jsonb_array_length(v_off2 -> 'profiles') = 5
+    and v_deleted and v_left = 0
+    and v_audit.user_id = v_parent and v_audit.old_value is null and v_audit.new_value is null,
+    'with the switch off, a parent still lists and deletes their child profiles, and the audit row holds no child detail');
+
+  perform tests.ok(v_gone_left = 0, 'deleting a parent''s account deletes their child profiles');
+end $$;
+
+-- ------------------------------------------------------------
 do $$ begin raise notice E'\n✓ all functional tests passed'; end $$;
