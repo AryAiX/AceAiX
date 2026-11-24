@@ -26,4 +26,8 @@ export const whatsNew = {
     sports: 'Mehr Sportarten, und du kannst deine Sportart bei uns anfragen.',
     leaderboard: 'Scrolle durch die ganze Rangliste, mit weltweiten Plätzen.',
   },
+  v2_1_1: {
+    likeTap: 'Ein Tipp aufs Herz gefällt den Beitrag jetzt immer. Tippe auf die Zahl, um zu sehen, wem er gefällt.',
+    parentName: 'Eltern werden bei der Anmeldung jetzt nach ihrem eigenen Namen gefragt.',
+  },
 };

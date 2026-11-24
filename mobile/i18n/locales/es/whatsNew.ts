@@ -26,4 +26,8 @@ export const whatsNew = {
     sports: 'Más deportes, y puedes pedirnos que añadamos el tuyo.',
     leaderboard: 'Recorre toda la clasificación, con posiciones globales.',
   },
+  v2_1_1: {
+    likeTap: 'Al tocar el corazón ahora siempre das me gusta. Toca el número para ver a quién le gustó.',
+    parentName: 'Ahora a los padres se les pide su propio nombre al registrarse.',
+  },
 };
