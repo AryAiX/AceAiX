@@ -143,4 +143,13 @@ export const errors = {
   clubAwardLink: "Solo puedes vincular a personas de tus plantillas.",
   sportNameInvalid: "Usa de 2 a 40 letras para el nombre del deporte.",
   sportRequestLimit: "Puedes pedir un deporte 5 veces al día.",
+  childProfilesOff: 'Los perfiles infantiles no están disponibles.',
+  childProfileParentOnly:
+    'Solo una cuenta de madre, padre o tutor puede tener perfiles infantiles.',
+  childFirstName: 'Escribe el nombre de tu hijo o hija, sin números ni símbolos.',
+  childBirthYear: 'Un perfil infantil es para un menor de 13 años. Elige su año de nacimiento.',
+  childSport: 'Elige un deporte.',
+  childLevel: 'Elige un nivel.',
+  childProfileLimit: 'Puedes tener hasta 5 perfiles infantiles.',
+  childProfileNotFound: 'Este perfil infantil ya no existe.',
 };
